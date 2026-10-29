@@ -1,7 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
+
+import { store } from "@/shared/stores";
+
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { TestForm } from "../../../../../../tests/components/form.story";
 import { render } from "../../../../../../tests/components/render";
+import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 import {
   type NumberPoolRangeRow,
   NumberPoolRangesInput,
@@ -16,15 +21,93 @@ const row = (start: number | null, end: number | null): NumberPoolRangeRow => ({
   allocation_weight: null,
 });
 
-function RangesHarness({ initialRows }: { initialRows: Array<NumberPoolRangeRow> }) {
+const vlanSchema = generateNodeSchema({
+  kind: "InfraVLAN",
+  attributes: [
+    generateAttributeSchema({
+      name: "vlan_id",
+      kind: "Number",
+      parameters: { min_value: 10, max_value: 4094 },
+    }),
+  ],
+});
+
+interface RangesHarnessProps {
+  initialRows: Array<NumberPoolRangeRow>;
+  // a pool for InfraVLAN.vlan_id, whose numbers run from 10 to 4094; without it the bounds have no limits
+  nodeKind?: string;
+}
+
+function RangesHarness({ initialRows, nodeKind = "" }: RangesHarnessProps) {
   return (
-    <TestForm defaultValues={{ ranges: initialRows }}>
+    <TestForm
+      defaultValues={{
+        node: { value: nodeKind },
+        node_attribute: { value: "vlan_id" },
+        ranges: initialRows,
+      }}
+    >
       <NumberPoolRangesInput />
     </TestForm>
   );
 }
 
 describe("NumberPoolRangesInput", () => {
+  beforeEach(() => {
+    store.set(nodeSchemasAtom, [vlanSchema]);
+    store.set(genericSchemasAtom, []);
+  });
+
+  test("refuses a start below the minimum the attribute accepts", async () => {
+    // GIVEN
+    const component = await render(
+      <RangesHarness nodeKind="InfraVLAN" initialRows={[row(5, 100)]} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Value must be at least 10")).toBeVisible();
+    await expect
+      .element(component.getByRole("spinbutton", { name: "Start of range 1" }))
+      .toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("refuses an end above the maximum the attribute accepts", async () => {
+    // GIVEN
+    const component = await render(
+      <RangesHarness nodeKind="InfraVLAN" initialRows={[row(100, 5000)]} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Value must be at most 4094")).toBeVisible();
+    await expect
+      .element(component.getByRole("spinbutton", { name: "End of range 1" }))
+      .toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("accepts a range running exactly from the attribute's minimum to its maximum", async () => {
+    // GIVEN
+    const component = await render(
+      <RangesHarness nodeKind="InfraVLAN" initialRows={[row(10, 4094)]} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("spinbutton", { name: "Start of range 1" }))
+      .toHaveAttribute("aria-invalid", "false");
+    await expect
+      .element(component.getByRole("spinbutton", { name: "End of range 1" }))
+      .toHaveAttribute("aria-invalid", "false");
+  });
+
   test("explains the order in which ranges are used", async () => {
     // WHEN
     const component = await render(<RangesHarness initialRows={[row(1, 10)]} />);
@@ -186,10 +269,18 @@ describe("validateRangeBound", () => {
     expect(result).toBe(true);
   });
 
+  test("accepts zero and negative numbers, which an attribute without a minimum holds", () => {
+    // WHEN
+    const results = [validateRangeBound(0), validateRangeBound(-4)];
+
+    // THEN
+    expect(results).toEqual([true, true]);
+  });
+
   test.each([
     [1.5, "Whole number"],
-    [-4, "Whole number"],
     [9_007_199_254_740_992, "Too large"],
+    [-9_007_199_254_740_992, "Too small"],
   ])("refuses %d with %s", (value, message) => {
     // WHEN
     const result = validateRangeBound(value);
