@@ -13,7 +13,6 @@ const MarkdownWithMermaid = React.lazy(() => import("./markdown-with-mermaid"));
 
 export const remarkPlugins = [remarkGfm, remarkBreaks];
 
-/** Returns the diagram source when a `pre` element's child is a ```mermaid code block, otherwise null. */
 export function getMermaidSource(preChildren: React.ReactNode): string | null {
   if (!React.isValidElement<{ className?: string; children?: unknown }>(preChildren)) return null;
   const { className, children } = preChildren.props;
@@ -49,8 +48,7 @@ export function MarkdownRender({ className = "", markdownText = "" }: MarkdownRe
   );
 }
 
-// Fallback rendering shown while the diagram is loading:
-// render the Markdown normally but replace the raw ```mermaid block with a spinner so the rest of the document stays visible.
+// Keeps the rest of the document visible while the diagram code loads.
 const loadingComponents: Components = {
   pre({ node: _node, children, ...props }) {
     if (getMermaidSource(children) !== null) return <Spinner className="mx-auto h-40" />;
