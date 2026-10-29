@@ -1,7 +1,7 @@
 import type * as Pele from "pele/lazy";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
+import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 
 import { render } from "../../../../../tests/components/render";
 
@@ -14,13 +14,40 @@ vi.mock("pele/lazy", async (importOriginal) => {
   return { ...actual, load: loadMock };
 });
 
+const fence = (...sources: string[]) =>
+  sources.map((source) => `\`\`\`mermaid\n${source}\n\`\`\``).join("\n\n");
+
+const nodeShape = () => document.querySelector<SVGGraphicsElement>("svg.pele .pele-node rect");
+
+const luminance = (color: string): number => {
+  const [r = 0, g = 0, b = 0] = (color.match(/[\d.]+/g) ?? []).map(Number);
+  const f = (c: number) => {
+    const s = c / 255;
+    return s <= 0.039_28 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+
+// shapeLuminance reads the painted fill, because the palette reaches the svg only through inherited CSS variables.
+const shapeLuminance = () => {
+  const shape = nodeShape();
+  if (!shape) return null;
+  return luminance(getComputedStyle(shape).fill);
+};
+
+const setDarkTheme = (dark: boolean) => document.documentElement.classList.toggle("dark", dark);
+
 describe("MermaidDiagram", () => {
+  afterEach(() => {
+    setDarkTheme(false);
+  });
+
   test("asks for a reload when the diagram type's code fails to load", async () => {
     // GIVEN
     loadMock.mockRejectedValueOnce(new TypeError("Failed to fetch dynamically imported module"));
 
     // WHEN
-    const component = await render(<MermaidDiagram source={'pie\n  "A" : 1'} />);
+    const component = await render(<MarkdownRender markdownText={fence('pie\n  "A" : 1')} />);
 
     // THEN
     await expect
@@ -34,7 +61,9 @@ describe("MermaidDiagram", () => {
     loadMock.mockReturnValueOnce(new Promise(() => {}));
 
     // WHEN
-    const component = await render(<MermaidDiagram source={"journey\n  section A\n    B: 5: C"} />);
+    const component = await render(
+      <MarkdownRender markdownText={fence("journey\n  section A\n    B: 5: C")} />
+    );
 
     // THEN
     await expect.element(component.getByRole("status")).toBeVisible();
@@ -44,7 +73,7 @@ describe("MermaidDiagram", () => {
   test("shows a syntax error in a monospace font so its caret points at the column", async () => {
     // WHEN
     const component = await render(
-      <MermaidDiagram source={"flowchart LR\n  A --> B\n  B --> [oops"} />
+      <MarkdownRender markdownText={fence("flowchart LR\n  A --> B\n  B --> [oops")} />
     );
 
     // THEN
@@ -59,12 +88,7 @@ describe("MermaidDiagram", () => {
     const sankey = "sankey\nA,B,10\nB,C,5";
 
     // WHEN
-    const component = await render(
-      <>
-        <MermaidDiagram source={sankey} />
-        <MermaidDiagram source={sankey} />
-      </>
-    );
+    const component = await render(<MarkdownRender markdownText={fence(sankey, sankey)} />);
 
     // THEN
     await expect.poll(() => component.container.querySelectorAll("svg.pele").length).toBe(2);
@@ -77,7 +101,7 @@ describe("MermaidDiagram", () => {
     // WHEN
     const component = await render(
       <div style={{ width: 800 }}>
-        <MermaidDiagram source={"flowchart LR\n  A --> B"} />
+        <MarkdownRender markdownText={fence("flowchart LR\n  A --> B")} />
       </div>
     );
 
@@ -94,10 +118,10 @@ describe("MermaidDiagram", () => {
   test("keeps web links in a diagram and drops javascript: links", async () => {
     // WHEN
     const component = await render(
-      <MermaidDiagram
-        source={
+      <MarkdownRender
+        markdownText={fence(
           'flowchart LR\n  A --> B\n  click A "https://example.com" _blank\n  click B "javascript:alert(1)"'
-        }
+        )}
       />
     );
 
@@ -107,5 +131,41 @@ describe("MermaidDiagram", () => {
       link.getAttribute("href")
     );
     expect(hrefs).toEqual(["https://example.com/"]);
+  });
+
+  test("renders a light diagram in the light theme", async () => {
+    // WHEN
+    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+
+    // THEN
+    await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
+    expect(shapeLuminance()).toBeGreaterThan(0.5);
+  });
+
+  test("renders a dark diagram in the dark theme", async () => {
+    // GIVEN
+    setDarkTheme(true);
+
+    // WHEN
+    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+
+    // THEN
+    await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
+    expect(shapeLuminance()).toBeLessThan(0.5);
+  });
+
+  test("recolours the mounted diagram in place when the theme changes", async () => {
+    // GIVEN
+    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+    await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
+    const shape = nodeShape();
+    expect(shapeLuminance()).toBeGreaterThan(0.5);
+
+    // WHEN
+    setDarkTheme(true);
+
+    // THEN
+    expect(nodeShape()).toBe(shape);
+    expect(shapeLuminance()).toBeLessThan(0.5);
   });
 });

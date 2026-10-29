@@ -176,7 +176,7 @@ once. The two legitimate exceptions, both from
 |---|---|
 | Choice, desktop tracking, cross-tab sync, transition freeze, pre-paint script | `entities/config/ui/theme-provider.test.tsx` |
 | The Theme submenu in the account menu, alpha tag | `entities/user-profile/ui/account-menu.test.tsx` |
-| Mermaid renders in the active theme, recolours in place on a flip | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours painted on a real node) |
+| Mermaid renders in the active theme, recolours in place on a flip | `shared/components/editor/markdown/mermaid-diagram.test.tsx` (asserts the colours painted on a real node) |
 | First paint in both palettes, persistence | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 
