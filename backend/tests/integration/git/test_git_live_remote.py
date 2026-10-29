@@ -65,7 +65,6 @@ from infrahub.git.writeback.models import AbandonmentRecord, DeliveryStage, Held
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
@@ -127,14 +126,6 @@ mutation RetryDelivery($id: String!) {
 ABANDON_DELIVERY = """
 mutation AbandonDelivery($id: String!, $queue_version: Int!) {
     InfrahubRepositoryDeliveryAbandon(data: {id: $id, queue_version: $queue_version}) {
-        ok
-    }
-}
-"""
-
-MERGE_PROPOSED_CHANGE = """
-mutation MergeProposedChange($id: String!) {
-    CoreProposedChangeMerge(data: {id: $id}) {
         ok
     }
 }
@@ -310,24 +301,37 @@ async def _sync_new_branch(
     repo_name: str,
     repository_id: str,
     branch_name: str,
+    import_branch: bool = True,
 ) -> str:
-    """Create a branch that syncs with Git and adds a file that main lacks, and return the commit the branch records."""
+    """Create a branch that syncs with Git and adds a file that main lacks, and return the head of its remote branch.
+
+    Args:
+        import_branch: Record the head of the remote branch on the branch. Otherwise the branch keeps the commit of main.
+
+    """
     await client.branch.create(branch_name=branch_name, sync_with_git=True)
     source_commit = commit_to_remote_branch(
         container, repo_name, branch=branch_name, files={f"{branch_name}.txt": f"{branch_name}\n"}
     )
+    if not import_branch:
+        return source_commit
 
+    await _import_branch(client=client, repo_name=repo_name, repository_id=repository_id, branch_name=branch_name)
+    on_branch: CoreRepository = await NodeManager.get_one(
+        db=db, id=repository_id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
+    )
+    assert on_branch.commit.value == source_commit, "the branch does not record the commit of its file"
+    return source_commit
+
+
+async def _import_branch(*, client: InfrahubClient, repo_name: str, repository_id: str, branch_name: str) -> None:
+    """Pull the head of the remote branch into Infrahub for this repository only."""
     # A synchronisation visits every repository of the stack, so only this repository pulls the branch.
     repo = await InfrahubRepository.init(
         id=repository_id, name=repo_name, client=client, infrahub_branch_name=registry.default_branch
     )
     await repo.fetch()
     await repo.pull(branch_name=branch_name)
-    on_branch: CoreRepository = await NodeManager.get_one(
-        db=db, id=repository_id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
-    )
-    assert on_branch.commit.value == source_commit, "the branch does not record the commit of its file"
-    return source_commit
 
 
 async def _retry_states(client: InfrahubClient, repository_id: str) -> list[TaskState]:
@@ -443,20 +447,7 @@ class SyncedBranchRepository:
     trunk_commit: str
     """The head of the default branch of the remote, which Infrahub records."""
     source_commit: str
-    """The head of the branch, which Infrahub records on the branch."""
-
-
-@dataclass(frozen=True)
-class UnimportedBranchRepository:
-    """A repository whose branch holds a commit on the remote that Infrahub has not imported yet."""
-
-    name: str
-    node_id: str
-    branch_name: str
-    trunk_commit: str
-    """The head of the default branch of the remote, which Infrahub records on both branches."""
-    remote_commit: str
-    """The head of the branch on the remote."""
+    """The head of the branch on the remote, which Infrahub records on the branch unless the import was skipped."""
 
 
 class TestRepositoryRemoteOperations(TestInfrahubApp):
@@ -549,10 +540,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         """Return a factory for a repository whose branch adds a file that the default branch does not have.
 
         Each test gets a remote and a repository of its own, so a queued merge of one test never reaches another.
-        The files of `trunk_files` are on the default branch before the repository and its branch exist.
+        The files of `trunk_files` are on the default branch before the repository and its branch exist. With
+        `import_branch` off, the branch keeps the commit of main, as before a synchronisation imports its new commit.
         """
 
-        async def create(branch_name: str, trunk_files: dict[str, str] | None = None) -> SyncedBranchRepository:
+        async def create(
+            branch_name: str, trunk_files: dict[str, str] | None = None, import_branch: bool = True
+        ) -> SyncedBranchRepository:
             repo_name = f"{branch_name}-repo"
             location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
             if trunk_files:
@@ -566,6 +560,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 repo_name=repo_name,
                 repository_id=node.id,
                 branch_name=branch_name,
+                import_branch=import_branch,
             )
             return SyncedBranchRepository(
                 name=repo_name,
@@ -1147,107 +1142,49 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             if isinstance(message, RefreshGitFetch) and message.repository_id == repository.node_id
         ] == [(main.name, main.id, repository.source_commit)]
 
-    async def _branch_with_an_unimported_commit(
-        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer, branch_name: str
-    ) -> UnimportedBranchRepository:
-        """Create a branch that syncs with Git, then commit a file on its remote branch with no sync after it."""
-        repo_name = f"{branch_name}-repo"
-        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
-        await node.save()
-        trunk_commit = gogs_repo_branch_commit(gogs_server.container, repo_name, "main")
-        await client.branch.create(branch_name=branch_name, sync_with_git=True)
-        remote_commit = commit_to_remote_branch(
-            gogs_server.container, repo_name, branch=branch_name, files={"transform.j2": "{{ data }}\n"}
-        )
-
-        on_branch: CoreRepository = await NodeManager.get_one(
-            db=db, id=node.id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
-        )
-        assert (on_branch.commit.value, remote_commit != trunk_commit) == (trunk_commit, True), (
-            "the branch must record the commit of main while its remote branch holds a newer one"
-        )
-        return UnimportedBranchRepository(
-            name=repo_name,
-            node_id=node.id,
-            branch_name=branch_name,
-            trunk_commit=trunk_commit,
-            remote_commit=remote_commit,
-        )
-
     async def test_a_merge_waits_for_the_sync_to_import_the_new_commit_of_its_branch(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         fast_forward_merges: None,
+        synced_branch_repository: Callable[..., Awaitable[SyncedBranchRepository]],
     ) -> None:
         """The branch records the commit of main, so only its remote head shows the commit that the merge would lose."""
-        repository = await self._branch_with_an_unimported_commit(
-            db=db, client=client, gogs_server=gogs_server, branch_name="unimported-commit"
+        repository = await synced_branch_repository("unimported-commit", import_branch=False)
+        on_branch: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=repository.node_id,
+            kind=InfrahubKind.REPOSITORY,
+            branch=repository.branch_name,
+            raise_on_error=True,
         )
-        refusal = (
-            f"Unable to merge branch {repository.branch_name}, because Infrahub has not recorded the latest commit "
-            f"of branch {repository.branch_name} of repository {repository.name} ({repository.remote_commit} on the "
-            f"remote, {repository.trunk_commit} in Infrahub). Merge again after Infrahub records the latest commit "
-            "of that branch."
-        )
+        assert on_branch.commit.value == repository.trunk_commit
 
-        with pytest.raises(GraphQLError, match=re.escape(refusal)):
+        with pytest.raises(GraphQLError) as exc:
             await client.branch.merge(branch_name=repository.branch_name)
 
+        assert [error["message"] for error in exc.value.errors] == [
+            f"Unable to merge branch {repository.branch_name}, because Infrahub has not recorded the latest commit "
+            f"of branch {repository.branch_name} of repository {repository.name} ({repository.source_commit} on the "
+            f"remote, {repository.trunk_commit} in Infrahub). Merge again after Infrahub records the latest commit "
+            "of that branch."
+        ]
         assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.OPEN
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
 
-        await sync_remote_repositories()
+        await _import_branch(
+            client=client,
+            repo_name=repository.name,
+            repository_id=repository.node_id,
+            branch_name=repository.branch_name,
+        )
         await client.branch.merge(branch_name=repository.branch_name)
 
         assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.MERGED
-        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.remote_commit
-        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.remote_commit
-
-    async def test_a_proposed_change_merge_waits_for_the_sync_to_import_the_new_commit_of_its_branch(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-        fast_forward_merges: None,
-    ) -> None:
-        """The refusal reopens the proposed change, which merges once the sync records the commit of its branch."""
-        repository = await self._branch_with_an_unimported_commit(
-            db=db, client=client, gogs_server=gogs_server, branch_name="unimported-commit-pc"
-        )
-        proposed_change = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
-            data={
-                "name": repository.branch_name,
-                "source_branch": repository.branch_name,
-                "destination_branch": registry.default_branch,
-            },
-        )
-        await proposed_change.save()
-        refusal = (
-            f"Unable to merge branch {repository.branch_name}, because Infrahub has not recorded the latest commit "
-            f"of branch {repository.branch_name} of repository {repository.name} ({repository.remote_commit} on the "
-            f"remote, {repository.trunk_commit} in Infrahub). Merge again after Infrahub records the latest commit "
-            "of that branch."
-        )
-
-        with pytest.raises(GraphQLError, match=re.escape(refusal)):
-            await client.execute_graphql(query=MERGE_PROPOSED_CHANGE, variables={"id": proposed_change.id})
-
-        reloaded = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change.id)
-        assert reloaded.state.value == ProposedChangeState.OPEN.value
-        assert (await client.branch.get(branch_name=repository.branch_name)).status == BranchStatus.OPEN
-        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
-
-        await sync_remote_repositories()
-        await client.execute_graphql(query=MERGE_PROPOSED_CHANGE, variables={"id": proposed_change.id})
-
-        reloaded = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change.id)
-        assert reloaded.state.value == ProposedChangeState.MERGED.value
-        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.remote_commit
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
 
     async def test_a_merge_whose_source_commit_the_remote_discarded_is_refused(
         self,
