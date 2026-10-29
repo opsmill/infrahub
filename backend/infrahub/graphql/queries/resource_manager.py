@@ -107,96 +107,97 @@ class PoolAllocated(ObjectType):
         limit: int = 10,
     ) -> dict:
         graphql_context: GraphqlContext = info.context
-        pool = await NodeManager.get_one(id=pool_id, db=graphql_context.db, branch=graphql_context.branch)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
 
-        fields = extract_graphql_fields(info=info)
+            fields = extract_graphql_fields(info=info)
 
-        allocated_kinds: list[str] = []
-        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        match pool.get_kind():
-            case InfrahubKind.NUMBERPOOL:
-                return await resolve_number_pool_allocation(
-                    db=graphql_context.db,
-                    graphql_context=graphql_context,
-                    domains=SchemaAttributeDomains(schema=graphql_context.db.schema, branch=graphql_context.branch),
-                    pool=pool,
-                    resource_id=resource_id,
-                    fields=fields,
-                    offset=offset,
-                    limit=limit,
+            allocated_kinds: list[str] = []
+            pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+            match pool.get_kind():
+                case InfrahubKind.NUMBERPOOL:
+                    return await resolve_number_pool_allocation(
+                        db=db,
+                        graphql_context=graphql_context,
+                        domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
+                        pool=pool,
+                        resource_id=resource_id,
+                        fields=fields,
+                        offset=offset,
+                        limit=limit,
+                    )
+                case InfrahubKind.IPPREFIXPOOL:
+                    allocated_kinds.append(InfrahubKind.IPPREFIX)
+                case InfrahubKind.IPADDRESSPOOL:
+                    allocated_kinds.append(InfrahubKind.IPADDRESS)
+
+            resources = await pool.resources.get_peers(db=db)  # type: ignore[attr-defined,union-attr]
+            if resource_id not in resources:
+                raise ValidationError(
+                    input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
                 )
-            case InfrahubKind.IPPREFIXPOOL:
-                allocated_kinds.append(InfrahubKind.IPPREFIX)
-            case InfrahubKind.IPADDRESSPOOL:
-                allocated_kinds.append(InfrahubKind.IPADDRESS)
 
-        resources = await pool.resources.get_peers(db=graphql_context.db)  # type: ignore[attr-defined,union-attr]
-        if resource_id not in resources:
-            raise ValidationError(
-                input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
+            resource = resources[resource_id]
+
+            query = await IPPrefixUtilization.init(
+                db=db,
+                at=graphql_context.at,
+                branch=graphql_context.branch,
+                ip_prefixes=[resource],
+                allocated_kinds=allocated_kinds,
+                offset=offset,
+                limit=limit,
             )
+            response: dict[str, Any] = {}
+            if "count" in fields:
+                response["count"] = await query.count(db=db)
 
-        resource = resources[resource_id]
+            if edges := fields.get("edges"):
+                await query.execute(db=db)
 
-        query = await IPPrefixUtilization.init(
-            db=graphql_context.db,
-            at=graphql_context.at,
-            branch=graphql_context.branch,
-            ip_prefixes=[resource],
-            allocated_kinds=allocated_kinds,
-            offset=offset,
-            limit=limit,
-        )
-        response: dict[str, Any] = {}
-        if "count" in fields:
-            response["count"] = await query.count(db=graphql_context.db)
+                node_fields = edges.get("node", {})
 
-        if edges := fields.get("edges"):
-            await query.execute(db=graphql_context.db)
-
-            node_fields = edges.get("node", {})
-
-            nodes: list[dict[str, dict[str, str | None]]] = []
-            for item in query.get_data():
-                nodes.append(
-                    {
-                        "node": {
-                            "id": item.child_uuid,
-                            "kind": item.child_kind,
-                            "branch": graphql_context.branch.name,
-                            "display_label": item.ip_value,
+                nodes: list[dict[str, dict[str, str | None]]] = []
+                for item in query.get_data():
+                    nodes.append(
+                        {
+                            "node": {
+                                "id": item.child_uuid,
+                                "kind": item.child_kind,
+                                "branch": graphql_context.branch.name,
+                                "display_label": item.ip_value,
+                            }
                         }
+                    )
+
+                if "identifier" in node_fields:
+                    allocated_ids = [node["node"]["id"] for node in nodes]
+                    identifier_query_map = {
+                        InfrahubKind.IPADDRESSPOOL: IPAddressPoolGetIdentifiers,
+                        InfrahubKind.IPPREFIXPOOL: PrefixPoolGetIdentifiers,
                     }
-                )
+                    identifier_query_class = identifier_query_map.get(pool.get_kind())
+                    if not identifier_query_class:
+                        raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
+                    identifier_query = cast(
+                        "IPAddressPoolGetIdentifiers | PrefixPoolGetIdentifiers",
+                        await identifier_query_class.init(
+                            db=db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
+                        ),
+                    )
+                    await identifier_query.execute(db=db)
 
-            if "identifier" in node_fields:
-                allocated_ids = [node["node"]["id"] for node in nodes]
-                identifier_query_map = {
-                    InfrahubKind.IPADDRESSPOOL: IPAddressPoolGetIdentifiers,
-                    InfrahubKind.IPPREFIXPOOL: PrefixPoolGetIdentifiers,
-                }
-                identifier_query_class = identifier_query_map.get(pool.get_kind())
-                if not identifier_query_class:
-                    raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
-                identifier_query = cast(
-                    "IPAddressPoolGetIdentifiers | PrefixPoolGetIdentifiers",
-                    await identifier_query_class.init(
-                        db=graphql_context.db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
-                    ),
-                )
-                await identifier_query.execute(db=graphql_context.db)
+                    reservations: dict[str, str] = {}
+                    for identifier_item in identifier_query.get_data():
+                        reservations[identifier_item.allocated_uuid] = identifier_item.identifier
 
-                reservations: dict[str, str] = {}
-                for identifier_item in identifier_query.get_data():
-                    reservations[identifier_item.allocated_uuid] = identifier_item.identifier
+                    for node in nodes:
+                        node_id = cast("str", node["node"]["id"])
+                        node["node"]["identifier"] = reservations.get(node_id)
 
-                for node in nodes:
-                    node_id = cast("str", node["node"]["id"])
-                    node["node"]["identifier"] = reservations.get(node_id)
+                response["edges"] = nodes
 
-            response["edges"] = nodes
-
-        return response
+            return response
 
 
 class PoolUtilization(ObjectType):
@@ -215,98 +216,98 @@ class PoolUtilization(ObjectType):
         pool_id: str,
     ) -> dict:
         graphql_context: GraphqlContext = info.context
-        db: InfrahubDatabase = graphql_context.db
-        pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
-        pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        if pool.get_kind() == "CoreNumberPool":
-            return await resolve_number_pool_utilization(
-                db=db,
-                domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
-                at=graphql_context.at,
-                pool=pool,
-                branch=graphql_context.branch,
+        async with graphql_context.db.start_session(read_only=True) as db:
+            pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
+            pool = _validate_pool_type(pool_id=pool_id, pool=pool)
+            if pool.get_kind() == "CoreNumberPool":
+                return await resolve_number_pool_utilization(
+                    db=db,
+                    domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
+                    at=graphql_context.at,
+                    pool=pool,
+                    branch=graphql_context.branch,
+                )
+
+            resources_map: dict[str, Node] = {}
+
+            with contextlib.suppress(SchemaNotFoundError):
+                resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+
+            default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+            resources = list(resources_map.values())
+            branch_getter = PrefixUtilizationGetter(
+                db=db, ip_prefixes=resources, branch=graphql_context.branch, at=graphql_context.at
             )
-
-        resources_map: dict[str, Node] = {}
-
-        with contextlib.suppress(SchemaNotFoundError):
-            resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
-
-        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
-        resources = list(resources_map.values())
-        branch_getter = PrefixUtilizationGetter(
-            db=db, ip_prefixes=resources, branch=graphql_context.branch, at=graphql_context.at
-        )
-        # Reuse the single-branch query when the request is already on the default branch,
-        # otherwise the two getters cache independent result sets.
-        default_branch_getter = (
-            branch_getter
-            if graphql_context.branch.name == default_branch.name
-            else PrefixUtilizationGetter(db=db, ip_prefixes=resources, branch=default_branch, at=graphql_context.at)
-        )
-        fields = extract_graphql_fields(info=info)
-        response: dict[str, Any] = {}
-        total_utilization = None
-        default_branch_utilization = None
-        if "count" in fields:
-            response["count"] = len(resources_map)
-        if "utilization" in fields:
-            response["utilization"] = total_utilization = await branch_getter.get_use_percentage()
-        if "utilization_default_branch" in fields:
-            response["utilization_default_branch"] = (
-                default_branch_utilization
-            ) = await default_branch_getter.get_use_percentage()
-        if "utilization_branches" in fields:
-            total_utilization = (
-                total_utilization if total_utilization is not None else await branch_getter.get_use_percentage()
+            # Reuse the single-branch query when the request is already on the default branch,
+            # otherwise the two getters cache independent result sets.
+            default_branch_getter = (
+                branch_getter
+                if graphql_context.branch.name == default_branch.name
+                else PrefixUtilizationGetter(db=db, ip_prefixes=resources, branch=default_branch, at=graphql_context.at)
             )
-            default_branch_utilization = (
-                default_branch_utilization
-                if default_branch_utilization is not None
-                else await default_branch_getter.get_use_percentage()
-            )
-            # Deletions on the branch can make its view smaller than the default branch's;
-            # this field is exposed as a non-negative percentage.
-            response["utilization_branches"] = max(0.0, total_utilization - default_branch_utilization)
-        if "edges" in fields:
-            response["edges"] = []
-            if "node" in fields["edges"]:
-                node_fields = fields["edges"]["node"]
-                for resource_id, resource_node in resources_map.items():
-                    resource_total = None
-                    default_branch_total = None
-                    node_response: dict[str, str | float | int] = {}
-                    if "id" in node_fields:
-                        node_response["id"] = resource_id
-                    if "kind" in node_fields:
-                        node_response["kind"] = resource_node.get_kind()
-                    if "display_label" in node_fields:
-                        node_response["display_label"] = await resource_node.get_display_label(db=db)
-                    if "weight" in node_fields:
-                        node_response["weight"] = await resource_node.get_resource_weight(db=db)  # type: ignore[attr-defined]
-                    if "utilization" in node_fields:
-                        node_response["utilization"] = resource_total = await branch_getter.get_use_percentage(
-                            ip_prefixes=[resource_node]
-                        )
-                    if "utilization_default_branch" in node_fields:
-                        node_response["utilization_default_branch"] = (
-                            default_branch_total
-                        ) = await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
-                    if "utilization_branches" in node_fields:
-                        resource_total = (
-                            resource_total
-                            if resource_total is not None
-                            else await branch_getter.get_use_percentage(ip_prefixes=[resource_node])
-                        )
-                        default_branch_total = (
-                            default_branch_total
-                            if default_branch_total is not None
-                            else await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
-                        )
-                        node_response["utilization_branches"] = max(0.0, resource_total - default_branch_total)
-                    response["edges"].append({"node": node_response})
+            fields = extract_graphql_fields(info=info)
+            response: dict[str, Any] = {}
+            total_utilization = None
+            default_branch_utilization = None
+            if "count" in fields:
+                response["count"] = len(resources_map)
+            if "utilization" in fields:
+                response["utilization"] = total_utilization = await branch_getter.get_use_percentage()
+            if "utilization_default_branch" in fields:
+                response["utilization_default_branch"] = (
+                    default_branch_utilization
+                ) = await default_branch_getter.get_use_percentage()
+            if "utilization_branches" in fields:
+                total_utilization = (
+                    total_utilization if total_utilization is not None else await branch_getter.get_use_percentage()
+                )
+                default_branch_utilization = (
+                    default_branch_utilization
+                    if default_branch_utilization is not None
+                    else await default_branch_getter.get_use_percentage()
+                )
+                # Deletions on the branch can make its view smaller than the default branch's;
+                # this field is exposed as a non-negative percentage.
+                response["utilization_branches"] = max(0.0, total_utilization - default_branch_utilization)
+            if "edges" in fields:
+                response["edges"] = []
+                if "node" in fields["edges"]:
+                    node_fields = fields["edges"]["node"]
+                    for resource_id, resource_node in resources_map.items():
+                        resource_total = None
+                        default_branch_total = None
+                        node_response: dict[str, str | float | int] = {}
+                        if "id" in node_fields:
+                            node_response["id"] = resource_id
+                        if "kind" in node_fields:
+                            node_response["kind"] = resource_node.get_kind()
+                        if "display_label" in node_fields:
+                            node_response["display_label"] = await resource_node.get_display_label(db=db)
+                        if "weight" in node_fields:
+                            node_response["weight"] = await resource_node.get_resource_weight(db=db)  # type: ignore[attr-defined]
+                        if "utilization" in node_fields:
+                            node_response["utilization"] = resource_total = await branch_getter.get_use_percentage(
+                                ip_prefixes=[resource_node]
+                            )
+                        if "utilization_default_branch" in node_fields:
+                            node_response["utilization_default_branch"] = (
+                                default_branch_total
+                            ) = await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
+                        if "utilization_branches" in node_fields:
+                            resource_total = (
+                                resource_total
+                                if resource_total is not None
+                                else await branch_getter.get_use_percentage(ip_prefixes=[resource_node])
+                            )
+                            default_branch_total = (
+                                default_branch_total
+                                if default_branch_total is not None
+                                else await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
+                            )
+                            node_response["utilization_branches"] = max(0.0, resource_total - default_branch_total)
+                        response["edges"].append({"node": node_response})
 
-        return response
+            return response
 
 
 def _pool_domain(domains: SchemaAttributeDomains, pool: Node) -> NumberDomain:

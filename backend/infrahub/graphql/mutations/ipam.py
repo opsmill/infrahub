@@ -94,7 +94,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
     ) -> DeleteResult:
         if data["id"] == registry.default_ipnamespace:
-            raise ValueError("Cannot delete default IPAM namespace")
+            raise ValidationError(input_value="Cannot delete default IPAM namespace")
 
         return await super().mutate_delete(info=info, data=data, branch=branch)
 

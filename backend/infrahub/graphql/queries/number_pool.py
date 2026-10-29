@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.constants import PoolRecordProvenance
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.pools.number_pool_usage import PoolDivisions, PoolUsage, TrackedNumbersPage
 
@@ -33,10 +32,10 @@ def _division_entries(division: Sequence[Mapping[str, object]] | None) -> list[t
     return [(str(entry["path"]), entry["value"]) for entry in division]
 
 
-def _context(info: GraphQLResolveInfo) -> tuple[InfrahubDatabase, Branch, SchemaBranch]:
+def _branch_context(info: GraphQLResolveInfo) -> tuple[GraphqlContext, Branch, SchemaBranch]:
     graphql_context: GraphqlContext = info.context
     branch = graphql_context.branch
-    return graphql_context.db, branch, registry.schema.get_schema_branch(name=branch.name)
+    return graphql_context, branch, registry.schema.get_schema_branch(name=branch.name)
 
 
 _UNBOUNDED_NULL = "Null when the pool's range is unbounded."
@@ -173,9 +172,10 @@ class NumberPoolUtilization(ObjectType):
         pool_id: str,
         division: list[dict[str, str]] | None = None,
     ) -> PoolUsage:
-        db, branch, schema_branch = _context(info)
-        reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id, division=_division_entries(division))
+        graphql_context, branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id, division=_division_entries(division))
 
 
 class NumberPoolDivisionEntry(ObjectType):
@@ -272,9 +272,10 @@ class NumberPoolDivisions(ObjectType):
         info: GraphQLResolveInfo,
         pool_id: str,
     ) -> PoolDivisions:
-        db, branch, schema_branch = _context(info)
-        reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id)
+        graphql_context, branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id)
 
 
 class NumberPoolHolder(ObjectType):
@@ -352,9 +353,10 @@ class NumberPoolAllocations(ObjectType):
             offset=offset,
             limit=limit,
         )
-        db, request_branch, schema_branch = _context(info)
-        reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id, filters=filters)
+        graphql_context, request_branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id, filters=filters)
 
 
 InfrahubNumberPoolUtilization = Field(

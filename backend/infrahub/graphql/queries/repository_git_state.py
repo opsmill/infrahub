@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from infrahub.core.account import ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.services.adapters.cache import InfrahubCache
 
@@ -79,11 +80,13 @@ def _raise_unless_any_repository_is_viewable(graphql_context: GraphqlContext, br
     graphql_context.active_permissions.raise_for_permission(permission=permissions[0])
 
 
-async def _load_generic_repository(graphql_context: GraphqlContext, repository_id: str) -> CoreGenericRepository | None:
+async def _load_generic_repository(
+    db: InfrahubDatabase, graphql_context: GraphqlContext, repository_id: str
+) -> CoreGenericRepository | None:
     """Load the repository this id names on the request branch, or None when it names anything else."""
     try:
         repository = await NodeManager.get_one_by_id_or_default_filter(
-            db=graphql_context.db,
+            db=db,
             kind=CoreGenericRepository,
             id=repository_id,
             branch=graphql_context.branch,
@@ -100,7 +103,9 @@ async def _load_generic_repository(graphql_context: GraphqlContext, repository_i
     return repository
 
 
-async def load_repository_for_view(graphql_context: GraphqlContext, repository_id: str) -> CoreGenericRepository:
+async def load_repository_for_view(
+    db: InfrahubDatabase, graphql_context: GraphqlContext, repository_id: str
+) -> CoreGenericRepository:
     """Load a repository on the request branch and enforce view permission on its concrete kind.
 
     The check is imperative because the query analyzer maps top-level fields to kinds by exact
@@ -113,7 +118,7 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
 
     """
     branch = graphql_context.branch
-    repository = await _load_generic_repository(graphql_context=graphql_context, repository_id=repository_id)
+    repository = await _load_generic_repository(db=db, graphql_context=graphql_context, repository_id=repository_id)
 
     if repository is not None and graphql_context.active_permissions.has_permission(
         permission=_view_permission(kind=repository.get_kind(), branch_name=branch.name)
@@ -295,7 +300,10 @@ class RepositoryCommitsResolver:
 
         resolved_limit, resolved_offset = _resolve_paging(limit=limit, offset=offset)
 
-        repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=repository_id)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            repository = await load_repository_for_view(
+                db=db, graphql_context=graphql_context, repository_id=repository_id
+            )
         resolved_ref = _resolve_git_ref(
             repository=repository,
             infrahub_branch_name=branch.name,
@@ -428,7 +436,8 @@ class RepositoryActivityResolver:
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
 
-        repository = await load_repository_for_view(graphql_context=graphql_context, repository_id=id)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            repository = await load_repository_for_view(db=db, graphql_context=graphql_context, repository_id=id)
         # The records are keyed by id, so a repository named in the request is read under its id.
         repository_id = repository.get_id()
         # The cache holds only the current state, so the requested time does not apply to these reads.

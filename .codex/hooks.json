@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$(git rev-parse --show-toplevel)\"/.agents/hooks/pr-review.sh codex'"
+          }
+        ]
+      }
+    ]
+  }
+}

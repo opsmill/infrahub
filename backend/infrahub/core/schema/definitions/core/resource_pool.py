@@ -28,6 +28,7 @@ core_resource_pool = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/resource-manager/overview/",
     attributes=[
         Attr(name="name", kind="Text", order_weight=1000, unique=True),
         Attr(name="description", kind="Text", optional=True, order_weight=2000),
@@ -42,6 +43,7 @@ core_weighted_pool_resource = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AWARE,
     generate_profile=False,
+    documentation="/resource-manager/weighted-allocation/",
     attributes=[
         Attr(
             name="allocation_weight",
@@ -63,6 +65,7 @@ core_ip_pool = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/resource-manager/overview/",
 )
 
 core_ip_prefix_pool = NodeSchema(
@@ -75,6 +78,7 @@ core_ip_prefix_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-ip-prefix/",
     attributes=[
         Attr(
             name="default_prefix_length",
@@ -134,6 +138,7 @@ core_ip_address_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-ip-address/",
     attributes=[
         Attr(
             name="default_address_type",
@@ -184,6 +189,7 @@ core_number_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-number/",
     attributes=[
         Attr(
             name="node",

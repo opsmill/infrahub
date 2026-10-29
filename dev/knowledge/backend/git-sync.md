@@ -1,6 +1,6 @@
 # Git Sync
 
-> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md)
+> Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md), [Git Push Queue](git-push-queue.md), [Repository Git-State Read](repository-git-state.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
 per-branch state of each repository, and how git and import errors surface. Read this before
@@ -91,7 +91,11 @@ The read-write kind implements the mapping described below; the read-only kind r
   `registry.default_branch`; code that has no repository object — the API server, which must never
   build one — calls the function directly. The function takes all three inputs as required
   parameters, so no caller can fall back to Infrahub's default branch by omitting the repository's
-  trunk.
+  trunk. The API server's caller is the git-state read described in
+  [Repository Git-State Read](repository-git-state.md).
+- Change how an Infrahub branch maps onto the repository's configured default branch only in
+  `get_mapped_remote_branch`, so the workers and the API server apply one rule instead of two copies
+  that can differ.
 - Which remote branches a sync imports depends on the Infrahub branch the remote branch maps to
   (`_get_mapped_target_branch`), so the repository's default branch is judged as Infrahub's default
   branch, whatever its own name:
@@ -523,6 +527,15 @@ read-only flows through `import_objects_from_files`.
   `bootstrap_local_repository` returns the repository when the default-branch import fails, so the
   scheduled sync continues with its other branches; it returns `None` when the clone fails or when
   that import raises a connection or credential error.
+- **A refused object deletion is not an import failure.** Removing an object file deletes its objects
+  through the SDK tracking group in `_import_file_paths`. When the server refuses one of those
+  deletes, because another object holds a mandatory relationship to it, the SDK raises
+  `TrackingGroupCleanupError`; `_import_file_paths` catches it, logs a warning and the import
+  continues. The refused objects stay in the tracking group, so the next import retries them. This
+  differs from the failures above because the cause is an object in the instance, which the
+  repository cannot fix, and failing would skip every later step of the import until it is removed.
+  A failure of the request itself, such as an unreachable server, is not caught and reaches the
+  boundary.
 - **Calling an import step directly.** The steps write to the run logger, which Prefect provides only
   inside a flow or task run. A test that calls one directly wraps the call in a flow
   (`tests/helpers/flow.py::call_in_flow`).

@@ -74,6 +74,18 @@ When you specify a directory in any resource list:
 
 This behavior enables you to organize complex repositories while maintaining predictable loading order.
 
+### Removing objects
+
+Objects imported from an object file are tracked per repository, so removing them from the repository removes them from Infrahub. On the next import, any object that is no longer defined is deleted, whether you dropped a single entry, deleted one object file among several, removed the last object file, or cleared the `objects:` list entirely.
+
+:::caution
+
+Removing an object definition deletes the object and its data on the next import.
+
+:::
+
+An object whose deletion the server refuses, because another object still points at it through a mandatory relationship, does not fail the import. The refusal is reported as a warning on the import task, the rest of the import still runs, and the object stays in the repository's tracking group, so the next import retries the deletion once the blocking object is gone.
+
 ### Dependency resolution
 
 The configuration enables Infrahub to resolve dependencies between resources:

@@ -1,0 +1,7 @@
+---
+interface:
+  display_name: "Reviewing Pull Requests"
+  short_description: "Review a pull request with Codex's built-in review and REVIEW.md"
+  default_prompt: "Use $reviewing-pull-requests to review the pull request this session opened."
+policy:
+  allow_implicit_invocation: true

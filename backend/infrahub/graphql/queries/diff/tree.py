@@ -547,99 +547,98 @@ class DiffTreeResolver:
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
 
-        branch_info = await self._get_branch_info(
-            db=graphql_context.db, branch=branch, proposed_change_id=proposed_change_id
-        )
-        query_params = self._get_diff_query_params(
-            branch_info=branch_info,
-            at=graphql_context.at or Timestamp(),
-            from_time=from_time,
-            to_time=to_time,
-            name=name,
-            proposed_change_id=proposed_change_id,
-        )
+            branch_info = await self._get_branch_info(db=db, branch=branch, proposed_change_id=proposed_change_id)
+            query_params = self._get_diff_query_params(
+                branch_info=branch_info,
+                at=graphql_context.at or Timestamp(),
+                from_time=from_time,
+                to_time=to_time,
+                name=name,
+                proposed_change_id=proposed_change_id,
+            )
 
-        diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=base_branch)
+            diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=base_branch)
 
-        # Convert filters to dict and merge root_node_uuids for compatibility
-        filters_dict = dict(filters or {})
-        if root_node_uuids and "ids" in filters_dict and isinstance(filters_dict["ids"], list):
-            filters_dict["ids"].extend(root_node_uuids)
-        elif root_node_uuids:
-            filters_dict["ids"] = root_node_uuids
+            # Convert filters to dict and merge root_node_uuids for compatibility
+            filters_dict = dict(filters or {})
+            if root_node_uuids and "ids" in filters_dict and isinstance(filters_dict["ids"], list):
+                filters_dict["ids"].extend(root_node_uuids)
+            elif root_node_uuids:
+                filters_dict["ids"] = root_node_uuids
 
-        # ensure any ongoing diff updates complete before we try to retrieve them
-        lock_request_time = Timestamp()
-        diff_locker = DiffLocker()
-        async with (
-            diff_locker.acquire_lock(
-                target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=True
-            ),
-            diff_locker.acquire_lock(
-                target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=False
-            ),
-        ):
-            lock_acquired_time = Timestamp()
-            with trace.get_tracer(__name__).start_as_current_span("diff_tree_request") as span:
-                get_start_time = Timestamp()
-                enriched_diffs = await diff_repo.get(
-                    base_branch_name=base_branch.name,
-                    diff_branch_names=[branch_info.name],
-                    from_time=query_params.from_time,
-                    to_time=query_params.to_time,
-                    filters=EnrichedDiffQueryFilters(**filters_dict),
-                    include_parents=include_parents,
-                    limit=limit,
-                    offset=offset,
-                    tracking_id=query_params.tracking_id,
-                    include_empty=True,
-                    proposed_change_id=proposed_change_id,
-                    exclude_merged=query_params.exclude_merged,
-                )
-                get_end_time = Timestamp()
-
-                span.set_attribute("base_branch_name", base_branch.name)
-                span.set_attribute("diff_branch_name", branch_info.name)
-                span.set_attribute(
-                    "from_time", query_params.from_time.to_string() if query_params.from_time else "null"
-                )
-                span.set_attribute("to_time", query_params.to_time.to_string() if query_params.to_time else "null")
-                span.set_attribute("proposed_change_id", proposed_change_id or "null")
-                span.set_attribute("lock_request_time", lock_request_time.to_string())
-                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
-                span.set_attribute("get_start_time", get_start_time.to_string())
-                span.set_attribute("get_end_time", get_end_time.to_string())
-                span.set_attribute("num_diffs", str(len(enriched_diffs)))
-
-        if not enriched_diffs:
-            return None
-        if len(enriched_diffs) > 0:
-            # take the one with the longest duration that covers multiple branches
-            enriched_diff = max(
-                enriched_diffs,
-                key=lambda d: (
-                    d.base_branch_name != d.diff_branch_name,
-                    d.to_time.to_datetime() - d.from_time.to_datetime(),
+            # ensure any ongoing diff updates complete before we try to retrieve them
+            lock_request_time = Timestamp()
+            diff_locker = DiffLocker()
+            async with (
+                diff_locker.acquire_lock(
+                    target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=True
                 ),
-            )
-        else:
-            enriched_diff = enriched_diffs[0]
+                diff_locker.acquire_lock(
+                    target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=False
+                ),
+            ):
+                lock_acquired_time = Timestamp()
+                with trace.get_tracer(__name__).start_as_current_span("diff_tree_request") as span:
+                    get_start_time = Timestamp()
+                    enriched_diffs = await diff_repo.get(
+                        base_branch_name=base_branch.name,
+                        diff_branch_names=[branch_info.name],
+                        from_time=query_params.from_time,
+                        to_time=query_params.to_time,
+                        filters=EnrichedDiffQueryFilters(**filters_dict),
+                        include_parents=include_parents,
+                        limit=limit,
+                        offset=offset,
+                        tracking_id=query_params.tracking_id,
+                        include_empty=True,
+                        proposed_change_id=proposed_change_id,
+                        exclude_merged=query_params.exclude_merged,
+                    )
+                    get_end_time = Timestamp()
 
-        full_fields = extract_graphql_fields(info=info)
-        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, graphql_context=graphql_context)
-        need_base_changes = "num_untracked_base_changes" in full_fields
-        need_branch_changes = "num_untracked_diff_changes" in full_fields
-        if need_base_changes or need_branch_changes:
-            await self._add_untracked_fields(
-                db=graphql_context.db,
-                diff_response=diff_tree,
-                from_time=enriched_diff.to_time,
-                base_branch_name=base_branch.name if need_base_changes else None,
-                diff_branch_name=branch_info.name if need_branch_changes else None,
-            )
-        return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
+                    span.set_attribute("base_branch_name", base_branch.name)
+                    span.set_attribute("diff_branch_name", branch_info.name)
+                    span.set_attribute(
+                        "from_time", query_params.from_time.to_string() if query_params.from_time else "null"
+                    )
+                    span.set_attribute("to_time", query_params.to_time.to_string() if query_params.to_time else "null")
+                    span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                    span.set_attribute("lock_request_time", lock_request_time.to_string())
+                    span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                    span.set_attribute("get_start_time", get_start_time.to_string())
+                    span.set_attribute("get_end_time", get_end_time.to_string())
+                    span.set_attribute("num_diffs", str(len(enriched_diffs)))
+
+            if not enriched_diffs:
+                return None
+            if len(enriched_diffs) > 0:
+                # take the one with the longest duration that covers multiple branches
+                enriched_diff = max(
+                    enriched_diffs,
+                    key=lambda d: (
+                        d.base_branch_name != d.diff_branch_name,
+                        d.to_time.to_datetime() - d.from_time.to_datetime(),
+                    ),
+                )
+            else:
+                enriched_diff = enriched_diffs[0]
+
+            full_fields = extract_graphql_fields(info=info)
+            diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, graphql_context=graphql_context)
+            need_base_changes = "num_untracked_base_changes" in full_fields
+            need_branch_changes = "num_untracked_diff_changes" in full_fields
+            if need_base_changes or need_branch_changes:
+                await self._add_untracked_fields(
+                    db=db,
+                    diff_response=diff_tree,
+                    from_time=enriched_diff.to_time,
+                    base_branch_name=base_branch.name if need_base_changes else None,
+                    diff_branch_name=branch_info.name if need_branch_changes else None,
+                )
+            return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
     async def summary(
         self,
@@ -653,84 +652,83 @@ class DiffTreeResolver:
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
 
-        branch_info = await self._get_branch_info(
-            db=graphql_context.db, branch=branch, proposed_change_id=proposed_change_id
-        )
-        query_params = self._get_diff_query_params(
-            branch_info=branch_info,
-            at=graphql_context.at or Timestamp(),
-            from_time=from_time,
-            to_time=to_time,
-            proposed_change_id=proposed_change_id,
-        )
-
-        diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=base_branch)
-
-        filters_dict = dict(filters or {})
-
-        # ensure any ongoing diff updates complete before we try to retrieve them
-        lock_request_time = Timestamp()
-        diff_locker = DiffLocker()
-        async with (
-            diff_locker.acquire_lock(
-                target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=True
-            ),
-            diff_locker.acquire_lock(
-                target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=False
-            ),
-        ):
-            lock_acquired_time = Timestamp()
-            with trace.get_tracer(__name__).start_as_current_span("diff_tree_summary_request") as span:
-                get_start_time = Timestamp()
-                summary = await diff_repo.summary(
-                    base_branch_name=base_branch.name,
-                    diff_branch_names=[branch_info.name],
-                    from_time=query_params.from_time,
-                    to_time=query_params.to_time,
-                    tracking_id=query_params.tracking_id,
-                    filters=filters_dict,
-                    proposed_change_id=proposed_change_id,
-                    exclude_merged=query_params.exclude_merged,
-                )
-                get_end_time = Timestamp()
-
-                span.set_attribute("base_branch_name", base_branch.name)
-                span.set_attribute("diff_branch_name", branch_info.name)
-                span.set_attribute(
-                    "from_time", query_params.from_time.to_string() if query_params.from_time else "null"
-                )
-                span.set_attribute("to_time", query_params.to_time.to_string() if query_params.to_time else "null")
-                span.set_attribute("proposed_change_id", proposed_change_id or "null")
-                span.set_attribute("lock_request_time", lock_request_time.to_string())
-                span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
-                span.set_attribute("get_start_time", get_start_time.to_string())
-                span.set_attribute("get_end_time", get_end_time.to_string())
-                span.set_attribute("summary_retrieved", str(summary is not None))
-
-        if summary is None:
-            return None
-
-        diff_tree_summary = DiffTreeSummary(
-            base_branch=base_branch.name,
-            diff_branch=branch_info.name,
-            from_time=summary.from_time.to_datetime(),
-            to_time=summary.to_time.to_datetime(),
-            **summary.model_dump(exclude={"from_time", "to_time"}),
-        )
-        full_fields = extract_graphql_fields(info=info)
-        need_base_changes = "num_untracked_base_changes" in full_fields
-        need_branch_changes = "num_untracked_diff_changes" in full_fields
-        if need_base_changes or need_branch_changes:
-            await self._add_untracked_fields(
-                db=graphql_context.db,
-                diff_response=diff_tree_summary,
-                from_time=summary.to_time,
-                base_branch_name=base_branch.name if need_base_changes else None,
-                diff_branch_name=branch_info.name if need_branch_changes else None,
+            branch_info = await self._get_branch_info(db=db, branch=branch, proposed_change_id=proposed_change_id)
+            query_params = self._get_diff_query_params(
+                branch_info=branch_info,
+                at=graphql_context.at or Timestamp(),
+                from_time=from_time,
+                to_time=to_time,
+                proposed_change_id=proposed_change_id,
             )
-        return diff_tree_summary
+
+            diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=base_branch)
+
+            filters_dict = dict(filters or {})
+
+            # ensure any ongoing diff updates complete before we try to retrieve them
+            lock_request_time = Timestamp()
+            diff_locker = DiffLocker()
+            async with (
+                diff_locker.acquire_lock(
+                    target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=True
+                ),
+                diff_locker.acquire_lock(
+                    target_branch_name=base_branch.name, source_branch_name=branch_info.name, is_incremental=False
+                ),
+            ):
+                lock_acquired_time = Timestamp()
+                with trace.get_tracer(__name__).start_as_current_span("diff_tree_summary_request") as span:
+                    get_start_time = Timestamp()
+                    summary = await diff_repo.summary(
+                        base_branch_name=base_branch.name,
+                        diff_branch_names=[branch_info.name],
+                        from_time=query_params.from_time,
+                        to_time=query_params.to_time,
+                        tracking_id=query_params.tracking_id,
+                        filters=filters_dict,
+                        proposed_change_id=proposed_change_id,
+                        exclude_merged=query_params.exclude_merged,
+                    )
+                    get_end_time = Timestamp()
+
+                    span.set_attribute("base_branch_name", base_branch.name)
+                    span.set_attribute("diff_branch_name", branch_info.name)
+                    span.set_attribute(
+                        "from_time", query_params.from_time.to_string() if query_params.from_time else "null"
+                    )
+                    span.set_attribute("to_time", query_params.to_time.to_string() if query_params.to_time else "null")
+                    span.set_attribute("proposed_change_id", proposed_change_id or "null")
+                    span.set_attribute("lock_request_time", lock_request_time.to_string())
+                    span.set_attribute("lock_acquired_time", lock_acquired_time.to_string())
+                    span.set_attribute("get_start_time", get_start_time.to_string())
+                    span.set_attribute("get_end_time", get_end_time.to_string())
+                    span.set_attribute("summary_retrieved", str(summary is not None))
+
+            if summary is None:
+                return None
+
+            diff_tree_summary = DiffTreeSummary(
+                base_branch=base_branch.name,
+                diff_branch=branch_info.name,
+                from_time=summary.from_time.to_datetime(),
+                to_time=summary.to_time.to_datetime(),
+                **summary.model_dump(exclude={"from_time", "to_time"}),
+            )
+            full_fields = extract_graphql_fields(info=info)
+            need_base_changes = "num_untracked_base_changes" in full_fields
+            need_branch_changes = "num_untracked_diff_changes" in full_fields
+            if need_base_changes or need_branch_changes:
+                await self._add_untracked_fields(
+                    db=db,
+                    diff_response=diff_tree_summary,
+                    from_time=summary.to_time,
+                    base_branch_name=base_branch.name if need_base_changes else None,
+                    diff_branch_name=branch_info.name if need_branch_changes else None,
+                )
+            return diff_tree_summary
 
 
 class IncExclFilterOptions(InputObjectType):
