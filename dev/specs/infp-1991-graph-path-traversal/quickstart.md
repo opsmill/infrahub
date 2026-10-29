@@ -15,7 +15,7 @@ New file: `backend/infrahub/core/query/path.py`
 Follow the `Query` base class pattern from `backend/infrahub/core/query/__init__.py`. Key references:
 - `NodeGetHierarchyQuery` in `query/node.py` for variable-length path matching
 - `Branch.get_query_filter_path()` for branch-aware filtering
-- `db.render_list_comprehension()` for list comprehensions
+- `db.render_list_comprehension()` for Neo4j/Memgraph portability
 
 ### 2. Create the GraphQL query
 

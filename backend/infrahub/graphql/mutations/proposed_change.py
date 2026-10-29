@@ -176,6 +176,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         # Check if the draft state will change (defaults to current draft state)
         will_be_draft = data.get("is_draft", {}).get("value", obj.is_draft.value)
 
+        # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
         if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
             try:
                 graphql_context.active_permissions.raise_for_permission(

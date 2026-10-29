@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class DatabaseType(StrEnum):
     NEO4J = "neo4j"
+    MEMGRAPH = "memgraph"
 
 
 class Namespace(StrEnum):
@@ -39,6 +40,7 @@ INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE",
 INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
+MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.09.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE",
@@ -72,7 +74,7 @@ AVAILABLE_SERVICES = [
     "cache",
 ]
 
-SUPPORTED_DATABASES = [DatabaseType.NEO4J.value]
+SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILES_DEPS = {
     False: Path("development/docker-compose-deps.yml"),
@@ -87,6 +89,11 @@ OVERRIDE_FILE = Path("development/docker-compose.override.yml")
 DEFAULT_FILE = Path("development/docker-compose.default.yml")
 LOCAL_FILE = Path("development/docker-compose.local-build.yml")
 LOCAL_FILE_DEPS = Path("development/docker-compose.local-build-deps.yml")
+COMPOSE_FILES_MEMGRAPH = [
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    Path("development/docker-compose-database-memgraph.yml"),
+    Path("development/docker-compose.yml"),
+]
 COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-neo4j.yml"),
@@ -94,6 +101,10 @@ COMPOSE_FILES_NEO4J = [
     Path("development/docker-compose.yml"),
 ]
 
+DEV_COMPOSE_FILES_MEMGRAPH = [
+    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
+    Path("development/docker-compose-database-memgraph.yml"),
+]
 DEV_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-neo4j.yml"),
@@ -237,6 +248,8 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
     elif DatabaseType.NEO4J.value == INFRAHUB_DATABASE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
+    elif DatabaseType.MEMGRAPH.value == INFRAHUB_DATABASE:
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = MEMGRAPH_DOCKER_IMAGE
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
@@ -244,7 +257,10 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
+    if database == DatabaseType.MEMGRAPH.value:
+        COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH.copy()
+    elif database == DatabaseType.NEO4J.value:
+        COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
     if OVERRIDE_FILE.exists():
         print("!! Found an override file for docker-compose !!")
@@ -266,7 +282,10 @@ def build_dev_compose_files_cmd(database: str) -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
 
-    DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
+    if database == DatabaseType.MEMGRAPH.value:
+        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH.copy()
+    elif database == DatabaseType.NEO4J.value:
+        DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
     if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
