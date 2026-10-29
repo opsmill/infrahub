@@ -9,8 +9,8 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 ## Tech Stack
 
 - **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.09 (driver 6.4), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
+- **Frontend:** TypeScript 6.0, React 19.3, Vite 8.3, Tailwind CSS 4.3
+- **Testing:** pytest 9.0, Vitest 5.0, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.1
@@ -120,11 +120,13 @@ The `python_sdk` submodule tracks the SDK branch **named after** the current
 Infrahub branch, not the SDK's own same-named branch:
 
 - Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `release-x.y` → SDK `infrahub-release-x.y`
 - Infrahub `stable` → SDK `stable`
 
 The SDK repo also has its own `develop` branch. It is **not** the counterpart of
 Infrahub `develop` — do not use it to update the submodule. When updating
-`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`; from Infrahub
+`release-x.y`, pin `origin/infrahub-release-x.y`.
 
 You can modify code inside a submodule, but the changes live in a separate
 repository. Before opening a PR on this repository, push the submodule commit
@@ -171,10 +173,10 @@ CI validates that all generated files are committed — the `validate-generated-
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
-- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
+- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none. Judge visibility against the dependency versions `uv.lock` pins, which the container image installs and every documented install uses: a fix that only changes behavior under a version the lockfile does not pin (a newer release that a later upgrade brings in, or what `pip install` resolves without the lockfile) gets no fragment
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
-- Before pushing, run `/pre-ci` — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed, the whole-repo `uv run ruff check . --exclude python_sdk` and `uv run ruff format --check --exclude python_sdk .`, and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
 - Before writing a changelog fragment, PR description, ADR, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First

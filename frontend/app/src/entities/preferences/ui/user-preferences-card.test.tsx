@@ -34,7 +34,6 @@ describe("UserPreferencesCard", () => {
     // Freeze the clock: preset labels embed a live date example.
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(FIXED_INSTANT);
-    vi.clearAllMocks();
     vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
     vi.mocked(upsertUserPreferences).mockResolvedValue();
   });

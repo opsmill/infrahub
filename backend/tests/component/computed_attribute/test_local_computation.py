@@ -11,12 +11,14 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
+    GenericSchema,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
 )
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 
 
 @pytest.fixture
@@ -37,6 +39,7 @@ async def schema_with_jinja2(
             NodeSchema(
                 name="ComputeOwner",
                 namespace="Test",
+                human_friendly_id=["name__value"],
                 attributes=[
                     AttributeSchema(name="name", kind="Text", unique=True),
                 ],
@@ -143,6 +146,57 @@ async def schema_with_chained_jinja2(
     await default_branch.save(db=db)
 
 
+@pytest.fixture
+async def schema_with_jinja2_generic_peer(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> None:
+    """A computed attribute reading a peer through a relationship to a generic that has no HFID."""
+    schema = SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="ComputeLocation",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text")],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="ComputeSite",
+                namespace="Test",
+                inherit_from=["TestComputeLocation"],
+                human_friendly_id=["name__value"],
+            ),
+            NodeSchema(
+                name="ComputeRack",
+                namespace="Test",
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(
+                        name="label",
+                        kind="Text",
+                        read_only=True,
+                        computed_attribute=ComputedAttribute(
+                            kind=ComputedAttributeKind.JINJA2,
+                            jinja2_template="{{ name__value }} in {{ location__name__value }}",
+                        ),
+                    ),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="location",
+                        peer="TestComputeLocation",
+                        optional=False,
+                        cardinality=RelationshipCardinality.ONE,
+                    ),
+                ],
+            ),
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+
 async def _create_owner(db: InfrahubDatabase, default_branch: Branch, name: str = "Alice") -> Node:
     owner = await Node.init(db=db, schema="TestComputeOwner", branch=default_branch)
     await owner.new(db=db, name=name)
@@ -177,6 +231,48 @@ class TestNodeCreation:
         assert reloaded.get_attribute("local_tag").value == "spine:switch01"
         assert reloaded.get_attribute("remote_label").value == "Alice's switch01"
         assert reloaded.get_attribute("remote_tag").value == "Alice-spine"
+
+    async def test_peer_given_by_hfid_is_read_by_computed_attributes(
+        self, db: InfrahubDatabase, default_branch: Branch, schema_with_jinja2: None
+    ) -> None:
+        await _create_owner(db=db, default_branch=default_branch)
+        device = await Node.init(db=db, schema="TestComputeDevice", branch=default_branch)
+        await device.new(db=db, name="switch01", role="spine", owner={"hfid": ["Alice"]})
+        await device.save(db=db)
+
+        assert device.get_attribute("remote_label").value == "Alice's switch01"
+        assert device.get_attribute("remote_tag").value == "Alice-spine"
+
+        reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch)
+        assert reloaded.get_attribute("remote_label").value == "Alice's switch01"
+        assert reloaded.get_attribute("remote_tag").value == "Alice-spine"
+
+    async def test_unknown_peer_hfid_read_by_computed_attribute_raises_node_not_found(
+        self, db: InfrahubDatabase, default_branch: Branch, schema_with_jinja2: None
+    ) -> None:
+        device = await Node.init(db=db, schema="TestComputeDevice", branch=default_branch)
+
+        # The exception's string form appends the branch and kind on separate lines, so the match is not anchored.
+        with pytest.raises(
+            NodeNotFoundError, match=r"Unable to find the node Missing / TestComputeOwner in the database\."
+        ):
+            await device.new(db=db, name="switch01", role="spine", owner={"hfid": ["Missing"]})
+
+    async def test_generic_peer_given_by_hfid_and_kind_is_read_by_computed_attribute(
+        self, db: InfrahubDatabase, default_branch: Branch, schema_with_jinja2_generic_peer: None
+    ) -> None:
+        site = await Node.init(db=db, schema="TestComputeSite", branch=default_branch)
+        await site.new(db=db, name="Paris")
+        await site.save(db=db)
+
+        rack = await Node.init(db=db, schema="TestComputeRack", branch=default_branch)
+        await rack.new(db=db, name="rack01", location={"hfid": ["Paris"], "kind": "TestComputeSite"})
+        await rack.save(db=db)
+
+        assert rack.get_attribute("label").value == "rack01 in Paris"
+
+        reloaded = await NodeManager.get_one(db=db, id=rack.id, branch=default_branch)
+        assert reloaded.get_attribute("label").value == "rack01 in Paris"
 
     async def test_chained_jinja2_cascade(
         self, db: InfrahubDatabase, default_branch: Branch, schema_with_chained_jinja2: None

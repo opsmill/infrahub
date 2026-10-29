@@ -57,6 +57,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/column-visibility.md` - Show/hide columns on schema-driven tables: the `hide_columns`/`show_columns` URL contract, `ColumnSurface`, and which surfaces can reveal a hidden field
 - `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
 - `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
+- `dev/knowledge/frontend/repository-commits.md` - The repository Commits tab: its api/domain/ui chain, the capped retry while no worker holds a clone, why a failed refresh keeps the loaded rows, and where `fetched_at`/`checked_at` render; load before changing the tab or its query
 
 ### Guides (How to do X)
 

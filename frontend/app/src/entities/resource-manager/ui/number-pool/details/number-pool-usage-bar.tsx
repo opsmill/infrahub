@@ -1,7 +1,9 @@
 import { Tooltip } from "@infrahub/ui";
+import type React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import MultipleProgressBar from "@/shared/components/stats/multiple-progress-bar";
+import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type { NumberPoolUsage } from "@/entities/resource-manager/domain/model/number-pool";
@@ -15,8 +17,10 @@ export const formatUsagePercent = (value: number) => {
   return `${Math.floor(value)}%`;
 };
 
-const formatUsedOfSize = (used: number, size: number) =>
-  `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
+const formatUsedOfSize = (used: number, size: number | null) =>
+  size === null
+    ? formatNumberDisplay(used)
+    : `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
 
 interface UtilizationTooltipMessageProps {
   title: string;
@@ -32,12 +36,92 @@ function UtilizationTooltipMessage({ title, value }: UtilizationTooltipMessagePr
   );
 }
 
+interface UtilizationFiguresRowProps {
+  label: string;
+  value: number;
+  dotClassName?: string;
+}
+
+function UtilizationFiguresRow({ label, value, dotClassName }: UtilizationFiguresRowProps) {
+  return (
+    <Row className="justify-between gap-5">
+      <Row className="text-white/70">
+        {dotClassName && (
+          <span className={classNames("size-2 shrink-0 rounded-full", dotClassName)} />
+        )}
+        {label}
+      </Row>
+      <span>{formatNumberDisplay(value)}</span>
+    </Row>
+  );
+}
+
+interface UtilizationFiguresTooltipProps {
+  usage: NumberPoolUsage;
+  children: React.ReactNode;
+}
+
+function UtilizationFiguresTooltip({ usage, children }: UtilizationFiguresTooltipProps) {
+  const { size, used, usedDefaultBranch, usedBranches } = usage;
+  // the dots match the bar segments, which a usage without a size does not draw
+  const hasBarSegments = size !== null;
+
+  return (
+    <Tooltip
+      nonInteractiveTrigger
+      message={
+        <Col className="gap-1 text-xs tabular-nums">
+          <UtilizationFiguresRow
+            label="Default branch"
+            value={usedDefaultBranch}
+            dotClassName={hasBarSegments ? "bg-accent-strong" : undefined}
+          />
+          <UtilizationFiguresRow
+            label="Other branches"
+            value={usedBranches}
+            dotClassName={hasBarSegments ? "bg-accent-strong/45" : undefined}
+          />
+          <span className="my-0.5 h-px bg-white/15" />
+          <Row className="justify-between gap-5 font-medium">
+            <span>Used</span>
+            <span>{formatUsedOfSize(used, size)}</span>
+          </Row>
+        </Col>
+      }
+    >
+      <span className="min-w-11 shrink-0 whitespace-nowrap text-right font-medium text-foreground text-xs tabular-nums">
+        {children}
+      </span>
+    </Tooltip>
+  );
+}
+
+interface UsageBarWithoutSizeProps {
+  usage: NumberPoolUsage;
+}
+
+function UsageBarWithoutSize({ usage }: UsageBarWithoutSizeProps) {
+  return (
+    <Row>
+      <div
+        role="img"
+        aria-label="No upper limit"
+        className="h-1.5 w-full min-w-6 rounded-full bg-accent-strong/10 bg-stripes-accent-strong/15"
+      />
+      <UtilizationFiguresTooltip usage={usage}>
+        {formatNumberDisplay(usage.used)}
+      </UtilizationFiguresTooltip>
+    </Row>
+  );
+}
+
 export interface NumberPoolUsageBarProps {
   usage: NumberPoolUsage;
 }
 
 export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
-  const { size, used, usedDefaultBranch, usedBranches, utilization } = usage;
+  const { size, utilization, usedDefaultBranch, usedBranches } = usage;
+  if (size === null || utilization === null) return <UsageBarWithoutSize usage={usage} />;
 
   return (
     <Row>
@@ -67,14 +151,9 @@ export function NumberPoolUsageBar({ usage }: NumberPoolUsageBarProps) {
           },
         ]}
       />
-      <Tooltip
-        nonInteractiveTrigger
-        message={<UtilizationTooltipMessage title="Used" value={formatUsedOfSize(used, size)} />}
-      >
-        <span className="w-11 shrink-0 text-right font-medium text-foreground text-xs tabular-nums">
-          {formatUsagePercent(utilization)}
-        </span>
-      </Tooltip>
+      <UtilizationFiguresTooltip usage={usage}>
+        {formatUsagePercent(utilization)}
+      </UtilizationFiguresTooltip>
     </Row>
   );
 }

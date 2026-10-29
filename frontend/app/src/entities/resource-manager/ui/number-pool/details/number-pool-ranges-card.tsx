@@ -2,11 +2,9 @@ import { Card, ListBox, ListBoxItem } from "@infrahub/ui";
 import { Text } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
-import { formatNumberDisplay } from "@/shared/utils/number";
 import { pluralize } from "@/shared/utils/string";
 
 import type {
-  NumberPoolRange,
   NumberPoolUsage,
   NumberPoolUtilization,
 } from "@/entities/resource-manager/domain/model/number-pool";
@@ -18,9 +16,6 @@ import { NumberPoolUsageBar } from "@/entities/resource-manager/ui/number-pool/d
 import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
 
 const ALL_RANGES_KEY = "all";
-
-export const formatRangeLabel = ({ start, end }: Pick<NumberPoolRange, "start" | "end">) =>
-  `${formatNumberDisplay(start.value)} – ${formatNumberDisplay(end.value)}`;
 
 const getSelectedKeys = (utilization: NumberPoolUtilization, selectedRangeId: string | null) => {
   if (selectedRangeId === null) return [ALL_RANGES_KEY];
@@ -48,7 +43,7 @@ const getRangeItems = (poolId: string, utilization: NumberPoolUtilization): Rang
     },
     ...ranges.map((range) => ({
       id: range.id,
-      title: formatRangeLabel(range),
+      title: range.display_label,
       subtitle: `Weight ${range.allocation_weight.value}`,
       usage: range.usage,
       href: getNumberPoolRangeUrl(poolId, range.id),

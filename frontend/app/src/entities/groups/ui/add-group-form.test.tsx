@@ -30,7 +30,6 @@ describe("AddGroupForm", () => {
 
   beforeEach(() => {
     queryClient.clear();
-    vi.clearAllMocks();
     store.set(nodeSchemasAtom, [groupSchema]);
   });
 

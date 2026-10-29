@@ -22,7 +22,7 @@ Why: code is renamed, moved, and deleted. These references rot silently and misl
 Acceptable exceptions:
 
 - Stable public API contracts (e.g. a protocol/interface that other implementations must satisfy) — name the protocol, not its callers.
-- A workaround that depends on a specific upstream library symbol — name the library function and version constraint.
+- A workaround that depends on a specific upstream library symbol — name the library function and version constraint. The exemption covers naming the symbol in a comment the code needs for another reason, such as one that explains a constant sized to a limit a library version fixes; it does not make a comment needed. A call that behaves the same on every version, such as one that passes its arguments by keyword, is not a workaround.
 - The exception types a function raises — they are its contract, the same thing a `Raises:` section states, not a reference to other code.
 
 ## No work-item or spec IDs
@@ -51,3 +51,14 @@ Where IDs *do* belong:
 - Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.
 - When a why-comment is warranted, one sentence. If the why needs a paragraph, it belongs in the function's docstring or a `dev/knowledge/` page, not inline. Reviewers repeatedly ask for multi-line inline comments to be condensed.
 - Don't narrate the approach *not* taken, and don't narrate the code's history. A paragraph on the alternative rejected, or the call deliberately avoided, belongs in the PR description; keep the line stating what the code does. A comment describes what the code does from now on, never what it used to do or why the old shape was wrong — sweep your additions for "used to", "no longer", "previously", "was rejected", "would have". A negative statement that is part of the contract stays — "this never raises", "does not commit the transaction", "not thread-safe".
+- A fix gets no comment that explains why it was needed. Ask of every comment you add with a fix whether you would write it had the code always looked this way: keyword arguments, an added guard or a reordered call read the same either way, so their cause — the upstream release that changed a signature, the bug the fix closes — goes in the commit message, and a regression test, not a comment, keeps the fix from being undone. The sweep words above miss this case when the cause is told through a dependency's history, as in this example:
+
+```python
+# ❌ Bad: explains why the call changed, which only a reader of the diff needs
+# Pass every argument by name: the library inserted a parameter before `middleware`
+# in 3.2.10, which shifts any positional argument after it.
+result = execute(schema=schema, document=document, middleware=middleware)
+
+# ✅ Good: the keyword arguments need no comment; the commit message records the upstream change
+result = execute(schema=schema, document=document, middleware=middleware)
+```

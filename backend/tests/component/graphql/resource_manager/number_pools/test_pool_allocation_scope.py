@@ -15,6 +15,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.errors.exceptions import AttributeConstraintViolationError
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
@@ -401,6 +402,10 @@ class TestNumberPoolAllocationScope:
         result = await execute(db=db, branch=default_branch_scope_class, source=source, variables={"data": data})
 
         assert error_messages(result) == [create_refusal(test_case.message)]
+        assert result.errors
+        refusal = result.errors[0].original_error
+        assert isinstance(refusal, AttributeConstraintViolationError)
+        assert refusal.field_name == "allocation_scope"
 
     @pytest.mark.parametrize("test_case", DEVICE_POOL_REFUSAL_TEST_CASES, ids=lambda test_case: test_case.name)
     async def test_update_refuses_an_entry_create_refuses_and_keeps_the_stored_scope(

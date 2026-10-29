@@ -140,7 +140,7 @@ describe("RepositoryPushToRemoteCard", () => {
     expect(firstMerge.element().compareDocumentPosition(secondMerge.element())).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
-    await expect.element(component.baseElement).not.toHaveTextContent(FIRST_COMMIT);
+    await expect.element(component.baseElement).not.toMatchTextContent(FIRST_COMMIT);
   });
 
   test("shows the paused imports and no cause while the first attempt runs", async () => {
@@ -208,7 +208,7 @@ describe("RepositoryPushToRemoteCard", () => {
 
     // THEN
     await expect.element(component.getByText("Nothing pending")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent(IMPORTS_PAUSED);
+    await expect.element(component.baseElement).not.toMatchTextContent(IMPORTS_PAUSED);
   });
 
   test("shows why the push state cannot be read", async () => {
@@ -241,7 +241,7 @@ describe("RepositoryPushToRemoteCard", () => {
     await expect.element(component.getByText("4b825dc", { exact: true })).toBeVisible();
     await expect.element(component.getByText("c3d1f0a", { exact: true })).toBeVisible();
     await expect.element(component.getByText(OBJECTS_CAN_STAY)).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent(OBJECTS_CAN_LACK);
+    await expect.element(component.baseElement).not.toMatchTextContent(OBJECTS_CAN_LACK);
   });
 
   test("also says the default branch can lack objects when abandoning dropped an import", async () => {

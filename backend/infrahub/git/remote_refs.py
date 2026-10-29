@@ -9,9 +9,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import git
-from git.exc import GitCommandError, UnsafeOptionError
+from git.exc import GitCommandError, UnsafeOptionError, UnsafeProtocolError
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryInvalidBranchError,
+)
 from infrahub.git.base import InfrahubRepositoryBase
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 
@@ -42,7 +47,7 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
     try:
         # The separator keeps git from reading a location that starts with a dash as an option.
         listing = cmd.ls_remote("--symref", "--", url, "HEAD", "refs/heads/*")
-    except UnsafeOptionError as exc:
+    except (UnsafeOptionError, UnsafeProtocolError) as exc:
         raise RepositoryError(
             identifier=name,
             message=f"Unable to read the remote of repository {name}: git does not accept the location {url}.",
@@ -72,6 +77,7 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
 
     Raises:
         RepositoryConnectionError: When the remote does not answer within ``timeout_seconds``.
+        RepositoryCredentialsError: When git cannot authenticate to the remote, carrying the error output of git.
         RepositoryError: When git cannot start or cannot take the location, or for any other git failure,
             raised as its connection or credentials subtype where the failure can be classified.
 
@@ -113,11 +119,15 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
                 await asyncio.shield(process.wait())
 
     if process.returncode != 0:
-        InfrahubRepositoryBase._raise_enriched_error_static(
-            name=name,
-            location=url,
-            error=GitCommandError(command, process.returncode, error_output.decode(errors="replace")),
-        )
+        git_output = error_output.decode(errors="replace")
+        try:
+            InfrahubRepositoryBase._raise_enriched_error_static(
+                name=name, location=url, error=GitCommandError(command, process.returncode, git_output)
+            )
+        except RepositoryCredentialsError as exc:
+            raise RepositoryCredentialsError(
+                identifier=name, message=exc.message, git_output=git_output.strip()
+            ) from exc.__cause__
 
     listing = output.decode(errors="replace")
     heads: dict[str, str] = {}

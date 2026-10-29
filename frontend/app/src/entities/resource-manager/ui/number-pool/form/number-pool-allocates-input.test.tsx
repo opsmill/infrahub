@@ -129,10 +129,10 @@ describe("NumberPoolAllocatesInput", () => {
     // THEN
     await expect
       .element(component.getByRole("option", { name: /Unit ID/ }))
-      .toHaveTextContent("0 – 16,383");
+      .toMatchTextContent("0 – 16,383");
     await expect
       .element(component.getByRole("option", { name: /VLAN ID/ }))
-      .toHaveTextContent("Unique");
+      .toMatchTextContent("Unique");
     await expect
       .poll(() => component.getByRole("option", { name: /Computed ID/ }).query())
       .toBeNull();
@@ -233,7 +233,7 @@ describe("NumberPoolAllocatesInput", () => {
     // THEN
     const allocationScope = component.getByRole("grid", { name: "Scoped by" });
     await expect.element(allocationScope).toHaveTextContent("Device");
-    await expect.element(allocationScope).not.toHaveTextContent("Slot ID");
+    await expect.element(allocationScope).not.toMatchTextContent("Slot ID");
   });
 
   test("clears the attribute and the allocation scope when the node changes", async () => {

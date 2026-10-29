@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import compare_lists
+from opentelemetry import trace
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
@@ -197,22 +198,27 @@ async def _enrich_source_changelog(
     holds, and an HFID it does not hold is read with the peers' labels when the event is built. A
     read failure leaves the changelog values unchanged and does not raise.
     """
-    if source.has_label_depending_on_relationship(name=relationship_name):
-        with log_exception_guard(log, "Changelog label enrichment failed; changelog will omit labels"):
-            refreshed = await NodeManager.get_one(db=db, id=source.get_id(), branch=branch)
-            if refreshed is not None:
-                await refreshed.compute_labels(db=db)
-                node_changelog.hfid = await refreshed.get_hfid(db=db)
-                node_changelog.display_label = await refreshed.get_display_label(db=db)
-        return
-    if relationship_name == PROFILES_RELATIONSHIP_NAME:
-        loader = build_node_label_loader(db=db, branch=branch)
-        labels = await loader.load_labels([source.get_id()])
-        if source_labels := labels.get(source.get_id()):
-            node_changelog.hfid = source_labels.hfid
-            node_changelog.display_label = source_labels.display_label
-        return
-    node_changelog.hfid = source.get_materialized_hfid()
+    with trace.get_tracer(__name__).start_as_current_span("changelog.enrich_source") as span:
+        span.set_attribute("changelog.node_kind", source.get_kind())
+        if source.has_label_depending_on_relationship(name=relationship_name):
+            span.set_attribute("changelog.label_source", "reload")
+            with log_exception_guard(log, "Changelog label enrichment failed; changelog will omit labels"):
+                refreshed = await NodeManager.get_one(db=db, id=source.get_id(), branch=branch)
+                if refreshed is not None:
+                    await refreshed.compute_labels(db=db)
+                    node_changelog.hfid = await refreshed.get_hfid(db=db)
+                    node_changelog.display_label = await refreshed.get_display_label(db=db)
+            return
+        if relationship_name == PROFILES_RELATIONSHIP_NAME:
+            span.set_attribute("changelog.label_source", "storage")
+            loader = build_node_label_loader(db=db, branch=branch)
+            labels = await loader.load_labels([source.get_id()])
+            if source_labels := labels.get(source.get_id()):
+                node_changelog.hfid = source_labels.hfid
+                node_changelog.display_label = source_labels.display_label
+            return
+        span.set_attribute("changelog.label_source", "loaded_node")
+        node_changelog.hfid = source.get_materialized_hfid()
 
 
 class RelationshipAdd(Mutation):

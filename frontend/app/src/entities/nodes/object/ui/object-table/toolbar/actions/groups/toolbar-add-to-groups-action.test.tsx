@@ -34,7 +34,6 @@ describe("ToolbarAddToGroupsAction Component", () => {
 
   beforeEach(() => {
     queryClient.clear();
-    vi.clearAllMocks();
     vi.mocked(getRelationships).mockResolvedValue(mockGroups);
     store.set(nodeSchemasAtom, [groupSchema]);
   });

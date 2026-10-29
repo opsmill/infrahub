@@ -18,8 +18,8 @@ describe("PoolKindSelect", () => {
     await expect.element(component.getByLabelText("Type to allocate")).toBeVisible();
     await expect
       .element(component.getByTestId("pool-kind-select"))
-      .toHaveTextContent("Test IP Address");
-    await expect.element(component.getByTestId("pool-kind-select")).toHaveTextContent("Test");
+      .toMatchTextContent("Test IP Address");
+    await expect.element(component.getByTestId("pool-kind-select")).toMatchTextContent("Test");
   });
 
   test("shows the pool default kind as a placeholder when nothing overrides it", async () => {
@@ -46,10 +46,10 @@ describe("PoolKindSelect", () => {
 
     await expect
       .element(component.getByRole("option", { name: /Ipam IP Address/ }))
-      .toHaveTextContent("Ipam");
+      .toMatchTextContent("Ipam");
     await expect
       .element(component.getByRole("option", { name: /Test IP Address/ }))
-      .toHaveTextContent("Test");
+      .toMatchTextContent("Test");
   });
 
   test("emits the picked kind", async () => {

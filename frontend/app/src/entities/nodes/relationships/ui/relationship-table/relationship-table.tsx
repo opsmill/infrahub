@@ -1,3 +1,5 @@
+import type React from "react";
+
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
@@ -23,13 +25,16 @@ import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-ob
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
+export interface RelationshipTableProps extends UseObjectRelationshipsParams {
+  toolbarEndActions?: React.ReactNode;
+}
 
 export function RelationshipTable({
   relationshipSchema,
   parentId,
   relationshipName,
   parentKind,
+  toolbarEndActions,
   ...props
 }: RelationshipTableProps) {
   const { schema: parentSchema } = useSchema(parentKind);
@@ -96,7 +101,7 @@ export function RelationshipTable({
 
   return (
     <Col className="gap-0">
-      <RelationshipTableToolbar schema={relationshipSchema} />
+      <RelationshipTableToolbar schema={relationshipSchema} actions={toolbarEndActions} />
 
       <InfiniteScroll
         scrollX

@@ -11,5 +11,4 @@ export const MAX_PREFIX_LENGTH = 128;
 /** Pool kinds, derived from the constants above so the literals stay single-sourced. */
 export type IpPoolKind = typeof IP_ADDRESS_POOL | typeof IP_PREFIX_POOL;
 export type NumberPoolKind = typeof NUMBER_POOL_KIND;
-export type PoolKind = IpPoolKind | NumberPoolKind;
 export type NumberPoolType = typeof NUMBER_POOL_TYPE_SCHEMA | typeof NUMBER_POOL_TYPE_USER;

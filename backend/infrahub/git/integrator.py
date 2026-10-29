@@ -14,7 +14,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as SdkError
-from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, ValidationError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, TrackingGroupCleanupError, ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -1040,10 +1040,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_artifact_definition.parameters.value != local_artifact_definition.parameters
             or existing_artifact_definition.content_type.value != local_artifact_definition.content_type
             or existing_artifact_definition.targets.peer.name.value != local_artifact_definition.targets
+            or cls._get_transformation_name(artifact_definition=existing_artifact_definition)
+            != local_artifact_definition.transformation
         ):
             return False
 
         return True
+
+    @staticmethod
+    def _get_transformation_name(artifact_definition: CoreArtifactDefinition) -> str | None:
+        if not artifact_definition.transformation.id:
+            return None
+        return artifact_definition.transformation.peer.name.value
 
     async def update_artifact_definition(
         self,
@@ -1065,6 +1073,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_artifact_definition.targets.peer.name.value != local_artifact_definition.targets:
             existing_artifact_definition.targets = local_artifact_definition.targets
+
+        if (
+            self._get_transformation_name(artifact_definition=existing_artifact_definition)
+            != local_artifact_definition.transformation
+        ):
+            existing_artifact_definition.transformation = {
+                "id": local_artifact_definition.transformation,
+                "source": str(self.id),
+                "is_protected": True,
+            }
 
         await existing_artifact_definition.save()
 
@@ -1101,7 +1119,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 identifier=self.name,
                 message=f"Repository '{self.name}' is missing a configuration file. "
                 f"Please add a '.infrahub.yml' or '.infrahub.yaml' file to the repository root. "
-                f"See https://docs.infrahub.app/topics/repository for more information.",
+                f"See https://docs.infrahub.app/git-integration/infrahub-yml for more information.",
             )
 
         config_file_content = config_file.read_text(encoding="utf-8")
@@ -1412,6 +1430,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             with import_entry(_check_definition_label(check.name, check.file_path)):
                 graphql_query = await self._get_graphql_query(branch_name=branch_name, query=str(check.query))
             check.query = str(graphql_query.id)
+            check.targets = await self._resolve_check_targets(branch_name=branch_name, check=check)
 
         check_definition_in_graph = {
             check.name.value: check
@@ -1444,6 +1463,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     )
 
         return {check_name: check_definition_in_graph[check_name] for check_name in only_graph}
+
+    async def _resolve_check_targets(self, branch_name: str, check: CheckDefinitionInformation) -> str | None:
+        """Resolve the target group name of a check definition to its node id, or None for a global check.
+
+        Raises:
+            RepositoryConfigurationError: If no group with the target name exists on the branch.
+
+        """
+        if not check.targets:
+            return None
+
+        group_id = await self._resolve_target_group_id(branch_name=branch_name, group_name=check.targets)
+        if group_id:
+            return group_id
+
+        message = (
+            f"Check definition '{check.name}' in repository '{self.name}' targets the group '{check.targets}', "
+            f"but no group named '{check.targets}' exists on branch '{branch_name}'."
+        )
+        get_run_logger().error(message)
+        raise RepositoryConfigurationError(identifier=self.name, message=message)
 
     @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
@@ -1588,7 +1628,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         return {generator_name: generator_definition_in_graph[generator_name] for generator_name in only_graph}
 
     async def _resolve_target_group_id(self, branch_name: str, group_name: str) -> str | None:
-        """Resolve a target group name to its node id for the group-identity fingerprint term."""
+        """Resolve a target group name to its node id, or None when no group has that name."""
         targets = await self.sdk.filters(
             kind=InfrahubKind.GENERICGROUP,
             branch=branch_name,
@@ -1885,26 +1925,35 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         defer: bool | None = None,
         tracking_suffix: str = "",
     ) -> None:
+        log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
-        # A tracking_suffix isolates a subset of the same object_type in its own group so its
-        # delete_unused reconciliation does not remove members tracked by the other subset.
-        # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
-        async with self.sdk.start_tracking(
-            identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
-            delete_unused_nodes=True,
-            branch=branch_name,
-            group_type="CoreRepositoryGroup",
-            group_params={"content": object_type.value, "repository": str(self.id)},
-        ):
-            file_type = repo_object_type_to_file_type(object_type)
-            await self._load_objects(
-                paths=file_pathes,
+        try:
+            # A tracking_suffix isolates a subset of the same object_type in its own group so its
+            # delete_unused reconciliation does not remove members tracked by the other subset.
+            # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
+            async with self.sdk.start_tracking(
+                identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
+                delete_unused_nodes=True,
                 branch=branch_name,
-                file_type=file_type,
-                worktree_directory=branch_wt.directory,
-                defer=defer,
+                group_type="CoreRepositoryGroup",
+                group_params={"content": object_type.value, "repository": str(self.id)},
+            ):
+                file_type = repo_object_type_to_file_type(object_type)
+                await self._load_objects(
+                    paths=file_pathes,
+                    branch=branch_name,
+                    file_type=file_type,
+                    worktree_directory=branch_wt.directory,
+                    defer=defer,
+                )
+        # The refused objects stay in the tracking group, so the next import retries them.
+        except TrackingGroupCleanupError as exc:
+            failures = "; ".join(f"{node_id} ({reason})" for node_id, reason in exc.failures.items())
+            log.warning(
+                f"Unable to delete {len(exc.failures)} {object_type.value}(s) no longer "
+                f"defined in the repository: {failures}"
             )
 
     async def import_objects(
@@ -2121,6 +2170,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if existing_check.file_path.value != check.file_path:
             existing_check.file_path.value = check.file_path
 
+        if existing_check.class_name.value != check.class_name:
+            existing_check.class_name.value = check.class_name
+
+        if existing_check.targets.id != check.targets:
+            existing_check.targets = (
+                {"id": check.targets, "source": str(self.id), "is_protected": True} if check.targets else None
+            )
+
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
 
@@ -2144,6 +2201,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_check.timeout.value != check.timeout
             or existing_check.class_name.value != check.class_name
             or existing_check.parameters.value != check.parameters
+            or existing_check.targets.id != check.targets
         ):
             return False
         return True
@@ -2193,6 +2251,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if existing_transform.file_path.value != local_transform.file_path:
             existing_transform.file_path.value = local_transform.file_path
 
+        if existing_transform.class_name.value != local_transform.class_name:
+            existing_transform.class_name.value = local_transform.class_name
+
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
@@ -2215,6 +2276,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             existing_transform.description.value != local_transform.description
             or existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
+            or existing_transform.class_name.value != local_transform.class_name
             or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.convert_query_response.value != local_transform.convert_query_response
             or existing_transform.dependencies.value != local_transform.dependencies

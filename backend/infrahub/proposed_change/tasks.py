@@ -75,6 +75,7 @@ from infrahub.exceptions import (
     MergeConflictsUnresolvedError,
     MergeConstraintsViolatedError,
     MergeFailedError,
+    MergeRefusedError,
     MergeRepositoryImportError,
     RepositoryCredentialsRefusedError,
     RepositoryNotSynchronizedError,
@@ -218,6 +219,7 @@ async def _merge_branch_for_proposed_change(
         return Failed(message="Unable to merge proposed change containing failing checks")
     except (
         MergeConflictsUnresolvedError,
+        MergeRefusedError,
         MergeRepositoryImportError,
         RepositoryNotSynchronizedError,
         RepositoryCredentialsRefusedError,

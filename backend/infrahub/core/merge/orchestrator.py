@@ -10,10 +10,11 @@ from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.registry import registry
 from infrahub.core.schema.update_coordinator import MigrationExecutor
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeRecoveryRequiredError, MergeRefusedError
 from infrahub.log import get_logger
 
 from .rollback_handler import PreMergeState
+from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -39,7 +40,29 @@ if TYPE_CHECKING:
     from .rollback_handler import MergeRollbackHandler
     from .schema_analyzer import MergeSchemaAnalyzer
     from .start_gate import MergeStartGate
-    from .write_blocker import MergeWriteBlocker
+    from .write_blocker import MergeProtection, MergeWriteBlocker
+
+
+def refuse_merge_under_protection(protection: MergeProtection | None, source_branch: str) -> None:
+    """Refuse a merge while the merge of another branch holds the write protection.
+
+    Raises:
+        MergeRefusedError: When the merge of another branch is in progress.
+        MergeRecoveryRequiredError: When the merge of another branch failed and an administrator must recover it.
+
+    """
+    if protection is None or protection.branch == source_branch:
+        return
+    if protection.state == MergeProtectionState.MERGE_FAILED:
+        raise MergeRecoveryRequiredError(
+            identifier=source_branch,
+            message=(
+                f"Cannot merge, because the merge of branch {protection.branch} failed and left the default branch "
+                "protected. An administrator must run `infrahub recover merge` before another merge."
+            ),
+            merging_branch=protection.branch,
+        )
+    raise MergeRefusedError("Cannot merge a branch while a merge is in progress.")
 
 
 class ChangelogCollector(Protocol):
@@ -98,9 +121,9 @@ class BranchMergeOrchestrator:
     async def merge(self, *, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
         user_id = context.account.account_id
 
-        protection = await self.merge_write_blocker.get()
-        if protection is not None and protection.branch != self.source_branch.name:
-            raise ValidationError("Cannot merge a branch while a merge is in progress.")
+        refuse_merge_under_protection(
+            protection=await self.merge_write_blocker.get(), source_branch=self.source_branch.name
+        )
 
         # Publish the shared write-protection key before any graph write
         await self.merge_start_gate.block_writes(branch=self.source_branch)

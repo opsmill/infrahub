@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.constants import PoolRecordProvenance
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.pools.number_pool_usage import PoolDivisions, PoolUsage, TrackedNumbersPage
 
@@ -33,10 +32,13 @@ def _division_entries(division: Sequence[Mapping[str, object]] | None) -> list[t
     return [(str(entry["path"]), entry["value"]) for entry in division]
 
 
-def _context(info: GraphQLResolveInfo) -> tuple[InfrahubDatabase, Branch, SchemaBranch]:
+def _branch_context(info: GraphQLResolveInfo) -> tuple[GraphqlContext, Branch, SchemaBranch]:
     graphql_context: GraphqlContext = info.context
     branch = graphql_context.branch
-    return graphql_context.db, branch, registry.schema.get_schema_branch(name=branch.name)
+    return graphql_context, branch, registry.schema.get_schema_branch(name=branch.name)
+
+
+_UNBOUNDED_NULL = "Null when the pool's range is unbounded."
 
 
 class NumberPoolUtilizationFigures(ObjectType):
@@ -45,8 +47,11 @@ class NumberPoolUtilizationFigures(ObjectType):
 
     size = Field(
         BigInt,
-        required=True,
-        description="Number of values the pool, range or division can allocate. 0 when the pool has no range.",
+        required=False,
+        description=(
+            "Number of values the pool, range or division can allocate. 0 when the pool has no range. "
+            f"{_UNBOUNDED_NULL}"
+        ),
     )
     used = Field(
         BigInt,
@@ -61,12 +66,18 @@ class NumberPoolUtilizationFigures(ObjectType):
         required=True,
         description="Number of these values in use only on other branches, not on the default branch.",
     )
-    utilization = Field(Float, required=True, description="used as a percentage of size. 0 when size is 0.")
+    utilization = Field(
+        Float, required=False, description=f"used as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}"
+    )
     utilization_default_branch = Field(
-        Float, required=True, description="used_default_branch as a percentage of size. 0 when size is 0."
+        Float,
+        required=False,
+        description=f"used_default_branch as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}",
     )
     utilization_branches = Field(
-        Float, required=True, description="used_branches as a percentage of size. 0 when size is 0."
+        Float,
+        required=False,
+        description=f"used_branches as a percentage of size. 0 when size is 0. {_UNBOUNDED_NULL}",
     )
 
 
@@ -109,10 +120,10 @@ class NumberPoolRangeUtilization(ObjectType):
     )
     end = Field(
         BigInt,
-        required=True,
+        required=False,
         description=(
-            "Last value of the range, included. For a range without an end, the smaller of the largest supported "
-            "number and the target attribute's max_value on the requested branch."
+            "Last value of the range, included. For a range without an end, the target attribute's max_value on "
+            "the requested branch. Null when the range has an unbounded end."
         ),
     )
     weight = Field(BigInt, required=True, description="The range's allocation weight. 0 when the range declares none.")
@@ -161,9 +172,10 @@ class NumberPoolUtilization(ObjectType):
         pool_id: str,
         division: list[dict[str, str]] | None = None,
     ) -> PoolUsage:
-        db, branch, schema_branch = _context(info)
-        reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id, division=_division_entries(division))
+        graphql_context, branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_utilization_reader(db=db, branch=branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id, division=_division_entries(division))
 
 
 class NumberPoolDivisionEntry(ObjectType):
@@ -250,8 +262,7 @@ class NumberPoolDivisions(ObjectType):
         description=(
             "Every division that holds at least one value the pool tracks on any live branch. Each holding object "
             "counts under every division it occupies on any live branch. Ordered by utilization descending, then by "
-            "display_label. "
-            "Empty for an unscoped pool."
+            "display_label. Empty for an unscoped pool."
         ),
     )
 
@@ -261,9 +272,10 @@ class NumberPoolDivisions(ObjectType):
         info: GraphQLResolveInfo,
         pool_id: str,
     ) -> PoolDivisions:
-        db, branch, schema_branch = _context(info)
-        reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id)
+        graphql_context, branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_divisions_reader(db=db, branch=branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id)
 
 
 class NumberPoolHolder(ObjectType):
@@ -341,9 +353,10 @@ class NumberPoolAllocations(ObjectType):
             offset=offset,
             limit=limit,
         )
-        db, request_branch, schema_branch = _context(info)
-        reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
-        return await reader.read(pool_id=pool_id, filters=filters)
+        graphql_context, request_branch, schema_branch = _branch_context(info)
+        async with graphql_context.db.start_session(read_only=True) as db:
+            reader = build_number_pool_allocations_reader(db=db, branch=request_branch, schema_branch=schema_branch)
+            return await reader.read(pool_id=pool_id, filters=filters)
 
 
 InfrahubNumberPoolUtilization = Field(

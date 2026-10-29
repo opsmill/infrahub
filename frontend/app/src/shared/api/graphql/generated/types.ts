@@ -24059,8 +24059,8 @@ export type NumberPoolRangeUtilization = {
   __typename: 'NumberPoolRangeUtilization';
   /** The range's bounds written as "start - end", from start and end. An end at the largest supported number is written as MAX. */
   display_label: Scalars['String']['output'];
-  /** Last value of the range, included. For a range without an end, the smaller of the largest supported number and the target attribute's max_value on the requested branch. */
-  end: Scalars['BigInt']['output'];
+  /** Last value of the range, included. For a range without an end, the target attribute's max_value on the requested branch. Null when the range has an unbounded end. */
+  end: Maybe<Scalars['BigInt']['output']>;
   /** Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument. */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
@@ -24098,20 +24098,20 @@ export type NumberPoolUtilization = {
 /** Absolute and relative utilization of a pool, a range or a division. */
 export type NumberPoolUtilizationFigures = {
   __typename: 'NumberPoolUtilizationFigures';
-  /** Number of values the pool, range or division can allocate. 0 when the pool has no range. */
-  size: Scalars['BigInt']['output'];
+  /** Number of values the pool, range or division can allocate. 0 when the pool has no range. Null when the pool's range is unbounded. */
+  size: Maybe<Scalars['BigInt']['output']>;
   /** Number of these values in use on any branch. A value used on several branches counts once. */
   used: Scalars['BigInt']['output'];
   /** Number of these values in use only on other branches, not on the default branch. */
   used_branches: Scalars['BigInt']['output'];
   /** Number of these values in use on the default branch. */
   used_default_branch: Scalars['BigInt']['output'];
-  /** used as a percentage of size. 0 when size is 0. */
-  utilization: Scalars['Float']['output'];
-  /** used_branches as a percentage of size. 0 when size is 0. */
-  utilization_branches: Scalars['Float']['output'];
-  /** used_default_branch as a percentage of size. 0 when size is 0. */
-  utilization_default_branch: Scalars['Float']['output'];
+  /** used as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded. */
+  utilization: Maybe<Scalars['Float']['output']>;
+  /** used_branches as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded. */
+  utilization_branches: Maybe<Scalars['Float']['output']>;
+  /** used_default_branch as a percentage of size. 0 when size is 0. Null when the pool's range is unbounded. */
+  utilization_default_branch: Maybe<Scalars['Float']['output']>;
 };
 
 export type ObjectPermission = {

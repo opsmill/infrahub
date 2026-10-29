@@ -1,0 +1,1 @@
+Upgraded `graphql-core` from 3.2.8 to 3.2.13, which fixes two denial-of-service vulnerabilities in the library, CVE-2026-75507 and CVE-2026-75508. The GraphQL API now rejects a query whose validation needs more than 250,000 field comparisons with a "Query is too complex to validate" error.

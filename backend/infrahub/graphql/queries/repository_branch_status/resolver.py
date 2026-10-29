@@ -124,97 +124,96 @@ class RepositoryBranchStatusResolver:
 
         node_ordering = standard_node_ordering_from_order_input(order)
 
-        db = graphql_context.db
+        async with graphql_context.db.start_session(read_only=True) as db:
+            guard = RepositoryBranchStatusPermissionGuard(context=graphql_context)
+            guard.ensure_any_kind_viewable()
 
-        guard = RepositoryBranchStatusPermissionGuard(context=graphql_context)
-        guard.ensure_any_kind_viewable()
+            repository = await NodeManager.get_one_by_id_or_default_filter(
+                db=db,
+                id=id,
+                kind=InfrahubKind.GENERICREPOSITORY,
+                branch=None,
+                at=graphql_context.at,
+            )
+            # The id path of the lookup does not enforce `kind`, so a node of any kind resolves here.
+            repository_kinds = db.schema.get_generic_schema(
+                name=InfrahubKind.GENERICREPOSITORY, branch=None, duplicate=False
+            ).used_by
+            if repository.get_kind() not in repository_kinds:
+                raise NodeNotFoundError(
+                    branch_name=registry.default_branch,
+                    node_type=InfrahubKind.GENERICREPOSITORY,
+                    identifier=id,
+                )
 
-        repository = await NodeManager.get_one_by_id_or_default_filter(
-            db=db,
-            id=id,
-            kind=InfrahubKind.GENERICREPOSITORY,
-            branch=None,
-            at=graphql_context.at,
-        )
-        # The id path of the lookup does not enforce `kind`, so a node of any kind resolves here.
-        repository_kinds = db.schema.get_generic_schema(
-            name=InfrahubKind.GENERICREPOSITORY, branch=None, duplicate=False
-        ).used_by
-        if repository.get_kind() not in repository_kinds:
-            raise NodeNotFoundError(
-                branch_name=registry.default_branch,
-                node_type=InfrahubKind.GENERICREPOSITORY,
-                identifier=id,
+            policy = policy_for_kind(kind=repository.get_kind())
+            guard.ensure_kind_viewable(policy=policy)
+
+            branches = await Branch.get_list(
+                db=db,
+                limit=None,
+                exclude_global=True,
+                exclude_terminal=True,
+                branch_filters=BranchListFilters(
+                    name=name__value,
+                    partial_match=partial_match,
+                    status=BranchStatus(status__value) if status__value else None,
+                    sync_with_git=policy.sync_with_git_filter,
+                ),
+                node_ordering=node_ordering,
             )
 
-        policy = policy_for_kind(kind=repository.get_kind())
-        guard.ensure_kind_viewable(policy=policy)
-
-        branches = await Branch.get_list(
-            db=db,
-            limit=None,
-            exclude_global=True,
-            exclude_terminal=True,
-            branch_filters=BranchListFilters(
-                name=name__value,
-                partial_match=partial_match,
-                status=BranchStatus(status__value) if status__value else None,
-                sync_with_git=policy.sync_with_git_filter,
-            ),
-            node_ordering=node_ordering,
-        )
-
-        fields = extract_graphql_fields(info)
-        edge_fields = fields.get("edges") or {}
-        node_fields = edge_fields.get("node") or {}
-        node_metadata_fields = edge_fields.get("node_metadata") or {}
-        attribute_names = self._attribute_names(
-            node_fields=node_fields,
-            policy=policy,
-            own_values_only=own_values_only,
-            sync_status=sync_status__value,
-            internal_status=internal_status__value,
-        )
-
-        attributes = await self.build_source(db).read(
-            repository_ids=[repository.id],
-            branch_names=[branch.name for branch in branches],
-            attribute_names=attribute_names,
-            at=graphql_context.at,
-        )
-
-        rows = [
-            RepositoryBranchStatusRow(
-                branch=branch,
-                values=attributes.for_branch(repository_id=repository.id, branch_name=branch.name),
-            )
-            for branch in branches
-        ]
-        rows = apply_value_filters(
-            rows=rows,
-            sync_status=sync_status__value,
-            internal_status=internal_status__value,
-            own_values_only=own_values_only,
-        )
-        # An `order` argument can be present yet express no ordering, e.g. an empty input object.
-        if node_ordering == StandardNodeOrdering():
-            rows = order_rows(rows=rows)
-
-        result: dict[str, Any] = {}
-        if "count" in fields:
-            result["count"] = len(rows)
-
-        attribute_schemas = self._attribute_schemas(db=db, policy=policy)
-        result["edges"] = [
-            await self._build_edge(
-                row=row,
-                attribute_schemas=attribute_schemas,
+            fields = extract_graphql_fields(info)
+            edge_fields = fields.get("edges") or {}
+            node_fields = edge_fields.get("node") or {}
+            node_metadata_fields = edge_fields.get("node_metadata") or {}
+            attribute_names = self._attribute_names(
                 node_fields=node_fields,
-                node_metadata_fields=node_metadata_fields,
+                policy=policy,
+                own_values_only=own_values_only,
+                sync_status=sync_status__value,
+                internal_status=internal_status__value,
             )
-            for row in page_rows(rows=rows, offset=offset, limit=limit)
-        ]
-        return result
+
+            attributes = await self.build_source(db).read(
+                repository_ids=[repository.id],
+                branch_names=[branch.name for branch in branches],
+                attribute_names=attribute_names,
+                at=graphql_context.at,
+            )
+
+            rows = [
+                RepositoryBranchStatusRow(
+                    branch=branch,
+                    values=attributes.for_branch(repository_id=repository.id, branch_name=branch.name),
+                )
+                for branch in branches
+            ]
+            rows = apply_value_filters(
+                rows=rows,
+                sync_status=sync_status__value,
+                internal_status=internal_status__value,
+                own_values_only=own_values_only,
+            )
+            # An `order` argument can be present yet express no ordering, e.g. an empty input object.
+            if node_ordering == StandardNodeOrdering():
+                rows = order_rows(rows=rows)
+
+            result: dict[str, Any] = {}
+            if "count" in fields:
+                result["count"] = len(rows)
+
+            attribute_schemas = self._attribute_schemas(db=db, policy=policy)
+            result["edges"] = [
+                await self._build_edge(
+                    row=row,
+                    attribute_schemas=attribute_schemas,
+                    node_fields=node_fields,
+                    node_metadata_fields=node_metadata_fields,
+                )
+                for row in page_rows(rows=rows, offset=offset, limit=limit)
+            ]
+            return result
 
     def _attribute_names(
         self,
