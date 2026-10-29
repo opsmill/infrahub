@@ -4,6 +4,8 @@ title: Upgrade Enterprise
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import SnippetTaskHistoryWarning from '../../../snippets/upgrade-task-history-warning.mdx';
+import SnippetTaskHistoryCleanup from '../../../snippets/upgrade-task-history-cleanup.mdx';
 import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
 
 # Upgrade Enterprise <EnterpriseBadge />
@@ -23,10 +25,36 @@ In Infrahub 1.2 and later, the upgrade process has been streamlined with a unifi
 For earlier versions, please refer to the [release notes](/release-notes/infrahub) for specific upgrade instructions.
 :::
 
+<SnippetTaskHistoryWarning />
+
 ## Upgrading to Infrahub Enterprise 1.2 and after
 
 <Tabs groupId="deployment" queryString>
 <TabItem value="docker" label="Docker" default>
+
+:::warning Start the background services with `infrahub tasks background-services`
+
+The Docker Compose file of Infrahub Enterprise runs the background services of the task manager in a service of its own, `task-manager-background-svc`. These services delete old task runs and events every hour. When that service starts with `prefect server services start`, it does not read the task manager retention settings: it deletes no task runs, so the task history keeps growing after the upgrade, and it keeps events for Prefect's default of 7 days, whatever the activity log retention is. After you download the `docker-compose.yml` of this release, check whether it starts a service with that command:
+
+```bash
+grep -n 'prefect server services start' docker-compose.yml
+```
+
+If this prints a line, add the following to the `docker-compose.override.yml` file next to your `docker-compose.yml`, or create that file, before you restart the instance. Docker Compose reads that file together with `docker-compose.yml`, so the service starts with `infrahub tasks background-services` and receives the retention values of your `.env` file. Earlier images do not have that command, so add it only together with the `docker-compose.yml` of this release.
+
+```yaml title="docker-compose.override.yml"
+services:
+  task-manager-background-svc:
+    command: infrahub tasks background-services
+    environment:
+      INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG: ${INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG:-7d}
+      INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS: ${INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS:-7d}
+      INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY: ${INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY:-30d}
+```
+
+If the `grep` command prints nothing, you do not need this change. See [Background services in their own container](../../run-observe/tasks.mdx#background-services-in-their-own-container).
+
+:::
 
 ```bash
 # Stop the current instance
@@ -42,6 +70,12 @@ docker compose run infrahub-server infrahub upgrade
 docker compose up -d
 ```
 
+<SnippetTaskHistoryCleanup />
+
+```bash
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
+```
+
 :::note
 
 Old Docker images of Infrahub may remain on your machine and consume disk space after an upgrade. To free up space and keep disk usage under control, consider removing unused images.
@@ -53,6 +87,30 @@ You can do this with: `docker image prune -a`
 </TabItem>
 <TabItem value="helm" label="Helm">
 
+:::warning Sizing presets: start the background services with `infrahub tasks background-services`
+
+The sizing presets of the Infrahub Enterprise Helm chart (`small`, `medium`, `medium-data`, `large`, and `large-data`) run the background services of the task manager in a pod of their own. These services delete old task runs and events every hour. When that pod starts with `prefect server services start`, it does not read the task manager retention settings: it deletes no task runs, so the task history keeps growing after the upgrade, and it keeps events for Prefect's default of 7 days, whatever the activity log retention is. To view the command of that pod, replace `<namespace>` with the namespace of your Infrahub release:
+
+```bash
+kubectl get deployment prefect-server-background-services -n <namespace> -o jsonpath='{.spec.template.spec.containers[0].args}'
+```
+
+If the output contains `prefect server services start` or `"prefect","server","services","start"`, start the pod with `infrahub tasks background-services` instead, in the same `helm upgrade` that moves the images to this release, because earlier images do not have that command. In your values file:
+
+```yaml title="values.yml"
+infrahub:
+  prefect-server:
+    backgroundServices:
+      args:
+        - sh
+        - -c
+        - "while true; do if curl -s -o /dev/null http://prefect-server:4200; then break; fi; sleep 10; echo try; done; infrahub tasks background-services"
+```
+
+Helm replaces the whole `args` list, so keep the wait loop as shown. If `kubectl` reports that the `prefect-server-background-services` deployment is not found in that namespace, the background services run inside the task manager, which reads the retention settings, and you do not need this change. See [Background services in their own container](../../run-observe/tasks.mdx#background-services-in-their-own-container).
+
+:::
+
 ```bash
 # Upgrade the Helm release
 helm upgrade
@@ -63,6 +121,12 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 # Restart deployments to apply changes
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
+```
+
+<SnippetTaskHistoryCleanup />
+
+```bash
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs --rewrite
 ```
 
 </TabItem>

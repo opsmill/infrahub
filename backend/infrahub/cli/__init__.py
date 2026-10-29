@@ -41,7 +41,7 @@ def common(ctx: typer.Context) -> None:
 app.add_typer(server_app, name="server")
 app.add_typer(db_app, name="db")
 app.add_typer(events_app, name="events", help="Interact with the events system.", hidden=True)
-app.add_typer(tasks_app, name="tasks", hidden=True)
+app.add_typer(tasks_app, name="tasks")
 app.add_typer(dev_app, name="dev", help="Internal development commands.")
 app.command(name="upgrade")(upgrade_cmd)
 app.add_typer(recover_app, name="recover", help="Recover from failed operations.")

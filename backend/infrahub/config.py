@@ -28,6 +28,11 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
+from infrahub.prefect_server.retention_settings import (
+    TaskManagerRetentionSettings,  # noqa: F401 - re-exported with the other settings models
+    TaskManagerSettings,
+    print_configuration_errors,
+)
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
@@ -2101,6 +2106,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def task_manager(self) -> TaskManagerSettings:
+        return self.active_settings.task_manager
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2130,6 +2139,8 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    # Built when the configuration loads, so an invalid retention fails the load instead of the module import.
+    task_manager: TaskManagerSettings = Field(default_factory=TaskManagerSettings)
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
@@ -2210,10 +2221,7 @@ def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: d
     try:
         SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)
     except ValidationError as err:
-        print(f"Configuration not valid, found {len(err.errors())} error(s)")
-        for error in err.errors():
-            error_locations = [str(location) for location in error["loc"]]
-            print(f"  {'/'.join(error_locations)} | {error['msg']} ({error['type']})")
+        print_configuration_errors(error=err)
         sys.exit(1)
 
 
