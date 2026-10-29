@@ -324,7 +324,7 @@ CALL (attr) {
 
 ### Batched writes: server-side or driver-side
 
-Use `CALL { ... } IN TRANSACTIONS` when the rows to write come from the graph: a `MATCH` streams the candidates and each batch commits on its own, so the transaction memory a run needs is bounded by the batch size and the fan-out of its rows, not by the dataset; a row that reaches many edges or attributes, such as `DETACH DELETE` on a high-degree vertex, still holds all of them in its batch. The branch-agnostic retirement, the rollback and the `delete_all_nodes` helper are written this way. Neo4j accepts it only in an auto-commit transaction, so a query that may run inside a caller's transaction needs a plain fallback when `db.is_transaction` is set.
+Use `CALL { ... } IN TRANSACTIONS` when the rows to write come from the graph: a `MATCH` streams the candidates and each batch commits on its own, so the transaction memory a run needs is bounded by the batch size and the fan-out of its rows, not by the dataset; a row that reaches many edges or attributes, such as `DETACH DELETE` on a high-degree vertex, still holds all of them in its batch. The branch-agnostic retirement, the rollback and the `delete_all_nodes` helper are written this way. Neo4j accepts it only in an auto-commit transaction, so a query that may run inside a caller's transaction needs a plain fallback when `db.is_transaction` is set, and Memgraph does not support it at all.
 
 The `MATCH` that produces the rows stays outside the subquery — transform the input first, then `CALL` only the write operations:
 
@@ -392,7 +392,7 @@ shape and let it do the typing, rather than indexing the raw record and casting:
 |---|---|
 | A scalar | `get_as_type("uuid", str)` |
 | A scalar that may be absent | `get_as_optional_type("description", str)` |
-| A string (shorthand, returns `str` or `None`) | `get_as_str("node_uuid")` |
+| A string (shorthand, returns `str | None`) | `get_as_str("node_uuid")` |
 | A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
 | A list whose elements the caller checks one by one | `get_list("attributes")` |
 | A whole node | `get_node("n")` |
@@ -419,6 +419,7 @@ def get_data(self) -> Generator[NodeWithPeers, None, None]:
             peer_uuids=tuple(result.get_as_list_of_type("peer_uuids", str)),
         )
 ```
+
 
 For a query expected to yield at most one row, return `MyQueryResult | None` from a
 `self.get_result()` check instead of a generator.

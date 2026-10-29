@@ -1,6 +1,12 @@
 ---
 # yamllint disable rule:line-length
 services:
+  # memgraph metrics requires enterprise license
+  # memgraph-exporter:
+  #   build:
+  #     context: ./memgraph_exporter
+  #   image: memgraph-exporter
+  #   hostname: "memgraph_exp"
   vmagent:
     image: victoriametrics/vmagent:v1.99.0
     volumes:

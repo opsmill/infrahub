@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, ForwardRef, Union, get_origin
+from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
 
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -124,6 +124,33 @@ class ConstraintRelNeo4j(ConstraintItemNeo4j):
         )
 
 
+# ------------------------------------------------------
+# Memgraph
+# ------------------------------------------------------
+
+
+class ConstraintItemMemgraph(ConstraintItem):
+    def get_query_exist_add(self) -> str:
+        raise NotImplementedError()
+
+    def get_query_exist_drop(self) -> str:
+        raise NotImplementedError()
+
+    def get_add_queries(self) -> list[str]:
+        return [self.get_query_exist_add()]
+
+    def get_drop_queries(self) -> list[str]:
+        return [self.get_query_exist_drop()]
+
+
+class ConstraintNodeMemgraph(ConstraintItemMemgraph):
+    def get_query_exist_add(self) -> str:
+        return f"CREATE CONSTRAINT ON (n:{self.item_label}) ASSERT EXISTS (n.{self.property})"
+
+    def get_query_exist_drop(self) -> str:
+        return f"DROP CONSTRAINT ON (n:{self.item_label}) ASSERT EXISTS (n.{self.property})"
+
+
 TYPE_MAPPING = {
     "RelationshipStatus": GraphPropertyType.STRING,
     "BranchSupportType": GraphPropertyType.STRING,
@@ -135,8 +162,8 @@ TYPE_MAPPING = {
 
 
 class ConstraintManagerBase:
-    constraint_node_class: type[ConstraintItem] = ConstraintItem
-    constraint_rel_class: type[ConstraintItem] = ConstraintItem
+    constraint_node_class: Optional[type[ConstraintItem]] = ConstraintItem
+    constraint_rel_class: Optional[type[ConstraintItem]] = ConstraintItem
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
@@ -167,7 +194,7 @@ class ConstraintManagerBase:
                 elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
                     item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
                     mandatory = False
-                if not item_type:
+                if not item_type or not manager.constraint_node_class:
                     continue
 
                 manager.nodes.append(
@@ -193,7 +220,7 @@ class ConstraintManagerBase:
                 elif get_origin(field.annotation) == Union and field.annotation.__args__[0] in TYPE_MAPPING:  # type: ignore[union-attr]
                     item_type = TYPE_MAPPING[field.annotation.__args__[0]]  # type: ignore[union-attr]
                     mandatory = False
-                if not item_type:
+                if not item_type or not manager.constraint_rel_class:
                     continue
 
                 manager.rels.append(
@@ -240,5 +267,29 @@ class ConstraintManagerNeo4j(ConstraintManagerBase):
                     property=", ".join(record["properties"]),
                 )
             )
+
+        return results
+
+
+class ConstraintManagerMemgraph(ConstraintManagerBase):
+    constraint_node_class = ConstraintNodeMemgraph
+    constraint_rel_class = None
+
+    async def add(self) -> None:
+        for item in self.items:
+            for query in item.get_add_queries():
+                await self.db.execute_query(query=query, params={}, name="constraint_add")
+
+    async def drop(self) -> None:
+        for item in self.items:
+            for query in item.get_drop_queries():
+                await self.db.execute_query(query=query, params={}, name="constraint_drop")
+
+    async def list(self) -> list[ConstraintInfo]:
+        query = "SHOW CONSTRAINT INFO"
+        records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
+        results = []
+        for record in records:
+            results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
 
         return results

@@ -339,6 +339,7 @@ class DatabaseNameCase:
         DatabaseNameCase(name="dash_and_dot", value="my-infrahub.db"),
         DatabaseNameCase(name="maximum_length", value="a" * 63),
         DatabaseNameCase(name="default_neo4j", value="neo4j"),
+        DatabaseNameCase(name="default_memgraph", value="memgraph"),
     ],
     ids=lambda case: case.name,
 )
