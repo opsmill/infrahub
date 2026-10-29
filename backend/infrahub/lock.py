@@ -157,13 +157,13 @@ class NATSLock:
 class RedisLock:
     """Lock held in Redis by one acquisition, whose commands are safe to repeat because each compares its token."""
 
-    def __init__(self, connection: redis.Redis, name: str, ttl: int | None = None) -> None:
-        self.name = name
+    def __init__(self, lock: GlobalLock) -> None:
+        self.name = lock.name
         self.token: str | None = None
-        self.connection = connection
+        self.connection = lock.redis
         # Maximum lifetime in seconds for the lock.
-        self.ttl = ttl
-        self._lock = GlobalLock(redis=connection, name=name, timeout=ttl)
+        self.ttl = lock.timeout
+        self._lock = lock
 
     async def acquire(self, token: str) -> None:
         """Wait until the key holds ``token``.
@@ -281,7 +281,9 @@ class InfrahubLock:
 
     def _build_remote(self) -> RedisLock | NATSLock:
         if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            return RedisLock(connection=self.connection, name=f"{LOCK_PREFIX}.{self.name}", ttl=self.ttl)
+            return RedisLock(
+                lock=GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=self.ttl)
+            )
         return NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}", ttl=self.ttl)
 
     async def _acquire_remote(self) -> None:
