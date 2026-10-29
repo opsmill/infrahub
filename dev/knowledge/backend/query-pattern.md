@@ -253,7 +253,7 @@ Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For que
 
 Example: `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time; `NodeGetListByAttributeValueQuery` chains two (`HAS_VALUE`, then `HAS_ATTRIBUTE`).
 
-Rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. A branch-agnostic read cannot rank every edge with its branch filter: that filter does not scope by branch, so ranking would elect whichever branch wrote last. `NodeGetByHFIDQuery` resolves a branch-agnostic read per branch instead. It collects the read window of every branch (its own edges at the requested time, and its origin branch's edges at the time it branched). It then keeps the node when, in one window, the node's existence, attribute and value edges are visible and no visible edge of the same kind outranks them. `any()` stops at the first window that holds, which is faster than ranking each edge once per branch. `NodeGetListByAttributeValueQuery` ranks every edge on every branch and is never run branch-agnostic.
+Rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. Keep the value-first form for a branch-agnostic read: its branch filter does not scope by branch, so ranking every edge would elect another branch's value. `NodeGetListByAttributeValueQuery` is never run branch-agnostic.
 
 List filters built by `build_subquery_filter` in `core/query/subquery.py` match the path to the filter value first, then keep it only when every edge on it is active and no other edge in its group outranks it. Outranking is a higher `branch_level`, or the same level and a later `from`.
 
@@ -261,7 +261,7 @@ List filters built by `build_subquery_filter` in `core/query/subquery.py` match 
 - Any other edge competes with every edge of its type from the same vertex, so a value edge loses to a newer edge to another value.
 - An edge to an `Attribute` competes with the edges to every attribute with the same name, so an attribute removed and added again resolves to the newer one.
 
-A branch-agnostic list filter runs the same checks once per branch window and keeps the node when they hold on one branch. The query that runs it opens with `build_branch_windows_query` and imports `branch_windows` into the filter's `CALL`. When the read is not branch-agnostic, or has no filter that runs this check, that step sets `branch_windows` to `NULL`, so the query text stays the same apart from that step.
+A branch-agnostic list filter ranks the paths from every branch together and keeps the node when the first one is active.
 
 ```cypher
 // ❌ on a branch: ranks only the edges to the matched value vertex

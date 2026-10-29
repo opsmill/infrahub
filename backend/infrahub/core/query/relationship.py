@@ -16,12 +16,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipD
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import (
-    build_branch_windows_query,
-    build_subquery_filter,
-    build_subquery_order,
-    build_subquery_order_metadata,
-)
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.schema.order_by import (
     OrderByTargetKind,
     ParsedOrderByEntry,
@@ -957,19 +952,11 @@ RETURN updated_at, updated_by
 
         path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 
-        clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
-        has_peer_filters = any("__" in filter_name for filter_name in clean_filters)
-        windows_query, windows_params = build_branch_windows_query(
-            at=self.at, branch_agnostic=self.branch_agnostic and has_peer_filters
-        )
-        self.add_to_query(windows_query)
-        self.params.update(windows_params)
-
         branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
-        WITH DISTINCT source_node, rl, branch_windows
+        WITH DISTINCT source_node, rl
         CALL (rl, source_node) {
             MATCH path = (source_node)%(path)s(peer:Node)
             WHERE
@@ -983,7 +970,7 @@ RETURN updated_at, updated_by
             ORDER BY branch_level DESC, r2.from DESC, r2.status ASC, r1.from DESC, r1.status ASC
             LIMIT 1
         }
-        WITH peer, rl, is_active, rels, source_node, branch_windows
+        WITH peer, rl, is_active, rels, source_node
         """ % {
             "path": path_str,
             "branch_filter": branch_filter,
@@ -994,6 +981,7 @@ RETURN updated_at, updated_by
 
         self.add_to_query(query)
         where_clause = ["is_active = TRUE"]
+        clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
 
         if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
@@ -1039,9 +1027,7 @@ RETURN updated_at, updated_by
             with_str = ", ".join(
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
-            self.add_subquery(
-                subquery=subquery, node_alias="peer, branch_windows", with_clause=f"{with_str}, branch_windows"
-            )
+            self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
         # ----------------------------------------------------------------------------
         # add metadata
         # ----------------------------------------------------------------------------
