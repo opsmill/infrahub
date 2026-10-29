@@ -1,0 +1,1 @@
+Changed how Mermaid diagrams in Markdown are drawn, so a page with a diagram downloads less code, but diagrams are laid out differently than before, and a diagram's own Mermaid theme settings, HTML labels, and math formulas no longer apply.

@@ -31,7 +31,7 @@ export function MarkdownRender({ className = "", markdownText = "" }: MarkdownRe
       {/```\s*mermaid/i.test(markdownText) ? (
         <ErrorBoundary fallback={baseMarkdown} resetKeys={[markdownText]}>
           <React.Suspense fallback={loadingFallback}>
-            <MarkdownWithMermaid markdownText={markdownText} fallback={loadingFallback} />
+            <MarkdownWithMermaid markdownText={markdownText} />
           </React.Suspense>
         </ErrorBoundary>
       ) : (

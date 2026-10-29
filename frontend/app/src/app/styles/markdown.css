@@ -195,3 +195,15 @@
   color: var(--danger);
   white-space: pre-wrap;
 }
+
+/* Pele reads its palette from these variables, so diagrams follow the theme without re-rendering. */
+.pele {
+  --pele-bg: var(--background);
+  --pele-fg: var(--foreground);
+  --pele-muted: var(--foreground-muted);
+  --pele-line: var(--foreground-muted);
+  --pele-surface: var(--content);
+  --pele-surface-alt: var(--surface);
+  --pele-border: var(--border-strong);
+  --pele-accent: var(--accent);
+}
