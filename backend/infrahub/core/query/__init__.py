@@ -8,6 +8,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
 
+import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
@@ -617,6 +618,9 @@ class Query:
 
     def get_params_for_shell(self, params: dict[str, Any] | None = None) -> str:
         params = self.params if params is None else params
+        if config.SETTINGS.database.db_type.value == "memgraph":
+            return ujson.dumps(params)
+
         return self._get_params_for_neo4j_shell(params=params)
 
     @staticmethod

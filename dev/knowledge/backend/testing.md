@@ -145,6 +145,7 @@ Controlled by environment variable `INFRAHUB_USE_TEST_CONTAINERS=true`.
 | Fixture | Purpose |
 |---------|---------|
 | `neo4j_container` | Graph database |
+| `memgraph_container` | Alternative graph database |
 | `redis_container` | Cache |
 | `rabbitmq_container` | Message broker |
 | `nats_container` | Event streaming |

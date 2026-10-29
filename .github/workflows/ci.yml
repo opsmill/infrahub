@@ -824,6 +824,59 @@ jobs:
         # Use tini to properly propagate cancellation signal to pytest, so that containers are properly destroyed
         run: "exec tini -s -g -- uv run pytest backend/tests/integration_docker/ -m shard_${{ matrix.shard }}"
 
+  # ---------------------------------------------------
+  # DISABLING Memgraph for now :(
+  # Tests where too flaky in 2.19 and completely broken in 2.20.1
+  # ---------------------------------------------------
+  # backend-tests-memgraph:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+  #   runs-on:
+  #     group: huge-runners
+  #   timeout-minutes: 45
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - name: backend-tests-unit-memgraph
+  #           env:
+  #             INFRAHUB_DB_TYPE: memgraph
+  #         # - name: backend-tests-unit-nats
+  #         #   env:
+  #         #     INFRAHUB_DB_TYPE: memgraph
+  #         #     INFRAHUB_USE_NATS: 1
+  #         #     INFRAHUB_BROKER_DRIVER: nats
+  #         #     INFRAHUB_CACHE_DRIVER: nats
+  #   name: ${{ matrix.name }}
+  #   env: ${{ matrix.env }}
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v7"
+  #       with:
+  #         submodules: true
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v7
+  #       with:
+  #         python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+  #     - name: "Setup git credentials"
+  #       run: "git config --global user.name 'Infrahub' && \
+  #             git config --global user.email 'infrahub@opsmill.com' && \
+  #             git config --global --add safe.directory '*' && \
+  #             git config --global credential.usehttppath true && \
+  #             git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v7
+  #       with:
+  #         version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+  #     - name: Install dependencies
+  #       run: "uv sync --all-groups"
+  #     - name: "Unit Tests"
+  #       run: "uv run invoke backend.test-unit"
+
   backend-validate-generated:
     if: |
       always() && !cancelled() &&
