@@ -4,7 +4,7 @@ import { Focusable } from "react-aria-components";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
-import { classNames } from "@/shared/utils/common";
+import { Pulse } from "@/shared/components/ui/pulse";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { REPOSITORY_COMMITS_TAB } from "@/entities/repository/domain/model/repository";
@@ -77,13 +77,11 @@ function CommitsTabBadgeContent({ badge }: { badge: CommitsTabBadge }) {
     <Badge
       variant="warning"
       aria-hidden="true"
-      className={classNames(
-        "h-5 gap-1 rounded-full py-0 font-medium tabular-nums",
-        badge.kind !== "warning" && "motion-safe:animate-pulse"
-      )}
+      className="relative h-5 gap-1 rounded-full py-0 font-medium tabular-nums"
     >
       <Icon className="size-3 shrink-0" strokeWidth={2.25} />
       {badge.kind !== "warning" && formatCommitsTabCount(badge.count)}
+      <Pulse tone="warning" className="-top-0.5 -right-0.5" />
     </Badge>
   );
 }
