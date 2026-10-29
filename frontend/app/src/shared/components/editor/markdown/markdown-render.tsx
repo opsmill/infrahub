@@ -7,51 +7,51 @@ import Markdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
+import { DiagramError } from "@/shared/components/editor/markdown/diagram-error";
 import { classNames } from "@/shared/utils/common";
 
-const MarkdownWithMermaid = React.lazy(() => import("./markdown-with-mermaid"));
+const MermaidDiagram = React.lazy(() => import("./mermaid-diagram"));
 
-export const remarkPlugins = [remarkGfm, remarkBreaks];
+const remarkPlugins = [remarkGfm, remarkBreaks];
 
-export function getMermaidSource(preChildren: React.ReactNode): string | null {
+const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
+
+function getMermaidSource(preChildren: React.ReactNode): string | null {
   if (!React.isValidElement<{ className?: string; children?: unknown }>(preChildren)) return null;
   const { className, children } = preChildren.props;
   if (!className?.includes("language-mermaid")) return null;
   return String(children ?? "").trimEnd();
 }
 
-type MarkdownRenderProps = {
-  className?: string;
-  markdownText?: string;
+const components: Components = {
+  pre({ node: _node, children, ...props }) {
+    const source = getMermaidSource(children);
+    if (source === null) return <pre {...props}>{children}</pre>;
+
+    return (
+      <ErrorBoundary
+        fallback={<DiagramError message={LOAD_FAILED} source={source} />}
+        resetKeys={[source]}
+      >
+        <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
+          <MermaidDiagram source={source} />
+        </React.Suspense>
+      </ErrorBoundary>
+    );
+  },
 };
 
-export function MarkdownRender({ className = "", markdownText = "" }: MarkdownRenderProps) {
-  const baseMarkdown = <Markdown remarkPlugins={remarkPlugins}>{markdownText}</Markdown>;
-  const loadingFallback = (
-    <Markdown remarkPlugins={remarkPlugins} components={loadingComponents}>
-      {markdownText}
-    </Markdown>
-  );
+interface MarkdownRenderProps {
+  className?: string;
+  markdownText?: string;
+}
 
+export function MarkdownRender({ className = "", markdownText = "" }: MarkdownRenderProps) {
   return (
     <div className={classNames("markdown", className)}>
-      {/```\s*mermaid/i.test(markdownText) ? (
-        <ErrorBoundary fallback={baseMarkdown} resetKeys={[markdownText]}>
-          <React.Suspense fallback={loadingFallback}>
-            <MarkdownWithMermaid markdownText={markdownText} />
-          </React.Suspense>
-        </ErrorBoundary>
-      ) : (
-        baseMarkdown
-      )}
+      <Markdown remarkPlugins={remarkPlugins} components={components}>
+        {markdownText}
+      </Markdown>
     </div>
   );
 }
-
-// Keeps the rest of the document visible while the diagram code loads.
-const loadingComponents: Components = {
-  pre({ node: _node, children, ...props }) {
-    if (getMermaidSource(children) !== null) return <Spinner className="mx-auto h-40" />;
-    return <pre {...props}>{children}</pre>;
-  },
-};

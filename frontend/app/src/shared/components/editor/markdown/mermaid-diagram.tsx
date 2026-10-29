@@ -1,4 +1,3 @@
-import { Spinner } from "@infrahub/ui";
 import {
   type DiagramType,
   detectType,
@@ -10,11 +9,9 @@ import {
   render,
 } from "pele/lazy";
 import React from "react";
-import { ErrorBoundary } from "react-error-boundary";
 
 import { PanZoom } from "@/shared/components/display/pan-zoom";
-
-const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
+import { DiagramError } from "@/shared/components/editor/markdown/diagram-error";
 
 const RENDER_OPTIONS: RenderOptions = {
   // Remote images would make every reader's browser fetch a URL chosen by the diagram's author.
@@ -48,27 +45,11 @@ function renderDiagram(source: string, idPrefix: string): RenderResult | PeleErr
   }
 }
 
-type DiagramErrorProps = {
-  message: string;
+interface MermaidDiagramProps {
   source: string;
-};
-
-function DiagramError({ message, source }: DiagramErrorProps) {
-  return (
-    <div>
-      <div className="mermaid-error rounded-md p-2 font-mono text-sm">{message}</div>
-      <pre>
-        <code>{source}</code>
-      </pre>
-    </div>
-  );
 }
 
-type DiagramSourceProps = {
-  source: string;
-};
-
-function RenderedDiagram({ source }: DiagramSourceProps) {
+export default function MermaidDiagram({ source }: MermaidDiagramProps) {
   const idPrefix = React.useId().replace(/[^\w-]/g, "");
   const type = detectDiagramType(source);
   if (type && !registered(type)) React.use(loadDiagramType(type));
@@ -86,18 +67,5 @@ function RenderedDiagram({ source }: DiagramSourceProps) {
         dangerouslySetInnerHTML={{ __html: diagram.svg }}
       />
     </PanZoom>
-  );
-}
-
-export function MermaidDiagram({ source }: DiagramSourceProps) {
-  return (
-    <ErrorBoundary
-      fallback={<DiagramError message={LOAD_FAILED} source={source} />}
-      resetKeys={[source]}
-    >
-      <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
-        <RenderedDiagram source={source} />
-      </React.Suspense>
-    </ErrorBoundary>
   );
 }
