@@ -8,7 +8,7 @@ from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import ValidationError
-from infrahub.pools.number_ranges import allocation_bounds, format_range_label
+from infrahub.pools.number_ranges import allocation_bounds, format_range_label, unsupported_range_values
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -289,6 +289,17 @@ class NumberPoolParameters(AttributeParameters):
     def validate_ranges(self) -> Self:
         if self.has_shorthand and self.ranges:
             raise ValueError("start_range/end_range cannot be combined with ranges")
+
+        unsupported = [
+            violation
+            for candidate in self.effective_ranges()
+            for violation in unsupported_range_values(
+                label=candidate.label,
+                values={"start": candidate.start, "end": candidate.end, "weight": candidate.weight},
+            )
+        ]
+        if unsupported:
+            raise ValueError("; ".join(unsupported))
 
         if self.has_shorthand:
             shorthand = self._shorthand_range()
