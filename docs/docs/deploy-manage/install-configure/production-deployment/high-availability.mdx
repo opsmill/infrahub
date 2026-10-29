@@ -8,8 +8,6 @@ import import_infrahubValuesYaml from '!!raw-loader!../../../../../development/k
 import import_minioValuesYaml from '!!raw-loader!../../../../../development/k8s/minio-values.yaml';
 import import_neo4jValuesYaml from '!!raw-loader!../../../../../development/k8s/neo4j-values.yaml';
 import import_rabbitmqValuesYaml from '!!raw-loader!../../../../../development/k8s/rabbitmq-values.yaml';
-import import_redisSentinelDeployYaml from '!!raw-loader!../../../../../development/k8s/redis-sentinel-proxy-deploy.yaml';
-import import_redisSentinelSvcYaml from '!!raw-loader!../../../../../development/k8s/redis-sentinel-proxy-svc.yaml';
 import import_redisValuesYaml from '!!raw-loader!../../../../../development/k8s/redis-values.yaml';
 import import_serviceValuesYaml from '!!raw-loader!../../../../../development/k8s/service-values.yaml';
 import import_taskmanagerdbYaml from '!!raw-loader!../../../../../development/k8s/taskmanagerdb.yaml';
@@ -24,7 +22,7 @@ A highly available Infrahub deployment runs redundant instances of every statefu
 
 - **Neo4j cluster** — 3+ nodes for graph database redundancy with automatic failover
 - **Redis Sentinel** — automatic detection of master failures and promotion of replicas
-- **RabbitMQ cluster** — message bus redundancy with mirrored queues
+- **RabbitMQ cluster** — message bus redundancy with quorum queues replicated across the cluster nodes
 - **PostgreSQL replication** — task manager database with primary-replica setup
 - **Multiple API and worker instances** — stateless services distributed across availability zones
 - **Redundant load balancers** — fronting the API layer for traffic distribution
@@ -40,6 +38,16 @@ The following examples demonstrate how to deploy Infrahub in a highly available 
 :::warning
 
 These examples are for reference purposes and may require customization for your specific environment. Ensure you understand the requirements and dependencies before deploying to production.
+
+:::
+
+:::info Version requirements
+
+The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, which requires the following versions:
+
+- Infrahub 1.11.9 or later. Earlier versions do not have the `INFRAHUB_CACHE_URL` setting, so they ignore it and connect to `INFRAHUB_CACHE_ADDRESS`, which defaults to `localhost`. Their task manager image also includes a version of Docket, the component that coordinates Prefect's background services, that does not accept `redis+sentinel://` URLs. The task manager runs the Infrahub image, so the examples set the task manager image tag, `prefectTag`, to the same version as `infrahubTag`.
+- Infrahub Enterprise chart 4.22.0 or later. Earlier charts include a `prefect-server` chart that rejects the `backgroundServices.messaging.redis.url` value, so the installation fails. Chart 4.22.0 is also the first release in which the task manager takes its startup lock in Redis through that messaging URL.
+- Redis 6.0 or later, for the Redis nodes and for Sentinel. Infrahub opens each connection with the `HELLO` command, which Redis 5.0 and earlier reject.
 
 :::
 
@@ -63,14 +71,25 @@ These examples are for reference purposes and may require customization for your
   helm install cache bitnami/redis --version 19.5.2 --namespace infrahub --create-namespace --values redis-values.yaml
   ```
 
-  <CodeBlock language="yaml" title="redis-sentinel-proxy-deploy.yaml">{import_redisSentinelDeployYaml}</CodeBlock>
+  Infrahub connects to the Sentinel nodes directly through its cache connection URL, so it discovers the current master and follows failover with no proxy in between. `infrahub-values.yaml` below sets this URL for the Infrahub server and the task workers, which use it for the cache and the distributed locks:
 
-  <CodeBlock language="yaml" title="redis-sentinel-proxy-svc.yaml">{import_redisSentinelSvcYaml}</CodeBlock>
-
-  ```bash
-  kubectl apply -f redis-sentinel-proxy-deploy.yaml --namespace infrahub
-  kubectl apply -f redis-sentinel-proxy-svc.yaml --namespace infrahub
+  ```yaml
+  INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster
   ```
+
+  The URL lists the Sentinel service (port `26379`) and the master group name (`mymaster`). To list several Sentinel endpoints explicitly, separate them with commas: `redis+sentinel://sentinel-a:26379,sentinel-b:26379,sentinel-c:26379/mymaster`. When Redis requires a password, see [Connecting to a Redis Sentinel that requires a password](#connecting-to-a-redis-sentinel-that-requires-a-password).
+
+  :::note
+
+  Prefect's messaging Redis also follows master failover when it connects through a `redis+sentinel://` URL. `infrahub-values.yaml` below sets that URL with `prefect-server.backgroundServices.messaging.redis.url`, and the chart passes it to Prefect as `PREFECT_REDIS_MESSAGING_URL`. A URL replaces the chart's separate `host`, `port`, `db`, `username`, `password` and `ssl` settings, so put the database number in the URL: `/mymaster/1` selects database 1, which keeps messaging apart from the cache on database 0.
+
+  The task manager takes an Infrahub lock in Redis while it starts. The chart passes the messaging URL to the task manager as `INFRAHUB_CACHE_URL` for that lock, unless you set `INFRAHUB_CACHE_URL` on the task manager yourself.
+
+  Docket coordinates Prefect's background services, such as the scheduler, through Redis. `infrahub-values.yaml` sets its URL with `prefect-server.backgroundServices.messaging.docket.url`, which the chart passes to Prefect as `PREFECT_SERVER_DOCKET_URL`. The URL uses the same format, and `/mymaster/2` keeps Docket on database 2. The sizing presets set this value to an example host, and the chart refuses to install until you replace it.
+
+  See [Prefect messaging over TLS](#prefect-messaging-over-tls) below for the TLS options.
+
+  :::
 
   <CodeBlock language="yaml" title="rabbitmq-values.yaml">{import_rabbitmqValuesYaml}</CodeBlock>
 
@@ -119,7 +138,7 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
 
   ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.2.4-small --namespace infrahub --create-namespace --values infrahub-values.yaml
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.22.0-small --namespace infrahub --create-namespace --values infrahub-values.yaml
   ```
 
 </details>
@@ -139,6 +158,193 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 ```
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
+
+## Connecting Infrahub to a RabbitMQ cluster
+
+RabbitMQ 4.0 removed classic queue mirroring. A classic queue is stored on one node of the cluster: when that node stops, the queue is unavailable, and Infrahub cannot send or receive the messages that use it until the node is back. A quorum queue stores a copy of its messages on several nodes, and RabbitMQ elects a new leader for the queue when the node of the current leader stops.
+
+Set `INFRAHUB_BROKER_QUEUE_TYPE` to `quorum` on the Infrahub server and the task workers, so that Infrahub declares its durable queues as quorum queues:
+
+```bash
+INFRAHUB_BROKER_QUEUE_TYPE=quorum
+```
+
+- The queues that each Infrahub process creates for its own replies and events stay classic queues. RabbitMQ deletes them when the process disconnects, and the process creates them again when it reconnects.
+- A quorum queue stays available while a majority of its copies are on running nodes, so a 3-node cluster continues to operate when one node stops.
+- Set `INFRAHUB_BROKER_ADDRESS` to an address that reaches every node of the cluster, such as the Kubernetes service of the RabbitMQ cluster or a TCP load balancer. When the node of a connection stops, Infrahub reconnects to that address.
+
+:::warning
+
+Do not set the default queue type of the RabbitMQ virtual host to `quorum` while `INFRAHUB_BROKER_QUEUE_TYPE` is `classic`. RabbitMQ then declares the durable queues of Infrahub as quorum queues with an argument that quorum queues reject, and the Infrahub server fails to start.
+
+:::
+
+### Switch an existing deployment to quorum queues
+
+RabbitMQ does not change the type of an existing queue. When the durable queues already exist as classic queues, the Infrahub server fails to start with a `PRECONDITION_FAILED - inequivalent arg` error until you delete them. Deleting a queue discards the messages it holds.
+
+1. Stop the Infrahub server and the task workers.
+2. Delete the durable queues in the virtual host that Infrahub uses (`INFRAHUB_BROKER_VIRTUALHOST`, `/` by default). The queue names start with the value of `INFRAHUB_BROKER_NAMESPACE`, `infrahub` by default:
+
+   ```bash
+   rabbitmqctl delete_queue --vhost / infrahub.rpcs
+   rabbitmqctl delete_queue --vhost / infrahub.delay.five_seconds
+   rabbitmqctl delete_queue --vhost / infrahub.delay.ten_seconds
+   rabbitmqctl delete_queue --vhost / infrahub.delay.twenty_seconds
+   ```
+
+3. Set `INFRAHUB_BROKER_QUEUE_TYPE` to `quorum` on the Infrahub server and the task workers.
+4. Start the Infrahub server, then the task workers. The server declares the durable queues again as quorum queues.
+
+To switch back to classic queues, follow the same steps with `INFRAHUB_BROKER_QUEUE_TYPE` set to `classic`.
+
+## Connecting to a Redis Sentinel that requires a password
+
+When Redis requires a password, put the credentials in the connection URLs. Once `INFRAHUB_CACHE_URL` is set, Infrahub reads the username and password from the URL and ignores `INFRAHUB_CACHE_USERNAME` and `INFRAHUB_CACHE_PASSWORD`.
+
+The following steps add authentication to the Helm example above. In `redis-values.yaml`, replace `auth.enabled: false` with the following settings, so that the Redis nodes and Sentinel both require the password stored in the `cache-redis-password` Secret:
+
+```yaml
+auth:
+  enabled: true
+  sentinel: true
+  existingSecret: cache-redis-password
+  existingSecretPasswordKey: redis-password
+```
+
+Create that Secret before you install Redis:
+
+```bash
+kubectl create namespace infrahub
+kubectl create secret generic cache-redis-password --namespace infrahub --from-literal=redis-password='<strong-cache-password>'
+```
+
+Each connection URL then contains the password twice:
+
+- Before the host, for the Redis nodes: `redis+sentinel://:<password>@cache-redis:26379/mymaster`. The Bitnami chart sets the password of the `default` user, so the username before the `:` stays empty. For a Redis ACL user, write `<username>:<password>@`.
+- In the `sentinel_password` query parameter, for the Sentinel nodes, which authenticate separately: `?sentinel_password=<password>`. For a Sentinel ACL user, also set `sentinel_username`.
+
+Percent-encode the password in both places. Characters such as `/`, `?`, `#`, `@`, `:` and `%` have a meaning in URLs, and passwords generated in Base64 often contain `/`. When a `/`, `?` or `#` that is not percent-encoded moves part of the credentials after the host, Infrahub stops at startup with an error that does not show the password. A `%` that is not percent-encoded is not detected: it can change the password that Infrahub sends, and Redis then rejects it.
+
+Keep the URLs in Kubernetes Secrets, so that the password is not written in the values file. The following commands read the password from the Secret, percent-encode it, and store the Infrahub cache URL in the `infrahub-cache` Secret, and the Prefect messaging and Docket URLs in the `prefect-redis` Secret:
+
+```bash
+PASSWORD=$(kubectl get secret cache-redis-password --namespace infrahub -o jsonpath='{.data.redis-password}' | base64 -d)
+ENCODED=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$PASSWORD")
+kubectl create secret generic infrahub-cache --namespace infrahub \
+  --from-literal=INFRAHUB_CACHE_URL="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster?sentinel_password=${ENCODED}"
+kubectl create secret generic prefect-redis --namespace infrahub \
+  --from-literal=messaging-url="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster/1?sentinel_password=${ENCODED}" \
+  --from-literal=docket-url="redis+sentinel://:${ENCODED}@cache-redis:26379/mymaster/2?sentinel_password=${ENCODED}"
+```
+
+Then change `infrahub-values.yaml` as follows:
+
+- Remove `INFRAHUB_CACHE_URL` from the `env` settings of `infrahubServer` and `infrahubTaskWorker`, and load it from the `infrahub-cache` Secret instead.
+- Replace the messaging and Docket `url` values with references to the `prefect-redis` Secret. Set the Docket `url` to an empty value, because the sizing preset sets it to an example host, which the chart refuses.
+
+```yaml
+infrahub:
+  infrahubServer:
+    infrahubServer:
+      envFromExistingSecrets:
+        - infrahub-cache
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      envFromExistingSecrets:
+        - infrahub-cache
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          existingSecret: prefect-redis
+          existingSecretUrlKey: messaging-url
+        docket:
+          url: ""
+          existingSecret: prefect-redis
+          existingSecretKey: docket-url
+```
+
+The task manager takes its startup lock through the messaging URL, so it authenticates with the password in that URL.
+
+## Connecting to Redis over TLS
+
+The cache connection URL turns on TLS through its scheme: `rediss://` for a single node and `rediss+sentinel://` for a Sentinel topology. The standard redis-py query parameters then set how the connection verifies the server.
+
+| Query parameter | Description |
+|-----------------|-------------|
+| `ssl_cert_reqs` | Certificate verification mode: `required` (default), `optional`, or `none` to skip verification. `none` also turns off the hostname check. |
+| `ssl_check_hostname` | Whether to check that the certificate matches the hostname or IP address the client connects to (`true`/`false`). With `false`, the client still verifies the certificate against the certificate authority. |
+| `ssl_ca_certs` | Path to a CA certificate or bundle in PEM format used to verify the server certificate. |
+| `ssl_ca_path` | Path to a directory of CA certificates used to verify the server certificate. |
+| `ssl_ca_data` | CA certificates in PEM format, written in the URL, used to verify the server certificate. |
+| `sentinel_username` | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
+| `sentinel_password` | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
+
+Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`). Infrahub checks the URL when it loads its configuration, so a misspelled parameter stops startup with an error instead of failing the first cache command. Infrahub checks a connection that has been idle for more than 20 seconds before a command uses it, so one whose server has become unreachable is re-established instead of failing the command; set `health_check_interval` on the URL to change that interval. A master that Sentinel demoted while it stayed reachable still answers that check, so the next write is what discovers the change: Redis replies `READONLY`, the client drops the connection, and the retry lands on the promoted master.
+
+On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentinel daemon connections, so a single setting covers both the data nodes and the daemons. Verify against a private certificate authority by supplying a CA bundle:
+
+```yaml
+INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem
+```
+
+Without `ssl_ca_certs`, `ssl_ca_path` or `ssl_ca_data` on the URL, a TLS connection verifies against `INFRAHUB_CACHE_TLS_CA_FILE`, or against the global `INFRAHUB_TLS_CA_BUNDLE` that fills it, so a private certificate authority configured once for the whole deployment covers the cache too. `INFRAHUB_CACHE_TLS_INSECURE` does not apply to a URL connection: only `ssl_cert_reqs=none` on the URL turns verification off.
+
+### Verifying the certificates of Redis nodes behind Sentinel
+
+The client checks that each certificate matches the hostname or IP address it connects to. It connects to the Sentinel nodes listed in the URL, and then to the master address that Sentinel returns. By default, Sentinel returns IP addresses, so a certificate that lists only hostnames fails with an `IP address mismatch` error.
+
+The following options keep certificate verification. They are listed from the strictest to the least strict:
+
+1. Configure Sentinel to announce hostnames, and issue the Redis node certificates for those hostnames. Sentinel supports hostnames from Redis 6.2, through the `sentinel announce-hostnames yes` and `sentinel resolve-hostnames yes` settings, and each Redis node announces its own hostname through `replica-announce-ip`. The Bitnami Redis chart applies these settings when `useHostnames` is `true`, which is its default. In the Helm example above, it announces the nodes as `cache-redis-node-<n>.cache-redis-headless.infrahub.svc.cluster.local`, so a certificate whose subject alternative names include `*.cache-redis-headless.infrahub.svc.cluster.local` and the Sentinel service name `cache-redis` matches every connection.
+2. Issue Redis node certificates whose subject alternative names include the IP addresses that Sentinel returns. This works for nodes with fixed IP addresses. It does not work for Kubernetes pods, whose IP addresses change when they restart.
+3. Turn off only the hostname check with `ssl_check_hostname=false`. The client still verifies that your certificate authority signed the certificate, but it accepts any certificate signed by that authority, including a certificate issued for another server.
+
+For option 3, add the parameter to the URL:
+
+```yaml
+INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem&ssl_check_hostname=false
+```
+
+:::warning
+
+`ssl_cert_reqs=none` turns off certificate verification. The client then accepts any certificate, so a party that can intercept the connection can read and change the traffic, including the Redis password. Use it only in test and development environments, for example with a self-signed certificate:
+
+```yaml
+INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_cert_reqs=none
+```
+
+:::
+
+### Prefect messaging over TLS
+
+Infrahub's `INFRAHUB_CACHE_URL` configures the cache, distributed-lock and task result storage connections. Prefect's messaging Redis and Docket are configured separately, through the `PREFECT_REDIS_MESSAGING_URL` and `PREFECT_SERVER_DOCKET_URL` environment variables. The Helm chart sets them from `prefect-server.backgroundServices.messaging.redis.url` and `prefect-server.backgroundServices.messaging.docket.url`. Both accept the same URL grammar: use a `rediss+sentinel://` URL so that they discover the master through the Sentinel nodes, follow failover and connect over TLS. Set the CA with `ssl_ca_certs` to verify against a private certificate authority:
+
+```bash
+export PREFECT_REDIS_MESSAGING_URL='rediss+sentinel://cache-redis:26379/mymaster/1?ssl_ca_certs=/etc/ssl/redis-ca.pem'
+export PREFECT_SERVER_DOCKET_URL='rediss+sentinel://cache-redis:26379/mymaster/2?ssl_ca_certs=/etc/ssl/redis-ca.pem'
+```
+
+The options in [Verifying the certificates of Redis nodes behind Sentinel](#verifying-the-certificates-of-redis-nodes-behind-sentinel) apply to messaging too. To add a password, see [Connecting to a Redis Sentinel that requires a password](#connecting-to-a-redis-sentinel-that-requires-a-password).
+
+## Validating Redis Sentinel failover
+
+After deploying, confirm that Infrahub recovers automatically when the Redis master fails:
+
+1. Identify the current master through any Sentinel node:
+
+   ```bash
+   kubectl exec -it cache-redis-node-0 --namespace infrahub -- redis-cli -p 26379 sentinel get-master-addr-by-name mymaster
+   ```
+
+2. Delete the master pod to trigger a Sentinel-driven promotion:
+
+   ```bash
+   kubectl delete pod <current-master-pod> --namespace infrahub
+   ```
+
+3. Once Sentinel has promoted a replica, run any operation that uses the cache or a distributed lock (for example, open the web UI or run a query). Infrahub resolves the new master through Sentinel and the operation succeeds without restarting any Infrahub pod.
 
 ## Load balancer configuration
 

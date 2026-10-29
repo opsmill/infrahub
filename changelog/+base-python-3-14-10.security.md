@@ -1,0 +1,1 @@
+Updated the base Python version of the Infrahub container image and the development environment from 3.14.7 to 3.14.10, so the `pip` bundled in the image no longer ships a `certifi` version affected by GHSA-6q48-6c7w-9gw2.
