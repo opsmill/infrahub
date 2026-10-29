@@ -1,0 +1,77 @@
+backend/tests/component/core/resource_manager/test_number_pool_scope.py
+  s_25786988f6b9d3::t_55570da8df0f2e 336-371
+backend/infrahub/core/query/resource_manager.py
+  s_25786988f6b9d3::t_167d7b6fa18b74 886,889,980,983
+  s_25786988f6b9d3::t_32ca1648259542 770-772,876,885,909-910,912,918-919,935-936,938-940,951-954,957-959,978,1213-1214,1236,1240
+  h_7ec9b28dd2a5ab 754,758,761-763
+  s_25786988f6b9d3::t_a1fad346e1483c 1002,1008
+  s_25786988f6b9d3::t_c2aa26b79e669f 755-757,759-760,764-769,877-884,963,970-971,973-976
+  s_25786988f6b9d3::t_7a79bf72703e8e 871,908,931,937,941,1040
+  s_25786988f6b9d3::t_16446ef5eab273 773,776,778,786-800,807,809,819-839,846
+  s_25786988f6b9d3::t_1364c4058b3abc 995-997
+  s_25786988f6b9d3::t_1c000bcf6cb935 887-888,890,898,901,942-950,955-956,960,981-982,984-985,998,1003-1007,1009-1010,1022-1026
+  s_25786988f6b9d3::t_6e279fcdeda396 396,431-433
+  s_25786988f6b9d3::t_a4be437b4000dc 777,779-785,808,810-817
+  s_25786988f6b9d3::t_1f2d5587609286 848-868,911,913-915,1027,1106
+  s_25786988f6b9d3::t_7c5c8097a8d162 207-208,1014,1016,1067-1068,1314,1378
+  s_25786988f6b9d3::t_9b9c8bdddfa2a2 873-874
+  s_25786988f6b9d3::t_0d89e55f5cc37d 774-775,801-806,840-845,966-967,972,977,979,986-993,999-1001,1017-1019,1104
+  s_25786988f6b9d3::t_ad233f108b897b 891-894,899-900,902-907
+  s_25786988f6b9d3::t_5600554cbd954b 8
+  s_25786988f6b9d3::t_224859c89cac12 847
+  s_25786988f6b9d3::t_cbb9a713ce1d00 961-962
+  s_25786988f6b9d3::t_80f28447f8aec9 994
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  s_25786988f6b9d3::t_53ace0029b5ce3 11
+  s_25786988f6b9d3::t_c7d2cb04ed6601 616,619,635-668,670-671,674-677,683-684,686-716
+  s_25786988f6b9d3::t_c82899a3b82d5e 319,404,431,500,572,751,778-779,1045
+  s_25786988f6b9d3::t_e8b6d421b53ec4 754-777,780-800,804-816
+  s_25786988f6b9d3::t_8203cb503bf802 801-803
+  s_25786988f6b9d3::t_829ea03aff4311 752-753
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_25786988f6b9d3::t_78c811c72a9b62 59
+  s_25786988f6b9d3::t_1d04a2ad5f888c 53
+  s_25786988f6b9d3::t_957f23771b4a15 55
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_25786988f6b9d3::t_957f23771b4a15 25,40,165,177,179,204
+  s_25786988f6b9d3::t_78c811c72a9b62 28
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_25786988f6b9d3::t_59dd690c70ff2a 240,262,266
+  s_25786988f6b9d3::t_957f23771b4a15 13,216
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_25786988f6b9d3::t_ecda4c5895750b 154,163
+  s_25786988f6b9d3::t_957f23771b4a15 40
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_25786988f6b9d3::t_957f23771b4a15 53,166
+  s_25786988f6b9d3::t_b0ed30402d0596 157
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_25786988f6b9d3::t_5914246f2d5b6c 438,517
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_25786988f6b9d3::t_78c811c72a9b62 46
+  s_25786988f6b9d3::t_957f23771b4a15 51,78
+  s_25786988f6b9d3::t_59dd690c70ff2a 79
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_25786988f6b9d3::t_b0ed30402d0596 59
+  s_25786988f6b9d3::t_957f23771b4a15 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef1d53ebd3e20c3bc1dc81eb35397052264f6fd4",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_25786988f6b9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb373b26-8366-42d7-9d4d-ed7828b78fcc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
