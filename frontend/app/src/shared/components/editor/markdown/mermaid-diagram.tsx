@@ -22,7 +22,7 @@ const RENDER_OPTIONS: RenderOptions = {
   fontFamily: "InterVariable, sans-serif",
 };
 
-// Keeps a failed load, which Pele forgets, so `use` hands it to the error boundary instead of importing again on every render.
+// `load` forgets a failed import, so without typeLoads `use` would retry it on every render instead of throwing.
 const typeLoads = new Map<DiagramType, Promise<boolean>>();
 
 function loadDiagramType(type: DiagramType): Promise<boolean> {
@@ -79,7 +79,7 @@ function RenderedDiagram({ source }: DiagramSourceProps) {
 
   return (
     <PanZoom className="bg-background">
-      {/* Full width so a wide diagram shrinks to fit, with room above it for the zoom buttons. */}
+      {/* w-full lets a wide svg shrink to fit; pt-9 keeps it below the zoom buttons. */}
       <div
         className="w-full pt-9 [&>svg]:mx-auto"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Pele escapes diagram text, emits no scripts or event handlers, and drops javascript: links.

@@ -6,8 +6,7 @@ import { render } from "../../../../../tests/components/render";
 
 const DIAGRAM = "```mermaid\ngraph TD\n  A[Spine] --> B[Leaf]\n```";
 
-// The assertions read the colours the browser actually paints on a node, because the palette
-// reaches the SVG only through inherited CSS custom properties.
+// shapeLuminance reads the painted fill, because the palette reaches the svg only through inherited CSS variables.
 const nodeShape = () => document.querySelector<SVGGraphicsElement>("svg.pele .pele-node rect");
 
 const luminance = (color: string): number => {

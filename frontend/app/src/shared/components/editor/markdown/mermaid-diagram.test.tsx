@@ -7,8 +7,7 @@ import { render } from "../../../../../tests/components/render";
 
 const { loadMock } = vi.hoisted(() => ({ loadMock: vi.fn() }));
 
-// Partial: only the loader is replaced, and it calls the real one unless a test overrides it.
-// The component keeps one load per diagram type, so each test uses a different type.
+// typeLoads keeps one load per diagram type for the whole file, so each test uses a different type.
 vi.mock("pele/lazy", async (importOriginal) => {
   const actual = await importOriginal<typeof Pele>();
   loadMock.mockImplementation(actual.load);
@@ -56,7 +55,7 @@ describe("MermaidDiagram", () => {
 
   test("gives each diagram on a page its own SVG id prefix", async () => {
     // GIVEN
-    // Sankey links reference gradients by id, and the ids derive from the diagram's content.
+    // Only sankey output has ids, and identical sources get identical ids without idPrefix.
     const sankey = "sankey\nA,B,10\nB,C,5";
 
     // WHEN
