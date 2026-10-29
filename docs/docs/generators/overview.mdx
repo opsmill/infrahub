@@ -36,6 +36,8 @@ Generators can be executed in several ways, depending on your workflow and where
 2. Manually from the UI
 
    From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the Generator on demand.
+
+   To run a Generator for one target only, open that target's detail page, open the Actions menu, and select the Generator in the Generators section. The section lists the Generator definitions whose target group contains objects of the same kind. An entry is disabled when the object is not a member of that target group.
 3. Automatically via Proposed Changes
 
    When you open a Proposed Change that affects the Generator's targets, the Generator runs as part of Infrahub's CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per Generator in the repository configuration file.

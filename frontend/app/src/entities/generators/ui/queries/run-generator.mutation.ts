@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import type { MutationConfig } from "@/shared/api/types";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type RunGeneratorParams,
@@ -7,7 +9,9 @@ import {
 } from "@/entities/generators/domain/use-cases/run-generator";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
-export const useRunGeneratorMutation = () => {
+export const useRunGeneratorMutation = (
+  config?: Omit<MutationConfig<typeof runGenerator>, "mutationFn">
+) => {
   const queryClient = useQueryClient();
   const { currentBranch } = useCurrentBranch();
 
@@ -18,10 +22,12 @@ export const useRunGeneratorMutation = () => {
         ...params,
       });
     },
-    onSuccess: () => {
+    ...config,
+    onSuccess: (...args) => {
       // Generator runs enqueue a background task whose status is consumed
       // through `tasksQueryKeys` queries (the task list / details).
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+      return config?.onSuccess?.(...args);
     },
   });
 };
