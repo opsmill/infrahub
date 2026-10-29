@@ -18,6 +18,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 DIFF_VERTEX_LABELS = [
     "DiffRoot",
@@ -33,13 +34,16 @@ DIFF_VERTEX_LABELS = [
 class FailingDiffRepository(DiffRepository):
     """Deletes for real, except for the diff holding one root, where it raises instead."""
 
-    def __init__(self, db: InfrahubDatabase, failing_root_uuid: str) -> None:
+    def __init__(self, db: CountingInfrahubDatabase, failing_root_uuid: str) -> None:
         super().__init__(db=db, deserializer=EnrichedDiffDeserializer(parent_adder=DiffParentNodeAdder()))
         self.failing_root_uuid = failing_root_uuid
         self.attempted: list[list[str]] = []
+        self.counting_db = db
+        self.rows_read_before_deletes: list[int] = []
 
     async def delete_diff_roots(self, diff_root_uuids: list[str], include_frozen: bool = False) -> None:
         self.attempted.append(diff_root_uuids)
+        self.rows_read_before_deletes.append(self.counting_db.rows_for("generator_capture_diffs"))
         if self.failing_root_uuid in diff_root_uuids:
             raise ValueError("FAILED")
         await super().delete_diff_roots(diff_root_uuids=diff_root_uuids, include_frozen=include_frozen)
@@ -52,6 +56,7 @@ class Migration080WithFailingRepository(Migration080):
     diff_repository: FailingDiffRepository | None = None
 
     def build_diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
+        assert isinstance(db, CountingInfrahubDatabase)
         self.diff_repository = FailingDiffRepository(db=db, failing_root_uuid=self.failing_root_uuid)
         return self.diff_repository
 
@@ -130,14 +135,22 @@ CREATE (:DiffRoot {uuid: 'keep-frozen', tracking_id: $prefix + 'frozen', is_froz
     kept_vertices = await diff_vertex_ids(db=db, of_root_uuids=sorted(kept_roots))
     assert len(await diff_vertex_ids(db=db)) == root_count * (1 + nodes_per_root * 3) + 4
 
-    migration = Migration080()
-    result = await migration.execute(migration_input=MigrationInput(db=db))
+    migration = Migration080WithFailingRepository()
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    assert (await migration.validate_migration(db=counting_db)).errors
+    assert counting_db.rows_for("generator_capture_diffs") == 1
+    counting_db.reset_counts()
+    result = await migration.execute(migration_input=MigrationInput(db=counting_db))
 
     assert result.errors == []
+    assert migration.diff_repository is not None
+    assert migration.diff_repository.rows_read_before_deletes == [
+        min((index // 10 + 1) * 10, root_count) for index in range(root_count)
+    ]
     assert await stored_root_uuids(db=db) == kept_roots
     assert await diff_vertex_ids(db=db) == kept_vertices
     assert (await migration.validate_migration(db=db)).errors == []
-    assert (await migration.execute(migration_input=MigrationInput(db=db))).errors == []
+    assert (await migration.execute(migration_input=MigrationInput(db=counting_db))).errors == []
     assert await diff_vertex_ids(db=db) == kept_vertices
 
 
@@ -177,6 +190,7 @@ class TestMigration080:
         default_branch: Branch,
         car_accord_main: Node,
         diff_coordinator: DiffCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from_time = Timestamp()
         car = await NodeManager.get_one(db=db, id=car_accord_main.id)
@@ -238,6 +252,7 @@ class TestMigration080:
         # The capture diffs hold more than their roots, so the subtrees below them are deleted too.
         assert len(all_vertices_before - kept_vertices_before) > len(capture_root_uuids)
 
+        monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 1)
         migration = Migration080()
         for _ in range(2):
             execution_result = await migration.execute(migration_input=MigrationInput(db=db))
@@ -248,12 +263,15 @@ class TestMigration080:
             assert await stored_root_uuids(db=db) == set(kept_root_uuids)
             assert await diff_vertex_ids(db=db) == kept_vertices_before
 
+    @pytest.mark.parametrize("with_partner", [False, True], ids=["single-root", "partner-on-later-page"])
     async def test_one_failing_diff_does_not_block_the_others(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         car_accord_main: Node,
         diff_coordinator: DiffCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+        with_partner: bool,
     ) -> None:
         from_time = Timestamp()
         car = await NodeManager.get_one(db=db, id=car_accord_main.id)
@@ -266,17 +284,27 @@ class TestMigration080:
                         diff_coordinator=diff_coordinator, default_branch=default_branch, from_time=from_time
                     )
                 )
-                for _ in range(3)
+                for _ in range(4 if with_partner else 3)
             ]
         )
         failing_diff = capture_diffs[1]
+        if with_partner:
+            partner = capture_diffs.pop()
+            await link_partner(db=db, root_uuid=failing_diff[0], partner_uuid=partner[0])
+            failing_diff.extend(partner)
+        monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 1)
 
         migration = Migration080WithFailingRepository(failing_root_uuid=failing_diff[0])
-        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
+        execution_result = await migration.execute(
+            migration_input=MigrationInput(db=CountingInfrahubDatabase.from_db(db=db))
+        )
 
         assert execution_result.errors == [f"diff with roots {failing_diff}: FAILED"]
         assert migration.diff_repository is not None
         assert migration.diff_repository.attempted == capture_diffs
         assert await stored_root_uuids(db=db) == set(failing_diff)
         validation_result = await migration.validate_migration(db=db)
-        assert validation_result.errors == [f"1 generator capture diff(s) remain: {[failing_diff]}"]
+        assert validation_result.errors == [f"Generator capture diff remains with roots {failing_diff}"]
+
+        assert (await Migration080().execute(migration_input=MigrationInput(db=db))).errors == []
+        assert await stored_root_uuids(db=db) == set()

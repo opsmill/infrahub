@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub import config
 from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -15,6 +17,14 @@ if TYPE_CHECKING:
 CAPTURE_DIFF_TRACKING_ID_PREFIX = "name.selective-regen-capture--"
 
 
+@dataclass(frozen=True)
+class CaptureDiffBatch:
+    """A page of deletable diffs and the last selected root's UUID."""
+
+    diffs: list[tuple[str, ...]]
+    last_root_uuid: str | None
+
+
 class GeneratorCaptureDiffsQuery(Query):
     """List the unfrozen capture diffs, each as the uuids of its roots.
 
@@ -26,12 +36,17 @@ class GeneratorCaptureDiffsQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
+    def __init__(self, limit: int, after_uuid: str | None = None, **kwargs: Any) -> None:
+        super().__init__(limit=limit, **kwargs)
+        self.params["after_uuid"] = after_uuid
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["tracking_id_prefix"] = CAPTURE_DIFF_TRACKING_ID_PREFIX
         query = """
 MATCH (diff_root:DiffRoot)
 WHERE diff_root.tracking_id STARTS WITH $tracking_id_prefix
 AND (diff_root.is_frozen IS NULL OR diff_root.is_frozen <> TRUE)
+AND ($after_uuid IS NULL OR diff_root.uuid > $after_uuid)
 OPTIONAL MATCH (diff_root)-[:DIFF_HAS_PARTNER]-(partner:DiffRoot)
 WITH diff_root, collect(partner) AS partners
 WHERE all(
@@ -45,7 +60,7 @@ RETURN diff_root.uuid AS root_uuid, [partner IN partners | partner.uuid] AS part
         self.return_labels = ["root_uuid", "partner_uuids"]
         self.order_by = ["root_uuid"]
 
-    def get_diffs(self) -> list[tuple[str, ...]]:
+    def get_batch(self) -> CaptureDiffBatch:
         diffs = {
             tuple(
                 sorted(
@@ -57,7 +72,8 @@ RETURN diff_root.uuid AS root_uuid, [partner IN partners | partner.uuid] AS part
             )
             for result in self.get_results()
         }
-        return sorted(diffs)
+        last_root_uuid = self.results[-1].get_as_type(label="root_uuid", return_type=str) if self.results else None
+        return CaptureDiffBatch(diffs=sorted(diffs), last_root_uuid=last_root_uuid)
 
 
 class Migration080(ArbitraryMigration):
@@ -80,38 +96,48 @@ class Migration080(ArbitraryMigration):
         db = migration_input.db
         console = migration_input.console
 
-        try:
-            diffs = await self._get_capture_diffs(db=db)
-        except Exception as exc:
-            return MigrationResult(errors=[f"Unable to look up the generator capture diffs: {exc}"])
-
-        if not diffs:
-            return MigrationResult()
-
-        console.log(f"Deleting {len(diffs)} generator capture diff(s)...")
         # One diff failing must not hide the others: the uuids of each failed diff are reported for a re-run.
         errors: list[str] = []
+        failed_roots: set[str] = set()
+        after_uuid: str | None = None
         diff_repository = self.build_diff_repository(db=db)
-        for root_uuids in diffs:
+        while True:
             try:
-                await diff_repository.delete_diff_roots(diff_root_uuids=list(root_uuids))
+                batch = await self._get_capture_diffs(
+                    db=db, limit=config.SETTINGS.database.query_size_limit, after_uuid=after_uuid
+                )
             except Exception as exc:
-                errors.append(f"diff with roots {list(root_uuids)}: {exc}")
-        if errors:
-            console.log(f"{len(errors)} generator capture diff(s) could not be deleted.")
+                errors.append(f"Unable to look up the generator capture diffs: {exc}")
+                break
+            if batch.last_root_uuid is None:
+                break
+            # Deleting roots changes offsets; advance by the last selected root even when a delete fails.
+            after_uuid = batch.last_root_uuid
+            console.log(f"Deleting a batch of {len(batch.diffs)} generator capture diff(s)...")
+            for root_uuids in batch.diffs:
+                if failed_roots.intersection(root_uuids):
+                    continue
+                try:
+                    await diff_repository.delete_diff_roots(diff_root_uuids=list(root_uuids))
+                except Exception as exc:
+                    failed_roots.update(root_uuids)
+                    errors.append(f"diff with roots {list(root_uuids)}: {exc}")
+            del batch
 
+        if errors:
+            console.log(f"Generator capture diff cleanup encountered {len(errors)} error(s).")
         return MigrationResult(errors=errors)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
-        remaining = await self._get_capture_diffs(db=db)
-        if remaining:
-            result.errors.append(
-                f"{len(remaining)} generator capture diff(s) remain: {[list(root_uuids) for root_uuids in remaining]}"
-            )
+        remaining = await self._get_capture_diffs(db=db, limit=1)
+        if remaining.diffs:
+            result.errors.append(f"Generator capture diff remains with roots {list(remaining.diffs[0])}")
         return result
 
-    async def _get_capture_diffs(self, db: InfrahubDatabase) -> list[tuple[str, ...]]:
-        query = await GeneratorCaptureDiffsQuery.init(db=db)
+    async def _get_capture_diffs(
+        self, db: InfrahubDatabase, limit: int, after_uuid: str | None = None
+    ) -> CaptureDiffBatch:
+        query = await GeneratorCaptureDiffsQuery.init(db=db, limit=limit, after_uuid=after_uuid)
         await query.execute(db=db)
-        return query.get_diffs()
+        return query.get_batch()
