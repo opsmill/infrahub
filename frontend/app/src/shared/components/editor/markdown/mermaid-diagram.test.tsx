@@ -1,7 +1,7 @@
 import type * as Pele from "pele/lazy";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
+import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
 
 import { render } from "../../../../../tests/components/render";
 
@@ -13,9 +13,6 @@ vi.mock("pele/lazy", async (importOriginal) => {
   loadMock.mockImplementation(actual.load);
   return { ...actual, load: loadMock };
 });
-
-const fence = (...sources: string[]) =>
-  sources.map((source) => `\`\`\`mermaid\n${source}\n\`\`\``).join("\n\n");
 
 const nodeShape = () => document.querySelector<SVGGraphicsElement>("svg.pele .pele-node rect");
 
@@ -47,7 +44,7 @@ describe("MermaidDiagram", () => {
     loadMock.mockRejectedValueOnce(new TypeError("Failed to fetch dynamically imported module"));
 
     // WHEN
-    const component = await render(<MarkdownRender markdownText={fence('pie\n  "A" : 1')} />);
+    const component = await render(<MermaidDiagram source={'pie\n  "A" : 1'} />);
 
     // THEN
     await expect
@@ -61,9 +58,7 @@ describe("MermaidDiagram", () => {
     loadMock.mockReturnValueOnce(new Promise(() => {}));
 
     // WHEN
-    const component = await render(
-      <MarkdownRender markdownText={fence("journey\n  section A\n    B: 5: C")} />
-    );
+    const component = await render(<MermaidDiagram source={"journey\n  section A\n    B: 5: C"} />);
 
     // THEN
     await expect.element(component.getByRole("status")).toBeVisible();
@@ -73,7 +68,7 @@ describe("MermaidDiagram", () => {
   test("shows a syntax error in a monospace font so its caret points at the column", async () => {
     // WHEN
     const component = await render(
-      <MarkdownRender markdownText={fence("flowchart LR\n  A --> B\n  B --> [oops")} />
+      <MermaidDiagram source={"flowchart LR\n  A --> B\n  B --> [oops"} />
     );
 
     // THEN
@@ -88,7 +83,12 @@ describe("MermaidDiagram", () => {
     const sankey = "sankey\nA,B,10\nB,C,5";
 
     // WHEN
-    const component = await render(<MarkdownRender markdownText={fence(sankey, sankey)} />);
+    const component = await render(
+      <>
+        <MermaidDiagram source={sankey} />
+        <MermaidDiagram source={sankey} />
+      </>
+    );
 
     // THEN
     await expect.poll(() => component.container.querySelectorAll("svg.pele").length).toBe(2);
@@ -101,7 +101,7 @@ describe("MermaidDiagram", () => {
     // WHEN
     const component = await render(
       <div style={{ width: 800 }}>
-        <MarkdownRender markdownText={fence("flowchart LR\n  A --> B")} />
+        <MermaidDiagram source={"flowchart LR\n  A --> B"} />
       </div>
     );
 
@@ -118,10 +118,10 @@ describe("MermaidDiagram", () => {
   test("keeps web links in a diagram and drops javascript: links", async () => {
     // WHEN
     const component = await render(
-      <MarkdownRender
-        markdownText={fence(
+      <MermaidDiagram
+        source={
           'flowchart LR\n  A --> B\n  click A "https://example.com" _blank\n  click B "javascript:alert(1)"'
-        )}
+        }
       />
     );
 
@@ -135,7 +135,7 @@ describe("MermaidDiagram", () => {
 
   test("renders a light diagram in the light theme", async () => {
     // WHEN
-    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -147,7 +147,7 @@ describe("MermaidDiagram", () => {
     setDarkTheme(true);
 
     // WHEN
-    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -156,7 +156,7 @@ describe("MermaidDiagram", () => {
 
   test("recolours the mounted diagram in place when the theme changes", async () => {
     // GIVEN
-    await render(<MarkdownRender markdownText={fence("graph TD\n  A[Spine] --> B[Leaf]")} />);
+    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     const shape = nodeShape();
     expect(shapeLuminance()).toBeGreaterThan(0.5);
