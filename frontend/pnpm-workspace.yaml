@@ -34,11 +34,6 @@ overrides:
   # Security fixes that the parent packages do not accept yet.
   "@betterer/betterer>simple-git": ^4.0.2
 
-auditConfig:
-  ignoreGhsas:
-    # deepmerge has no fixed release, and only the ultracite CLI uses it, which this project never runs.
-    - GHSA-gcqx-w48m-w2h4
-
 peerDependencyRules:
   allowedVersions:
     graphiql-explorer>graphql: ^17.0.0
