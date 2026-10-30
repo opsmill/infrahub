@@ -18,8 +18,6 @@ export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
    * element that accepts a ref and DOM props.
    */
   nonInteractiveTrigger?: boolean;
-  /** When set, the trigger stays mounted without a message, so it keeps focus when one appears. */
-  isDisabled?: boolean;
 }
 
 const tooltipStyles = tv({
@@ -41,10 +39,10 @@ export function Tooltip({
   onOpenChange,
   className,
   nonInteractiveTrigger,
-  isDisabled,
   ...props
 }: TooltipProps) {
-  if (isDisabled === undefined && !message && message !== 0) {
+  const hasMessage = !!message || message === 0;
+  if (!hasMessage && nonInteractiveTrigger) {
     return children;
   }
 
@@ -53,7 +51,7 @@ export function Tooltip({
       delay={200}
       closeDelay={300}
       shouldCloseOnPress={false}
-      isDisabled={isDisabled}
+      isDisabled={!hasMessage}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >

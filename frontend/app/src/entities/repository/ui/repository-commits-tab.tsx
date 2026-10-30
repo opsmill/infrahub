@@ -51,7 +51,7 @@ export function RepositoryCommitsTab({
   const to = getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB);
 
   return (
-    <Tooltip message={badge?.tooltip} isDisabled={!badge}>
+    <Tooltip message={badge?.tooltip}>
       <Focusable>
         <LinkTab
           to={to}
