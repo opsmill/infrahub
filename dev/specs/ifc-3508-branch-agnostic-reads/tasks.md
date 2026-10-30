@@ -74,13 +74,13 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] In `backend/infrahub/core/account.py::fetch_permissions` and `::fetch_role_permissions`, resolve the default branch with `registry.get_branch(db=db, branch=registry.default_branch)` and run `AccountGlobalPermissionQuery` and `AccountRoleGlobalPermissionQuery` on it without `branch_agnostic`. Keep the request branch for the object permission queries (FR-001, FR-003).
-- [ ] T009 [P] [US1] Remove `branch_agnostic=True` from `group.roles.get_peers` in `backend/infrahub/auth/auth.py::fetch_account_groups_and_roles` (FR-002).
-- [ ] T010 [P] [US1] Remove `branch_agnostic=True` from `members_rel.get_peers` in `backend/infrahub/auth/auth_groups/service.py::AutoCreatedGroupsService._add_member` (FR-002).
-- [ ] T011 [US1] Run T004-T007 and the existing suites: `backend/tests/component/core/test_account.py`, `backend/tests/component/permissions/`, `backend/tests/component/graphql/auth/query_permission_checker/` and `backend/tests/component/auth/auth_groups/`. All pass.
+- [X] T008 [US1] In `backend/infrahub/core/account.py::fetch_permissions` and `::fetch_role_permissions`, resolve the default branch with `registry.get_branch(db=db, branch=registry.default_branch)` and run `AccountGlobalPermissionQuery` and `AccountRoleGlobalPermissionQuery` on it without `branch_agnostic`. Keep the request branch for the object permission queries (FR-001, FR-003).
+- [X] T009 [P] [US1] Remove `branch_agnostic=True` from `group.roles.get_peers` in `backend/infrahub/auth/auth.py::fetch_account_groups_and_roles` (FR-002).
+- [X] T010 [P] [US1] Remove `branch_agnostic=True` from `members_rel.get_peers` in `backend/infrahub/auth/auth_groups/service.py::AutoCreatedGroupsService._add_member` (FR-002).
+- [X] T011 [US1] Run T004-T007 and the existing suites: `backend/tests/component/core/test_account.py`, `backend/tests/component/permissions/`, `backend/tests/component/graphql/auth/query_permission_checker/` and `backend/tests/component/auth/auth_groups/`. All pass.
 - [ ] T012 [P] [US1] Update `docs/docs/deploy-manage/user-management/permissions-roles/overview.mdx`: global permissions, group memberships and roles take effect from the default branch, and a change made on a branch applies only after the branch is merged. Object permissions follow the request branch. Run `uv run invoke docs.lint`.
 - [ ] T013 [P] [US1] Add a `fixed` changelog fragment in `changelog/` with the `creating-changelog-entries` skill. It says that a change made on a branch to group membership, roles or global permissions no longer changes global permissions until the branch is merged.
-- [ ] T014 [US1] Gate: ask the reviewer whether the E2E exception in `plan.md` "Complexity Tracking" is approved. If it is not, add one E2E test under `tests/e2e/` for scenario 1 of US1.
+- [X] T014 [US1] Gate: ask the reviewer whether the E2E exception in `plan.md` "Complexity Tracking" is approved. If it is not, add one E2E test under `tests/e2e/` for scenario 1 of US1. Result: the user approved the exception on 2026-10-30; no E2E test is added.
 - [ ] T015 [US1] Run the pre-push checks in `quickstart.md`, open the PR against `stable`, and report that this PR changes no query (no benchmark needed). How the PR is disclosed is decided outside this plan.
 
 **Checkpoint**: US1 is complete and reviewable on its own.
