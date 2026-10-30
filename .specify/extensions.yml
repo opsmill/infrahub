@@ -1,8 +1,6 @@
 installed:
 - agent-context
 - critique
-- id: infrahub
-  path: .specify/extensions/infrahub
 - opsmill
 - review
 settings:
@@ -17,12 +15,12 @@ hooks:
     description: Initialize Git repository before constitution setup
     condition: null
   before_specify:
-  - extension: infrahub
-    command: speckit.infrahub.feature
+  - extension: git
+    command: speckit.git.feature
     enabled: true
     optional: false
-    prompt: Execute speckit.infrahub.feature?
-    description: Validate Jira/JPD reference and create feature branch
+    prompt: Execute speckit.git.feature?
+    description: Create feature branch before specification
     condition: null
   before_clarify:
   - extension: git

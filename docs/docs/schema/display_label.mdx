@@ -44,7 +44,7 @@ A node label provides a human-friendly name for a node kind. When you define a n
 ```yaml
 nodes:
   - name: NetworkDevice
-    namespace: Infra
+    namespace: Dcim
     label: Network Device
     attributes:
       - name: hostname
@@ -131,7 +131,7 @@ nodes:
         unique: true
     relationships:
       - name: provider
-        peer: DcimProvider
+        peer: OrganizationProvider
         optional: false
         cardinality: one
 ```
@@ -260,15 +260,15 @@ Node labels are inherited from the first generic in the `inherit_from` list if n
 ```yaml
 generics:
   - name: GenericDevice
-    namespace: Infra
+    namespace: Dcim
     label: Device
     display_label: "{{ name__value }}"
 
 nodes:
   - name: Router
-    namespace: Infra
+    namespace: Dcim
     inherit_from:
-      - InfraGenericDevice
+      - DcimGenericDevice
     # Inherits label "Device" and display_label "{{ name__value }}"
 ```
 
@@ -285,9 +285,9 @@ Nodes can override inherited labels by specifying their own:
 ```yaml
 nodes:
   - name: Router
-    namespace: Infra
+    namespace: Dcim
     inherit_from:
-      - "InfraGenericDevice"
+      - "DcimGenericDevice"
     label: "Network Router"  # Overrides inherited label
     display_label: "{{ hostname__value }} (Router)"  # Overrides inherited display_label
 ```

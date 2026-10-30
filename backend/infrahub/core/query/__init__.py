@@ -94,16 +94,16 @@ class QueryElement:
         if not self.params:
             return ""
 
-        params_list = []
-        for key, value in self.params.items():
-            if isinstance(value, str) and not value.startswith("$"):
-                value_str = f'"{value}"'
-            else:
-                value_str = value
-
-            params_list.append(f"{key}: {value_str}")
+        params_list = [f"{key}: {self.render_param_value(value)}" for key, value in self.params.items()]
 
         return " { " + ",".join(params_list) + " }"
+
+    @staticmethod
+    def render_param_value(value: Any) -> str:
+        """Render a property value as Cypher: a string not starting with `$` is a literal, anything else is as is."""
+        if isinstance(value, str) and not value.startswith("$"):
+            return f'"{value}"'
+        return str(value)
 
 
 @dataclass

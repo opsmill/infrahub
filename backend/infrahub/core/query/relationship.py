@@ -1020,6 +1020,7 @@ RETURN updated_at, updated_by
                 branch_filter=branch_filter,
                 branch=self.branch,
                 subquery_idx=filter_cnt,
+                branch_agnostic=self.branch_agnostic,
             )
             self.params.update(subquery_params)
 
