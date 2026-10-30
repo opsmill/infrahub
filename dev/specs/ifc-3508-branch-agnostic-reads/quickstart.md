@@ -65,6 +65,12 @@ For the PR's audit test file, copy it into `backend/tests/component/core/` and r
 - The tests brought from `7015435c4` pass: `TestBranchAgnosticLookupByHFID`, `TestBranchAgnosticPeerFilter` and `test_branch_agnostic_filter_through_the_parent_relationship`.
 - Run the benchmark for branch-agnostic reads with many live branches.
 
+### PR 7
+
+- Run `backend/tests/component/graphql/metadata/test_active_on_branches.py` and `test_active_on_branches_cost.py`. They pass.
+- A read of a pool's `resources` on branch B, where a prefix was deleted on B only, returns the prefix with `active_on_branches` holding the default branch and not B.
+- A read that does not request `active_on_branches` runs the same queries as on PR 6's branch. Record the database hits with and without the field in the PR description.
+
 ## Before pushing any PR
 
 From the repository root:

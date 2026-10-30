@@ -6,7 +6,7 @@
 
 **Tests**: required. FR-035 requires, for every PR, a component test that fails on the current code and passes with the fix.
 
-**Organization**: one phase per user story, and each user story is one PR. Phases follow the PR order in the brief, not the priority order, because the PRs depend on each other (see Dependencies). US1 (P1) and US3 (P1) ship first. US2 (P3) is small and independent.
+**Organization**: one phase per user story, and each user story is one PR, except User Story 6, which is PRs 6 and 7 (PR 7 adds `active_on_branches`, FR-041 and FR-042). Phases follow the PR order in the brief, not the priority order, because the PRs depend on each other (see Dependencies). US1 (P1) and US3 (P1) ship first. US2 (P3) is small and independent.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -29,6 +29,7 @@ The brief says to stop and ask where a fix depends on an open question. These ta
 - T062 (open question 2, PR 5)
 - T085 (open question 3, PR 6)
 - T014 (the E2E test exception, PR 1)
+- T119, only when `python_sdk` holds a typed copy of `InfrahubNodeMetadata` (PR 7)
 
 ---
 
@@ -447,14 +448,83 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch.
 - [ ] T106 [US6] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12`.
 
-**Checkpoint**: all six stories are complete. The tasks for PR 7 (`active_on_branches`, FR-041 and FR-042) are not generated yet.
+**Checkpoint**: all six stories are complete.
 
 ---
 
-## Phase 9: Polish and cross-cutting checks
+## Phase 9: User Story 6, part 2 - Peers read through a branch-agnostic relationship report the branches they exist on (Priority: P2) — PR 7
+
+**Goal**: a GraphQL read of a branch-agnostic relationship can request `node_metadata { active_on_branches }`. For each peer it returns the names of the live branches on which the peer exists, sorted by name. The field is `null` for every other node, and a query that does not request it keeps its database hits (FR-041, FR-042).
+
+**Independent Test**: link prefix X to pool P's `resources` on the default branch, create branch B, and delete X on B. Read P's `resources` on B with `node_metadata { active_on_branches }`: X is returned, and the list holds the default branch's name and not B.
+
+**Base**: PR 6's branch, rebased on `release-1.12` once PR 6 merges. Branch: `active-on-branches-ifc-3508`. This PR changes the GraphQL schema. The user approved the change on 2026-10-30 (spec Clarifications).
+
+### Setup for PR 7
+
+- [ ] T110 [US6] Once PR 6 is in review, create a worktree for `active-on-branches-ifc-3508` from PR 6's branch. Check that:
+  - `backend/infrahub/core/query/branch_windows.py` provides `build_branch_windows_query` and `render_window_filter` as `contracts/branch-window-helpers.md` describes;
+  - `ManyRelationshipResolver` in `backend/infrahub/graphql/resolvers/many_relationship.py` and `SingleRelationshipResolver` in `backend/infrahub/graphql/resolvers/single_relationship.py` still pass `branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC` to `NodeManager.query_peers` and to the data loader.
+
+### Tests for PR 7
+
+- [ ] T111 [P] [US6] Add `backend/tests/component/graphql/metadata/test_active_on_branches.py`. Build the data with the schema of `backend/tests/helpers/schema/agnostic_retirement.py` (the branch-agnostic cardinality-one relationship `gadget`), the cardinality-many relationship of `backend/tests/component/conftest.py::branch_aware_node_with_agnostic_attrs_schema`, and a pool's `resources`. Cover:
+  - spec US6 scenario 11: a peer deleted on B that exists on the default branch, read on B, is returned with the default branch's name only;
+  - a peer that exists on the default branch and on B lists both names, sorted by name;
+  - a peer created on B only, read on the default branch, lists B only;
+  - a branch whose status is `DELETING` is not listed;
+  - a cardinality-one and a cardinality-many relationship, and for the cardinality-many relationship both resolver paths, the one through the data loader and the one without it (`ManyRelationshipResolver.resolve` selects between them);
+  - spec US6 scenario 12: `active_on_branches` on a peer of a relationship that is not branch-agnostic, and on the `node_metadata` of a top-level list query, is `null`.
+
+  Confirm the tests fail on PR 6's branch because the field does not exist.
+- [ ] T112 [P] [US6] Add `backend/tests/component/graphql/metadata/test_active_on_branches_cost.py`, using `CountingInfrahubDatabase` from `backend/tests/helpers/db_query_counter.py`:
+  - a read of a pool's `resources` that does not request `active_on_branches` runs the same queries, by name and count, as on PR 6's branch, and runs `NodeActiveBranchesQuery` zero times (FR-042);
+  - the same read with the field requested runs `NodeActiveBranchesQuery` once per resolver call, not once per peer.
+- [ ] T113 [P] [US6] Add `backend/tests/component/core/query/test_node_active_branches.py` for `NodeActiveBranchesQuery`. Cover the cases of T111 at the query level, plus a node whose uuid has several `Node` vertices after a kind migration (see the docstring of `backend/infrahub/core/query/agnostic_retention.py`): it returns one list per uuid.
+- [ ] T114 [P] [US6] Add `backend/tests/unit/graphql/test_metadata_options.py`. `get_metadata_options_from_fields` sets `MetadataOptions.ACTIVE_ON_BRANCHES` when `active_on_branches` is in the fields, and not otherwise; the other options are unchanged.
+
+### Implementation for PR 7
+
+- [ ] T115 [US6] Add `ACTIVE_ON_BRANCHES = auto()` to `MetadataOptions` in `backend/infrahub/core/constants/__init__.py`, without adding it to `TIMESTAMPS`, `USERS` or `USER_TIMESTAMPS`. In `backend/infrahub/graphql/metadata.py::get_metadata_options_from_fields`, set it when `active_on_branches` is in the fields.
+- [ ] T116 [US6] Add `backend/infrahub/core/query/node_active_branches.py` with `NodeActiveBranchesQuery(node_ids, at)`, a read query that:
+  - opens with `build_branch_windows_query(at=..., enabled=True)`;
+  - for each node uuid and each window, takes the node's latest `IS_PART_OF` edge in the window with `render_window_filter`, ranked `branch_level DESC, from DESC, status ASC`, and keeps the window's name when that edge is `active`;
+  - uses the same definition of a live node as the retirement check (FR-019);
+  - returns one row per node uuid with the names sorted.
+
+  Its `get_data()` returns a frozen dataclass that maps each node uuid to a `list[str]` (constitution III).
+- [ ] T117 [US6] In `backend/infrahub/graphql/manager.py::define_node_metadata`, add `active_on_branches` to `InfrahubNodeMetadata` as a list of non-null strings that is not required, with a description that it is filled only for nodes read through a branch-agnostic relationship. In `backend/infrahub/core/node/__init__.py::Node._build_meta_response`, return `None` for `active_on_branches`, so every node outside T118's path returns `null`.
+- [ ] T118 [US6] In `ManyRelationshipResolver` and `SingleRelationshipResolver`, when the relationship's branch support is `agnostic` and `node_metadata` requests `active_on_branches`:
+  - after the peers are loaded, run `NodeActiveBranchesQuery` once for all peer uuids of the call, on both the data loader path and the path without it;
+  - write each peer's list into its `node_metadata` response.
+
+  When the field is not requested, run nothing (FR-042).
+- [ ] T119 [US6] List the other GraphQL reads that return nodes read across branches (`rg -n "branch_agnostic=True" backend/infrahub/graphql`), including `backend/infrahub/graphql/queries/resource_manager.py`. For each one whose response has `node_metadata`, fill `active_on_branches` as T118 does, or state in the PR description why it returns `null`. Then check whether `python_sdk` holds a typed copy of `InfrahubNodeMetadata` (`rg -n InfrahubNodeMetadata python_sdk`). If it does, stop and ask the user, because a change to the submodule needs its own PR first (AGENTS.md "Submodules").
+- [ ] T120 [US6] Regenerate the generated files and commit them: `uv run invoke schema.generate-graphqlschema` (updates `schema/schema.graphql`), then `cd frontend/app && pnpm codegen`.
+- [ ] T121 [US6] Run T111-T114, plus:
+  - `backend/tests/component/graphql/metadata/`
+  - `backend/tests/component/graphql/resolvers/`
+  - `backend/tests/component/graphql/test_graphql_query.py`
+  - `backend/tests/component/graphql/test_graphql_read_rel_query.py`
+  - `backend/tests/unit/graphql/`
+
+  All pass.
+
+### Measurement, documentation and delivery for PR 7
+
+- [ ] T122 [US6] Add a case to `backend/tests/benchmark/test_graphql_query.py`: a read of a pool's `resources` with many peers and many live branches, with and without `active_on_branches`. Report the database hits of both, measured with `PROFILE`, in the PR description (FR-036). Without the field, the hits match PR 6's branch.
+- [ ] T123 [P] [US6] Update `docs/docs/branches/branch-agnostic-data.mdx` with `node_metadata { active_on_branches }`: what it lists, when it is `null`, and a query example on a pool's `resources`. Run `uv run invoke docs.lint`.
+- [ ] T124 [P] [US6] Add an `added` changelog fragment with the `creating-changelog-entries` skill. It says that a read of a branch-agnostic relationship, such as a pool's `resources`, can request `node_metadata { active_on_branches }` to view on which branches each peer exists.
+- [ ] T125 [US6] Run the pre-push checks in `quickstart.md`, and open the PR against `release-1.12`, based on PR 6 until PR 6 merges.
+
+**Checkpoint**: all six stories and PR 7 are complete.
+
+---
+
+## Phase 10: Polish and cross-cutting checks
 
 - [ ] T107 Once all six PRs are merged, run every audit test file from `branch-agnostic-wip/audit-tests/` against `origin/release-1.12`, and record in `dev/specs/ifc-3508-branch-agnostic-reads/quickstart.md` that SC-001 to SC-003 hold, listing any assertion changed and why.
-- [ ] T108 Update "Delivery by PR" in `dev/specs/ifc-3508-branch-agnostic-reads/plan.md` with the six PR numbers and their merge commits.
+- [ ] T108 Update "Delivery by PR" in `dev/specs/ifc-3508-branch-agnostic-reads/plan.md` with the seven PR numbers and their merge commits.
 - [ ] T109 Grep `dev/specs/ifc-3508-branch-agnostic-reads/` for any figure or decision that a PR changed (for example an error class, a migration number or an open question's answer), and update every file that repeats it in the same commit.
 
 ---
@@ -470,6 +540,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - US4 (PR 4): depends on US3.
 - US5 (PR 5): depends on US3 merged and PR #11220 in `release-1.12` (T002, T060). Its gates T061 and T062 block T075, T077, T078 and T080.
 - US6 (PR 6): depends on US5. Its gate T085 blocks T092.
+- US6 part 2 (PR 7): depends on PR 6 (T110-T125). Its gate T119 applies only when `python_sdk` holds a typed copy of `InfrahubNodeMetadata`.
 - Polish (T107-T109): after all PRs merge.
 
 ### Within each story
@@ -487,6 +558,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - Inside US3: T029-T033 together; T035 alongside T036-T038; T047-T049 alongside T039-T044.
 - Inside US5: T064-T067 together.
 - Inside US6: T086-T089 together.
+- Inside PR 7: T111-T114 together; T123 and T124 alongside T115-T121.
 
 ## Parallel Example: User Story 3
 
@@ -510,6 +582,7 @@ US1 (PR 1) and US3 (PR 3) close the effects users are most likely to hit: a priv
 2. US4 once US3 is merged.
 3. US5 once PR #11220 is in `release-1.12`, after its gates are answered.
 4. US6 on top of US5.
+5. PR 7 on top of PR 6.
 
 Each PR adds value on its own and leaves no read worse than before. That is why the peer existence check and the change to the delete writes ship together in US5.
 
