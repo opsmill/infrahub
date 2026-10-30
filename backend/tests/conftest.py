@@ -65,7 +65,7 @@ from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
-from tests.adapters.lock import LockTimeline, install_recording_lock_registry
+from tests.adapters.lock import LockTimeline, RecordingLockRegistry, install_recording_lock_registry
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -1408,6 +1408,14 @@ def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
         yield timeline
     finally:
         lock.registry = original
+
+
+@pytest.fixture
+def recording_lock_registry(recording_lock_timeline: LockTimeline) -> RecordingLockRegistry:
+    """The recording lock registry the timeline belongs to, to hold a task at a lock with a gate."""
+    assert isinstance(lock.registry, RecordingLockRegistry)
+    assert lock.registry.timeline is recording_lock_timeline
+    return lock.registry
 
 
 @pytest.fixture
