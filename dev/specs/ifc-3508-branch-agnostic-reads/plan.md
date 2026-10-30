@@ -24,7 +24,7 @@ The window logic lives once, in a new leaf module `core/query/branch_windows.py`
 
 **Primary Dependencies**: Neo4j 2026.05 (Cypher 25), neo4j Python driver 6.4, Pydantic 2.12, FastAPI 0.131 and the existing GraphQL layer
 
-**Storage**: Neo4j graph. Two new graph migrations: `m083` (PR 5) and `m084` (PR 6).
+**Storage**: Neo4j graph. One new graph migration, `m083` (PR 6).
 
 **Testing**: pytest component tests with testcontainers (`backend/tests/component/`), unit tests for pure helpers (`backend/tests/unit/`), benchmarks with Neo4j `PROFILE` (`backend/tests/benchmark/`)
 
@@ -42,8 +42,8 @@ The window logic lives once, in a new leaf module `core/query/branch_windows.py`
 - PR 1 is based on `stable`; PRs 2-6 on `release-1.12`.
 - PRs 5 and 6 wait for PR #11220 to reach `release-1.12`.
 - PRs 1 to 6 change no GraphQL schema. PR 7 adds `active_on_branches` to `InfrahubNodeMetadata`, approved on 2026-10-30.
-- Two database migrations, approved in review as one migration and split by research R13, with code review still required.
-- `m083` and `m084` are one-way. Downgrading after either runs is not supported, and the PR 5 and PR 6 changelog fragments say so. Each migration number is assigned when its PR is rebased on its base, after checking `GRAPH_VERSION`.
+- One database migration, approved in review, with code review still required.
+- `m083` is one-way. Downgrading after it runs is not supported, and the PR 6 changelog fragment says so. The migration number is assigned when the feature branch of research R13 is rebased on `release-1.12`, after checking `GRAPH_VERSION`.
 - Filters on a read on one branch keep PR #11220's query (research R12).
 
 **Scale/Scope**:
@@ -109,8 +109,7 @@ backend/infrahub/
 │   ├── relationship/model.py                   # PR 6
 │   ├── schema/relationship_schema.py           # PR 5 (needs_peer_existence_check)
 │   ├── convert_object_type/object_conversion.py  # PR 5
-│   ├── migrations/graph/m083_convert_global_deleted_link_edges/  # PR 5 (new)
-│   └── migrations/graph/m084_remove_branch_edges_of_agnostic_links/  # PR 6 (new)
+│   └── migrations/graph/m083_separate_global_and_branch_link_edges/  # PR 6 (new)
 ├── auth/auth.py, auth/auth_groups/service.py   # PR 1
 ├── graphql/loaders/account.py, graphql/resolvers/resolver.py      # PR 2
 ├── webhook/tasks/invalidate.py                 # PR 2
@@ -125,8 +124,7 @@ backend/tests/
 ├── component/core/test_node_manager_delete.py  # PR 4, PR 5
 ├── component/core/relationship/, component/core/test_relationship_query.py  # PR 5, PR 6
 ├── component/core/test_branch_agnostic_reads.py  # PR 6
-├── component/core/migrations/graph/m083_convert_global_deleted_link_edges/  # PR 5
-├── component/core/migrations/graph/m084_remove_branch_edges_of_agnostic_links/  # PR 6
+├── component/core/migrations/graph/m083_separate_global_and_branch_link_edges/  # PR 6
 └── benchmark/                                  # PRs 3, 5, 6
 
 dev/knowledge/backend/database-schema.md        # PR 5, PR 6
@@ -149,11 +147,11 @@ Every PR starts from its base branch, carries its own tests, benchmark results a
 | 2 | `global-only-reads-ifc-3508` | `release-1.12` | Now |
 | 3 | `branch-windows-ip-pools-ifc-3508` | `release-1.12` | Now |
 | 4 | `agnostic-delete-check-ifc-3508` | PR 3's branch, rebased on `release-1.12` once PR 3 merges | PR 3 is in review |
-| 5 | `peer-existence-check-ifc-3508` | `release-1.12` | PR 3 and PR #11220 are in `release-1.12` |
-| 6 | `agnostic-relationship-reads-ifc-3508` | PR 5's branch | PR 5 is in review |
-| 7 | `active-on-branches-ifc-3508` | PR 6's branch | PR 6 is in review |
+| 5 | `peer-existence-check-ifc-3508` | The feature branch `branch-agnostic-links-ifc-3508`, created from `release-1.12` | PR 3 and PR #11220 are in `release-1.12` |
+| 6 | `agnostic-relationship-reads-ifc-3508` | PR 5's branch; merges into the feature branch | PR 5 is in review |
+| 7 | `active-on-branches-ifc-3508` | PR 6's branch; opened against `release-1.12` once the feature branch merges | PR 6 is in review |
 
-PR 5 must not leave a read worse than before when it ships without PR 6. Research R13 settles the order: FR-023 and the removal of shape 2 pairs (migration `m084`) move to PR 6, after its read changes, because they make a read on a branch return a peer that the branch deleted, and only PR 6 builds that peer from its chosen branch. PR 5 keeps the peer existence check, FR-021, FR-022, FR-040 and migration `m083`.
+PRs 5 and 6 merge into the feature branch `branch-agnostic-links-ifc-3508`, which merges into `release-1.12` once both are in it (research R13). No release holds PR 5 without PR 6. FR-023 moves to PR 6, after its read changes, because it makes a read on a branch return a peer that the branch deleted, and only PR 6 builds that peer from its chosen branch. The one migration, `m083`, ships in PR 6.
 
 Open questions 1-3 of the spec are gates inside PRs 5 and 6 (see tasks.md). Research R7, R8 and R9 record the evidence found so far and a recommendation for each.
 
@@ -161,6 +159,6 @@ Open questions 1-3 of the spec are gates inside PRs 5 and 6 (see tasks.md). Rese
 
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| Hard delete of edges in migrations `m083` and `m084` (constitution II allows hard delete only for branch deletion) | The edges of both shapes break the edge constraints in `database-schema.md`: no `active` edge precedes the `deleted` edge on its branch or on the default branch. Shape 1 is replaced by edges with the same `from`, so history is kept. | Leaving the edges for reads to ignore was rejected in review, because every read would need to skip them forever. |
+| Hard delete of edges in migration `m083` (constitution II allows hard delete only for branch deletion) | The edges of both shapes break the edge constraints in `database-schema.md`: no `active` edge precedes the `deleted` edge on its branch or on the default branch. Shape 1 is replaced by edges with the same `from`, so history is kept. | Leaving the edges for reads to ignore was rejected in review, because every read would need to skip them forever. |
 | No E2E test (constitution IV requires E2E tests for user-facing features) | The changes are backend reads and writes with no new user interface. Component tests cover each behavior, and PR 1 adds a test over HTTP to `/graphql/<branch>`. | An E2E test would cover the same reads through the browser at a much higher cost. The brief does not require one; this exception needs the reviewer's approval, and PR 1 gets one E2E test if it is refused. |
 | A shared Cypher fragment module (`query-pattern.md` prefers inline Cypher) | Five consumers, one of which computes a different window (research R1). FR-013 requires one definition. | Fixing each copy in place keeps five definitions that can drift again. |

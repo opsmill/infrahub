@@ -54,7 +54,6 @@ For the PR's audit test file, copy it into `backend/tests/component/core/` and r
 ### PR 5
 
 - The peer existence check tests pass. A read of a branch-aware relationship between branch-aware kinds renders the same Cypher as before; a test compares the query text.
-- The `m083` migration test passes. Reads at several timestamps match before and after, and a second run changes nothing.
 - Run the benchmarks for:
   - a list of `CoreTransformPython` with `repository`;
   - a read of a relationship between branch-aware kinds, which should show no change.
@@ -65,7 +64,7 @@ For the PR's audit test file, copy it into `backend/tests/component/core/` and r
 - The tests brought from `7015435c4` pass: `TestBranchAgnosticLookupByHFID`, `TestBranchAgnosticPeerFilter` and `test_branch_agnostic_filter_through_the_parent_relationship`.
 - Run the benchmark for branch-agnostic reads with many live branches.
 - A GraphQL read on branch B of a pool's `resources`, where a prefix was deleted on B only, returns the prefix with the default branch's values and no error.
-- The `m084` migration test passes. Reads at several timestamps match before and after, and a second run changes nothing.
+- The `m083` migration test passes for both shapes. Reads at several timestamps match before and after, and a second run changes nothing.
 
 ### PR 7
 

@@ -179,7 +179,7 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 
 **Recommendation for open question 2.** On the default branch, set `to` on the active edge and write a `deleted` edge with the same `from`, as every other user delete does. The PR 5 documentation task then corrects "Soft Deletes" to describe what user deletes and merges each write. This is not applied: the brief says to stop and ask, so the PR 5 task that decides it is a gate.
 
-## R8. The graph migrations (PRs 5 and 6)
+## R8. The graph migration (PR 6)
 
 **Finding.**
 
@@ -188,18 +188,13 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 - `m081` is the pattern for edge rewrites: `ArbitraryMigration`, ordered `CountedMigrationQuery` steps, `CALL {…} IN TRANSACTIONS OF $batch_size ROWS`, counts from `stats`, `validate_migration` with a leftover count, and a test for resuming.
 - `m078` already uses `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`.
 
-**Decision.** The three steps below are split between two `ArbitraryMigration`s (R13). Names are confirmed at implementation:
-
-- PR 5 adds `m083_convert_global_deleted_link_edges`, with `minimum_version = 82`: steps 1 and 3. Step 3 treats shape 2 pairs as known, so it does not count them, because PR 5 still writes them.
-- PR 6 adds `m084_remove_branch_edges_of_agnostic_links`, with `minimum_version = 83`: step 2, after PR 6 stops writing shape 2 (FR-023).
-
-The steps:
+**Decision.** Add `m083_separate_global_and_branch_link_edges` (name to confirm at implementation), an `ArbitraryMigration` with `minimum_version = 82` and three steps. It ships in PR 6, the last PR that changes the delete writes, and reaches `release-1.12` together with PR 5 through the feature branch of R13. Shape 1 links have `branch_support = "aware"` and shape 2 links have `branch_support = "agnostic"`, so steps 1 and 2 never touch the same link and need no order between them:
 
 1. **Shape 1:** a `-global-` `deleted` edge of type `IS_RELATED`, `IS_PROTECTED`, `HAS_OWNER` or `HAS_SOURCE` on a link whose `Relationship` vertex has `branch_support = "aware"`. Write what the new delete writes, with the original `from`, then remove the `-global-` edge.
 2. **Shape 2:** a `deleted` edge on the default branch or on a user branch, on a link whose `Relationship` vertex has `branch_support = "agnostic"`. Deleting a branch-aware node on any branch, the default branch included, writes these edges today, and a merge may have written some (open question 1). Remove them. The brief names only the edges written on a branch; the edges written on the default branch are included because the brief's rule forbids a default-branch edge next to a `-global-` edge too, and because leaving them would leave the most common mixed pair in existing databases.
 3. **Count and log** the pairs that hold both a `-global-` edge and a branch edge of the same type and match neither shape.
 
-The `validate_migration` of `m083` fails when any pair of shape 1 is left, and that of `m084` when any pair of shape 2 is left. The test follows the `m081` layout: it builds each shape through the old write path, reads at several timestamps before and after, and runs the migration twice.
+`validate_migration` fails when any pair of shape 1 or shape 2 is left. The test follows the `m081` layout: it builds each shape through the old write path, reads at several timestamps before and after, and runs the migration twice.
 
 **Open question 1, evidence.** The merge does not copy a branch `deleted` edge on a branch-agnostic relationship to the default branch:
 
@@ -312,16 +307,17 @@ PR 6's reads work with or without shape 2 edges. In B's window the branch edge h
 
 **Decision.**
 
-- PR 5 keeps the peer existence check, FR-021, FR-022, FR-040, migration `m083` (shape 1, and the count of other pairs) and open question 2.
-- PR 6 takes FR-023, migration `m084` (shape 2) and open question 1, whose answer decides how `m084` treats default-branch edges.
-- Within PR 6, FR-023 and `m084` land after the read changes (T091 to T095), so no commit on the branch returns a peer that it cannot build.
+- PRs 5 and 6 merge into a feature branch, `branch-agnostic-links-ifc-3508`, created from `release-1.12` once PR 3 and PR #11220 are in it. The feature branch merges into `release-1.12` once both PRs are in it, so no release holds PR 5 without PR 6. Each PR is still reviewed on its own.
+- PR 5 keeps the peer existence check, FR-021, FR-022, FR-040 and open question 2.
+- PR 6 takes FR-023 and open question 1. FR-023 lands after the read changes (T091 to T095), so every commit on the feature branch passes its tests.
+- One migration, `m083`, converts shape 1 and removes shape 2 (R8). It ships in PR 6, after both write changes.
 - PR 6 lists every caller that reads the peers of a branch-agnostic relationship and then loads a peer on the request branch, and checks that each one handles a peer that does not exist there.
 
-**Rationale.** It moves the smallest set of work that depends on PR 6, so PR 5 still fixes the reads of relationships to branch-agnostic kinds on its own, and no PR leaves a read worse than before.
+**Rationale.** The migration's two shapes do not need two phases. They touch different links, so one migration can run every step. A split was needed only if PR 5 reached a release without PR 6: deletes would then still write shape 2 edges, and removing them would change reads on a branch before PR 6 can build the peer. The feature branch removes that case, so one migration and one upgrade step are enough.
 
 **Alternatives considered.**
 
+- Merge PR 5 into `release-1.12` on its own, with two migrations: `m083` for shape 1 in PR 5 and `m084` for shape 2 in PR 6. Rejected: it adds a second one-way migration and upgrade step only to release PR 5 earlier.
 - Keep FR-023 and shape 2 in PR 5, and bring PR 6's chosen-branch reads into PR 5. Rejected: that moves most of PR 6 into PR 5.
 - Keep them in PR 5 with a temporary check that hides the peer on B, removed in PR 6. Rejected: the check is written only to be removed, and it contradicts the clarified rule while it exists.
-- Move every write change and the whole migration to PR 6. Rejected: PR 6 is already the largest PR, and FR-021 and shape 1 have no dependency on it.
-- One migration in PR 6 for both shapes. Rejected for the same reason: shape 1 would wait for PR 6 although PR 5 changes the write that produces it.
+- Merge PRs 5 and 6 into one PR. Rejected: both are large, and the feature branch gives the same release result with two reviews.

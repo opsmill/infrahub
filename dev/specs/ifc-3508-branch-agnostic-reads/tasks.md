@@ -256,18 +256,17 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 - the peer existence check (FR-018 to FR-020);
 - the new delete writes and ranking for a branch-agnostic node (FR-021, FR-022);
-- migration `m083`, which converts shape 1 pairs (FR-025, FR-026);
 - the object conversion peer list (FR-040);
 - the documentation (FR-027).
 
 **Independent Test**: a role is linked to group G1 on the default branch; B is created; the role is removed from G1 on the default branch; G1 is deleted. Reading the role's groups on either branch does not return G1 and raises no error.
 
-**Base**: `origin/release-1.12`, after PR 3 and PR #11220 are in it. Branch: `peer-existence-check-ifc-3508`.
+**Base**: the feature branch `branch-agnostic-links-ifc-3508`, created from `origin/release-1.12` after PR 3 and PR #11220 are in it (research R13). Branch: `peer-existence-check-ifc-3508`.
 
 ### Gates and inventory
 
-- [ ] T060 [US5] Confirm PR 3 and PR #11220 are merged into `origin/release-1.12` (see T002). Then create a worktree for `peer-existence-check-ifc-3508` from it.
-- [ ] T062 [US5] Gate for open question 2: present research R7's evidence and recommendation (on the default branch, set `to` and write a `deleted` edge with the same `from`, as every user delete does) to the user, and stop. Record the answer under "Open Questions" in `spec.md` and in research R7. T075, T077, T078 and T080 depend on it.
+- [ ] T060 [US5] Confirm PR 3 and PR #11220 are merged into `origin/release-1.12` (see T002). Then create the feature branch `branch-agnostic-links-ifc-3508` from it, and a worktree for `peer-existence-check-ifc-3508` from the feature branch.
+- [ ] T062 [US5] Gate for open question 2: present research R7's evidence and recommendation (on the default branch, set `to` and write a `deleted` edge with the same `from`, as every user delete does) to the user, and stop. Record the answer under "Open Questions" in `spec.md` and in research R7. T075, T080, T128 and T130 depend on it.
 - [ ] T063 [US5] List every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, record whether it can read a branch-agnostic relationship or a relationship to a branch-agnostic kind, and whether it needs the check, in a table appended to `research.md` R6. Include `RelationshipCountPerNodeQuery`, the targeted uniqueness validation query, `DependentNodesQuery` and `backend/infrahub/core/validators/relationship/count.py`.
 
 ### Tests for User Story 5
@@ -319,17 +318,6 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
   All pass.
 
-### Migration for User Story 5
-
-- [ ] T077 [US5] Add the migration tests under `backend/tests/component/core/migrations/graph/m083_convert_global_deleted_link_edges/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following `m081_reanchor_number_pool_reservations`:
-  - build shape 1, shape 2 and one pair of another shape through the old write path, before T075;
-  - read at several timestamps before and after;
-  - assert that no shape 1 pair is left, that the shape 2 pair is unchanged and not counted, and that the other pair is unchanged and logged;
-  - run the migration twice.
-
-  Depends on T062.
-- [ ] T078 [US5] Add `backend/infrahub/core/migrations/graph/m083_convert_global_deleted_link_edges/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 82` and steps 1 and 3 of research R8, using data-model.md's shape rules. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 83 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on the base branch. Run T077.
-
 ### Measurement, documentation and delivery
 
 - [ ] T079 [US5] Add `backend/tests/benchmark/test_peer_existence_check.py` with three reads:
@@ -344,9 +332,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - the "Soft Deletes" correction that follows from T062.
 - [ ] T082 [P] [US5] Add changelog fragments:
   - `fixed`: reading the groups of a role after a group was deleted no longer fails, and relationships no longer return a node deleted in the read's branch;
-  - `fixed`: validating an object conversion no longer counts former peers;
-  - an upgrade note: migration `m083` is one-way.
-- [ ] T083 [US5] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against `release-1.12`. The description states the hard-delete exception and its reason (plan.md "Complexity Tracking"), the T063 table, the answer to open question 2, and the benchmark results.
+  - `fixed`: validating an object conversion no longer counts former peers.
+- [ ] T083 [US5] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against the feature branch. The description states the T063 table, the answer to open question 2, and the benchmark results.
 
 **Checkpoint**: US5 is complete. US6 can start.
 
@@ -362,11 +349,11 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - adding and saving links (FR-031, FR-032);
 - list queries (FR-033, FR-034);
 - the window form of filters and HFID lookup (FR-038, FR-039);
-- from User Story 5: no branch edge on a branch-agnostic relationship when a branch-aware node is deleted (FR-023), and migration `m084`, which removes shape 2 edges (FR-025), after the read changes (research R13).
+- from User Story 5: no branch edge on a branch-agnostic relationship when a branch-aware node is deleted (FR-023), and migration `m083`, which converts shape 1 pairs and removes shape 2 edges (FR-024 to FR-026), after the read changes (research R13).
 
 **Independent Test**: gadget G is linked to widget W through a branch-agnostic relationship and deleted on B. Reading W's gadgets on the default branch returns G. After G is renamed on B, the default branch's read shows the default branch's name.
 
-**Base**: PR 5's branch. Branch: `agnostic-relationship-reads-ifc-3508`.
+**Base**: PR 5's branch. It merges into the feature branch. Branch: `agnostic-relationship-reads-ifc-3508`.
 
 - [ ] T084 [US6] Create a worktree for `agnostic-relationship-reads-ifc-3508` from `peer-existence-check-ifc-3508`.
 - [ ] T085 [US6] Gate for open question 3:
@@ -441,15 +428,15 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - `backend/tests/component/core/test_manager_node.py::test_get_many_branch_agnostic`
   - `backend/tests/component/core/test_node_get_list_query.py::test_query_NodeGetListQuery_metadata_branch_agnostic`
 - [ ] T127 [US6] List every caller under `backend/infrahub/` that reads the peers of a branch-agnostic relationship and then loads a peer on the request branch (start from T063's table and `rg -n "get_peers|get_peer\(|query_peers|GetAllPeersIds" backend/infrahub`). For each, check that it handles a peer that does not exist on the request branch, or change it. Append the table to research R13 and to the PR description.
-- [ ] T128 [US6] Add the migration tests under `backend/tests/component/core/migrations/graph/m084_remove_branch_edges_of_agnostic_links/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following T077:
-  - build shape 2 pairs on the default branch and on a user branch through the old write path, before T129;
+- [ ] T128 [US6] Add the migration tests under `backend/tests/component/core/migrations/graph/m083_separate_global_and_branch_link_edges/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following `m081_reanchor_number_pool_reservations`:
+  - build shape 1 pairs, shape 2 pairs on the default branch and on a user branch, and one pair of another shape, through the old write paths, before T075 and T129;
   - read at several timestamps before and after, through the reads of T091-T095;
-  - assert that no shape 2 pair is left and that other edges are unchanged;
+  - assert that no shape 1 or shape 2 pair is left and that the other pair is unchanged and logged;
   - run the migration twice.
 
-  Depends on T061.
+  Depends on T061 and T062.
 - [ ] T129 [US6] In `backend/infrahub/core/query/relationship.py::RelationshipDeleteAllQuery`, for a branch-aware node, process only links whose `Relationship` vertex has `branch_support = "aware"`, on any branch including the default branch, so its branch-agnostic relationships get no branch edge (FR-023). `RetireNodeAgnosticFieldsQuery` already closes their `-global-` link once no live branch holds both ends. Depends on T091-T095 and T127.
-- [ ] T130 [US6] Add `backend/infrahub/core/migrations/graph/m084_remove_branch_edges_of_agnostic_links/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 83` and step 2 of research R8, as T061 decided for default-branch edges. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 84 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on the base branch. Run T128.
+- [ ] T130 [US6] Add `backend/infrahub/core/migrations/graph/m083_separate_global_and_branch_link_edges/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 82` and the three steps of research R8, using data-model.md's shape rules, with shape 2 as T061 decided for default-branch edges. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 83 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on `release-1.12`. Run T128.
 - [ ] T102 [US6] Run T061, T085-T090, T126 and T128, and:
   - `backend/tests/component/core/`
   - `backend/tests/component/graphql/`
@@ -463,8 +450,9 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T103 [US6] Run `backend/tests/benchmark/test_node_list_filter.py` (filters on one branch must match PR #11220's cost, FR-039), and add a branch-agnostic read with 50 live branches to `backend/tests/benchmark/test_peer_existence_check.py`. Record before and after in the PR description.
 - [ ] T104 [P] [US6] Update `docs/docs/branches/branch-agnostic-data.mdx`: a branch-agnostic relationship returns every peer that exists on a live branch, including on a branch that deleted the peer, and each peer shows the values of one branch, in the order of FR-029. Replace the part that describes what happens to a branch-agnostic relationship when a node is deleted on a branch. Run `uv run invoke docs.lint`.
 - [ ] T131 [P] [US6] Update `dev/knowledge/backend/database-schema.md`, next to the text T080 added: the rule that no pair of vertices holds both a `-global-` edge and a branch edge of the same type (FR-024), and that a branch-agnostic relationship has no branch edges.
-- [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch. A node deleted on one branch stays a peer of a branch-agnostic relationship until it is deleted on every branch. Add an upgrade note: migration `m084` is one-way.
-- [ ] T106 [US6] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against `release-1.12`. The description states the hard-delete exception of `m084` (plan.md "Complexity Tracking"), the answers to open questions 1 and 3, the T127 table and the benchmark results.
+- [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch. A node deleted on one branch stays a peer of a branch-agnostic relationship until it is deleted on every branch. Add an upgrade note: migration `m083` is one-way.
+- [ ] T106 [US6] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against the feature branch. The description states the hard-delete exception of `m083` and its reason (plan.md "Complexity Tracking"), the answers to open questions 1 and 3, the T127 table and the benchmark results.
+- [ ] T132 [US6] Once PRs 5 and 6 are merged into the feature branch, merge `origin/release-1.12` into it, run the pre-push checks in `quickstart.md` and the suites of T076 and T102, and open the PR from the feature branch against `release-1.12`. Its description links PRs 5 and 6 and repeats the hard-delete exception of `m083`.
 
 **Checkpoint**: all six stories are complete.
 
@@ -476,7 +464,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 **Independent Test**: link prefix X to pool P's `resources` on the default branch, create branch B, and delete X on B. Read P's `resources` on B with `node_metadata { active_on_branches }`: X is returned, and the list holds the default branch's name and not B.
 
-**Base**: PR 6's branch, rebased on `release-1.12` once PR 6 merges. Branch: `active-on-branches-ifc-3508`. This PR changes the GraphQL schema. The user approved the change on 2026-10-30 (spec Clarifications).
+**Base**: PR 6's branch, rebased on `release-1.12` once the feature branch merges. Branch: `active-on-branches-ifc-3508`. This PR changes the GraphQL schema. The user approved the change on 2026-10-30 (spec Clarifications).
 
 ### Setup for PR 7
 
@@ -533,7 +521,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T122 [US6] Add a case to `backend/tests/benchmark/test_graphql_query.py`: a read of a pool's `resources` with many peers and many live branches, with and without `active_on_branches`. Report the database hits of both, measured with `PROFILE`, in the PR description (FR-036). Without the field, the hits match PR 6's branch.
 - [ ] T123 [P] [US6] Update `docs/docs/branches/branch-agnostic-data.mdx` with `node_metadata { active_on_branches }`: what it lists, when it is `null`, and a query example on a pool's `resources`. Run `uv run invoke docs.lint`.
 - [ ] T124 [P] [US6] Add an `added` changelog fragment with the `creating-changelog-entries` skill. It says that a read of a branch-agnostic relationship, such as a pool's `resources`, can request `node_metadata { active_on_branches }` to view on which branches each peer exists.
-- [ ] T125 [US6] Run the pre-push checks in `quickstart.md`, and open the PR against `release-1.12`, based on PR 6 until PR 6 merges.
+- [ ] T125 [US6] Run the pre-push checks in `quickstart.md`, and open the PR against `release-1.12` once the feature branch has merged (T132).
 
 **Checkpoint**: all six stories and PR 7 are complete.
 
@@ -556,9 +544,9 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - US2 (PR 2): no dependency.
 - US3 (PR 3): no dependency. It blocks US4, US5 and US6.
 - US4 (PR 4): depends on US3.
-- US5 (PR 5): depends on US3 merged and PR #11220 in `release-1.12` (T002, T060). Its gate T062 blocks T075, T077, T078 and T080.
-- US6 (PR 6): depends on US5. Its gate T085 blocks T092, and its gate T061 blocks T128 and T130. T129 and T130 come after T091-T095 (research R13).
-- US6 part 2 (PR 7): depends on PR 6 (T110-T125). Its gate T119 applies only when `python_sdk` holds a typed copy of `InfrahubNodeMetadata`.
+- US5 (PR 5): depends on US3 merged and PR #11220 in `release-1.12` (T002, T060). It merges into the feature branch, not into `release-1.12`. Its gate T062 blocks T075, T080, T128 and T130.
+- US6 (PR 6): depends on US5. It merges into the feature branch. Its gate T085 blocks T092, and its gate T061 blocks T128 and T130. T129 and T130 come after T091-T095 (research R13). T132 merges the feature branch into `release-1.12` after PRs 5 and 6.
+- US6 part 2 (PR 7): depends on PR 6, and opens against `release-1.12` after T132 (T110-T125). Its gate T119 applies only when `python_sdk` holds a typed copy of `InfrahubNodeMetadata`.
 - Polish (T107-T109): after all PRs merge.
 
 ### Within each story
@@ -598,11 +586,11 @@ US1 (PR 1) and US3 (PR 3) close the effects users are most likely to hit: a priv
 
 1. US1, US2 and US3 in parallel. Each is reviewed and merged on its own.
 2. US4 once US3 is merged.
-3. US5 once PR #11220 is in `release-1.12`, after its gates are answered.
-4. US6 on top of US5.
+3. US5 once PR #11220 is in `release-1.12`, after its gates are answered, into the feature branch.
+4. US6 on top of US5, into the feature branch. The feature branch then merges into `release-1.12` (T132).
 5. PR 7 on top of PR 6.
 
-Each PR adds value on its own and leaves no read worse than before. That is why the peer existence check and the delete writes for a branch-agnostic node ship together in US5, and why the delete writes for a branch-aware node (FR-023) and migration `m084` ship in PR 6, after its read changes (research R13).
+Each PR adds value on its own and leaves no read worse than before. PRs 5 and 6 reach `release-1.12` together through the feature branch. That is why the peer existence check and the delete writes for a branch-agnostic node ship together in US5, and why the delete writes for a branch-aware node (FR-023) and migration `m083` ship in PR 6, after its read changes (research R13).
 
 ## Notes
 
