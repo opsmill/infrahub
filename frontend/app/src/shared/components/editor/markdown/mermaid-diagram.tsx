@@ -9,17 +9,17 @@ const MermaidDiagramContent = React.lazy(() => import("./mermaid-diagram-content
 const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
 
 interface MermaidDiagramProps {
-  source: string;
+  code: string;
 }
 
-export function MermaidDiagram({ source }: MermaidDiagramProps) {
+export function MermaidDiagram({ code }: MermaidDiagramProps) {
   return (
     <ErrorBoundary
-      fallback={<MermaidDiagramError message={LOAD_FAILED} source={source} />}
-      resetKeys={[source]}
+      fallback={<MermaidDiagramError message={LOAD_FAILED} code={code} />}
+      resetKeys={[code]}
     >
       <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
-        <MermaidDiagramContent source={source} />
+        <MermaidDiagramContent code={code} />
       </React.Suspense>
     </ErrorBoundary>
   );

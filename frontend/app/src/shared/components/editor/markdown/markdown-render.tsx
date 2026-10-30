@@ -10,7 +10,7 @@ import { classNames } from "@/shared/utils/common";
 
 const remarkPlugins = [remarkGfm, remarkBreaks];
 
-function getMermaidSource(preChildren: React.ReactNode): string | null {
+function getMermaidCode(preChildren: React.ReactNode): string | null {
   if (!React.isValidElement<{ className?: string; children?: unknown }>(preChildren)) return null;
   const { className, children } = preChildren.props;
   if (!className?.includes("language-mermaid")) return null;
@@ -19,10 +19,10 @@ function getMermaidSource(preChildren: React.ReactNode): string | null {
 
 const components: Components = {
   pre({ node: _node, children, ...props }) {
-    const source = getMermaidSource(children);
-    if (source === null) return <pre {...props}>{children}</pre>;
+    const code = getMermaidCode(children);
+    if (code === null) return <pre {...props}>{children}</pre>;
 
-    return <MermaidDiagram source={source} />;
+    return <MermaidDiagram code={code} />;
   },
 };
 

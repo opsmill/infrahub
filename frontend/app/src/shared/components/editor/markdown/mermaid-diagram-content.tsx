@@ -29,17 +29,17 @@ function loadDiagramType(type: DiagramType): Promise<boolean> {
   return pending;
 }
 
-function detectDiagramType(source: string): DiagramType | null {
+function detectDiagramType(code: string): DiagramType | null {
   try {
-    return detectType(source);
+    return detectType(code);
   } catch {
     return null;
   }
 }
 
-function renderDiagram(source: string, idPrefix: string): RenderResult | PeleError {
+function renderDiagram(code: string, idPrefix: string): RenderResult | PeleError {
   try {
-    return render(source, { ...RENDER_OPTIONS, idPrefix });
+    return render(code, { ...RENDER_OPTIONS, idPrefix });
   } catch (error) {
     if (error instanceof PeleError) return error;
     throw error;
@@ -47,17 +47,17 @@ function renderDiagram(source: string, idPrefix: string): RenderResult | PeleErr
 }
 
 interface MermaidDiagramContentProps {
-  source: string;
+  code: string;
 }
 
-export default function MermaidDiagramContent({ source }: MermaidDiagramContentProps) {
+export default function MermaidDiagramContent({ code }: MermaidDiagramContentProps) {
   const idPrefix = React.useId().replace(/[^\w-]/g, "");
-  const type = detectDiagramType(source);
+  const type = detectDiagramType(code);
   if (type && !registered(type)) React.use(loadDiagramType(type));
 
-  const diagram = renderDiagram(source, idPrefix);
+  const diagram = renderDiagram(code, idPrefix);
   if (diagram instanceof PeleError)
-    return <MermaidDiagramError message={diagram.message} source={source} />;
+    return <MermaidDiagramError message={diagram.message} code={code} />;
 
   return (
     <PanZoom className="bg-background">
