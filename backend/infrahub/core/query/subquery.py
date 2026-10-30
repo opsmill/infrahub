@@ -10,7 +10,6 @@ from .attribute import default_attribute_query_filter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.query import QueryElement
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 

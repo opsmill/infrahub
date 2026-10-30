@@ -107,7 +107,7 @@ class Migration080(ArbitraryMigration):
                 batch = await self._get_capture_diffs(
                     db=db, limit=config.SETTINGS.database.query_size_limit, after_uuid=after_uuid
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 errors.append(f"Unable to look up the generator capture diffs: {exc}")
                 break
             if batch.last_root_uuid is None:
@@ -120,7 +120,7 @@ class Migration080(ArbitraryMigration):
                     continue
                 try:
                     await diff_repository.delete_diff_roots(diff_root_uuids=list(root_uuids))
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     failed_roots.update(root_uuids)
                     errors.append(f"diff with roots {list(root_uuids)}: {exc}")
             del batch
