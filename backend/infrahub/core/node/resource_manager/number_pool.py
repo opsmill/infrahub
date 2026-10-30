@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub import lock
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from infrahub.pools.scope import AllocationScope
 
 from .. import Node
-from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -23,8 +20,8 @@ if TYPE_CHECKING:
 class CoreNumberPool(Node):
     """A pool hands out numbers through the resource pool contract every pool kind shares.
 
-    That contract delivers the database per call, so each call builds the repository and the number picker
-    before any work starts and runs the whole allocation on them.
+    That contract delivers the database per call, so each call builds the repository, the number picker and the
+    pool locker before any work starts and runs the whole allocation on them.
     """
 
     async def get_resource(
@@ -50,7 +47,9 @@ class CoreNumberPool(Node):
         """
         repository = NumberPoolRepository(db=db)
         picker = NumberPoolNumberPicker(number_reader=repository)
-        async with lock.registry.get(name=self._lock_name(division=division), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+        locker = NumberPoolLock(db=db)
+        # The picking lock comes first, as in a mutation, so a range change never waits on a holder queued behind it.
+        async with locker.picking(pool=self, division=division), locker.holding(pool_id=self.get_id()):
             if attribute_id is not None and reuse_reservation:
                 reservation = await repository.get_reservation(
                     pool_id=self.get_id(),
@@ -73,17 +72,3 @@ class CoreNumberPool(Node):
                     user_id=user_id,
                 )
             return number
-
-    def _lock_name(self, division: Division | None) -> str:
-        """Return the pool id, followed by the division key when the pool is scoped, so each division locks apart.
-
-        Raises:
-            ValidationError: When a division is given to a pool that has no allocation scope.
-
-        """
-        if division is None:
-            return self.get_id()
-        scope = AllocationScope.from_stored(value=self.get_attribute("allocation_scope").value, pool=self.get_id())
-        if scope.is_empty:
-            raise ValidationError(f"The pool {self.get_id()} has no allocation scope; a division cannot be applied")
-        return f"{self.get_id()}.{division.key}"

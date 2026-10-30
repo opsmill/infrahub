@@ -19,6 +19,7 @@ from tests.unit.pools.attribute_pool_applier.helpers import (
     POOL_ID,
     InMemoryNumberPoolFinder,
     PoolCall,
+    PoolLockLog,
     RecordingNumberAllocator,
     apply_on_create,
     make_ticket_attribute,
@@ -120,6 +121,27 @@ async def test_a_number_provided_on_update_is_attached_to_the_pool(
     assert ticket_id.value == 7
     assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
     assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
+
+
+async def test_an_attached_number_is_checked_against_ranges_read_while_the_pool_is_held(
+    applier: AttributePoolApplier, pool_lock_log: PoolLockLog
+) -> None:
+    ticket_id = make_ticket_id(payload={"value": 7, "from_pool": {"id": POOL_ID}}, saved=True)
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
+
+
+async def test_moving_a_saved_number_to_another_pool_reads_its_ranges_while_the_pool_is_held(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, pool_lock_log: PoolLockLog
+) -> None:
+    finder.tracking_pool_ids[ATTRIBUTE_ID] = OTHER_POOL_ID
+    ticket_id = make_ticket_id(payload={"value": None, "from_pool": {"id": POOL_ID}}, saved=True)
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
 
 
 async def test_an_attached_number_equal_to_the_schema_default_stops_being_a_default(
