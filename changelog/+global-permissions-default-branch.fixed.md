@@ -1,0 +1,1 @@
+Fixed a change made on a branch to the members of an account group, to the roles of a group or to the global permissions of a role changing an account's global permissions before the branch is merged: global permissions and the roles listed at login now come from the default branch, whatever branch the request is on.
