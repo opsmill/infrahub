@@ -15,6 +15,7 @@ from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -166,6 +167,7 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
@@ -412,6 +414,7 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
@@ -458,6 +461,7 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
@@ -681,6 +685,7 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=upserter,
             range_store_factory=NumberPoolRepository,

@@ -3,11 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.query.resource_manager import NumberPoolGetHeldOutsideRanges
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import (
@@ -138,10 +136,6 @@ class _HolderOnBranch:
 def _holding_branch(branches: Sequence[str]) -> str:
     """Return the branch to read a holder on: the default branch when it holds the number, else the first by name."""
     return registry.default_branch if registry.default_branch in branches else min(branches)
-
-
-def pool_lock(pool_id: str) -> lock.InfrahubLock:
-    return lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE)
 
 
 def range_bounds(ranges: Sequence[CoreNumberPoolRange]) -> list[NumberRangeBounds]:

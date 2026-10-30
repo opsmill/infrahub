@@ -36,6 +36,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -106,6 +107,7 @@ async def do_run_number_pool_validation(db: InfrahubDatabase) -> None:
     snps = SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
@@ -807,6 +809,7 @@ class TestSchemaPoolRemoval:
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=upserter,
             range_store_factory=NumberPoolRepository,

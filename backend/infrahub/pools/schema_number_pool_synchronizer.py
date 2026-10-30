@@ -3,10 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
-from infrahub import lock
 from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
@@ -28,6 +26,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_pool_locker import NumberPoolLocker
     from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
     from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
     from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
@@ -65,6 +64,7 @@ class SchemaNumberPoolSynchronizer:
         schema_manager: Schema manager for looking up schemas.
         range_store_factory: Builds the store that rewrites a pool's ranges, from the database running
             the reconciliation transaction.
+        pool_locker: Holds a pool alone while its ranges or scope change.
 
     """
 
@@ -75,10 +75,12 @@ class SchemaNumberPoolSynchronizer:
         schema_manager: SchemaManager,
         upserter: SchemaNumberPoolUpserter,
         range_store_factory: NumberPoolRangeStoreFactory,
+        pool_locker: NumberPoolLocker,
         log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
         self.scope_reader = scope_reader
+        self.pool_locker = pool_locker
         self.log = log or default_log
         self.schema_manager = schema_manager
         self.upserter = upserter
@@ -106,7 +108,7 @@ class SchemaNumberPoolSynchronizer:
             refreshed = resolver.refresh_names(scope=pool.scope, kind=pool.kind)
             if refreshed == pool.scope:
                 continue
-            async with lock.registry.get(name=pool.id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+            async with self.pool_locker.changing(pool_id=pool.id, pool_name=pool.name):
                 number_pool = await NodeManager.get_one(
                     db=self.db, id=pool.id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
                 )
@@ -139,7 +141,7 @@ class SchemaNumberPoolSynchronizer:
     async def _delete_pool(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
         """Delete a pool with its ranges and end the records it holds, so each number stays on its object untracked."""
         pool_id = schema_number_pool.get_id()
-        async with lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+        async with self.pool_locker.changing(pool_id=pool_id, pool_name=schema_number_pool.name.value):
             await self._range_store_factory(db=self.db).delete_pool(pool_id=pool_id, user_id=user_id)
 
     async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
@@ -160,7 +162,7 @@ class SchemaNumberPoolSynchronizer:
 
         # One timestamp and one transaction, so the pool never shows a half-reconciled range set.
         async with (
-            lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE),
+            self.pool_locker.changing(pool_id=pool_id, pool_name=schema_number_pool.name.value),
             within_transaction(db=self.db) as dbt,
         ):
             at = Timestamp()

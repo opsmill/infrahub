@@ -14,6 +14,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
@@ -92,6 +93,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         snps = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=upserter,
             range_store_factory=NumberPoolRepository,

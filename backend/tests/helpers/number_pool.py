@@ -23,6 +23,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Rel
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.number_pool_space import SchemaAttributeDomains
@@ -73,6 +74,7 @@ async def provision_schema_number_pools(db: InfrahubDatabase) -> None:
     synchronizer = SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
