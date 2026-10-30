@@ -20,7 +20,7 @@ The previous peer of a cardinality-one relationship carries only `peer_id_previo
 | Path | Entry point | Where the labels come from |
 |------|-------------|----------------------------|
 | Node and relationship mutations | `build_relationship_changelog_getter()` (`core/changelog/builder.py`) | the mutated node's display label, and its HFID when the node holds it, come from the saved node; the peers' labels, and an HFID the node does not hold, are resolved in one batched load |
-| Branch merge and rebase | `build_diff_changelog_collector()` (`core/changelog/builder.py`) | display labels come from the enriched diff; HFIDs are resolved by `ChangelogHfidResolver` |
+| Branch merge and rebase | `build_diff_changelog_collector()` (`core/changelog/builder.py`) | display labels come from the enriched diff; HFIDs, and the peer display labels the diff lacks, are resolved by `ChangelogHfidResolver` |
 
 Build both through `builder.py`: it is the only place that wires the label loader, so every consumer
 reads labels the same way.
@@ -77,6 +77,11 @@ attribute changes, so `ChangelogHfidResolver` (`hfid_resolver.py`) fills them af
   and on the rebased branch after a rebase
 - a node or peer whose kind was dropped by a schema migration stays unresolved, even when the diff
   records its HFID, and never joins the batch, so it cannot fail the load for the others
+
+The diff reads the label of a removed peer on the base branch, so a peer created on the merged
+branch and recorded as removed has no display label in the diff. The resolver fills it with the
+display label of the peer's own changelog when the peer changed too, and otherwise loads it with the
+peer's HFID, so a peer never carries an HFID without its display label.
 
 ## Reading labels
 
