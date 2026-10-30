@@ -23,6 +23,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Rel
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.number_pool_space import SchemaAttributeDomains
@@ -73,6 +74,7 @@ async def provision_schema_number_pools(db: InfrahubDatabase) -> None:
     synchronizer = SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
@@ -492,14 +494,18 @@ def vlan_id(node: Node) -> int:
 
 
 def pool_lock_events(timeline: LockTimeline, pool: CoreNumberPool, after: int) -> list[tuple[str, LockAction]]:
-    """Return each acquire and release of the pool's locks recorded after the event `after`, in order."""
-    prefix = f"resource_pool.{pool.id}"
+    """Return each acquire and release of the locks allocations take to pick from the pool, after the event `after`.
+
+    The pool lock itself, which allocations share and range changes take alone, is left out.
+    """
+    prefix = f"resource_pool.{pool.id}."
     return [
         (event.name, event.action)
         for event in timeline.events
         if event.seq > after
         and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
         and event.name.startswith(prefix)
+        and ":" not in event.name
     ]
 
 

@@ -483,7 +483,7 @@ async def test_an_unscoped_pool_keeps_allocating_from_one_space(
 ) -> None:
     site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
     site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
-    lock_name = f"resource_pool.{unscoped_device_pool.id}"
+    lock_name = f"resource_pool.{unscoped_device_pool.id}.all"
     start = recording_lock_timeline.checkpoint("writes")
 
     devices = [
@@ -652,7 +652,7 @@ class TestObjectTemplateNamingAPool:
             if case.expected_division in dataset.sites
             else case.expected_division
         )
-        expected_lock_name = f"resource_pool.{pool.id}" + (f".{division_key}" if division_key is not None else "")
+        expected_lock_name = f"resource_pool.{pool.id}.{division_key or 'all'}"
         start = recording_lock_timeline.checkpoint("write")
 
         device = await create_device_in_own_session(db=db, branch=branch, payload=payload)

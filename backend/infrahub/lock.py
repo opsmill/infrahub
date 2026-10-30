@@ -5,7 +5,9 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -17,12 +19,18 @@ from redis.exceptions import LockNotOwnedError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
+from infrahub.exceptions import LockError, LockWaitTimeoutError
+from infrahub.locks.shared_holders.cache import CacheSharedHolderStore
+from infrahub.locks.shared_holders.local import LocalSharedHolderStore
+from infrahub.locks.shared_holders.redis import RedisSharedHolderStore
 from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable
     from types import TracebackType
 
+    from infrahub.locks.shared_holders import SharedHolderStore
     from infrahub.services import InfrahubServices
 
 
@@ -291,6 +299,126 @@ class InfrahubLock:
 
         return self.local.locked()
 
+    def held_by_current_task(self) -> bool:
+        return self._recursion_var.get() is not None
+
+
+@dataclass(frozen=True)
+class _SharedHold:
+    depth: int
+    key: str | None
+    renewal: asyncio.Task[None] | None
+
+
+class InfrahubSharedLock:
+    """A lock that many holders take in shared mode at once, and a single holder takes in exclusive mode.
+
+    The exclusive mode is the plain lock of the same name, which a shared request also takes while it records
+    itself, so a shared request queues behind an exclusive one that waits for the shared holders to finish.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        mutex: InfrahubLock,
+        store: SharedHolderStore,
+        ttl_seconds: int,
+        wait_seconds: float,
+        poll_seconds: float = 0.1,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self.name = name
+        self._mutex = mutex
+        self._store = store
+        self._ttl_seconds = ttl_seconds
+        self._wait_seconds = wait_seconds
+        self._poll_seconds = poll_seconds
+        self._clock = clock
+        self._key_prefix = f"{LOCK_PREFIX}.shared.{name}."
+        self._hold: ContextVar[_SharedHold | None] = ContextVar(f"infrahub_shared_lock_{name}", default=None)
+
+    @asynccontextmanager
+    async def shared(self) -> AsyncGenerator[None]:
+        await self.acquire_shared()
+        try:
+            yield
+        finally:
+            await self.release_shared()
+
+    @asynccontextmanager
+    async def exclusive(self) -> AsyncGenerator[None]:
+        await self.acquire_exclusive()
+        try:
+            yield
+        finally:
+            await self.release_exclusive()
+
+    async def acquire_shared(self) -> None:
+        hold = self._hold.get()
+        if hold is not None:
+            self._hold.set(replace(hold, depth=hold.depth + 1))
+            return
+        if self._mutex.held_by_current_task():
+            self._hold.set(_SharedHold(depth=1, key=None, renewal=None))
+            return
+
+        key = f"{self._key_prefix}{uuid.uuid4()}"
+        token = f"{current_timestamp()}{_LOCK_TOKEN_SEPARATOR}{WORKER_IDENTITY}"
+        with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, "shared").time():
+            async with self._mutex:
+                await self._store.add(key=key, token=token, ttl_seconds=self._ttl_seconds)
+        renewal = asyncio.create_task(self._renew(key=key, token=token))
+        self._hold.set(_SharedHold(depth=1, key=key, renewal=renewal))
+
+    async def release_shared(self) -> None:
+        hold = self._hold.get()
+        if hold is None:
+            raise RuntimeError("Lock release attempted without ownership context.")
+        if hold.depth > 1:
+            self._hold.set(replace(hold, depth=hold.depth - 1))
+            return
+
+        self._hold.set(None)
+        if hold.renewal is not None:
+            hold.renewal.cancel()
+            await asyncio.gather(hold.renewal, return_exceptions=True)
+        if hold.key is not None:
+            await self._store.remove(key=hold.key)
+
+    async def acquire_exclusive(self) -> None:
+        """Take the lock alone, once every shared holder has released it.
+
+        Raises:
+            LockError: When the current task holds the lock in shared mode.
+            LockWaitTimeoutError: When shared holders remain after the wait limit; the lock is not held then.
+
+        """
+        if self._hold.get() is not None:
+            raise LockError(f"The lock {self.name} is held in shared mode by this task and cannot be made exclusive")
+
+        await self._mutex.acquire()
+        try:
+            deadline = self._clock() + self._wait_seconds
+            while await self._store.has_holders(pattern=f"{self._key_prefix}*"):
+                if self._clock() >= deadline:
+                    raise LockWaitTimeoutError(name=self.name, wait_seconds=self._wait_seconds)
+                await sleep(self._poll_seconds)
+        except BaseException:
+            await self._mutex.release()
+            raise
+
+    async def release_exclusive(self) -> None:
+        await self._mutex.release()
+
+    async def _renew(self, key: str, token: str) -> None:
+        while True:
+            await sleep(self._ttl_seconds / 3)
+            try:
+                await self._store.add(key=key, token=token, ttl_seconds=self._ttl_seconds)
+            # A loop that must keep renewing after one failed write, since the record lapses once renewals stop.
+            except Exception:
+                log.exception("Failed to renew a shared lock record", lock=self.name)
+
 
 class LockNameGenerator:
     local = "local"
@@ -365,7 +493,9 @@ class InfrahubLockRegistry:
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
+        self.shared_locks: dict[str, InfrahubSharedLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
+        self.shared_holder_store = self._build_shared_holder_store(service=service)
 
     def get_existing(
         self,
@@ -396,6 +526,28 @@ class InfrahubLockRegistry:
 
     def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
         return InfrahubLock(name=name, connection=self.connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
+
+    def get_shared(self, name: str, namespace: str | None = None) -> InfrahubSharedLock:
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace)
+        if lock_name not in self.shared_locks:
+            self.shared_locks[lock_name] = self._create_shared_lock(name=lock_name)
+        return self.shared_locks[lock_name]
+
+    def _create_shared_lock(self, name: str) -> InfrahubSharedLock:
+        return InfrahubSharedLock(
+            name=name,
+            mutex=self.get(name=name),
+            store=self.shared_holder_store,
+            ttl_seconds=config.SETTINGS.cache.shared_lock_ttl_secs,
+            wait_seconds=config.SETTINGS.cache.exclusive_lock_wait_secs,
+        )
+
+    def _build_shared_holder_store(self, service: InfrahubServices | None) -> SharedHolderStore:
+        if isinstance(self.connection, redis.Redis):
+            return RedisSharedHolderStore(connection=self.connection)
+        if service is not None and self.connection is not None:
+            return CacheSharedHolderStore(cache=service.cache)
+        return LocalSharedHolderStore()
 
     def local_schema_lock(self) -> InfrahubLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)

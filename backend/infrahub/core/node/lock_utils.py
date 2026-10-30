@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import GenericSchema
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_locker import RESOURCE_POOL_LOCK_NAMESPACE, NumberPoolLock
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 
 
@@ -94,11 +94,8 @@ def _any_subtype_has_count_constraint(
 
 
 def _attribute_pool_lock_name(from_pool: dict[str, Any]) -> str:
-    """Return the pool's lock name, divided by the writer's division when the pool has a scope."""
-    division_key = from_pool.get("division")
-    if division_key is not None:
-        return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}.{division_key}"
-    return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{from_pool['id']}"
+    """Return the lock that allocations take to pick a number from the pool, per division when the pool has a scope."""
+    return NumberPoolLock.picking_lock_name(pool_id=from_pool["id"], division_key=from_pool.get("division"))
 
 
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:

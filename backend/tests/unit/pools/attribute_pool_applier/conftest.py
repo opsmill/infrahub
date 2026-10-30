@@ -12,7 +12,9 @@ from tests.unit.pools.attribute_pool_applier.helpers import (
     InMemoryAttributeBranchValues,
     InMemoryNumberPoolFinder,
     InMemoryPoolRangeReader,
+    PoolLockLog,
     RecordingNumberAllocator,
+    RecordingPoolLocker,
     UnscopedDivisionReader,
 )
 from tests.unit.pools.helpers import InMemoryNumberPool
@@ -35,13 +37,24 @@ def allocator() -> RecordingNumberAllocator:
 
 
 @pytest.fixture
-def range_reader() -> InMemoryPoolRangeReader:
+def pool_lock_log() -> PoolLockLog:
+    return PoolLockLog()
+
+
+@pytest.fixture
+def pool_locker(pool_lock_log: PoolLockLog) -> RecordingPoolLocker:
+    return RecordingPoolLocker(log=pool_lock_log)
+
+
+@pytest.fixture
+def range_reader(pool_lock_log: PoolLockLog) -> InMemoryPoolRangeReader:
     return InMemoryPoolRangeReader(
+        log=pool_lock_log,
         ranges_by_pool_id={
             POOL_ID: [PoolRange(id="tickets-range", start=1, end=100)],
             OTHER_POOL_ID: [PoolRange(id="other-tickets-range", start=1, end=100)],
             OTHER_ATTRIBUTE_POOL_ID: [PoolRange(id="titles-range", start=1, end=100)],
-        }
+        },
     )
 
 
@@ -56,6 +69,7 @@ def applier(
     allocator: RecordingNumberAllocator,
     range_reader: InMemoryPoolRangeReader,
     branch_values: InMemoryAttributeBranchValues,
+    pool_locker: RecordingPoolLocker,
 ) -> AttributePoolApplier:
     return AttributePoolApplier(
         pool_finder=finder,
@@ -64,4 +78,5 @@ def applier(
         division_reader=UnscopedDivisionReader(),
         range_reader=range_reader,
         branch_values_reader=branch_values,
+        pool_locker=pool_locker,
     )
