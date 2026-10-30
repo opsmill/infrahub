@@ -47,10 +47,13 @@ A save puts on the changelog only the HFID the node holds, as loaded from storag
 save itself, and never computes it from the node's fields: a node loaded with only some of its fields
 would compute it from values it does not hold. A node loaded without its HFID leaves it unset, and
 `RelationshipChangelogGetter.enrich()` reads the stored one when the event is built. The display
-label and computed attribute mutations load only some fields and emit their event without building
-secondaries, so they call `enrich()` themselves. The HFID mutation (`graphql/mutations/hfid.py`) and
-the recompute bulk write (`core/recompute/bulk_write.py`) emit without `enrich()`: the first loads the
-node's HFID and the second loads the whole node, so their changelogs already hold it.
+label mutation loads only some fields and emits its event without building secondaries, so it calls
+`enrich()` itself. The HFID mutation (`graphql/mutations/hfid.py`), the computed attribute mutation
+(`graphql/mutations/computed_attribute.py`) and the recompute bulk write
+(`core/recompute/bulk_write.py`) emit without `enrich()`: the first loads the node's HFID and the
+other two load the whole node, so their changelogs already hold it. The computed attribute mutation
+must load the whole node because the display label and HFID it recomputes can read attributes other
+than the one it writes.
 
 The events emitted for nodes deleted in the same cascade, and for nodes a mutation creates as a side
 effect, carry the changelog their own save built and do not go through `enrich()`. Their relationship
