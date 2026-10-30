@@ -1,13 +1,9 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { render } from "../../../../tests/components/render";
 import { ProfileTabs } from "./profile-tabs";
 
 describe("ProfileTabs", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("renders the core profile tabs", async () => {
     const component = await render(<ProfileTabs />);
 

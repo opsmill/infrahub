@@ -1078,3 +1078,41 @@ class TestIpamAvailableNodes(TestInfrahubApp):
             (node["node"]["__typename"], node["node"]["display_label"])
             for node in response.data["BuiltinIPPrefix"]["edges"]
         ]
+
+    async def test_two_next_available_fields_in_one_request_both_resolve(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        ip_dataset_ranges: dict[str, Node],
+        ip_dataset_available_prefixes: dict[str, Node],
+    ) -> None:
+        query = """
+        query($address_prefix: String!, $prefix_prefix: String!) {
+            InfrahubIPAddressGetNextAvailable(prefix_id: $address_prefix) {
+                address
+            }
+            InfrahubIPPrefixGetNextAvailable(prefix_id: $prefix_prefix, prefix_length: 27) {
+                prefix
+            }
+        }
+        """
+
+        default_branch.update_schema_hash()
+        # one session for the whole request, as the GraphQL app opens it
+        async with db.start_session() as request_db:
+            gql_params = await prepare_graphql_params(db=request_db, branch=default_branch)
+            response = await graphql(
+                schema=gql_params.schema,
+                source=query,
+                context_value=gql_params.context,
+                variable_values={
+                    "address_prefix": ip_dataset_ranges["net_free_start"].id,
+                    "prefix_prefix": ip_dataset_available_prefixes["net_free_end"].id,
+                },
+            )
+
+        assert response.errors is None
+        assert response.data == {
+            "InfrahubIPAddressGetNextAvailable": {"address": "10.0.2.1/29"},
+            "InfrahubIPPrefixGetNextAvailable": {"prefix": "10.0.1.32/27"},
+        }

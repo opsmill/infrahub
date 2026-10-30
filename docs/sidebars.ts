@@ -145,6 +145,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
             { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
+            { type: 'doc', id: 'menu/nested-menus', label: 'Nested menus' },
           ],
         },
         {

@@ -25,7 +25,7 @@ from infrahub.workers.dependencies import build_message_bus
 from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
-    from aio_pika.abc import AbstractIncomingMessage
+    from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
     from fast_depends import Provider
 
     from infrahub.config import BrokerSettings
@@ -145,6 +145,12 @@ async def rabbitmq_api(rabbitmq: None) -> RabbitMQManager:
     await manager.delete_virtual_host()
     await manager.create_virtual_host()
     return manager
+
+
+@pytest.fixture
+async def rabbitmq_api_quorum(rabbitmq_api: RabbitMQManager) -> RabbitMQManager:
+    rabbitmq_api.settings.queue_type = config.BrokerQueueType.QUORUM
+    return rabbitmq_api
 
 
 async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
@@ -339,6 +345,95 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
         )
         in agent_bindings
     )
+
+
+async def test_rabbitmq_initial_setup_quorum_queues(rabbitmq_api_quorum: RabbitMQManager) -> None:
+    """Validates that the durable queues are quorum queues while the per-process queues stay classic."""
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api_quorum.settings, component_type=ComponentType.API_SERVER)
+    api_queues = await rabbitmq_api_quorum.get_queues()
+    await bus.shutdown()
+
+    assert sorted(api_queues, key=lambda queue: queue.name) == [
+        Queue(
+            name=f"api-callback-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
+        ),
+        Queue(
+            name=f"api-events-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
+        ),
+        Queue(
+            name="infrahub.delay.five_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 5000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(
+            name="infrahub.delay.ten_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 10000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(
+            name="infrahub.delay.twenty_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 20000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(name="infrahub.rpcs", arguments={"x-queue-type": "quorum"}, durable=True, exclusive=False),
+    ]
+
+
+async def test_rabbitmq_rpc_through_quorum_queue(
+    rabbitmq_api_quorum: RabbitMQManager, dependency_provider: Provider
+) -> None:
+    """Validates that a git agent consumes a request from the quorum queue and replies to the API server."""
+    api_bus = await RabbitMQMessageBus.new(
+        settings=rabbitmq_api_quorum.settings, component_type=ComponentType.API_SERVER
+    )
+    agent_bus = await RabbitMQMessageBus.new(
+        settings=rabbitmq_api_quorum.settings, component_type=ComponentType.GIT_AGENT
+    )
+    with override_dependency(build_message_bus, lambda: agent_bus, dependency_provider=dependency_provider):
+        response = await api_bus.rpc(
+            message=messages.SendEchoRequest(message="Through a quorum queue"),
+            response_class=SendEchoRequestResponse,
+        )
+    await agent_bus.shutdown()
+    await api_bus.shutdown()
+
+    assert response.data.response == "Reply to: Through a quorum queue"
+
+
+# The message stays in the delay queue for its time to live before it is dead-lettered back to the RPC queue,
+# so the poll covers several times that period.
+_DELAYED_MESSAGE_POLL_ATTEMPTS = 300
+_DELAYED_MESSAGE_POLL_INTERVAL = 0.1
+
+
+async def _wait_for_message(queue: AbstractQueue) -> AbstractIncomingMessage | None:
+    for _ in range(_DELAYED_MESSAGE_POLL_ATTEMPTS):
+        message = await queue.get(no_ack=True, fail=False)
+        if message is not None:
+            return message
+        await asyncio.sleep(_DELAYED_MESSAGE_POLL_INTERVAL)
+    return None
+
+
+@pytest.mark.parametrize("queue_type", [config.BrokerQueueType.CLASSIC, config.BrokerQueueType.QUORUM])
+async def test_rabbitmq_delayed_message_returns_to_rpc_queue(
+    rabbitmq_api: RabbitMQManager, queue_type: config.BrokerQueueType
+) -> None:
+    """Validates that a delayed message is dead-lettered from its delay queue back to the RPC queue."""
+    rabbitmq_api.settings.queue_type = queue_type
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+
+    await bus.send(message=messages.SendEchoRequest(message="delayed"), delay=MessageTTL.FIVE)
+    queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.rpcs")
+    delivered = await _wait_for_message(queue=queue)
+    await bus.shutdown()
+
+    assert delivered is not None
+    assert delivered.routing_key == "send.echo.request"
+    assert messages.SendEchoRequest(**ujson.loads(delivered.body)).message == "delayed"
 
 
 async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:

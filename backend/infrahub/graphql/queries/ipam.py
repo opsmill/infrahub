@@ -31,27 +31,26 @@ class IPAddressGetNextAvailable(ObjectType):
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(
-            id=prefix_id, kind=BuiltinIPPrefix, db=graphql_context.db, branch=graphql_context.branch
-        )
+        async with graphql_context.db.start_session(read_only=True) as db:
+            prefix = await NodeManager.get_one(id=prefix_id, kind=BuiltinIPPrefix, db=db, branch=graphql_context.branch)
 
-        if not prefix:
-            raise NodeNotFoundError(
-                branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
+            if not prefix:
+                raise NodeNotFoundError(
+                    branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
+                )
+
+            ip_prefix = ipaddress.ip_network(prefix.prefix.value)  # type: ignore[attr-defined]
+            prefix_length = prefix_length or ip_prefix.prefixlen
+
+            if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
+                raise ValidationError(input_value="Invalid prefix length for current selected prefix")
+
+            namespace = await prefix.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+            allocator = IPAMResourceAllocator(db=db, namespace=namespace, branch=graphql_context.branch)
+            next_address = await allocator.get_next_address(
+                ip_prefix=ip_prefix,
+                is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
             )
-
-        ip_prefix = ipaddress.ip_network(prefix.prefix.value)  # type: ignore[attr-defined]
-        prefix_length = prefix_length or ip_prefix.prefixlen
-
-        if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
-            raise ValidationError(input_value="Invalid prefix length for current selected prefix")
-
-        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
-        allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
-        next_address = await allocator.get_next_address(
-            ip_prefix=ip_prefix,
-            is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
-        )
 
         if not next_address:
             raise IndexError("No addresses available in prefix")
@@ -71,21 +70,20 @@ class IPPrefixGetNextAvailable(ObjectType):
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(
-            id=prefix_id, db=graphql_context.db, branch=graphql_context.branch, kind=BuiltinIPPrefix
-        )
+        async with graphql_context.db.start_session(read_only=True) as db:
+            prefix = await NodeManager.get_one(id=prefix_id, db=db, branch=graphql_context.branch, kind=BuiltinIPPrefix)
 
-        if not prefix:
-            raise NodeNotFoundError(
-                branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
-            )
+            if not prefix:
+                raise NodeNotFoundError(
+                    branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
+                )
 
-        ip_prefix = prefix.prefix.obj
-        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
-        allocator = IPAMResourceAllocator(db=graphql_context.db, namespace=namespace, branch=graphql_context.branch)
+            ip_prefix = prefix.prefix.obj
+            namespace = await prefix.ip_namespace.get_peer(db=db)
+            allocator = IPAMResourceAllocator(db=db, namespace=namespace, branch=graphql_context.branch)
 
-        # Build available pool by removing existing subnets from parent prefix
-        subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
+            # Build available pool by removing existing subnets from parent prefix
+            subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
         available_pool = IPSet([str(ip_prefix)])
         for subnet in subnets:
             available_pool.remove(str(subnet.prefix))

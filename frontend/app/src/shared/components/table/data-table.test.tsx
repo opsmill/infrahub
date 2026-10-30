@@ -1,3 +1,4 @@
+import { ScrollArea } from "@infrahub/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { describe, expect, test } from "vitest";
 
@@ -167,6 +168,31 @@ describe("DataTable first column overflow", () => {
       Number(getComputedStyle(document.querySelector('[data-testid="actions-cell"]')!).zIndex) || 0;
     for (const cell of footerCells) {
       expect(Number(getComputedStyle(cell).zIndex) || 0).toBeGreaterThan(actionsZ);
+    }
+  });
+
+  test("keeps both scrollbars above the sticky footer and row actions", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <ScrollArea scrollX type="always" className="h-60 w-40">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
+      </ScrollArea>
+    );
+
+    // THEN
+    for (const orientation of ["horizontal", "vertical"]) {
+      const scrollbar = component.container.querySelector(`[data-orientation="${orientation}"]`)!;
+      const rect = scrollbar.getBoundingClientRect();
+      const topmost = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2
+      );
+      expect(scrollbar.contains(topmost), orientation).toBe(true);
     }
   });
 

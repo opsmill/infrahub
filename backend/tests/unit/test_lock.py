@@ -12,6 +12,7 @@ from infrahub.lock import (
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
     InfrahubLockRegistry,
     get_worker_id_from_lock_token,
+    initialize_lock,
 )
 
 
@@ -128,7 +129,7 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
     for init_lock in init_locks:
         assert init_lock.ttl == expected_ttl
-        assert init_lock.remote.timeout == expected_ttl
+        assert init_lock.remote.ttl == expected_ttl
 
 
 async def test_regular_locks_have_no_ttl() -> None:
@@ -139,7 +140,7 @@ async def test_regular_locks_have_no_ttl() -> None:
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
     assert regular_lock.ttl is None
-    assert regular_lock.remote.timeout is None
+    assert regular_lock.remote.ttl is None
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
@@ -171,3 +172,55 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "outer released",
         "waiter acquired",
     ]
+
+
+@pytest.fixture
+def redis_driver_without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
+    monkeypatch.setattr(lock, "registry", None)
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_keeps_a_redis_registry_built_from_the_same_arguments() -> None:
+    initialize_lock()
+    first = lock.registry
+
+    initialize_lock()
+
+    assert lock.registry is first
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_replaces_a_redis_registry_with_a_local_one() -> None:
+    initialize_lock()
+    redis_registry = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not redis_registry
+    assert lock.registry.connection is None
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_rebuilds_a_local_registry() -> None:
+    """Fixtures call it to start from fresh locks, which a kept registry would not give them."""
+    initialize_lock(local_only=True)
+    first = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not first
+
+
+@pytest.mark.usefixtures("redis_driver_without_registry")
+def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initialize_lock()
+    first = lock.registry
+
+    monkeypatch.setattr(config.SETTINGS.cache, "address", "other-cache")
+    initialize_lock()
+
+    assert lock.registry is not first
+    assert lock.registry.connection_url != first.connection_url

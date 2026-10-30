@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
+    from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.results import PathData
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -144,7 +145,9 @@ class PathTraversalInput(InputObjectType):
     )
 
 
-async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) -> dict[str, dict[str, Any]]:
+async def _get_node_labels(
+    db: InfrahubDatabase, graphql_context: GraphqlContext, node_ids: set[str]
+) -> dict[str, dict[str, Any]]:
     """Load nodes by id and return per-uuid {label, display_label, hfid}.
 
     `label` is the schema-level label for the node's kind; `display_label` is
@@ -155,7 +158,7 @@ async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) 
         return labels_map
 
     loaded_nodes = await NodeManager.get_many(
-        db=graphql_context.db,
+        db=db,
         branch=graphql_context.branch,
         at=graphql_context.at,
         ids=list(node_ids),
@@ -168,8 +171,8 @@ async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) 
             schema_label_cache[kind] = _schema_label_for_kind(graphql_context=graphql_context, kind=kind)
         labels_map[node_id] = {
             "label": schema_label_cache[kind],
-            "display_label": await node.get_display_label(db=graphql_context.db),
-            "hfid": (await node.get_hfid(db=graphql_context.db)) or [],
+            "display_label": await node.get_display_label(db=db),
+            "hfid": (await node.get_hfid(db=db)) or [],
         }
     return labels_map
 
@@ -363,99 +366,100 @@ async def path_traversal_resolver(
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
 
-    source_node: Node | None = await NodeManager.get_one(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        at=graphql_context.at,
-        id=source_id,
-    )
-    if not source_node:
-        raise GraphQLError(f"Source node not found: {source_id}")
-
-    destination_node: Node | None = await NodeManager.get_one(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        at=graphql_context.at,
-        id=destination_id,
-    )
-    if not destination_node:
-        raise GraphQLError(f"Destination node not found: {destination_id}")
-
-    user_filters = UserFilters.from_graphql_input(data)
-    try:
-        planner = SchemaPlanner(
-            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
+    async with graphql_context.db.start_session(read_only=True) as db:
+        source_node: Node | None = await NodeManager.get_one(
+            db=db,
             branch=graphql_context.branch,
-            permission_resolver=graphql_context.active_permissions.resolver,
+            at=graphql_context.at,
+            id=source_id,
         )
-        plan = planner.plan(
-            source_kind=source_node.get_kind(),
-            terminal_predicate=TerminalById(node_id=destination_id, kind=destination_node.get_kind()),
-            max_depth=int(max_depth),
-            user_filters=user_filters,
-        )
-    except ValueError as exc:
-        raise GraphQLError(str(exc)) from exc
+        if not source_node:
+            raise GraphQLError(f"Source node not found: {source_id}")
 
-    truncated_at_depth: int | None = None
-    if plan.is_empty:
-        # No schema route survives planning, return an empty result
-        path_data_list: list[PathData] = []
-    else:
-        executor = PathTraversalExecutor(
-            db=graphql_context.db,
+        destination_node: Node | None = await NodeManager.get_one(
+            db=db,
             branch=graphql_context.branch,
-            renderer=GraphTraversalCypherRenderer(
-                branch=graphql_context.branch,
-                default_branch_name=registry.default_branch,
-            ),
-            query_runner=DefaultQueryRunner(),
-            timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
+            at=graphql_context.at,
+            id=destination_id,
         )
+        if not destination_node:
+            raise GraphQLError(f"Destination node not found: {destination_id}")
+
+        user_filters = UserFilters.from_graphql_input(data)
         try:
-            result = await executor.run(
-                plan=plan,
-                source_id=source_id,
-                max_paths=max_paths,
-                shortest_paths_only=shortest_paths_only,
-                at=graphql_context.at,
+            planner = SchemaPlanner(
+                schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
+                branch=graphql_context.branch,
+                permission_resolver=graphql_context.active_permissions.resolver,
             )
-            path_data_list = result.paths
-            truncated_at_depth = result.truncated_at_depth
+            plan = planner.plan(
+                source_kind=source_node.get_kind(),
+                terminal_predicate=TerminalById(node_id=destination_id, kind=destination_node.get_kind()),
+                max_depth=int(max_depth),
+                user_filters=user_filters,
+            )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
 
-    all_node_ids: set[str] = {source_id, destination_id}
-    for path_data in path_data_list:
-        all_node_ids.add(path_data.start_node.uuid)
-        all_node_ids.update(hop.node.uuid for hop in path_data.hops)
+        truncated_at_depth: int | None = None
+        if plan.is_empty:
+            # No schema route survives planning, return an empty result
+            path_data_list: list[PathData] = []
+        else:
+            executor = PathTraversalExecutor(
+                db=db,
+                branch=graphql_context.branch,
+                renderer=GraphTraversalCypherRenderer(
+                    branch=graphql_context.branch,
+                    default_branch_name=registry.default_branch,
+                ),
+                query_runner=DefaultQueryRunner(),
+                timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
+            )
+            try:
+                result = await executor.run(
+                    plan=plan,
+                    source_id=source_id,
+                    max_paths=max_paths,
+                    shortest_paths_only=shortest_paths_only,
+                    at=graphql_context.at,
+                )
+                path_data_list = result.paths
+                truncated_at_depth = result.truncated_at_depth
+            except ValueError as exc:
+                raise GraphQLError(str(exc)) from exc
 
-    labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_node_ids)
+        all_node_ids: set[str] = {source_id, destination_id}
+        for path_data in path_data_list:
+            all_node_ids.add(path_data.start_node.uuid)
+            all_node_ids.update(hop.node.uuid for hop in path_data.hops)
 
-    source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
-    destination_info = _node_payload(
-        node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
-    )
+        labels_map = await _get_node_labels(db=db, graphql_context=graphql_context, node_ids=all_node_ids)
 
-    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
-    paths = [
-        _path_data_to_result(
-            path_data=p,
-            labels_map=labels_map,
-            graphql_context=graphql_context,
-            relationship_cache=relationship_cache,
+        source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
+        destination_info = _node_payload(
+            node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
         )
-        for p in path_data_list
-    ]
 
-    return {
-        "paths": paths,
-        "source": source_info,
-        "destination": destination_info,
-        "count": len(path_data_list),
-        "excluded_kinds": sorted(plan.excluded_kinds),
-        "truncated_at_depth": truncated_at_depth,
-    }
+        relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+        paths = [
+            _path_data_to_result(
+                path_data=p,
+                labels_map=labels_map,
+                graphql_context=graphql_context,
+                relationship_cache=relationship_cache,
+            )
+            for p in path_data_list
+        ]
+
+        return {
+            "paths": paths,
+            "source": source_info,
+            "destination": destination_info,
+            "count": len(path_data_list),
+            "excluded_kinds": sorted(plan.excluded_kinds),
+            "truncated_at_depth": truncated_at_depth,
+        }
 
 
 InfrahubPathTraversal = Field(

@@ -1,0 +1,1 @@
+Fixed the `infrahub-testcontainers` package starting Neo4j 2025.10.1 instead of 2026.05.0, the version that Infrahub ships with, in test runs of Infrahub Community that do not set `NEO4J_DOCKER_IMAGE`.
