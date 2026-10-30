@@ -6,12 +6,16 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import {
   REPOSITORY_INTERNAL_STATUS_ACTIVE,
   REPOSITORY_INTERNAL_STATUS_STAGING,
   RepositoryGitCondition,
 } from "@/entities/repository/domain/model/repository";
+import { getRepositoryInternalStatus } from "@/entities/repository/domain/rules/get-repository-internal-status";
+import { getRepositoryLocation } from "@/entities/repository/domain/rules/get-repository-location";
 import { isReadOnlyRepositoryKind } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
@@ -29,11 +33,7 @@ import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-com
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
 export interface RepositoryCommitsManagerProps {
-  repositoryId: string;
-  repositoryKind: string;
-  repositoryName: string;
-  repositoryInternalStatus: string | null;
-  repositoryLocation: string | null;
+  repositoryNode: NodeObject;
   updatePermission: PermissionDecision;
 }
 
@@ -48,23 +48,17 @@ const CONDITIONS_EXPLAINING_EMPTY_LOG: RepositoryGitCondition[] = [
 ];
 
 export function RepositoryCommitsManager({
-  repositoryId,
-  repositoryKind,
-  repositoryName,
-  repositoryInternalStatus,
-  repositoryLocation,
+  repositoryNode,
   updatePermission,
 }: RepositoryCommitsManagerProps) {
-  const rebaseOnly = useIsRebaseOnly({
-    repositoryKind,
-    internalStatus: repositoryInternalStatus,
-  });
+  const internalStatus = getRepositoryInternalStatus(repositoryNode);
+  const rebaseOnly = useIsRebaseOnly({ repositoryKind: repositoryNode.__typename, internalStatus });
   const repository: RepositoryCommitsRepository = {
-    id: repositoryId,
-    name: repositoryName,
-    isReadOnly: isReadOnlyRepositoryKind(repositoryKind),
-    isStaging: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_STAGING,
-    isActive: repositoryInternalStatus === REPOSITORY_INTERNAL_STATUS_ACTIVE,
+    id: repositoryNode.id,
+    name: getNodeLabel(repositoryNode),
+    isReadOnly: isReadOnlyRepositoryKind(repositoryNode.__typename),
+    isStaging: internalStatus === REPOSITORY_INTERNAL_STATUS_STAGING,
+    isActive: internalStatus === REPOSITORY_INTERNAL_STATUS_ACTIVE,
     updatePermission,
   };
   const {
@@ -78,7 +72,7 @@ export function RepositoryCommitsManager({
     isFetchNextPageError,
     isRefetchError,
     isRefetching,
-  } = useGetRepositoryCommits({ repositoryId });
+  } = useGetRepositoryCommits({ repositoryId: repository.id });
   const pages = data?.pages ?? [];
   const [log] = pages;
   const withoutPages = getCommitLogWithoutPages({ error, failureReason, isFetching });
@@ -133,7 +127,7 @@ export function RepositoryCommitsManager({
             importedCommit: log.imported_commit,
             condition: log.condition,
             rebaseOnly,
-            repositoryLocation,
+            repositoryLocation: getRepositoryLocation(repositoryNode),
           })}
           data={commits}
           getRowId={(commit) => commit.hash}

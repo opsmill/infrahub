@@ -76,11 +76,12 @@ const commitLog = ({
     <CaptureQueryClient />
     <div className="h-96">
       <RepositoryCommitsManager
-        repositoryId={REPOSITORY_ID}
-        repositoryKind={isReadOnly ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND}
-        repositoryName="infrahub-demo"
-        repositoryInternalStatus={isStaging ? REPOSITORY_INTERNAL_STATUS_STAGING : "active"}
-        repositoryLocation={null}
+        repositoryNode={{
+          id: REPOSITORY_ID,
+          __typename: isReadOnly ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND,
+          display_label: "infrahub-demo",
+          internal_status: { value: isStaging ? REPOSITORY_INTERNAL_STATUS_STAGING : "active" },
+        }}
         updatePermission={updatePermission}
       />
     </div>

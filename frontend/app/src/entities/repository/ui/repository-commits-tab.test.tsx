@@ -385,11 +385,13 @@ describe("RepositoryCommitsTab", () => {
           internalStatus="active"
         />
         <RepositoryCommitsManager
-          repositoryId="repo-1"
-          repositoryKind={REPOSITORY_KIND}
-          repositoryName="infrahub-demo"
-          repositoryInternalStatus="active"
-          repositoryLocation="/remote/repo"
+          repositoryNode={{
+            id: "repo-1",
+            __typename: REPOSITORY_KIND,
+            display_label: "infrahub-demo",
+            internal_status: { value: "active" },
+            location: { value: "/remote/repo" },
+          }}
           updatePermission={{ isAllowed: true }}
         />
       </>

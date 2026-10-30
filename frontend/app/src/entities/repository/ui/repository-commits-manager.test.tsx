@@ -89,11 +89,13 @@ const tab = ({
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
     <div className="h-96">
       <RepositoryCommitsManager
-        repositoryId="repo-1"
-        repositoryKind={repositoryKind}
-        repositoryName="infrahub-demo"
-        repositoryInternalStatus={internalStatus}
-        repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
+        repositoryNode={{
+          id: "repo-1",
+          __typename: repositoryKind,
+          display_label: "infrahub-demo",
+          internal_status: { value: internalStatus },
+          location: { value: "https://github.com/opsmill/infrahub-demo.git" },
+        }}
         updatePermission={{ isAllowed: true }}
       />
     </div>
