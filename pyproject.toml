@@ -1053,16 +1053,6 @@ allow-dunder-method-names = [
     "PGH004", #Use specific rule codes when using `ruff: noqa`
 ]
 
-"python_testcontainers/**.py" = [
-    ##################################################################################################
-    # Rules that have violations in python_testcontainers/ directory                                 #
-    ##################################################################################################
-    "PERF203",  # `try`-`except` within a loop incurs performance overhead
-    "PLR0912",  # Too many branches
-    "PLR6301",  # Method could be a function, class method, or static method
-    "S101",     # Use of `assert` detected
-]
-
 "tasks/**.py" = [
     "ERA001",   # Found commented-out code
     "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
