@@ -183,8 +183,10 @@ async def _wait_for_a_running_flow_run(prefect_client: PrefectClient) -> None:
     )
 
 
-async def _unsettled_flow_runs(prefect_client: PrefectClient) -> list[FlowRun]:
-    """The flow runs that are pending or running, and the scheduled flow runs due to start by now."""
+async def _unsettled_flow_runs(
+    prefect_client: PrefectClient, abandoned_pending_run_ids: set[uuid.UUID]
+) -> list[FlowRun]:
+    """Active or due flow runs, excluding pending claims abandoned by the stopped workers."""
     due = FlowRunFilter(
         state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.SCHEDULED])),
         expected_start_time=FlowRunFilterExpectedStartTime(before_=datetime.now(UTC)),
@@ -196,7 +198,9 @@ async def _unsettled_flow_runs(prefect_client: PrefectClient) -> list[FlowRun]:
     # Scheduled runs are read first, so a run that leaves the scheduled state between the two reads is in the second.
     scheduled = await prefect_client.read_flow_runs(flow_run_filter=due)
     runs = {run.id: run for run in [*scheduled, *await prefect_client.read_flow_runs(flow_run_filter=in_progress)]}
-    return list(runs.values())
+    return [
+        run for run in runs.values() if run.id not in abandoned_pending_run_ids or run.state_type != StateType.PENDING
+    ]
 
 
 async def _post_event(prefect_client: PrefectClient, event_type: str) -> uuid.UUID:
@@ -230,23 +234,29 @@ async def _wait_for_stored_marker(compose: InfrahubDockerCompose, prefect_client
     )
 
 
-async def _wait_until_settled(compose: InfrahubDockerCompose, prefect_client: PrefectClient) -> None:
-    """Wait until no flow run is pending, running or due, and the task manager has stored every event it received.
+async def _wait_until_settled(
+    compose: InfrahubDockerCompose, prefect_client: PrefectClient, abandoned_pending_run_ids: set[uuid.UUID]
+) -> None:
+    """Wait for runs other than abandoned pending claims, and for the received events to be stored.
 
     Raises:
-        TimeoutError: When a flow run is still pending, running or due at the deadline, or the task manager does not
+        TimeoutError: When another flow run is still pending, running or due at the deadline, or the task manager does not
             store the marker event in time.
 
     """
     deadline = time.monotonic() + EVENT_WAIT_SECONDS
     while True:
-        unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
+        unsettled = await _unsettled_flow_runs(
+            prefect_client=prefect_client, abandoned_pending_run_ids=abandoned_pending_run_ids
+        )
         if not unsettled:
             # The default stack's one event persister keeps arrival order, so the marker is stored after every
             # earlier event.
             await _wait_for_stored_marker(compose=compose, prefect_client=prefect_client)
             # A run that started while the marker waited sends events that the marker does not cover.
-            unsettled = await _unsettled_flow_runs(prefect_client=prefect_client)
+            unsettled = await _unsettled_flow_runs(
+                prefect_client=prefect_client, abandoned_pending_run_ids=abandoned_pending_run_ids
+            )
             if not unsettled:
                 return
         if time.monotonic() >= deadline:
@@ -339,10 +349,28 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         # A task worker stopped while a run is running reports that run crashed.
         await _wait_for_a_running_flow_run(prefect_client=prefect_client)
         started_before = (await _stored_prefect_events(compose=infrahub_compose)).get(WORKER_STARTED, 0)
-        infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-worker"])
+        await asyncio.to_thread(
+            infrahub_compose._run_command,
+            cmd=[*infrahub_compose.compose_command_property, "stop", "task-worker"],
+        )
+        # A replacement worker does not resume claims left pending by the stopped workers.
+        pending_runs = await prefect_client.read_flow_runs(
+            flow_run_filter=FlowRunFilter(
+                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.PENDING]))
+            )
+        )
+        abandoned_pending_run_ids = {run.id for run in pending_runs if run.deployment_id is not None}
+        await asyncio.to_thread(
+            infrahub_compose._run_command,
+            cmd=[*infrahub_compose.compose_command_property, "start", "task-worker"],
+        )
         await _wait_for_worker_restart(compose=infrahub_compose, started_before=started_before)
 
-        await _wait_until_settled(compose=infrahub_compose, prefect_client=prefect_client)
+        await _wait_until_settled(
+            compose=infrahub_compose,
+            prefect_client=prefect_client,
+            abandoned_pending_run_ids=abandoned_pending_run_ids,
+        )
         return set(await _stored_prefect_events(compose=infrahub_compose))
 
     @pytest.fixture
