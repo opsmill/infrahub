@@ -16,7 +16,6 @@ import { PanZoom } from "@/shared/components/display/pan-zoom";
 import { DiagramError } from "@/shared/components/editor/markdown/diagram-error";
 
 const RENDER_OPTIONS: RenderOptions = {
-  // Remote images would make every reader's browser fetch a URL chosen by the diagram's author.
   images: false,
   fontFamily: "InterVariable, sans-serif",
 };
@@ -62,7 +61,6 @@ export default function MermaidDiagramContent({ source }: MermaidDiagramContentP
 
   return (
     <PanZoom className="bg-background">
-      {/* pt-9 keeps the diagram below the zoom buttons. */}
       <div
         className="w-full pt-9 [&>svg]:mx-auto"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Pele escapes diagram text, emits no scripts or event handlers, and drops javascript: links.

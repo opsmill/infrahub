@@ -1,4 +1,3 @@
-/* Pele reads its palette from these variables, so diagrams follow the theme without re-rendering. */
 .pele {
   --pele-bg: var(--background);
   --pele-fg: var(--foreground);
