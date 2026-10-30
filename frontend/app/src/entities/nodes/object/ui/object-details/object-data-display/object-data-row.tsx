@@ -42,7 +42,6 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
                 <span ref={labelRef} className="truncate">
                   {fieldName}
                 </span>
-                {/* Kept in the layout while hidden so hovering does not shorten the label. */}
                 <Icon icon="mdi:code-json" className="invisible shrink-0 group-hover:visible" />
               </Button>
             </Tooltip>
