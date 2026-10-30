@@ -76,10 +76,11 @@ Number pools manage sequential numeric identifiers. Common scenarios:
 
 Key features:
 
-- Define one or several ranges, each with an optional weight ([migrate from `start_range` and `end_range`](../release-notes/deprecation-guides/number-pool-ranges))
-- Automatic sequential allocation
-- Skip values already in use, when the target attribute is `unique`
-- Support for any numeric attribute
+- Define one or several ranges, each with an optional weight that sets which range the pool uses first ([migrate from `start_range` and `end_range`](../release-notes/deprecation-guides/number-pool-ranges))
+- Allocation of the lowest free number, in the order of the ranges
+- [Track numbers that objects already hold](./track-existing-numbers.mdx), so the pool counts them and never allocates them again
+- [Allocate per site or another division](./allocate-numbers-per-scope.mdx) with an allocation scope, so one pool serves every site
+- Support for any `Number` attribute
 
 ## Allocation methods
 
@@ -139,7 +140,7 @@ mutation {
 
 ### Attribute allocation
 
-A number pool fills a `Number` attribute on the object you create. Pass `from_pool` with the pool's ID on the attribute. The pool's `node` setting must name that kind or a generic it inherits from, and its `node_attribute` setting must name that attribute, or Infrahub rejects the request. In the web interface, click the pool button next to the field, labeled "select a pool", and choose the pool.
+A number pool fills a `Number` attribute on the object you create. Pass `from_pool` with the pool's ID on the attribute. The pool's `node` setting must name that kind or a generic it inherits from, and its `node_attribute` setting must name that attribute, or Infrahub rejects the request. In the web interface, open the **From pool** tab of the field and choose the pool in **Pool**.
 
 Example: Creating a VLAN with its VLAN ID taken from a number pool:
 
@@ -243,7 +244,7 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 ### Concurrent requests
 
-Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values. The exception is two requests to the same IP address or IP prefix pool, on the same branch, with the same identifier: the second gets the value already reserved under it. Number pools ignore identifiers. Requests to different pools do not wait for each other.
+Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values. The exception is two requests to the same IP address or IP prefix pool, on the same branch, with the same identifier: the second gets the value already reserved under it. Number pools ignore identifiers. Requests to different pools do not wait for each other, and neither do requests for different divisions of a number pool with an [allocation scope](./allocate-numbers-per-scope.mdx).
 
 ```mermaid
 sequenceDiagram
@@ -333,6 +334,8 @@ Higher weight values are allocated first. This enables scenarios like:
 - Gradually migrating between address spaces
 - Implementing allocation policies
 
+In a number pool, you set a weight on each range instead, as described in [How the pool chooses the next number](./allocate-number.mdx#allocation-order).
+
 ### Pool composition
 
 Pools can contain multiple resources, providing flexibility in resource management:
@@ -391,7 +394,7 @@ Resource Manager exposes full functionality through GraphQL APIs:
 ### Allocation strategies
 
 - **Use one identifier per object in scripts and Generators**: build it from the object the value is allocated to, so a rerun gets the same value back
-- **Mark a number pool's target attribute `unique`**: the pool then skips values already in use on that attribute
+- **Attach numbers that objects already hold to their number pool**: the pool only counts and skips numbers it tracks, as described in [Track existing numbers in a number pool](./track-existing-numbers.mdx)
 - **Allocate early in workflows**: Reserve resources before lengthy provisioning
 - **Clean up unused allocations**: Implement processes to reclaim resources
 - **Monitor utilization**: Set alerts for pools approaching capacity
@@ -412,4 +415,6 @@ Resource Manager exposes full functionality through GraphQL APIs:
 - [Allocate IP addresses](./allocate-ip-address.mdx) - Create an IP address pool and allocate from it in the web interface or with GraphQL
 - [Allocate IP prefixes](./allocate-ip-prefix.mdx) - Create an IP prefix pool and allocate subnets from it
 - [Allocate numbers](./allocate-number.mdx) - Create a number pool and fill a `Number` attribute from it
+- [Track existing numbers in a number pool](./track-existing-numbers.mdx) - Attach numbers that objects already hold to a pool, detach them, or move them to another pool
+- [Allocate numbers per site with allocation scopes](./allocate-numbers-per-scope.mdx) - Allocate numbers that only have to be distinct within a site or another division
 - [Parallel branches](../branches/parallel-branches.mdx) - Why two branches never get the same value from a pool, and what happens if you type one instead

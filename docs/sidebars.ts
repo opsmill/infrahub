@@ -180,6 +180,8 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-address',
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
+            'resource-manager/track-existing-numbers',
+            'resource-manager/allocate-numbers-per-scope',
             'resource-manager/weighted-allocation',
           ],
         },
