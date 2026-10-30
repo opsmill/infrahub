@@ -2,7 +2,7 @@ import { Spinner } from "@infrahub/ui";
 import React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
-import { DiagramError } from "@/shared/components/editor/markdown/diagram-error";
+import { MermaidDiagramError } from "@/shared/components/editor/markdown/mermaid-diagram-error";
 
 const MermaidDiagramContent = React.lazy(() => import("./mermaid-diagram-content"));
 
@@ -15,7 +15,7 @@ interface MermaidDiagramProps {
 export function MermaidDiagram({ source }: MermaidDiagramProps) {
   return (
     <ErrorBoundary
-      fallback={<DiagramError message={LOAD_FAILED} source={source} />}
+      fallback={<MermaidDiagramError message={LOAD_FAILED} source={source} />}
       resetKeys={[source]}
     >
       <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
