@@ -16,11 +16,11 @@ export function validateNumberAttribute(
     return { success: false, error: "Value must be a number" };
   }
 
-  if (min && value < min) {
+  if (min != null && value < min) {
     return { success: false, error: `Value must be at least ${min}` };
   }
 
-  if (max && value > max) {
+  if (max != null && value > max) {
     return { success: false, error: `Value must be at most ${max}` };
   }
 
