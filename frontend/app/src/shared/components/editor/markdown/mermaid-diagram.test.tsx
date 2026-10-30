@@ -39,6 +39,19 @@ describe("MermaidDiagram", () => {
     setDarkTheme(false);
   });
 
+  // React logs a misuse of `use` only once per page, so this test must load the file's first diagram type.
+  test("draws a diagram once its type's code has loaded, without a React error", async () => {
+    // GIVEN
+    const consoleError = vi.spyOn(console, "error");
+
+    // WHEN
+    const component = await render(<MermaidDiagram code={"gitGraph\n  commit"} />);
+
+    // THEN
+    await expect.poll(() => component.container.querySelector("svg.pele")).toBeTruthy();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   test("asks for a reload when the diagram type's code fails to load", async () => {
     // GIVEN
     loadMock.mockRejectedValueOnce(new TypeError("Failed to fetch dynamically imported module"));
