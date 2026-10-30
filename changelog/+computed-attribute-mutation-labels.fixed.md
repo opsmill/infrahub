@@ -1,0 +1,1 @@
+Fixed the `InfrahubUpdateComputedAttribute` mutation storing a wrong display label and a stale human-friendly ID when they read attributes other than the one the mutation writes. The node and the event it emits now carry the display label and human-friendly ID computed from all the node's attributes.
