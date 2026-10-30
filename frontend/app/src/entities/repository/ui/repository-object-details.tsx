@@ -53,7 +53,7 @@ export function RepositoryObjectDetails({
       {hasFields(branchScoped) && (
         <ObjectDetailsCard
           title="On this branch"
-          caption={currentBranch.name}
+          branchName={currentBranch.name}
           objectSchema={{ ...objectSchema, ...branchScoped }}
           objectData={objectData}
           permission={permission}

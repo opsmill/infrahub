@@ -54,11 +54,11 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByTestId("object-details")).toBeVisible();
   });
 
-  it("renders the caption beneath the title and includes it in the card's accessible name", async () => {
+  it("renders the branch name beside the title and includes it in the card's accessible name", async () => {
     const component = await render(
       <ObjectDetailsCard
         title="On this branch"
-        caption="main"
+        branchName="main"
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -95,7 +95,7 @@ describe("ObjectDetailsCard", () => {
         />
         <ObjectDetailsCard
           title="On this branch"
-          caption="main"
+          branchName="main"
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}

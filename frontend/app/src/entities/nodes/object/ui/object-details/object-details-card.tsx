@@ -1,6 +1,8 @@
 import { Button, Card, CardHeader } from "@infrahub/ui";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, GitBranchIcon } from "lucide-react";
 import React from "react";
+
+import { Badge } from "@/shared/components/ui/badge";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { hasExtraFields } from "@/entities/nodes/object/domain/rules/has-extra-fields";
@@ -15,8 +17,8 @@ interface ObjectDetailsCardProps {
   className?: string;
   excludeRelationships?: string[];
   title?: string;
-  /** A second line beneath the title, included in the card's accessible name. */
-  caption?: string;
+  /** Shown as a badge beside the title and included in the card's accessible name. */
+  branchName?: string;
 }
 
 export function ObjectDetailsCard({
@@ -26,11 +28,11 @@ export function ObjectDetailsCard({
   className,
   excludeRelationships,
   title = "Details",
-  caption,
+  branchName,
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
-  const captionId = `${id}-caption`;
+  const branchId = `${id}-branch`;
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
@@ -38,16 +40,21 @@ export function ObjectDetailsCard({
     <Card
       className={className}
       role="region"
-      aria-labelledby={caption ? `${titleId} ${captionId}` : titleId}
+      aria-labelledby={branchName ? `${titleId} ${branchId}` : titleId}
       data-testid="object-details"
     >
-      <CardHeader className="flex justify-between">
-        <div>
-          <h2 id={titleId}>{title}</h2>
-          {caption && (
-            <p id={captionId} className="font-normal text-foreground-muted text-xs">
-              {caption}
-            </p>
+      <CardHeader className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 id={titleId} className="shrink-0">
+            {title}
+          </h2>
+          {branchName && (
+            <Badge variant="gray" className="min-w-0 gap-1 font-normal" title={branchName}>
+              <GitBranchIcon className="size-3 shrink-0" aria-hidden="true" />
+              <span id={branchId} className="truncate">
+                {branchName}
+              </span>
+            </Badge>
           )}
         </div>
 
