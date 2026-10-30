@@ -184,7 +184,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        UV_VER: ${UV_VERSION:-0.11.8}
+        UV_VER: ${UV_VERSION:-0.13.6}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
@@ -241,7 +241,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        UV_VER: ${UV_VERSION:-0.11.8}
+        UV_VER: ${UV_VERSION:-0.13.6}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"

@@ -9,6 +9,12 @@ FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED=1
 
+# Re-declared inside the stage: an ARG above the first FROM is only in scope for FROM lines (which is
+# why PYTHON_VER above works). Without this, $UV_VER expands to empty in the RUN below, the installer
+# URL loses its version segment, and the build silently installs whatever uv is latest. Keep the
+# default in sync with UV_VERSION in .github/workflows/define-versions.yml.
+ARG UV_VER=0.13.6
+
 # uv installs to /root/.local/bin
 ENV PATH="${PATH}:/root/.local/bin"
 
