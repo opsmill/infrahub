@@ -3,45 +3,64 @@ import { Button, Spinner } from "@infrahub/ui";
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
+import {
+  REPOSITORY_INTERNAL_STATUS_ACTIVE,
+  REPOSITORY_INTERNAL_STATUS_STAGING,
+  RepositoryGitCondition,
+} from "@/entities/repository/domain/model/repository";
+import { getRepositoryInternalStatus } from "@/entities/repository/domain/rules/get-repository-internal-status";
+import { getRepositoryLocation } from "@/entities/repository/domain/rules/get-repository-location";
+import { isReadOnlyRepositoryKind } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
+import { useIsRebaseOnly } from "@/entities/repository/ui/hooks/use-is-rebase-only";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
-  type CommitLogEmptyState,
   canLoadOlderCommits,
+  getCommitLogHeaderState,
   getCommitLogWithoutPages,
-  getEmptyState,
   getLoadedCommits,
   getNextPageState,
-  getNoCommitLogState,
   isShowingStaleCommits,
+  type RepositoryCommitsRepository,
 } from "@/entities/repository/ui/repository-commits.view";
-import {
-  RepositoryCommitsHeader,
-  RepositoryCommitsToolbar,
-  type RepositoryCommitsToolbarProps,
-} from "@/entities/repository/ui/repository-commits-header";
+import { RepositoryCommitsHeader } from "@/entities/repository/ui/repository-commits-header";
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
-type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteCheck">;
-
-export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
-  repositoryId: string;
-  repositoryLocation: string | null;
+export interface RepositoryCommitsManagerProps {
+  repositoryNode: NodeObject;
+  updatePermission: PermissionDecision;
 }
 
 const gridTemplateColumns = () =>
   "fit-content(8rem) minmax(16rem, 1fr) fit-content(14rem) fit-content(12rem) fit-content(16rem) 2.5rem";
 
+const CONDITIONS_EXPLAINING_EMPTY_LOG: RepositoryGitCondition[] = [
+  RepositoryGitCondition.NOT_TRACKED,
+  RepositoryGitCondition.NO_REMOTE,
+  RepositoryGitCondition.REF_MISSING,
+  RepositoryGitCondition.UNAVAILABLE,
+];
+
 export function RepositoryCommitsManager({
-  repositoryId,
-  repositoryLocation,
-  remoteCheck,
+  repositoryNode,
+  updatePermission,
 }: RepositoryCommitsManagerProps) {
+  const internalStatus = getRepositoryInternalStatus(repositoryNode);
+  const rebaseOnly = useIsRebaseOnly({ repositoryKind: repositoryNode.__typename, internalStatus });
+  const repository: RepositoryCommitsRepository = {
+    id: repositoryNode.id,
+    name: getNodeLabel(repositoryNode),
+    isReadOnly: isReadOnlyRepositoryKind(repositoryNode.__typename),
+    isStaging: internalStatus === REPOSITORY_INTERNAL_STATUS_STAGING,
+    isActive: internalStatus === REPOSITORY_INTERNAL_STATUS_ACTIVE,
+    updatePermission,
+  };
   const {
     data,
     error,
@@ -53,61 +72,41 @@ export function RepositoryCommitsManager({
     isFetchNextPageError,
     isRefetchError,
     isRefetching,
-  } = useGetRepositoryCommits({ repositoryId });
+  } = useGetRepositoryCommits({ repositoryId: repository.id });
   const pages = data?.pages ?? [];
   const [log] = pages;
+  const withoutPages = getCommitLogWithoutPages({ error, failureReason, isFetching });
+  const header = (
+    <RepositoryCommitsHeader
+      commitLog={getCommitLogHeaderState(log, withoutPages)}
+      repository={repository}
+      rebaseOnly={rebaseOnly}
+    />
+  );
 
   if (!log) {
-    const withoutPages = getCommitLogWithoutPages({ error, failureReason, isFetching });
-
-    switch (withoutPages.kind) {
-      case "unavailable":
-        return (
-          <RepositoryCommitsEmptyState
-            log={withoutPages.error.log}
-            repositoryId={repositoryId}
-            remoteCheck={remoteCheck}
-            emptyState={getEmptyState(withoutPages.error, {
-              isRetrying: withoutPages.isRetrying,
-            })}
-          />
-        );
-      case "failed":
-        return (
-          <Col className="h-full gap-0">
-            <Col className="p-2">
-              <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck} />
-            </Col>
-            <ErrorScreen message={withoutPages.error.message} />
-          </Col>
-        );
-      default:
-        return <LoadingIndicator className="h-full p-4" />;
-    }
+    return (
+      <Col className="h-full gap-0">
+        {header}
+        {withoutPages.kind === "failed" && <ErrorScreen message={withoutPages.error.message} />}
+      </Col>
+    );
   }
 
   const commits = getLoadedCommits(pages);
-  const noCommitLogState = commits.length === 0 ? getNoCommitLogState(log) : null;
   const nextPageState = getNextPageState({
     isFetchNextPageError,
     isFetchingNextPage,
     failureReason,
   });
 
-  if (noCommitLogState) {
-    return (
-      <RepositoryCommitsEmptyState
-        log={log}
-        repositoryId={repositoryId}
-        remoteCheck={remoteCheck}
-        emptyState={noCommitLogState}
-      />
-    );
+  if (commits.length === 0 && CONDITIONS_EXPLAINING_EMPTY_LOG.includes(log.condition)) {
+    return <Col className="h-full gap-0">{header}</Col>;
   }
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
+      {header}
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>
@@ -126,7 +125,9 @@ export function RepositoryCommitsManager({
         <DataTable
           columns={getRepositoryCommitsColumns({
             importedCommit: log.imported_commit,
-            repositoryLocation,
+            condition: log.condition,
+            rebaseOnly,
+            repositoryLocation: getRepositoryLocation(repositoryNode),
           })}
           data={commits}
           getRowId={(commit) => commit.hash}
@@ -148,26 +149,6 @@ export function RepositoryCommitsManager({
           </RepositoryCommitsNotice>
         )}
       </InfiniteScroll>
-    </Col>
-  );
-}
-
-interface RepositoryCommitsEmptyStateProps extends RepositoryCheckRemoteProps {
-  log: RepositoryCommitLog;
-  repositoryId: string;
-  emptyState: CommitLogEmptyState;
-}
-
-function RepositoryCommitsEmptyState({
-  log,
-  repositoryId,
-  remoteCheck,
-  emptyState,
-}: RepositoryCommitsEmptyStateProps) {
-  return (
-    <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
-      <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );
 }

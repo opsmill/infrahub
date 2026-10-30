@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.graphql import Query
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
@@ -376,3 +377,75 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             query=number_pool_allocation_query.render(), variables={"pool_id": pool_id}
         )
         return allocation["InfrahubResourcePoolAllocated"]["count"]
+
+    @staticmethod
+    def _imported_ticket_schema(number_pool_id: str) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "ImportedTicket",
+                    "namespace": "Test",
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {
+                            "name": "number",
+                            "kind": "NumberPool",
+                            "read_only": True,
+                            "parameters": {"ranges": [{"start": 100, "end": 110}], "number_pool_id": number_pool_id},
+                        },
+                    ],
+                }
+            ],
+        }
+
+    @staticmethod
+    def _imported_ticket_pool_id() -> str | None:
+        attribute = registry.schema.get_node_schema(name="TestImportedTicket").get_attribute(name="number")
+        assert isinstance(attribute.parameters, NumberPoolParameters)
+        return attribute.parameters.number_pool_id
+
+    async def test_schema_load_ignores_number_pool_id_of_new_attribute(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
+    ) -> None:
+        """A pool id copied from another instance is ignored, so the attribute still gets its own pool."""
+        copied_pool_id = str(UUIDT())
+
+        schema_load_response = await client.schema.load(
+            schemas=[self._imported_ticket_schema(number_pool_id=copied_pool_id)], wait_until_converged=True
+        )
+        assert not schema_load_response.errors
+        assert [warning.message for warning in schema_load_response.warnings] == [
+            "'parameters.number_pool_id' is a read-only field, the submitted value is ignored"
+        ]
+        await self._post_schema_load_updates(db)
+
+        pool_id = self._imported_ticket_pool_id()
+        assert pool_id is not None
+        assert pool_id != copied_pool_id
+        pool = await NodeManager.get_one(db=db, id=pool_id, kind=CoreNumberPool, raise_on_error=True)
+        assert pool.node.value == "TestImportedTicket"
+        assert pool.node_attribute.value == "number"
+
+        ticket = await client.create(kind="TestImportedTicket", name="first", branch=default_branch.name)
+        await ticket.save()
+        stored_ticket = await client.get(kind="TestImportedTicket", id=ticket.id, branch=default_branch.name)
+        assert stored_ticket.number.value == 100
+
+    async def test_schema_load_keeps_pool_of_existing_attribute(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+    ) -> None:
+        """Loading another pool id for an attribute that already has a pool is accepted and keeps the stored pool."""
+        stored_pool_id = self._imported_ticket_pool_id()
+        assert stored_pool_id is not None
+
+        schema_load_response = await client.schema.load(
+            schemas=[self._imported_ticket_schema(number_pool_id=str(UUIDT()))], wait_until_converged=True
+        )
+        assert not schema_load_response.errors
+        assert [warning.message for warning in schema_load_response.warnings] == [
+            "'parameters.number_pool_id' is a read-only field, the submitted value is ignored"
+        ]
+        await self._post_schema_load_updates(db)
+
+        assert self._imported_ticket_pool_id() == stored_pool_id

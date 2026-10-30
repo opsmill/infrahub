@@ -1,0 +1,1 @@
+Fixed a schema load taking the `number_pool_id` of a NumberPool attribute from the loaded file: the load now ignores it with a warning, so a schema exported from another instance gets its own number pools instead of pointing to pools that do not exist.

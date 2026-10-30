@@ -41,7 +41,8 @@ export function Tooltip({
   nonInteractiveTrigger,
   ...props
 }: TooltipProps) {
-  if (!message && message !== 0) {
+  const hasMessage = !!message || message === 0;
+  if (!hasMessage && nonInteractiveTrigger) {
     return children;
   }
 
@@ -50,6 +51,7 @@ export function Tooltip({
       delay={200}
       closeDelay={300}
       shouldCloseOnPress={false}
+      isDisabled={!hasMessage}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >

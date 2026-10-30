@@ -195,15 +195,18 @@ frontend/app/src/
 ├── entities/repository/domain/model/repository-git-unavailable-error.ts           # NEW  UNAVAILABLE answer thrown as a typed error
 ├── entities/repository/domain/use-cases/get-repository-commits.ts                 # NEW
 ├── entities/repository/domain/rules/should-retry-git-unavailable.ts               # NEW  every unavailable reason but NOT_IMPLEMENTED is retried
-├── entities/repository/domain/rules/get-pending-import-count.ts                   # NEW  count shown on the tab link
 ├── entities/repository/domain/rules/get-commit-web-url.ts                         # NEW  "View on GitHub" link, credentials dropped
 ├── entities/repository/domain/rules/get-repository-location.ts                    # NEW
+├── entities/repository/domain/rules/get-repository-internal-status.ts             # NEW  internal status read from the repository object
+├── entities/repository/domain/rules/is-rebase-only.ts                             # NEW  branch that does not sync with Git lists the default branch's history
 ├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
 ├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
-├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import count
+├── entities/repository/ui/hooks/use-is-rebase-only.ts                             # NEW  current branch read for the rebase-only rule
+├── entities/repository/ui/hooks/use-repository-commits-actions.tsx                # NEW  status block actions: import, check, rebase, and the running task
+├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import or behind badge, or a warning marker
 ├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
-├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
+├── entities/repository/ui/repository-commits-header.tsx                           # NEW  status block: headline, supporting line, actions, tracked ref and check time
 ├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
 ├── entities/repository/ui/repository-commits-notice.tsx                           # NEW
 ├── entities/repository/ui/get-repository-commits-columns.tsx                      # NEW
@@ -406,27 +409,32 @@ determinism logic, no test and no documentation entry.
 ### Phase D: frontend
 
 - Commits tab on the repository detail page with markers, per-row state, `DateDisplay fullTimestamp`
-  for the freshness line, `NoDataFound` for `UNAVAILABLE` and a notice for `REWRITTEN`. The list is a
+  for the check and update times, `NoDataFound` for `UNAVAILABLE` and the status block's headline for
+  `REWRITTEN`. The list is a
   `DataTable` inside `InfiniteScroll`, which loads the next page when the end of the list comes into
   view and shows no total; `Pagination` was dropped because it always shows a total, which FR-024
   forbids. The full hash is copied from the row menu item "Copy commit hash", built on the shared
   `CopyToClipboardMenuItem`, and a toast confirms the copy or says it failed. The same menu offers
   "View on GitHub" for a repository hosted on GitHub.
-- The tab link shows the pending-import count, read from the first page of the same query through
-  `select`, so the label and the list share one read. That query runs on every repository tab, so
+- The tab link shows an amber count (pending import or behind) or a warning marker, read from the first
+  page of the same query through `select`, so the label and the list share one read. That query runs on every repository tab, so
   the request passes `processErrorMessage: () => {}`: the label never raises a toast, and the commit
   view shows the error itself.
-- Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
+- The status block's last line shows the tracked ref, and `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
   `InfrahubReadOnlyRepositoryCheckRefs`. The commit view polls the task the mutation returned, by
-  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and a
-  "View task" link beside it opens that task in the repository's Tasks tab; when it ends, the commit
+  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and
+  reads "Check running"; when it ends, the commit
   log is refetched. The started task is read back from the mutation cache, so it survives the commit
   view remounting, and only on the branch it was started on. A check started from another browser
   tab or by another user is not shown. Without it the on-demand half of User Story 2 has no entry
-  point outside the API, which matters because the interval stays at 15 minutes. Its placement on
-  the design canvas is still open (T094).
+  point outside the API, which matters because the interval stays at 15 minutes. Its placement is
+  settled: the second action of the status block for a read-only repository (T094).
+- The status block at the top of the commit view states the condition in its headline, says what
+  brings the missing commits, and offers at most one main action ("Import latest commit" or
+  "Rebase branch") and one second action ("Check remote now"). T111 in tasks.md lists which state
+  offers which action and when each is disabled.
 - Departure from FR-025 in the interface, recorded rather than fixed here: the commit view follows
   only the task it started, so it cannot see a scheduled check. Pressing the button while one, or
   another user's on-demand check, holds the repository submits a run that exits at once as
@@ -460,13 +468,14 @@ determinism logic, no test and no documentation entry.
     (`repository-commits-manager.test.tsx`, `repository-commits-manager-load-more.test.tsx`)
   - the display decisions (`repository-commits.view.test.ts`)
   - the row menu's copy toasts and GitHub link (`repository-commit-row-actions.test.tsx`)
-  - the tab link's pending-import count (`repository-commits-tab.test.tsx`)
+  - the tab link's count, warning marker and tooltip (`repository-commits-tab.test.tsx`)
   - the retry cap and which reasons are retried (`get-repository-commits.query.test.ts`,
     `should-retry-git-unavailable.test.ts`)
   - the typed error, the mapper, the API document and the other domain rules
     (`get-repository-commits.test.ts`, `repository-commits.mappers.test.ts`,
     `get-repository-commits-from-api.test.ts`, `get-commit-web-url.test.ts`,
-    `get-pending-import-count.test.ts`, `get-repository-location.test.ts`)
+    `get-repository-location.test.ts`, `is-rebase-only.test.ts`,
+    `get-repository-internal-status.test.ts`)
 - e2e test on `demo_edge_repo`, not landed yet.
 - The e2e suite asserts against a repository seeded already behind, with the sync tick awaited once
   in a fixture, rather than pushing mid-test and waiting out the one-minute cron. A fixed
