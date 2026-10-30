@@ -26,6 +26,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 - **Breaking:** Raised the Redis requirement to version 6.0 or later, or a Redis-compatible service that supports the `HELLO` command, because Infrahub now opens every Redis connection with `HELLO`, which Redis 5.0 and earlier reject. ([#9449](https://github.com/opsmill/infrahub/issues/9449))
 - Changed the error message for a GraphQL query with a syntax error to start with "Query is not valid, ". ([#11232](https://github.com/opsmill/infrahub/issues/11232))
+- Removed the concurrency limit from the `clean-up-deadlocks` task, so a run that never finishes, for example after a task worker restarts while the run is starting, no longer stops later runs from removing locks left behind by inactive task workers.
 
 ### Fixed
 
