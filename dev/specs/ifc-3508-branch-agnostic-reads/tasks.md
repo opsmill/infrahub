@@ -283,16 +283,17 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - a branch-aware relationship between branch-aware nodes.
 - [ ] T065 [P] [US5] Move `test_deleting_group_removes_it_from_role_after_role_removed_on_branch` and `test_graphql_role_groups_after_group_deleted_with_role_removed_on_branch` from `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_relationship_reads.py` into `backend/tests/component/core/relationship/test_peer_existence.py`. Add tests for:
   - spec US5 scenarios 1-4 and 8-10;
-  - the brief's two new PR 5 tests: a branch-agnostic node deleted after branching with the link removed on the default branch after branching, and a filter through a pool's `resources` on a branch where the prefix is deleted.
+  - the brief's two new PR 5 tests: a branch-agnostic node deleted after branching with the link removed on the default branch after branching, and a filter through a pool's `resources` on a branch where the prefix is deleted;
+  - a GraphQL read, on the default branch and on B, of a pool's `resources` with `properties` requested, where a prefix was deleted on B. It must return no error. Without the branch edges PR 5 stops writing, `NodeManager.get_many` could drop the peer and raise a `KeyError` before PR 6 lands.
 
-  Confirm they fail.
+  Confirm the tests that check today's wrong results fail. If the GraphQL read fails after T069 and T075, bring the window check on `IS_PART_OF` from T091 into this PR, so no read is worse after PR 5 alone.
 - [ ] T066 [P] [US5] Add `test_query_text_unchanged_for_branch_aware_relationships` to `backend/tests/component/core/test_relationship_query.py`. It asserts that `RelationshipGetPeerQuery` and `NodeListGetRelationshipsQuery`, for a branch-aware relationship between branch-aware kinds, render the same Cypher as on the base branch (FR-020).
 - [ ] T067 [P] [US5] Add a test to `backend/tests/component/core/convert_object_type/` where a former peer is not counted when validating an object conversion (FR-040), and confirm it fails.
 
 ### Implementation for User Story 5
 
 - [ ] T068 [US5] Add `needs_peer_existence_check(relationship_schema, peer_schema, schema_branch) -> bool` to `backend/infrahub/core/schema/relationship_schema.py` (data-model.md "Peer existence check").
-- [ ] T069 [US5] In `backend/infrahub/core/query/relationship.py::RelationshipGetPeerQuery.query_init`, when the helper returns true, add the check that the peer's latest `IS_PART_OF` edge is `active` under the request branch filter. The count uses the same lines. The branch-agnostic mode gets its window version in T095.
+- [ ] T069 [US5] In `backend/infrahub/core/query/relationship.py::RelationshipGetPeerQuery.query_init`, when the helper returns true, add the check that the peer's latest `IS_PART_OF` edge is `active` under the request branch filter. The count uses the same lines. In branch-agnostic mode, render the window version from the brief: open with the windows clause, and keep a peer only when its latest `IS_PART_OF` edge is `active` in at least one live window. The link ranking stays as it is until T095.
 - [ ] T070 [US5] Add an optional parameter to `backend/infrahub/core/query/node.py::NodeListGetRelationshipsQuery` listing the relationship identifiers that need the check, and render the check for them. In `backend/infrahub/core/manager.py`, compute that list with the helper and pass it.
 - [ ] T071 [US5] In `backend/infrahub/core/query/relationship.py::GetAllPeersIds`:
   - filter `e2`;

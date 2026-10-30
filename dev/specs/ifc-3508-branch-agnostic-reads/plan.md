@@ -150,6 +150,8 @@ Every PR starts from its base branch, carries its own tests, benchmark results a
 | 5 | `peer-existence-check-ifc-3508` | `release-1.12` | PR 3 and PR #11220 are in `release-1.12` |
 | 6 | `agnostic-relationship-reads-ifc-3508` | PR 5's branch | PR 5 is in review |
 
+PR 5 must not leave a read worse than before when it ships without PR 6. Task T065 tests the case most at risk: a branch-agnostic read of a pool's `resources` after a prefix was deleted on a branch. If that test fails, PR 5 takes the window check on `IS_PART_OF` from PR 6.
+
 Open questions 1-3 of the spec are gates inside PRs 5 and 6 (see tasks.md). Research R7, R8 and R9 record the evidence found so far and a recommendation for each.
 
 ## Complexity Tracking
