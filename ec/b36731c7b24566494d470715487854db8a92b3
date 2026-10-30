@@ -1,0 +1,22 @@
+backend/infrahub/core/migrations/graph/m080_delete_generator_capture_diffs.py
+  s_a7acb0317ca85a::t_eb134974c86be0 85-86,130-137
+backend/tests/component/core/migrations/graph/test_080_delete_generator_capture_diffs.py
+  s_a7acb0317ca85a::t_eb134974c86be0 4,23,142-143,159-170,172-182,324-328,330,332-335,340
+  s_a7acb0317ca85a::t_d39172c13a7313 171,331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecb36731c7b24566494d470715487854db8a92b3",
+  "prompts": {},
+  "sessions": {
+    "s_a7acb0317ca85a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a188bd-25d2-7ed3-bd1e-5d40c32453b1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
