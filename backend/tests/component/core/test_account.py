@@ -206,6 +206,34 @@ async def test_fetch_account_groups_and_roles(
     ]
 
 
+async def test_login_roles_keep_role_removed_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user1", password="User1Password123")
+    await account.save(db=db)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="editors")
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="editors", roles=[role])
+    await group.save(db=db)
+    await group.members.add(db=db, data={"id": account.id})  # type: ignore[union-attr]
+    await group.members.save(db=db)  # type: ignore[union-attr]
+
+    branch = await create_branch(db=db, branch_name="drop-role-login")
+    group_on_branch = await NodeManager.get_one(db=db, id=group.id, branch=branch, raise_on_error=True)
+    await group_on_branch.roles.update(db=db, data=[])  # type: ignore[union-attr]
+    await group_on_branch.roles.save(db=db)  # type: ignore[union-attr]
+
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+
+    assert groups == [{group.get_id(): "editors"}]
+    assert roles == [{role.get_id(): "editors"}]
+
+
 async def test_fetch_account_groups_and_roles_no_groups(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
