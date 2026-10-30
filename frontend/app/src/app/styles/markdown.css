@@ -189,9 +189,3 @@
 .markdown li > p {
   margin: 0;
 }
-
-.markdown .mermaid-error {
-  background-color: var(--danger-surface);
-  color: var(--danger);
-  white-space: pre-wrap;
-}

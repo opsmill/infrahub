@@ -100,9 +100,9 @@ describe("MarkdownRender Component", () => {
 
     // THEN
     await expect
-      .poll(() => component.container.querySelector(".mermaid-error")?.textContent ?? "", {
+      .element(component.getByText("No diagram type detected for the given text."), {
         timeout: 15_000,
       })
-      .not.toBe("");
+      .toBeVisible();
   });
 });

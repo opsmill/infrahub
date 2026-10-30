@@ -72,9 +72,9 @@ describe("MermaidDiagram", () => {
     );
 
     // THEN
-    const message = () => component.container.querySelector(".mermaid-error");
-    await expect.poll(() => message()?.textContent ?? "").toMatch(/^Parse error on line 3/);
-    expect(getComputedStyle(message() as Element).fontFamily).toMatch(/mono/i);
+    const message = component.getByText(/^Parse error on line 3/);
+    await expect.element(message).toBeVisible();
+    expect(getComputedStyle(message.element()).fontFamily).toMatch(/mono/i);
   });
 
   test("gives each diagram on a page its own SVG id prefix", async () => {

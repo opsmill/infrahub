@@ -13,7 +13,7 @@ import {
 import React from "react";
 
 import { PanZoom } from "@/shared/components/display/pan-zoom";
-import { DiagramError } from "@/shared/components/editor/markdown/diagram-error";
+import { MermaidDiagramError } from "@/shared/components/editor/markdown/mermaid-diagram-error";
 
 const RENDER_OPTIONS: RenderOptions = {
   images: false,
@@ -57,7 +57,7 @@ export default function MermaidDiagramContent({ source }: MermaidDiagramContentP
 
   const diagram = renderDiagram(source, idPrefix);
   if (diagram instanceof PeleError)
-    return <DiagramError message={diagram.message} source={source} />;
+    return <MermaidDiagramError message={diagram.message} source={source} />;
 
   return (
     <PanZoom className="bg-background">
