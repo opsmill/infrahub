@@ -1,8 +1,11 @@
 import jwt
 from fastapi.testclient import TestClient
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
@@ -328,3 +331,47 @@ async def test_generate_api_token(
     assert token_query_response.status_code == 200
     tokens = token_query_response.json()["data"]["InfrahubAccountToken"]["edges"]
     assert token_id not in [token["node"]["id"] for token in tokens]
+
+
+async def test_delete_api_token_of_another_account(
+    db: InfrahubDatabase, default_branch: Branch, client: TestClient, first_account: Node, second_account: Node
+) -> None:
+    """An account should only be able to delete its own API tokens."""
+    token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
+    await token.new(db=db, account=first_account, token=str(UUIDT()), name="first-account-token")
+    await token.save(db=db)
+
+    with client:
+        login_response = client.post(
+            "/api/auth/login", json={"username": "Second Account", "password": "SecondPassword123"}
+        )
+
+    assert login_response.status_code == 200
+    access_token = login_response.json()["access_token"]
+
+    token_delete_mutation = (
+        """
+    mutation MyMutation {
+        InfrahubAccountTokenDelete(data: {id: "%s"}) {
+            ok
+        }
+    }
+    """
+        % token.id
+    )
+
+    with client:
+        token_delete_response = client.post(
+            "/graphql",
+            json={"query": token_delete_mutation},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert token_delete_response.status_code == 200
+    assert not token_delete_response.json()["data"]["InfrahubAccountTokenDelete"]
+    assert (
+        token_delete_response.json()["errors"][0]["message"]
+        == f"Unable to find the node {token.id} / AccountToken in the database."
+    )
+
+    assert await NodeManager.get_one(db=db, id=token.id, kind=InfrahubKind.ACCOUNTTOKEN)
