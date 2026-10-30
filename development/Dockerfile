@@ -78,6 +78,7 @@ WORKDIR /docs
 COPY docs/package.json docs/package-lock.json /docs/
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
+# Files outside docs/ that documentation pages import must be copied here, or the build cannot resolve them.
 COPY models/base/ /models/base/
 COPY models/examples/extension_rack.yml /models/examples/
 COPY development/deploy.tf /development/deploy.tf
