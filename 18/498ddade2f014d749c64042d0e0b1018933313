@@ -1,0 +1,26 @@
+backend/infrahub/core/migrations/graph/m080_delete_generator_capture_diffs.py
+  s_9ab565af291b9a::t_0def0fc88058a5 110,123
+pyproject.toml
+  s_9ab565af291b9a::t_ed214f9f5df9b4 1006-1008,1056-1063
+  s_9ab565af291b9a::t_060561be9d9401 1064-1065
+backend/infrahub/core/validators/checks_runner.py
+  s_9ab565af291b9a::t_0def0fc88058a5 40
+backend/tests/helpers/attribute_rows.py
+  s_9ab565af291b9a::t_e02fef3338071c 119,121-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18498ddade2f014d749c64042d0e0b1018933313",
+  "prompts": {},
+  "sessions": {
+    "s_9ab565af291b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c6129b7-6134-49b1-8a6f-a7599ea0d463",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
