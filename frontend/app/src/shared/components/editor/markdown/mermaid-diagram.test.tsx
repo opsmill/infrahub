@@ -146,6 +146,30 @@ describe("MermaidDiagram", () => {
     expect(hrefs).toEqual(["https://example.com/"]);
   });
 
+  test("keeps event handlers and javascript: links in labels out of the page", async () => {
+    // WHEN
+    const component = await render(
+      <MermaidDiagram
+        code={[
+          "flowchart LR",
+          '  A["<img src=x onerror=alert(1)>"] --> B["<b onmouseover=alert(1)>bold</b>"]',
+          '  B --> C["<a href=\'javascript:alert(1)\'>link</a>"]',
+        ].join("\n")}
+      />
+    );
+
+    // THEN
+    await expect.poll(() => component.container.querySelector("svg.pele")).toBeTruthy();
+    const elements = [...component.container.querySelectorAll("svg.pele, svg.pele *")];
+    expect(component.container.querySelector("svg.pele img")).toBeNull();
+    expect(
+      elements.flatMap((element) => element.getAttributeNames()).filter((name) => /^on/i.test(name))
+    ).toEqual([]);
+    expect(
+      elements.filter((element) => /javascript:/i.test(element.getAttribute("href") ?? ""))
+    ).toEqual([]);
+  });
+
   test("renders a light diagram in the light theme", async () => {
     // WHEN
     await render(<MermaidDiagram code={"graph TD\n  A[Spine] --> B[Leaf]"} />);
