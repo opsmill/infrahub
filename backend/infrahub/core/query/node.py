@@ -39,17 +39,13 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-<<<<<<< HEAD
 from infrahub.core.query.resource_manager import TrackingPool
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
-=======
 from infrahub.core.query.subquery import (
     build_subquery_filter,
     build_subquery_order,
     build_subquery_order_metadata,
     ranks_latest_value,
 )
->>>>>>> origin/stable
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.attribute_schema import AttributeSchema

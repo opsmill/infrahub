@@ -228,7 +228,6 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
     ]
 
 
-<<<<<<< HEAD
 BOUNDS_PROBE_LABELS = {"lock": "bucket_bounds_probe", "type": "local"}
 
 
@@ -262,7 +261,8 @@ def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
         "120.0",
         "300.0",
     ]
-=======
+
+
 @pytest.fixture
 def redis_driver_without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.Redis)
@@ -313,4 +313,3 @@ def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_chang
 
     assert lock.registry is not first
     assert lock.registry.connection_url != first.connection_url
->>>>>>> origin/stable
