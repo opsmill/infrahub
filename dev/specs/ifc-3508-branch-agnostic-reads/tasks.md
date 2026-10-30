@@ -276,15 +276,15 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 ### Tests for User Story 5
 
 - [ ] T064 [P] [US5] Add `backend/tests/unit/core/schema/test_peer_existence_check.py` for `needs_peer_existence_check`. Cover:
-  - a branch-agnostic relationship;
+  - a branch-agnostic relationship, which returns false;
   - a branch-agnostic peer node;
   - a generic with one branch-agnostic implementation;
   - a generic with only branch-aware implementations;
   - a branch-aware relationship between branch-aware nodes.
 - [ ] T065 [P] [US5] Move `test_deleting_group_removes_it_from_role_after_role_removed_on_branch` and `test_graphql_role_groups_after_group_deleted_with_role_removed_on_branch` from `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_relationship_reads.py` into `backend/tests/component/core/relationship/test_peer_existence.py`. Add tests for:
   - spec US5 scenarios 1-4 and 8-10;
-  - the brief's two new PR 5 tests: a branch-agnostic node deleted after branching with the link removed on the default branch after branching, and a filter through a pool's `resources` on a branch where the prefix is deleted;
-  - a GraphQL read, on the default branch and on B, of a pool's `resources` with `properties` requested, where a prefix was deleted on B. It must return no error. Without the branch edges PR 5 stops writing, `NodeManager.get_many` could drop the peer and raise a `KeyError` before PR 6 lands.
+  - the brief's two new PR 5 tests: a branch-agnostic node deleted after branching with the link removed on the default branch after branching, and a filter through a pool's `resources` on a branch where the prefix is deleted on every live branch (the prefix is not matched, through the retirement check);
+  - a GraphQL read, on the default branch and on B, of a pool's `resources` with `properties` requested, where a prefix was deleted on B only. It must return the prefix and no error (spec Clarifications, 2026-10-30). Without the branch edges PR 5 stops writing, `NodeManager.get_many` could drop the peer and raise a `KeyError` before PR 6 lands.
 
   Confirm the tests that check today's wrong results fail. If the GraphQL read fails after T069 and T075, bring the window check on `IS_PART_OF` from T091 into this PR, so no read is worse after PR 5 alone.
 - [ ] T066 [P] [US5] Add `test_query_text_unchanged_for_branch_aware_relationships` to `backend/tests/component/core/test_relationship_query.py`. It asserts that `RelationshipGetPeerQuery` and `NodeListGetRelationshipsQuery`, for a branch-aware relationship between branch-aware kinds, render the same Cypher as on the base branch (FR-020).
@@ -447,7 +447,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch.
 - [ ] T106 [US6] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12`.
 
-**Checkpoint**: all six stories are complete.
+**Checkpoint**: all six stories are complete. The tasks for PR 7 (`active_on_branches`, FR-041 and FR-042) are not generated yet.
 
 ---
 

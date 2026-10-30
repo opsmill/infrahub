@@ -41,7 +41,9 @@ The message extends the existing one with the branch: `Cannot delete <kind> '<id
 | Read | Before | After |
 |---|---|---|
 | `CoreAccountRole.groups` on the default branch after a group was deleted that had lost the role on a branch | GraphQL error (`KeyError`) | The deleted group is not returned |
-| A pool's `resources` on branch B, where a prefix was deleted | Not returned, because the delete writes a branch `deleted` edge on the `-global-` link | Not returned, through the peer existence check; the delete no longer writes the branch edge |
+| A pool's `resources` on branch B, where a prefix was deleted on B only | Not returned, because the delete writes a branch `deleted` edge on the `-global-` link | Returned, with the values of the default branch, until the prefix exists on no live branch; the delete no longer writes the branch edge |
+| A pool's `resources` on any branch, where a prefix was deleted on every live branch | Not returned | Not returned, because the retirement check closed the `-global-` link |
+| `node_metadata { active_on_branches }` on a peer read through a branch-agnostic relationship (PR 7) | Field does not exist | The names of the live branches on which the peer exists, sorted by name; `null` for a peer read through any other relationship |
 | A branch-agnostic relationship read on any branch, where the peer was deleted on another branch | The peer is missing, or `null` when `properties` are requested | The peer is returned |
 | A peer's attribute values in that read | Each attribute from whichever branch wrote the newest edge | All values from one branch: the request branch, the default branch, then the others by name |
 | A cardinality-one relationship of such a peer, changed on two branches | `ValueError: At most, one relationship expected` | One related node, from the chosen branch |

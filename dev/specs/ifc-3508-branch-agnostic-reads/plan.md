@@ -14,7 +14,7 @@ The approach depends on the answer each caller needs:
 - **Data on `-global-` only (PR 2):** the callers stop passing the flag.
 - **Taken or present on any live branch (PRs 3, 4 and the peer match of PR 6):** the query collects the live branch windows once, then keeps a row when `any(window IN branch_windows WHERE <edges visible in the window> AND NOT EXISTS {<an edge outranks them>})`. This is the flat form of `NodeGetByHFIDQuery._build_branch_agnostic_query` at `7015435c4`.
 - **One value per node (PR 6):** `NodeListGetInfoQuery` chooses one window per node. The attribute and relationship queries then rank inside that window with their existing `ORDER BY branch_level DESC, from DESC LIMIT 1`.
-- **Peer exists in the read's view (PR 5):** a peer existence check on `IS_PART_OF`, rendered only for branch-agnostic relationships and relationships to branch-agnostic kinds.
+- **Peer exists in the read's view (PR 5):** a peer existence check on `IS_PART_OF`, rendered only for branch-aware relationships whose peer kind is branch-agnostic or a generic with a branch-agnostic implementation. A branch-agnostic relationship gets no check: the retirement check closes its `-global-` link once no live branch holds both ends (spec Clarifications, 2026-10-30).
 
 The window logic lives once, in a new leaf module `core/query/branch_windows.py` (research R1).
 
@@ -149,6 +149,7 @@ Every PR starts from its base branch, carries its own tests, benchmark results a
 | 4 | `agnostic-delete-check-ifc-3508` | PR 3's branch, rebased on `release-1.12` once PR 3 merges | PR 3 is in review |
 | 5 | `peer-existence-check-ifc-3508` | `release-1.12` | PR 3 and PR #11220 are in `release-1.12` |
 | 6 | `agnostic-relationship-reads-ifc-3508` | PR 5's branch | PR 5 is in review |
+| 7 | `active-on-branches-ifc-3508` | PR 6's branch | PR 6 is in review |
 
 PR 5 must not leave a read worse than before when it ships without PR 6. Task T065 tests the case most at risk: a branch-agnostic read of a pool's `resources` after a prefix was deleted on a branch. If that test fails, PR 5 takes the window check on `IS_PART_OF` from PR 6.
 

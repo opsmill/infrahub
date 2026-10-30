@@ -73,9 +73,10 @@ Two vertices joined by both a `-global-` edge and a branch edge of the same type
 
 Rendered for a relationship read when `needs_peer_existence_check(relationship_schema, peer_schema, schema_branch)` returns true:
 
-- the relationship's branch support is `agnostic`; or
-- the peer schema is a node whose branch support is `agnostic`; or
-- the peer schema is a generic, and at least one node schema in its `used_by` has branch support `agnostic`.
+- the relationship's branch support is not `agnostic`; and
+- the peer schema is a node whose branch support is `agnostic`, or a generic with at least one node schema in its `used_by` whose branch support is `agnostic`.
+
+A branch-agnostic relationship never gets the check. Its peer is returned while the `-global-` link is open, and the retirement check closes the link once no live branch holds both ends.
 
 A peer passes when its latest `IS_PART_OF` edge is `active`:
 

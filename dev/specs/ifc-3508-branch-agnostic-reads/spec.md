@@ -22,7 +22,7 @@ When Infrahub needs one answer across every branch, it runs a branch-agnostic re
 
 Some callers run a branch-agnostic read although they need the default branch's answer, and some writes leave a `-global-` edge and a branch edge of the same type between the same two vertices. The audit found 46 component tests that fail on the current code. The most severe effects are a change on a branch that grants or removes global permissions on every branch, and duplicate allocations from IP pools.
 
-The work ships as six pull requests. Each user story below is one of them, numbered to match.
+The work ships as seven pull requests. User Stories 1 to 6 are PRs 1 to 6, numbered to match. PR 7 adds the `active_on_branches` field of User Story 6 (FR-041 and FR-042).
 
 | PR | User story | Base branch | Depends on |
 |---|---|---|---|
@@ -32,6 +32,7 @@ The work ships as six pull requests. Each user story below is one of them, numbe
 | 4 | Deleting a branch-agnostic node checks every live branch | `release-1.12` | PR 3 |
 | 5 | Reads never return a deleted peer, and no link mixes `-global-` and branch edges | `release-1.12` | PR 3, and PR [#11220](https://github.com/opsmill/infrahub/pull/11220) merged into `release-1.12` |
 | 6 | Branch-agnostic relationships return every live peer, with values from one branch | `release-1.12` | PR 5 |
+| 7 | Peers read through a branch-agnostic relationship report the branches they exist on (User Story 6) | `release-1.12` | PR 6 |
 
 PRs 1 and 3 fix the effects users are most likely to hit and do not wait for PR #11220.
 
@@ -42,6 +43,15 @@ PRs 1 and 3 fix the effects users are most likely to hit and do not wait for PR 
 - **Latest edge in a window**: an `active` edge visible in the window that no other edge of its competing group outranks. An edge outranks another when it has a higher `branch_level`, or the same `branch_level` and a later `from`.
 - **Exists on a branch**: the node's latest `IS_PART_OF` edge in that branch's window is `active`.
 - **Read across branches**: a read matches a node when, in at least one live branch's window, the latest edges along the path are active and lead to the value.
+
+## Clarifications
+
+### Session 2026-10-30
+
+- Q: Where does the peer existence check (FR-018) apply, given that the retirement check closes a branch-agnostic relationship's `-global-` link once no live branch holds both ends? → A: Only on branch-aware relationships whose peer kind is branch-agnostic or a generic with a branch-agnostic implementation, on reads on one branch and on branch-agnostic reads. A branch-agnostic relationship gets no check on any read: it returns a peer while its `-global-` link is open, including on a branch that deleted the peer.
+- Q: What data does Infrahub hold after a branch-aware node with a branch-agnostic relationship is deleted on one branch? → A: The node's `IS_PART_OF` edge is `deleted` on that branch, and no edge is written on that branch for the branch-agnostic link. The `-global-` link stays `active`, and the node is returned as a peer of the relationship on every branch, until the node exists on no live branch and the retirement check closes the link (FR-023).
+- Q: Should this feature add an `active_on_branches` data point, and where? → A: Yes. Add `active_on_branches: [String!]` to `InfrahubNodeMetadata`, filled for peers returned through a branch-agnostic relationship and for nodes from other branch-agnostic reads, and `null` elsewhere. It is computed only when requested, and ships as its own PR after PR 6 (FR-041, FR-042).
+- Q: What does this feature add for attributes? → A: Nothing. The branch a peer's values come from follows from `active_on_branches` and the order of FR-029. A list of branches per attribute is out of scope.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -130,7 +140,9 @@ An administrator deletes a branch-agnostic node, for example an account group. T
 
 ### User Story 5 - Reads never return a deleted peer, and no link mixes `-global-` and branch edges (Priority: P2)
 
-A user reads a relationship whose peers may be deleted on some branches: a branch-agnostic relationship, a relationship to a branch-agnostic kind, or a relationship to a generic with a branch-agnostic implementation. For example, a pool's `resources` on a branch where a prefix was deleted, or an account role's `groups` after a group was deleted. The read must return a peer only if the peer exists in the read's view: the request branch for a normal read, and each live branch's window for a branch-agnostic read.
+A user reads a branch-aware relationship whose peer kind is branch-agnostic, or a generic with a branch-agnostic implementation. For example, an account role's `groups` after a group was deleted. The read must return a peer only if the peer exists in the read's view: the request branch for a normal read, and each live branch's window for a branch-agnostic read.
+
+A branch-agnostic relationship, such as a pool's `resources`, needs no such check. Its link is on `-global-`, and the retirement check closes the link once no live branch holds both ends. While the link is open, the peer exists on at least one live branch, and User Story 6 returns it on every branch, including a branch that deleted it.
 
 Two kinds of write today leave a `-global-` edge and a branch edge of the same type between the same two vertices, which no read can rank correctly:
 
@@ -139,15 +151,15 @@ Two kinds of write today leave a `-global-` edge and a branch edge of the same t
 
 After this change, no pair of vertices holds both a `-global-` edge and a branch edge of the same type. The deletes write the edges below, and a graph migration converts or removes the existing pairs. Every read gives the same answer before and after the migration, at every point in time.
 
-**Why this priority**: it fixes the GraphQL error a user receives when reading `CoreAccountRole.groups` after a group was deleted, and the read on a branch that would otherwise return a deleted pool resource once the branch `deleted` edges are no longer written.
+**Why this priority**: it fixes the GraphQL error a user receives when reading `CoreAccountRole.groups` after a group was deleted.
 
 **Independent Test**: on the default branch, link a role to group G1; create branch B; remove the role from G1 on the default branch; delete G1. On both branches, reading the role's groups does not return G1 and raises no error.
 
 **Acceptance Scenarios**:
 
 1. **Given** a branch-agnostic node deleted after branch B was created, and a link to it removed on the default branch after B was created, **When** the link is read on the default branch or on B, **Then** it is not returned on either.
-2. **Given** a prefix in a pool's `resources` deleted on branch B, **When** a list filtered through the pool's `resources` runs on B, **Then** it does not match that prefix.
-3. **Given** a branch-aware node deleted on branch B with a branch-agnostic relationship to another node, **When** the relationship is read on B, **Then** the deleted node is not returned; **and when** it is read on the default branch, **Then** the node is returned.
+2. **Given** a prefix in a pool's `resources` deleted on every live branch, **When** the pool's `resources` are read on any branch, or a list is filtered through them, **Then** the prefix is not returned or matched, because the retirement check closed the `-global-` link.
+3. **Given** a branch-aware node deleted on branch B with a branch-agnostic relationship to another node, **When** the node is deleted, **Then** no edge is written on B for that relationship, and the `-global-` link stays open while the default branch holds the node.
 4. **Given** a branch-agnostic node deleted on the default branch, **When** its branch-aware links are inspected, **Then** each link is closed on the default branch when its latest default-branch edge is `active`, a `deleted` edge is written on each user branch whose own latest edge for the link is `active`, and nothing is written on `-global-` or on branches that only inherited the link.
 5. **Given** a database with links that hold both a `-global-` edge and a branch edge of the same type, **When** the migration runs, **Then** reads at several timestamps return the same results before and after, and no pair of either known shape remains.
 6. **Given** a pair of vertices that holds mixed edges in neither known shape, **When** the migration runs, **Then** the pair is not changed and the migration logs how many such pairs it found.
@@ -188,6 +200,8 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 8. **Given** a peer deleted on every live branch, **When** a link to it is added, **Then** the link is refused.
 9. **Given** a cardinality-one branch-agnostic relationship whose peer G was deleted on branch B, **When** the peer is replaced with G2 on the default branch, **Then** a read on the default branch returns only G2.
 10. **Given** a plain list query of the peer's kind on the default branch, **When** a peer exists only on branch B, **Then** the list does not include it.
+11. **Given** a prefix in a pool's `resources` deleted on branch B and still existing on the default branch, **When** the pool's `resources` are read on B with `node_metadata { active_on_branches }`, **Then** the prefix is returned and `active_on_branches` lists the default branch and not B.
+12. **Given** a relationship that is not branch-agnostic, **When** its peers are read with `node_metadata { active_on_branches }`, **Then** the field is `null`.
 
 ### Edge Cases
 
@@ -234,7 +248,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 **Peer existence and edges between the same two vertices (User Story 5)**
 
-- **FR-018**: A read that follows a relationship MUST return a peer only if the peer exists in the read's view, when the relationship is branch-agnostic, the peer kind is branch-agnostic, or the peer kind is a generic with a branch-agnostic implementation. This applies to peer reads and their counts, node list prefetches of relationships, peer id lists, filters and ordering through relationships, reads of one relationship by identifier, and every other read of `IS_RELATED` edges that research R6 lists as affected.
+- **FR-018**: A read that follows a branch-aware relationship MUST return a peer only if the peer exists in the read's view, when the peer kind is branch-agnostic or a generic with a branch-agnostic implementation. A branch-agnostic relationship gets no such check: it returns a peer while its `-global-` link is open, and the retirement check closes the link once no live branch holds both ends (FR-023, FR-028). This applies to peer reads and their counts, node list prefetches of relationships, peer id lists, filters and ordering through relationships, reads of one relationship by identifier, and every other read of `IS_RELATED` edges that research R6 lists as affected.
 - **FR-019**: The peer existence check MUST use the same definition of a live peer as the retirement check of branch-agnostic fields.
 - **FR-020**: Reads of relationships that are not branch-agnostic, between branch-aware kinds, MUST be unchanged, except the peer id list of FR-040, which is corrected for every read.
 - **FR-021**: Deleting a branch-agnostic node MUST, for each branch-aware link and for its `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE` edges: close the link on the default branch when the default branch's latest edge is `active`; write a `deleted` edge on each user branch whose own latest edge is `active`; and write nothing on `-global-` or on branches that only inherited the link.
@@ -256,6 +270,8 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - **FR-034**: A plain list query of a branch-aware kind MUST keep following the request branch.
 - **FR-038**: A branch-agnostic lookup by HFID, and a branch-agnostic filter on a list query or on a relationship's peers, MUST match a node when, in at least one live branch's window, the latest edges along the path are active and lead to the value.
 - **FR-039**: Filters on a read on one branch MUST NOT cost more database hits than they do once PR #11220 is merged.
+- **FR-041**: The GraphQL type `InfrahubNodeMetadata` MUST have a field `active_on_branches: [String!]`. For a peer returned through a branch-agnostic relationship, and for a node returned by another branch-agnostic read, it MUST list the names of the live branches on which the node exists, sorted by name. For every other node it MUST be `null`.
+- **FR-042**: `active_on_branches` MUST be computed only when the query requests it. A query that does not request it MUST keep its database hits.
 
 **Peer id list for object conversion (User Story 5)**
 
@@ -278,7 +294,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 ### Measurable Outcomes
 
-- **SC-001**: After all six PRs, every failing test from the audit passes. That is 46 tests on the audited commit, or the adapted count where `release-1.12` already fixes a case. The 7 control tests still pass. This holds after the assertion changes the brief lists, and after any other assertion that a decision of the brief changes; each such change is recorded in the PR description.
+- **SC-001**: After PRs 1 to 6, every failing test from the audit passes. That is 46 tests on the audited commit, or the adapted count where `release-1.12` already fixes a case. The 7 control tests still pass. This holds after the assertion changes the brief lists, and after any other assertion that a decision of the brief changes; each such change is recorded in the PR description.
 - **SC-002**: No change made on an unmerged branch alters the global permissions of any account, in any of the 10 permission scenarios of the audit.
 - **SC-003**: No IP pool allocation returns a prefix or address held by a live branch, in any of the 8 IP pool scenarios of the audit, for IPv4 and IPv6.
 - **SC-004**: Reads of relationships between branch-aware kinds that are not branch-agnostic show the same number of database hits before and after, on the same data set.
@@ -314,3 +330,5 @@ These come from the brief and stay open. Each one blocks only the tasks that dep
 - Refusing a pool link to a peer that exists on only one branch.
 - IP pools that allocate a new value on every call with the same identifier ([IFC-3496](https://opsmill.atlassian.net/browse/IFC-3496)).
 - Filters and lookups by value on a branch ([IFC-3488](https://opsmill.atlassian.net/browse/IFC-3488)), which PR #11220 fixes.
+- `active_on_branches` for nodes read on one branch through a relationship that is not branch-agnostic.
+- A list, per attribute, of the live branches on which the attribute holds the returned value.
