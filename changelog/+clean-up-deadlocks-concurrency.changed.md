@@ -1,1 +1,0 @@
-Removed the concurrency limit from the `clean-up-deadlocks` task, so a run that never finishes, for example after a task worker restarts while the run is starting, no longer stops later runs from removing locks left behind by inactive task workers.
