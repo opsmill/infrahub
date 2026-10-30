@@ -36,7 +36,7 @@ USER vscode
 
 RUN pip install invoke
 
-ARG UV_VER=0.11.8
+ARG UV_VER=0.13.6
 RUN curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - \
     && echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $HOME/.bashrc
 
