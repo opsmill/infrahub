@@ -1,1 +1,1 @@
-Changed how Mermaid diagrams in Markdown are drawn, so a page with a diagram downloads less code, but diagrams are laid out differently than before, and a diagram's own Mermaid theme settings, math formulas, and HTML in labels other than line breaks, bold, italic, and underline no longer apply.
+Mermaid diagrams in Markdown now use Pele, which is lighter and loads faster, with an updated style that follows the Infrahub theme.
