@@ -23,7 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.11.9"
+  infrahub_version = "1.11.10"
 }
 
 ### Infrahub

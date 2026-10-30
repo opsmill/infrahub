@@ -45,7 +45,7 @@ These examples are for reference purposes and may require customization for your
 
 The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, which requires the following versions:
 
-- Infrahub 1.11.9 or later. Earlier versions do not have the `INFRAHUB_CACHE_URL` setting, so they ignore it and connect to `INFRAHUB_CACHE_ADDRESS`, which defaults to `localhost`. Their task manager image also includes a version of Docket, the component that coordinates Prefect's background services, that does not accept `redis+sentinel://` URLs. The task manager runs the Infrahub image, so the examples set the task manager image tag, `prefectTag`, to the same version as `infrahubTag`.
+- Infrahub 1.11.10 or later. Earlier versions do not have the `INFRAHUB_CACHE_URL` setting, so they ignore it and connect to `INFRAHUB_CACHE_ADDRESS`, which defaults to `localhost`. Their task manager image also includes a version of Docket, the component that coordinates Prefect's background services, that does not accept `redis+sentinel://` URLs. The task manager runs the Infrahub image, so the examples set the task manager image tag, `prefectTag`, to the same version as `infrahubTag`.
 - Infrahub Enterprise chart 4.22.0 or later. Earlier charts include a `prefect-server` chart that rejects the `backgroundServices.messaging.redis.url` value, so the installation fails. Chart 4.22.0 is also the first release in which the task manager takes its startup lock in Redis through that messaging URL.
 - Redis 6.0 or later, for the Redis nodes and for Sentinel. Infrahub opens each connection with the `HELLO` command, which Redis 5.0 and earlier reject.
 
