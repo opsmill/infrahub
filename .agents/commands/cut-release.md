@@ -8,9 +8,14 @@ argument-hint: [version] (e.g., "1.8.0") - leave empty for patch release
 
 Cut a new Infrahub release. The version is **derived from the latest git tag** and stamped into the
 build by hatch-vcs. There is **no `[project].version` field** in either `pyproject.toml`, and this
-command **never edits `pyproject.toml`** — a release is declared solely by the annotated
-`infrahub-v<version>` git tag. (The hatch-vcs `fallback-version` is a static sentinel, identical on
-every branch, and is never bumped — a moving value would conflict on every stable/develop merge.)
+command **never edits `pyproject.toml`** — a release is declared solely by the
+`infrahub-v<version>` git tag, which the GitHub release creates on the merged release commit. (The
+hatch-vcs `fallback-version` is a static sentinel, identical on every branch, and is never bumped — a
+moving value would conflict on every stable/develop merge.)
+
+`stable` accepts changes only through a pull request, so this command opens a release pull request.
+The `publishing-patch-releases` skill runs this command and then merges, tags and publishes without a
+person.
 
 **Argument**: `$ARGUMENTS`
 - If empty: increment the patch of the most recent release tag (e.g., 1.10.0 -> 1.10.1)
@@ -50,14 +55,12 @@ Before proceeding, verify:
    Report how many fragments exist. If none, warn the user but allow proceeding (they may want to
    release without new changes).
 
-2. **Show current branch** (informational):
+2. **Create the release branch** from the latest `stable`, the branch releases are cut from:
 
    ```bash
-   git branch --show-current
+   git fetch origin stable
+   git switch -c prep-release-<new_version> origin/stable
    ```
-
-   Releases are normally cut from `stable`. Report the branch so the user can confirm they are on
-   the right one.
 
 3. **Preview towncrier output**:
 
@@ -81,17 +84,20 @@ Trigger the "Update Docker Compose & helm chart" workflow with the target versio
 docker-compose.yml image pins (committed to the branch by opsmill-bot) AND the Helm chart
 `appVersion` in the separate `opsmill/infrahub-helm` repository:
 
+The workflow commits to the release branch, so push it first:
+
 ```bash
-gh workflow run update-compose-file-and-chart.yml --ref <current_branch> -f version=<new_version>
+git push -u origin prep-release-<new_version>
+gh workflow run update-compose-file-and-chart.yml --ref prep-release-<new_version> -f version=<new_version>
 ```
 
 Wait for the run to complete successfully, then pull the bot commit into the local branch:
 
 ```bash
 sleep 5  # give GitHub a moment to register the run
-RUN_ID=$(gh run list --workflow=update-compose-file-and-chart.yml --branch <current_branch> --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=update-compose-file-and-chart.yml --branch prep-release-<new_version> --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID" --exit-status
-git pull --rebase origin <current_branch>
+git pull --rebase origin prep-release-<new_version>
 ```
 
 Verify the compose file is now pinned correctly (the same check the New Release workflow runs):
@@ -100,8 +106,8 @@ Verify the compose file is now pinned correctly (the same check the New Release 
 uv run invoke release.validate-docker-compose --version <new_version>
 ```
 
-If the workflow run fails, or the validation fails after pulling, stop — do NOT tag with a stale
-docker-compose.yml.
+If the workflow run fails, or the validation fails after pulling, stop — do NOT open the release
+pull request with a stale docker-compose.yml.
 
 Search the open pull requests of `opsmill/infrahub-helm` for the ones that name this release as the
 release they ship in, such as a Neo4j chart upgrade, and show them to the user. Keep only the ones
@@ -204,11 +210,11 @@ The release-notes sidebar is generated automatically from the files in
 `docs/sidebars.ts` edit is needed. The new release appears in its "X.Y release"
 category once the file exists.
 
-## Step 7: Commit, Tag, and Push
+## Step 7: Commit, Push, and Open the Pull Request
 
-The release is one commit (changelog + docs) on top of the workflow's docker-compose commit
-(Step 3), plus an annotated `infrahub-v<new_version>` tag. The tag is what the build resolver
-reads — there is no version file to bump.
+The release is one commit (changelog + docs) on top of the workflow's docker-compose commit. There
+is no version file to bump: the build resolver reads the `infrahub-v<new_version>` tag, which the
+GitHub release creates on the merged commit.
 
 1. **Review the changes**:
 
@@ -225,18 +231,15 @@ reads — there is no version file to bump.
    git commit -m "chore: release <new_version>"
    ```
 
-3. **Create the annotated tag** on the release commit:
+3. **Push** the branch and **open the pull request** against `stable`:
 
    ```bash
-   git tag -a infrahub-v<new_version> -m "Release infrahub-v<new_version>"
+   git push origin prep-release-<new_version>
+   gh pr create --base stable --head prep-release-<new_version> --title "chore: release <new_version>" --body-file <body>
    ```
 
-4. **Push** the commit and the tag:
-
-   ```bash
-   git push origin HEAD
-   git push origin infrahub-v<new_version>
-   ```
+   The body lists the files the release changes, with the link to the propagation workflow run, and
+   the pull requests merged into `stable` since the previous release tag.
 
 ## Step 8: Verify Changes
 
@@ -244,11 +247,11 @@ Review all modified files:
 
 1. `CHANGELOG.md` - new release section added, fragments removed
 2. `docs/docs/release-notes/infrahub/release-<version>.mdx` - new file created
-3. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
+3. **No `pyproject.toml` changes**: `git diff origin/stable -- pyproject.toml python_testcontainers/pyproject.toml`
    MUST be empty
 4. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
    (`uv run invoke release.validate-docker-compose --version <new_version>` passes)
-5. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
+5. The release pull request is open against `stable`
 
 ## Step 9: Summary and Next Steps
 
@@ -256,14 +259,20 @@ Present a summary of changes made:
 - Old version -> New version
 - Files modified/created
 - Number of changelog entries included
-- The tag created and pushed
+- The release pull request link
 
-To publish the release artifacts, **create the GitHub release** at
-https://github.com/opsmill/infrahub/releases/new with tag `infrahub-v<version>` — this triggers the
-New Release workflow (PyPI, docker image, Helm publish). Its publish guards validate that the
-resolved version matches the tag and that docker-compose.yml is up to date, and abort otherwise.
-The Helm chart `appVersion` was already propagated by the workflow run in Step 3, so the published
-chart carries the new version.
+To publish the release artifacts, merge the pull request, then **create the GitHub release** on the
+merged commit. Its notes are the `<version>` section of `CHANGELOG.md`, which the
+`publishing-patch-releases` skill's `scripts/release-notes.sh` prints:
+
+```bash
+gh release create infrahub-v<version> --target <merged_commit_sha> --title "Infrahub - v<version>" --notes-file <notes>
+```
+
+This creates the tag and triggers the New Release workflow (PyPI, docker image, Helm publish). Its
+publish guards validate that the resolved version matches the tag and that docker-compose.yml is up
+to date, and abort otherwise. The Helm chart `appVersion` was already propagated by the
+"Update Docker Compose & helm chart" workflow run, so the published chart carries the new version.
 
 ## Error Handling
 
@@ -271,9 +280,9 @@ chart carries the new version.
 - If towncrier fails, stop and report the error
 - If version parsing fails, show a clear error about the expected format (X.Y.Z)
 - If `gh` is not authenticated or the workflow dispatch fails, stop and report (the propagation
-  workflow MUST run before tagging)
+  workflow MUST run before the release pull request opens)
 - If the propagation workflow run concludes in failure, or `release.validate-docker-compose` fails
-  after pulling, stop — do NOT tag with a stale docker-compose.yml
+  after pulling, stop — do NOT open the release pull request with a stale docker-compose.yml
 - If the release notes file already exists, ask the user before overwriting
 - If the sidebar update location cannot be found, report the error and show what manual edit is needed
 - This command NEVER edits `pyproject.toml` at any step (`[project].version` does not exist, and
