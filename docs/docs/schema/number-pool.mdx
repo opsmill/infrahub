@@ -120,7 +120,7 @@ The ranges of a pool declared in the schema can only be changed in the schema. I
 
 ## Allocation scope {#allocation-scope}
 
-`parameters.allocation_scope` lists the attributes and relationships of the kind that divide the pool's numbers, so that each object receives the lowest free number among the objects of its own division. For a VLAN ID that only has to be distinct within each site, on a kind with a required `site` relationship:
+`parameters.allocation_scope` lists the attributes and relationships of the kind, the scope elements, that divide the pool's numbers into allocation scopes. Each object receives the lowest free number among the objects of its own allocation scope. For a VLAN ID that only has to be distinct within each site, on a kind with a required `site` relationship:
 
 ```yaml
       - name: vlan_id
@@ -133,7 +133,7 @@ The ranges of a pool declared in the schema can only be changed in the schema. I
               end: 999
 ```
 
-The elements follow the same rules as on a pool you create in the web interface or the GraphQL API, described in [Allocate numbers per site with allocation scopes](../resource-manager/allocate-numbers-per-scope.mdx#what-can-be-part-of-an-allocation-scope). A schema load that does not follow one of them fails with an error of the form `<kind>.<attribute>: allocation_scope: <reason>`.
+The elements follow the same rules as on a pool you create in the web interface or the GraphQL API, described in [Allocate numbers per site with allocation scopes](../resource-manager/allocate-numbers-per-scope.mdx#scope-elements). A schema load that does not follow one of them fails with an error of the form `<kind>.<attribute>: allocation_scope: <reason>`.
 
 The scope cannot change once Infrahub has created the pool. A later schema load that declares other elements fails with `allocation_scope can't be changed after the pool is created`. The order of the elements does not matter.
 

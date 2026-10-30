@@ -5,7 +5,7 @@ title: Track existing numbers in a number pool
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-A number pool counts in its usage, and skips during allocation, only the numbers it tracks. A VLAN ID typed in manually, or a firewall rule ID that existed before you created the pool, is not part of the pool's usage, and the pool can allocate that number to another object. When you create a pool, it tracks no number, even when objects of its kind already hold numbers in its ranges.
+A number pool counts in its usage, and skips during allocation, only the numbers it tracks. A VLAN ID typed in manually, or a firewall rule ID that existed before you created the pool, is not part of the pool's usage until you attach it to the pool. Until then, the pool can allocate that number to another object. When you create a pool, it tracks no number, even when objects of its kind already hold numbers in its ranges.
 
 Attach those numbers to the pool. The pool then records each one, counts it in its usage, and never allocates it to another object. Attach numbers this way when you start using a pool for VLANs or other numbers that already exist, such as the VLANs of a fabric you are onboarding.
 

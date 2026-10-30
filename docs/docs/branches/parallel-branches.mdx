@@ -47,7 +47,7 @@ A merge does make the stored diff of every other open branch out of date, and In
 
 ## Allocate values from a pool
 
-A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, or each division of a number pool with an [allocation scope](../resource-manager/allocate-numbers-per-scope.mdx), so simultaneous requests from different branches or Generators get different values.
+A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, or each [allocation scope](../resource-manager/allocate-numbers-per-scope.mdx) of a number pool, so simultaneous requests from different branches or Generators get different values.
 
 A value you type into a unique attribute is not reserved. Two branches can each hold the same typed value. Once one of them merges, the other is refused at its next rebase or merge, and its Proposed Change reports the duplicate under **Schema Integrity**.
 
