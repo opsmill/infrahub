@@ -7,20 +7,14 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-<<<<<<< HEAD:backend/tests/unit/core/merge/selective_regen/test_generator_output.py
 from infrahub.core.merge.selective_regen.generator_output import (
-    CAPTURE_DIFF_NAME_PREFIX,
     GeneratorCascadeOutput,
     GeneratorTrackingGroupDiffCapturer,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
-from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
-=======
-from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
-from infrahub.core.timestamp import Timestamp
 from tests.helpers.diff_factories import EnrichedAttributeFactory, EnrichedNodeFactory, EnrichedRootFactory
->>>>>>> origin/stable:backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
+from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -181,24 +175,8 @@ async def test_capture_returns_every_change_when_any_definition_lacks_a_tracking
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
 
     assert client.queried_names == ["genA", "genB"]
-<<<<<<< HEAD:backend/tests/unit/core/merge/selective_regen/test_generator_output.py
-    assert repository.filters_seen == [None]
-
-
-async def test_capture_marks_the_saved_diff_so_it_can_be_identified_later() -> None:
-    coordinator = _RecordingCoordinator()
-    capturer = GeneratorTrackingGroupDiffCapturer(
-        diff_coordinator=coordinator,
-        diff_repository=_RecordingRepository(),
-        serializer=_RecordingSerializer(),
-        client=cast("InfrahubClient", _FakeClient({})),
-        branch=Branch(name="main"),
-    )
-
-    await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
-
-    assert len(coordinator.names) == 1
-    assert coordinator.names[0].startswith(CAPTURE_DIFF_NAME_PREFIX)
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"n1", "n2", "written-by-genB"}
 
 
 def _generator_run(name: str) -> RequestGeneratorDefinitionRun:
@@ -232,7 +210,3 @@ async def test_generator_tracking_output_captures_the_runs_generators_by_name() 
 
     assert capturer.calls == [(since, ["gen-a", "gen-b"])]
     assert captured is capturer.result
-=======
-    assert coordinator.requested_node_uuids == [None]
-    assert _captured_ids(result) == {"n1", "n2", "written-by-genB"}
->>>>>>> origin/stable:backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
