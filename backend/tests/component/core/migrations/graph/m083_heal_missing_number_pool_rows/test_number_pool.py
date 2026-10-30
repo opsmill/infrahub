@@ -9,7 +9,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.graph.m076_heal_missing_attribute_rows import Migration076
-from infrahub.core.migrations.graph.m082_heal_missing_number_pool_rows import Migration082
+from infrahub.core.migrations.graph.m083_heal_missing_number_pool_rows import Migration083
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -86,7 +86,7 @@ class TestNumberPoolHeal:
     @pytest.fixture(scope="class")
     async def healed(self, db: InfrahubDatabase, seeded: PoolSeed) -> PoolHealRun:
         console = recording_console()
-        result = await Migration082.init().execute(migration_input=MigrationInput(db=db, console=console))
+        result = await Migration083.init().execute(migration_input=MigrationInput(db=db, console=console))
         return PoolHealRun(
             errors=result.errors,
             nbr_migrations_executed=result.nbr_migrations_executed,
@@ -100,7 +100,7 @@ class TestNumberPoolHeal:
         assert "TestServer: 3 missing attribute row(s) across 3 node(s); repairing" in healed.console_output
         assert "TestServer.rack_unit: allocated 3 pool value(s)" in healed.console_output
 
-        validation_result = await Migration082.init().validate_migration(db=db)
+        validation_result = await Migration083.init().validate_migration(db=db)
         assert validation_result.errors == []
 
     async def test_single_pool_served_all_allocations(
@@ -183,7 +183,7 @@ class TestNumberPoolHeal:
         )
         values_before = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_before.items()}
 
-        second_result = await Migration082.init().execute(migration_input=MigrationInput(db=db))
+        second_result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
         assert second_result.errors == []
         assert second_result.nbr_migrations_executed == 0
 
@@ -213,7 +213,7 @@ async def test_numberpool_missing_pool_upserted_and_healed(
 
     assert await get_schema_pools(db=db) == []
 
-    migration = Migration082.init()
+    migration = Migration083.init()
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert execution_result.errors == []
     assert execution_result.nbr_migrations_executed == 1
@@ -294,7 +294,7 @@ async def test_branch_pool_allocations_follow_default_branch_allocations(
         db=db, branch=branch, labels="TestCar:TestAsset", kind="TestCar", created_at=Timestamp().subtract(seconds=30)
     )
 
-    migration = Migration082.init()
+    migration = Migration083.init()
 
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert execution_result.errors == []
@@ -380,7 +380,7 @@ async def test_pool_rows_are_left_to_this_migration_by_the_default_value_heal(
     ) == {"status"}
     assert (await default_value_heal.validate_migration(db=db)).errors == []
 
-    migration = Migration082.init()
+    migration = Migration083.init()
     result = await migration.execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
     assert result.nbr_migrations_executed == 1

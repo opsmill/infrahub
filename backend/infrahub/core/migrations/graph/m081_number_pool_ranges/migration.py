@@ -27,7 +27,7 @@ POOL_PAGE_SIZE = 100
 RANGES_RELATIONSHIP_NAME = "ranges"
 
 
-class Migration080(ArbitraryMigration):
+class Migration081(ArbitraryMigration):
     """Give every number pool the range it allocates from.
 
     A number pool carries its bounds as a pair of attributes. Those bounds now live on range nodes
@@ -42,9 +42,9 @@ class Migration080(ArbitraryMigration):
     creates nothing.
     """
 
-    name: str = "080_number_pool_ranges"
+    name: str = "081_number_pool_ranges"
     description: str = "Materialise one range per existing number pool from its bounds"
-    minimum_version: int = 79
+    minimum_version: int = 80
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         """Report the pools whose bounds never reached a range.

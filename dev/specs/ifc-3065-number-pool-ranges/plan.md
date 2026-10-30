@@ -14,7 +14,7 @@ A number pool gains a set of weighted ranges stored as a new branch-agnostic cor
 
 **Primary Dependencies**: FastAPI, graphene 3.4.3 / graphql-core 3.2.8, Pydantic 2.12, Neo4j driver 6.2, Prefect (schema pool sync flow)
 
-**Storage**: Neo4j graph; new node kind `CoreNumberPoolRange`; data migration `m080`
+**Storage**: Neo4j graph; new node kind `CoreNumberPoolRange`; data migration `m081`
 
 **Testing**: pytest (unit, component with testcontainers, functional, integration), pytest-benchmark, Vitest for the frontend guard
 
@@ -77,8 +77,8 @@ backend/infrahub/
 │   ├── query/resource_manager.py                 # $ranges on used/allocated/taken
 │   ├── validators/enum.py, validators/__init__.py# ranges constraint identifier + registration
 │   ├── validators/attribute/number_pool.py       # checker over a range set
-│   ├── migrations/graph/m080_number_pool_ranges/ # bootstrap kind + one range per pool
-│   └── graph/__init__.py                         # GRAPH_VERSION = 80
+│   ├── migrations/graph/m081_number_pool_ranges/ # bootstrap kind + one range per pool
+│   └── graph/__init__.py                         # GRAPH_VERSION = 81
 ├── pools/
 │   ├── number_pool_number_picker.py                  # walks the space's segments for the next number (new)
 │   ├── number_pool_repository.py                 # ranges, used/free/taken, reservations (new)
@@ -97,7 +97,7 @@ backend/tests/
 ├── unit/pools/test_number_ranges.py
 ├── unit/core/schema/test_number_pool_parameters.py
 ├── component/core/resource_manager/test_number_pool.py, test_number_pool_query.py
-├── component/core/migrations/graph/m080_number_pool_ranges/
+├── component/core/migrations/graph/m081_number_pool_ranges/
 ├── component/core/constraint_validators/test_attribute_numberpool_constraints.py
 ├── component/pools/test_schema_number_pool_upserter.py, test_schema_number_pool_synchronizer.py
 ├── component/graphql/resource_manager/test_resource_manager.py, number_pools/test_pool_ranges.py
@@ -136,7 +136,7 @@ One `gh stack` of six pull requests, merged bottom to top. Each is green and coh
 | PR | Content | Depends on | Frontend |
 |----|---------|------------|----------|
 | 1 | Range kind, `ranges` relationship, deprecated optional shorthand, `@deprecated` propagation in the generator, one utilization entry per range, regenerated protocols / GraphQL schema / frontend GraphQL types | none | Full GraphQL contract available; work starts against this branch |
-| 2 | Migration m080 (one range per pool, kind bootstrap), `GRAPH_VERSION`, shorthand mirror helper | 1 | none |
+| 2 | Migration m081 (one range per pool, kind bootstrap), `GRAPH_VERSION`, shorthand mirror helper | 1 | none |
 | 3 | Pool mutation shorthand rules by range count, range mutation class, pool lock, overlap refusals | 2 | Refusal messages final |
 | 4 | `parameters.ranges`, `effective_ranges()`, constraint identifier and checker, upserter, synchronizer, guards on both surfaces, deprecation warnings, SDK contract (separate SDK PR first), openapi / REST types / docs snippet | 3 | REST types and schema parameters |
 | 5 | Calculator, range-list queries, number picker over segments, utilization getter, exact per-range figures, multi-range allocation through GraphQL, the schema and a functional test | 4 | Figures become exact |
@@ -149,7 +149,7 @@ Allocation over ranges (PR 5) reads range nodes only, so it lands after every su
 | Topic | Note |
 |-------|------|
 | Concurrency | Range and shorthand writes take the pool lock (`resource_pool.<pool_id>`), the lock allocation already holds, so two range writes or a range write and an allocation never interleave. |
-| Rollback | m080 adds nodes and is not reversed. A previous release reads the mirrored shorthand and ignores `ranges`, so rollback is safe for every pool that still holds one range. |
+| Rollback | m081 adds nodes and is not reversed. A previous release reads the mirrored shorthand and ignores `ranges`, so rollback is safe for every pool that still holds one range. |
 | Benchmark | The SC-005 figure is recorded in the PR description for comparison by later slices. |
 
 ## Approvals in flight

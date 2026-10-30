@@ -34,7 +34,7 @@ class ReanchorNumberPoolRecordsQuery(CountedMigrationQuery):
     that have not moved yet.
     """
 
-    name: str = "m081_reanchor_number_pool_records"
+    name: str = "m082_reanchor_number_pool_records"
     counter: ClassVar[str] = "relationships_created"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -147,7 +147,7 @@ CALL (pool, res, reserved_value, attrs) {
 class DeletePoolSourceEdgesQuery(CountedMigrationQuery):
     """Delete every `HAS_SOURCE` edge from an `Attribute` to a number pool."""
 
-    name: str = "m081_delete_pool_source_edges"
+    name: str = "m082_delete_pool_source_edges"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["batch_size"] = self.batch_size
@@ -167,7 +167,7 @@ class CollapseSharedAttributeRecordsQuery(CountedMigrationQuery):
     it takes the earliest `from` because the attribute has been reserved since then.
     """
 
-    name: str = "m081_collapse_shared_attribute_records"
+    name: str = "m082_collapse_shared_attribute_records"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["batch_size"] = self.batch_size
@@ -198,7 +198,7 @@ class DeleteLegacyRecordsQuery(CountedMigrationQuery):
     Anything left there once the re-anchoring has run no longer reserves a number on any branch.
     """
 
-    name: str = "m081_delete_legacy_records"
+    name: str = "m082_delete_legacy_records"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["batch_size"] = self.batch_size
@@ -214,7 +214,7 @@ CALL (res) {
 class LeftoverCountsQuery(Query):
     """Count what each pass of the migration should have left at zero."""
 
-    name: str = "m081_leftover_counts"
+    name: str = "m082_leftover_counts"
     type: QueryType = QueryType.READ
 
     insert_return: bool = False

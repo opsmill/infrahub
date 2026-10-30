@@ -59,7 +59,7 @@ BEHAVIORS: tuple[MigrationBehaviour, ...] = (
 )
 
 
-class Migration081(ArbitraryMigration):
+class Migration082(ArbitraryMigration):
     """Re-anchor every number pool `IS_RESERVED` edge from the shared `AttributeValue` vertex to the owning `Attribute`.
 
     Only an open edge whose number some branch still holds is moved. Also deletes every stored `HAS_SOURCE`
@@ -67,9 +67,9 @@ class Migration081(ArbitraryMigration):
     deletes every `IS_RESERVED` edge left on an `AttributeValue` vertex.
     """
 
-    name: str = "081_reanchor_number_pool_reservations"
+    name: str = "082_reanchor_number_pool_reservations"
     description: str = "Re-anchor number pool reservation records from the value vertex to the owning attribute"
-    minimum_version: int = 80
+    minimum_version: int = 81
     behaviors: ClassVar[tuple[MigrationBehaviour, ...]] = BEHAVIORS
 
     @property
@@ -109,7 +109,7 @@ class Migration081(ArbitraryMigration):
 
             count = query.get_count()
             console.log(behavior.message.format(count=count))
-            log.info("m081_behaviour_completed", behaviour=behavior.name, count=count)
+            log.info("m082_behaviour_completed", behaviour=behavior.name, count=count)
             result.nbr_migrations_executed += count
 
         return result

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration082(MissingAttributeRowsMigration):
+class Migration083(MissingAttributeRowsMigration):
     """Backfill missing generic-inherited number pool attribute rows on active nodes.
 
     In earlier versions, adding a generic to an existing kind did not create rows
@@ -28,12 +28,12 @@ class Migration082(MissingAttributeRowsMigration):
     when missing.
     """
 
-    name: str = "082_heal_missing_number_pool_rows"
+    name: str = "083_heal_missing_number_pool_rows"
     description: str = (
         "Backfill number pool attribute rows that earlier versions failed to create when an "
         "existing kind started inheriting a number pool attribute from a generic"
     )
-    minimum_version: int = 81
+    minimum_version: int = 82
 
     def _repairers(self, db: InfrahubDatabase, console: Console) -> list[MissingRowRepairer]:
         upserter = SchemaNumberPoolUpserter(

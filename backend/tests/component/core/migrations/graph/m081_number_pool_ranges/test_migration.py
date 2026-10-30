@@ -7,7 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m080_number_pool_ranges import Migration080
+from infrahub.core.migrations.graph.m081_number_pool_ranges import Migration081
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot, core_models
@@ -88,7 +88,7 @@ async def pre_migration_pools(
 
 
 async def _migrate(db: InfrahubDatabase) -> None:
-    assert await migrate_database(db=db, migrations=[Migration080.init()], initialize=True, update_graph_version=False)
+    assert await migrate_database(db=db, migrations=[Migration081.init()], initialize=True, update_graph_version=False)
 
 
 async def _range_ids(db: InfrahubDatabase, pool: CoreNumberPool) -> set[str]:

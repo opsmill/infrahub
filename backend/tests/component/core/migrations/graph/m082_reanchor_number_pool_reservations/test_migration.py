@@ -24,7 +24,7 @@ from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_space import attribute_domain
 from infrahub.pools.number_ranges import EffectiveSpace
-from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservations.conftest import (
+from tests.component.core.migrations.graph.m082_reanchor_number_pool_reservations.conftest import (
     POOL_END,
     POOL_START,
     TRACKED_ATTRIBUTE_NAME,
@@ -605,7 +605,7 @@ class MigratedDatabase:
     second_run: MigrationRun
 
 
-class TestMigration081:
+class TestMigration082:
     @pytest.fixture(scope="class")
     async def migrated(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema_scope_class: None
