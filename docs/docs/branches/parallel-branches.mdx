@@ -47,13 +47,13 @@ A merge does make the stored diff of every other open branch out of date, and In
 
 ## Allocate values from a pool
 
-A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, so simultaneous requests from different branches or Generators get different values.
+A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, or each [allocation scope](../resource-manager/allocate-numbers-per-scope.mdx) of a number pool, so simultaneous requests from different branches or Generators get different values.
 
 A value you type into a unique attribute is not reserved. Two branches can each hold the same typed value. Once one of them merges, the other is refused at its next rebase or merge, and its Proposed Change reports the duplicate under **Schema Integrity**.
 
 How you request a value depends on where you work:
 
-- **Web interface**: when you create the object, click the pool button next to the field, labeled "select a pool", and choose the pool. On an IP address, the button is next to **Address**.
+- **Web interface**: when you create the object, click the pool button next to the field, labeled "select a pool", and choose the pool. On an IP address, the button is next to **Address**. On a number attribute, open the **From pool** tab of the field and choose the pool in **Pool**.
 - **GraphQL API**: pass `from_pool` on the attribute or relationship. For an IP address pool or an IP prefix pool, you can also call the pool's mutation directly, `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`.
 
 Through the GraphQL API, you can pass an `identifier` when you allocate from an IP address pool or an IP prefix pool, and Infrahub returns the same value for a later request with the same identifier. The web interface sends no identifier, and Infrahub applies its default. Build one identifier per object, from the object it is allocated to, such as a device and its interface. On another branch that cannot yet read the object the value was allocated to, Infrahub allocates a different value for the same identifier, with no error. See [Idempotent allocation](../resource-manager/overview.mdx#idempotent-allocation).

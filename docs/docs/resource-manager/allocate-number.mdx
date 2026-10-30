@@ -5,7 +5,9 @@ title: Allocate numbers
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Number pools (`CoreNumberPool`) automatically assign sequential numbers to numeric attributes.
+A number pool (`CoreNumberPool`) allocates numbers for one `Number` attribute of one kind, such as the VLAN ID of a VLAN. It allocates from one or several ranges and records which object holds each number, so it never allocates a number it already tracks. In this guide, you create a pool with two ranges, allocate a VLAN ID from it, and view how much of the pool is in use.
+
+To give the pool numbers that objects already hold, see [Track existing numbers in a number pool](./track-existing-numbers.mdx). To hand out numbers that only have to be distinct within a site or another part of the network, see [Allocate numbers per site with allocation scopes](./allocate-numbers-per-scope.mdx).
 
 ## Prerequisites
 
@@ -32,17 +34,17 @@ nodes:
 
 ## Step 1: Create a number pool
 
-Create a pool for VLAN IDs:
+Create a pool for VLAN IDs with two ranges: 100–199, which the pool uses first, and 300–399 for when that range is full.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Navigate to **Object Management** → **Resource Manager** and create a new Number Pool with:
+Open **Resource Managers** in the menu, click **Add Resource Pool**, and choose **Number Pool** in **Select an object type**. Fill in:
 
 - **Name**: `My VLAN ID Pool`
 - **Node**: `IpamVLAN`
 - **Attribute**: `vlan_id`
-- **Ranges**: one range with **Start** `100` and **End** `1000`
+- **Ranges**: a range with **Start** `100`, **End** `199` and **Weight** `10`. Click **Add range** and add a second range with **Start** `300` and **End** `399`, and leave its **Weight** empty.
 
 Leave **Start** or **End** empty for a range without that bound, as described in [Ranges without a start or an end](#open-ranges).
 
@@ -58,7 +60,10 @@ mutation {
       name: {value: "My VLAN ID Pool"}
       node: {value: "IpamVLAN"}
       node_attribute: {value: "vlan_id"}
-      ranges: [{start: 100, end: 1000}]
+      ranges: [
+        {start: 100, end: 199, allocation_weight: 10}
+        {start: 300, end: 399}
+      ]
     }
   ) {
     ok
@@ -69,6 +74,8 @@ mutation {
   }
 }
 ```
+
+In GraphQL, the weight of a range is `allocation_weight`. In a schema file it is `weight`, as described in [Number pools](../schema/number-pool.mdx#number-ranges).
 
 The `start_range` and `end_range` fields are deprecated in favor of `ranges`. To update a script that sets them, see [How to migrate number pools to `ranges`](../release-notes/deprecation-guides/number-pool-ranges).
 
@@ -81,12 +88,14 @@ Save the pool ID for allocation operations!
   </TabItem>
 </Tabs>
 
+Ranges in one pool must not overlap. Infrahub refuses an overlapping range with `Range <range> overlaps <range> (<id>)`, and a range whose end is below its start with `Range end (<end>) cannot be lower than start (<start>)`.
+
 ## Step 2: Allocate a VLAN ID
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **VLAN** → **Add VLAN**. On the **VLAN ID** field, open the **From pool** tab and select your number pool. Leave **Number** empty to allocate the next free number, or type a number to record that number in the pool.
+  Navigate to **VLAN** → **Add VLAN**. On the **VLAN ID** field, open the **From pool** tab and select your number pool in **Pool**. Leave **Number** empty to allocate the next free number.
 
   ![Allocating Number Pool - Before](../media/guides/resources-manager/resource_manager_pool_vlan_before.png)
   ![Allocating Number Pool - After](../media/guides/resources-manager/resource_manager_pool_vlan_after.png)
@@ -122,16 +131,34 @@ Save the pool ID for allocation operations!
 
 :::success
 
-The VLAN is created with VLAN ID allocated from the pool!
+The VLAN is created with VLAN ID 100, the lowest number of the range with the highest weight.
 
 :::
+
+## How the pool chooses the next number {#allocation-order}
+
+The pool allocates the next number from the range with the highest weight. A range without a weight counts as weight 0. Among ranges with the same weight, the pool uses the range with the lowest start first. Within a range, it allocates the lowest free number.
+
+A number is free when the pool does not track it, whether the pool allocated that number or you attached it, and when the attribute accepts it: the pool skips the attribute's `excluded_values`, and numbers below `min_value` or above `max_value`.
+
+With the pool from Step 1, the VLANs you create receive 100, 101 and so on up to 199, then 300 to 399. The pool holds 200 numbers in total. To make the pool use 300–399 next, raise the weight of that range above 10. The pool then allocates the lowest free number in 300–399.
+
+## Request a specific number
+
+To give a VLAN a number of your choice and have the pool track it, type the number in the **Number** field of the **From pool** tab. In GraphQL, send the number together with the pool:
+
+```graphql
+vlan_id: {value: 150, from_pool: {id: "<POOL-ID>"}}
+```
+
+The pool records 150 as a number you provided and never allocates it to another VLAN. The number must be inside one of the pool's ranges. For the other rules, and to attach a pool to a number a VLAN already has, see [Track existing numbers in a number pool](./track-existing-numbers.mdx).
 
 ## Ranges without a start or an end {#open-ranges}
 
 You can leave out the start of a range, its end, or both. Infrahub stores no value for the missing bound and calculates it from the target attribute each time it allocates a number or shows the pool:
 
 - A range without a start begins at the attribute's `min_value`, or at 1 when the attribute has no `min_value` or a `min_value` below 1.
-- A range without an end stops at the attribute's `max_value`, or at the largest number Infrahub supports when the attribute has no `max_value`.
+- A range without an end stops at the attribute's `max_value`, or at 9,223,372,036,854,775,807, the largest number Infrahub supports, when the attribute has no `max_value`.
 
 Infrahub reads `min_value` and `max_value` from the schema of the branch you work on. For a `vlan_id` attribute with `max_value: 4094` and a range with **Start** `100` and no end, the pool allocates from 100 to 4094, and the pool page shows the range as `100 - 4094`. Without a `max_value`, the pool page shows the same range as `100 - MAX`. The range object itself shows `100 - MAX`, and a GraphQL query on `CoreNumberPoolRange` returns `null` for the missing end.
 
@@ -144,9 +171,78 @@ Infrahub refuses a range that falls outside the attribute's limits when you crea
 - a start above `max_value`, on a range without an end
 - an end below `min_value`, on a range without a start
 
+The web form accepts bounds up to 9,007,199,254,740,991 and shows "Too large" above that. To set a larger bound, use the GraphQL API.
+
 A later schema change to `min_value` or `max_value` is not checked against the pool's ranges. Infrahub accepts the change, and during allocation it skips the numbers of a range that fall outside the new limits. The end of a range without an end is calculated from the new `max_value`, and the start of a range without a start from the new `min_value`.
+
+## Change the ranges of a pool
+
+To give a pool more numbers, add a range or change a bound: edit the pool and change its **Ranges**, or send `ranges` in a `CoreNumberPoolUpdate` mutation. A range sent with the same start and end as an existing range and without `allocation_weight` keeps that range's weight.
+
+Infrahub refuses a change that leaves a number the pool tracks outside every range, on any branch, and lists the objects that hold those numbers:
+
+```text
+Changing the ranges of the <pool> pool to <ranges> would leave numbers it tracks outside every range: <kind> '<object>' holds <number> on branch '<branch>'. Keep a range covering each of these numbers, or change those numbers first.
+```
+
+The ranges of a pool that a schema declares can only be changed in the schema, as described in [Number pools](../schema/number-pool.mdx#number-ranges).
+
+## View how much of a pool is in use
+
+Open the pool from **Resource Managers**. The pool page shows:
+
+- the ranges, under **All ranges** and one row per range, each with its weight and a usage bar that separates numbers in use on the default branch from numbers in use only on other branches
+- the allocations table: each number, the object that holds it, the branch, the range, and its **Source**, either **Allocated** by the pool or **Provided** by you. Filter it by **Branch** and by **Source**.
+
+In the GraphQL API, `InfrahubNumberPoolUtilization` returns the figures of the pool and of each range, and `InfrahubNumberPoolAllocations` lists the numbers:
+
+```graphql
+query {
+  InfrahubNumberPoolUtilization(pool_id: "<POOL-ID>") {
+    figures {
+      size
+      used
+      used_default_branch
+      used_branches
+      utilization
+    }
+    ranges {
+      display_label
+      weight
+      figures {
+        size
+        used
+      }
+    }
+  }
+  InfrahubNumberPoolAllocations(pool_id: "<POOL-ID>", limit: 100) {
+    count
+    allocations {
+      value
+      branch
+      provenance
+      holder {
+        display_label
+      }
+    }
+  }
+}
+```
+
+In `used`, a number in use on several branches counts once. `used_branches` is the count of numbers in use only on branches other than the default branch. `provenance` is `ALLOCATED` or `PROVIDED`. `InfrahubNumberPoolAllocations` also filters by `branch`, `range_id` and `provenance`, and returns up to 1,000 numbers per request unless you set `limit`.
+
+## When an allocation fails
+
+| Message | Cause | Fix |
+|---|---|---|
+| `Pool <pool> (<id>) has no free number left in its ranges.` | The pool tracks every number in its ranges | Add a range or widen one, as described in [Change the ranges of a pool](#change-the-ranges-of-a-pool) |
+| `Pool <pool> (<id>) has no number the attribute accepts in its ranges.` | The pool has no range, or its ranges hold only numbers outside the attribute's `min_value`, `max_value` and `excluded_values` | Add a range inside the attribute's limits |
+| `The '<pool>' pool can't be used for '<attribute>'.` | The pool's **Node** and **Attribute** name another kind or attribute | Choose the pool created for that attribute. You can use a pool created for a generic for every kind that inherits from it. |
+| `'from_pool' is not supported on template attributes.` | `from_pool` was sent on an object template | Set the `<attribute>_from_resource_pool` relationship on the template instead |
 
 ## Next
 
+- [Track existing numbers in a number pool](./track-existing-numbers.mdx)
+- [Allocate numbers per site with allocation scopes](./allocate-numbers-per-scope.mdx)
 - [Allocate IP addresses](./allocate-ip-address.mdx)
 - [Allocate IP prefixes](./allocate-ip-prefix.mdx)

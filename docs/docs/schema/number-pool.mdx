@@ -4,19 +4,17 @@ title: Number pools
 
 # Number pools
 
-The `NumberPool` attribute kind enables the dynamic creation of a `CoreNumberPool` for the specific schema node and attribute rather than requiring users to define this after the schema is loaded.
+An attribute of kind `NumberPool` is a `Number` attribute that declares its own number pool. Infrahub creates the pool (`CoreNumberPool`) when it loads the schema, and fills the attribute from it every time you create an object of the kind, without a `from_pool` in the request. Declare the pool in the schema when every object of a kind takes its number from one pool, such as a service identifier shared by every service.
 
-:::info Resource pool initial creation
-
-`NumberPool` kind creates the `CoreNumberPool` Resource Manager during schema initialization.
-
-:::
+To create a pool for an existing `Number` attribute instead, and choose per object whether to allocate from it, see [Allocate numbers](../resource-manager/allocate-number.mdx).
 
 ## Defining a `NumberPool` attribute {#define-number-pool}
 
 The `parameters` of a `NumberPool` attribute set the numbers its `CoreNumberPool` allocates from. The parameters are optional: for an attribute that declares no range, the pool allocates from 1 upwards, as described in [Number ranges](#number-ranges).
 
-We'll define a generic service schema that nodes will inherit from to provide a global service identifier among different schema node services.
+Set `read_only: true` on a `NumberPool` attribute. Infrahub refuses one that is `optional`, and Profiles do not set it. Declare it on a node, or on one generic, in which case every node that inherits from that generic receives its numbers from the same pool.
+
+In the example below, every service inherits from the generic `InfraService` and receives a service identifier from one pool.
 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
@@ -88,7 +86,7 @@ nodes:
         order_weight: 5
 ```
 
-We can view the schema in the **Schema Visualizer**.
+The **Schema Visualizer** shows the resulting schema.
 
 ![numberpool-schema](../media/schema_numberpool.png)
 
@@ -108,7 +106,7 @@ We can view the schema in the **Schema Visualizer**.
             - start: 5000
 ```
 
-A range without a `start` begins at 1. A range without an `end` stops at the largest number Infrahub supports. The pool page shows that end as `MAX`, so the second range above is shown as `5000 - MAX`.
+A range without a `start` begins at the attribute's `min_value`, or at 1 when the attribute has no `min_value`. A range without an `end` stops at the attribute's `max_value`, or at the largest number Infrahub supports, 9,223,372,036,854,775,807, when the attribute has no `max_value`. The pool page shows that largest number as `MAX`, so the second range above is shown as `5000 - MAX`. See [Ranges without a start or an end](../resource-manager/allocate-number.mdx#open-ranges) for the full rule.
 
 The declaration sets the ranges Infrahub creates for the pool:
 
@@ -118,11 +116,37 @@ The declaration sets the ranges Infrahub creates for the pool:
 
 When a later schema load changes the declaration, Infrahub adds, updates and removes the pool's ranges to match it. When a later load declares neither `ranges` nor `start_range`/`end_range`, Infrahub keeps the ranges the pool already holds. To remove every range, declare `ranges: []`. Infrahub refuses a schema load that leaves a number held by an object outside every range of the pool, and identifies the objects that hold those numbers.
 
-## Viewing the resource manager
+The ranges of a pool declared in the schema can only be changed in the schema. Infrahub refuses a change made on the pool itself with `ranges can't be updated on schema defined pools, update the schema in the default branch instead`.
 
-Once we create an initial `InfraBackBoneService`, we can navigate to the Resource Manager page and view the details of the created Resource Manager.
+## Allocation scope {#allocation-scope}
 
-The naming of the Resource Manager will be `Kind.attribute_name [uuid]`.
+`parameters.allocation_scope` lists the attributes and relationships of the kind, the scope elements, that divide the pool's numbers into allocation scopes. Each object receives the lowest free number among the objects of its own allocation scope. For a VLAN ID that only has to be distinct within each site, on a kind with a required `site` relationship:
+
+```yaml
+      - name: vlan_id
+        kind: NumberPool
+        read_only: true
+        parameters:
+          allocation_scope: ["site"]
+          ranges:
+            - start: 100
+              end: 999
+```
+
+The elements follow the same rules as on a pool you create in the web interface or the GraphQL API, described in [Allocate numbers per site with allocation scopes](../resource-manager/allocate-numbers-per-scope.mdx#scope-elements). A schema load that does not follow one of them fails with an error of the form `<kind>.<attribute>: allocation_scope: <reason>`.
+
+The scope cannot change once Infrahub has created the pool. A later schema load that declares other elements fails with `allocation_scope can't be changed after the pool is created`. The order of the elements does not matter.
+
+Infrahub records each element by its id in the schema, which a rename keeps. When you rename an element, for example `site` to `location`:
+
+- A load that renames it and declares `allocation_scope: ["location"]` is accepted. The pool keeps its scope, and shows the new name.
+- A load that renames it and still declares `allocation_scope: ["site"]` fails with `"site" was renamed to "location"; update allocation_scope to the new name`.
+
+## Viewing the pool
+
+Once you create an `InfraBackBoneService`, open **Resource Managers** in the menu to view the pool Infrahub created for the attribute.
+
+The pool is named `Kind.attribute_name [uuid]`. For an attribute declared on a generic, `Kind` is the generic, so the pool in this example is named `InfraService.service_identifier [uuid]`. The pool page shows a **Managed by schema** tag.
 
 ![numberpool-resource-manager](../media/numberpool_attribute_kind_resource_manager.png)
 
@@ -132,9 +156,9 @@ To update the **parameters** of a `NumberPool` attribute requires performing a s
 
 :::
 
-## Deleting the resource manager
+## Deleting the pool
 
-To remove the Resource Manager, the attribute must be removed by defining `state: absent` on the attribute in the schema. The Resource Manager will then be removed during the schema loading.
+To remove the pool, remove the attribute by setting `state: absent` on it in the schema. After the schema load, Infrahub deletes the pool once the schema of every branch has removed the attribute or no longer declares it as `NumberPool`. The numbers stay on their objects, and no pool tracks them.
 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
