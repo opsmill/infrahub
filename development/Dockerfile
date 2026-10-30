@@ -4,16 +4,16 @@
 # ****************************************************************
 ARG PYTHON_VER=3.14.10
 ARG NODE_VER=24.15.0
-ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED=1
 
-# Re-declared inside the stage: an ARG above the first FROM is only in scope for FROM lines (which is
-# why PYTHON_VER above works). Without this, $UV_VER expands to empty in the RUN below, the installer
-# URL loses its version segment, and the build silently installs whatever uv is latest. Keep the
-# default in sync with UV_VERSION in .github/workflows/define-versions.yml.
-ARG UV_VER=0.13.6
+# Required build argument: CI passes UV_VERSION from .github/workflows/define-versions.yml, the compose
+# files pass it too. It is declared inside the stage because an ARG above the first FROM is only in
+# scope for FROM lines. Without a value the installer URL loses its version segment and the build
+# would silently install whatever uv is latest, so the build stops instead.
+ARG UV_VER
+RUN test -n "$UV_VER" || { echo "ERROR: the UV_VER build argument is required (see UV_VERSION in .github/workflows/define-versions.yml)" >&2; exit 1; }
 
 # uv installs to /root/.local/bin
 ENV PATH="${PATH}:/root/.local/bin"
@@ -25,6 +25,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
     curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - && \
+    uv --version | grep -qF "uv $UV_VER " && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
