@@ -82,6 +82,7 @@ COPY models/base/ /models/base/
 COPY models/examples/extension_rack.yml /models/examples/
 COPY development/deploy.tf /development/deploy.tf
 COPY development/k8s/ /development/k8s/
+COPY utilities/benchmark/infrahub-bench.yml /utilities/benchmark/
 COPY docs/ /docs/
 RUN npm run build
 
