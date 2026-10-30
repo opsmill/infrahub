@@ -40,11 +40,6 @@ overrides:
   "simple-git@<4.0.1": ^4.0.2
   "tinypool@<2.1.2": ^2.1.2
 
-auditConfig:
-  ignoreGhsas:
-    # deepmerge has no fixed release, and only the ultracite CLI uses it, which this project never runs.
-    - GHSA-gcqx-w48m-w2h4
-
 peerDependencyRules:
   allowedVersions:
     graphiql-explorer>graphql: ^17.0.0
