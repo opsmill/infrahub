@@ -25,7 +25,7 @@
 
 The brief says to stop and ask where a fix depends on an open question. These tasks are gates. Implementation stops at the gate, reports the evidence to the user, and waits for an answer before any task that depends on it:
 
-- T061 (open question 1, PR 5)
+- T061 (open question 1, PR 6)
 - T062 (open question 2, PR 5)
 - T085 (open question 3, PR 6)
 - T014 (the E2E test exception, PR 1)
@@ -255,8 +255,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 **Goal**:
 
 - the peer existence check (FR-018 to FR-020);
-- the new delete writes and ranking (FR-021 to FR-023);
-- the migration (FR-024 to FR-026);
+- the new delete writes and ranking for a branch-agnostic node (FR-021, FR-022);
+- migration `m083`, which converts shape 1 pairs (FR-025, FR-026);
 - the object conversion peer list (FR-040);
 - the documentation (FR-027).
 
@@ -267,10 +267,6 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 ### Gates and inventory
 
 - [ ] T060 [US5] Confirm PR 3 and PR #11220 are merged into `origin/release-1.12` (see T002). Then create a worktree for `peer-existence-check-ifc-3508` from it.
-- [ ] T061 [US5] Gate for open question 1:
-  - Add `test_merge_does_not_copy_branch_deleted_edge_of_agnostic_relationship` to `backend/tests/component/core/agnostic_retirement/test_on_merge.py`. On branch B, delete a branch-aware node that has a branch-agnostic relationship, merge B, and assert that the default branch has no `deleted` `IS_RELATED` edge for that link.
-  - Write a read-only Cypher count of default-branch `deleted` edges on branch-agnostic links that have a user-branch `deleted` edge with an earlier `from` (research R8), and run it on any available copy of a real database.
-  - Report both results to the user, and stop. Continue with T077 only after the user confirms how shape 2 handles default-branch copies.
 - [ ] T062 [US5] Gate for open question 2: present research R7's evidence and recommendation (on the default branch, set `to` and write a `deleted` edge with the same `from`, as every user delete does) to the user, and stop. Record the answer under "Open Questions" in `spec.md` and in research R7. T075, T077, T078 and T080 depend on it.
 - [ ] T063 [US5] List every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, record whether it can read a branch-agnostic relationship or a relationship to a branch-agnostic kind, and whether it needs the check, in a table appended to `research.md` R6. Include `RelationshipCountPerNodeQuery`, the targeted uniqueness validation query, `DependentNodesQuery` and `backend/infrahub/core/validators/relationship/count.py`.
 
@@ -283,11 +279,10 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - a generic with only branch-aware implementations;
   - a branch-aware relationship between branch-aware nodes.
 - [ ] T065 [P] [US5] Move `test_deleting_group_removes_it_from_role_after_role_removed_on_branch` and `test_graphql_role_groups_after_group_deleted_with_role_removed_on_branch` from `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_relationship_reads.py` into `backend/tests/component/core/relationship/test_peer_existence.py`. Add tests for:
-  - spec US5 scenarios 1-4 and 8-10;
+  - spec US5 scenarios 1, 2, 4 and 8-10 (scenario 3 ships in PR 6, T126);
   - the brief's two new PR 5 tests: a branch-agnostic node deleted after branching with the link removed on the default branch after branching, and a filter through a pool's `resources` on a branch where the prefix is deleted on every live branch (the prefix is not matched, through the retirement check);
-  - a GraphQL read, on the default branch and on B, of a pool's `resources` with `properties` requested, where a prefix was deleted on B only. It must return the prefix and no error (spec Clarifications, 2026-10-30). Without the branch edges PR 5 stops writing, `NodeManager.get_many` could drop the peer and raise a `KeyError` before PR 6 lands.
 
-  Confirm the tests that check today's wrong results fail. If the GraphQL read fails after T069 and T075, bring the window check on `IS_PART_OF` from T091 into this PR, so no read is worse after PR 5 alone.
+  Confirm the tests that check today's wrong results fail.
 - [ ] T066 [P] [US5] Add `test_query_text_unchanged_for_branch_aware_relationships` to `backend/tests/component/core/test_relationship_query.py`. It asserts that `RelationshipGetPeerQuery` and `NodeListGetRelationshipsQuery`, for a branch-aware relationship between branch-aware kinds, render the same Cypher as on the base branch (FR-020).
 - [ ] T067 [P] [US5] Add a test to `backend/tests/component/core/convert_object_type/` where a former peer is not counted when validating an object conversion (FR-040), and confirm it fails.
 
@@ -307,12 +302,12 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T074 [US5] Add the check to each other query T063 marked as needing it.
 - [ ] T075 [US5] Rewrite `RelationshipDeleteAllQuery` in `backend/infrahub/core/query/relationship.py` as research R7 decides:
   - rank by `branch_level DESC, from DESC, status ASC`;
-  - for a branch-aware node, process only links with `branch_support = "aware"`, on any branch including the default branch;
+  - for a branch-aware node, keep today's writes, ranked as above. T129 in PR 6 stops writing branch edges on its branch-agnostic relationships (FR-023, research R13);
   - for a branch-agnostic node, close the default branch's edge as T062 decided, write a `deleted` edge on each live user branch whose own latest edge is `active`, and write nothing on `-global-`;
   - apply the same rules to `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE`.
 
   Update `backend/infrahub/core/node/__init__.py::Node.delete` only where the call needs new arguments. Depends on T062.
-- [ ] T076 [US5] Run T061 and T064-T067, plus:
+- [ ] T076 [US5] Run T064-T067, plus:
   - `backend/tests/component/core/test_node_manager_delete.py`
   - `backend/tests/component/core/relationship/`
   - `backend/tests/component/core/test_relationship_query.py`
@@ -326,14 +321,14 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 ### Migration for User Story 5
 
-- [ ] T077 [US5] Add the migration tests under `backend/tests/component/core/migrations/graph/m083_separate_global_and_branch_link_edges/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following `m081_reanchor_number_pool_reservations`:
+- [ ] T077 [US5] Add the migration tests under `backend/tests/component/core/migrations/graph/m083_convert_global_deleted_link_edges/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following `m081_reanchor_number_pool_reservations`:
   - build shape 1, shape 2 and one pair of another shape through the old write path, before T075;
   - read at several timestamps before and after;
-  - assert that no shape 1 or shape 2 pair is left and that the other pair is unchanged and logged;
+  - assert that no shape 1 pair is left, that the shape 2 pair is unchanged and not counted, and that the other pair is unchanged and logged;
   - run the migration twice.
 
-  Depends on T061 and T062.
-- [ ] T078 [US5] Add `backend/infrahub/core/migrations/graph/m083_separate_global_and_branch_link_edges/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 82` and the three steps of research R8, using data-model.md's shape rules. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 83 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on the base branch. Run T077.
+  Depends on T062.
+- [ ] T078 [US5] Add `backend/infrahub/core/migrations/graph/m083_convert_global_deleted_link_edges/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 82` and steps 1 and 3 of research R8, using data-model.md's shape rules. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 83 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on the base branch. Run T077.
 
 ### Measurement, documentation and delivery
 
@@ -344,16 +339,14 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
   Record the database hits before and after in the PR description. The third read must not change (SC-004).
 - [ ] T080 [US5] Update `dev/knowledge/backend/database-schema.md`, next to the paragraph on retirement:
-  - the rule that no pair of vertices holds both a `-global-` edge and a branch edge of the same type;
-  - the peer existence check;
-  - that a branch-agnostic relationship has no branch edges;
+  - the peer existence check, and that it applies only to branch-aware relationships whose peer kind is branch-agnostic or a generic with a branch-agnostic implementation;
+  - that a branch-agnostic node's delete writes no `-global-` edge on its branch-aware links;
   - the "Soft Deletes" correction that follows from T062.
-- [ ] T081 [P] [US5] Update `docs/docs/branches/branch-agnostic-data.mdx` where it describes what happens to a branch-agnostic relationship when a node is deleted on a branch. Run `uv run invoke docs.lint`.
 - [ ] T082 [P] [US5] Add changelog fragments:
   - `fixed`: reading the groups of a role after a group was deleted no longer fails, and relationships no longer return a node deleted in the read's branch;
   - `fixed`: validating an object conversion no longer counts former peers;
   - an upgrade note: migration `m083` is one-way.
-- [ ] T083 [US5] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against `release-1.12`. The description states the hard-delete exception and its reason (plan.md "Complexity Tracking"), the T063 table, the answers to open questions 1 and 2, and the benchmark results.
+- [ ] T083 [US5] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against `release-1.12`. The description states the hard-delete exception and its reason (plan.md "Complexity Tracking"), the T063 table, the answer to open question 2, and the benchmark results.
 
 **Checkpoint**: US5 is complete. US6 can start.
 
@@ -368,7 +361,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - the node object's branch (FR-030);
 - adding and saving links (FR-031, FR-032);
 - list queries (FR-033, FR-034);
-- the window form of filters and HFID lookup (FR-038, FR-039).
+- the window form of filters and HFID lookup (FR-038, FR-039);
+- from User Story 5: no branch edge on a branch-agnostic relationship when a branch-aware node is deleted (FR-023), and migration `m084`, which removes shape 2 edges (FR-025), after the read changes (research R13).
 
 **Independent Test**: gadget G is linked to widget W through a branch-agnostic relationship and deleted on B. Reading W's gadgets on the default branch returns G. After G is renamed on B, the default branch's read shows the default branch's name.
 
@@ -379,6 +373,10 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - Search the callers of `get_peers`, `query_peers`, `get_many`, `get_one` and `get_one_by_id_or_default_filter` with `branch_agnostic=True` for a node object that is changed and saved (research R9 lists the known ones).
   - Add `test_validator_read_branch_agnostic_still_saves_on_global` to `backend/tests/component/core/integrity/`. It builds a `CoreValidator` through `ObjectConflictValidatorRecorder.get_validator` on a user branch and checks that its save writes on `-global-`.
   - Report the findings to the user, and stop. T092 depends on the answer.
+- [ ] T061 [US6] Gate for open question 1:
+  - Add `test_merge_does_not_copy_branch_deleted_edge_of_agnostic_relationship` to `backend/tests/component/core/agnostic_retirement/test_on_merge.py`. On branch B, delete a branch-aware node that has a branch-agnostic relationship, merge B, and assert that the default branch has no `deleted` `IS_RELATED` edge for that link.
+  - Write a read-only Cypher count of default-branch `deleted` edges on branch-agnostic links that have a user-branch `deleted` edge with an earlier `from` (research R8), and run it on any available copy of a real database.
+  - Report both results to the user, and stop. Continue with T128 and T130 only after the user confirms how shape 2 handles default-branch copies.
 
 ### Tests for User Story 6
 
@@ -396,6 +394,12 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - scenario 6 (the `roles` of a branch-agnostic node read through a branch-agnostic read are the request branch's);
   - scenario 10;
   - the output of `backend/infrahub/pools/number_pool_usage_nodes.py::PeerSummaryReader.read` when a node's display label differs between branches.
+- [ ] T126 [P] [US6] Add `backend/tests/component/core/relationship/test_delete_on_branch_agnostic_relationship.py` with:
+  - spec US5 scenario 3: deleting a branch-aware node on B writes no edge on B for its branch-agnostic relationship, and the `-global-` link stays open while the default branch holds the node;
+  - a GraphQL read, on the default branch and on B, of a pool's `resources` with `properties` requested, where a prefix was deleted on B only. It returns the prefix with the default branch's values and no error (spec Clarifications, 2026-10-30);
+  - the same read after the prefix is also deleted on the default branch returns nothing, because the retirement check closed the link.
+
+  Confirm the first test fails (B still gets a `deleted` edge).
 
 ### Implementation for User Story 6
 
@@ -436,17 +440,31 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - `backend/tests/component/core/test_relationship_query.py::test_query_RelationshipGetPeerQuery_branch_agnostic`
   - `backend/tests/component/core/test_manager_node.py::test_get_many_branch_agnostic`
   - `backend/tests/component/core/test_node_get_list_query.py::test_query_NodeGetListQuery_metadata_branch_agnostic`
-- [ ] T102 [US6] Run T085-T090 and:
+- [ ] T127 [US6] List every caller under `backend/infrahub/` that reads the peers of a branch-agnostic relationship and then loads a peer on the request branch (start from T063's table and `rg -n "get_peers|get_peer\(|query_peers|GetAllPeersIds" backend/infrahub`). For each, check that it handles a peer that does not exist on the request branch, or change it. Append the table to research R13 and to the PR description.
+- [ ] T128 [US6] Add the migration tests under `backend/tests/component/core/migrations/graph/m084_remove_branch_edges_of_agnostic_links/` (`conftest.py`, `test_migration.py`, `test_resume.py`), following T077:
+  - build shape 2 pairs on the default branch and on a user branch through the old write path, before T129;
+  - read at several timestamps before and after, through the reads of T091-T095;
+  - assert that no shape 2 pair is left and that other edges are unchanged;
+  - run the migration twice.
+
+  Depends on T061.
+- [ ] T129 [US6] In `backend/infrahub/core/query/relationship.py::RelationshipDeleteAllQuery`, for a branch-aware node, process only links whose `Relationship` vertex has `branch_support = "aware"`, on any branch including the default branch, so its branch-agnostic relationships get no branch edge (FR-023). `RetireNodeAgnosticFieldsQuery` already closes their `-global-` link once no live branch holds both ends. Depends on T091-T095 and T127.
+- [ ] T130 [US6] Add `backend/infrahub/core/migrations/graph/m084_remove_branch_edges_of_agnostic_links/` (`__init__.py`, `migration.py`, `queries.py`): an `ArbitraryMigration` with `minimum_version = 83` and step 2 of research R8, as T061 decided for default-branch edges. Batch with `CALL {…} IN TRANSACTIONS`. Set `GRAPH_VERSION` to 84 in `backend/infrahub/core/graph/__init__.py`, after checking the latest number on the base branch. Run T128.
+- [ ] T102 [US6] Run T061, T085-T090, T126 and T128, and:
   - `backend/tests/component/core/`
   - `backend/tests/component/graphql/`
   - `backend/tests/component/pools/`
   - `backend/tests/unit/core/query/`
+  - `backend/tests/component/core/agnostic_retirement/`
+  - `backend/tests/component/core/test_branch_merge.py`
+  - `backend/tests/component/core/test_branch_rebase.py`
 
   All pass.
 - [ ] T103 [US6] Run `backend/tests/benchmark/test_node_list_filter.py` (filters on one branch must match PR #11220's cost, FR-039), and add a branch-agnostic read with 50 live branches to `backend/tests/benchmark/test_peer_existence_check.py`. Record before and after in the PR description.
-- [ ] T104 [P] [US6] Update `docs/docs/branches/branch-agnostic-data.mdx`: a branch-agnostic relationship returns every peer that exists on a live branch, and each peer shows the values of one branch, in the order of FR-029. Run `uv run invoke docs.lint`.
-- [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch.
-- [ ] T106 [US6] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12`.
+- [ ] T104 [P] [US6] Update `docs/docs/branches/branch-agnostic-data.mdx`: a branch-agnostic relationship returns every peer that exists on a live branch, including on a branch that deleted the peer, and each peer shows the values of one branch, in the order of FR-029. Replace the part that describes what happens to a branch-agnostic relationship when a node is deleted on a branch. Run `uv run invoke docs.lint`.
+- [ ] T131 [P] [US6] Update `dev/knowledge/backend/database-schema.md`, next to the text T080 added: the rule that no pair of vertices holds both a `-global-` edge and a branch edge of the same type (FR-024), and that a branch-agnostic relationship has no branch edges.
+- [ ] T105 [P] [US6] Add a `fixed` changelog fragment: branch-agnostic relationships, such as IP pool resources and validator definitions, return peers that exist on any open branch with consistent values, and adding such a link no longer fails when the peer was deleted on another branch. A node deleted on one branch stays a peer of a branch-agnostic relationship until it is deleted on every branch. Add an upgrade note: migration `m084` is one-way.
+- [ ] T106 [US6] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against `release-1.12`. The description states the hard-delete exception of `m084` (plan.md "Complexity Tracking"), the answers to open questions 1 and 3, the T127 table and the benchmark results.
 
 **Checkpoint**: all six stories are complete.
 
@@ -538,8 +556,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - US2 (PR 2): no dependency.
 - US3 (PR 3): no dependency. It blocks US4, US5 and US6.
 - US4 (PR 4): depends on US3.
-- US5 (PR 5): depends on US3 merged and PR #11220 in `release-1.12` (T002, T060). Its gates T061 and T062 block T075, T077, T078 and T080.
-- US6 (PR 6): depends on US5. Its gate T085 blocks T092.
+- US5 (PR 5): depends on US3 merged and PR #11220 in `release-1.12` (T002, T060). Its gate T062 blocks T075, T077, T078 and T080.
+- US6 (PR 6): depends on US5. Its gate T085 blocks T092, and its gate T061 blocks T128 and T130. T129 and T130 come after T091-T095 (research R13).
 - US6 part 2 (PR 7): depends on PR 6 (T110-T125). Its gate T119 applies only when `python_sdk` holds a typed copy of `InfrahubNodeMetadata`.
 - Polish (T107-T109): after all PRs merge.
 
@@ -557,7 +575,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - Inside US2: T018-T023 together.
 - Inside US3: T029-T033 together; T035 alongside T036-T038; T047-T049 alongside T039-T044.
 - Inside US5: T064-T067 together.
-- Inside US6: T086-T089 together.
+- Inside US6: T086-T089 and T126 together; T104, T105 and T131 alongside the implementation.
 - Inside PR 7: T111-T114 together; T123 and T124 alongside T115-T121.
 
 ## Parallel Example: User Story 3
@@ -584,7 +602,7 @@ US1 (PR 1) and US3 (PR 3) close the effects users are most likely to hit: a priv
 4. US6 on top of US5.
 5. PR 7 on top of PR 6.
 
-Each PR adds value on its own and leaves no read worse than before. That is why the peer existence check and the change to the delete writes ship together in US5.
+Each PR adds value on its own and leaves no read worse than before. That is why the peer existence check and the delete writes for a branch-agnostic node ship together in US5, and why the delete writes for a branch-aware node (FR-023) and migration `m084` ship in PR 6, after its read changes (research R13).
 
 ## Notes
 

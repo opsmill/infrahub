@@ -145,13 +145,13 @@ The search also found callers the brief does not list:
   - The delete validator computes it for `RelationshipGetByIdentifierQuery`.
 - In `build_subquery_order`, keep the peer element named so the check can refer to it.
 - `GetAllPeersIds` also gets the missing filter on `e2` and the status check on `e1`, because it is a read of current peers (FR-040).
-- **Other reads of `IS_RELATED`.** Once PR 5 stops writing branch `deleted` edges, any query that reads a relationship to a branch-agnostic kind without the check could start returning a deleted peer. A query that reads a branch-agnostic relationship starts returning, on branch B, a peer deleted only on B. That is the intended result, but it needs PR 6 to build the peer from the chosen branch, so the PR that stops writing the branch edges must also carry that change, or no read may get worse in between. Before the write change, PR 5 lists every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, it records whether the query can read such a relationship, and either adds the check or states why the result cannot change. Known cases to check: `core/query/relationship.py::RelationshipCountPerNodeQuery` (used by `core/relationship/constraints/count.py`), the targeted uniqueness validation query, `core/query/dependent_nodes.py::DependentNodesQuery`, and the relationship count validator in `core/validators/relationship/count.py`. The list goes in the PR description. This goes beyond the reads the brief names, because the brief's own rule is that a read must not regress when the edges are removed.
+- **Other reads of `IS_RELATED`.** Once PR 5 stops writing branch `deleted` edges, any query that reads a relationship to a branch-agnostic kind without the check could start returning a deleted peer. A query that reads a branch-agnostic relationship starts returning, on branch B, a peer deleted only on B. That is the intended result, but it needs PR 6 to build the peer from the chosen branch. R13 therefore places FR-023 and the removal of shape 2 in PR 6. Before the write change, PR 5 lists every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, it records whether the query can read such a relationship, and either adds the check or states why the result cannot change. Known cases to check: `core/query/relationship.py::RelationshipCountPerNodeQuery` (used by `core/relationship/constraints/count.py`), the targeted uniqueness validation query, `core/query/dependent_nodes.py::DependentNodesQuery`, and the relationship count validator in `core/validators/relationship/count.py`. The list goes in the PR description. This goes beyond the reads the brief names, because the brief's own rule is that a read must not regress when the edges are removed.
 
 **Rationale.** FR-018 and FR-020. The check uses the same definition of a live peer as `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` (FR-019): the latest `IS_PART_OF` edge is `active` in the window.
 
 **Dependency on PR #11220.** PR #11220 changes `build_subquery_filter` (it adds `branch_agnostic` and the latest-value ranking) and one line of `RelationshipGetPeerQuery.query_init`. It does not touch `build_subquery_order`, `NodeListGetRelationshipsQuery`, `GetAllPeersIds` or `RelationshipGetByIdentifierQuery`. PR 5 starts after PR #11220 reaches `release-1.12`, as decided.
 
-## R7. Delete writes (PR 5)
+## R7. Delete writes (PRs 5 and 6)
 
 **Finding.** `RelationshipDeleteAllQuery`, called only from `Node.delete`:
 
@@ -167,7 +167,7 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 
 - Rank by `branch_level DESC, from DESC, status ASC` everywhere in the query (FR-022).
 - Split by the deleted node's branch support:
-  - **Branch-aware node:** process only links whose `Relationship` vertex has `branch_support = "aware"`. Branch-agnostic relationships get no branch edge (FR-023). `RetireNodeAgnosticFieldsQuery` already runs after the delete and closes their `-global-` edges once no live branch holds both ends.
+  - **Branch-aware node (PR 6, R13):** process only links whose `Relationship` vertex has `branch_support = "aware"`. Branch-agnostic relationships get no branch edge (FR-023). `RetireNodeAgnosticFieldsQuery` already runs after the delete and closes their `-global-` edges once no live branch holds both ends.
   - **Branch-agnostic node:** process only links with `branch_support = "aware"`, and for each link and each edge type:
     - on the default branch: when the default branch's latest edge is `active`, close it as decided for open question 2;
     - on each user branch whose own latest edge for the link is `active` (an edge with `branch = <that branch>`): write a `deleted` edge on that branch with `from = $at`;
@@ -179,7 +179,7 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 
 **Recommendation for open question 2.** On the default branch, set `to` on the active edge and write a `deleted` edge with the same `from`, as every other user delete does. The PR 5 documentation task then corrects "Soft Deletes" to describe what user deletes and merges each write. This is not applied: the brief says to stop and ask, so the PR 5 task that decides it is a gate.
 
-## R8. The graph migration (PR 5)
+## R8. The graph migrations (PRs 5 and 6)
 
 **Finding.**
 
@@ -188,13 +188,18 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 - `m081` is the pattern for edge rewrites: `ArbitraryMigration`, ordered `CountedMigrationQuery` steps, `CALL {…} IN TRANSACTIONS OF $batch_size ROWS`, counts from `stats`, `validate_migration` with a leftover count, and a test for resuming.
 - `m078` already uses `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`.
 
-**Decision.** Add `m083_separate_global_and_branch_link_edges` (name to confirm at implementation), an `ArbitraryMigration` with `minimum_version = 82` and three steps:
+**Decision.** The three steps below are split between two `ArbitraryMigration`s (R13). Names are confirmed at implementation:
+
+- PR 5 adds `m083_convert_global_deleted_link_edges`, with `minimum_version = 82`: steps 1 and 3. Step 3 treats shape 2 pairs as known, so it does not count them, because PR 5 still writes them.
+- PR 6 adds `m084_remove_branch_edges_of_agnostic_links`, with `minimum_version = 83`: step 2, after PR 6 stops writing shape 2 (FR-023).
+
+The steps:
 
 1. **Shape 1:** a `-global-` `deleted` edge of type `IS_RELATED`, `IS_PROTECTED`, `HAS_OWNER` or `HAS_SOURCE` on a link whose `Relationship` vertex has `branch_support = "aware"`. Write what the new delete writes, with the original `from`, then remove the `-global-` edge.
 2. **Shape 2:** a `deleted` edge on the default branch or on a user branch, on a link whose `Relationship` vertex has `branch_support = "agnostic"`. Deleting a branch-aware node on any branch, the default branch included, writes these edges today, and a merge may have written some (open question 1). Remove them. The brief names only the edges written on a branch; the edges written on the default branch are included because the brief's rule forbids a default-branch edge next to a `-global-` edge too, and because leaving them would leave the most common mixed pair in existing databases.
 3. **Count and log** the pairs that hold both a `-global-` edge and a branch edge of the same type and match neither shape.
 
-`validate_migration` fails when any pair of shape 1 or shape 2 is left. The test follows the `m081` layout: it builds each shape through the old write path, reads at several timestamps before and after, and runs the migration twice.
+The `validate_migration` of `m083` fails when any pair of shape 1 is left, and that of `m084` when any pair of shape 2 is left. The test follows the `m081` layout: it builds each shape through the old write path, reads at several timestamps before and after, and runs the migration twice.
 
 **Open question 1, evidence.** The merge does not copy a branch `deleted` edge on a branch-agnostic relationship to the default branch:
 
@@ -204,7 +209,7 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 
 Merge code from before 1.10 may have written such copies, so the check also counts, on a copy of a real database or in a dry run of the migration, default-branch `deleted` edges on branch-agnostic links that have a user-branch `deleted` edge with an earlier `from`. The result is reported before shape 2 is written, whatever it shows.
 
-No test asserts this. A PR 5 task adds a test that merges a branch with such an edge and checks the default branch's edges. If the test shows a copy, implementation stops and asks before shape 2 is written.
+No test asserts this. A PR 6 task adds a test that merges a branch with such an edge and checks the default branch's edges. If the test shows a copy, implementation stops and asks before shape 2 is written.
 
 **Hard delete.** Steps 1 and 2 remove edges, which constitution principle II allows only for branch deletion. The plan records the exception under Complexity Tracking, as the brief decided.
 
@@ -288,3 +293,35 @@ The existing branch-agnostic query tests whose expected results change are liste
 Each piece is re-applied by hand on its PR's base, not cherry-picked. The three commits conflict with `release-1.12` at `15502a8b6`.
 
 **Alternatives considered.** Bring down the cost of the rewrite on the default branch so one query serves both paths. Rejected for this work: the brief allows either option, and keeping PR #11220's single-branch query leaves the most-used path untouched.
+
+## R13. Order of PRs 5 and 6
+
+**Finding.** Two changes make a read on branch B return a branch-aware peer that B deleted, when the relationship is branch-agnostic (spec Clarifications, 2026-10-30):
+
+- FR-023: deleting a branch-aware node on B no longer writes a branch `deleted` edge on its branch-agnostic links;
+- step 2 of R8: the migration removes the existing edges of that kind (shape 2).
+
+Today that edge hides the peer on B. Once it is gone, the `-global-` link is the only edge, so reads on B return the peer: GraphQL resolvers, counts, filters through the relationship and peer id lists. The intended result is the peer built from its chosen branch (FR-029, FR-030). Only PR 6 builds peers that way. Before PR 6, `NodeManager.get_many` builds the peer on B, where it does not exist, so the read drops the peer or fails. That is worse than today.
+
+The other write changes of PR 5 do not have this dependency:
+
+- FR-021 and shape 1 concern branch-aware links to a branch-agnostic node. The peer existence check of PR 5 already filters a deleted branch-agnostic peer, whatever edges the link holds.
+- FR-022 (ranking) does not change which peers a read returns.
+
+PR 6's reads work with or without shape 2 edges. In B's window the branch edge hides the link, but the default branch's window still holds the link and the peer, so a branch-agnostic read returns the peer either way. FR-026 therefore holds for the shape 2 removal in PR 6.
+
+**Decision.**
+
+- PR 5 keeps the peer existence check, FR-021, FR-022, FR-040, migration `m083` (shape 1, and the count of other pairs) and open question 2.
+- PR 6 takes FR-023, migration `m084` (shape 2) and open question 1, whose answer decides how `m084` treats default-branch edges.
+- Within PR 6, FR-023 and `m084` land after the read changes (T091 to T095), so no commit on the branch returns a peer that it cannot build.
+- PR 6 lists every caller that reads the peers of a branch-agnostic relationship and then loads a peer on the request branch, and checks that each one handles a peer that does not exist there.
+
+**Rationale.** It moves the smallest set of work that depends on PR 6, so PR 5 still fixes the reads of relationships to branch-agnostic kinds on its own, and no PR leaves a read worse than before.
+
+**Alternatives considered.**
+
+- Keep FR-023 and shape 2 in PR 5, and bring PR 6's chosen-branch reads into PR 5. Rejected: that moves most of PR 6 into PR 5.
+- Keep them in PR 5 with a temporary check that hides the peer on B, removed in PR 6. Rejected: the check is written only to be removed, and it contradicts the clarified rule while it exists.
+- Move every write change and the whole migration to PR 6. Rejected: PR 6 is already the largest PR, and FR-021 and shape 1 have no dependency on it.
+- One migration in PR 6 for both shapes. Rejected for the same reason: shape 1 would wait for PR 6 although PR 5 changes the write that produces it.

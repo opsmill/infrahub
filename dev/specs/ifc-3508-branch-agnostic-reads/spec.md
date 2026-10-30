@@ -34,6 +34,8 @@ The work ships as seven pull requests. User Stories 1 to 6 are PRs 1 to 6, numbe
 | 6 | Branch-agnostic relationships return every live peer, with values from one branch | `release-1.12` | PR 5 |
 | 7 | Peers read through a branch-agnostic relationship report the branches they exist on (User Story 6) | `release-1.12` | PR 6 |
 
+PR 6 also carries two parts of User Story 5: FR-023 and the removal of shape 2 pairs (FR-025). Both make a read on a branch return a peer that the branch deleted, which works only once PR 6 builds that peer from its chosen branch (research R13).
+
 PRs 1 and 3 fix the effects users are most likely to hit and do not wait for PR #11220.
 
 ## Terms
@@ -149,7 +151,7 @@ Two kinds of write today leave a `-global-` edge and a branch edge of the same t
 - Deleting a branch-agnostic node writes a `-global-` `deleted` edge on its branch-aware links.
 - Deleting a branch-aware node on a branch writes a branch `deleted` edge on its branch-agnostic relationships.
 
-After this change, no pair of vertices holds both a `-global-` edge and a branch edge of the same type. The deletes write the edges below, and a graph migration converts or removes the existing pairs. Every read gives the same answer before and after the migration, at every point in time.
+After PRs 5 and 6, no pair of vertices holds both a `-global-` edge and a branch edge of the same type. The deletes write the edges below, and two graph migrations convert or remove the existing pairs: PR 5 converts the first kind and PR 6 removes the second. Every read gives the same answer before and after the migration, at every point in time.
 
 **Why this priority**: it fixes the GraphQL error a user receives when reading `CoreAccountRole.groups` after a group was deleted.
 
@@ -159,7 +161,7 @@ After this change, no pair of vertices holds both a `-global-` edge and a branch
 
 1. **Given** a branch-agnostic node deleted after branch B was created, and a link to it removed on the default branch after B was created, **When** the link is read on the default branch or on B, **Then** it is not returned on either.
 2. **Given** a prefix in a pool's `resources` deleted on every live branch, **When** the pool's `resources` are read on any branch, or a list is filtered through them, **Then** the prefix is not returned or matched, because the retirement check closed the `-global-` link.
-3. **Given** a branch-aware node deleted on branch B with a branch-agnostic relationship to another node, **When** the node is deleted, **Then** no edge is written on B for that relationship, and the `-global-` link stays open while the default branch holds the node.
+3. **Given** a branch-aware node deleted on branch B with a branch-agnostic relationship to another node, **When** the node is deleted, **Then** no edge is written on B for that relationship, and the `-global-` link stays open while the default branch holds the node. This scenario ships in PR 6.
 4. **Given** a branch-agnostic node deleted on the default branch, **When** its branch-aware links are inspected, **Then** each link is closed on the default branch when its latest default-branch edge is `active`, a `deleted` edge is written on each user branch whose own latest edge for the link is `active`, and nothing is written on `-global-` or on branches that only inherited the link.
 5. **Given** a database with links that hold both a `-global-` edge and a branch edge of the same type, **When** the migration runs, **Then** reads at several timestamps return the same results before and after, and no pair of either known shape remains.
 6. **Given** a pair of vertices that holds mixed edges in neither known shape, **When** the migration runs, **Then** the pair is not changed and the migration logs how many such pairs it found.
@@ -253,9 +255,9 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - **FR-020**: Reads of relationships that are not branch-agnostic, between branch-aware kinds, MUST be unchanged, except the peer id list of FR-040, which is corrected for every read.
 - **FR-021**: Deleting a branch-agnostic node MUST, for each branch-aware link and for its `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE` edges: close the link on the default branch when the default branch's latest edge is `active`; write a `deleted` edge on each user branch whose own latest edge is `active`; and write nothing on `-global-` or on branches that only inherited the link.
 - **FR-022**: When choosing the latest edge of a link to delete, Infrahub MUST rank by `branch_level` first, then by `from`.
-- **FR-023**: Deleting a branch-aware node on any branch, including the default branch, MUST NOT write branch edges on its branch-agnostic relationships. The `-global-` link MUST close through the retirement check once no live branch holds both ends.
+- **FR-023**: Deleting a branch-aware node on any branch, including the default branch, MUST NOT write branch edges on its branch-agnostic relationships. The `-global-` link MUST close through the retirement check once no live branch holds both ends. This requirement ships in PR 6.
 - **FR-024**: No pair of vertices may hold both a `-global-` edge and a branch edge of the same type, for `IS_RELATED`, `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE`.
-- **FR-025**: A graph migration MUST convert the existing `-global-` `deleted` edges on branch-aware links into what the new delete writes, keeping the original `from`, and MUST remove the existing `deleted` edges on the default branch or a user branch on branch-agnostic relationships, whether a delete or a merge wrote them. It MUST log the count of mixed pairs that match neither shape and leave them unchanged.
+- **FR-025**: A graph migration MUST convert the existing `-global-` `deleted` edges on branch-aware links into what the new delete writes, keeping the original `from`, and MUST remove the existing `deleted` edges on the default branch or a user branch on branch-agnostic relationships, whether a delete or a merge wrote them. It MUST log the count of mixed pairs that match neither shape and leave them unchanged. The conversion of shape 1 ships in PR 5 and the removal of shape 2 in PR 6.
 - **FR-026**: Every read MUST give the same answer before and after the migration, at every point in time.
 - **FR-027**: The internal documentation of the database schema MUST state the rule of FR-024, the peer existence check, and that a branch-agnostic relationship has no branch edges.
 
@@ -305,7 +307,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 - The branch support of a node, attribute or relationship cannot change after the schema is first loaded.
 - Merge and rebase do not write `-global-` edges.
-- A link on a branch-agnostic relationship is always written on `-global-`, including from a mutation on a branch. The one exception today, the delete on a branch, is removed by User Story 5.
+- A link on a branch-agnostic relationship is always written on `-global-`, including from a mutation on a branch. The one exception today, the delete on a branch, is removed by FR-023, which ships in PR 6.
 - A normal read on a user branch already includes `-global-` edges up to the read time, so a change on `-global-` is visible on every branch at once.
 - PR [#11220](https://github.com/opsmill/infrahub/pull/11220) stays as it is and is not ported to `release-1.12`. PRs 5 and 6 start only after it is merged into `stable` and then into `release-1.12`.
 - The earlier branch-agnostic code at commit `7015435c4` (local branch `branch-agnostic-source`) holds the window helpers, the rewrite of the list filter and the branch-agnostic lookup by HFID. PRs 3, 5 and 6 bring it in; it is not cherry-picked as a whole.
@@ -318,7 +320,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 These come from the brief and stay open. Each one blocks only the tasks that depend on it. When implementation reaches such a task, it stops and asks.
 
-1. **Does a merge copy a branch `deleted` edge on a branch-agnostic relationship to the default branch?** This decides whether the migration's second shape also removes edges on the default branch. To check in PR 5.
+1. **Does a merge copy a branch `deleted` edge on a branch-agnostic relationship to the default branch?** This decides whether the migration's second shape also removes edges on the default branch. To check in PR 6.
 2. **How does the default branch close a link when a branch-agnostic node is deleted?** The database schema documentation says closing an edge on the same branch only sets `to`. The current delete both sets `to` and writes a `deleted` edge. The new delete and the migration must follow one of the two on the default branch.
 3. **Does any caller save a peer obtained through a branch-agnostic read?** This decides whether saving a node object built on the chosen branch needs a guard. To check in PR 6.
 

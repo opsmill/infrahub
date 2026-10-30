@@ -65,9 +65,9 @@ Two vertices joined by both a `-global-` edge and a branch edge of the same type
 
 | Shape | Recognised by | Written by today | Migration result |
 |---|---|---|---|
-| 1 | `rl.branch_support = "aware"`, and a `-global-` edge with `status = "deleted"` | Deleting a branch-agnostic node | The same edges the new delete writes, with the `-global-` edge's `from`. On the default branch: the decision of open question 2. On each live user branch whose own latest edge for the link, as of that `from`, is `active`, and that has no edge of its own for the link with a later `from`: a `deleted` edge. Branches with a later edge of their own are counted and logged, not changed. Then the `-global-` edge is removed. |
-| 2 | `rl.branch_support = "agnostic"`, and a `deleted` edge on the default branch or a user branch | Deleting a branch-aware node on any branch, the default branch included; possibly a merge (open question 1) | The edge is removed. |
-| Other | Any other mixed pair | Unknown | Not changed. Counted and logged. |
+| 1 | `rl.branch_support = "aware"`, and a `-global-` edge with `status = "deleted"` | Deleting a branch-agnostic node | Migration `m083` (PR 5): the same edges the new delete writes, with the `-global-` edge's `from`. On the default branch: the decision of open question 2. On each live user branch whose own latest edge for the link, as of that `from`, is `active`, and that has no edge of its own for the link with a later `from`: a `deleted` edge. Branches with a later edge of their own are counted and logged, not changed. Then the `-global-` edge is removed. |
+| 2 | `rl.branch_support = "agnostic"`, and a `deleted` edge on the default branch or a user branch | Deleting a branch-aware node on any branch, the default branch included; possibly a merge (open question 1) | Migration `m084` (PR 6): the edge is removed. |
+| Other | Any other mixed pair | Unknown | Not changed. Counted and logged by `m083`. |
 
 ## Peer existence check
 

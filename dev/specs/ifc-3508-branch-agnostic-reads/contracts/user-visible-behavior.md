@@ -50,9 +50,9 @@ The message extends the existing one with the branch: `Cannot delete <kind> '<id
 | Adding a link to a peer deleted on another branch | `NodeNotFoundError` | The link is saved |
 | Adding a link to a peer deleted on every live branch | `NodeNotFoundError` | Unchanged |
 
-## Database (PR 5)
+## Database (PRs 5 and 6)
 
-- The migration `m083` runs on upgrade. It is one-way: downgrading after it runs is not supported.
-- Validating an object conversion no longer counts former peers.
-- The migration logs the counts of shape 1 and shape 2 pairs converted, and of other mixed pairs left unchanged.
-- Reads before and after the migration return the same results at every timestamp.
+- The migration `m083` (PR 5) and the migration `m084` (PR 6) run on upgrade. Both are one-way: downgrading after either runs is not supported.
+- Validating an object conversion no longer counts former peers (PR 5).
+- `m083` logs the count of shape 1 pairs converted and of other mixed pairs left unchanged. `m084` logs the count of shape 2 edges removed.
+- Reads before and after each migration return the same results at every timestamp.
