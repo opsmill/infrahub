@@ -137,8 +137,8 @@ Two renderers bake colours into their output and cannot be themed by CSS tokens:
   arrives here as a pointer bump; nothing about its styling is editable in this repository.
 
 Mermaid diagrams are not among them. Change a diagram colour in the `.pele` rule in
-`app/styles/markdown.css`, which maps each `--pele-*` variable that Pele draws with to a theme
-token. A theme flip therefore recolours a mounted diagram without redrawing it, and a diagram's own
+`shared/components/editor/markdown/pele-overrides.css`, which maps each `--pele-*` variable that
+Pele draws with to a theme token. A theme flip therefore recolours a mounted diagram without redrawing it, and a diagram's own
 `%%{init}%%` theme or `themeVariables` has no effect.
 
 Schema-defined colours (role badges, kind palettes, user-picked hex values) are data, not style:
