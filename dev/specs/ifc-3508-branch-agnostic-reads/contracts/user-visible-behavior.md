@@ -1,0 +1,53 @@
+# Contract: Behavior a User Can Observe
+
+No GraphQL or REST schema changes. What changes is what existing queries and mutations return, and three error cases.
+
+## Permissions (PR 1)
+
+| Request | Before | After |
+|---|---|---|
+| Global permissions loaded for a request to `/graphql/<branch>` | Group memberships, roles and role-to-permission links taken from whichever branch wrote the newest edge | Taken from the default branch, combined with `-global-` |
+| Object permissions loaded for a request to `/graphql/<branch>` | Request branch | Unchanged |
+| Roles in the login response | Taken from any branch | Taken from the default branch |
+| `BranchMerge(name: "B")` sent to `/graphql/B` by a user who joined an administrator group only on B | Allowed | Refused with the existing permission error for `merge_branch` |
+
+## IP pool allocation (PR 3)
+
+| Case | Before | After |
+|---|---|---|
+| A value deleted on the default branch after branch B was created, then allocation on B | The value is returned again | Another value is returned |
+| The pool's namespace deleted on branch B, then allocation on the default branch | A value the default branch holds may be returned | Only free values are returned |
+| The pool's namespace does not exist on the allocating branch X | A value from the default namespace is computed, then an unhandled `AttributeError` | `ResourceNotFoundError` (HTTP 404) with a message naming the pool, the namespace and X |
+| None of the pool's resources exist on X | Prefix pool: unhandled `IndexError("No more resources available")`. Address pool: `PoolExhaustedError` | `PoolExhaustedError` (HTTP 409) with a message naming the pool and X, for both pools |
+| Some resources do not exist on X | They are used | They are skipped |
+
+Message templates (wording to confirm in review):
+
+- `Pool '<pool display label>' cannot allocate on branch '<X>': its namespace '<namespace display label>' does not exist on this branch.`
+- `Pool '<pool display label>' cannot allocate on branch '<X>': none of its resources exist on this branch.`
+
+## Deleting a branch-agnostic node (PR 4)
+
+| Case | Before | After |
+|---|---|---|
+| A required peer on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
+| A peer would be removed through cascade on another branch only | The delete succeeds | `ValidationError` (HTTP 422) |
+
+The message extends the existing one with the branch: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<branch>'`. One error is raised per blocking branch and peer, and they are grouped as the validator groups them today.
+
+## Relationship reads (PRs 5 and 6)
+
+| Read | Before | After |
+|---|---|---|
+| `CoreAccountRole.groups` on the default branch after a group was deleted that had lost the role on a branch | GraphQL error (`KeyError`) | The deleted group is not returned |
+| A pool's `resources` on branch B, where a prefix was deleted | Not returned, because the delete writes a branch `deleted` edge on the `-global-` link | Not returned, through the peer existence check; the delete no longer writes the branch edge |
+| A branch-agnostic relationship read on any branch, where the peer was deleted on another branch | The peer is missing, or `null` when `properties` are requested | The peer is returned |
+| A peer's attribute values in that read | Each attribute from whichever branch wrote the newest edge | All values from one branch: the request branch, the default branch, then the others by name |
+| A cardinality-one relationship of such a peer, changed on two branches | `ValueError: At most, one relationship expected` | One related node, from the chosen branch |
+| Adding a link to a peer deleted on another branch | `NodeNotFoundError` | The link is saved |
+| Adding a link to a peer deleted on every live branch | `NodeNotFoundError` | Unchanged |
+
+## Database (PR 5)
+
+- The migration `m083` runs on upgrade. It logs the counts of shape 1 and shape 2 pairs converted, and of other mixed pairs left unchanged.
+- Reads before and after the migration return the same results at every timestamp.
