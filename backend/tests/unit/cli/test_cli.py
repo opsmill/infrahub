@@ -9,6 +9,7 @@ from infrahub.cli import app
 runner = CliRunner()
 
 ANSI_STYLE = re.compile(r"\x1b\[[0-9;]*m")
+COMMAND_ROW = re.compile(r"^│ (\S+)\s+(.*?)\s*│$", flags=re.MULTILINE)
 
 
 def _plain(output: str) -> str:
@@ -16,10 +17,29 @@ def _plain(output: str) -> str:
     return ANSI_STYLE.sub("", output)
 
 
+def _listed(output: str) -> dict[str, str]:
+    """Map each name in the help panels to its one-line description."""
+    return dict(COMMAND_ROW.findall(_plain(output)))
+
+
 def test_main_app() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
+
+
+def test_the_help_lists_the_task_manager_commands() -> None:
+    main_help = runner.invoke(app, ["--help"], env={"COLUMNS": "200"})
+    tasks_help = runner.invoke(app, ["tasks", "--help"], env={"COLUMNS": "200"})
+
+    assert (main_help.exit_code, _listed(main_help.stdout).get("tasks")) == (
+        0,
+        "Manage the task manager and its task history.",
+    )
+    assert (tasks_help.exit_code, _listed(tasks_help.stdout).get("flush")) == (
+        0,
+        "Delete old task runs, or mark stale task runs as crashed.",
+    )
 
 
 def test_db_app() -> None:

@@ -4,6 +4,8 @@ title: Upgrade Community
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import SnippetTaskHistoryWarning from '../../../snippets/upgrade-task-history-warning.mdx';
+import SnippetTaskHistoryCleanup from '../../../snippets/upgrade-task-history-cleanup.mdx';
 
 # Upgrade Community
 
@@ -26,6 +28,8 @@ In Infrahub 1.2 and later, the upgrade process has been streamlined with a unifi
 For earlier versions, please refer to the [release notes](../../../release-notes/infrahub/) for specific upgrade instructions.
 :::
 
+<SnippetTaskHistoryWarning />
+
 ## Upgrading to Infrahub 1.2 and after
 
 <Tabs groupId="deployment" queryString>
@@ -43,6 +47,12 @@ docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
 docker compose up -d
+```
+
+<SnippetTaskHistoryCleanup />
+
+```bash
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 ```
 
 :::note
@@ -66,6 +76,12 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 # Restart deployments to apply changes
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
+```
+
+<SnippetTaskHistoryCleanup />
+
+```bash
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs --rewrite
 ```
 
 </TabItem>

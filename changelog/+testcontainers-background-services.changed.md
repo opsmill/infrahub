@@ -1,0 +1,1 @@
+Changed `infrahub-testcontainers` to apply retention in separate background services and forward `INFRAHUB_TESTING_PRODUCTION` and `INFRAHUB_TESTING_LOG_LEVEL` to task-manager containers; older images require a matching testcontainers release or `INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_COMMAND="prefect server services start"`, which leaves retention to native Prefect settings.

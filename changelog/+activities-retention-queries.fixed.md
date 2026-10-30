@@ -1,0 +1,1 @@
+Fixed activity-log slowdowns and intermittent query stalls, preserved combined primary-node and event-type filters and current-branch selection after a branch name is reused, and allowed Activities queries to follow configured retention beyond 180 days, with timestamp-based page continuation and counts computed only when requested.
