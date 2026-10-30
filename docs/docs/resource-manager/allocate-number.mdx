@@ -39,7 +39,7 @@ Create a pool for VLAN IDs with two ranges: 100–199, which the pool uses first
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-Open **Resource Managers** in the menu, click **Add Resource Pool**, and choose **Number Pool** in **Select an object type**. Fill in:
+Open **Resource Manager** in the menu, click **Add Resource Pool**, and choose **Number Pool** in **Select an object type**. Fill in:
 
 - **Name**: `My VLAN ID Pool`
 - **Node**: `IpamVLAN`
@@ -189,7 +189,7 @@ The ranges of a pool that a schema declares can only be changed in the schema, a
 
 ## View how much of a pool is in use
 
-Open the pool from **Resource Managers**. The pool page shows:
+Open the pool from **Resource Manager**. The pool page shows:
 
 - the ranges, under **All ranges** and one row per range, each with its weight and a usage bar that separates numbers in use on the default branch from numbers in use only on other branches
 - the allocations table: each number, the object that holds it, the branch, the range, and its **Source**, either **Allocated** by the pool or **Provided** by you. Filter it by **Branch** and by **Source**.

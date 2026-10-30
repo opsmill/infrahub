@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 Some numbers only have to be distinct within a site, a pod or another part of the network. VLAN IDs are the usual case: VLAN 100 can exist in every site, but two VLANs in one site cannot share an ID. Without an allocation scope, each site needs its own number pool, you create a new pool every time you add a site, and nothing checks that a VLAN took its number from the pool of its own site.
 
-With an allocation scope, one number pool allocates per division. You name the attributes or relationships that define the division, such as the VLAN's `site`, and the pool gives each VLAN the lowest free number among the VLANs of the same site.
+With an allocation scope, one number pool allocates per division. You name the attributes or relationships that define the division, such as the `site` relationship of the VLAN, and the pool gives each VLAN the lowest free number among the VLANs of the same site.
 
 The examples on this page use the `IpamVLAN` kind from [Allocate numbers](./allocate-number.mdx), with a required `site` relationship of cardinality one added to it.
 
@@ -133,7 +133,7 @@ A number you provide, as described in [Track existing numbers in a number pool](
 
 ## When an object moves to another division
 
-When you change a VLAN's site, the VLAN keeps its number. Infrahub does not check the number against the numbers of the new site.
+When you move a VLAN to another site, the VLAN keeps its number. Infrahub does not check the number against the numbers of the new site.
 
 To give the VLAN a number from its new site, send `value: null` with the pool in the same update:
 
@@ -145,7 +145,7 @@ vlan_id: {value: null, from_pool: {id: "<POOL-ID>"}}
 
 A number allocated from a scoped pool is reserved on every branch, like any number from a pool, as described in [Branch-agnostic allocation](./overview.mdx#branch-agnostic-allocation). Infrahub counts a number in a division only when, on one branch, the object holds that number and belongs to that division. A VLAN created on a branch counts in its site on that branch, and a VLAN on the default branch counts on every branch where it has not been changed.
 
-Merging two branches can still leave a duplicate within one division. If you change a VLAN's number on one branch, and move the same VLAN to another site on another branch, merging both branches can leave two VLANs in that site with the same number. To have Infrahub refuse the duplicate, add a uniqueness constraint that combines the scope with the number:
+Merging two branches can still leave a duplicate within one division. If you change the number of a VLAN on one branch, and move the same VLAN to another site on another branch, merging both branches can leave two VLANs in that site with the same number. To have Infrahub refuse the duplicate, add a uniqueness constraint that combines the scope with the number:
 
 ```yaml
 nodes:
@@ -159,7 +159,7 @@ See [Nodes and attributes](../schema/nodes-and-attributes.mdx) for how uniquenes
 
 ## View the usage of each division
 
-Open the pool from **Resource Managers**. For a scoped pool, the pool page first lists the divisions, under **Allocation scopes**, with one column for each element of the scope and a **Usage** column. Search and sort the list. Click a division to view its ranges and the numbers allocated in it, and switch to another division from the **Allocation scope** card.
+Open the pool from **Resource Manager**. For a scoped pool, the pool page first lists the divisions, under **Allocation scopes**, with one column for each element of the scope and a **Usage** column. Search and sort the list. Click a division to view its ranges and the numbers allocated in it, and switch to another division from the **Allocation scope** card.
 
 In the GraphQL API, `InfrahubNumberPoolDivisions` lists the divisions that hold at least one number, ordered from the most used:
 
