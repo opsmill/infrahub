@@ -153,7 +153,7 @@ describe("MermaidDiagram", () => {
         code={[
           "flowchart LR",
           '  A["<img src=x onerror=alert(1)>"] --> B["<b onmouseover=alert(1)>bold</b>"]',
-          '  B --> C["<a href=\'javascript:alert(1)\'>link</a>"]',
+          "  B --> C[\"<a href='javascript:alert(1)'>link</a>\"]",
         ].join("\n")}
       />
     );
