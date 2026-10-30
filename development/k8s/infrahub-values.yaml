@@ -2,7 +2,7 @@
 # yamllint disable rule:line-length
 infrahub:
   global:
-    infrahubTag: 1.11.9
+    infrahubTag: 1.11.10
   infrahubServer:
     podLabels:
       infrahub/service: server
@@ -84,7 +84,7 @@ infrahub:
     global:
       prefect:
         image:
-          prefectTag: 1.11.9 # the task manager runs the Infrahub image, so it follows infrahubTag
+          prefectTag: 1.11.10 # the task manager runs the Infrahub image, so it follows infrahubTag
     server:
       replicaCount: 3
       affinity:
