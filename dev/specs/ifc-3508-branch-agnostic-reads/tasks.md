@@ -57,16 +57,16 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 ### Tests for User Story 1
 
-- [ ] T003 [US1] Create a worktree for branch `fix-global-permissions-default-branch-ifc-3508` from `origin/stable`, and check that `backend/infrahub/core/account.py`, `backend/infrahub/auth/auth.py` and `backend/infrahub/auth/auth_groups/service.py` match research R2.
-- [ ] T004 [P] [US1] Move the tests of `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_permission_reads.py` into `backend/tests/component/core/test_account_global_permissions.py`:
+- [X] T003 [US1] Create a worktree for branch `fix-global-permissions-default-branch-ifc-3508` from `origin/stable`, and check that `backend/infrahub/core/account.py`, `backend/infrahub/auth/auth.py` and `backend/infrahub/auth/auth_groups/service.py` match research R2.
+- [X] T004 [P] [US1] Move the tests of `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_permission_reads.py` into `backend/tests/component/core/test_account_global_permissions.py`:
   - In `test_global_permission_linked_on_branch_grants_permission_on_default`, change the expected permissions on the branch to `{'edit_default_branch'}`.
   - In `test_membership_added_on_branch_grants_permission_on_default`, add the same check on the branch, expecting `set()`.
   - Remove debug output and unused fixtures.
   - Do not use `SUPER_ADMIN_PERMISSION`, which does not exist on `stable`.
   - Confirm the tests that are not controls fail.
-- [ ] T005 [P] [US1] Add `test_login_roles_keep_role_removed_on_branch` (from the audit permission file) to `backend/tests/component/core/test_account.py`, next to `test_fetch_account_groups_and_roles`. Confirm it fails.
-- [ ] T006 [P] [US1] Add `test_group_members_keep_member_removed_on_branch` and `test_group_members_skip_member_added_on_branch` (from the audit permission file) to `backend/tests/component/auth/auth_groups/test_member_reads.py`, reusing the fixtures in `backend/tests/component/auth/auth_groups/conftest.py`. Confirm they fail.
-- [ ] T007 [P] [US1] Add `backend/tests/component/api/test_permissions_on_branch.py`, following the HTTP client fixtures of `backend/tests/component/api/test_20_graphql.py`, with two tests:
+- [X] T005 [P] [US1] Add `test_login_roles_keep_role_removed_on_branch` (from the audit permission file) to `backend/tests/component/core/test_account.py`, next to `test_fetch_account_groups_and_roles`. Confirm it fails.
+- [X] T006 [P] [US1] Add `test_group_members_keep_member_removed_on_branch` and `test_group_members_skip_member_added_on_branch` (from the audit permission file) to `backend/tests/component/auth/auth_groups/test_member_reads.py`, reusing the fixtures in `backend/tests/component/auth/auth_groups/conftest.py`. Confirm they fail. Result: both pass on `stable`, because `_add_member` loads the group with `prefetch_relationships=True` and `get_peers` reuses the cached default-branch members. The tests stay as regression tests; they do not fail before the fix.
+- [X] T007 [P] [US1] Add `backend/tests/component/api/test_permissions_on_branch.py`, following the HTTP client fixtures of `backend/tests/component/api/test_20_graphql.py`, with two tests:
   - An account with `MANAGE_ACCOUNTS` but not `EDIT_DEFAULT_BRANCH` adds itself to an administrator group on branch B through `CoreAccountGroupUpdate` sent to `/graphql/B`, then sends `BranchMerge(name: "B")` to `/graphql/B`. The merge is refused (spec US1 scenario 4).
   - An account that holds `super_admin` only through a membership added on B sends a mutation that changes an account to `/graphql/B`. It is refused (spec US1 scenario 7).
 
