@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, MutableMapping, TypeVar
 
 import aio_pika
 import ujson
@@ -35,6 +35,15 @@ ResponseClass = TypeVar("ResponseClass")
 async def _add_request_id(message: InfrahubMessage) -> None:
     log_data = get_log_data()
     message.meta.request_id = log_data.get("request_id", "")
+
+
+def _durable_queue_arguments(queue_type: config.BrokerQueueType) -> dict[str, Any]:
+    match queue_type:
+        case config.BrokerQueueType.CLASSIC:
+            return {"x-max-priority": 5}
+        case config.BrokerQueueType.QUORUM:
+            # Quorum queues reject x-max-priority because they support message priorities without it.
+            return {"x-queue-type": "quorum"}
 
 
 class RabbitMQMessageBus(InfrahubMessageBus):
@@ -141,7 +150,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         queue = await self.channel.declare_queue(
             f"{self.settings.namespace}.rpcs",
             durable=True,
-            arguments={"x-max-priority": 5},
+            arguments=_durable_queue_arguments(queue_type=self.settings.queue_type),
         )
 
         self.delayed_exchange = await self.channel.declare_exchange(
@@ -158,7 +167,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 arguments={
                     "x-dead-letter-exchange": self.dlx.name,
                     "x-message-ttl": ttl.value,
-                    "x-max-priority": 5,
+                    **_durable_queue_arguments(queue_type=self.settings.queue_type),
                 },
             )
             await ttl_queue.bind(

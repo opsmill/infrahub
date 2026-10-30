@@ -4,11 +4,10 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.model.path import EnrichedDiffRoot, EnrichedDiffRootMetadata, NameTrackingId, TrackingId
-from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+<<<<<<< HEAD:backend/tests/unit/core/merge/selective_regen/test_generator_output.py
 from infrahub.core.merge.selective_regen.generator_output import (
     CAPTURE_DIFF_NAME_PREFIX,
     GeneratorCascadeOutput,
@@ -17,24 +16,35 @@ from infrahub.core.merge.selective_regen.generator_output import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
+=======
+from infrahub.core.merge.selective_regen.generator_diff_capturer import GeneratorTrackingGroupDiffCapturer
+from infrahub.core.timestamp import Timestamp
+from tests.helpers.diff_factories import EnrichedAttributeFactory, EnrichedNodeFactory, EnrichedRootFactory
+>>>>>>> origin/stable:backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
+
+    from infrahub.core.diff.model.path import EnrichedDiffNode, EnrichedDiffRoot
 
 _HASH_A = "a" * 32
 _HASH_B = "b" * 32
 _HASH_C = "c" * 32
 
 
-def _empty_root(branch_name: str) -> EnrichedDiffRoot:
-    return EnrichedDiffRoot(
-        base_branch_name=branch_name,
-        diff_branch_name=branch_name,
-        from_time=Timestamp(),
-        to_time=Timestamp(),
-        uuid="diff-uuid",
-        tracking_id=NameTrackingId(name=branch_name),
+def _changed_node(uuid: str) -> EnrichedDiffNode:
+    return EnrichedNodeFactory.build(
+        uuid=uuid,
+        kind="TestDevice",
+        label=uuid,
+        action=DiffAction.UPDATED,
+        attributes={
+            EnrichedAttributeFactory.build(
+                name="description", action=DiffAction.UPDATED, num_added=0, num_updated=1, num_removed=0
+            )
+        },
+        relationships=set(),
     )
 
 
@@ -43,42 +53,32 @@ def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
     return SimpleNamespace(name=SimpleNamespace(value=name), members=SimpleNamespace(peers=peers))
 
 
-class _RecordingCoordinator(DiffCoordinator):
-    def __init__(self) -> None:
-        self.diff_branches: list[str] = []
-        self.names: list[str] = []
+class _WindowDiffCoordinator(DiffCoordinator):
+    """Returns a diff of the requested window that changed the given nodes, recording the nodes it was scoped to."""
 
-    async def create_or_update_arbitrary_timeframe_diff(
-        self, base_branch: Branch, diff_branch: Branch, from_time: Timestamp, to_time: Timestamp, name: str
-    ) -> EnrichedDiffRootMetadata:
-        self.diff_branches.append(diff_branch.name)
-        self.names.append(name)
-        return _empty_root(diff_branch.name)
+    def __init__(self, changed_node_ids: list[str]) -> None:
+        self._changed_node_ids = changed_node_ids
+        self.requested_node_uuids: list[set[str] | None] = []
 
-
-class _RecordingRepository(DiffRepository):
-    def __init__(self) -> None:
-        self.filters_seen: list[EnrichedDiffQueryFilters | None] = []
-
-    async def get_one(
+    async def calculate_arbitrary_timeframe_diff(  # noqa: PLR0913, PLR0917
         self,
-        diff_branch_name: str,
-        tracking_id: TrackingId | None = None,
-        diff_id: str | None = None,
-        filters: EnrichedDiffQueryFilters | None = None,
-        include_parents: bool = True,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        node_kinds: list[str] | None = None,
+        node_uuids: set[str] | None = None,
     ) -> EnrichedDiffRoot:
-        self.filters_seen.append(filters)
-        return _empty_root(diff_branch_name)
-
-
-class _RecordingSerializer(DiffSummarySerializer):
-    def __init__(self) -> None:
-        self.target_branch_names: list[str] = []
-
-    def serialize(self, root: EnrichedDiffRoot, target_branch_name: str) -> list[NodeDiff]:
-        self.target_branch_names.append(target_branch_name)
-        return []
+        self.requested_node_uuids.append(node_uuids)
+        return EnrichedRootFactory.build(
+            base_branch_name=base_branch.name,
+            diff_branch_name=diff_branch.name,
+            nodes={
+                _changed_node(uuid=node_id)
+                for node_id in self._changed_node_ids
+                if node_uuids is None or node_id in node_uuids
+            },
+        )
 
 
 class _FakeClient:
@@ -95,19 +95,20 @@ class _FakeClient:
         return self._groups_by_name.get(name__value, [])
 
 
-def _capturer(client: _FakeClient) -> tuple[GeneratorTrackingGroupDiffCapturer, _RecordingRepository]:
-    repository = _RecordingRepository()
-    capturer = GeneratorTrackingGroupDiffCapturer(
-        diff_coordinator=_RecordingCoordinator(),
-        diff_repository=repository,
-        serializer=_RecordingSerializer(),
+def _capturer(client: _FakeClient, coordinator: _WindowDiffCoordinator) -> GeneratorTrackingGroupDiffCapturer:
+    return GeneratorTrackingGroupDiffCapturer(
+        diff_coordinator=coordinator,
+        serializer=DiffSummarySerializer(),
         client=cast("InfrahubClient", client),
         branch=Branch(name="main"),
     )
-    return capturer, repository
 
 
-async def test_capture_scopes_the_diff_read_to_the_tracked_output_nodes() -> None:
+def _captured_ids(diff_summary: list[NodeDiff]) -> set[str]:
+    return {entry["id"] for entry in diff_summary}
+
+
+async def test_capture_returns_only_the_changes_to_the_nodes_the_generators_tracked() -> None:
     # Two per-member groups for the generator (union of members), plus a decoy whose name merely contains
     # the definition name -- partial_match returns it but it is not one of this generator's groups.
     client = _FakeClient(
@@ -119,52 +120,68 @@ async def test_capture_scopes_the_diff_read_to_the_tracked_output_nodes() -> Non
             ]
         }
     )
-    capturer, repository = _capturer(client)
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "n3", "nX", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
-    assert result == []
-    assert repository.filters_seen == [EnrichedDiffQueryFilters(ids=["n1", "n2", "n3"])]
-    assert client.queried_names == ["set_description"]
+    assert coordinator.requested_node_uuids == [{"n1", "n2", "n3"}]
+    assert _captured_ids(result) == {"n1", "n2", "n3"}
 
 
-async def test_capture_widens_to_the_whole_window_when_no_tracking_group_resolves() -> None:
-    # A generator ran but no tracking group is found: read the window diff unscoped so a lookup miss
+async def test_capture_returns_every_change_in_the_window_when_no_tracking_group_resolves() -> None:
+    # A generator ran but no tracking group is found: keep the window diff unscoped so a lookup miss
     # over-selects rather than dropping a consuming artifact.
     client = _FakeClient({})
-    capturer, repository = _capturer(client)
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
-    await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
-    # Asserting the widened read alone would also hold if the lookup stopped happening: no query
-    # leaves no ids, which widens too. The queried names separate a miss from a skipped lookup.
+    # The full window alone would also come back if the lookup stopped happening: no query leaves no
+    # ids, which widens too. The queried names separate a miss from a skipped lookup.
     assert client.queried_names == ["set_description"]
-    assert repository.filters_seen == [None]
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"n1", "concurrent"}
+
+
+async def test_capture_returns_every_change_in_the_window_when_the_tracking_group_is_empty() -> None:
+    client = _FakeClient({"set_description": [_group(f"set_description-{_HASH_A}", [])]})
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
+
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+
+    assert client.queried_names == ["set_description"]
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"n1", "concurrent"}
 
 
 async def test_capture_ignores_groups_whose_name_is_not_a_tracking_group() -> None:
     # Only "<definition name>-<32 hex>" names count; a suffix that is not a bare hash is excluded, which
-    # leaves no ids and widens the read.
+    # leaves no tracking group and keeps the window diff unscoped.
     client = _FakeClient({"set_description": [_group(f"set_description-{_HASH_A}xyz", ["n1"])]})
-    capturer, repository = _capturer(client)
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
+    capturer = _capturer(client, coordinator)
 
-    await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
     assert client.queried_names == ["set_description"]
-    assert repository.filters_seen == [None]
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"n1", "concurrent"}
 
 
-async def test_capture_widens_when_any_definition_lacks_a_tracking_group() -> None:
+async def test_capture_returns_every_change_when_any_definition_lacks_a_tracking_group() -> None:
     # One generator resolved its group, another did not; narrowing on only the resolved ids would drop
-    # the unresolved generator's output, so the read must widen instead of filtering on the aggregate.
+    # the unresolved generator's output, so the capture must widen instead of filtering on the aggregate.
     client = _FakeClient({"genA": [_group(f"genA-{_HASH_A}", ["n1", "n2"])]})
-    capturer, repository = _capturer(client)
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "written-by-genB"])
+    capturer = _capturer(client, coordinator)
 
-    await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
 
-    # Both names are queried: the widening comes from genB having no group, not from the loop
-    # abandoning the second definition once the first resolved.
     assert client.queried_names == ["genA", "genB"]
+<<<<<<< HEAD:backend/tests/unit/core/merge/selective_regen/test_generator_output.py
     assert repository.filters_seen == [None]
 
 
@@ -215,3 +232,7 @@ async def test_generator_tracking_output_captures_the_runs_generators_by_name() 
 
     assert capturer.calls == [(since, ["gen-a", "gen-b"])]
     assert captured is capturer.result
+=======
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"n1", "n2", "written-by-genB"}
+>>>>>>> origin/stable:backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py

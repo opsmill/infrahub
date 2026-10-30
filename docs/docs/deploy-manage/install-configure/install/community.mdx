@@ -362,6 +362,23 @@ To deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy) on K
 </TabItem>
 </Tabs>
 
+## Log in
+
+Infrahub creates an administrator account the first time it starts with an empty database. Open the web interface, select **Log in** in the bottom-left corner, and enter the default credentials:
+
+:::info Default credentials
+
+- Username: `admin`
+- Password: `infrahub`
+
+:::
+
+With Docker Compose or a clone of the repository, the web interface is at [http://localhost:8000](http://localhost:8000). With Helm, use the address of the ingress or service that exposes the Infrahub API server.
+
+To start with a different password, set `INFRAHUB_INITIAL_ADMIN_PASSWORD` before the first start. Infrahub reads this variable only when it creates the account, so changing it later has no effect. After the first start, change the password from the account menu in the bottom-left corner: select **Account settings**, then the **Password** tab.
+
+For a production deployment, replace this password and the other default values listed in [Production deployment](../production-deployment/overview).
+
 ## Load a schema
 
 Infrahub ships with a minimal built-in schema. After installation, load a domain schema to model your infrastructure.

@@ -695,6 +695,32 @@ async def _retire_agnostic_fields_of_base_changes(
         )
 
 
+<<<<<<< HEAD
+=======
+async def _build_post_merge_regeneration_dispatcher(
+    db: InfrahubDatabase,
+    branch: Branch,
+    log: Logger | LoggerAdapter[Logger],
+) -> PostMergeRegenerationDispatcher:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    return PostMergeRegenerationDispatcher(
+        workflow=get_workflow(),
+        selector=build_merge_selective_regeneration(client=get_client(), log=log),
+        summary_cache=DiffSummaryCache(
+            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
+        generator_diff_capturer=GeneratorTrackingGroupDiffCapturer(
+            diff_coordinator=diff_coordinator,
+            serializer=DiffSummarySerializer(),
+            client=get_client(),
+            branch=branch,
+        ),
+        log=log,
+    )
+
+
+>>>>>>> origin/stable
 @flow(
     name="branch-merge-post-process",
     flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
