@@ -23,9 +23,11 @@ const RENDER_OPTIONS: RenderOptions = {
 // Pele's `load` starts a new download after a failed one, so typeLoads keeps the failed promise for `React.use` to throw instead of retrying forever.
 const typeLoads = new Map<DiagramType, Promise<boolean>>();
 
-function loadDiagramType(type: DiagramType): Promise<boolean> {
-  const pending = typeLoads.get(type) ?? load(type);
-  typeLoads.set(type, pending);
+// A render retried after suspending must call `React.use` again, so a type loaded here keeps its promise even once registered.
+function getTypeLoad(type: DiagramType | null): Promise<boolean> | null {
+  if (!type) return null;
+  const pending = typeLoads.get(type) ?? (registered(type) ? null : load(type));
+  if (pending) typeLoads.set(type, pending);
   return pending;
 }
 
@@ -52,8 +54,8 @@ interface MermaidDiagramContentProps {
 
 export default function MermaidDiagramContent({ code }: MermaidDiagramContentProps) {
   const idPrefix = React.useId().replace(/[^\w-]/g, "");
-  const type = detectDiagramType(code);
-  if (type && !registered(type)) React.use(loadDiagramType(type));
+  const typeLoad = getTypeLoad(detectDiagramType(code));
+  if (typeLoad) React.use(typeLoad);
 
   const diagram = renderDiagram(code, idPrefix);
   if (diagram instanceof PeleError)
