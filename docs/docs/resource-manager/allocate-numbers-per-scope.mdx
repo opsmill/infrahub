@@ -1,0 +1,224 @@
+---
+title: Allocate numbers per site with allocation scopes
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Some numbers only have to be distinct within a site, a pod or another part of the network. VLAN IDs are the usual case: VLAN 100 can exist in every site, but two VLANs in one site cannot share an ID. Without an allocation scope, each site needs its own number pool, you create a new pool every time you add a site, and nothing checks that a VLAN took its number from the pool of its own site.
+
+With an allocation scope, one number pool allocates per division. You name the attributes or relationships that define the division, such as the VLAN's `site`, and the pool gives each VLAN the lowest free number among the VLANs of the same site.
+
+The examples on this page use the `IpamVLAN` kind from [Allocate numbers](./allocate-number.mdx), with a required `site` relationship of cardinality one added to it.
+
+## Divisions
+
+The allocation scope is a list of attributes and relationships of the pool's kind. A division is one combination of their values: the peer of a relationship, and the value of an attribute.
+
+With a pool scoped by `site`, every site is a division:
+
+- A VLAN in site A and a VLAN in site B can both receive 100.
+- Two VLANs in site A never receive the same number from the pool.
+
+With a pool scoped by `site` and `role`, each combination of a site and a role is a division, so a VLAN with role `user` and a VLAN with role `voice` in site A can both receive 100.
+
+A pool without an allocation scope allocates from one space shared by every object, as described in [Allocate numbers](./allocate-number.mdx).
+
+In the web interface, a division is labeled **Allocation scope**.
+
+## Choose one scoped pool or one pool per site
+
+Every division of a scoped pool shares the pool's ranges and their weights. Choose by whether your sites use the same number plan:
+
+- **Same ranges in every site**: create one pool scoped by `site`. A new site needs no new pool, and the usage of each site is listed on the pool page.
+- **Different ranges per site**, for example 100–199 in one site and 2000–2099 in another: create one pool per site, without a scope.
+
+## What can be part of an allocation scope
+
+Each element of the scope is the name of an attribute or a relationship of the pool's kind, as it exists on the default branch. Infrahub refuses an element that is:
+
+- not declared on the kind itself. On a pool for a generic, the element must be declared on the generic, not only on the kinds that inherit from it.
+- written as a path, such as `role__value`. Write the name, `role`.
+- an optional attribute or relationship. Each element must be required.
+- a relationship of cardinality `many`
+- an attribute of kind `List`, `JSON` or `Any`
+- the attribute the pool allocates
+- listed twice
+
+A pool cannot have a scope when the attribute it allocates is `unique`, because a number that must be distinct across every object cannot be allocated per division. Infrahub refuses it with `<kind>.<attribute> is unique; a globally unique number cannot be allocated per division`.
+
+## Create a scoped pool
+
+Set the scope when you create the pool. You cannot change it afterwards: Infrahub refuses the change with `allocation_scope can't be changed after the pool is created`. To divide numbers differently, create another pool.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Create the number pool as described in [Allocate numbers](./allocate-number.mdx#step-1-create-a-number-pool). Under **What it allocates**, choose the attributes and relationships in **Scoped by**. **Scoped by** lists only the fields that can be part of a scope. When you edit the pool later, **Scoped by** is read-only.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  CoreNumberPoolCreate(
+    data: {
+      name: {value: "VLAN IDs per site"}
+      node: {value: "IpamVLAN"}
+      node_attribute: {value: "vlan_id"}
+      allocation_scope: {value: ["site"]}
+      ranges: [{start: 100, end: 199}]
+    }
+  ) {
+    ok
+    object {
+      id
+      allocation_scope {
+        value
+      }
+    }
+  }
+}
+```
+
+Infrahub returns `allocation_scope` as a list of objects with the `id` and the `name` of each element, such as `[{"id": "<schema-element-id>", "name": "site"}]`. Infrahub refers to each element by its id, so the pool keeps its scope when you rename the `site` relationship later.
+
+  </TabItem>
+  <TabItem value="schema" label="Schema">
+
+For an attribute of kind `NumberPool`, declare the scope in the attribute's parameters:
+
+```yaml
+      - name: vlan_id
+        kind: NumberPool
+        read_only: true
+        parameters:
+          allocation_scope: ["site"]
+          ranges:
+            - start: 100
+              end: 199
+```
+
+See [Number pools](../schema/number-pool.mdx#allocation-scope) for what happens when a later schema load changes this declaration.
+
+  </TabItem>
+</Tabs>
+
+## Allocate from a scoped pool
+
+Allocate as from any number pool: choose the pool in the **From pool** tab, or send `from_pool` on the attribute. The VLAN receives the lowest free number in its own division, following the [order of the ranges](./allocate-number.mdx#allocation-order).
+
+```graphql
+mutation {
+  IpamVLANCreate(
+    data: {
+      name: {value: "users-site-a"}
+      site: {id: "<SITE-A-ID>"}
+      vlan_id: {from_pool: {id: "<POOL-ID>"}}
+    }
+  ) {
+    ok
+    object {
+      vlan_id {
+        value
+      }
+    }
+  }
+}
+```
+
+Infrahub handles allocations for one division at a time. Requests for different divisions of the same pool do not wait for each other.
+
+A number you provide, as described in [Track existing numbers in a number pool](./track-existing-numbers.mdx), is recorded under the division of the object. The pool records it even when it already tracks that number for another object in the same division. To have Infrahub refuse duplicates within a site, add a uniqueness constraint to the kind, as described in [Branches](#branches).
+
+## When an object moves to another division
+
+When you change a VLAN's site, the VLAN keeps its number. Infrahub does not check the number against the numbers of the new site.
+
+To give the VLAN a number from its new site, send `value: null` with the pool in the same update:
+
+```graphql
+vlan_id: {value: null, from_pool: {id: "<POOL-ID>"}}
+```
+
+## Branches
+
+A number allocated from a scoped pool is reserved on every branch, like any number from a pool, as described in [Branch-agnostic allocation](./overview.mdx#branch-agnostic-allocation). Infrahub counts a number in a division only when, on one branch, the object holds that number and belongs to that division. A VLAN created on a branch counts in its site on that branch, and a VLAN on the default branch counts on every branch where it has not been changed.
+
+Merging two branches can still leave a duplicate within one division. If you change a VLAN's number on one branch, and move the same VLAN to another site on another branch, merging both branches can leave two VLANs in that site with the same number. To have Infrahub refuse the duplicate, add a uniqueness constraint that combines the scope with the number:
+
+```yaml
+nodes:
+  - name: VLAN
+    namespace: Ipam
+    uniqueness_constraints:
+      - ["site", "vlan_id__value"]
+```
+
+See [Nodes and attributes](../schema/nodes-and-attributes.mdx) for how uniqueness constraints work.
+
+## View the usage of each division
+
+Open the pool from **Resource Managers**. For a scoped pool, the pool page first lists the divisions, under **Allocation scopes**, with one column for each element of the scope and a **Usage** column. Search and sort the list. Click a division to view its ranges and the numbers allocated in it, and switch to another division from the **Allocation scope** card.
+
+In the GraphQL API, `InfrahubNumberPoolDivisions` lists the divisions that hold at least one number, ordered from the most used:
+
+```graphql
+query {
+  InfrahubNumberPoolDivisions(pool_id: "<POOL-ID>") {
+    count
+    divisions {
+      display_label
+      entries {
+        path
+        value
+        display_label
+      }
+      figures {
+        size
+        used
+        utilization
+      }
+    }
+  }
+}
+```
+
+To read the figures or the numbers of one division, pass `division` to `InfrahubNumberPoolUtilization` or `InfrahubNumberPoolAllocations`, with one entry for each element of the scope. For a relationship, the value is the ID of the peer. For an attribute, it is the value of the attribute.
+
+```graphql
+query {
+  InfrahubNumberPoolUtilization(
+    pool_id: "<POOL-ID>"
+    division: [{path: "site", value: "<SITE-A-ID>"}]
+  ) {
+    figures {
+      size
+      used
+      utilization
+    }
+  }
+}
+```
+
+On a scoped pool, `InfrahubNumberPoolUtilization` requires a division with a value for every element. `InfrahubNumberPoolAllocations` also accepts some of the elements, and then lists the numbers of every matching division. `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` return the figures of the whole pool and ignore its scope.
+
+## Schema changes refused while a pool uses an element
+
+A pool's scope depends on the attributes and relationships it names. While the pool exists, Infrahub refuses a schema change that would:
+
+- remove an element, including in a schema load that also renames the kind
+- make an element optional
+- change a relationship element to cardinality `many`
+- change an attribute element to kind `List`, `JSON` or `Any`
+- make the attribute the pool allocates `unique`
+
+The error names the pool and the element, for example `pool VLAN IDs per site divides its numbers by IpamVLAN.site; a scope element cannot be removed while the pool exists`. Renaming an element is allowed. Once the rename is in the schema of the default branch, Infrahub updates the name the pool shows for that element.
+
+When the schema of the branch you work on does not have an element of the scope, allocation from the pool fails with `the scope element "<name>" of pool <pool> does not exist on <kind> on branch <branch>`.
+
+## Next
+
+- [Allocate numbers](./allocate-number.mdx)
+- [Track existing numbers in a number pool](./track-existing-numbers.mdx)
+- [Number pools](../schema/number-pool.mdx)

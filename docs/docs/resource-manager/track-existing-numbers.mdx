@@ -1,0 +1,178 @@
+---
+title: Track existing numbers in a number pool
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+A number pool counts in its usage, and skips during allocation, only the numbers it tracks. A VLAN ID typed in manually, or a firewall rule ID that existed before you created the pool, is not part of the pool's usage, and the pool can allocate that number to another object. When you create a pool, it tracks no number, even when objects of its kind already hold numbers in its ranges.
+
+Attach those numbers to the pool. The pool then records each one, counts it in its usage, and never allocates it to another object. Attach numbers this way when you start using a pool for VLANs or other numbers that already exist, such as the VLANs of a fabric you are onboarding.
+
+The examples use the VLAN pool from [Allocate numbers](./allocate-number.mdx), with ranges 100–199 and 300–399.
+
+## Attach a number to a pool
+
+Send the number together with the pool. You can do this when you create an object, and when you update one that already holds a number.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Open the VLAN and edit it. On the **VLAN ID** field, open the **From pool** tab, select the pool in **Pool**, type the number in **Number**, and save.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamVLANUpdate(
+    data: {
+      id: "<VLAN-ID>"
+      vlan_id: {value: 150, from_pool: {id: "<POOL-ID>"}}
+    }
+  ) {
+    ok
+    object {
+      vlan_id {
+        value
+        source {
+          display_label
+        }
+      }
+    }
+  }
+}
+```
+
+`from_pool` accepts the pool's ID or its name. `IpamVLANCreate` accepts the same input.
+
+  </TabItem>
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+from infrahub_sdk import InfrahubClientSync
+
+client = InfrahubClientSync(address="http://localhost:8000")
+
+pool = client.get(kind="CoreNumberPool", name__value="My VLAN ID Pool")
+vlan = client.get(kind="IpamVLAN", name__value="server-vlan")
+
+vlan.vlan_id.attach_to_pool(pool)
+vlan.save()
+```
+
+`attach_to_pool()` takes the pool object or its ID, and attaches the number the attribute holds. It raises an error when the attribute holds no number.
+
+  </TabItem>
+</Tabs>
+
+When you attach a number, Infrahub:
+
+- records the number in the pool with the source **Provided**, which the pool page shows in the allocations table
+- counts it in the pool's usage
+- never allocates it to another object
+- returns the pool as the attribute's `source`, in place of any source you set on the attribute
+
+Attaching is branch-agnostic: it takes effect on every branch as soon as you save, whichever branch you save on. Deleting the branch you attached on does not undo it.
+
+The number must be inside one of the pool's ranges. Infrahub refuses a number outside them:
+
+```text
+The '<pool>' pool cannot track <number> on 'vlan_id', because <number> is outside its ranges: <ranges>. Choose a number inside those ranges.
+```
+
+To attach it anyway, first add a range that covers it, as described in [Change the ranges of a pool](./allocate-number.mdx#change-the-ranges-of-a-pool).
+
+The pool does not refuse a number it already tracks for another object. Both objects keep the number, and the allocations table shows one row for each. Whether two objects can hold the same number is decided by the attribute's uniqueness constraints, not by the pool.
+
+## Send the number with the pool, not the pool alone
+
+When the attribute already holds a number, a request with `from_pool` alone could mean that the pool should track that number or that it should replace it, so Infrahub refuses the request:
+
+```text
+'vlan_id' already holds 150, so 'from_pool' alone is ambiguous. Send the value together with 'from_pool' to have the pool track it, or send 'value: null' with 'from_pool' to discard it and allocate a new number.
+```
+
+Send `value` with `from_pool` to attach the number the attribute holds. Send `value: null` with `from_pool` to have the pool allocate a new number in its place. On an empty attribute, Infrahub allocates the next free number for `from_pool` alone.
+
+## Detach a number from its pool
+
+Detach a number when the pool should no longer track it. The VLAN keeps its number. Infrahub removes the reservation, and the pool can allocate that number again.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Edit the VLAN. On the **VLAN ID** field, open the **Value** tab, set the number, and save. Saving a value from the **Value** tab detaches the number from its pool. Clearing the field does the same.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamVLANUpdate(
+    data: {
+      id: "<VLAN-ID>"
+      vlan_id: {from_pool: null}
+    }
+  ) {
+    ok
+  }
+}
+```
+
+To detach the number and change it in one request, send the new value with it: `vlan_id: {value: 4000, from_pool: null}`.
+
+  </TabItem>
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+vlan = client.get(kind="IpamVLAN", name__value="server-vlan")
+
+vlan.vlan_id.detach_from_pool()
+vlan.save()
+```
+
+  </TabItem>
+</Tabs>
+
+Detaching is branch-agnostic, like attaching: Infrahub removes the reservation on every branch as soon as you save.
+
+## Move a number to another pool
+
+To have another pool track a number, attach it to that pool. Send the number with the new pool's `from_pool` in one update:
+
+```graphql
+vlan_id: {value: 150, from_pool: {id: "<OTHER-POOL-ID>"}}
+```
+
+Infrahub removes the reservation in the old pool and records the number in the new one. The number must be inside the new pool's ranges.
+
+## Change a number the pool tracks
+
+When you change a tracked number to another number inside the pool's ranges, the pool tracks the new number and frees the old one. The new number has the source **Provided**, unless the pool allocated it to this object before.
+
+Infrahub refuses a change that sets a tracked number outside the pool's ranges, empties the attribute, or resets it to its default value:
+
+```text
+'vlan_id' is tracked by the '<pool>' pool, so it cannot hold 4000, which is outside the pool's ranges: <ranges>. Choose a number inside those ranges, or remove the '<pool>' pool from 'vlan_id' in the same change that sets it to 4000.
+```
+
+To make that change, detach the number in the same request, as shown in [Detach a number from its pool](#detach-a-number-from-its-pool).
+
+Because the pool's tracking applies to every branch, Infrahub also refuses to attach a pool to a number when the object holds a value outside the pool's ranges on another branch. The error names that branch. Change the value on that branch, or delete the branch, then attach the number again.
+
+A [Profile](../profiles/overview.mdx) does not replace a number attached to a pool.
+
+## When the pool stops tracking a number
+
+The pool stops tracking a number when:
+
+- you detach it, or attach it to another pool
+- you delete the pool. The numbers stay on their objects, and no pool tracks them.
+- no branch can still read the object that holds it, as described in [Releasing an allocated resource](./overview.mdx#releasing-an-allocated-resource)
+
+## Next
+
+- [Allocate numbers](./allocate-number.mdx)
+- [Allocate numbers per site with allocation scopes](./allocate-numbers-per-scope.mdx)
+- [Resource Manager](./overview.mdx)
