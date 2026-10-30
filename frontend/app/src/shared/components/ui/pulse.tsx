@@ -2,11 +2,12 @@ import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-/** What the pulse reports: `info` for activity, `danger` for a failure. */
-type PulseTone = "info" | "danger";
+/** What the pulse reports: `info` for activity, `warning` for something to act on, `danger` for a failure. */
+type PulseTone = "info" | "warning" | "danger";
 
 const TONE_CLASSES: Record<PulseTone, { ping: string; dot: string }> = {
   info: { ping: "bg-ring-halo", dot: "bg-ring" },
+  warning: { ping: "bg-warning", dot: "bg-warning" },
   danger: { ping: "bg-danger", dot: "bg-danger" },
 };
 
