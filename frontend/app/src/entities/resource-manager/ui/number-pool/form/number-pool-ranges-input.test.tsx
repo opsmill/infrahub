@@ -90,6 +90,38 @@ describe("NumberPoolRangesInput", () => {
       .toHaveAttribute("aria-invalid", "true");
   });
 
+  test("refuses a range without a start whose end is below the minimum the attribute accepts", async () => {
+    // GIVEN
+    const component = await render(
+      <RangesHarness nodeKind="InfraVLAN" initialRows={[row(null, 5)]} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Value must be at least 10")).toBeVisible();
+    await expect
+      .element(component.getByRole("spinbutton", { name: "End of range 1" }))
+      .toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("refuses a range without an end whose start is above the maximum the attribute accepts", async () => {
+    // GIVEN
+    const component = await render(
+      <RangesHarness nodeKind="InfraVLAN" initialRows={[row(5000, null)]} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Value must be at most 4094")).toBeVisible();
+    await expect
+      .element(component.getByRole("spinbutton", { name: "Start of range 1" }))
+      .toHaveAttribute("aria-invalid", "true");
+  });
+
   test("accepts a range running exactly from the attribute's minimum to its maximum", async () => {
     // GIVEN
     const component = await render(
