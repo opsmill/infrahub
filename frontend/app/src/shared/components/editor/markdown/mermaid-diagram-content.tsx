@@ -62,7 +62,7 @@ export default function MermaidDiagramContent({ source }: MermaidDiagramContentP
 
   return (
     <PanZoom className="bg-background">
-      {/* w-full lets a wide svg shrink to fit; pt-9 keeps it below the zoom buttons. */}
+      {/* pt-9 keeps the diagram below the zoom buttons. */}
       <div
         className="w-full pt-9 [&>svg]:mx-auto"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Pele escapes diagram text, emits no scripts or event handlers, and drops javascript: links.
