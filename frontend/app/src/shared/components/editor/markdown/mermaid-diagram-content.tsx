@@ -20,7 +20,7 @@ const RENDER_OPTIONS: RenderOptions = {
   fontFamily: "InterVariable, sans-serif",
 };
 
-// `load` forgets a failed import, so without typeLoads `use` would retry it on every render instead of throwing.
+// Pele 1.12's `load` starts a new download after a failed one, so typeLoads keeps the failed promise for `React.use` to throw instead of retrying forever.
 const typeLoads = new Map<DiagramType, Promise<boolean>>();
 
 function loadDiagramType(type: DiagramType): Promise<boolean> {
