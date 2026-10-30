@@ -44,7 +44,7 @@ describe("MermaidDiagram", () => {
     loadMock.mockRejectedValueOnce(new TypeError("Failed to fetch dynamically imported module"));
 
     // WHEN
-    const component = await render(<MermaidDiagram source={'pie\n  "A" : 1'} />);
+    const component = await render(<MermaidDiagram code={'pie\n  "A" : 1'} />);
 
     // THEN
     await expect
@@ -58,7 +58,7 @@ describe("MermaidDiagram", () => {
     loadMock.mockReturnValueOnce(new Promise(() => {}));
 
     // WHEN
-    const component = await render(<MermaidDiagram source={"journey\n  section A\n    B: 5: C"} />);
+    const component = await render(<MermaidDiagram code={"journey\n  section A\n    B: 5: C"} />);
 
     // THEN
     await expect.element(component.getByRole("status")).toBeVisible();
@@ -68,7 +68,7 @@ describe("MermaidDiagram", () => {
   test("shows a syntax error in a monospace font so its caret points at the column", async () => {
     // WHEN
     const component = await render(
-      <MermaidDiagram source={"flowchart LR\n  A --> B\n  B --> [oops"} />
+      <MermaidDiagram code={"flowchart LR\n  A --> B\n  B --> [oops"} />
     );
 
     // THEN
@@ -79,14 +79,14 @@ describe("MermaidDiagram", () => {
 
   test("gives each diagram on a page its own SVG id prefix", async () => {
     // GIVEN
-    // Only sankey output has ids, and identical sources get identical ids without idPrefix.
+    // Only sankey output has ids, and identical code gets identical ids without idPrefix.
     const sankey = "sankey\nA,B,10\nB,C,5";
 
     // WHEN
     const component = await render(
       <>
-        <MermaidDiagram source={sankey} />
-        <MermaidDiagram source={sankey} />
+        <MermaidDiagram code={sankey} />
+        <MermaidDiagram code={sankey} />
       </>
     );
 
@@ -101,7 +101,7 @@ describe("MermaidDiagram", () => {
     // WHEN
     const component = await render(
       <div style={{ width: 800 }}>
-        <MermaidDiagram source={"flowchart LR\n  A --> B"} />
+        <MermaidDiagram code={"flowchart LR\n  A --> B"} />
       </div>
     );
 
@@ -119,7 +119,7 @@ describe("MermaidDiagram", () => {
     // WHEN
     const component = await render(
       <MermaidDiagram
-        source={
+        code={
           'flowchart LR\n  A --> B\n  click A "https://example.com" _blank\n  click B "javascript:alert(1)"'
         }
       />
@@ -135,7 +135,7 @@ describe("MermaidDiagram", () => {
 
   test("renders a light diagram in the light theme", async () => {
     // WHEN
-    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
+    await render(<MermaidDiagram code={"graph TD\n  A[Spine] --> B[Leaf]"} />);
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -147,7 +147,7 @@ describe("MermaidDiagram", () => {
     setDarkTheme(true);
 
     // WHEN
-    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
+    await render(<MermaidDiagram code={"graph TD\n  A[Spine] --> B[Leaf]"} />);
 
     // THEN
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
@@ -156,7 +156,7 @@ describe("MermaidDiagram", () => {
 
   test("recolours the mounted diagram in place when the theme changes", async () => {
     // GIVEN
-    await render(<MermaidDiagram source={"graph TD\n  A[Spine] --> B[Leaf]"} />);
+    await render(<MermaidDiagram code={"graph TD\n  A[Spine] --> B[Leaf]"} />);
     await expect.poll(shapeLuminance, { timeout: 15_000 }).not.toBeNull();
     const shape = nodeShape();
     expect(shapeLuminance()).toBeGreaterThan(0.5);
