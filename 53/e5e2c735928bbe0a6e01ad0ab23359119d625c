@@ -1,0 +1,19 @@
+backend/tests/unit/test_lock.py
+  s_9ab565af291b9a::t_95be1296e6034b 264-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53e5e2c735928bbe0a6e01ad0ab23359119d625c",
+  "prompts": {},
+  "sessions": {
+    "s_9ab565af291b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c6129b7-6134-49b1-8a6f-a7599ea0d463",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
