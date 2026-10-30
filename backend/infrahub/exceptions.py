@@ -110,6 +110,16 @@ class LockError(Error):
     pass
 
 
+class LockWaitTimeoutError(LockError):
+    """Raised when a lock taken in exclusive mode is still shared once its wait limit passes."""
+
+    def __init__(self, name: str, wait_seconds: float) -> None:
+        self.name = name
+        self.wait_seconds = wait_seconds
+        self.message = f"The lock {name} was still held in shared mode after {wait_seconds} seconds"
+        super().__init__(self.message)
+
+
 class GraphQLQueryError(Error):
     HTTP_CODE = 502
 

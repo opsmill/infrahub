@@ -635,6 +635,22 @@ class CacheSettings(BaseSettings):
             "Only enforced with the Redis cache driver."
         ),
     )
+    shared_lock_ttl_secs: int = Field(
+        default=60,
+        ge=1,
+        description=(
+            "Time-to-live in seconds of the record a lock holder in shared mode writes, such as an allocation "
+            "from a number pool. The holder renews it while it runs, so it only expires when the worker dies."
+        ),
+    )
+    exclusive_lock_wait_secs: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Time in seconds a lock request in exclusive mode, such as a change to the ranges of a number pool, "
+            "waits for the holders in shared mode to finish before it fails."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
