@@ -25,10 +25,10 @@ Findings from reading `release-1.12` (`4d7611830`) and the earlier branch-agnost
 
 **Rationale.** FR-013 asks for one definition of a window. `dev/knowledge/backend/query-pattern.md` ("Keep Cypher readable inline") allows a shared Cypher fragment only when it has a substantial body and several consumers. Here there are five consumers, and one copy computes a different window. A leaf module avoids the import cycle.
 
-**Number pools.** The number pool fragments keep their "hiding edge" rule, which is correct on `release-1.12` and covered by its tests. PR 3 replaces only the window collection with the shared one. Two differences need care:
+**Number pools.** The number pool fragments keep their "hiding edge" rule, which is correct on `release-1.12` and covered by its tests. PR 3 replaces only the window collection with the shared one. The fragments read `origin_at` instead of `fork_at`, and read `deleting_branches` from the shared clause, which emits it when called with `include_deleting=True`. Two differences need care:
 
 - The shared list includes the default branch with a NULL origin. A comparison `window.origin_name = hv.branch` is never true for NULL, so the fragments skip that entry, but every fragment must be checked.
-- The shared list caps the fork time at the read time. This changes the result only for a read in the past of a branch created after that time. PR 3 adds a test that pins the current results of `test_number_pool_query.py` and the audit's number pool tests, plus one test of a read at a time before a branch was created.
+- The shared list caps the fork time at the read time. This changes the result only for a read in the past of a branch created after that time. PR 3 adds a test that pins the current results of `test_number_pool_query.py` and the audit's number pool tests, including the values `NumberPoolGetAllocated` reports per branch, plus one test of a read at a time before a branch was created.
 
 **Alternatives considered.**
 
@@ -47,7 +47,7 @@ Findings from reading `release-1.12` (`4d7611830`) and the earlier branch-agnost
 
 **Base branch.** `core/account.py` and `auth/auth_groups/service.py` are the same on `stable` and on `release-1.12`. `auth/auth.py` differs only far below the function. The PR is written on `stable` and merged into `release-1.12` through the regular merge. Tests that use `SUPER_ADMIN_PERMISSION` (from `permissions/globals.py`) exist only on `release-1.12`, so the PR 1 tests must not depend on it.
 
-**The merge test.** `graphql/mutations/branch.py::BranchMerge.mutate` takes the branch from `data.name`, and `MergeBranchPermissionChecker` checks `MERGE_BRANCH` against the permissions loaded for the request branch. The new test sends `BranchMerge(name: "B")` to `/graphql/B`, from an account that added itself to an administrator group on B. With the fix, the permissions loaded for B come from the default branch, so the checker refuses the merge. The test goes in `backend/tests/component/graphql/auth/query_permission_checker/test_merge_operation_checker.py`.
+**The merge test.** `graphql/mutations/branch.py::BranchMerge.mutate` takes the branch from `data.name`, and `MergeBranchPermissionChecker` checks `MERGE_BRANCH` against the permissions loaded for the request branch. The new test sends `BranchMerge(name: "B")` to `/graphql/B`, from an account that added itself to an administrator group on B. With the fix, the permissions loaded for B come from the default branch, so the checker refuses the merge. The test goes in `backend/tests/component/api/` and sends the `BranchMerge` over HTTP to `/graphql/B`, so it runs the same permission loading as a real request. A second test sends a mutation that changes an account to `/graphql/B`, from an account that holds `super_admin` only through a membership added on B, and expects it to be refused.
 
 **Alternatives considered.**
 
@@ -74,7 +74,7 @@ The search also found callers the brief does not list:
 | `graphql/queries/resource_manager.py` (`pool.resources.get_peers(branch_agnostic=True)`) | A branch-agnostic relationship to branch-aware prefixes | Group 2 (PR 6). |
 | `core/migrations/graph/m080_number_pool_ranges/migration.py` | Number pool data | To verify. |
 
-**Decision.** PR 2 removes the flag from every call the brief lists, including all calls in the synchronizer and the upserter. The new callers are classified by a task in PR 2. A caller is changed in PR 2 only when its kind and every relationship it follows are verified as branch-agnostic. `PeerSummaryReader.read` and the resource manager read are left as they are and recorded for PRs 3 and 6. A migration that has already shipped is not edited, because a shipped migration must not change behavior; the brief lists `m062`, and PR 2 applies the brief's decision there only after confirming that `GetGlobalPermissionAttributesQuery` ignores the flag. The audit says it does, so the change is a no-op.
+**Decision.** PR 2 removes the flag from every call the brief lists, including all calls in the synchronizer and the upserter. The new callers are classified by a task in PR 2. A caller is changed in PR 2 only when its kind and every relationship it follows are verified as branch-agnostic. `PeerSummaryReader.read` and the resource manager read are left as they are and recorded for PRs 3 and 6. `PeerSummaryReader.read` calls `get_many(branch_agnostic=True)`, so PR 6 changes what it returns: each node's display label then comes from its chosen branch. PR 6 checks its output in a test. A migration that has already shipped is not edited, because a shipped migration must not change behavior; the brief lists `m062`, and PR 2 applies the brief's decision there only after confirming that `GetGlobalPermissionAttributesQuery` ignores the flag. The audit says it does, so the change is a no-op.
 
 **Rationale.** The brief limits group 4 to callers whose results cannot change. Adding a caller without verifying it would break that guarantee.
 
@@ -86,7 +86,7 @@ The search also found callers the brief does not list:
 - Each one ranks the namespace `IS_PART_OF` edge with `ORDER BY branch_level DESC, from DESC LIMIT 1`, with no status tiebreak. When no row is left, the following `collect()` still returns one row with an empty list.
 - Each one checks the allocated children with `all(r IN relationships(path) WHERE <filter> AND r.status = "active")`. This is a test of each edge, not of the latest edge, and it never checks the child's own `IS_PART_OF` edge. With `branch_agnostic=True` the filter accepts edges on `DELETING` branches and on every other branch.
 - `CoreIPPrefixPool.get_next` and `CoreIPAddressPool.get_next` read `resources` and `ip_namespace` through the relationship manager on the pool's own branch, then build `IPAMResourceAllocator(branch_agnostic=True)`.
-- When the namespace is missing, `get_peer` returns `None` and the free-value query falls back to the default namespace. `get_resource` then fails with an `AttributeError`.
+- `get_peer` returns `None` only when the pool has no `ip_namespace` link. Because `ip_namespace` is a branch-agnostic relationship, `get_peer` reads it across branches, so it returns a namespace that exists on any branch and never detects a namespace missing on the allocating branch. When it returns `None`, the free-value query falls back to the default namespace and `get_resource` then fails with an `AttributeError`.
 - When there are no resources, the prefix pool raises `IndexError("No more resources available")` and the address pool raises `PoolExhaustedError`.
 
 **Decision.**
@@ -97,7 +97,7 @@ The search also found callers the brief does not list:
   - Each allocated child is kept when, in some window, its `IS_PART_OF`, both `IS_RELATED` edges of `ip_namespace`, its `HAS_ATTRIBUTE` and its `HAS_VALUE` are all the latest edges and active.
 - Bound the candidate edges with `r.from <= $windows_at AND (r.to IS NULL OR r.to > <oldest origin_at among the windows>)`, as the audit proposed. This keeps the number of historical rows proportional to the open branches.
 - Keep the IPv4 and IPv6 bodies separate. Only the window predicate moves into `branch_windows.py`, to stay close to "three similar lines over a premature abstraction".
-- **Allocation on branch X.** `get_next` and `get_resource` resolve `ip_namespace` and `resources` with a normal read on X (`branch=X`, not branch-agnostic):
+- **Allocation on branch X.** `get_next` and `get_resource` read the namespace id with `ip_namespace.get_peer_id()`, then load the namespace with `NodeManager.get_one(id=…, branch=X)` without `branch_agnostic`. They read `resources` with a normal read on X: the peer ids of the link, then `NodeManager.get_many(ids=…, branch=X)`. Neither read is branch-agnostic:
   - If the namespace does not exist on X, raise `ResourceNotFoundError` with a message naming the pool, the namespace and X.
   - Resources that do not exist on X are skipped. If none remain, raise `PoolExhaustedError` with a message naming the pool and X.
   - The prefix pool's `IndexError` becomes the same `PoolExhaustedError`. This is a user-visible change of error type, so it needs a changelog fragment.
@@ -120,7 +120,7 @@ The search also found callers the brief does not list:
   - A required peer left behind in any window raises the error, with `on branch '{name}'` added to the message.
   - A peer reached through a cascade in some window but not in the request branch's window also raises it, with the same branch suffix.
 - A branch-aware node keeps today's single-branch query and walk.
-- The query is restricted to the identifiers already in the index, as today. Also filtering it to the ids reachable from the delete set is a performance option, measured in the PR.
+- In window mode the query starts from the ids in the delete set and is run again for each level of cascade, instead of reading every link of the indexed identifiers. The PR reports the database hits of deleting a `CoreAccountGroup` with 50 live branches and 10,000 group memberships elsewhere in the database.
 
 **Rationale.** One query keeps the cost at one read of the candidate links times the number of windows, and the walk in Python is unchanged. Example in the brief: P reaches G1 on B only through `main`'s edge from before B was created. Only a window read finds it.
 
@@ -144,7 +144,8 @@ The search also found callers the brief does not list:
   - The object conversion code computes it for `GetAllPeersIds`.
   - The delete validator computes it for `RelationshipGetByIdentifierQuery`.
 - In `build_subquery_order`, keep the peer element named so the check can refer to it.
-- `GetAllPeersIds` also gets the missing filter on `e2` and the status check on `e1`, because it is a read of current peers.
+- `GetAllPeersIds` also gets the missing filter on `e2` and the status check on `e1`, because it is a read of current peers (FR-040).
+- **Other reads of `IS_RELATED`.** Once PR 5 stops writing branch `deleted` edges, any query that reads a branch-agnostic relationship, or a relationship to a branch-agnostic kind, without the check could start returning a deleted peer. Before the write change, PR 5 lists every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, it records whether the query can read such a relationship, and either adds the check or states why the result cannot change. Known cases to check: `core/query/relationship.py::RelationshipCountPerNodeQuery` (used by `core/relationship/constraints/count.py`), the targeted uniqueness validation query, `core/query/dependent_nodes.py::DependentNodesQuery`, and the relationship count validator in `core/validators/relationship/count.py`. The list goes in the PR description. This goes beyond the reads the brief names, because the brief's own rule is that a read must not regress when the edges are removed.
 
 **Rationale.** FR-018 and FR-020. The check uses the same definition of a live peer as `UNRETAINED_AGNOSTIC_FIELD_PREDICATE` (FR-019): the latest `IS_PART_OF` edge is `active` in the window.
 
@@ -190,7 +191,7 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 **Decision.** Add `m083_separate_global_and_branch_link_edges` (name to confirm at implementation), an `ArbitraryMigration` with `minimum_version = 82` and three steps:
 
 1. **Shape 1:** a `-global-` `deleted` edge of type `IS_RELATED`, `IS_PROTECTED`, `HAS_OWNER` or `HAS_SOURCE` on a link whose `Relationship` vertex has `branch_support = "aware"`. Write what the new delete writes, with the original `from`, then remove the `-global-` edge.
-2. **Shape 2:** a branch `deleted` edge on a link whose `Relationship` vertex has `branch_support = "agnostic"`. Remove it, and any copy on the default branch if open question 1 finds one.
+2. **Shape 2:** a `deleted` edge on the default branch or on a user branch, on a link whose `Relationship` vertex has `branch_support = "agnostic"`. Deleting a branch-aware node on any branch, the default branch included, writes these edges today, and a merge may have written some (open question 1). Remove them. The brief names only the edges written on a branch; the edges written on the default branch are included because the brief's rule forbids a default-branch edge next to a `-global-` edge too, and because leaving them would leave the most common mixed pair in existing databases.
 3. **Count and log** the pairs that hold both a `-global-` edge and a branch edge of the same type and match neither shape.
 
 `validate_migration` fails when any pair of shape 1 or shape 2 is left. The test follows the `m081` layout: it builds each shape through the old write path, reads at several timestamps before and after, and runs the migration twice.
@@ -200,6 +201,8 @@ For a branch-agnostic node, `$branch` is `-global-` and the filter is time-only.
 - `core/diff/query/bulk_merge.py::BulkMergeRelationshipEdgesQuery` and `BulkMergeRelationshipPropertyEdgesQuery` require `branch_support = "aware"`.
 - `BulkMergeNodeExistenceQuery` closes only edges on the target branch.
 - `DiffNodePathsQuery` can report the path under a deleted node, but no merge query writes it.
+
+Merge code from before 1.10 may have written such copies, so the check also counts, on a copy of a real database or in a dry run of the migration, default-branch `deleted` edges on branch-agnostic links that have a user-branch `deleted` edge with an earlier `from`. The result is reported before shape 2 is written, whatever it shows.
 
 No test asserts this. A PR 5 task adds a test that merges a branch with such an edge and checks the default branch's edges. If the test shows a copy, implementation stops and asks before shape 2 is written.
 
@@ -243,6 +246,8 @@ Under decision 1 these nodes would be built on the request branch instead of `-g
 
 - reads of branch-aware relationships between branch-aware kinds;
 - a list of `CoreTransformPython` with `repository`;
+- `CoreStandardGroup.members` with 5,000 members, because the peer existence check applies to every relationship whose peer is the `CoreNode` generic, which has branch-agnostic implementations;
+- deleting a branch-agnostic node with 50 live branches;
 - branch-agnostic reads with many live branches;
 - IP pool allocation with many live branches and past allocations.
 
@@ -256,5 +261,30 @@ The PR description reports before and after. The plan sets no fixed limits. If a
 - Reuse `backend/tests/component/conftest.py::branch_aware_node_with_agnostic_attrs_schema` for a cardinality-many branch-agnostic relationship.
 - Move each audit test into `backend/tests/component/` next to the code it covers, and drop its debug output and unused fixtures.
 - Bring `TestBranchAgnosticLookupByHFID`, `TestBranchAgnosticPeerFilter` and `test_branch_agnostic_filter_through_the_parent_relationship` from `7015435c4`'s `test_reads_by_value_on_branch.py` in PR 6. Bring `BranchDataset` and `_update` with them.
+- Keep PR #11220's tests `test_branch_agnostic_lookup_by_hfid_finds_the_default_branch_value` and `test_branch_agnostic_filter_finds_the_default_branch_value`. They must still pass after PR 6.
 
 The existing branch-agnostic query tests whose expected results change are listed in tasks.md for the PR that changes them.
+
+## R12. Bringing in the code at `7015435c4`
+
+**Finding.** `release-1.12` has none of the branch-agnostic code written at `7015435c4`:
+
+- the window helpers;
+- the window form of `build_subquery_filter`, used by `NodeGetListQuery` filters and by `RelationshipGetPeerQuery` peer filters;
+- `NodeGetByHFIDQuery._build_branch_agnostic_query`;
+- the benchmark `backend/tests/benchmark/test_node_list_filter.py`.
+
+`Relationship._get_peer` uses `get_one_by_hfid` when a peer is given by HFID, so FR-031 depends on the HFID lookup. The rewrite of `build_subquery_filter` (`48789ecad`) costs 8% more database hits on the default branch than PR #11220's query, and the brief says the single-branch path must not get slower.
+
+**Decision.**
+
+| Piece | PR | How |
+|---|---|---|
+| Window helpers | PR 3 | Into `core/query/branch_windows.py` (R1), not into `subquery.py` |
+| Window form of `build_subquery_filter`, `branch_windows` passed through `NodeGetListQuery` and `RelationshipGetPeerQuery` | PR 6 | Used only when `branch_agnostic` is true. A read on one branch keeps PR #11220's query unchanged (FR-039). |
+| `NodeGetByHFIDQuery._build_branch_agnostic_query` (flat form from `7015435c4`) | PR 6 | As written at `7015435c4`, on top of PR #11220's version |
+| Benchmark `test_node_list_filter.py` | PR 3 | Brought in first, so every later PR can report against it |
+
+Each piece is re-applied by hand on its PR's base, not cherry-picked. The three commits conflict with `release-1.12` at `15502a8b6`.
+
+**Alternatives considered.** Bring down the cost of the rewrite on the default branch so one query serves both paths. Rejected for this work: the brief allows either option, and keeping PR #11220's single-branch query leaves the most-used path untouched.

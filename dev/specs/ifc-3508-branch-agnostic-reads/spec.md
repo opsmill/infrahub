@@ -63,6 +63,7 @@ With this change, global permissions, the role list returned at login and the si
 4. **Given** a user with `MANAGE_ACCOUNTS` but without `EDIT_DEFAULT_BRANCH` adds themselves to an administrator group on branch B, **When** they send a `BranchMerge` for B to B's GraphQL endpoint, **Then** the merge is refused.
 5. **Given** a role is removed from a group on branch B, **When** the account logs in, **Then** the login response still lists the role.
 6. **Given** the change on branch B is merged into the default branch, **When** permissions are loaded on any branch, **Then** they include the change.
+7. **Given** an account that holds `super_admin` only through a group membership added on branch B, **When** it sends a mutation that changes an account to B's GraphQL endpoint, **Then** the mutation is refused, because accounts are branch-agnostic and the change would apply on every branch.
 
 ---
 
@@ -151,6 +152,9 @@ After this change, no pair of vertices holds both a `-global-` edge and a branch
 5. **Given** a database with links that hold both a `-global-` edge and a branch edge of the same type, **When** the migration runs, **Then** reads at several timestamps return the same results before and after, and no pair of either known shape remains.
 6. **Given** a pair of vertices that holds mixed edges in neither known shape, **When** the migration runs, **Then** the pair is not changed and the migration logs how many such pairs it found.
 7. **Given** a relationship between two branch-aware kinds that is not branch-agnostic, **When** it is read, **Then** the read is unchanged.
+8. **Given** a branch-agnostic node deleted on the default branch while branch B only inherited a link to it, **When** B is rebased, **Then** the link is closed on B and B writes no edge of its own for it.
+9. **Given** the same situation, **When** B is merged instead, **Then** the merge writes nothing for the link.
+10. **Given** a link that branch B added to a branch-agnostic node, and that B lost when the node was deleted, **When** B is merged, **Then** the default branch has no active link.
 
 ---
 
@@ -230,14 +234,14 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 **Peer existence and edges between the same two vertices (User Story 5)**
 
-- **FR-018**: A read that follows a relationship MUST return a peer only if the peer exists in the read's view, when the relationship is branch-agnostic, the peer kind is branch-agnostic, or the peer kind is a generic with a branch-agnostic implementation. This applies to peer reads and their counts, node list prefetches of relationships, peer id lists, filters and ordering through relationships, and reads of one relationship by identifier.
+- **FR-018**: A read that follows a relationship MUST return a peer only if the peer exists in the read's view, when the relationship is branch-agnostic, the peer kind is branch-agnostic, or the peer kind is a generic with a branch-agnostic implementation. This applies to peer reads and their counts, node list prefetches of relationships, peer id lists, filters and ordering through relationships, reads of one relationship by identifier, and every other read of `IS_RELATED` edges that research R6 lists as affected.
 - **FR-019**: The peer existence check MUST use the same definition of a live peer as the retirement check of branch-agnostic fields.
-- **FR-020**: Reads of relationships that are not branch-agnostic, between branch-aware kinds, MUST be unchanged.
+- **FR-020**: Reads of relationships that are not branch-agnostic, between branch-aware kinds, MUST be unchanged, except the peer id list of FR-040, which is corrected for every read.
 - **FR-021**: Deleting a branch-agnostic node MUST, for each branch-aware link and for its `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE` edges: close the link on the default branch when the default branch's latest edge is `active`; write a `deleted` edge on each user branch whose own latest edge is `active`; and write nothing on `-global-` or on branches that only inherited the link.
 - **FR-022**: When choosing the latest edge of a link to delete, Infrahub MUST rank by `branch_level` first, then by `from`.
-- **FR-023**: Deleting a branch-aware node on a branch MUST NOT write branch edges on its branch-agnostic relationships. The `-global-` link MUST close through the retirement check once no live branch holds both ends.
+- **FR-023**: Deleting a branch-aware node on any branch, including the default branch, MUST NOT write branch edges on its branch-agnostic relationships. The `-global-` link MUST close through the retirement check once no live branch holds both ends.
 - **FR-024**: No pair of vertices may hold both a `-global-` edge and a branch edge of the same type, for `IS_RELATED`, `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE`.
-- **FR-025**: A graph migration MUST convert the existing `-global-` `deleted` edges on branch-aware links into what the new delete writes, keeping the original `from`, and MUST remove the existing branch `deleted` edges on branch-agnostic relationships. It MUST log the count of mixed pairs that match neither shape and leave them unchanged.
+- **FR-025**: A graph migration MUST convert the existing `-global-` `deleted` edges on branch-aware links into what the new delete writes, keeping the original `from`, and MUST remove the existing `deleted` edges on the default branch or a user branch on branch-agnostic relationships, whether a delete or a merge wrote them. It MUST log the count of mixed pairs that match neither shape and leave them unchanged.
 - **FR-026**: Every read MUST give the same answer before and after the migration, at every point in time.
 - **FR-027**: The internal documentation of the database schema MUST state the rule of FR-024, the peer existence check, and that a branch-agnostic relationship has no branch edges.
 
@@ -250,6 +254,12 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - **FR-032**: Saving a branch-agnostic relationship MUST read its current peers with the rule of FR-028 and close the `-global-` link of a peer it replaces.
 - **FR-033**: A branch-agnostic list query of nodes MUST match a node that exists on at least one live branch, and MUST return a node merged from a branch once.
 - **FR-034**: A plain list query of a branch-aware kind MUST keep following the request branch.
+- **FR-038**: A branch-agnostic lookup by HFID, and a branch-agnostic filter on a list query or on a relationship's peers, MUST match a node when, in at least one live branch's window, the latest edges along the path are active and lead to the value.
+- **FR-039**: Filters on a read on one branch MUST NOT cost more database hits than they do once PR #11220 is merged.
+
+**Peer id list for object conversion (User Story 5)**
+
+- **FR-040**: The peer id list used to validate an object conversion MUST NOT include former peers, on any read.
 
 **Every PR**
 
@@ -268,12 +278,12 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 ### Measurable Outcomes
 
-- **SC-001**: After all six PRs, every failing test from the audit passes. That is 46 tests on the audited commit, or the adapted count where `release-1.12` already fixes a case. The 7 control tests still pass.
+- **SC-001**: After all six PRs, every failing test from the audit passes. That is 46 tests on the audited commit, or the adapted count where `release-1.12` already fixes a case. The 7 control tests still pass. This holds after the assertion changes the brief lists, and after any other assertion that a decision of the brief changes; each such change is recorded in the PR description.
 - **SC-002**: No change made on an unmerged branch alters the global permissions of any account, in any of the 10 permission scenarios of the audit.
 - **SC-003**: No IP pool allocation returns a prefix or address held by a live branch, in any of the 8 IP pool scenarios of the audit, for IPv4 and IPv6.
-- **SC-004**: Reads of relationships between branch-aware kinds that are not branch-agnostic show no increase in database hits outside measurement noise.
+- **SC-004**: Reads of relationships between branch-aware kinds that are not branch-agnostic show the same number of database hits before and after, on the same data set.
 - **SC-005**: After the migration, zero mixed pairs of the two known shapes remain, and reads at several timestamps return identical results before and after.
-- **SC-006**: Each PR description reports the database hits of the affected read paths before and after: reads of relationships to branch-agnostic kinds, branch-agnostic reads with many live branches, and IP pool allocation with many live branches and past allocations.
+- **SC-006**: Each PR description reports the database hits of the affected read paths before and after: reads of relationships to branch-agnostic kinds, reads of group members, branch-agnostic reads with many live branches, deleting a branch-agnostic node with many live branches, and IP pool allocation with many live branches and past allocations.
 
 ## Assumptions
 
@@ -284,6 +294,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - PR [#11220](https://github.com/opsmill/infrahub/pull/11220) stays as it is and is not ported to `release-1.12`. PRs 5 and 6 start only after it is merged into `stable` and then into `release-1.12`.
 - The earlier branch-agnostic code at commit `7015435c4` (local branch `branch-agnostic-source`) holds the window helpers, the rewrite of the list filter and the branch-agnostic lookup by HFID. PRs 3, 5 and 6 bring it in; it is not cherry-picked as a whole.
 - Branch-agnostic reads are uncommon, so a slower branch-agnostic path is acceptable if it returns correct results. Reads on one branch must not get slower.
+- The check before deleting a branch-agnostic node uses the request branch's schema for every live branch. A branch whose schema made a relationship required or optional differently is checked with the request branch's rule. This is a known limit.
 - How PR 1 is disclosed is decided outside this specification. Every PR is planned as a normal PR.
 - The graph migration is a database migration, which needs explicit approval. The plan was approved in the review session; the code still needs review. Removing edges is a hard delete, which the constitution allows only for branch deletion; PR 5 records an explicit exception, because the removed edges break the edge constraints of the database schema and the replacement edges keep the history.
 

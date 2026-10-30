@@ -10,6 +10,7 @@ No GraphQL or REST schema changes. What changes is what existing queries and mut
 | Object permissions loaded for a request to `/graphql/<branch>` | Request branch | Unchanged |
 | Roles in the login response | Taken from any branch | Taken from the default branch |
 | `BranchMerge(name: "B")` sent to `/graphql/B` by a user who joined an administrator group only on B | Allowed | Refused with the existing permission error for `merge_branch` |
+| A mutation that changes an account, sent to `/graphql/B` by a user who holds `super_admin` only through a membership added on B | Allowed | Refused with the existing permission error |
 
 ## IP pool allocation (PR 3)
 
@@ -49,5 +50,7 @@ The message extends the existing one with the branch: `Cannot delete <kind> '<id
 
 ## Database (PR 5)
 
-- The migration `m083` runs on upgrade. It logs the counts of shape 1 and shape 2 pairs converted, and of other mixed pairs left unchanged.
+- The migration `m083` runs on upgrade. It is one-way: downgrading after it runs is not supported.
+- Validating an object conversion no longer counts former peers.
+- The migration logs the counts of shape 1 and shape 2 pairs converted, and of other mixed pairs left unchanged.
 - Reads before and after the migration return the same results at every timestamp.

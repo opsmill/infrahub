@@ -43,6 +43,8 @@ The window logic lives once, in a new leaf module `core/query/branch_windows.py`
 - PRs 5 and 6 wait for PR #11220 to reach `release-1.12`.
 - No GraphQL schema change.
 - One database migration, approved in review, with code review still required.
+- `m083` is one-way. Downgrading after it runs is not supported, and the PR 5 changelog fragment says so. The migration number is assigned when PR 5 is rebased on its base, after checking `GRAPH_VERSION`.
+- Filters on a read on one branch keep PR #11220's query (research R12).
 
 **Scale/Scope**:
 
@@ -57,7 +59,7 @@ The window logic lives once, in a new leaf module `core/query/branch_windows.py`
 | I. Schema-driven integrity | No schema change. The migration keeps relationship cardinality: it changes only edges that break the database schema's edge constraints. | Pass |
 | II. Branch-safe by default | Every changed query keeps branch and time filters. Ranking stays `branch_level DESC, from DESC, status ASC`, inside one window. Cross-branch effects (deleting a branch-agnostic node, the check before the delete) are documented and tested. Merge behavior is tested: the rebase and merge cases of the delete, and open question 1. | Pass, with one exception (hard delete in the migration, see Complexity Tracking) |
 | III. Type safety | New helpers have type hints. Query results keep frozen dataclass `get_data()` methods. The `node_windows` map is a typed structure (data-model.md). | Pass |
-| IV. Test discipline | Each PR adds component tests that fail on the current code, moved from the audit where one exists. The helper predicate gets unit tests. The migration test follows `m081`. No E2E test: there is no user interface change. | Pass |
+| IV. Test discipline | Each PR adds component tests that fail on the current code, moved from the audit where one exists. The helper predicate gets unit tests. The migration test follows `m081`. PR 1 adds a test over HTTP. | Pass, with one exception (no E2E test, see Complexity Tracking) |
 | V. Query performance | All new Cypher is parameterised. Window checks are flat (no nested `CALL` per window), following the HFID measurement. Each PR reports `PROFILE` database hits before and after. | Pass, measured per PR |
 | VI. Security | PR 1 closes a privilege escalation. Error messages name pools, namespaces, branches and peers, which the user can already read, and no internal structure. | Pass |
 | VII. Simplicity | One shared helper module with five existing callers. No new exception classes. IPv4 and IPv6 query bodies stay separate. | Pass |
@@ -91,7 +93,7 @@ backend/infrahub/
 │   ├── manager.py                              # PR 5 (identifiers needing the check), PR 6 (get_many windows)
 │   ├── query/
 │   │   ├── branch_windows.py                   # PR 3 (new)
-│   │   ├── subquery.py                         # PR 3 (imports), PR 5 (existence check), PR 6 (order in window)
+│   │   ├── subquery.py                         # PR 5 (existence check), PR 6 (window form of filters, order in window)
 │   │   ├── ipam.py                             # PR 3
 │   │   ├── resource_manager.py                 # PR 3
 │   │   ├── agnostic_retention.py               # PR 3
@@ -126,6 +128,9 @@ backend/tests/
 └── benchmark/                                  # PRs 3, 5, 6
 
 dev/knowledge/backend/database-schema.md        # PR 5
+docs/docs/deploy-manage/user-management/permissions-roles/overview.mdx  # PR 1
+docs/docs/resource-manager/                     # PR 3
+docs/docs/branches/branch-agnostic-data.mdx     # PRs 5 and 6
 dev/knowledge/backend/query-pattern.md          # PR 3 (point to branch_windows.py)
 changelog/                                      # PRs 1, 3, 4, 5, 6
 ```
@@ -152,4 +157,5 @@ Open questions 1-3 of the spec are gates inside PRs 5 and 6 (see tasks.md). Rese
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | Hard delete of edges in migration `m083` (constitution II allows hard delete only for branch deletion) | The edges of both shapes break the edge constraints in `database-schema.md`: no `active` edge precedes the `deleted` edge on its branch or on the default branch. Shape 1 is replaced by edges with the same `from`, so history is kept. | Leaving the edges for reads to ignore was rejected in review, because every read would need to skip them forever. |
+| No E2E test (constitution IV requires E2E tests for user-facing features) | The changes are backend reads and writes with no new user interface. Component tests cover each behavior, and PR 1 adds a test over HTTP to `/graphql/<branch>`. | An E2E test would cover the same reads through the browser at a much higher cost. The brief does not require one; this exception needs the reviewer's approval, and PR 1 gets one E2E test if it is refused. |
 | A shared Cypher fragment module (`query-pattern.md` prefers inline Cypher) | Five consumers, one of which computes a different window (research R1). FR-013 requires one definition. | Fixing each copy in place keeps five definitions that can drift again. |

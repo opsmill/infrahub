@@ -12,12 +12,14 @@ def build_branch_windows_query(
     carry: Sequence[str] = (),
     variable_name: str = "branch_windows",
     time_param: str = "windows_at",
+    include_deleting: bool = False,
 ) -> tuple[str, dict[str, Any]]: ...
 ```
 
 - When `enabled` is false, it returns `WITH NULL AS <variable_name>` (plus the `carry` variables) and no parameters. A read on one branch therefore keeps its query plan.
 - When `enabled` is true, it returns a `MATCH (branch:Branch) … WITH <carry>, collect({name, origin_name, origin_at}) AS <variable_name>` clause and the parameters `<time_param>` and `global_branch_name`.
 - The clause aggregates every row before it, so it must open the query, or be preceded only by the variables listed in `carry`.
+- When `include_deleting` is true, the clause also emits `deleting_branches`, the names of the branches whose status is `DELETING`. The number pool fragments need it.
 - Windows exclude `-global-` and branches whose status is `DELETING`. The default branch has a NULL origin. For other branches, `origin_at = min(branched_from, $<time_param>)`.
 
 ## Testing one edge against one window
@@ -46,11 +48,10 @@ The rendered Cypher expression sorts a list of windows so that the request branc
 
 ## Callers after PR 3
 
-- `core/query/subquery.py`: the window form of `build_subquery_filter`, which PRs 5 and 6 bring in.
 - `core/query/ipam.py`: the four `…FetchFree` queries.
 - `core/query/resource_manager.py`: the number pool fragments. They keep their "hiding edge" rule (research R1).
 - `core/query/agnostic_retention.py` and `core/query/branch_agnostic_retirement.py`: the retirement check.
-- Later: `core/query/relationship.py` (PR 4 and PR 6) and `core/query/node.py` (PR 6).
+- Later: `core/query/relationship.py` (PR 4 and PR 6), `core/query/node.py` (PR 6), and `core/query/subquery.py` for the window form of `build_subquery_filter` (PR 6) and ordering in a window (PR 6).
 
 ## Unit tests
 
