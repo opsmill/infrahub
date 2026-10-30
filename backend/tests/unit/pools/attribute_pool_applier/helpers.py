@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +13,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.pools.attribute_pool_applier import AttributePoolApplier
@@ -49,14 +52,48 @@ class InMemoryNumberPoolFinder:
 
 
 @dataclass
+class PoolLockLog:
+    """The holds a locker takes and the range reads made meanwhile, in order, shared by both fakes."""
+
+    entries: list[tuple[str, str]] = field(default_factory=list)
+
+
+@dataclass
 class InMemoryPoolRangeReader:
     ranges_by_pool_id: dict[str, list[PoolRange]]
+    log: PoolLockLog = field(default_factory=PoolLockLog)
     reads: list[str] = field(default_factory=list)
     """The pool ids of every ranges read, in order."""
 
     async def get_pool_ranges(self, pool_id: str) -> list[PoolRange]:
         self.reads.append(pool_id)
+        self.log.entries.append(("read", pool_id))
         return list(self.ranges_by_pool_id.get(pool_id, []))
+
+
+@dataclass
+class RecordingPoolLocker:
+    """Records when a pool is held and released, into the log the range reader writes its reads to."""
+
+    log: PoolLockLog
+
+    @asynccontextmanager
+    async def changing(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
+        self.log.entries.append(("change", pool_id))
+        yield
+        self.log.entries.append(("end change", pool_id))
+
+    @asynccontextmanager
+    async def holding(self, pool_id: str) -> AsyncGenerator[None]:
+        self.log.entries.append(("hold", pool_id))
+        yield
+        self.log.entries.append(("end hold", pool_id))
+
+    @asynccontextmanager
+    async def picking(self, pool: Node, division: Division | None) -> AsyncGenerator[None]:
+        self.log.entries.append(("pick", pool.get_id()))
+        yield
+        self.log.entries.append(("end pick", pool.get_id()))
 
 
 @dataclass
