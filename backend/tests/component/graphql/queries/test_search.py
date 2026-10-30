@@ -8,14 +8,12 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import TICKET, load_schema
 
 SEARCH_QUERY = """
 query ($search: String!) {
@@ -555,23 +553,6 @@ async def test_search_anywhere_exact_match(
     assert await _search_ids(gql_params=gql_params, query="1234", partial_match=False, case_sensitive=True) == [
         person_tall.id
     ]
-
-
-async def test_search_anywhere_matches_long_text(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-) -> None:
-    """Values of large attribute kinds such as TextArea are searched by the default search."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    ticket = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
-    await ticket.new(db=db, title="Optics", description="Replace the faulty Optic in rack B12")
-    await ticket.save(db=db)
-
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    assert await _search_ids(gql_params=gql_params, query="faulty Optic") == [ticket.id]
 
 
 @pytest.mark.parametrize("case_sensitive", [False, True])

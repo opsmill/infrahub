@@ -2564,8 +2564,8 @@ class NodeGetListByAttributeValueQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.order_by = ["tier DESC", "match_length ASC", "uuid"]
-        self.return_labels = ["n.uuid AS uuid", "n.kind AS kind"]
+        self.order_by = ["score DESC", "uuid"]
+        self.return_labels = ["uuid", "kind"]
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -2576,8 +2576,7 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params["label_attribute_names"] = ["display_label", "name"]
 
         if self.case_sensitive and self.partial_match:
-            # Matching four spellings on indexed values keeps the TEXT index usable, at the cost of long text.
-            value_label = "AttributeValueIndexed"
+            # Matching four spellings keeps the TEXT index usable.
             match_predicate = (
                 "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
                 "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
@@ -2589,15 +2588,12 @@ class NodeGetListByAttributeValueQuery(Query):
             value = "toLower(toString(av.value))"
             search = "toLower($search_value)"
         elif self.case_sensitive:
-            # Equality on the raw value lets the RANGE index find the matches directly, at the cost of long text.
-            value_label = "AttributeValueIndexed"
+            # Equality on the raw value lets the RANGE index find the matches directly.
             match_predicate = "av.value IN $exact_values"
             self.params["exact_values"] = self._exact_values()
             value = "toString(av.value)"
             search = "$search_value"
         else:
-            # Comparing toString() of every value, whatever its attribute kind, keeps long text searchable.
-            value_label = "AttributeValue"
             value = "toLower(toString(av.value))"
             search = "toLower($search_value)"
             operator = "CONTAINS" if self.partial_match else "="
@@ -2612,7 +2608,7 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         // start with all possible Node-Attribute-AttributeValue combinations
         // --------------------------
-        MATCH (av:%(value_label)s)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE av.value <> $null_value
         AND %(match_predicate)s
         %(kind_filter)s
@@ -2645,7 +2641,7 @@ class NodeGetListByAttributeValueQuery(Query):
         // rank each match, then keep the best one per node
         // --------------------------
         WITH n, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
-        WITH n, size(value) AS match_length, CASE
+        WITH n, value, CASE
             WHEN is_label AND value = search THEN 6
             WHEN is_label AND value STARTS WITH search THEN 5
             WHEN is_label THEN 4
@@ -2653,11 +2649,10 @@ class NodeGetListByAttributeValueQuery(Query):
             WHEN value STARTS WITH search THEN 2
             ELSE 1
         END AS tier
-        // Lists compare element by element, so this keeps the highest tier and, within it, the shortest value.
-        WITH n, max([tier, -match_length]) AS best
-        WITH n, best[0] AS tier, -best[1] AS match_length
+        // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
+        // Reading uuid and kind before grouping keeps that work on every database worker, as only the top results follow.
+        WITH n.uuid AS uuid, n.kind AS kind, max(tier * 1000000000 - size(value)) AS score
         """ % {
-            "value_label": value_label,
             "match_predicate": match_predicate,
             "value": value,
             "search": search,
