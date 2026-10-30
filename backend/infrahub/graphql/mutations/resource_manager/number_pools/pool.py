@@ -16,6 +16,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.permissions.types import define_object_permission_from_branch
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler, RangeReconciliation
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
@@ -41,7 +42,6 @@ from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
     SCHEMA_POOL_SHORTHAND_REFUSED,
     SCOPE_UPDATE_REFUSED,
-    pool_lock,
     pool_target_attribute,
     pool_target_lock,
     range_bounds,
@@ -127,7 +127,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         ):
             number_pool, _ = await super().mutate_create(info=info, data=pool_data, branch=branch, database=dbt)
             pool_id = number_pool.get_id()
-            async with pool_lock(pool_id=pool_id):
+            async with NumberPoolLock(db=dbt).changing(
+                pool_id=pool_id, pool_name=str(number_pool.get_attribute("name").value)
+            ):
                 reconciler = NumberPoolRangeReconciler(range_store=NumberPoolRepository(db=dbt))
                 if shorthand is None:
                     reconciliation = await reconciler.reconcile(
@@ -430,7 +432,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         pool_id = obj.get_id()
         async with (
             pool_target_lock(kind=str(obj.get_attribute("node").value), attribute_name=attribute.name),
-            pool_lock(pool_id=pool_id),
+            NumberPoolLock(db=db).changing(pool_id=pool_id, pool_name=str(obj.get_attribute("name").value)),
             within_transaction(db=db) as dbt,
         ):
             # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
@@ -573,7 +575,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 f" is in use (branches: {','.join(violating_branches)})"
             )
 
-        async with pool_lock(pool_id=number_pool.get_id()):
+        async with NumberPoolLock(db=graphql_context.db).changing(
+            pool_id=number_pool.get_id(), pool_name=number_pool.name.value
+        ):
             result = await super().mutate_delete(info=info, data=data, branch=branch)
         # The pool is deleted through its own copy, which is the one carrying the change log the events are built from.
         deleted_pool = next(

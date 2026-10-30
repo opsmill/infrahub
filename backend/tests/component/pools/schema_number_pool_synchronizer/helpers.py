@@ -9,6 +9,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer, SchemaNumberPoolSyncResult
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -51,6 +52,7 @@ async def run_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSyncResult:
     return await SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
