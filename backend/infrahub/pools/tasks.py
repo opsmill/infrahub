@@ -8,6 +8,7 @@ from infrahub.core.registry import registry
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.exceptions import ValidationError
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -30,6 +31,7 @@ async def validate_schema_number_pools(
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=SchemaNumberPoolUpserter(
                 db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository

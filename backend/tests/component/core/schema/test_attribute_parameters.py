@@ -28,6 +28,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -44,6 +45,7 @@ def build_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSynchronizer:
     return SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
