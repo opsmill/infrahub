@@ -1,4 +1,4 @@
-import "./pele-overrides.css";
+import "./mermaid-diagram.css";
 
 import {
   type DiagramType,
