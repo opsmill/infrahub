@@ -107,10 +107,10 @@ All user input must be parameterized to prevent Cypher injection and enable quer
 ```python
 # Good: Parameterized
 self.params["uuid"] = user_provided_id
-self.add_to_query("MATCH (n { uuid: $uuid })")
+self.add_to_query("MATCH (n:Node { uuid: $uuid })")
 
 # Bad: String interpolation (security risk)
-self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
+self.add_to_query(f"MATCH (n:Node {{ uuid: '{user_provided_id}' }})")
 ```
 
 ### Keep Cypher readable inline
@@ -438,8 +438,8 @@ Wraps Neo4j records and provides typed access methods:
 Helper dataclasses for building Cypher patterns:
 
 ```python
-# Node pattern: (n:Label { uuid: $uuid })
-QueryNode(name="n", labels=["Label"], params={"uuid": "$uuid"})
+# Node pattern: (n:Node:Label { uuid: $uuid })
+QueryNode(name="n", labels=["Node", "Label"], params={"uuid": "$uuid"})
 
 # Relationship pattern with direction: -[r:IS_PART_OF]->
 QueryRel(name="r", labels=["IS_PART_OF"], direction=QueryRelDirection.OUTBOUND)

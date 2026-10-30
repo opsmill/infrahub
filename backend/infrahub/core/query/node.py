@@ -1989,12 +1989,22 @@ WITH %(tracked_vars)s,
         )
         self.params.update(branch_params)
 
+        node_labels = self.schema.kind
+        node_ids_where = ""
+        if self.filters and ("id" in self.filters or "ids" in self.filters):
+            self.params["node_ids"] = [self.filters["id"]] if self.has_filter_by_id else self.filters["ids"]
+            # Of a node vertex's labels only Node carries the uuid index, and the uuid check has to be in the
+            # first MATCH for Neo4j to use that index instead of reading every node of the kind.
+            node_labels = f"Node:{self.schema.kind}"
+            node_ids_where = "n.uuid IN $node_ids"
+
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
         if not self.branch.is_default:
             topquery = """
-            MATCH (n:%(node_kind)s)
+            MATCH (n:%(node_labels)s)
+            %(node_ids_where)s
             CALL (n) {
                 MATCH (root:Root)<-[r:IS_PART_OF]-(n)
                 WHERE %(branch_filter)s
@@ -2004,20 +2014,25 @@ WITH %(tracked_vars)s,
             }
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "branch_filter": branch_filter,
+                "node_labels": node_labels,
+                "node_ids_where": f"WHERE {node_ids_where}" if node_ids_where else "",
+            }
             self.add_to_query(topquery)
         else:
             topquery = """
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
-            WHERE %(branch_filter)s
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_labels)s)
+            WHERE %(where)s
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "where": f"{node_ids_where} AND ({branch_filter})" if node_ids_where else branch_filter,
+                "node_labels": node_labels,
+            }
             self.add_to_query(topquery)
 
-        if self.has_filter_by_id and self.filters:
-            self.params["uuid"] = self.filters["id"]
-            self.add_to_query(" AND n.uuid = $uuid")
+        if self.has_filter_by_id:
             return
 
         # Determine ordering behavior
@@ -2039,10 +2054,6 @@ WITH %(tracked_vars)s,
             # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
             self.order_by = ["n.uuid"]
             return
-
-        if self.filters and "ids" in self.filters:
-            self.add_to_query("AND n.uuid IN $node_ids")
-            self.params["node_ids"] = self.filters["ids"]
 
         # Get unified field requirements for filtering and ordering
         field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
