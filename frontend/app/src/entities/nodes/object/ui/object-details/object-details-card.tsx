@@ -1,8 +1,6 @@
 import { Button, Card, CardHeader } from "@infrahub/ui";
-import { EyeIcon, EyeOffIcon, GitBranchIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
-
-import { Badge } from "@/shared/components/ui/badge";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { hasExtraFields } from "@/entities/nodes/object/domain/rules/has-extra-fields";
@@ -16,9 +14,7 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
-  title?: string;
-  /** Shown as a badge beside the title and included in the card's accessible name. */
-  branchName?: string;
+  title?: React.ReactNode;
 }
 
 export function ObjectDetailsCard({
@@ -28,11 +24,9 @@ export function ObjectDetailsCard({
   className,
   excludeRelationships,
   title = "Details",
-  branchName,
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
-  const branchId = `${id}-branch`;
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
@@ -40,23 +34,13 @@ export function ObjectDetailsCard({
     <Card
       className={className}
       role="region"
-      aria-labelledby={branchName ? `${titleId} ${branchId}` : titleId}
+      aria-labelledby={titleId}
       data-testid="object-details"
     >
       <CardHeader className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 id={titleId} className="shrink-0">
-            {title}
-          </h2>
-          {branchName && (
-            <Badge variant="gray" className="min-w-0 gap-1 font-normal" title={branchName}>
-              <GitBranchIcon className="size-3 shrink-0" aria-hidden="true" />
-              <span id={branchId} className="truncate">
-                {branchName}
-              </span>
-            </Badge>
-          )}
-        </div>
+        <h2 id={titleId} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+          {title}
+        </h2>
 
         {schemaHasExtraFields && (
           <Button

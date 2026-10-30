@@ -131,6 +131,7 @@ describe("RepositoryObjectDetails", () => {
 
     await expect.element(repositoryWideCard).toBeVisible();
     await expect.element(branchScopedCard).toBeVisible();
+    await expect.element(branchScopedCard.getByTitle(CURRENT_BRANCH_NAME)).toBeVisible();
 
     await expect.element(repositoryWideCard.getByText("Name", { exact: true })).toBeVisible();
     await expect.element(repositoryWideCard.getByText("Location", { exact: true })).toBeVisible();

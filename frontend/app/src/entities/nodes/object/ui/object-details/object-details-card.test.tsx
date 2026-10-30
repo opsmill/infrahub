@@ -54,11 +54,15 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByTestId("object-details")).toBeVisible();
   });
 
-  it("renders the branch name beside the title and includes it in the card's accessible name", async () => {
+  it("takes its accessible name from the text of a title made of several elements", async () => {
     const component = await render(
       <ObjectDetailsCard
-        title="On this branch"
-        branchName="main"
+        title={
+          <>
+            On this branch
+            <span>main</span>
+          </>
+        }
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -68,9 +72,9 @@ describe("ObjectDetailsCard", () => {
     await expect
       .element(component.getByRole("region", { name: "On this branch main" }))
       .toBeVisible();
-
-    const heading = component.getByRole("heading", { level: 2, name: "On this branch" }).element();
-    expect(heading.nextElementSibling?.textContent).toBe("main");
+    await expect
+      .element(component.getByRole("heading", { level: 2, name: "On this branch main" }))
+      .toBeVisible();
   });
 
   it("renders the fields of the schema it is given", async () => {
@@ -95,7 +99,6 @@ describe("ObjectDetailsCard", () => {
         />
         <ObjectDetailsCard
           title="On this branch"
-          branchName="main"
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}
@@ -104,9 +107,7 @@ describe("ObjectDetailsCard", () => {
     );
 
     await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
-    await expect
-      .element(component.getByRole("region", { name: "On this branch main" }))
-      .toBeVisible();
+    await expect.element(component.getByRole("region", { name: "On this branch" })).toBeVisible();
   });
 
   it("keeps the extra fields behind a toggle", async () => {
