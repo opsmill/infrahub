@@ -1,0 +1,21 @@
+backend/tests/component/graphql/mutations/test_computed_attribute.py
+  s_8da8d8ab14f2e7::t_ad500fbd49ab0c 6,8-9,104-206
+changelog/+computed-attribute-mutation-labels.fixed.md
+  s_8da8d8ab14f2e7::t_21b53e879f8b84 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d7e2a66f7a61d32f1552514f162ad737893b901",
+  "prompts": {},
+  "sessions": {
+    "s_8da8d8ab14f2e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26071011-d072-43b8-bde0-3a3f7b79d7f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
