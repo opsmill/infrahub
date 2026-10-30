@@ -123,8 +123,97 @@ describe("SchemaViewer Component", () => {
     // THEN
     await expect.element(component.getByText("random-pool-id")).toBeVisible();
     await expect.element(component.getByText("Number pool")).toBeVisible();
-    await expect.element(component.getByText("Start range10")).toBeVisible();
-    await expect.element(component.getByText("End range100")).toBeVisible();
+    await expect.element(component.getByText("10 – 100", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Start range (deprecated)10")).toBeVisible();
+    await expect.element(component.getByText("End range (deprecated)100")).toBeVisible();
+  });
+
+  test("lists every range and the allocation scope of a number pool attribute", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({
+          name: "attribute",
+          label: "Attribute",
+          kind: "NumberPool",
+          parameters: {
+            number_pool_id: "random-pool-id",
+            ranges: [
+              { start: 200, end: null, weight: 5 },
+              { start: null, end: 99, weight: null },
+            ],
+            allocation_scope: ["device", "encapsulation"],
+          },
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute NumberPool").click();
+
+    // THEN
+    await expect.element(component.getByText("MIN – 99", { exact: true })).toBeVisible();
+    await expect
+      .element(component.getByText("200 – MAX (weight 5)", { exact: true }))
+      .toBeVisible();
+    await expect.element(component.getByText("device", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("encapsulation", { exact: true })).toBeVisible();
+    expect(component.getByText(/\(deprecated\)/).query()).toBeNull();
+  });
+
+  test("shows a number pool attribute without declared ranges as one open range", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({
+          name: "attribute",
+          label: "Attribute",
+          kind: "NumberPool",
+          parameters: { number_pool_id: "random-pool-id" },
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute NumberPool").click();
+
+    // THEN
+    await expect.element(component.getByText("MIN – MAX", { exact: true })).toBeVisible();
+  });
+
+  test("shows a number pool attribute declaring an empty range list as having no range", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({
+          name: "attribute",
+          label: "Attribute",
+          kind: "NumberPool",
+          parameters: { number_pool_id: "random-pool-id", ranges: [] },
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute NumberPool").click();
+
+    // THEN
+    await expect.element(component.getByText("No range", { exact: true })).toBeVisible();
   });
 
   test("displays number attribute details", async () => {

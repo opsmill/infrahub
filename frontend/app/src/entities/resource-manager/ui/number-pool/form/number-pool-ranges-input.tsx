@@ -1,7 +1,7 @@
 import { Button } from "@infrahub/ui";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import React from "react";
-import { useController, useFieldArray, useFormContext } from "react-hook-form";
+import { useController, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { Col, Row } from "@/shared/components/container";
 import { usePreventScrollOnNumberInput } from "@/shared/components/form/fields/usePreventScrollOnNumber";
@@ -11,13 +11,16 @@ import { classNames } from "@/shared/utils/common";
 
 import { findOverlappingRanges } from "@/entities/resource-manager/domain/rules/find-overlapping-ranges";
 import type { NumberPoolFormData } from "@/entities/resource-manager/ui/number-pool/form/number-pool-form";
+import type { NumberAttributeParameters } from "@/entities/schema/domain/model/schema";
+import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export type NumberPoolRangeRow = NumberPoolFormData["ranges"][number];
 
 export function validateRangeBound(value: number | null): string | true {
   if (value === null) return true;
-  if (!Number.isInteger(value) || value < 0) return "Whole number";
-  if (!Number.isSafeInteger(value)) return "Too large";
+  if (!Number.isInteger(value)) return "Whole number";
+  if (!Number.isSafeInteger(value)) return value > 0 ? "Too large" : "Too small";
   return true;
 }
 
@@ -70,6 +73,7 @@ export const createRangeRow = (): NumberPoolRangeRow => ({
 interface NumberPoolRangeRowInputProps {
   index: number;
   rowCount: number;
+  attributeParameters?: NumberAttributeParameters;
   onRemove: () => void;
 }
 
@@ -79,22 +83,37 @@ const getRangeBoundNames = (rowCount: number) =>
     `ranges.${i}.end` as const,
   ]).flat();
 
-function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeRowInputProps) {
+function NumberPoolRangeRowInput({
+  index,
+  rowCount,
+  attributeParameters,
+  onRemove,
+}: NumberPoolRangeRowInputProps) {
   // An edit to one row can create or clear an overlap with any other row.
   const boundsOfAllRows = getRangeBoundNames(rowCount);
   const order = (_: number | null, values: NumberPoolFormData) =>
     validateRangeOrder(values.ranges, index);
   const overlap = (_: number | null, values: NumberPoolFormData) =>
     validateRangeOverlap(values.ranges, index);
+  const withinLimits = (value: number | null) => {
+    const validation = validateNumberAttribute(
+      { min: attributeParameters?.min_value, max: attributeParameters?.max_value },
+      value
+    );
+    return validation.success || validation.error;
+  };
 
   const start = useController<NumberPoolFormData, `ranges.${number}.start`>({
     name: `ranges.${index}.start`,
-    rules: { validate: { wholeNumber: validateRangeBound, overlap }, deps: boundsOfAllRows },
+    rules: {
+      validate: { wholeNumber: validateRangeBound, withinLimits, overlap },
+      deps: boundsOfAllRows,
+    },
   });
   const end = useController<NumberPoolFormData, `ranges.${number}.end`>({
     name: `ranges.${index}.end`,
     rules: {
-      validate: { wholeNumber: validateRangeBound, order, overlap },
+      validate: { wholeNumber: validateRangeBound, withinLimits, order, overlap },
       deps: boundsOfAllRows,
     },
   });
@@ -154,7 +173,6 @@ function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeR
               key={label}
               ref={ref}
               type="number"
-              min={0}
               step={1}
               aria-label={label}
               placeholder={placeholder}
@@ -194,6 +212,13 @@ function NumberPoolRangeRowInput({ index, rowCount, onRemove }: NumberPoolRangeR
 export function NumberPoolRangesInput() {
   const { control, formState, trigger } = useFormContext<NumberPoolFormData>();
   const { fields, append, remove } = useFieldArray({ control, name: "ranges" });
+  const [nodeKind, nodeAttribute] = useWatch({
+    control,
+    name: ["node.value", "node_attribute.value"],
+  });
+  const { schema } = useSchema(nodeKind);
+  const attributeParameters = schema?.attributes?.find(({ name }) => name === nodeAttribute)
+    ?.parameters as NumberAttributeParameters | undefined;
 
   const removeRow = (index: number) => {
     remove(index);
@@ -224,6 +249,7 @@ export function NumberPoolRangesInput() {
           key={field.id}
           index={index}
           rowCount={fields.length}
+          attributeParameters={attributeParameters}
           onRemove={() => removeRow(index)}
         />
       ))}

@@ -54,6 +54,11 @@ export const getUpdateMutationFromFormData = ({
       }
     }
 
+    const detachFromPool =
+      field.type === "Number" && !fromPoolField && defaultValue?.source?.type === "pool"
+        ? { from_pool: null }
+        : {};
+
     switch (fieldData.source?.type) {
       case "pool": {
         if (
@@ -100,7 +105,7 @@ export const getUpdateMutationFromFormData = ({
           }
           return {
             ...acc,
-            [field.name]: { value: null },
+            [field.name]: { value: null, ...detachFromPool },
             ...(fromPoolField ? { [fromPoolField]: null } : {}),
           };
         }
@@ -137,20 +142,18 @@ export const getUpdateMutationFromFormData = ({
             };
           }
         }
-        const detachesFromPool =
-          field.type === "Number" && !fromPoolField && defaultValue?.source?.type === "pool";
         return {
           ...acc,
           [field.name]: {
             value: fieldData.value === "" ? null : fieldData.value,
-            ...(detachesFromPool ? { from_pool: null } : {}),
+            ...detachFromPool,
           },
           ...(fromPoolField ? { [fromPoolField]: null } : {}),
         };
       }
       case "profile":
       case "schema": {
-        return { ...acc, [field.name]: { is_default: true } };
+        return { ...acc, [field.name]: { is_default: true, ...detachFromPool } };
       }
       default:
         return acc;
