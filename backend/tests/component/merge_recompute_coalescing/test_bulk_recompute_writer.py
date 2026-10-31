@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
+import pytest
 from prefect import flow
 
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE, BranchStatusChecker
+from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -15,6 +21,7 @@ from infrahub.core.merge.recompute_coalescing import (
     RecomputeChainSubmitter,
     max_recompute_chain_depth,
 )
+from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.recompute.bulk_write import (
     DISPLAY_LABEL_FIELD,
@@ -24,11 +31,14 @@ from infrahub.core.recompute.bulk_write import (
     WrittenNode,
 )
 from infrahub.core.recompute.dispatch import BulkRecomputeDispatcher
+from infrahub.core.recompute.merge_gate import MergeSourceWriteGate
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
+from infrahub.exceptions import MergeRecoveryRequiredError
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
+from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
@@ -41,7 +51,8 @@ from tests.helpers.merge_recompute.dataset import (
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from collections.abc import Awaitable, Callable
+
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.event import InfrahubEventService
@@ -52,6 +63,51 @@ def _event_context() -> EventContext:
     return EventContext(branch=EventBranchContext(name="main"), account_id="")
 
 
+POLL_INTERVAL_SECONDS = 0.5
+
+
+async def _refuse_to_wait(seconds: float) -> None:
+    raise AssertionError(f"the write waited {seconds}s although no merge was taking its branch")
+
+
+def _merge_gate(
+    db: InfrahubDatabase,
+    merge_write_blocker: MergeWriteBlocker,
+    sleep: Callable[[float], Awaitable[None]],
+) -> MergeSourceWriteGate:
+    return MergeSourceWriteGate(
+        db=db,
+        status_checker=BranchStatusChecker(db=db, merge_write_blocker=merge_write_blocker),
+        sleep=sleep,
+        poll_interval_seconds=POLL_INTERVAL_SECONDS,
+    )
+
+
+def _idle_merge_gate(db: InfrahubDatabase) -> MergeSourceWriteGate:
+    return _merge_gate(db=db, merge_write_blocker=MergeWriteBlocker(cache=MemoryCache()), sleep=_refuse_to_wait)
+
+
+class MergeEndingSleep:
+    """Stands in for the gate's poll sleep: the first wait ends the merge, either merged or rolled back."""
+
+    def __init__(
+        self, db: InfrahubDatabase, merge_write_blocker: MergeWriteBlocker, branch_name: str, merged: bool
+    ) -> None:
+        self.db = db
+        self.merge_write_blocker = merge_write_blocker
+        self.branch_name = branch_name
+        self.merged = merged
+        self.calls: list[float] = []
+
+    async def __call__(self, seconds: float) -> None:
+        self.calls.append(seconds)
+        if self.merged:
+            branch = await Branch.get_by_name(db=self.db, name=self.branch_name)
+            branch.status = BranchStatus.MERGED
+            await branch.save(db=self.db)
+        await self.merge_write_blocker.delete()
+
+
 def _dispatcher(
     db: InfrahubDatabase,
     event_service: InfrahubEventService,
@@ -60,7 +116,7 @@ def _dispatcher(
 ) -> BulkRecomputeDispatcher:
     return BulkRecomputeDispatcher(
         db=db,
-        writer=BulkRecomputeWriter(db=db, event_service=event_service),
+        writer=BulkRecomputeWriter(db=db, event_service=event_service, merge_gate=_idle_merge_gate(db=db)),
         chain=RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=workflow),
@@ -87,7 +143,7 @@ async def test_bulk_writer_persists_all_three_families_and_emits_one_event_per_n
     node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    writer = BulkRecomputeWriter(db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db))
 
     written = await writer.write(
         branch=default_branch,
@@ -129,7 +185,9 @@ async def test_bulk_writer_groups_writes_across_many_nodes(
     nodes = [await _make_node(db=db, branch=default_branch, name=f"n{i}", peer_name=f"p{i}") for i in range(5)]
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder, transaction_chunk_size=2)
+    writer = BulkRecomputeWriter(
+        db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db), transaction_chunk_size=2
+    )
 
     written = await writer.write(
         branch=default_branch,
@@ -158,7 +216,7 @@ async def test_bulk_writer_stamps_recompute_origin_so_per_node_automations_skip_
     node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    writer = BulkRecomputeWriter(db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db))
 
     await writer.write(
         branch=default_branch,
@@ -187,7 +245,7 @@ async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
     nodes = [await _make_node(db=db, branch=default_branch, name=f"n{i}", peer_name=f"p{i}") for i in range(3)]
 
     # Give the middle node the value it will be asked to write again, so that one write is a no-op.
-    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent(), merge_gate=_idle_merge_gate(db=db))
     await seed.write(
         branch=default_branch,
         writes=[AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_FIELD, value="steady")],
@@ -195,7 +253,7 @@ async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
     )
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    writer = BulkRecomputeWriter(db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db))
     written = await writer.write(
         branch=default_branch,
         writes=[
@@ -227,7 +285,7 @@ async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_
     node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
 
     # Seed the display label so re-writing the same value is a no-op for that one field.
-    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent(), merge_gate=_idle_merge_gate(db=db))
     await seed.write(
         branch=default_branch,
         writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="steady")],
@@ -235,7 +293,7 @@ async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_
     )
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    writer = BulkRecomputeWriter(db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db))
     written = await writer.write(
         branch=default_branch,
         writes=[
@@ -273,7 +331,7 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
     await node.save(db=db)
 
     recorder = MemoryInfrahubEvent()
-    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    writer = BulkRecomputeWriter(db=db, event_service=recorder, merge_gate=_idle_merge_gate(db=db))
     written = await writer.write(
         branch=default_branch,
         writes=[AttributeValueWrite(node_id=node.id, field="code", value="override")],
@@ -290,6 +348,145 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
     assert reloaded.code.value == "override"
     assert await reloaded.get_display_label(db=db) == "override"
     assert await reloaded.get_hfid(db=db) == ["override"]
+
+
+async def test_bulk_writer_drops_a_write_to_a_branch_that_merges_while_it_waits(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A write aimed at a merging branch waits the merge out, then is dropped once the branch merged.
+
+    The merge takes its changelog from a diff snapshot before it carries the branch's edges across, so
+    a value written in between would reach the destination with none of its readers recomputed.
+    """
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+    branch = await create_branch(branch_name="merging-source", db=db)
+    on_branch = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert on_branch is not None
+    summary_before = on_branch.summary.value
+
+    merge_write_blocker = MergeWriteBlocker(cache=MemoryCache())
+    await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
+    sleep = MergeEndingSleep(db=db, merge_write_blocker=merge_write_blocker, branch_name=branch.name, merged=True)
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(
+        db=db,
+        event_service=recorder,
+        merge_gate=_merge_gate(db=db, merge_write_blocker=merge_write_blocker, sleep=sleep),
+    )
+
+    written = await writer.write(
+        branch=branch,
+        writes=[AttributeValueWrite(node_id=node.id, field="summary", value="late summary")],
+        context=_event_context(),
+    )
+
+    assert written == []
+    assert recorder.events == []
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert reloaded is not None
+    assert reloaded.summary.value == summary_before
+    assert sleep.calls == [POLL_INTERVAL_SECONDS]
+
+
+async def test_bulk_writer_lands_a_write_held_back_by_a_merge_that_rolls_back(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+    branch = await create_branch(branch_name="rolled-back-source", db=db)
+
+    merge_write_blocker = MergeWriteBlocker(cache=MemoryCache())
+    await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
+    sleep = MergeEndingSleep(db=db, merge_write_blocker=merge_write_blocker, branch_name=branch.name, merged=False)
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(
+        db=db,
+        event_service=recorder,
+        merge_gate=_merge_gate(db=db, merge_write_blocker=merge_write_blocker, sleep=sleep),
+    )
+
+    written = await writer.write(
+        branch=branch,
+        writes=[AttributeValueWrite(node_id=node.id, field="summary", value="late summary")],
+        context=_event_context(),
+    )
+
+    # The branch is open again, so the held write lands and is announced like any other.
+    assert sleep.calls == [POLL_INTERVAL_SECONDS]
+    assert written == [WrittenNode(node_id=node.id, kind=PROFILE_NODE_KIND, fields=("summary",))]
+    assert [(event.node_id, event.fields) for event in recorder.events] == [(node.id, ["summary"])]
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert reloaded is not None
+    assert reloaded.summary.value == "late summary"
+
+
+async def test_bulk_writer_refuses_a_write_to_a_branch_whose_merge_failed(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+    branch = await create_branch(branch_name="failed-source", db=db)
+    on_branch = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert on_branch is not None
+    summary_before = on_branch.summary.value
+
+    merge_write_blocker = MergeWriteBlocker(cache=MemoryCache())
+    await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(
+        db=db,
+        event_service=recorder,
+        merge_gate=_merge_gate(db=db, merge_write_blocker=merge_write_blocker, sleep=_refuse_to_wait),
+    )
+
+    with pytest.raises(MergeRecoveryRequiredError, match=rf"^{re.escape(MERGE_RECOVERY_REQUIRED_MESSAGE)}$"):
+        await writer.write(
+            branch=branch,
+            writes=[AttributeValueWrite(node_id=node.id, field="summary", value="late summary")],
+            context=_event_context(),
+        )
+
+    assert recorder.events == []
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert reloaded is not None
+    assert reloaded.summary.value == summary_before
+
+
+async def test_bulk_writer_does_not_hold_a_default_branch_write_during_a_merge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """The merge's destination is not held: a delayed write could overwrite the post-merge recompute."""
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+
+    merge_write_blocker = MergeWriteBlocker(cache=MemoryCache())
+    await merge_write_blocker.set(branch="another-branch", state=MergeProtectionState.MERGING)
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(
+        db=db,
+        event_service=recorder,
+        merge_gate=_merge_gate(db=db, merge_write_blocker=merge_write_blocker, sleep=_refuse_to_wait),
+    )
+
+    written = await writer.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=node.id, field="summary", value="live summary")],
+        context=_event_context(),
+    )
+
+    assert written == [WrittenNode(node_id=node.id, kind=PROFILE_NODE_KIND, fields=("summary",))]
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.summary.value == "live summary"
 
 
 async def test_dispatch_returns_without_writing_when_branch_is_gone(
