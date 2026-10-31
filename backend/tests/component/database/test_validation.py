@@ -6,6 +6,7 @@ import pytest
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -271,6 +272,61 @@ async def _agnostic_attribute_global_edges_with_branch_level_2(db: InfrahubDatab
     await _make_attribute_agnostic_on_global_branch(db=db, node_uuid=car.id, branch_level=2)
 
 
+async def _open_value_edge_branches(db: InfrahubDatabase, node_uuid: str, attr_name: str) -> list[str]:
+    """Return the sorted branches of the attribute's active, open HAS_VALUE edges."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.status = "active" AND hv.to IS NULL
+RETURN hv.branch AS branch
+    """
+    records = await db.execute_query(query=query, params={"node_id": node_uuid, "attr_name": attr_name})
+    return sorted(record["branch"] for record in records)
+
+
+async def _move_attribute_edge_to_branch(db: InfrahubDatabase, node_uuid: str, attr_name: str, branch: Branch) -> None:
+    """Move the attribute's HAS_ATTRIBUTE edge onto a branch."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})
+SET hae.branch = $branch_name
+    """
+    await db.execute_query(
+        query=query, params={"node_id": node_uuid, "attr_name": attr_name, "branch_name": branch.name}
+    )
+
+
+async def _close_global_value_edge(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
+    """Close the attribute's open HAS_VALUE edge on the global branch."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.branch = $global_branch AND hv.status = "active" AND hv.to IS NULL
+SET hv.to = $at
+    """
+    await db.execute_query(
+        query=query,
+        params={"node_id": node_uuid, "attr_name": attr_name, "global_branch": GLOBAL_BRANCH_NAME, "at": at},
+    )
+
+
+async def _set_global_value_edge_branch_level(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_level: int
+) -> None:
+    """Give the attribute's HAS_VALUE edge on the global branch another branch_level."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[hv:HAS_VALUE]->()
+WHERE hv.branch = $global_branch
+SET hv.branch_level = $branch_level
+    """
+    await db.execute_query(
+        query=query,
+        params={
+            "node_id": node_uuid,
+            "attr_name": attr_name,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "branch_level": branch_level,
+        },
+    )
+
+
 @dataclass
 class GraphDamageCase:
     name: str
@@ -533,6 +589,79 @@ class TestVerifyGraph:
         assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
         assert f"branch_level={branch_level!r}" in violations[0].message
         assert "expected branch_level 1" in violations[0].message
+
+    async def test_branch_local_value_of_agnostic_node_is_valid_on_any_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """Each branch keeps its own value of a branch-local attribute, so its value edges may sit on any branch."""
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(db=db, name="local-value", location="https://example.com/local-value.git", commit="aaa")
+        await repository.save(db=db)
+        branch = await create_branch(db=db, branch_name="local-value-branch")
+
+        for write_branch, commit in ((default_branch, "bbb"), (branch, "ccc")):
+            on_branch = await NodeManager.get_one(db=db, id=repository.id, branch=write_branch, raise_on_error=True)
+            on_branch.get_attribute(name="commit").value = commit
+            await on_branch.save(db=db)
+
+        assert await _open_value_edge_branches(db=db, node_uuid=repository.id, attr_name="commit") == [
+            "-global-",
+            "local-value-branch",
+            "main",
+        ]
+
+        assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
+
+    async def test_branch_local_attribute_of_agnostic_node_is_attached_on_global_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """Every branch must have the attribute, so the edge from the node to it stays on the global branch."""
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(db=db, name="local-attach", location="https://example.com/local-attach.git", commit="aaa")
+        await repository.save(db=db)
+        await _move_attribute_edge_to_branch(db=db, node_uuid=repository.id, attr_name="commit", branch=default_branch)
+
+        violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
+        assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
+        assert "branch='main'" in violations[0].message
+        assert "expected '-global-'" in violations[0].message
+
+    async def test_local_value_edge_on_global_branch_is_reported_for_its_branch_level(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """Reads rank edges by branch_level, so a global value edge needs level 1 even when any branch is valid."""
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(db=db, name="local-level", location="https://example.com/local-level.git", commit="aaa")
+        await repository.save(db=db)
+        assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
+
+        await _set_global_value_edge_branch_level(db=db, node_uuid=repository.id, attr_name="commit", branch_level=2)
+
+        violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
+        assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
+        assert "branch_level=2" in violations[0].message
+        assert "expected branch_level 1" in violations[0].message
+
+    async def test_local_attribute_of_agnostic_node_keeps_its_value_on_global_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        """The default branch reads the global value until it writes its own, so that edge must stay open."""
+        repository = await Node.init(db=db, schema="CoreRepository", branch=default_branch)
+        await repository.new(
+            db=db, name="local-fallback", location="https://example.com/local-fallback.git", commit="aaa"
+        )
+        await repository.save(db=db)
+        on_main = await NodeManager.get_one(db=db, id=repository.id, branch=default_branch, raise_on_error=True)
+        on_main.get_attribute(name="commit").value = "bbb"
+        await on_main.save(db=db)
+        assert await collect_graph_violations(db=db, kinds=["CoreRepository"]) == []
+
+        await _close_global_value_edge(db=db, node_uuid=repository.id, attr_name="commit", at=Timestamp().to_string())
+
+        assert await _open_value_edge_branches(db=db, node_uuid=repository.id, attr_name="commit") == ["main"]
+        violations = await collect_graph_violations(db=db, kinds=["CoreRepository"])
+        assert [violation.check for violation in violations] == [GraphCheck.ATTRIBUTE_EDGE_BRANCH]
+        assert "no active HAS_VALUE edge on '-global-'" in violations[0].message
 
     async def test_every_check_runs_and_all_violations_are_reported(
         self,
