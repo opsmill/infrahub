@@ -8,6 +8,7 @@ from prefect import flow
 
 from infrahub.context import InfrahubContext
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput, DummyOutput
 from infrahub.tls.registry import TlsContextRegistry
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
@@ -57,6 +58,12 @@ PRIORITY_PARENT_BLOCKING = WorkflowDefinition(
     function="priority_parent_blocking",
 )
 
+PARENT_AWAITING_DUMMY = WorkflowDefinition(
+    name="fixture_parent_awaiting_dummy",
+    module=FIXTURE_MODULE,
+    function="parent_awaiting_dummy",
+)
+
 PRIORITY_FIXTURE_WORKFLOWS = [
     PRIORITY_GRANDCHILD,
     PRIORITY_LEAF_HIGH_DEFAULT,
@@ -65,6 +72,7 @@ PRIORITY_FIXTURE_WORKFLOWS = [
     PRIORITY_PARENT_HIGH_DEFAULT_CHILD,
     PRIORITY_PARENT_OVERRIDING,
     PRIORITY_PARENT_BLOCKING,
+    PARENT_AWAITING_DUMMY,
 ]
 
 
@@ -107,3 +115,16 @@ async def priority_parent_blocking(context: InfrahubContext) -> None:
     """Dispatch the child through the blocking entry point and wait for its result."""
     service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
     await service.execute_workflow(workflow=PRIORITY_GRANDCHILD, context=context)
+
+
+@flow(name="fixture-parent-awaiting-dummy")
+async def parent_awaiting_dummy(context: InfrahubContext) -> str:
+    """Await a child run that returns a value, and return that value."""
+    service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+    output = await service.execute_workflow(
+        workflow=DUMMY_FLOW,
+        expected_return=DummyOutput,
+        context=context,
+        parameters={"data": DummyInput(firstname="John", lastname="Doe")},
+    )
+    return output.full_name
