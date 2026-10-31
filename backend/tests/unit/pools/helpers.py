@@ -15,7 +15,7 @@ from infrahub.pools.number_ranges import allocation_bounds
 
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool as CoreNumberPoolNode
-    from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
+    from infrahub.pools.number_ranges import PoolRange
     from infrahub.pools.scope import Division
 
 TICKET_KIND = "TestingTicket"
@@ -51,21 +51,15 @@ class InMemoryNumberPool(CoreNumberPool):
 
 
 class InMemoryNumberPoolNumbers:
-    """Holds a pool's ranges, the numbers it accounts for and the values its target holds; records free lookups."""
+    """Holds a pool's ranges and the numbers it accounts for; records free lookups."""
 
-    def __init__(
-        self, ranges: list[PoolRange] | None = None, accounted: set[int] | None = None, taken: set[int] | None = None
-    ) -> None:
+    def __init__(self, ranges: list[PoolRange] | None = None, accounted: set[int] | None = None) -> None:
         self.ranges = ranges or []
         self.accounted = accounted or set()
-        self.taken = taken or set()
         self.free_lookups: list[tuple[int, int]] = []
 
     async def get_pool_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[PoolRange]:
         return list(self.ranges)
-
-    async def get_taken(self, pool: CoreNumberPoolNode, branch: Branch, space: EffectiveSpace) -> set[int]:
-        return {value for value in self.taken if space.contains(value)}
 
     async def get_free(
         self,

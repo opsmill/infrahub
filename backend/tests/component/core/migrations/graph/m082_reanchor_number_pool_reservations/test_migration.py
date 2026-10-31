@@ -36,6 +36,7 @@ from tests.component.core.migrations.graph.m082_reanchor_number_pool_reservation
     convert_legacy_records,
     create_legacy_record,
     create_ticket,
+    create_ticket_allocated_as,
     create_ticket_allocated_on_update,
     create_ticket_with_value,
     live_records,
@@ -66,6 +67,8 @@ BRANCH_VALUES = {"branch_updated_main_updated": 92, "branch_updated_main_deleted
 MAIN_VALUE_AFTER_BRANCH_UPDATE = 94
 SHARED_VALUE = 95
 MIGRATED_COPY_VALUE = 99
+# Above every number alpha hands out on main, as the pre-upgrade pool would have picked it.
+ON_FEATURE_VALUE = 8
 SET_BACK_MAIN_DETOUR = 96
 SET_BACK_BRANCH_MAIN_VALUE = 97
 SET_BACK_BRANCH_DETOUR = 98
@@ -257,7 +260,9 @@ class OnFeature(LegacyCase):
     async def after_feature(self, feature: Branch) -> None:
         self.keep(
             "on_feature",
-            await create_ticket(db=self.db, title="on_feature", pool=self.pools["alpha"], branch=feature),
+            await create_ticket_allocated_as(
+                db=self.db, title="on_feature", pool=self.pools["alpha"], value=ON_FEATURE_VALUE, branch=feature
+            ),
         )
         assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=[self.id("on_feature")]) == 1
         await self.legacy_source_edge("on_feature", pool="alpha", branch=feature)
@@ -984,8 +989,8 @@ class TestMigration082:
             "on_main_b": 2,
             "re_pooled": 3,
             "deleted_on_branch": 4,
-            "from_beta": 5,
-            "attribute_gone": 6,
+            "from_beta": 1,
+            "attribute_gone": 5,
             "on_feature": 8,
         }
 
@@ -1016,7 +1021,7 @@ class TestMigration082:
         )
 
         # The record naming an attribute its object no longer carries releases nothing: neither era
-        # ever reported 6.
+        # ever reported 5.
         for figures in (before["alpha"], after["alpha"]):
-            assert 6 not in figures.in_use
-            assert 6 not in {number for _, number in figures.allocated}
+            assert 5 not in figures.in_use
+            assert 5 not in {number for _, number in figures.allocated}

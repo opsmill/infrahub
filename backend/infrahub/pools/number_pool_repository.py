@@ -11,7 +11,6 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetDivisions,
     NumberPoolGetFree,
     NumberPoolGetReserved,
-    NumberPoolGetTaken,
     NumberPoolGetUsed,
     NumberPoolReleaseAllReserved,
     NumberPoolSetReserved,
@@ -214,14 +213,6 @@ class NumberPoolRepository(NumberPoolRangeStore):
         )
         await query.execute(db=self.db)
         return query.get_result_value()
-
-    async def get_taken(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> set[int]:
-        """Return the values inside `space` already held by the pool's attribute on its target kind."""
-        if space.is_empty:
-            return set()
-        query = await NumberPoolGetTaken.init(db=self.db, branch=branch, pool=pool, ranges=space.as_query_ranges())
-        await query.execute(db=self.db)
-        return query.get_taken_values()
 
     async def get_reservation(
         self,

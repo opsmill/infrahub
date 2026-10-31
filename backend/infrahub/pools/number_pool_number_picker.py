@@ -16,11 +16,9 @@ if TYPE_CHECKING:
 
 
 class NumberPoolNumberReader(Protocol):
-    """Reads a pool's ranges, the values its target attribute already holds and the next free number in a span."""
+    """Reads a pool's ranges and the next number its records leave free in a span."""
 
     async def get_pool_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[PoolRange]: ...
-
-    async def get_taken(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> set[int]: ...
 
     async def get_free(
         self,
@@ -56,24 +54,13 @@ class NumberPoolNumberPicker:
         )
         if space.is_empty:
             raise PoolExhaustedError(f"Pool {_label(pool)} has no number the attribute accepts in its ranges.")
-        # Only a globally unique attribute rejects a duplicate, so skip existing values only then.
-        taken = await self.number_reader.get_taken(pool=pool, branch=branch, space=space) if attribute.unique else set()
 
         for segment in space.segments:
-            cursor = segment.start
-            while cursor <= segment.end:
-                # A run of taken values is stepped over in memory so it costs no round trip per value.
-                if cursor in taken:
-                    cursor += 1
-                    continue
-                candidate = await self.number_reader.get_free(
-                    pool=pool, branch=branch, min_value=cursor, max_value=segment.end, division=division
-                )
-                if candidate is None:
-                    break
-                if candidate not in taken:
-                    return candidate
-                cursor = candidate + 1
+            candidate = await self.number_reader.get_free(
+                pool=pool, branch=branch, min_value=segment.start, max_value=segment.end, division=division
+            )
+            if candidate is not None:
+                return candidate
 
         raise PoolExhaustedError(f"Pool {_label(pool)} has no free number left in its ranges.")
 
