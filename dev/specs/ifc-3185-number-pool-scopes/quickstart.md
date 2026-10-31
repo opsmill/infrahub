@@ -14,7 +14,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 |----------|----------------|---------|
 | Scope resolver rules, refusal of `List`, `JSON` and `Any` elements, division key | FR-003 to FR-006, FR-009 | `uv run pytest backend/tests/unit/pools/test_scope.py` |
 | Allocation per division, parallel writers in two divisions, repeatable identifier, update moving a node to another site, branch whose schema lacks the element | FR-010 to FR-013, FR-016 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py` |
-| Free, used, divisions and allocated queries with a division, counting each holding object in every division it occupies on any live branch | FR-015, FR-020 to FR-022 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope.py` |
+| Free, used, divisions and allocated queries with a division, counting each number in every division its holding object occupies on a live branch holding the number | FR-015, FR-020 to FR-022 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope.py` |
 | Scope on create, every refusal, immutability on update, `null` refused | FR-001 to FR-008 | `uv run pytest backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py` |
 | The three dedicated queries on real pools and their refusals | FR-017 to FR-023 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | Declared scope on a schema-created pool | FR-024 to FR-027 | `uv run pytest backend/tests/component/pools/test_schema_number_pool_scope.py` |
@@ -56,7 +56,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 ## Two-branch scenarios
 
 1. On branch `b1`, move device D1 from site A to site C. Expected: on `b1` and on the default branch, `InfrahubNumberPoolDivisions` lists D1's number under site A and under site C.
-2. On branch `b2`, create a device in site A with `from_pool`. Expected: it receives the lowest number that no holding object in site A holds on any live branch.
+2. On branch `b2`, create a device in site A with `from_pool`. Expected: it receives the lowest number that no holding object holds on a branch where that object is in site A.
 3. Merge `b1`. Expected: D1's number is counted under site C; it is also counted under site A while `b2`, created before the merge, still reads D1 in site A.
 4. Create R1 on branch `b2` in site A, then R2 on branch `b1` in site A (decision 7, research R5). Expected: R2 receives a different number from R1, because R1 counts in site A from `b1`; after both branches merge, no two holding objects in site A hold the same number.
 5. Create branch `b3`, then add a required relationship `pod` to `InfraDevice` on the default branch and create a pool scoped by `pod`. Allocate from that pool on `b3`. Expected: refused, the error names `pod` and `b3`. Rebase `b3` and allocate again. Expected: accepted.

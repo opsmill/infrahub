@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from enum import Enum
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
@@ -89,6 +90,12 @@ class NodePropertyAttribute[T]:
     def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
 
 
+@lru_cache(maxsize=1024)
+def _template_variables(template: str) -> tuple[str, ...]:
+    # Parsing is the costly part of loading a node whose schema declares a template, and depends only on its text.
+    return tuple(InfrahubJinja2Template(template=template).get_variables())
+
+
 class DisplayLabel(NodePropertyAttribute[str]):
     def __init__(
         self,
@@ -121,8 +128,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
         if self.template is None or not self.is_jinja2_template:
             return
 
-        tpl = InfrahubJinja2Template(template=self.template)
-        for variable in tpl.get_variables():
+        for variable in _template_variables(template=self.template):
             items = variable.split("__", maxsplit=1)
             if items[0] in self.node_schema.attribute_names:
                 self.node_attributes.append(items[0])
