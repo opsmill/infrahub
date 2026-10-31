@@ -11,4 +11,108 @@ updates:
     interval: weekly
     time: "09:00"
   target-branch: stable
+- directory: /frontend
+  groups:
+    frontend-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    storybook:
+      patterns:
+      - "@storybook/*"
+      - storybook
+    vitest:
+      patterns:
+      - "@vitest/*"
+      - vitest
+      - vitest-browser-react
+    graphql-codegen:
+      patterns:
+      - "@graphql-codegen/*"
+    frontend-minor-patch:
+      patterns:
+      - "*"
+      update-types:
+      - minor
+      - patch
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  open-pull-requests-limit: 5
+  package-ecosystem: npm
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+- directory: /docs
+  groups:
+    docs-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    docusaurus:
+      patterns:
+      - "@docusaurus/*"
+    docs-minor-patch:
+      patterns:
+      - "*"
+      update-types:
+      - minor
+      - patch
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  open-pull-requests-limit: 5
+  package-ecosystem: npm
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+- directory: /frontend/packages/plugins/template
+  groups:
+    plugin-template-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    plugin-template-minor-patch:
+      patterns:
+      - "*"
+      update-types:
+      - minor
+      - patch
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  open-pull-requests-limit: 5
+  package-ecosystem: npm
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+- directories:
+  - /
+  - /python_testcontainers
+  groups:
+    python-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    opentelemetry:
+      patterns:
+      - "opentelemetry-*"
+    python-minor-patch:
+      patterns:
+      - "*"
+      update-types:
+      - minor
+      - patch
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  open-pull-requests-limit: 5
+  package-ecosystem: uv
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
 version: 2

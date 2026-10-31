@@ -58,12 +58,16 @@ def add_span_exception(exception: Exception) -> None:
         current_span.record_exception(exception)
 
 
-class InsecureTLSSession(requests.Session):
-    """Session that never verifies TLS certificates, overriding any per-request `verify` value."""
+class TraceTLSSession(requests.Session):
+    """Give explicit trace TLS settings precedence over request and environment settings."""
+
+    def __init__(self, verify: bool | str) -> None:
+        super().__init__()
+        self._verify = verify
 
     def merge_environment_settings(self, *args: Any, **kwargs: Any) -> Any:
         settings = super().merge_environment_settings(*args, **kwargs)
-        settings["verify"] = False
+        settings["verify"] = self._verify
         return settings
 
 
@@ -82,7 +86,11 @@ def create_span_exporter(
     if not exporter_endpoint:
         raise ValueError("Exporter type is set to otlp but endpoint is not set")
     if exporter_protocol == "http/protobuf":
-        session = InsecureTLSSession() if tls_insecure else None
+        session = None
+        if tls_insecure:
+            session = TraceTLSSession(verify=False)
+        elif tls_ca_bundle:
+            session = TraceTLSSession(verify=tls_ca_bundle)
         return HTTPSpanExporter(endpoint=exporter_endpoint, certificate_file=tls_ca_bundle, session=session)
     if exporter_protocol == "grpc":
         if tls_ca_bundle:
