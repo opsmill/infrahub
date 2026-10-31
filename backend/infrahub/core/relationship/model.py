@@ -356,7 +356,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         node: Node = await registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
-            kind=self.schema.kind.value,
+            kind=self.source_kind,
             branch=self.branch,
             at=self.at,
             include_metadata=MetadataOptions.LINKED_NODES,
