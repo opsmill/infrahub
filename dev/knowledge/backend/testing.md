@@ -2,7 +2,9 @@
 
 > Part of: `dev/knowledge/backend/`
 
-Overview of the backend testing infrastructure, test types, and patterns.
+Overview of the backend testing infrastructure, test types, and patterns. Choose a test's scope with
+[Choosing tests](../../guides/backend/choosing-tests.md); the
+[testing standards](../../guidelines/backend/testing.md) define which coverage to retain.
 
 ## Testing Philosophy
 
@@ -22,7 +24,7 @@ Fast unittests that require no external services to run. I.e. no database or net
 **Characteristics:**
 
 - Fast feedback loop
-- Sanity checks
+- Focused assertions on decisions and observable outputs
 
 **When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
 
