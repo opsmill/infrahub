@@ -1,0 +1,68 @@
+---
+# yamllint disable rule:truthy
+# Requests one individual reviewer on top of the CODEOWNERS teams; dev/REVIEWERS.yml explains how.
+name: "Pull Request Reviewer"
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-reviewer-${{ github.event.pull_request.number }}
+
+jobs:
+  request-reviewer:
+    name: "Request an individual reviewer"
+    # Fork pull requests get a read-only token, so they keep the CODEOWNERS teams only.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write  # to request the reviewer
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          # The score reads a year of commit history but no file contents.
+          fetch-depth: 0
+          filter: "blob:none"
+          persist-credentials: false
+
+      - name: "Pick a reviewer"
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+          CONFIG: dev/REVIEWERS.yml
+          SCRIPT: .github/scripts/select_reviewer.py
+        run: |
+          set -euo pipefail
+          # Base branch copies, so a config change applies once merged rather than to its own pull request.
+          if git cat-file -e "origin/$BASE_REF:$CONFIG" 2>/dev/null \
+            && git cat-file -e "origin/$BASE_REF:$SCRIPT" 2>/dev/null; then
+            git show "origin/$BASE_REF:$CONFIG" > "$RUNNER_TEMP/REVIEWERS.yml"
+            git show "origin/$BASE_REF:$SCRIPT" > "$RUNNER_TEMP/select_reviewer.py"
+          else
+            cp "$CONFIG" "$RUNNER_TEMP/REVIEWERS.yml"
+            cp "$SCRIPT" "$RUNNER_TEMP/select_reviewer.py"
+          fi
+          python3 "$RUNNER_TEMP/select_reviewer.py" --repo . --config "$RUNNER_TEMP/REVIEWERS.yml" \
+            --github "$REPO" --pr "$PR_NUMBER" --out "$RUNNER_TEMP/selection.json" \
+            --summary "$GITHUB_STEP_SUMMARY" --github-output "$GITHUB_OUTPUT"
+
+      - name: "Request the reviewer"
+        if: steps.pick.outputs.login != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LOGIN: ${{ steps.pick.outputs.login }}
+        run: gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" -f "reviewers[]=$LOGIN"
