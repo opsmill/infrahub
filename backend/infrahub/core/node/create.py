@@ -327,7 +327,9 @@ async def create_component(
 
     obj_peer = await Node.init(schema=component.schema, db=db, branch=branch, at=at)
     await obj_peer.new(db=db, **obj_peer_data)
-    await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
+    await constraint_runner.check(
+        node=obj_peer, field_filters=_with_pooled_attributes(node=obj_peer, fields=list(obj_peer_data))
+    )
 
     await allocate_from_resource_pools(
         db=db,
@@ -455,6 +457,23 @@ def _has_profiles_set(node: Node) -> bool:
     return len(profiles) > 0
 
 
+def _with_pooled_attributes(node: Node, fields: list[str]) -> list[str]:
+    """Return `fields` plus every attribute of the new `node` a number pool filled.
+
+    A NumberPool attribute is filled without the payload naming it, and a pool does not know which numbers objects
+    hold outside its records, so the uniqueness check must see that number.
+    """
+    if not fields:
+        # No filter already checks every constraint, and naming one field would narrow it.
+        return fields
+    pooled = [
+        name
+        for name in node.get_schema().attribute_names
+        if name not in fields and node.get_attribute(name=name).tracking_pool is not None
+    ]
+    return fields + pooled
+
+
 @dataclass(frozen=True)
 class _NodeWriteComponents:
     pool_applier: AttributePoolApplier
@@ -503,7 +522,9 @@ async def _do_create_node(
             profiles_mandatory_field_getter=profiles_mandatory_field_getter,
             user_id=user_id,
         )
-        await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
+        await node_constraint_runner.check(
+            node=obj, field_filters=_with_pooled_attributes(node=obj, fields=fields_to_validate)
+        )
         await obj.save(db=db, at=at, user_id=user_id)
 
         if object_template:
