@@ -179,13 +179,13 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
-    @retry_db_transaction(name="resource_manager_create")
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,
+        override_data: dict[str, Any] | None = None,
     ) -> Any:
         try:
             schema_node = registry.schema.get(name=data["node"].value)
@@ -221,7 +221,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         if attribute.parameters.max_value is not None and end_range > attribute.parameters.max_value:
             raise ValidationError(input_value="end_range can't be larger than max_value")
 
-        return await super().mutate_create(info=info, data=data, branch=branch)
+        return await super().mutate_create(
+            info=info, data=data, branch=branch, database=database, override_data=override_data
+        )
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
@@ -268,7 +270,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         return number_pool, result
 
     @classmethod
-    @retry_db_transaction(name="resource_manager_update")
+    @retry_db_transaction(name="resource_manager_delete")
     async def mutate_delete(
         cls,
         info: GraphQLResolveInfo,
