@@ -11,7 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
 from infrahub.workers.dependencies import get_http
 
-from .constants import TAG_NAMESPACE, WorkflowTag
+from .constants import WorkflowTag
 
 if TYPE_CHECKING:
     import logging
@@ -24,7 +24,6 @@ async def add_tags(
     branches: list[str] | None = None,
     nodes: list[str] | None = None,
     others: list[str] | None = None,
-    namespace: bool = True,
     db_change: bool = False,
 ) -> None:
     """Add metadata tags to the current Prefect flow run for observability and filtering.
@@ -37,7 +36,6 @@ async def add_tags(
             Global branch is excluded.
         nodes: Node IDs to tag. Each becomes a WorkflowTag.RELATED_NODE tag.
         others: Arbitrary string tags to add as-is.
-        namespace: Whether to add the TAG_NAMESPACE tag (default True).
         db_change: Whether to add a WorkflowTag.DATABASE_CHANGE tag, indicating
             the flow run modifies the database.
 
@@ -57,8 +55,6 @@ async def add_tags(
     node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
     others_tags = others or []
     new_tags = set(current_tags + branch_tags + node_tags + others_tags)
-    if namespace:
-        new_tags.add(TAG_NAMESPACE)
     if db_change:
         new_tags.add(WorkflowTag.DATABASE_CHANGE.render())
     await client.update_flow_run(current_flow_run_id, tags=list(new_tags))
