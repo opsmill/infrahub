@@ -61,10 +61,10 @@ T080 of Phase 6, T085 to T093 of Phase 7, and Phase 8.** Phase 3 queues merges.
 Phase 3 already contains the import deferral, which stops the synchronisation from deleting
 undelivered objects.
 
-The rest of Phase 6 (T078 and T081 to T084) can follow. The Python-family tasks T070 to T073 of
-Phase 5 (plan part H) can follow too, coordinated with IFC-3002. Until they ship, Python-transform
-computed attributes are not held, as today. After a delayed delivery, such an attribute can reflect
-the commit recorded before the merge until its next recompute.
+The rest of Phase 6 (T078, T081 to T084, T113 and T114) can follow. The Python-family tasks T070
+to T073 of Phase 5 (plan part H) can follow too, coordinated with IFC-3002. Until they ship,
+Python-transform computed attributes are not held, as today. After a delayed delivery, such an
+attribute can reflect the commit recorded before the merge until its next recompute.
 
 ---
 
@@ -289,7 +289,7 @@ SC-002, SC-007.
       before the commit is recorded. The release and the clear run after the lock is released, under
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
-      failure with the stage `release` (R10, rule 4).
+      failure with the stage `release` (R10, rule 4), and never sets `action-required` for it.
 - [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
@@ -350,7 +350,7 @@ SC-002, SC-007.
 - [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
-      `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
+      the staging path of the same method unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
 - [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
@@ -434,14 +434,21 @@ SC-002, SC-007.
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
 - [X] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
-- [ ] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
+- [X] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
       during the outage; the sync skips the default branch; the retry records, then imports; an
-      artifact definition updated by the import renders against the delivered commit.
-      Partial: written without the sync step, which needs T039; add it when this branch meets T039.
+      artifact definition updated by the import renders against the delivered commit. A query that
+      only the remote change adds exists after the import, and not after the sync.
 - [X] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
       `block_commit_worktree`: no second push, the queue clears by observation.
 - [X] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
+- [X] T111 [US2] Add `test_the_merge_after_a_fixed_cause_delivers_the_whole_queue` to the same module
+      (US2 #7): the remote refuses a merge, the rejection is lifted, and the attempt of the next
+      merge delivers both merges in order, with no retry.
+- [X] T112 [US2] Add `test_a_merge_with_files_is_refused_until_a_retry_delivers_onto_the_moved_remote_trunk`
+      to the same module: while a push waits and the remote default branch moved, the merge check
+      refuses the merge of a branch that changes a file of the repository, the branch stays open, and
+      the same merge goes through after the retry delivers (edge case of the merge check).
 - [X] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
       `frontend/app/src/entities/repository/domain/use-cases/retry-delivery.ts`,
@@ -542,8 +549,8 @@ deployment rule.** T070 to T073 are not.
 
 **Independent test**: block the Gogs port during the first attempt, open it before the second.
 
-**Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078 and
-T081 to T084 are not.
+**Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078,
+T081 to T084, T113 and T114 are not.
 
 - [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
@@ -581,17 +588,25 @@ T081 to T084 are not.
       attempt, open it, short delays through `with_options`. One case blocks the port before the
       fetch, the other after the fetch, so that the push fails.
 - [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
-      free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
-      age the state past the stale bound, run one sync cycle, and assert the delivery.
+      age the state past the stale bound, run one sync cycle, and assert the delivery. The test does
+      not free the repository lock itself: the kill unwinds through the lock and frees it, as the
+      deadlock cleanup frees the lock of a dead worker (R20).
 - [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
-      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
-      temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
-      lowered for the test. It raises a `RepositoryError` that names the command, which the
-      classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses
-      `exec` because GitPython kills only the direct children of the Git process.
+      within the bound. A `merge` of `replay` that stalls, through a merge driver of the temporary
+      repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`, lowered
+      for the test. It raises a `RepositoryError` that names the command, which the classifier gives
+      `unclassified`, and no `index.lock` stays behind in the worktree. The driver uses `exec`
+      because GitPython kills only the direct children of the Git process. The test keeps the
+      existing stalled-merge test, with a merge driver and not a `pre-merge-commit` hook.
+- [X] T113 [US4] Add `test_a_transient_fault_that_outlasts_every_retry_waits_for_a_user_and_a_retry_delivers`
+      to the same module (US4 #2): each of the four attempts finds the remote closed, the delivery
+      ends `action-required` with the cause `remote-unreachable`, and a manual retry delivers.
+- [X] T114 [US4] Add `test_a_delivery_reads_pending_through_graphql_while_its_automatic_retry_waits`
+      to the same module (US4 #4): while an automatic retry waits, a GraphQL read of the repository
+      shows `pending`, the cause and a retry due time later than the read.
 
 ---
 
@@ -662,13 +677,24 @@ and is not re-imported; retry; the branch is gone.
       not send `RefreshGitRepositoryBranchDeleted`.
 - [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
-- [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
+- [X] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
+      `test_a_remote_branch_kept_while_pending_is_not_imported_and_is_deleted_after_the_delivery`
+      covers the delivery part, on a worker that does not hold the branch, so the sync reads it as
+      new. On the worker that ran the merge, the sync ignores an updated branch with no Infrahub
+      branch anyway.
+      `test_an_abandonment_lets_the_repository_sync_and_merge_again_and_its_kept_branch_comes_back`
+      covers the abandonment part. The test stack has one worker: the test shows that this worker
+      drops its local branch and that the next sync imports the branch again. The drop on the other
+      workers is covered only by the unit test of the branch-deleted message
+      (`test_branch_deletion_is_broadcast_for_flagged_entries_only`).
 - [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
-      another branch is not blocked while repository X has a pending delivery (FR-010).
+      another branch is not blocked while repository X has a pending delivery (FR-010). The case
+      calls the dispatcher, so the merge check does not run: T112 covers the refusal of the merge
+      check when the remote default branch moved.
 
 ---
 
@@ -762,8 +788,9 @@ The task retries transient failures, a failed release included. The recovery che
 lost attempt, and releases held work after a crash between the settle and the clear.
 Python-transform computed attributes are not held yet, as today.
 
-**Second increment**: the rest of Phase 6, T078 and T081 to T084. A merge joins a retry chain that
-already waits, and the integration and timeout tests cover transient faults and lost workers.
+**Second increment**: the rest of Phase 6, T078, T081 to T084, T113 and T114. A merge joins a
+retry chain that already waits, and the integration and timeout tests cover transient faults and
+lost workers.
 
 **Third increment**: T070 to T073 of Phase 5, coordinated with IFC-3002. Python-transform computed
 attributes wait for the final content too.
