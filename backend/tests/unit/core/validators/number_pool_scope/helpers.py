@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 BRANCH = Branch(name="feature")
 
 DEVICE = "ScopeDevice"
+RENAMED_DEVICE = "ScopeRouter"
 HOLDER = "ScopeHolder"
 POD_HOLDER = "ScopePodHolder"
 
@@ -43,8 +44,9 @@ def field_id(kind: str, name: str) -> str:
 
 
 def with_field_ids[SchemaT: (NodeSchema, GenericSchema)](schema: SchemaT) -> SchemaT:
-    """Return a copy of the schema whose own fields hold the ids a saved schema gives them."""
+    """Return a copy of the schema that holds, with its own fields, the ids a saved schema gives them."""
     saved: SchemaT = copy.deepcopy(schema)
+    saved.id = f"{saved.kind}-id"
     for attribute in saved.attributes:
         attribute.id = field_id(kind=saved.kind, name=attribute.name)
     for relationship in saved.relationships:
@@ -140,6 +142,17 @@ def device_site_renamed_and_made_optional(schema: SchemaRoot) -> None:
     relationship = device_of(schema).get_relationship(name="site")
     relationship.name = "location"
     relationship.optional = True
+
+
+def device_renamed_and_site_optional(schema: SchemaRoot) -> None:
+    device = device_of(schema)
+    device.name = "Router"
+    device.get_relationship(name="site").optional = True
+
+
+def device_renamed_and_site_removed(schema: SchemaRoot) -> None:
+    device_site_removed(schema)
+    device_of(schema).name = "Router"
 
 
 def holder_site_optional(schema: SchemaRoot) -> None:
