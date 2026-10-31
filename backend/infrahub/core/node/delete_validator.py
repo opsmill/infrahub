@@ -4,17 +4,20 @@ from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDeleteBehavior
+from infrahub.core.constants import InfrahubKind, RelationshipDeleteBehavior
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
     FullRelationshipIdentifier,
     RelationshipGetByIdentifierQuery,
     RelationshipPeersData,
 )
-from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+
+# Kinds that exist only for the node at the end of their mandatory relationship to the implicit CoreNode generic.
+TARGET_OWNED_KINDS = frozenset({InfrahubKind.GENERATORINSTANCE})
 
 
 class DeleteRelationshipType(Enum):
@@ -75,7 +78,41 @@ class NodeDeleteIndex:
                 for peer_kind in peer_kinds:
                     if peer_kind not in visited:
                         kinds_to_check.add(peer_kind)
+            for relationship_identifier, owned_kind in self._get_target_owned_relationships(kind=kind_to_check):
+                self._add_to_dependency_graph(
+                    kind=kind_to_check,
+                    relationship_type=DeleteRelationshipType.CASCADE_DELETE,
+                    relationship_identifier=relationship_identifier,
+                    peer_kinds={owned_kind},
+                )
+                if owned_kind not in visited:
+                    kinds_to_check.add(owned_kind)
         return visited
+
+    def _get_target_owned_relationships(self, kind: str) -> list[tuple[str, str]]:
+        """Return the (relationship identifier, owned kind) pairs that must be deleted along with a node of `kind`.
+
+        Node kinds belong to the CoreNode generic without listing it in `inherit_from`, so they cannot declare
+        the cascade towards the kinds that require them.
+        """
+        core_node_schema = self._all_schemas_map.get(InfrahubKind.NODE)
+        if (
+            kind in TARGET_OWNED_KINDS
+            or not isinstance(core_node_schema, GenericSchema)
+            or kind not in core_node_schema.used_by
+        ):
+            return []
+        owned_relationships: list[tuple[str, str]] = []
+        for owned_kind in sorted(TARGET_OWNED_KINDS):
+            owned_schema = self._all_schemas_map.get(owned_kind)
+            if owned_schema is None:
+                continue
+            owned_relationships.extend(
+                (relationship_schema.get_identifier(), owned_kind)
+                for relationship_schema in owned_schema.relationships
+                if relationship_schema.peer == InfrahubKind.NODE and not relationship_schema.optional
+            )
+        return owned_relationships
 
     def _index_dependent_schema(self, cascade_kinds: set[str]) -> None:
         start_schema_kinds: set[str] = set()
