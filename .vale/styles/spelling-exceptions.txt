@@ -121,6 +121,7 @@ Infrahub's
 infrahubasync
 infrahubctl
 infrahubops
+init
 inlines
 inlined
 inlining
@@ -206,6 +207,8 @@ prebuilt
 precomputed
 prefilled
 pseudocode
+PVC
+PVCs
 pydantic
 Pydantic
 pytest
@@ -251,6 +254,7 @@ Sigstore
 Slurp'it
 snapshotting
 SPDX
+StatefulSet
 Streamlit
 Syft
 string_type
