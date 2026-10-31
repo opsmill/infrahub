@@ -4,11 +4,18 @@ title: Generators
 
 A `Generator` is a generic plugin that queries data and creates new nodes and relationships based on the result.
 
-:::success Examples
+## Example: deliver services from a catalog
 
-- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other nodes.
-- Want to read how Generators can be used to create a service catalog? See our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
-:::
+In a service catalog, a team requests a service, such as an internet access link for a site, rather than the individual interfaces, VLANs, and IP prefixes that implement it. Model the service in your [schema](../schema/overview) as an object that stores the values describing the request, such as the site and the bandwidth. Write a Generator that reads the service and creates the objects that implement it, following your design rules.
+
+When someone requests a new service:
+
+1. Create a branch, add the service object, and add it to the Generator's target group.
+2. Run the Generator on the branch. It creates the objects the service needs, such as the interface and the VLAN, and allocates the IP prefix from a [Resource Manager](../resource-manager/overview.mdx) pool. To run it automatically when a service is added, see [Running a Generator from events](#running-a-generator-from-events).
+3. Open a Proposed Change. Infrahub renders the configurations of the affected devices from the new objects, and reviewers compare the changes before the merge.
+4. Merge the Proposed Change. Your deployment tools read the new configurations from the default branch.
+
+Infrahub links each Generator run to the objects it created (see [Generator instances](#generator-instances)). When the service changes, for example to a higher bandwidth, run the Generator again for that service: it creates the objects the new values require and removes the ones it no longer needs. Removing a service from the target group does not delete the objects the Generator created for it: see [Dynamic targeting](#dynamic-targeting). Every service follows the same design rules, because you write the rules once, in the Generator.
 
 ## High level design
 
