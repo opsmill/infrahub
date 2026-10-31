@@ -8,12 +8,17 @@ from .models import InfrahubEventfilterInput, InfrahubEventPage
 router = APIRouter(prefix="/events", tags=["Infrahub"])
 
 
+async def get_prefect_database() -> PrefectDBInterface:
+    """Resolve the database interface on the event loop, since FastAPI runs a sync dependency in a worker thread."""
+    return provide_database_interface()
+
+
 @router.post(
     "/filter",
 )
 async def read_events(
     event_filter: InfrahubEventfilterInput,
-    db: PrefectDBInterface = Depends(provide_database_interface),  # noqa: B008
+    db: PrefectDBInterface = Depends(get_prefect_database),  # noqa: B008
 ) -> InfrahubEventPage:
     event_filter.filter.set_prefix()
 
