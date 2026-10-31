@@ -38,9 +38,11 @@ from infrahub.log import get_logger
 from infrahub.permissions import get_global_permission_for_kind
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.profiles.submission import submit_profile_refresh
 from infrahub.utils import log_exception_guard
 
 from ..types import RelatedNodeInput
+from .profile import PROFILE_PEER_RELATIONSHIP_NAMES
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -264,6 +266,7 @@ class RelationshipAdd(Mutation):
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
             relationship_modified = False
+            added_peer_ids: dict[str, None] = {}
             for node_data in data.get("nodes"):
                 # Instantiate and resolve a relationship
                 # This will take care of allocating a node from a pool if needed
@@ -278,6 +281,8 @@ class RelationshipAdd(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
+                    # A request can name the same peer more than once.
+                    added_peer_ids[rel.get_peer_id()] = None
                     relationship_modified = True
 
             # peers that need to have their profile source cleared
@@ -286,7 +291,6 @@ class RelationshipAdd(Mutation):
                 db=db,
                 branch=graphql_context.branch,
                 source=source,
-                related_peers=nodes,
                 relationship_name=relationship_name,
                 rel_schema=rel_schema,
                 relationship_modified=relationship_modified,
@@ -309,6 +313,12 @@ class RelationshipAdd(Mutation):
             peers=peers,
             node_changelog=node_changelog,
             relationship_name=relationship_name,
+        )
+        await _submit_profile_peers_refresh(
+            graphql_context=graphql_context,
+            source=source,
+            relationship_name=relationship_name,
+            peer_ids=list(added_peer_ids),
         )
 
         return cls(ok=True)
@@ -384,7 +394,6 @@ class RelationshipRemove(Mutation):
                 db=db,
                 branch=graphql_context.branch,
                 source=source,
-                related_peers=nodes,
                 relationship_name=relationship_name,
                 rel_schema=rel_schema,
                 relationship_modified=relationship_modified,
@@ -472,6 +481,12 @@ class RelationshipRemove(Mutation):
                 for event in events:
                     graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
+        await _submit_profile_peers_refresh(
+            graphql_context=graphql_context,
+            source=source,
+            relationship_name=relationship_name,
+            peer_ids=sorted(removed_peer_ids),
+        )
         return cls(ok=True)
 
 
@@ -731,11 +746,32 @@ async def _detach_relationship_from_profiles(
         await rel.update(db=db, properties_to_update=["source"], data=peer_data, user_id=user_id)
 
 
+async def _submit_profile_peers_refresh(
+    graphql_context: GraphqlContext, source: Node, relationship_name: str, peer_ids: list[str]
+) -> None:
+    if (
+        not peer_ids
+        or not source.get_schema().is_profile_schema
+        or relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES
+    ):
+        return
+    workflow = graphql_context.active_service.workflow
+    context = graphql_context.to_event_context()
+    # The change is committed, so a client error would invite a retry that adds or removes no peer.
+    with log_exception_guard(log, f"Failed to submit the profile refresh of the peers of {source.get_id()}"):
+        await submit_profile_refresh(
+            workflow=workflow,
+            branch_name=graphql_context.branch.name,
+            node_ids=peer_ids,
+            context=context,
+            profile_id=source.get_id(),
+        )
+
+
 async def _apply_profiles_after_relationship_change(
     db: InfrahubDatabase,
     branch: Branch,
     source: Node,
-    related_peers: dict[str, Node],
     relationship_name: str,
     rel_schema: RelationshipSchema,
     relationship_modified: bool,
@@ -744,9 +780,6 @@ async def _apply_profiles_after_relationship_change(
 ) -> None:
     if relationship_name == "profiles":
         await _apply_profiles(node=source, db=db, branch=branch)
-    elif source.get_schema().is_profile_schema and relationship_name == "related_nodes":
-        for node in related_peers.values():
-            await _apply_profiles(node=node, db=db, branch=branch)
     elif relationship_modified and rel_schema.support_profiles:
         await _detach_relationship_from_profiles(
             db=db,
