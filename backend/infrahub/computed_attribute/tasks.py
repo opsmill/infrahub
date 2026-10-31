@@ -483,7 +483,8 @@ async def computed_attribute_setup_jinja2(
         changed_element_set = _resolve_changed_elements(changed_elements)
         branch_name = branch_name or registry.default_branch
 
-        if branch_name:
+        # A deleted branch has no schema to wait for, and its tag would list this run under a same-named branch.
+        if branch_name and event_name != BranchDeletedEvent.event_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
@@ -593,7 +594,8 @@ async def computed_attribute_setup_python(
         changed_element_set = _resolve_changed_elements(changed_elements)
 
         branch_name = branch_name or registry.default_branch
-        if branch_name:
+        # A deleted branch has no schema to wait for, and its tag would list this run under a same-named branch.
+        if branch_name and event_name != BranchDeletedEvent.event_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
