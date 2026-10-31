@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
+from infrahub_sdk.exceptions import Error as InfrahubSdkError
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -28,6 +31,7 @@ from pydantic import BaseModel
 
 from infrahub import config, lock
 from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.artifacts.query_data import RenderedQueryData, fingerprint_query_data
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -48,6 +52,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.regeneration.branch_artifacts import ArtifactsWrittenOnBranchReader
 from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
 from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
 from infrahub.core.regeneration.members import (
@@ -751,6 +756,70 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             log.info(msg=f"repository_tests_completed return_code={return_code}")
 
 
+async def _query_data_fingerprint(
+    *, client: InfrahubClient, model: RequestArtifactDefinitionCheck, member: InfrahubNode, parameters: dict[str, str]
+) -> str | None:
+    """Return the fingerprint of the definition's query response for one target, or None when the query fails."""
+    variables = await member.extract(params=parameters)
+    try:
+        response = await client.query_gql_query(
+            name=model.artifact_definition.query_id,
+            variables=variables,
+            update_group=False,
+            branch_name=model.source_branch,
+            timeout=model.artifact_definition.timeout,
+        )
+    except (InfrahubSdkError, httpx.HTTPError):
+        return None
+    return fingerprint_query_data(response)
+
+
+async def _artifacts_with_changed_query_data(
+    *,
+    model: RequestArtifactDefinitionCheck,
+    client: InfrahubClient,
+    members: list[InfrahubNode],
+    artifacts_by_member: dict[str, str],
+    parameters: dict[str, str],
+    already_selected: set[str],
+) -> set[str]:
+    """Return the artifacts written on the branch that were rendered from other query data than the branch holds now.
+
+    The branch diff compares the branch with the destination branch, so a value changed back to the destination
+    branch's value drops out of it, while the artifact rendered from the value in between stays on the branch.
+    An artifact whose rendering has no stored fingerprint, or whose query fails, is returned too.
+    """
+    written_ids = set(model.artifacts_written_on_branch) - already_selected
+    members_by_artifact = {
+        artifact_id: member
+        for member in members
+        if (artifact_id := artifacts_by_member.get(member.id)) is not None and artifact_id in written_ids
+    }
+    if not members_by_artifact:
+        return set()
+
+    branch = registry.get_branch_from_registry(branch=model.source_branch)
+    stored = await RenderedQueryData(cache=await get_cache()).get_many(
+        branch_id=str(branch.get_uuid()), artifact_ids=sorted(members_by_artifact)
+    )
+    changed = {artifact_id for artifact_id, fingerprint in stored.items() if fingerprint is None}
+    batch = await client.create_batch()
+    for artifact_id, member in members_by_artifact.items():
+        if artifact_id not in changed:
+            batch.add(
+                task=_query_data_fingerprint,
+                node=artifact_id,
+                client=client,
+                model=model,
+                member=member,
+                parameters=parameters,
+            )
+    async for artifact_id, fingerprint in batch.execute():
+        if fingerprint is None or fingerprint != stored[artifact_id]:
+            changed.add(artifact_id)
+    return changed
+
+
 @flow(
     name="artifacts-generation-validation",
     flow_run_name="Validating generation of artifacts for {model.artifact_definition.definition_name}",
@@ -829,18 +898,6 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         every_target=list(artifacts_by_member.values()),
         client=client,
     )
-    impacted_artifacts = selection.ids
-    if selection.widening is not None:
-        log.warning(
-            f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
-            "All targets will be processed."
-        )
-    elif not impacted_artifacts:
-        log.info(
-            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
-            "Existing artifacts will not be re-rendered."
-        )
-
     repo_diff_for_definition = repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
@@ -852,6 +909,34 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             and transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
         )
     )
+
+    changed_query_data: set[str] = set()
+    if not managed_branch and selection.widening is None:
+        changed_query_data = await _artifacts_with_changed_query_data(
+            model=model,
+            client=client,
+            members=[relationship.peer for relationship in group.members.peers],
+            artifacts_by_member=artifacts_by_member,
+            parameters=artifact_definition.parameters.value,
+            already_selected=set(selection.ids),
+        )
+    impacted_artifacts = sorted(set(selection.ids) | changed_query_data)
+    if changed_query_data:
+        log.info(
+            f"Artifact definition {artifact_definition.name.value}: {len(changed_query_data)} artifacts rendered on "
+            "the branch were rendered from other query data than the branch holds now, or cannot be compared, "
+            "and will be re-rendered."
+        )
+    if selection.widening is not None:
+        log.warning(
+            f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
+            "All targets will be processed."
+        )
+    elif not impacted_artifacts:
+        log.info(
+            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
+            "Existing artifacts will not be re-rendered."
+        )
     if managed_branch:
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
@@ -1359,6 +1444,14 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
+    database = await get_database()
+    async with database.start_session(read_only=True) as db:
+        # A rebase moves the branch point, so the branch is read from the database rather than from the registry.
+        source_branch = await Branch.get_by_name(name=model.source_branch, db=db)
+        branch_artifacts = await ArtifactsWrittenOnBranchReader(db=db).read(branch=source_branch)
+    branch_artifact_ids: dict[str, list[str]] = defaultdict(list)
+    for branch_artifact in branch_artifacts:
+        branch_artifact_ids[branch_artifact.definition_id].append(branch_artifact.artifact_id)
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1395,6 +1488,11 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             flag=DefinitionSelect.MODIFIED_KINDS,
             condition=any(changed_model in read_kinds for changed_model in modified_kinds),
         )
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.ARTIFACTS_ON_BRANCH,
+            condition=artifact_definition.definition_id in branch_artifact_ids,
+        )
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
@@ -1405,6 +1503,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 source_branch=model.source_branch,
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
                 destination_branch=model.destination_branch,
+                artifacts_written_on_branch=branch_artifact_ids.get(artifact_definition.definition_id, []),
             )
 
             await get_workflow().submit_workflow(

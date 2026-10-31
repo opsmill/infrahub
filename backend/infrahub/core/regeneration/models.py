@@ -208,6 +208,7 @@ class DefinitionSelect(IntFlag):
     FILE_CHANGES = 2
     QUERY_CHANGED = 4
     DEFINITION_CHANGED = 8
+    ARTIFACTS_ON_BRANCH = 16
 
     @staticmethod
     def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
@@ -229,6 +230,9 @@ class DefinitionSelect(IntFlag):
 
         if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file changes affecting the transform's dependencies")
+
+        if DefinitionSelect.ARTIFACTS_ON_BRANCH in self:
+            change_types.append("artifacts rendered on the branch whose query data may have changed")
 
         if self:
             return f"Requesting generation due to {' and '.join(change_types)}"
