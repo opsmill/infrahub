@@ -7,6 +7,7 @@ from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
 from infrahub import config, lock
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
     setup_task_manager,  # noqa: TID251 - worker startup owns the setup
@@ -16,6 +17,7 @@ from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
 from .priority import prepare_dispatch
+from .wait_slots import PrefectClientWaitSlots
 
 if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
@@ -26,10 +28,15 @@ if TYPE_CHECKING:
     from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
 
+# The runs a flow awaits share its Prefect client with the flow's own state proposals, so they hold no more of its
+# connections than the worker lets its submissions take.
+EXECUTION_WAIT_SLOTS = SUBMISSION_WINDOW_CAPACITY
+
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
+        self._wait_slots = PrefectClientWaitSlots(capacity=EXECUTION_WAIT_SLOTS)
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
@@ -81,13 +88,15 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
         inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
-        response: FlowRun = await run_deployment(
-            name=workflow.full_name,
-            poll_interval=1,
-            parameters=parameters or {},
-            tags=tags,
-            work_queue_name=work_queue_name,
-        )  # type: ignore[misc]
+        client_context = AsyncClientContext.get()
+        async with self._wait_slots.slot(client=client_context.client if client_context else None):
+            response: FlowRun = await run_deployment(
+                name=workflow.full_name,
+                poll_interval=1,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
