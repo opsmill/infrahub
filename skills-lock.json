@@ -1,65 +1,77 @@
 {
   "version": 1,
   "skills": {
-    "commit": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/commit/SKILL.md",
-      "computedHash": "84c357ba427a6a7a9a6b1187d24ce9fd740f7dfb2127606f7f844afcf5ccacbb"
-    },
-    "creating-issues": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/creating-issues/SKILL.md",
-      "computedHash": "32e9263438e0a5c6e33df321cd7d21590f9637ba8aad0d9fbd87aaf6d42ee4bb"
-    },
-    "creating-prd": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/creating-prd/SKILL.md",
-      "computedHash": "df4b95b240690fd5494c4aff661c77d7db2ab226b459469d243252800584d673"
-    },
-    "grilling-ideas": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/grilling-ideas/SKILL.md",
-      "computedHash": "7408a0c4ce288141715f5fb0b242632c12515e5bdab16bf9d1ad03243f1f133d"
-    },
-    "monitoring-pull-requests": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/monitoring-pull-requests/SKILL.md",
-      "computedHash": "b52cf3902ca8a290aa3167ff5e6b0a54068a45187357e342e5967f18fb00d854"
-    },
     "opsmill-dev-analyzing-bugs": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
       "skillPath": "opsmill-dev/skills/analyzing-bugs/SKILL.md",
-      "computedHash": "b1280c4b1eeae4dfd6c1b47078ba44586b23842ec27551a64e40217003fd66b2"
+      "computedHash": "bc49ea8cbc056e5483022a7710d44430a8e625763c083126ef703d70919ebfb2"
+    },
+    "opsmill-dev-commit": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/commit/SKILL.md",
+      "computedHash": "ed42646e3d98e08098ce914a5de0d4aaabd4d3d84e1539ccb6c09dfe22c252aa"
+    },
+    "opsmill-dev-creating-issues": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/creating-issues/SKILL.md",
+      "computedHash": "1623b45e2c5ce399d996f27824f307d2be0c979e60bf99ca420abc1d695eba74"
+    },
+    "opsmill-dev-creating-prd": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/creating-prd/SKILL.md",
+      "computedHash": "59d2abab3adc545f8de5009ef71797c35797bf399bd182282cdcd36447dd738a"
     },
     "opsmill-dev-fixing-bugs": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
       "skillPath": "opsmill-dev/skills/fixing-bugs/SKILL.md",
-      "computedHash": "9b08acdd7fccf8a279a837fd4a6e74bca93802970c7a4d06cfe7fea87ac5b11f"
+      "computedHash": "c2142c5faaa0bc4aa74115241c80ae029f02a16a6f12a1ec639adb1debfc5c0d"
+    },
+    "opsmill-dev-grilling-ideas": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/grilling-ideas/SKILL.md",
+      "computedHash": "c3bcd2b86eba1836779c45fee799775c18c3e2c1f7e41453951585c4dcb46d25"
+    },
+    "opsmill-dev-judging-changes": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/judging-changes/SKILL.md",
+      "computedHash": "cf01331d301f18b0e16831f0a2cbbe2ad7870448d1527364e374a8eff4f4daf1"
+    },
+    "opsmill-dev-monitoring-pull-requests": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/monitoring-pull-requests/SKILL.md",
+      "computedHash": "fd4a359480798b55733bac50c4f19568fd25c1de051fd6553525ff85466351fa"
+    },
+    "opsmill-dev-pr": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/pr/SKILL.md",
+      "computedHash": "0f4b6734604b3ab3a1c457b475ecc2c374074508b10ec8d2157b85025c773e85"
+    },
+    "opsmill-dev-rebase": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/rebase/SKILL.md",
+      "computedHash": "3471fd46c03b43be12e611df315d8a053c5f9185afcad9da6eed4d01364f00dd"
     },
     "opsmill-dev-test-driving-bugs": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
       "skillPath": "opsmill-dev/skills/test-driving-bugs/SKILL.md",
-      "computedHash": "1a9514502876e98d188f00b7aef80efb8621d06813c3485968755a14969284fa"
+      "computedHash": "9de2feadd335741b89cb66e6229addc266f4a2e803330032fe489f12e0ebd69f"
     },
-    "pr": {
+    "opsmill-dev-verifying-changes": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/pr/SKILL.md",
-      "computedHash": "146ab1b524c0c83b1f1df8a339b9e05c91a0addcb5890e1e2bf4b1d2db861fc6"
-    },
-    "rebase": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/rebase/SKILL.md",
-      "computedHash": "13579a9261d17154d4899ab9c5cc147c1668b9767187641a210fb83a0189b9d6"
+      "skillPath": "opsmill-dev/skills/verifying-changes/SKILL.md",
+      "computedHash": "1a154f89d6a77c26853944360b166a744333efd3b8d0b877a474ff7729c14f05"
     }
   }
 }

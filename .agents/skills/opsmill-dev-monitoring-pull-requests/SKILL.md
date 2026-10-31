@@ -1,10 +1,11 @@
 ---
-name: monitoring-pull-requests
+name: opsmill-dev-monitoring-pull-requests
 description: >-
   Watches an open pull request's CI until green and fixes failing checks. TRIGGER when: the user
   wants to watch a pull request's CI, babysit a PR until it goes green, or fix failing CI checks
-  on an open PR. DO NOT TRIGGER when: opening the PR in the first place → pr; rebasing the branch
-  onto its base → rebase.
+  on an open PR. DO NOT TRIGGER when: opening the PR in the first place → opsmill-dev-pr; rebasing the branch
+  onto its base → opsmill-dev-rebase; addressing a reviewer's or review bot's comments rather than CI
+  failures → opsmill-dev-addressing-review.
 argument-hint: Optional PR number or URL (defaults to the PR for the current branch)
 compatibility: Requires a Git working tree and GitHub access (gh CLI authenticated). Local reproduction uses whatever toolchain the project itself defines.
 metadata:
@@ -27,7 +28,7 @@ This skill is project-agnostic: it discovers how to reproduce CI failures from t
 This skill is designed to run as a **background agent**, not in the user's foreground turn. CI commonly runs for tens of minutes, and a fix-and-retry loop multiplies that by up to 5 iterations. Blocking the parent conversation that long is wasteful — spawn this skill as an asynchronous agent and let it report back when it has something to say.
 
 - **Recommended invocation:** by another skill (notably `pr` Phase 7) using the runtime's background-agent primitive (Claude Code: `Agent` with `run_in_background: true`; equivalent in other runtimes).
-- **Acceptable invocation:** directly by the user as `/monitoring-pull-requests` when they explicitly want to watch a PR. In that case the loop runs in the foreground and the user can interrupt.
+- **Acceptable invocation:** directly by the user as `/opsmill-dev-monitoring-pull-requests` when they explicitly want to watch a PR. In that case the loop runs in the foreground and the user can interrupt.
 - The skill is **self-contained**: it captures `baseline_commit` itself in Phase 0 and resolves the PR/branch from arguments or current branch. No state needs to be inherited from the spawning conversation beyond what is passed in `$ARGUMENTS`.
 
 ## Arguments
@@ -36,7 +37,7 @@ This skill is designed to run as a **background agent**, not in the user's foreg
 
 **Supported arguments:**
 
-- _(no args)_ — Use the PR for the current branch.
+- *(no args)* — Use the PR for the current branch.
 - `<PR-number>` — Use the PR with that number on the current repo.
 - `<PR-URL>` — Use the PR at that GitHub URL.
 
@@ -75,7 +76,7 @@ Every fix attempt produces exactly one new commit on the branch, appended to `fi
 
    - If `$ARGUMENTS` looks like a number → `pr_number = $ARGUMENTS`.
    - If `$ARGUMENTS` looks like a URL → extract the number with `gh pr view "$ARGUMENTS" --json number -q .number`.
-   - Otherwise → `pr_number = $(gh pr view --json number -q .number)` for the current branch. If no PR exists, STOP and tell the user to open one (or run `/pr` first).
+   - Otherwise → `pr_number = $(gh pr view --json number -q .number)` for the current branch. If no PR exists, STOP and tell the user to open one (or run `/opsmill-dev-pr` first).
 
    Then capture metadata:
 
@@ -103,7 +104,7 @@ Every fix attempt produces exactly one new commit on the branch, appended to `fi
 
    Verify it matches `headRefOid` from step 2. If they differ, STOP — the branch is out of sync with the PR head and any revert would lose work.
 
-5. **Refuse to operate on long-lived branches.** If `branch` is the repository's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`), a long-standing integration branch (`main`, `master`, `stable`, `develop`, `dev`, `trunk`), or a release branch (`release/*`, `release-*`, version-named branches), STOP. This skill is for feature PRs only.
+5. **Refuse to operate on long-lived branches.** If `branch` is the repository's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD | sed 's@^origin/@@'`), a long-standing integration branch (`main`, `master`, `stable`, `develop`, `dev`, `trunk`), or a release branch (`release/*`, `release-*`, version-named branches), STOP. This skill is for feature PRs only.
 
 6. **Discover the project's local toolchain** (used by Phases 2–4). Read whatever project context exists — `AGENTS.md`/`CLAUDE.md`/`CONTRIBUTING.md`, `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, `.pre-commit-config.yaml` — and note:
 
@@ -111,7 +112,9 @@ Every fix attempt produces exactly one new commit on the branch, appended to `fi
    - The test runner(s) and how to target a single test.
    - Any code-generation steps whose outputs are checked in (GraphQL schemas, OpenAPI clients, protobufs, generated SDKs) — CI often fails when these are stale.
 
-7. **Report to the user:** PR number, title, branch, baseline commit short SHA, current statusCheckRollup summary (counts of pending/success/failure). Then proceed.
+7. **Report to the user:** PR number, title, branch, baseline commit short SHA, whether the PR is a draft (`isDraft` from step 2), and the current statusCheckRollup summary (counts of pending/success/failure). Then proceed.
+
+**Draft PRs are monitored exactly like ready-for-review PRs** — CI runs on drafts, so this skill watches, reproduces, fixes, and retries identically. Never skip or short-circuit monitoring just because the PR is a draft, and never mark a draft as ready-for-review yourself (that is the user's call, like merging). The only draft-specific nuance is the check-gating caveat in Phase 1 step 2.
 
 ---
 
@@ -132,6 +135,7 @@ The goal of this phase is to discover whether the CI is currently passing, faili
    - Poll every 60 seconds: `gh run list --branch <branch> --limit 10 --json databaseId,status,conclusion,headSha`. Where available, prefer a single blocking `gh run watch <run-id>` over polling.
    - Be patient — CI can take 30+ minutes on repos with heavy integration or end-to-end suites.
    - If nothing has appeared after 5 minutes from a fresh push, investigate whether the push triggered a workflow at all (`gh run list --branch <branch> --limit 5`). Stalled webhooks happen.
+   - **Draft-gated checks:** if the PR is a draft and expected checks never appear, inspect the workflow triggers (`.github/workflows/`) for a `draft == false` guard (e.g. `if: github.event.pull_request.draft == false`, or a `types:` list that omits draft events). Such checks are *designed* not to run until the PR is marked ready — do **not** treat their absence as a failure or as green, and do **not** mark the PR ready to force them. Monitor the checks that do run on drafts, and call out the draft-gated ones in the final report so the user knows they'll run when they flip the PR to ready.
 
 3. **Once all runs for the SHA are `completed`:**
 
@@ -145,26 +149,6 @@ The goal of this phase is to discover whether the CI is currently passing, faili
 ## Phase 2: Classify Failures
 
 For each failed run, list its failed jobs and work out how to reproduce each one locally.
-
-**Failure outside the PR's diff — don't trust a stale "commits behind" count.** A failure in a
-file or config the PR's diff doesn't touch may be inherited from the base — but the "how far
-behind" distance is a snapshot, not a durable property. It can go stale the moment the base gets
-fixed, including while you're escalating or waiting on a reviewer reply — a branch that was
-genuinely 0 commits behind an hour ago is not proof it still is now.
-
-- **Re-fetch and recompute immediately before deciding**, never reuse a distance computed earlier
-  in the session: `git fetch origin && git rev-list --count HEAD..origin/<base-branch>`.
-- **Reproduce against the base's current tip**, not the branch's original merge-base — if the
-  failure is gone there, a rebase is the fix, not an escalation.
-- A reviewer's "this needs a rebase" is a cue to re-verify, not a claim to argue against with a
-  distance computed earlier — that number may no longer be true.
-- **Cite a specific run, not an impression.** To prove a failure predates your branch, find a run of
-  the same job on the base branch (`gh run list --branch <base-branch> --json databaseId,conclusion,headSha,createdAt`)
-  and confirm it failed the same way — a concrete run ID beats an inferred "probably pre-existing."
-- **To test whether your own commit caused a failure without burning the run**, re-run the failed job
-  on the *same* SHA (`gh run rerun <run-id> --failed`) instead of pushing a fix-attempt commit first —
-  a workflow with `concurrency: cancel-in-progress: true` cancels the very run whose outcome would
-  answer the question.
 
 1. **List failed jobs for each failed run:**
 
@@ -276,7 +260,7 @@ Don't push until the relevant local checks are green. This is where most "blind 
 
 1. **Run the project's local validation gate** before every push — the lint/format command discovered in Phase 0 step 6 (the same checks that gate every PR). If the project defines no such gate, skip this step. If it fails, fix and re-run before pushing.
 
-2. **Re-run the specific track's local check** that failed in Phase 3 (the targeted test, hook, or build) to confirm the fix sticks.
+2. **Re-run the specific track's local check** that failed in Phase 3 (the targeted test, hook, or build) to confirm the fix sticks. Keep both runs — the local reproduction of the CI failure and the passing run after the fix — in the report.
 
 3. **Generated-artefact guard.** If the project checks in generated artefacts (GraphQL schemas, OpenAPI clients, generated SDK types, protobufs) and the diff touches their sources, regenerate using the project's documented commands before committing — CI commonly fails on stale generated files.
 
@@ -291,11 +275,13 @@ Don't push until the relevant local checks are green. This is where most "blind 
 
 5. **Push to origin** (no force-push; these are new commits, not history rewrites):
 
+   > **Optional independent verdict:** run `/opsmill-dev-judging-changes <the pre-fix failing CI log> artifact: <diff of the fix commits>` (gate kind `ci-fix`) before the final push. Only repos that enforce ship-gate receipts (`.claude/quality-gates/enabled`) require it.
+
    ```bash
    git push origin <branch>
    ```
 
-6. **Increment `iteration`.** Record in `attempt_log[iteration]`:
+6. **Record this iteration's outcome** in `attempt_log[iteration]` (the same index Phase 2 step 5 used for this pass), then increment `iteration`:
 
    ```text
    {
@@ -345,7 +331,8 @@ If 5 iterations completed without reaching green, the fix attempts are likely mi
 3. **Force-push with lease** so we don't clobber any commits the user may have pushed in parallel:
 
    ```bash
-   git push --force-with-lease=<branch>:<fix_commits[-1]> origin <branch>
+   # <last_fix_commit> = the final SHA appended to fix_commits (the last commit this skill pushed)
+   git push --force-with-lease=<branch>:<last_fix_commit> origin <branch>
    ```
 
    The `--force-with-lease=<ref>:<expected_oid>` form ensures the push only succeeds if the remote tip is exactly the last commit this skill pushed. If the lease check fails, STOP — the user pushed something concurrently and the revert needs human review.
@@ -369,6 +356,7 @@ Always produce this report at the end, regardless of outcome.
 ### Iterations
 
 #### Iteration 1
+
 - **Failing job:** <name>
 - **Failure summary:** <key log line(s)>
 - **Reproduced locally:** yes / no (<reason if no>)
@@ -378,18 +366,24 @@ Always produce this report at the end, regardless of outcome.
 - **CI outcome after push:** green / still failing on <jobs>
 
 #### Iteration 2
+
 ...
 
 ### CI-only failures (if any)
+
 <List any failures that could not be reproduced locally and the evidence
 gathered before pushing speculatively.>
 
 ### Current State
+
 - Branch: `<branch>` at `<final sha>`
+- Draft: yes / no
+- Draft-gated checks not yet run: <list checks that will only run once the PR is marked ready, or "none">
 - Uncommitted changes: <yes/no — `git status --short`>
 - Reverted: yes / no
 
 ### Recommendations
+
 <If NOT FIXED: which iteration came closest, what hypotheses remain
 untested, what a human should look at next.>
 <If GREEN: any follow-up — flaky-looking failures, related tests to watch,
@@ -406,6 +400,7 @@ docs to update.>
 - **No `--no-verify`.** Pre-commit hooks are typically the same checks CI runs. Bypassing them locally just delays the failure; fix the underlying issue.
 - **No force-push outside revert.** Each fix is a new commit appended to the branch. The only force-push this skill performs is the Phase 6 revert, and only after explicit user approval.
 - **Don't merge.** Even when CI goes green, this skill does not merge the PR. Report and stop.
+- **Don't change draft status.** Draft PRs are monitored the same as ready-for-review ones, but marking a draft ready (or a ready PR back to draft) is always the user's call — never do it to force draft-gated checks to run.
 - **Stay on the PR's branch.** Never switch branches mid-loop; never edit files while a debugger or paused test run holds state on a different branch.
 - **Respect project conventions.** If the project's context (`AGENTS.md`, a constitution, contribution guide) requires test coverage or docs for new behaviour, and a fix introduces new behaviour rather than just patching an existing path, flag this in the final report so the user knows additional coverage is owed.
 
