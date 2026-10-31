@@ -10,8 +10,8 @@ from prefect.client.schemas.objects import StateType, WorkPool
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.tls.registry import TlsContextRegistry
-from infrahub.workers.infrahub_async import SUBMISSION_WINDOW_CAPACITY, InfrahubWorkerAsync
-from infrahub.workers.submission import SubmissionWindow
+from infrahub.workers.infrahub_async import InfrahubWorkerAsync
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY, SubmissionWindow
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.initialization import setup_work_queues
