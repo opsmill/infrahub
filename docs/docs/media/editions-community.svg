@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="310" viewBox="0 0 440 310" role="img" aria-labelledby="title desc">
+  <title id="title">Community: single database instance</title>
+  <desc id="desc">Infrahub API and worker services connect to one Neo4j Community database. The database is a single point of failure.</desc>
+  <rect width="440" height="310" rx="12" fill="#ffffff"/>
+  <g font-family="Inter, Arial, sans-serif" text-anchor="middle" fill="#0B1828">
+    <text x="220" y="39" font-size="25" font-weight="600">Community</text>
+    <g fill="none" stroke="#08738f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="66" y="66" width="308" height="57" rx="8" fill="#f2fcff"/>
+      <path d="M220 123 V170"/>
+      <path d="M172 188 V236 C172 252 268 252 268 236 V188" fill="#f2fcff"/>
+      <ellipse cx="220" cy="188" rx="48" ry="13" fill="#ffffff"/>
+      <path d="M172 212 C172 228 268 228 268 212"/>
+    </g>
+    <text x="220" y="102" font-size="22" font-weight="500">API + workers</text>
+    <text x="220" y="286" font-size="22" font-weight="500">Single database</text>
+  </g>
+</svg>

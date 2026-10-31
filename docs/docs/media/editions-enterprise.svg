@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="310" viewBox="0 0 440 310" role="img" aria-labelledby="title desc">
+  <title id="title">Enterprise: redundant deployment</title>
+  <desc id="desc">Multiple API and worker instances connect to a cluster of three Neo4j Enterprise databases. This is a deployment option that requires configuration.</desc>
+  <rect width="440" height="310" rx="12" fill="#ffffff"/>
+  <g font-family="Inter, Arial, sans-serif" text-anchor="middle" fill="#0B1828">
+    <text x="220" y="39" font-size="25" font-weight="600">Enterprise</text>
+    <g fill="none" stroke="#08738f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="74" y="60" width="308" height="57" rx="8" fill="#ffffff"/>
+      <rect x="66" y="68" width="308" height="57" rx="8" fill="#ffffff"/>
+      <rect x="58" y="76" width="308" height="57" rx="8" fill="#f2fcff"/>
+      <path d="M220 133 V154 M100 175 V154 H340 V175 M220 154 V175"/>
+      <path d="M52 188 V236 C52 252 148 252 148 236 V188" fill="#f2fcff"/>
+      <ellipse cx="100" cy="188" rx="48" ry="13" fill="#ffffff"/>
+      <path d="M52 212 C52 228 148 228 148 212"/>
+      <path d="M172 188 V236 C172 252 268 252 268 236 V188" fill="#f2fcff"/>
+      <ellipse cx="220" cy="188" rx="48" ry="13" fill="#ffffff"/>
+      <path d="M172 212 C172 228 268 228 268 212"/>
+      <path d="M292 188 V236 C292 252 388 252 388 236 V188" fill="#f2fcff"/>
+      <ellipse cx="340" cy="188" rx="48" ry="13" fill="#ffffff"/>
+      <path d="M292 212 C292 228 388 228 388 212"/>
+      <path d="M148 220 H172 M268 220 H292" stroke="#0B97BB"/>
+    </g>
+    <text x="212" y="112" font-size="22" font-weight="500">API + workers</text>
+    <text x="220" y="286" font-size="22" font-weight="500">Database cluster</text>
+  </g>
+</svg>
