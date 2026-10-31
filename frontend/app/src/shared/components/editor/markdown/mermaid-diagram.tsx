@@ -1,21 +1,26 @@
-import type React from "react";
-import type { ExtraProps } from "react-markdown";
+import { Spinner } from "@infrahub/ui";
+import React from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
-import { PanZoom } from "@/shared/components/display/pan-zoom";
+import { MermaidDiagramError } from "@/shared/components/editor/markdown/mermaid-diagram-error";
 
-type MermaidDiagramProps = React.ComponentProps<"svg"> & ExtraProps;
+const MermaidDiagramContent = React.lazy(() => import("./mermaid-diagram-content"));
 
-// Rendered as react-markdown's `svg` override. rehype-mermaid emits the diagram
-// as an <svg id="mermaid-…">; wrap those in a pan/zoom container with controls.
-// Any other svg is passed through untouched.
-export function MermaidDiagram({ node: _node, ...svgProps }: MermaidDiagramProps) {
-  if (!String(svgProps.id ?? "").startsWith("mermaid")) {
-    return <svg {...svgProps} />;
-  }
+const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
 
+interface MermaidDiagramProps {
+  code: string;
+}
+
+export function MermaidDiagram({ code }: MermaidDiagramProps) {
   return (
-    <PanZoom className="bg-background">
-      <svg {...svgProps} />
-    </PanZoom>
+    <ErrorBoundary
+      fallback={<MermaidDiagramError message={LOAD_FAILED} code={code} />}
+      resetKeys={[code]}
+    >
+      <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
+        <MermaidDiagramContent code={code} />
+      </React.Suspense>
+    </ErrorBoundary>
   );
 }

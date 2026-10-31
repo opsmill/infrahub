@@ -1,0 +1,15 @@
+.pele {
+  --pele-bg: var(--background);
+  --pele-fg: var(--foreground);
+  --pele-muted: var(--foreground-muted);
+  --pele-line: var(--foreground-muted);
+  --pele-surface: var(--content);
+  --pele-surface-alt: var(--surface);
+  --pele-border: var(--border-strong);
+  --pele-accent: var(--accent);
+}
+
+/* Chrome paints a link's text black once the link becomes visited unless the visited fill is set. */
+.pele a:visited {
+  fill: var(--pele-fg);
+}

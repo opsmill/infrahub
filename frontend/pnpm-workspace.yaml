@@ -33,7 +33,6 @@ overrides:
   playwright-core: 1.60.0
   # Security fixes that the parent packages do not accept yet.
   "@betterer/betterer>simple-git": ^4.0.2
-  katex: ^0.18.2
 
 peerDependencyRules:
   allowedVersions:
