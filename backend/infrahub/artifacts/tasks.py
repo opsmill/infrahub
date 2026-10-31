@@ -16,8 +16,6 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     client = get_client()
     client.request_context = model.context.to_request_context()
 
-    validator = await client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
-
     repo = await get_initialized_repo(
         client=client,
         repository_id=model.repository_id,
@@ -56,7 +54,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     check = None
     check_name = f"{model.artifact_name}: {model.target_name}"
     existing_check = await client.filters(
-        kind=InfrahubKind.ARTIFACTCHECK, validator__ids=validator.id, name__value=check_name
+        kind=InfrahubKind.ARTIFACTCHECK, validator__ids=[model.validator_id], name__value=check_name
     )
     if existing_check:
         check = existing_check[0]
