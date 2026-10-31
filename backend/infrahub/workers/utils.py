@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import importlib
 import inspect
-from typing import Any
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 
 from prefect import Flow
 
@@ -49,11 +50,22 @@ def load_flow_function(module_path: str, flow_name: str) -> Flow:
 
 
 def get_parameter_name(func: Flow, types: list[Any]) -> str | None:
+    """Return the name of the first parameter annotated with one of ``types``, optional or not."""
     sig = inspect.signature(func)
     for sig_param in sig.parameters.values():
-        if sig_param.annotation in types:
+        if _without_none(sig_param.annotation) in types:
             return sig_param.name
     return None
+
+
+def _without_none(annotation: Any) -> Any:
+    if isinstance(annotation, str):
+        return annotation.removesuffix(" | None")
+    if get_origin(annotation) in {Union, UnionType}:
+        members = [member for member in get_args(annotation) if member is not NoneType]
+        if len(members) == 1:
+            return members[0]
+    return annotation
 
 
 def has_parameter(func: Flow, types: list[Any]) -> bool:
