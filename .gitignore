@@ -61,3 +61,6 @@ schema/node_modules/*
 .bug-analysis-*.md
 .specify/**/.cache/
 .specify/feature.json
+
+# Registry credentials (for example the aiforui.dev skills token) stay in ~/.npmrc
+.npmrc

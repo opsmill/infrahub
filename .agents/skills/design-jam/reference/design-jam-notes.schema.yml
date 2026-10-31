@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+#
+# PROTOTYPE design-jam — shared design notes for a preview instance.
+#
+# One node per note, append-only. Two reviewers pinning at the same moment create two
+# nodes; nothing is ever overwritten, which is what makes the store consistent without live
+# updates. Load once per instance:
+#
+#   infrahubctl schema load design-jam-notes.schema.yml
+#
+# or let the panel do it (POST /api/schema/load, admin only) via "Enable shared notes".
+# Never load this on a production instance; teardown removes it with the prototype.
+---
+version: "1.0"
+nodes:
+  - name: Note
+    namespace: DesignJam
+    label: "Design note"
+    description: "A pinned review note on a design-jam prototype revision"
+    include_in_menu: false
+    branch: agnostic
+    generate_profile: false
+    display_label: "{{ snippet__value }}"
+    order_by:
+      - scope__value
+    attributes:
+      - name: slug
+        kind: Text
+        description: "design-jam run, e.g. branch-details-repos"
+      - name: scope
+        kind: Text
+        description: "<slug>:<variant>:rev<N> — the exact screen the pin was made on"
+      - name: variant
+        kind: Text
+      - name: rev
+        kind: Number
+      - name: selector
+        kind: Text
+        description: "CSS path from the pane root, best effort"
+      - name: snippet
+        kind: Text
+        optional: true
+        description: "First words of the element's text — what actually finds it again"
+      - name: x
+        kind: Text
+        description: "Fraction of the pane width, as text — Number is integer-only"
+      - name: y
+        kind: Text
+        description: "Fraction of the pane height, as text"
+      - name: text
+        kind: TextArea
+        optional: true
+      - name: status
+        kind: Dropdown
+        default_value: open
+        choices:
+          - name: open
+            label: Open
+            color: "#e0e7ff"
+          - name: addressed
+            label: Addressed
+            description: "Changes in the next revision"
+            color: "#bbf7d0"
+          - name: declined
+            label: Declined
+            description: "Reason recorded in 03-decisions.md"
+            color: "#e4e4e7"
+          - name: deferred
+            label: Deferred
+            description: "Waits for a later round or condition"
+            color: "#fde68a"
+          - name: deleted
+            label: Deleted
+            description: "Soft-deleted so polling clients converge"
+            color: "#fecaca"
+      - name: resolution
+        kind: Text
+        optional: true
+        description: "Which rev fixed it, or a one-line reason"
