@@ -103,6 +103,10 @@ export const DynamicField = (props: DynamicFieldProps) => {
       const { type, ...otherProps } = props;
       return <PasswordInputField {...otherProps} />;
     }
+    case ATTRIBUTE_KIND.TEXT: {
+      const { type, ...otherProps } = props;
+      return <InputField {...otherProps} multiline />;
+    }
     case ATTRIBUTE_KIND.ANY:
     case ATTRIBUTE_KIND.EMAIL:
     case ATTRIBUTE_KIND.FILE:
@@ -111,7 +115,6 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.MAC_ADDRESS:
-    case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.URL: {
       const { type, ...otherProps } = props;
       return <InputField {...otherProps} />;
