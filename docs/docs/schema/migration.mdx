@@ -1,119 +1,79 @@
 ---
-title: Schema migration
+title: Update a schema
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+Infrahub's flexible schema lets you adapt your network data model as your requirements change. You can introduce new device or service types, model relationships across additional network domains, or refine the attributes and validation rules that reflect your design standards. Because Infrahub versions the schema alongside your data, you can develop and review updates on a branch before merging them into the default branch.
 
-# Schema migration
+When you update a schema that already has data, you also need to account for the objects and automation that depend on it. Infrahub validates existing objects against the updated definitions and performs supported data migrations when necessary. Some changes require you to correct stored values or revise GraphQL queries, Generators, Transformations, and checks that refer to the previous schema.
 
-Unlike most databases that support a single schema at a time, in Infrahub it is possible to have a different schema per branch.
-This is possible because the schema itself is stored in the database like any other object.
+## How to update a schema
 
-For every update to the schema, Infrahub will automatically execute some data validations and/or migrations to ensure that the data currently in the branch is compliant with the new schema.
+Infrahub stores a version of the schema and its data on each branch, so you can develop changes without immediately updating the default branch. Updating the schema generally follows the same branch-based review process as changing network data. The difference is that you also need to consider whether existing objects satisfy the new definitions and whether your queries and automation still refer to the correct kinds and fields.
 
-The validations and the migrations will also be applied:
+**1. Create an Infrahub branch and edit the schema YAML.**
 
-- As part of a Proposed Change
-- During a branch rebase
-- During a branch merge
+You maintain your schema definitions in YAML files, usually in a Git repository. These files describe the nodes, generics, attributes, and relationships you want Infrahub to store. Create or select an Infrahub branch for the update, then edit the relevant YAML definitions. A Git branch containing those files is not the same thing as an Infrahub branch: the latter holds the version of the schema and objects against which Infrahub evaluates your changes. You can therefore work with new definitions on an Infrahub branch while the default branch continues to use its existing schema. For the branch workflow and schema file format, see [Branches](../branches/overview) and [Create and load schema](./create-and-load).
 
-:::info
+**2. Check how Infrahub interprets the updated definitions.**
 
-While a new version of the schema can be directly loaded into the main branch,
-the recommendation is to create a new branch and to integrate the changes into the main branch via a Proposed Change.
+Before loading the files, run `infrahubctl schema check` against the target branch. Infrahub compares the supplied definitions with the schema already loaded there and reports the additions, modifications, and removals it recognizes. This is useful for catching a difference between what you intended and what Infrahub identifies. For example, if you meant to rename an attribute but the result shows an addition, check whether you supplied the existing attribute's `id`. The command reports the proposed changes without writing them to the database. See [Check a schema](./create-and-load#check-a-schema) for the command and its options.
 
-:::
+**3. Load the updated schema on the branch.**
 
-## State: absent or present
+Once the reported differences match what you intend, load the YAML with `infrahubctl schema load` or import it through [Git integration](../git-integration/overview). Infrahub evaluates the proposed schema against what is already loaded, validates the definitions and relevant existing data, and applies supported updates. Some changes also require automatic data migrations. If Infrahub rejects an update, correct the reported problem in the definitions or object data before trying again. You can inspect the schema on the branch to confirm which definitions are currently loaded. The [Schema Operations](./operations) overview explains why Infrahub can combine definitions from multiple files instead of replacing the entire schema whenever you load one.
 
-The format of the schema is declarative and incremental to allow schemas to be composed from multiple sources.
+**4. Test the updated schema with data and automation.**
 
-To remove an existing Node, Generic, Attribute or Relationship from the schema it is required to use the `state: absent` flag to explicitly indicate that this element must be deleted.
-Without this flag the element will be ignored but it will not be removed.
+Infrahub may accept the updated schema even while a query or Generator still refers to a field you renamed. Infrahub generates the GraphQL API from the schema loaded on the branch; it does not rewrite queries you have authored. Run the affected queries, Generators, Transformations, and checks against the updated branch, and revise references to renamed or removed definitions. When you change constraints or attribute kinds, include representative existing objects in your tests. An empty development instance cannot reveal that objects in production have values that no longer meet the schema. See [Test schema changes before production](#test-schema-changes-before-production).
 
-```yaml {3} showLineNumbers
-  - name: Rack
-    namespace: Infra
-    state: absent
-    attributes:
-      - name: name
-        kind: Text
-    [..]
-```
+**5. Review the change in a Proposed Change and merge it.**
 
-:::info
+Once the schema and its dependent automation have been tested, open a [Proposed Change](../proposed-changes/overview) from the Infrahub branch. Reviewers can compare the schema differences, inspect related changes, and examine validation and check results before approving the merge. Infrahub checks schema integrity during this process and checks relevant constraints again at merge, because the objects on the default branch may have changed since your earlier validation. If the current data no longer satisfies the proposed schema, correct the conflict before merging.
 
-The default value is `state: present` and doesn't have to be provided on all elements of the schema.
+**6. Verify the schema on the default branch.**
 
-:::
+After merging, [inspect the loaded schema](./create-and-load#inspect-the-loaded-schema) on the default branch to confirm that Infrahub applied the intended definitions. Check the affected kinds, attributes, relationships, and properties, including whether a renamed or removed definition is still present. Run the relevant queries and automation against the merged schema as well, particularly where a change affected a generated GraphQL field or the values your automation expects.
 
-Removing a branch-agnostic attribute or relationship this way releases its value without deleting any object, as long as no branch can still read the objects that hold it. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx).
+## How Infrahub validates schema updates
 
-## Remove existing text field values
+When you load updated definitions, Infrahub needs to determine whether they form a valid schema and whether the objects already stored on the branch can continue to satisfy it. A successful schema-file comparison is useful during development, but the update must also be compatible with the loaded schema and existing data.
 
-Removing an existing value for a text field of a schema node, like `description` or `label`, can be performed by specifying
-an empty string value for this field and re-loading the schema.
+Infrahub first validates the definitions you submit, including their structure, names, and supported properties. For example, a malformed YAML value or an invalid schema property can prevent Infrahub from accepting the definition. Some server-managed or read-only fields have different handling: depending on the field, Infrahub may ignore a submitted value and report a warning. The reported error or warning tells you whether the definition needs correcting.
 
-## Rename existing elements
+Infrahub also checks the schema that would result from the update. A relationship's `peer` must refer to an existing kind, and entries in `inherit_from` must refer to existing Generics. Infrahub also checks whether the requested update is supported. Some properties, such as an existing attribute's `branch` setting or a relationship's `identifier`, `direction`, or `hierarchical` setting, cannot be changed after they have been loaded. In those cases, modifying the YAML property is not sufficient; you may need to create a replacement definition and move the data. The [Schema Update reference](../reference/schema/validator-migration) lists supported and unsupported property updates.
 
-All elements of the schema are identified by a human-readable identifier that allows schemas to be reused across environments:
+Finally, Infrahub checks existing objects against any new constraints. Suppose the `description` attribute on `InfraDevice` is optional and some devices have no description. If you change that attribute to `optional: false`, those objects do not satisfy the proposed schema. A uniqueness constraint can produce a similar problem when existing objects share a value that must now be unique. Infrahub reports the validation problem so you can identify what needs to change. You can populate the missing descriptions, correct duplicate values, or revise the constraint before submitting the updated schema again.
 
-- For Node and Generic, the identifier is the `Kind` which is composed of `namespace`+`name`
-- For Attribute and Relationship the identifier is the `name`
+### When Infrahub rejects an update
 
-Since `namespace` & `name` are used to identify the elements of the schema, if you need to update them after loading the schema an additional step will be required.
+A rejection means that Infrahub could not accept the proposed update under the applicable rules. The response may indicate an invalid definition, an unsupported property change, or existing objects that violate a new constraint. These require different corrections: edit the YAML when the definition is invalid, correct the relevant objects when their values are incompatible, or choose a supported schema change when the property cannot be updated in place. Review the reported error and inspect the schema loaded on the branch before retrying; do not assume that editing the YAML alone has changed the stored schema.
 
-In order to update the human-readable identifier, it's required to temporarily provide the internal identifier of the element directly in the configuration.
-All Node, Generic, Attribute or Relationship have their unique identifier that can be found easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema).
-The schema explorer provides two complementary views: a **list view** for browsing models and inspecting their full definition, and an interactive **graph view** that visualizes the relationships between models. Toggle between them using the switch at the top-right of the schema page.
-The internal identifier should be a UUID4, with 36 characters.
+### Why validation can pass before a merge and fail later
 
-<Tabs groupId="schema-version" queryString>
-<TabItem value="new" label="New Version">
+Infrahub validates relevant data again during the Proposed Change and merge process because the data may no longer be the same as when you loaded the schema. For example, you may successfully introduce a mandatory attribute on your branch while another engineer or integration subsequently creates an object on the default branch without that value. At rebase or merge, Infrahub can detect that the current data does not satisfy the schema you are proposing and prevent the operation until you resolve the incompatibility.
 
-```yaml {4-6} showLineNumbers
-  - name: Rack
-    namespace: Infra
-    attributes:
-      - id: 76df607c-883f-4cf6-9087-353dc2d863e5
-        name: rack_name
-        kind: Text
-    [..]
-```
+The [Proposed Changes](../proposed-changes/overview) documentation describes Schema Integrity checks and merge-time validation. Infrahub also performs supported migrations where they are required during the applicable schema operations. The exact migration behavior depends on the property being changed and the operation, rather than every schema update requiring a migration.
 
-</TabItem>
-<TabItem value="previous" label="Previous Version">
-```yaml {4-5} showLineNumbers
-  - name: Rack
-    namespace: Infra
-    attributes:
-      - name: name
-        kind: Text
-    [..]
-```
-</TabItem>
-</Tabs>
+## Automatic migrations and existing data
 
-## Restrictions
+Some schema updates require Infrahub to modify how existing data is stored. Infrahub performs these **migrations** automatically for supported changes. For example, renaming a schema element with its existing internal `id` can preserve its associated values while Infrahub updates the stored representation. You do not need to write a separate migration script for a change that Infrahub supports.
 
-Most changes to an existing schema are supported but there are a few properties that can't be updated in the current release:
+Infrahub classifies individual schema-property updates as `allowed`, `validate_constraint`, `migration_required`, or `not_supported`. These categories describe whether Infrahub can apply a change directly, needs to validate existing values, must migrate stored data, or does not support the property update. You do not select a category when editing YAML. The [Schema Update reference](../reference/schema/validator-migration) gives the category for each property; some updates require more than one kind of processing.
 
-- Properties that can't be updated on a Node or a Generic: `branch`
-- Properties that can't be updated on an Attribute: `branch`
-- Properties that can't be updated on a Relationship: `branch`, `direction`, `hierarchical`
-- Properties that can't be updated on an Attribute inherited from a Generic: `optional`
+The consequences for existing objects depend on the property involved. Changing presentation properties such as `label`, `description`, `icon`, or `order_weight` generally does not change stored attribute values. Changing constraints such as `optional`, `unique`, `choices`, `regex`, or length limits requires Infrahub to evaluate existing values against the new rules. Storage-related properties have stronger restrictions, including the `branch` setting on existing schema elements and certain relationship settings. See [Change node definitions](./change-node-definitions) and [Branch awareness](./branch-awareness) for those cases.
 
-[A reference guide for validators and migrations is available](../reference/schema/validator-migration)
+Changing an attribute's `kind` also deserves attention. Infrahub does not convert text such as `"42"` into the number `42`. When values need conversion, create an attribute with the required kind, convert and copy the values using the SDK or API, update dependent automation, and remove the original attribute once you have verified the replacement. See [Change the kind of an attribute](./change-node-definitions#change-the-kind-of-an-attribute).
 
-## Known limitations
+Because the schema YAML format is incremental, omitting a node or attribute from a file does not remove it from the loaded schema. Conversely, omitting a property from a definition you update can reset that property to its default. The [Schema Operations](./operations) overview explains this behavior, while [Rename schema elements](./rename-schema-elements) and [Remove schema elements](./remove-schema-elements) describe the operations that need an existing `id` or `state: absent`.
 
-- When updating the identifier on a relationship, the existing relationships won't be impacted or updated even if it was the last relationship using a given identifier. [ISSUE-2472](https://github.com/opsmill/infrahub/issues/2472)
-- Updating Nodes when Generics are updated [ISSUE-5793](https://github.com/opsmill/infrahub/issues/5793)
+## Update dependent queries and automation
 
-## Related concepts
+Infrahub derives the GraphQL types and fields from the schema loaded on each branch. When you rename or remove a node, attribute, or relationship and load the updated definition, Infrahub changes the corresponding generated API. Queries you wrote against the previous schema are not rewritten automatically, so references to old names can fail when those queries run. Generators, Transformations, and checks that depend on the queries may also fail or return different results.
 
-- [Create and load schema](./create-and-load) — How to load schema files using infrahubctl or Git
-- [Branch awareness](./branch-awareness) — How schema objects behave across branches
-- [Reference: Validators and migrations](../reference/schema/validator-migration) — Complete reference for schema validators and data migrations
-- [Schema strict mode](../reference/schema-validation#schema-strict-mode) — Disabling validators temporarily during upgrades
+Review the queries and automation that refer to the updated definitions, revise them on the development branch, and test them before merging. You can review repository changes alongside schema differences in a Proposed Change, but Infrahub's schema validation does not establish that every query and automation workflow still behaves as intended.
+
+## Test schema changes before production
+
+Infrahub may accept an updated schema in an empty development instance but reject it against existing production objects. For changes to attribute kinds and constraints, restore a recent production backup into a development environment when practical, or use representative data that includes the values likely to be affected. Infrahub can then evaluate those objects against the updated definitions before you introduce the change on the default branch.
+
+You can also [write an integration test with Testcontainers](../development-resources/testcontainers) that starts an Infrahub instance, loads the schema and representative objects, and runs the relevant queries, Generators, and Transformations. For example, a test fixture may still provide an attribute under its old name after you rename that attribute in the schema. Loading the fixture or checking the expected object count can reveal the error even if the schema definition itself was accepted. These tests complement Infrahub's schema validation by exercising the data and automation that depend on the model.
