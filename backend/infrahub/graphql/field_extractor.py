@@ -66,3 +66,26 @@ class GraphQLFieldExtractor:
 def extract_graphql_fields(info: GraphQLResolveInfo) -> dict[str, Any]:
     graphql_extractor = GraphQLFieldExtractor(info=info)
     return graphql_extractor.get_fields()
+
+
+def extract_graphql_fields_for_request(info: GraphQLResolveInfo) -> dict[str, Any]:
+    """Return the fields requested below the field being resolved, extracted once per field of the query.
+
+    A resolver of a relationship runs once for each node it resolves, but the fields it reads only depend on the
+    field node of the query and on the fragments of the document. The result is kept on the GraphQL context of the
+    request, by field node, and the same dict is returned to every call: callers must not change it, and must copy
+    it to add fields.
+    """
+    cache: dict[int, tuple[FieldNode, dict[str, Any], dict[str, Any]]] | None = getattr(
+        info.context, "extracted_fields", None
+    )
+    if cache is None:
+        return extract_graphql_fields(info=info)
+    field_node = info.field_nodes[0]
+    entry = cache.get(id(field_node))
+    # The entry holds the field node, so its id cannot be reused by another node while the entry exists.
+    if entry is not None and entry[0] is field_node and entry[1] is info.fragments:
+        return entry[2]
+    fields = extract_graphql_fields(info=info)
+    cache[id(field_node)] = (field_node, info.fragments, fields)
+    return fields

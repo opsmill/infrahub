@@ -13,7 +13,7 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.order import OrderModel
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.field_extractor import extract_graphql_fields, extract_graphql_fields_for_request
 from infrahub.graphql.metadata import build_metadata_query_options
 
 from ..order import deserialize_order_input
@@ -121,8 +121,8 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     # Extract the contextual information from the request context
     graphql_context: GraphqlContext = info.context
 
-    # Extract the name of the fields in the GQL query
-    fields = extract_graphql_fields(info=info)
+    # Extract the name of the fields in the GQL query, shared by every call for this field of the query
+    fields = extract_graphql_fields_for_request(info=info)
 
     # Extract the schema of the node on the other end of the relationship from the GQL Schema
     node_rel = node_schema.get_relationship(info.field_name)
@@ -363,8 +363,8 @@ async def hierarchy_resolver(
 
     graphql_context: GraphqlContext = info.context
 
-    # Extract the name of the fields in the GQL query
-    fields = extract_graphql_fields(info=info)
+    # Extract the name of the fields in the GQL query, shared by every call for this field of the query
+    fields = extract_graphql_fields_for_request(info=info)
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
     node_metadata_fields = edges.get("node_metadata", {})
