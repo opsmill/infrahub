@@ -1,0 +1,61 @@
+---
+title: Release 1.11.10
+release_date: 2026-10-30
+release_type: security
+breaking: true
+description: "Infrahub 1.11.10 updates the base Python version of the container image to 3.14.10 so the bundled pip no longer ships a certifi version affected by GHSA-6q48-6c7w-9gw2, adds Redis Sentinel support and quorum queues for RabbitMQ, and raises the Redis requirement to version 6.0. It also fixes filters and search on a branch, schema changes that existing data violates, repository sync of changed artifact definitions, Transformations and check definitions, and proposed change checks that stayed in progress forever."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.10</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 30th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.10](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.10)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Updated the base Python version of the Infrahub container image and the development environment from 3.14.7 to 3.14.10, so the `pip` bundled in the image no longer ships a `certifi` version affected by GHSA-6q48-6c7w-9gw2.
+
+### Added
+
+- Added Redis Sentinel support: when `INFRAHUB_CACHE_URL` is set to a `redis+sentinel://` URL, Infrahub connects to the Sentinel nodes and follows a failover of the Redis master, so a `redis-sentinel-proxy` is no longer needed. See [High availability](https://docs.infrahub.app/deploy-manage/install-configure/production-deployment/high-availability). ([#9449](https://github.com/opsmill/infrahub/issues/9449))
+- Added the `INFRAHUB_BROKER_QUEUE_TYPE` setting to declare the durable RabbitMQ queues as quorum queues, so that they stay available when a node of a RabbitMQ cluster stops.
+
+### Changed
+
+- **Breaking:** Raised the Redis requirement to version 6.0 or later, or a Redis-compatible service that supports the `HELLO` command, because Infrahub now opens every Redis connection with `HELLO`, which Redis 5.0 and earlier reject. ([#9449](https://github.com/opsmill/infrahub/issues/9449))
+- Changed the error message for a GraphQL query with a syntax error to start with "Query is not valid, ". ([#11232](https://github.com/opsmill/infrahub/issues/11232))
+- Removed the concurrency limit from the `clean-up-deadlocks` task, so a run that never finishes, for example after a task worker restarts while the run is starting, no longer stops later runs from removing locks left behind by inactive task workers.
+
+### Fixed
+
+- Fixed creating or upserting an object whose computed attribute reads a related object given by a human-friendly ID: a related object that does not exist is now reported by name instead of causing an internal server error that clients retried for several minutes, and a related object of a generic kind given with its specific kind is now found. ([#11018](https://github.com/opsmill/infrahub/issues/11018))
+- Fixed repository sync ignoring a changed `transformation` on an existing artifact definition in `.infrahub.yml`, which also deleted the artifact definition when its Transformation was renamed. ([#11036](https://github.com/opsmill/infrahub/issues/11036))
+- The Git repository sync, deadlock clean-up and failed-merge detection tasks, which run every minute, no longer store a result in the task manager database and the cache for each run. ([#11166](https://github.com/opsmill/infrahub/issues/11166))
+- Fixed filters, search, and finding an object by name or human-friendly ID on a branch matching objects by a value that the branch had already changed. ([#11218](https://github.com/opsmill/infrahub/issues/11218))
+- Fixed an invalid GraphQL query, a GraphQL query with a syntax error, a webhook rename to an existing name and the deletion of the default IP namespace returning HTTP 500 instead of 422, which made the SDK retry a repository import for 5 minutes before it failed. ([#11232](https://github.com/opsmill/infrahub/issues/11232))
+- Fixed proposed change checks that stayed in progress forever, and blocked the merge, when one of their runs failed or timed out. ([#11277](https://github.com/opsmill/infrahub/issues/11277))
+- Fixed GraphQL queries that request two or more custom root fields in one request, such as two `InfrahubResourcePoolUtilization` fields, failing with a database read error or hanging.
+- Fixed certain schema changes being accepted when data violates them: a schema load or a branch merge is now refused when existing values fall outside a Number attribute's new `min_value`, `max_value` or `excluded_values`, outside a schema-defined number pool's new `start_range` or `end_range`, or no longer match a relationship's new `peer` or a hierarchical node's new `parent` or `children`.
+- Fixed merges that re-run a Generator set to execute after merge leaving an unused diff stored in the database. Upgrading deletes the diffs that earlier merges left behind.
+- Fixed repository sync ignoring a changed `class_name` on an existing Python Transformation in `.infrahub.yml`.
+- Fixed repository sync ignoring a changed `class_name` on an existing check definition in `.infrahub.yml`.
+- Fixed repository sync ignoring added, changed or removed `targets` on an existing check definition in `.infrahub.yml`, and made the sync fail with an import error when the target group does not exist.
+- Fixed task results accumulating in Redis without ever expiring: results now expire two days after they are written.
+- Fixed the "Documentation" links in the web interface for built-in object types, such as artifacts, generators, transformations, repositories and accounts: they pointed to documentation pages that no longer exist. Added "Documentation" links to built-in object types that had none, such as check definitions, trigger rules, groups, webhooks, resource pools and permissions. When a schema's `documentation` value starts with `http`, the "Documentation" link now opens that URL directly, instead of the documentation home page or a broken link; any other value still opens that path in the documentation that ships with Infrahub. Links to the documentation that ships with Infrahub now end with a trailing slash, so they open the page directly instead of through a redirect that fails when Infrahub runs behind a reverse proxy.
+- Fixed the `infrahub-testcontainers` package starting Neo4j 2025.10.1 instead of 2026.05.0, the version that Infrahub ships with, in test runs of Infrahub Community that do not set `NEO4J_DOCKER_IMAGE`.
+- Fixed the scroll bars of tables, such as object lists, being hidden behind the table's pinned header, footer and actions column, which stopped mouse users from scrolling.
+
+### Housekeeping
+
+- The container image build now installs the `uv` version defined in `define-versions.yml` (0.13.6) instead of the latest release, and stops when no version is given.

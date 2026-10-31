@@ -62,18 +62,18 @@ Task identifiers are stable references, not an execution order: phases run in th
 
 **Goal**: every existing pool gets one range; the shorthand becomes a mirror of the range set
 
-**Independent Test**: `cd backend && uv run pytest tests/component/core/migrations/graph/m080_number_pool_ranges && uv run pytest tests/unit/core/graph/test_graph_version.py`
+**Independent Test**: `cd backend && uv run pytest tests/component/core/migrations/graph/m081_number_pool_ranges && uv run pytest tests/unit/core/graph/test_graph_version.py`
 
 ### Tests
 
-- [X] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py`: pre-80 fixture with a user pool and a schema pool, run through the upgrade runner; after the run the range kind and the `ranges` relationship exist in the database schema, the branch carries the stored schema's hash, each pool has one range with the old bounds and no weight, and the shorthand is still populated; a second run creates no range and no second range schema node; the graph passes the integrity checks after each run
+- [X] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m081_number_pool_ranges/test_migration.py`: pre-81 fixture with a user pool and a schema pool, run through the upgrade runner; after the run the range kind and the `ranges` relationship exist in the database schema, the branch carries the stored schema's hash, each pool has one range with the old bounds and no weight, and the shorthand is still populated; a second run creates no range and no second range schema node; the graph passes the integrity checks after each run
 - [X] T013 [P] [US2] Component test in `backend/tests/component/pools/test_number_pool_shorthand.py`: `NumberPoolShorthandMirror.sync` sets the bounds for one range and `None` for zero or two ranges
 
 ### Implementation
 
 - [X] T014 [US2] Add `NumberPoolRepository` in `backend/infrahub/pools/number_pool_repository.py` (`get_ranges` through `NodeManager`, plus the used, free, taken and reservation reads and writes moved off `CoreNumberPool`) and `NumberPoolShorthandMirror` in `backend/infrahub/pools/number_pool_shorthand.py` (the single writer of the shorthand)
-- [X] T015 [US2] Create `backend/infrahub/core/migrations/graph/m080_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind (m073 pattern) and only the `ranges` relationship into the database schema when absent, create one range per live pool that carries a bound and holds no range through the Node API, leaving the shorthand as it is, `validate_migration` counts pools that carry a bound and hold no range, `minimum_version = 79`
-- [X] T016 [US2] Bump `GRAPH_VERSION = 80` in `backend/infrahub/core/graph/__init__.py`
+- [X] T015 [US2] Create `backend/infrahub/core/migrations/graph/m081_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind (m073 pattern) and only the `ranges` relationship into the database schema when absent, create one range per live pool that carries a bound and holds no range through the Node API, leaving the shorthand as it is, `validate_migration` counts pools that carry a bound and hold no range, `minimum_version = 79`
+- [X] T016 [US2] Bump `GRAPH_VERSION = 81` in `backend/infrahub/core/graph/__init__.py`
 
 **Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the migration leaves as it is. Until PR 3 (T034) and PR 4 (T038, T039) land, the pool mutations and the schema pool upserter and synchronizer still write the shorthand directly and never call the mirror, and the generated range mutations leave it stale; the mirror is the single writer only from PR 4 onwards
 

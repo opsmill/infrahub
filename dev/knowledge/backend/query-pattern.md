@@ -246,7 +246,18 @@ WITH n, attr, r
 WHERE r.status = "active"
 ```
 
-The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value.
+The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value; `NodeGetListByAttributeValueQuery` chains two (`HAS_VALUE`, then `HAS_ATTRIBUTE`).
+
+On a branch other than the default branch, rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. Keep the value-first form for a branch-agnostic read: its branch filter does not scope by branch, so ranking every edge would elect another branch's value. `ranks_latest_value` in `core/query/subquery.py` holds this condition.
+
+```cypher
+// ❌ on a branch: ranks only the edges to the matched value vertex
+CALL (av, attr) { MATCH (av)<-[r:HAS_VALUE]-(attr) ... LIMIT 1 }
+// ✅ on a branch: ranks every value edge of the attribute, then compares
+CALL (attr) { MATCH (attr)-[r:HAS_VALUE]->(latest_av) ... RETURN r, latest_av ... LIMIT 1 }
+WITH n, av, r, latest_av
+WHERE r.status = "active" AND latest_av.value = av.value
+```
 
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 

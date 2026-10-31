@@ -51,6 +51,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_BROKER_NAMESPACE: ${INFRAHUB_BROKER_NAMESPACE:-infrahub}
   INFRAHUB_BROKER_PASSWORD: &broker_password ${INFRAHUB_BROKER_PASSWORD:-infrahub}
   INFRAHUB_BROKER_PORT:
+  INFRAHUB_BROKER_QUEUE_TYPE: ${INFRAHUB_BROKER_QUEUE_TYPE:-classic}
   INFRAHUB_BROKER_RABBITMQ_HTTP_PORT:
   INFRAHUB_BROKER_RPC_TIMEOUT: ${INFRAHUB_BROKER_RPC_TIMEOUT:-120}
   INFRAHUB_BROKER_TLS_CA_FILE:
@@ -68,6 +69,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_TLS_CA_FILE:
   INFRAHUB_CACHE_TLS_ENABLED: ${INFRAHUB_CACHE_TLS_ENABLED:-false}
   INFRAHUB_CACHE_TLS_INSECURE: ${INFRAHUB_CACHE_TLS_INSECURE:-false}
+  INFRAHUB_CACHE_URL:
   INFRAHUB_CACHE_USERNAME: &cache_username ${INFRAHUB_CACHE_USERNAME:-}
   INFRAHUB_CONFIG:
   INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-localhost}
@@ -282,7 +284,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.10}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -315,7 +317,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.10}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -361,7 +363,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.9}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.10}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

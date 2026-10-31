@@ -145,6 +145,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
             { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
+            { type: 'doc', id: 'menu/nested-menus', label: 'Nested menus' },
           ],
         },
         {
@@ -215,6 +216,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'object-templates/overview' }, // hub
           items: [
             { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/import-from-netbox', label: 'Import from NetBox device types' },
             { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],

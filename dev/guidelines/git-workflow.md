@@ -14,6 +14,8 @@ Git workflow and commit conventions for the project.
   minor. A fix that changes observable behavior (which branch an event fires on, a value that is no
   longer accepted) defaults to `develop` with a changelog fragment — shipping it in a patch release
   is a deliberate call for an urgent fix, not the default
+- **Neo4j and Prefect upgrades:** target `develop`, also for a patch version of either. The
+  `upgrading-infrastructure-dependencies` skill covers the whole upgrade
 - **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
   converting call sites, changing behavior a new lint rule now gates — since what the code emits at
   runtime changed regardless of how enabling it was triggered. Target `stable` when the diff has no

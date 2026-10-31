@@ -2,7 +2,9 @@
 title: Hardware requirements
 ---
 
+import CodeBlock from '@theme/CodeBlock';
 import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
+import import_infrahubBenchYml from '!!raw-loader!../../../../utilities/benchmark/infrahub-bench.yml';
 
 This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, task manager database storage, and a utility for benchmarking your system's performance.
 
@@ -88,6 +90,8 @@ Even with the right amount of CPU cores and memory, other factors such as CPU sp
 
 :::
 
+### Run the benchmark with Docker
+
 Run the tool using Docker:
 
 ```shell title="❯ docker run --pull always --rm registry.opsmill.io/opsmill/bench"
@@ -114,3 +118,42 @@ CPU Perf: 2337 - Required: 1500 : OK
 Disk Read IOPS: 47742 - Required: 5000 : OK
 Disk Write IOPS: 15885 - Required: 5000 : OK
 ```
+
+### Run the benchmark on Kubernetes
+
+On Kubernetes, run the benchmark as a Job that writes its disk test file to a PersistentVolumeClaim (PVC). The disk results then measure the storage class that you plan to use for the Neo4j volume.
+
+1. Save the following manifest as `infrahub-bench.yml`. It creates a PVC and a Job, both named `infrahub-bench`.
+
+   <CodeBlock language="yaml" title="infrahub-bench.yml">{import_infrahubBenchYml}</CodeBlock>
+
+2. Some cloud volume types set the disk IOPS from the volume size. If your storage class is one of them, change `storage: 10Gi` to the size that you plan to give the Neo4j volume.
+
+3. Set `STORAGE_CLASS` to the name of the storage class to test, and apply the manifest. To list the storage classes in your cluster, run `kubectl get storageclass`.
+
+   ```shell
+   STORAGE_CLASS=<storage-class> envsubst '${STORAGE_CLASS}' < infrahub-bench.yml | kubectl apply -f -
+   ```
+
+   If `envsubst` is not installed, replace `${STORAGE_CLASS}` in `infrahub-bench.yml` with the storage class name, then run `kubectl apply -f infrahub-bench.yml`.
+
+4. Wait for the Job to complete, then view the results in its logs:
+
+   ```shell
+   kubectl wait --for=condition=complete --timeout=10m job/infrahub-bench
+   kubectl logs job/infrahub-bench
+   ```
+
+5. Delete the Job and the PVC:
+
+   ```shell
+   kubectl delete job/infrahub-bench pvc/infrahub-bench
+   ```
+
+:::note
+
+The memory and CPU results describe the Kubernetes node that runs the Job, not the resources of the pod. To test the nodes that run Neo4j, add a `nodeSelector` to the Job.
+
+The container runs as root, so a namespace that enforces the `restricted` Pod Security Standard rejects the pod.
+
+:::

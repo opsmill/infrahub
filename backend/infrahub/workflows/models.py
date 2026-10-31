@@ -17,6 +17,9 @@ from .constants import TAG_NAMESPACE, WorkflowPriority, WorkflowTag, WorkflowTyp
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
+TASK_RESULT_TTL_SECONDS = 2 * 24 * 60 * 60
+"""A result is read at most once, by the caller waiting for its flow run, so it only has to outlive that wait."""
+
 WorkflowReturn = TypeVar("WorkflowReturn")
 
 
