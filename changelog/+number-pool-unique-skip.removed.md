@@ -1,0 +1,1 @@
+Removed the skip of numbers already set on a unique attribute when a number pool allocates, added in 1.10.8 and 1.11.0: a pool now offers only numbers its own records leave free, so before allocating from a pool whose range holds numbers set by hand, attach each of those numbers to the pool by saving its object with the number as `value` and the pool as `from_pool`.

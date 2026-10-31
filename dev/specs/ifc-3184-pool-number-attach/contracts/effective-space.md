@@ -102,7 +102,7 @@ behind the seam either.
 |---|---|
 | **FR-002a** | A record outside every effective range is retained and stays associated with the pool. This slice narrows "excluded from utilization" to "excluded from the utilization *fraction*" — such records are **bucketed, not hidden**. |
 | **FR-006** | The effective-space rule itself. |
-| **FR-011** | Deletion of the hand-set-value scan (`NumberPoolGetTaken` and the `attribute.unique` branch in `get_next`). This slice relies on the deletion but does not carry it. |
+| **FR-011** | Deletion of the hand-set-value scan (`NumberPoolGetTaken` and the `attribute.unique` branch in the number picker). P1 kept it, so this slice carries the deletion (amended 2026-10-31). |
 
 ---
 
