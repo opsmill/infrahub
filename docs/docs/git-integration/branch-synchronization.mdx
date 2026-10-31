@@ -489,7 +489,7 @@ If you abandon the pending pushes, the remote branch stays. At the next synchron
 
 ### Limitations of the push queue
 
-- Infrahub stops a stalled fetch or push of the pending merges only on an HTTP or HTTPS remote. Over SSH, a stalled push or fetch keeps the repository locked until the connection ends, and a retry waits for it.
+- Infrahub stops a stalled push of the pending merges only on an HTTP or HTTPS remote. Over SSH, a stalled push keeps the repository locked until the connection ends, and a retry waits for it.
 - A branch created in Infrahub from the default branch while pushes are pending holds the objects of the pending merges, but its Git branch does not hold their files. When the synchronization imports that Git branch, it removes those objects on the branch, and a merge of the branch removes them from the default branch. Check `delivery_status` of the repository before you create a branch that syncs with Git.
 - If a Generator of the held regeneration never ends, Infrahub waits for it as long as the task worker runs, and no other task runs the held regeneration of the repository in that time.
 - If the task worker stops while it runs the held regeneration, and the task manager still shows the task as running, Infrahub runs the regeneration again only after the task manager marks the task as crashed.
