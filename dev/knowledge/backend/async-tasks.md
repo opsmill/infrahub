@@ -442,8 +442,8 @@ milliseconds; only a C extension holding it for longer than the key's expiry cou
 The key therefore means "this process is alive", not "this process's event loop is idle", which is
 what every consumer above wants to know.
 
-The thread needs its own cache connection because the asyncio Redis and NATS clients bind to the
-loop that created them. A failed beat closes that connection and the next beat reconnects through
+The thread needs its own cache connection because the asyncio Redis client binds to the
+loop that created it. A failed beat closes that connection and the next beat reconnects through
 the factory after a short backoff, so a cache outage delays the heartbeat rather than ending it.
 Each beat carries its own deadline and the next one is scheduled from before the current one starts,
 so three beats fit in every expiry and one slow, failed or unanswered beat cannot push the next

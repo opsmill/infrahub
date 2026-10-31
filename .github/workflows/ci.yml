@@ -842,12 +842,6 @@ jobs:
   #         - name: backend-tests-unit-memgraph
   #           env:
   #             INFRAHUB_DB_TYPE: memgraph
-  #         # - name: backend-tests-unit-nats
-  #         #   env:
-  #         #     INFRAHUB_DB_TYPE: memgraph
-  #         #     INFRAHUB_USE_NATS: 1
-  #         #     INFRAHUB_BROKER_DRIVER: nats
-  #         #     INFRAHUB_CACHE_DRIVER: nats
   #   name: ${{ matrix.name }}
   #   env: ${{ matrix.env }}
   #   steps:

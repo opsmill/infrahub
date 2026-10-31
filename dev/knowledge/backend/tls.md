@@ -27,9 +27,9 @@ insecure and connects over TLS. Adapters never read `tls.ca_bundle`; they keep r
 section, and the value they see is already resolved. Inspecting `config.SETTINGS.<section>` therefore
 shows the effective CA, not what the operator typed.
 
-Git, Redis and NATS trust the bundle *and* the system trust store. The NATS clients and redis-py load the
-bundle into a default SSL context with `load_verify_locations`. The image's git uses libcurl with GnuTLS,
-which still loads `/etc/ssl/certs` when `http.sslCAInfo` is set.
+Git and Redis trust the bundle *and* the system trust store. redis-py loads the bundle into a default SSL
+context with `load_verify_locations`. The image's git uses libcurl with GnuTLS, which still loads
+`/etc/ssl/certs` when `http.sslCAInfo` is set.
 
 Every other component trusts *only* the bundle: `ssl.create_default_context(cafile=...)`, boto3's `verify`,
 the Neo4j driver's `TrustCustomCAs` and the gRPC exporter's `root_certificates` replace the system store.
@@ -45,8 +45,8 @@ The user docs tell operators to append the public roots when one of these must r
 | Git credential commands | `http.tls_*` | `git_credential/client.py::build_client_config`, shared by the credential helper and askpass (git spawns each as its own process) |
 | Git | `git.tls_ca_file`, `git.tls_insecure` | `git/global_config.py::apply_git_tls_config` writes `http.sslCAInfo` / `http.sslVerify` into the global gitconfig at task-worker startup |
 | Neo4j | `database.tls_ca_file` | `database/__init__.py` (`TrustCustomCAs`) |
-| Cache (Redis, NATS) | `cache.tls_ca_file` | Redis: `redis_connection.py::build_cache_connection_string`, the one URL the cache adapter, the lock registry and Prefect's result storage connect with. NATS: `services/adapters/cache/` |
-| Broker (RabbitMQ, NATS) | `broker.tls_ca_file` | `services/adapters/message_bus/` |
+| Cache (Redis) | `cache.tls_ca_file` | `redis_connection.py::build_cache_connection_string`, the one URL the cache adapter, the lock registry and Prefect's result storage connect with |
+| Broker (RabbitMQ) | `broker.tls_ca_file` | `services/adapters/message_bus/rabbitmq.py` |
 | S3 object storage | `storage.s3.tls_ca_file` (alias `AWS_CA_BUNDLE`), `storage.s3.tls_insecure` (dumped as `AWS_S3_TLS_INSECURE`) | `storage.py::InfrahubS3ObjectStorage` passes `verify=` to boto3, `False` when insecure; inherits the global bundle only when `use_ssl` is on |
 | OTLP trace exporter | `trace.tls_ca_bundle` | `trace.py`; inherits the global bundle only when `TraceSettings.uses_tls` |
 | Log forwarding | `tls_ca_bundle`, `tls_insecure` per destination; `tls_insecure` is rejected without `tls_enabled` | Infrahub Enterprise; this repo only defines the settings |

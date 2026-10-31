@@ -1,7 +1,7 @@
 ---
 name: upgrading-infrastructure-dependencies
 description: >-
-  Upgrades Neo4j, Prefect, Redis, RabbitMQ, PostgreSQL or NATS across opsmill/infrahub,
+  Upgrades Neo4j, Prefect, Redis, RabbitMQ or PostgreSQL across opsmill/infrahub,
   opsmill/infrahub-private and opsmill/infrahub-helm, including the tests that CI does not run.
   TRIGGER when: the user wants to upgrade or bump one of these services, the prefect package, or
   the Neo4j image or Helm chart, or to check or finish such an upgrade. DO NOT TRIGGER when:
@@ -196,17 +196,17 @@ then the `opsmill/infrahub-private` one. The person who cuts the release merges 
   current version needs an image without the upgrade. Change the `prefect-server` chart of
   `opsmill/infrahub-helm` only if the new version needs it.
 
-### Redis, RabbitMQ, PostgreSQL and NATS
+### Redis, RabbitMQ and PostgreSQL
 
 - RabbitMQ is the message bus, Redis the cache and the locks, and PostgreSQL the database of the
-  task manager. NATS replaces RabbitMQ and Redis when `INFRAHUB_USE_NATS=true`.
+  task manager.
 - Latest versions: the Neo4j query with the image name and tag pattern changed: `redis` (`X.Y.Z`),
-  `rabbitmq` (`X.Y.Z-management`), `postgres` (`N-alpine`), `nats` (`X.Y.Z-alpine`). Release notes:
+  `rabbitmq` (`X.Y.Z-management`), `postgres` (`N-alpine`). Release notes:
   <https://github.com/redis/redis/releases>, <https://github.com/rabbitmq/rabbitmq-server/releases>,
-  <https://www.postgresql.org/docs/release/>, <https://github.com/nats-io/nats-server/releases>.
+  <https://www.postgresql.org/docs/release/>.
 - Check the adapters in `backend/infrahub/services/adapters/`, the locks in
-  `backend/infrahub/lock.py` and `backend/infrahub/locks/`, and the client packages `redis`,
-  `aio-pika` and `nats-py`. A new major version of PostgreSQL cannot start on the data of an older
+  `backend/infrahub/lock.py` and `backend/infrahub/locks/`, and the client packages `redis` and
+  `aio-pika`. A new major version of PostgreSQL cannot start on the data of an older
   one: say in the changelog fragment that deployments need a dump and restore or `pg_upgrade`.
 - Whether `opsmill/infrahub-helm` changes is not decided: ask a maintainer. Ask too whether to run
   the tests of step 7.

@@ -54,7 +54,6 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi==0.65b0",
     "opentelemetry-exporter-otlp-proto-grpc==1.44.0",
     "opentelemetry-exporter-otlp-proto-http==1.44.0",
-    "nats-py==2.15.0",
     "netaddr==1.3.0",
     "authlib==1.9.1",
     "aiodataloader==0.4.3",
@@ -1675,16 +1674,6 @@ include = ["backend/infrahub/services/**"]
 ##################################################################################################
 invalid-await = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/services/adapters/**/nats.py"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-possibly-missing-submodule = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/proposed_change/**"]

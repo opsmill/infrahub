@@ -11,7 +11,7 @@ Overview of the backend testing infrastructure, test types, and patterns. Choose
 Infrahub uses pytest with TestContainers to provide reproducible, isolated tests. The testing approach balances:
 
 - **Speed**: Module-scoped containers minimize startup overhead
-- **Realism**: Tests run against real Neo4j/Redis/NATS when needed
+- **Realism**: Tests run against real Neo4j/Redis/RabbitMQ when needed
 - **Debuggability**: Functional tests run in a single process for breakpoint debugging
 - **Isolation**: Each test module gets a fresh database state
 
@@ -148,7 +148,6 @@ Controlled by environment variable `INFRAHUB_USE_TEST_CONTAINERS=true`.
 | `memgraph_container` | Alternative graph database |
 | `redis_container` | Cache |
 | `rabbitmq_container` | Message broker |
-| `nats_container` | Event streaming |
 | `prefect_container` | Workflow engine |
 
 ```python
