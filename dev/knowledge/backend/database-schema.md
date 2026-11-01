@@ -177,7 +177,8 @@ allocation consumes the resource for the whole graph, so no other branch can be 
 
 A number pool decides which numbers are free from its own `IS_RESERVED` records only. It does not look at
 values objects hold outside those records, so a number set on an object without the pool stays free to
-that pool until it is attached. On a unique attribute the uniqueness check refuses such a number.
+that pool until it is attached. On a unique attribute the uniqueness check refuses such a number, and saving a pool range that
+overlaps another pool's range over the same kind and unique attribute is refused.
 On top of the common edge properties a record carries:
 
 | Property | Type | Description |
