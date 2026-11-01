@@ -22,14 +22,14 @@ Ask whether the result depends on the real collaborator's behavior.
 |------------------------|------------------|-----------------------------|
 | Parsing, validation, arithmetic, or a decision over supplied values | Unit | A concrete output or error for those inputs |
 | A retry policy responding to HTTP errors | Unit, using a scripted transport and injected clock | Requests, retry boundaries, progress, and final outcome |
-| A policy deciding which tables need rewriting from supplied size measurements | Unit, using a recording rewriter | Selected tables and reported outcomes |
 | A query selecting and deleting eligible rows | Component, using the real database | Stored rows before and after the operation, including rows that must remain |
 | A route connecting validation, job execution, and persistence | Component | The response and the resulting persisted state |
 | PostgreSQL locks, transaction rollback, or table rewrites | Component with PostgreSQL, or the existing Docker integration suite when the service boundary matters | The database's actual behavior |
 | A command reaching a deployed worker and reporting its result | Integration Docker | The command's result and the effect in the running service |
 
 An in-process HTTP client or several cooperating Python objects do not require a component test by
-themselves. Conversely, SQLite-backed tests are component tests even without a network connection.
+themselves. A test that reads or writes a real database belongs at component level or above, even if
+the database runs locally without a network connection.
 An adapter can prove how the caller reacts to a failure; it cannot prove that a database issues that
 failure, commits a transaction, or enforces a lock correctly.
 
@@ -38,10 +38,11 @@ test that assigns fabricated driver rows and checks a trivial accessor cannot de
 If the returned rows undergo an independently complex transformation, cover that transformation's
 cases in unit tests and keep the component assertion on real query output.
 
-For a policy test, remove unrelated setup. If a rewrite decision only uses supplied table sizes,
-calling deletion and seeding old runs first adds database work without testing the decision better.
-Initialize the job's input state directly and test deletion separately against storage. Keep the
-route or job-runner test that proves deletion and rewriting are connected correctly.
+When testing a decision rule, remove unrelated setup. For a retry policy, supply failure and success
+responses in a unit test and check the decisions, e.g., retry after a temporary failure, stop at the
+retry limit, and return immediately after success. No database setup is needed. Test the server's
+database changes separately against real storage. Keep a representative integration test that verifies
+the client and server work together.
 
 ## Review overlapping tests
 
@@ -53,7 +54,7 @@ Do not use a test count or line-coverage percentage as the answer.
 | Candidate pair | Decision |
 |----------------|----------|
 | Same setup and call, with one test's assertions fully covered by the other | Remove the duplicate if it adds no useful focused diagnosis |
-| Same assertion structure, different boundary or error category | Parameterize and retain the distinct cases |
+| Same assertion structure, different boundary or error category | Retain the distinct cases; parameterize unit tests and [check setup cost](#account-for-setup-cost) at higher tiers |
 | Unit policy matrix plus one route exercising the real policy and database | Keep both: one checks decisions, the other checks integration |
 | Full policy matrix repeated through the client, command, route, and deployed stack | Keep each matrix at its owning layer; retain representative wiring and layer-specific failures above it |
 | Unit accessor over fabricated query rows plus component test of the same returned field | Keep the real query assertion |
@@ -64,10 +65,26 @@ distinct cases because changing the error classification can affect one without 
 test for each of those errors is unnecessary when they all become the same wait reason and the CLI
 only renders that reason. Retain a representative rendering test and the client classification cases.
 
-Parameterization reduces repeated code, not the number of behaviors to verify. Avoid a Cartesian
-product of options unless their interaction can change the result. Keep boundary values and cases
-that take different decisions; remove additional examples of the same equivalence class when they
-add no new assertion.
+Avoid a Cartesian product of options unless their interaction can change the result. Keep boundary
+values and cases that take different decisions; remove additional examples of the same equivalence
+class when they add no new assertion.
+
+### Account for setup cost
+
+Use parameterized unit tests for distinct inputs that share setup and assertions. For component tests,
+measure setup, execution, teardown, and total suite time before and after adding cases. Compare runs
+under the same conditions; acceptable cost depends on the suite.
+
+Each parameterized case reruns function-scoped fixtures. Class-, module-, and session-scoped fixtures
+can be reused within their scope, so a new case does not necessarily restart a container. When cases
+leave shared data unchanged,
+[share one schema and data load across a class](../../guidelines/backend/testing.md#share-one-schema-and-data-load-across-a-class).
+
+Avoid parameterizing functional and integration tests by default. Keep the input matrix at the
+smallest tier that proves it, and retain representative integration paths and distinct failures that
+only the higher tier can detect. If repeated setup still dominates, consider combining checks in one
+test, accounting for the loss of separate results: the first failing assertion prevents later checks
+from running.
 
 ## Check what the doubles prove
 
@@ -85,7 +102,7 @@ See [Assert exact expectations](../../guidelines/backend/testing.md#assert-exact
 
 ## Running integration_docker tests locally
 
-Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
+Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich, which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
 
 These tests never need signed commits. Disable signing for the run by pointing git's config at `/dev/null`:
 

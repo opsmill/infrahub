@@ -77,8 +77,11 @@ it catches; if the scenario is missing, extend the existing test at the tier tha
 
 - Keep unit policy cases and a component wiring case when they catch different failures. Do not
   repeat the whole policy matrix through every caller or through the full stack.
-- Parameterize repeated setup and assertions when inputs exercise distinct cases. Parameterization
-  removes duplicated code; it does not make equivalent cases useful.
+- Parameterize unit tests when inputs exercise distinct cases with the same setup and assertions.
+  Measure component-test setup and suite time before expanding the cases; avoid parameterizing
+  functional and integration tests by default. See
+  [Account for setup cost](../../guides/backend/choosing-tests.md#account-for-setup-cost) for fixture
+  sharing and the tradeoffs of combining checks. Equivalent cases still add no useful coverage.
 - Remove a separate accessor test when a real query test already asserts that mapping. Add unit
   cases only for independently meaningful transformation logic.
 - Keep client protocol assertions separate from CLI output/exit assertions: either can fail while
