@@ -474,7 +474,9 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         await proposed_change.save()
 
         validators = await client.filters(kind=CoreUserValidator, proposed_change__ids=[proposed_change.id])
-        age_check = next(validator for validator in validators if validator.label.value == "Check: owner_age_check")
+        age_checks = [validator for validator in validators if validator.label.value == "Check: owner_age_check"]
+        assert len(age_checks) == 1
+        age_check = age_checks[0]
         first_checks = await client.filters(kind=CoreStandardCheck, validator__ids=[age_check.id])
         assert len({check.name.value for check in first_checks}) == len(first_checks) == 2
 
