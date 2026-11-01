@@ -17,9 +17,9 @@ from infrahub.workflows.initialization import (
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
+from .creation_slots import RunCreationSlots
 from .priority import prepare_dispatch
 from .run_follower import FlowRunFollower
-from .wait_slots import PrefectClientWaitSlots
 
 if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
@@ -33,19 +33,19 @@ if TYPE_CHECKING:
 
 # Creating a run sends several requests through the Prefect client the flow run shares with its own state proposals,
 # so no more runs are created at once than the worker lets its submissions take.
-EXECUTION_WAIT_SLOTS = SUBMISSION_WINDOW_CAPACITY
-EXECUTION_POLL_INTERVAL = 1
+RUN_CREATION_SLOTS = SUBMISSION_WINDOW_CAPACITY
+RUN_STATE_POLL_INTERVAL = 1
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
-        self._wait_slots = PrefectClientWaitSlots(capacity=EXECUTION_WAIT_SLOTS)
+        self._creation_slots = RunCreationSlots(capacity=RUN_CREATION_SLOTS)
         self._followers: weakref.WeakKeyDictionary[PrefectClient, FlowRunFollower] = weakref.WeakKeyDictionary()
 
     def _follower(self, client: PrefectClient) -> FlowRunFollower:
         if client not in self._followers:
-            self._followers[client] = FlowRunFollower(poll_interval=EXECUTION_POLL_INTERVAL)
+            self._followers[client] = FlowRunFollower(poll_interval=RUN_STATE_POLL_INTERVAL)
         return self._followers[client]
 
     @staticmethod
@@ -102,14 +102,14 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         if client_context is None:
             response: FlowRun = await run_deployment(
                 name=workflow.full_name,
-                poll_interval=EXECUTION_POLL_INTERVAL,
+                poll_interval=RUN_STATE_POLL_INTERVAL,
                 parameters=parameters or {},
                 tags=tags,
                 work_queue_name=work_queue_name,
             )  # type: ignore[misc]
         else:
             client = client_context.client
-            async with self._wait_slots.slot(client=client):
+            async with self._creation_slots.slot(client=client):
                 flow_run: FlowRun = await run_deployment(
                     name=workflow.full_name,
                     timeout=0,

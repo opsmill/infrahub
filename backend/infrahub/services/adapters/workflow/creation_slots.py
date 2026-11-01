@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
 
-class PrefectClientWaitSlots:
-    """Bound how many workflow runs are awaited at the same time through one Prefect client."""
+class RunCreationSlots:
+    """Bound how many workflow runs are created at the same time through one Prefect client."""
 
     def __init__(self, capacity: int) -> None:
         self._capacity = capacity
@@ -18,7 +18,7 @@ class PrefectClientWaitSlots:
         self._slots: weakref.WeakKeyDictionary[PrefectClient, asyncio.Semaphore] = weakref.WeakKeyDictionary()
 
     def slot(self, client: PrefectClient | None) -> contextlib.AbstractAsyncContextManager[None]:
-        """Return the slot to hold while awaiting a run through `client`, or no bound without a shared client."""
+        """Return the slot to hold while creating a run through `client`, or no bound without a shared client."""
         if client is None:
             return contextlib.nullcontext()
         if client not in self._slots:
