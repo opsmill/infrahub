@@ -470,7 +470,7 @@ the deadlock cleanup has no equivalent.
 | System automations | `backend/infrahub/trigger/system.py` |
 | Worker liveness heartbeat | `backend/infrahub/services/heartbeat.py`, `backend/infrahub/services/component.py` |
 | Worker submission window | `backend/infrahub/workers/submission.py` |
-| Awaited run slots per flow run | `backend/infrahub/services/adapters/workflow/wait_slots.py` |
+| Awaited child runs of a flow run | `backend/infrahub/services/adapters/workflow/run_follower.py`, `backend/infrahub/services/adapters/workflow/creation_slots.py` |
 | Deadlock cleanup | `backend/infrahub/locks/tasks.py` |
 
 ## See Also

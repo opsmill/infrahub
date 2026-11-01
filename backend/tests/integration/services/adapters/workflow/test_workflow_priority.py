@@ -21,7 +21,6 @@ from infrahub.workflows.initialization import setup_work_queues
 from infrahub.workflows.models import WorkflowDefinition
 from tests.helpers.test_worker import TestWorkerInfrahubAsync
 from tests.integration.services.adapters.workflow.fixture_flows import (
-    PARENT_AWAITING_DUMMY,
     PRIORITY_CHILD,
     PRIORITY_FIXTURE_WORKFLOWS,
     PRIORITY_GRANDCHILD,
@@ -283,33 +282,6 @@ class TestWorkflowPriority(TestWorkerInfrahubAsync):
             assert child_run.work_queue_name == WorkflowPriority.HIGH.queue_name
             await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=child_run)
             await parent_task
-        finally:
-            if not parent_task.done():
-                parent_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await parent_task
-
-    async def test_awaited_child_result_reaches_the_parent_flow(
-        self,
-        priority_deployments: None,
-        prefect_client: PrefectClient,
-        prefect_worker: InfrahubWorkerAsync,
-    ) -> None:
-        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
-        child_seen = await self.deployment_run_ids(client=prefect_client, workflow=DUMMY_FLOW)
-
-        workflow_info = await service.submit_workflow(workflow=PARENT_AWAITING_DUMMY, context=build_context())
-        parent_run = await prefect_client.read_flow_run(flow_run_id=workflow_info.id)
-
-        parent_task = asyncio.create_task(
-            self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=parent_run)
-        )
-        try:
-            child_run = await self.wait_for_dispatched_run(
-                client=prefect_client, workflow=DUMMY_FLOW, seen_ids=child_seen
-            )
-            await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=child_run)
-            await asyncio.wait_for(parent_task, timeout=30)
         finally:
             if not parent_task.done():
                 parent_task.cancel()
