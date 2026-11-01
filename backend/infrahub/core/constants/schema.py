@@ -2,6 +2,8 @@ from enum import Enum, Flag, IntEnum, auto
 
 PARENT_CHILD_IDENTIFIER = "parent__child"
 RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
+SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS = 2
+SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS = SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS + 1
 
 
 class FlagProperty(Enum):

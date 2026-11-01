@@ -243,6 +243,10 @@ In the example below, each `ExamplePerson`, will have a `hfid` composed of his/h
 - For an attribute, the valid format is `<attributename>__value`. *Currently only value is supported but in the future, the plan is to allow additional metadata to be used as well.*
 - For a relationship, the name of the relationship and the name of a unique attribute must be provided `<relationshipname>__<attributename>__value`. *Only relationships of cardinality `one` are supported and the relationship must be mandatory.*
 
+Each `human_friendly_id` list item is one path whose segments are separated by `__`. Attribute paths have at most two segments (`firstname__value`); paths through a relationship have at most three (`owner__name__value`) and can traverse only one relationship. Infrahub rejects additional segments during schema validation.
+
+To combine fields, put each path in its own list item, as in the example below. A single string such as `firstname__value__lastname__value` is invalid.
+
 ```yaml {4} showLineNumbers
 nodes:
   - name: Person

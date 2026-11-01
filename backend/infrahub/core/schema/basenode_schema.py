@@ -12,6 +12,7 @@ from pydantic import ConfigDict, ValidationError, field_validator
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants.schema import SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS, SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
@@ -563,7 +564,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         else:
             raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
 
-        max_parts = 3 if relationship_piece else 2
+        max_parts = SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS if relationship_piece else SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS
         if len(path_parts) > max_parts:
             raise AttributePathParsingError(f"{path} has too many segments on schema {self.kind}")
 
