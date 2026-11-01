@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from broken_repository import BrokenRepository
-from helpers import Deadline, generate_random_branch_name
+from helpers import Deadline, generate_random_branch_name, prepare_git_remote
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
@@ -88,6 +88,7 @@ async def broken_repository(
     (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
     GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
+    prepare_git_remote(remote_dir / repository_name)
 
     # A branch without Git sync lists only read-only repositories, so it would hide this one.
     await branch_api.create(branch, sync_with_git=True)

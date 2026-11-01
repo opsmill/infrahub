@@ -61,7 +61,7 @@ from constants import (
     READ_ONLY_CREDENTIALS,
     READ_WRITE_CREDENTIALS,
 )
-from helpers import BranchAPI, login
+from helpers import BranchAPI, login, prepare_git_remote
 
 # Composable demo-dataset slices built on the async SDK (tests/e2e/data/).
 pytest_plugins = [
@@ -388,6 +388,7 @@ async def demo_edge_repo(
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
     # GitRepo.__post_init__ runs a synchronous copy + git init/commit of the fixture repo.
     GitRepo(name="demo-edge", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
+    prepare_git_remote(remote_dir / "demo-edge")
 
     mutation = Mutation(
         mutation="CoreRepositoryCreate",
@@ -421,6 +422,7 @@ def demo_edge_copy_location(infrahub_compose_dir: Path, infrahub_provisioned_ext
 
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
     repo = GitRepo(name="demo-edge-copy", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
+    prepare_git_remote(remote_dir / repo.name)
     return f"{repo.remote_directory_name}/{repo.name}"
 
 
