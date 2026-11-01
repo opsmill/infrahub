@@ -16,6 +16,7 @@ from typing import (
 )
 
 import ujson
+from fastapi.security.utils import get_authorization_scheme_param
 from graphql import (
     ExecutionContext,
     ExecutionResult,
@@ -35,13 +36,12 @@ from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub import config
-from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth.auth import authentication_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
 from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
+from infrahub.exceptions import AuthorizationError, BranchNotFoundError, Error, PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.error_formatter import format_graphql_errors
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
@@ -116,19 +116,10 @@ class InfrahubGraphQLApp:
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)
             response: Response | None = None
-            jwt_auth = await jwt_scheme(request)
-            api_key = await api_key_scheme(request)
-            cookie_auth = await cookie_auth_scheme(request)
-
             db = request.app.state.db
 
             async with db.start_session() as db:
-                jwt_token = None
-                if jwt_auth:
-                    jwt_token = jwt_auth.credentials
-                elif cookie_auth and not api_key:
-                    jwt_token = cookie_auth
-                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, db=db)
+                account_session = await self._authenticate_connection(connection=request, db=db)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
@@ -157,13 +148,31 @@ class InfrahubGraphQLApp:
             db = websocket.app.state.db
 
             async with db.start_session(read_only=True) as db:
+                try:
+                    account_session = await self._authenticate_connection(connection=websocket, db=db)
+                    if not account_session.authenticated and not config.SETTINGS.main.allow_anonymous_access:
+                        raise AuthorizationError("Authentication is required to perform this operation")
+                except AuthorizationError as exc:
+                    await websocket.close(code=4401, reason=exc.message)
+                    return
+
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
                 branch = await registry.get_branch(db=db, branch=branch_name)
 
-                await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
+                await self._run_websocket_server(
+                    db=db, branch=branch, websocket=websocket, account_session=account_session
+                )
 
         else:
             raise ValueError(f"Unsupported scope type: ${scope['type']}")
+
+    async def _authenticate_connection(self, connection: HTTPConnection, db: InfrahubDatabase) -> AccountSession:
+        scheme, credentials = get_authorization_scheme_param(connection.headers.get("Authorization"))
+        api_key = connection.headers.get("X-INFRAHUB-KEY")
+        jwt_token = credentials if scheme.lower() == "bearer" and credentials else None
+        if not jwt_token and not api_key:
+            jwt_token = connection.cookies.get("access_token")
+        return await authentication_token(db=db, jwt_token=jwt_token, api_key=api_key)
 
     async def _get_on_get(self, request: Request) -> Response | None:
         handler = self.on_get
@@ -398,14 +407,21 @@ class InfrahubGraphQLApp:
         else:
             self.logger.critical("Unhandled exception occurred in resolvers", exc_info=error)
 
-    async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
+    async def _run_websocket_server(
+        self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket, account_session: AccountSession
+    ) -> None:
         subscriptions: dict[str, AsyncGenerator[Any, None]] = {}
         await websocket.accept("graphql-ws")
         try:
             while WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
                 message = await websocket.receive_json()
                 await self._handle_websocket_message(
-                    db=db, branch=branch, message=message, websocket=websocket, subscriptions=subscriptions
+                    db=db,
+                    branch=branch,
+                    message=message,
+                    websocket=websocket,
+                    subscriptions=subscriptions,
+                    account_session=account_session,
                 )
         except WebSocketDisconnect:
             pass
@@ -420,6 +436,7 @@ class InfrahubGraphQLApp:
         message: dict[str, Any],
         websocket: WebSocket,
         subscriptions: dict[str, AsyncGenerator[Any, None]],
+        account_session: AccountSession,
     ) -> None:
         operation_id = cast("str", message.get("id"))
         message_type = cast("str", message.get("type"))
@@ -436,6 +453,7 @@ class InfrahubGraphQLApp:
                 operation_id=operation_id,
                 websocket=websocket,
                 subscriptions=subscriptions,
+                account_session=account_session,
             )
         elif message_type == GQL_STOP:
             if operation_id in subscriptions:
@@ -450,12 +468,15 @@ class InfrahubGraphQLApp:
         operation_id: str,
         websocket: WebSocket,
         subscriptions: dict[str, AsyncGenerator[Any, None]],
+        account_session: AccountSession,
     ) -> None:
         query = data["query"]
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
 
-        graphql_params = await prepare_graphql_params(db=db, branch=branch)
+        graphql_params = await prepare_graphql_params(
+            db=db, branch=branch, account_session=account_session, request=websocket
+        )
 
         errors: list[GraphQLError] = []
         operation: OperationDefinitionNode | None = None

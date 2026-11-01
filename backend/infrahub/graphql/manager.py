@@ -234,7 +234,7 @@ class GraphQLSchemaManager:
 
         return Mutation
 
-    def get_gql_subscription(self, partial_graphql_schema: graphene.Schema) -> type[InfrahubBaseSubscription]:
+    def get_gql_subscription(self, partial_graphql_schema: GraphQLSchema) -> type[InfrahubBaseSubscription]:
         class Subscription(InfrahubBaseSubscription):
             graphql_schema = partial_graphql_schema
 
