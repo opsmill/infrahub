@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
@@ -26,6 +27,7 @@ async def test_a_number_a_schema_pool_draws_is_checked_for_uniqueness(
         db=db, branch=default_branch, schema=SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT])
     )
     incident_schema = registry.schema.get_node_schema(name=SNOW_INCIDENT.kind, branch=default_branch)
+    [pool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, filters={"node_attribute__value": "number"})
     # Held outside the pool, as a number set before the attribute was handed to a pool would be.
     holding_object = await Node.init(db=db, schema=incident_schema, branch=default_branch)
     await holding_object.new(db=db, process_pools=False, title="held by hand", number=1)
@@ -34,5 +36,10 @@ async def test_a_number_a_schema_pool_draws_is_checked_for_uniqueness(
     with pytest.raises(UniquenessViolationError) as exc_info:
         await create_node(data={"title": "drawn"}, db=db, branch=default_branch, schema=incident_schema)
 
-    assert exc_info.value.message == "Violates uniqueness constraint 'number'"
+    pool_name = pool.get_attribute("name").value
+    assert exc_info.value.message == (
+        f"Violates uniqueness constraint 'number': the '{pool_name}' pool allocated 1, which object '1' "
+        f"('{holding_object.id}') already holds. Attach that number to the pool by updating object '{holding_object.id}' with value 1 and "
+        f"from_pool '{pool_name}', or change its number, then retry."
+    )
     assert await NodeManager.query(db=db, schema=SNOW_INCIDENT.kind, filters={"title__value": "drawn"}) == []

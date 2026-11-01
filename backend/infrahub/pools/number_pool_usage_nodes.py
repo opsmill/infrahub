@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
-from infrahub.pools.number_pool_usage import HoldingObject, PeerSummary
+from infrahub.pools.number_pool_usage import HoldingObject, NumberHolder, PeerSummary
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,6 +42,34 @@ class PeerSummaryReader:
             node_id: PeerSummary(display_label=await node.get_display_label(db=self.db), kind=node.get_kind())
             for node_id, node in nodes.items()
         }
+
+
+class NumberHolderNodeReader:
+    """Reads an object holding numbers: its label and the pools tracking them."""
+
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
+    async def read(self, node_id: str, attribute_names: Sequence[str], branch: Branch) -> NumberHolder | None:
+        """Return the object and the pools tracking its attributes, or None when it cannot be read on `branch`."""
+        node = await NodeManager.get_one(
+            db=self.db, id=node_id, branch=branch, include_metadata=MetadataOptions.TRACKING_POOL
+        )
+        if node is None:
+            return None
+        if node.get_schema().display_label:
+            label = await node.get_display_label(db=self.db) or None
+        else:
+            hfid = await node.get_hfid(db=self.db)
+            label = ", ".join(hfid) if hfid else None
+        tracking_pool_ids: dict[str, str] = {}
+        for attribute_name in attribute_names:
+            if attribute_name not in node.get_schema().attribute_names:
+                continue
+            tracking_pool = node.get_attribute(name=attribute_name).tracking_pool
+            if tracking_pool is not None:
+                tracking_pool_ids[attribute_name] = tracking_pool.pool_id
+        return NumberHolder(label=label, tracking_pool_ids=tracking_pool_ids)
 
 
 class HoldingObjectReader:

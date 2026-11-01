@@ -183,7 +183,7 @@ class TestNumberPoolAllocation:
     async def test_a_number_held_by_hand_is_offered_and_refused_by_the_uniqueness_constraint(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool, present_ticket: Node
     ) -> None:
-        """The pool reads only its own records, so it offers 1 and the uniqueness constraint refuses the save."""
+        """The pool reads only its own records, so it offers 1 and the save names the pool and the holding object."""
         with pytest.raises(UniquenessViolationError) as exc_info:
             await create_node(
                 data={"title": "ticket", "ticket_id": {"from_pool": {"id": pool.id}}},
@@ -192,7 +192,11 @@ class TestNumberPoolAllocation:
                 schema=db.schema.get(name=TICKET.kind, branch=default_branch_scope_class, duplicate=False),
             )
 
-        assert exc_info.value.message == "Violates uniqueness constraint 'ticket_id'"
+        assert exc_info.value.message == (
+            f"Violates uniqueness constraint 'ticket_id': the 'pool1' pool allocated 1, which object "
+            f"'manual, 1' ('{present_ticket.id}') already holds. Attach that number to the pool by updating object "
+            f"'{present_ticket.id}' with value 1 and from_pool 'pool1', or change its number, then retry."
+        )
         assert await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "ticket"}) == []
         assert await pool_used_numbers(db=db, pool=pool, branch=default_branch_scope_class) == []
 

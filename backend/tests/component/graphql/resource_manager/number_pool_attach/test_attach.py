@@ -130,7 +130,11 @@ class TestNumberPoolAttach:
             variables={"title": "brownfield-new", "ticket_id": {"from_pool": {"id": pool.id}}},
         )
 
-        assert message == "Violates uniqueness constraint 'ticket_id'"
+        assert message == (
+            "Violates uniqueness constraint 'ticket_id': the 'brownfield' pool allocated 9500, which object "
+            f"'brownfield-9500, 9500' ('{held[0]['id']}') already holds. Attach that number to the pool by updating object '{held[0]['id']}' "
+            "with value 9500 and from_pool 'brownfield', or change its number, then retry."
+        )
         assert await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "brownfield-new"}) == []
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
 
@@ -147,6 +151,45 @@ class TestNumberPoolAttach:
 
         assert allocated["ticket_id"]["value"] == 9503
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [9500, 9501, 9502, 9503]
+
+    async def test_a_number_another_pool_handed_out_names_both_pools_and_attaching_it_lets_allocation_go_on(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """Pools that overlapped before the overlap refusal existed each offer the numbers the other handed out."""
+        first = await new_pool(db=db, name="overlap-first", start_range=9520, end_range=9529)
+        second = await new_pool(db=db, name="overlap-second", start_range=9520, end_range=9529)
+        held = await create_ticket(
+            db=db, branch=main_branch, title="overlap-held", ticket_id={"from_pool": {"id": first.id}}
+        )
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET,
+            variables={"title": "overlap-new", "ticket_id": {"from_pool": {"id": second.id}}},
+        )
+
+        assert message == (
+            "Violates uniqueness constraint 'ticket_id': the 'overlap-second' pool allocated 9520, which object "
+            f"'overlap-held, 9520' ('{held['id']}') already holds through the 'overlap-first' pool, because the "
+            "ranges of the two pools overlap. Attach the numbers in the overlap to one of the pools, for example by "
+            f"updating object '{held['id']}' with value 9520 and from_pool 'overlap-second', then change the ranges "
+            "of the other pool so they no longer overlap, then retry."
+        )
+
+        await update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=held["id"],
+            ticket_id={"value": 9520, "from_pool": {"id": second.id}},
+        )
+        allocated = await create_ticket(
+            db=db, branch=main_branch, title="overlap-new", ticket_id={"from_pool": {"id": second.id}}
+        )
+
+        assert allocated["ticket_id"]["value"] == 9521
+        assert await used_numbers(db=db, branch=main_branch, pool=first) == []
+        assert await used_numbers(db=db, branch=main_branch, pool=second) == [9520, 9521]
 
     async def test_each_holder_of_an_attached_duplicate_is_reported_and_the_number_is_not_reallocated(
         self, db: InfrahubDatabase, main_branch: Branch

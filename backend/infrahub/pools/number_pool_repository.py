@@ -90,6 +90,11 @@ class NumberPoolRepository(NumberPoolRangeStore):
         """Return the pool's ranges as plain start, end, weight and id values, lowest start first."""
         return await self.range_lookup.get_pool_ranges(pool_id=pool_id, at=at)
 
+    async def get_pool_name(self, pool_id: str) -> str | None:
+        """Return the name of the number pool, or None when no pool has that id."""
+        pool = await NodeManager.get_one(db=self.db, id=pool_id, kind=InfrahubKind.NUMBERPOOL)
+        return str(pool.get_attribute("name").value) if pool is not None else None
+
     async def get_attribute_pool_ranges(self, kind: str, attribute_name: str) -> list[PoolRangeSet]:
         """Return the ranges of every pool that allocates numbers for the kind's attribute."""
         pools = await NodeManager.query(
