@@ -14,9 +14,7 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
-  title?: string;
-  /** A second line beneath the title, included in the card's accessible name. */
-  caption?: string;
+  title?: React.ReactNode;
 }
 
 export function ObjectDetailsCard({
@@ -26,11 +24,9 @@ export function ObjectDetailsCard({
   className,
   excludeRelationships,
   title = "Details",
-  caption,
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
-  const captionId = `${id}-caption`;
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
@@ -38,18 +34,13 @@ export function ObjectDetailsCard({
     <Card
       className={className}
       role="region"
-      aria-labelledby={caption ? `${titleId} ${captionId}` : titleId}
+      aria-labelledby={titleId}
       data-testid="object-details"
     >
-      <CardHeader className="flex justify-between">
-        <div>
-          <h2 id={titleId}>{title}</h2>
-          {caption && (
-            <p id={captionId} className="font-normal text-foreground-muted text-xs">
-              {caption}
-            </p>
-          )}
-        </div>
+      <CardHeader className="flex items-center justify-between gap-2">
+        <h2 id={titleId} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+          {title}
+        </h2>
 
         {schemaHasExtraFields && (
           <Button

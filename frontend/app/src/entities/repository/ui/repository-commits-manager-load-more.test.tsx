@@ -1,9 +1,11 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanup } from "vitest-browser-react";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -55,12 +57,14 @@ function CaptureQueryClient() {
 describe("RepositoryCommitsManager loading more", () => {
   beforeEach(() => {
     vi.mocked(useCurrentBranch).mockReturnValue({
-      currentBranch: generateBranch({ name: "main" }),
+      currentBranch: generateBranch({ name: "main", sync_with_git: true }),
       setCurrentBranch: () => {},
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmounted first, or a background poll re-renders the tab against reset mocks.
+    await cleanup();
     vi.resetAllMocks();
   });
 
@@ -79,9 +83,13 @@ describe("RepositoryCommitsManager loading more", () => {
       <>
         <CaptureQueryClient />
         <RepositoryCommitsManager
-          repositoryId="repo-1"
-          repositoryLocation={null}
-          remoteCheck={null}
+          repositoryNode={{
+            id: "repo-1",
+            __typename: REPOSITORY_KIND,
+            display_label: "infrahub-demo",
+            internal_status: { value: "active" },
+          }}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
@@ -109,13 +117,19 @@ describe("RepositoryCommitsManager loading more", () => {
       <>
         <CaptureQueryClient />
         <RepositoryCommitsManager
-          repositoryId="repo-1"
-          repositoryLocation={null}
-          remoteCheck={null}
+          repositoryNode={{
+            id: "repo-1",
+            __typename: REPOSITORY_KIND,
+            display_label: "infrahub-demo",
+            internal_status: { value: "active" },
+          }}
+          updatePermission={{ isAllowed: true }}
         />
       </>
     );
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await expect
+      .element(component.getByTestId("data-table-row").getByText(PAGE_ONE_HEAD))
+      .toBeVisible();
 
     // WHEN
     await queryClient.refetchQueries();

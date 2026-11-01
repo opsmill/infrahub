@@ -75,6 +75,5 @@ export function useGetRemoteCheckTask({ repositoryId }: UseGetRemoteCheckTaskPar
     isSubmitting: latest?.status === "pending",
     // A failed poll keeps the last answer, and no answer yet counts as ongoing.
     isOngoing: taskId !== null && data?.isOngoing !== false,
-    taskId,
   };
 }

@@ -116,11 +116,11 @@ async def create_damaged_node(
     template instances, and pool-backed kinds whose creation would allocate a value.
     """
     node_uuid = str(uuid4())
-    query = """
+    query = f"""
     MATCH (root:Root)
-    CREATE (n:Node:%(labels)s { uuid: $uuid, kind: $kind, branch_support: "aware" })
-    CREATE (n)-[:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $from_time, status: "active" }]->(root)
-    """ % {"labels": labels}
+    CREATE (n:Node:{labels} {{ uuid: $uuid, kind: $kind, branch_support: "aware" }})
+    CREATE (n)-[:IS_PART_OF {{ branch: $branch, branch_level: $branch_level, from: $from_time, status: "active" }}]->(root)
+    """
     await db.execute_query(
         query=query,
         params={

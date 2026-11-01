@@ -107,6 +107,23 @@ export const generateRewrittenCommitsResponse = () =>
     ],
   });
 
+export const DEFAULT_BRANCH_HEAD = "7f8e9d0";
+export const BRANCH_COMMIT = "4c5d6e7";
+
+export const generateRebaseOnlyBehindCommitsResponse = () =>
+  generateRepositoryCommitsResponse({
+    condition: "BEHIND",
+    imported_commit: fullHash(BRANCH_COMMIT),
+    remote_head: fullHash(DEFAULT_BRANCH_HEAD),
+    pending_count: 2,
+    edges: [
+      { node: node(DEFAULT_BRANCH_HEAD, "HEAD", "Add site Berlin", "Grace Hopper") },
+      { node: node("6e7f8a9", "NOT_ON_BRANCH", "Rename core switches", "Ada Lovelace") },
+      { node: node(BRANCH_COMMIT, "IMPORTED", "Add device inventory", "Ada Lovelace") },
+      { node: node("e5f6a7b", "HISTORY", "Initial import", "Linus Torvalds") },
+    ],
+  });
+
 export const generateOrphanedCommitsResponse = () =>
   generateRepositoryCommitsResponse({
     condition: "ORPHANED",

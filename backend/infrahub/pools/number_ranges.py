@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import sys
 from bisect import bisect_right
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from infrahub.constants.database import MAX_SUPPORTED_INTEGER, MIN_SUPPORTED_INTEGER
+
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 OPEN_START = 1
-OPEN_END = sys.maxsize
+OPEN_END = MAX_SUPPORTED_INTEGER
 
 
 def allocation_bounds(start: int | None, end: int | None) -> tuple[int, int]:
@@ -21,6 +22,15 @@ def allocation_bounds(start: int | None, end: int | None) -> tuple[int, int]:
 def format_range_label(start: int, end: int) -> str:
     """Return the `start - end` label of a range, writing the widest end as MAX."""
     return f"{start} - {'MAX' if end == OPEN_END else end}"
+
+
+def unsupported_range_values(label: str, values: Mapping[str, int | None]) -> list[str]:
+    """Return one message per value of the range labelled `label` that the database cannot store as a bound or weight."""
+    return [
+        f"Range {label} has {name} {value} outside the supported numbers ({MIN_SUPPORTED_INTEGER} to {MAX_SUPPORTED_INTEGER})"
+        for name, value in values.items()
+        if value is not None and not MIN_SUPPORTED_INTEGER <= value <= MAX_SUPPORTED_INTEGER
+    ]
 
 
 @dataclass(frozen=True, kw_only=True)

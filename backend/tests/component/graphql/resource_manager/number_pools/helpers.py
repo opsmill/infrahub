@@ -215,6 +215,16 @@ INVALID_RANGES_CASES: list[InvalidRangesCase] = [
         ranges=[{"start": 30, "end": 20}],
         expected_error="Range end (20) cannot be lower than start (30)",
     ),
+    InvalidRangesCase(
+        name="outside_the_supported_numbers",
+        ranges=[{"start": 700, "end": 9223372036854775808, "allocation_weight": 9223372036854775808}],
+        expected_error=(
+            "Range 700 - 9223372036854775808 has end 9223372036854775808 "
+            "outside the supported numbers (-9223372036854775807 to 9223372036854775807); "
+            "Range 700 - 9223372036854775808 has allocation_weight 9223372036854775808 "
+            "outside the supported numbers (-9223372036854775807 to 9223372036854775807)"
+        ),
+    ),
 ]
 
 

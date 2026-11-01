@@ -81,14 +81,6 @@ def _registry_attribute(kind: str, attribute: str, branch: str) -> AttributeSche
     return registry.schema.get_node_schema(name=kind, branch=branch, duplicate=False).get_attribute(attribute)
 
 
-def _with_pool_id(schema: SchemaRoot, branch: str) -> SchemaRoot:
-    """Copy the schema with the id of the provisioned pool, since a schema load cannot change it."""
-    pool_id = _pool_parameters(_registry_attribute(TICKET_KIND, "ticket_number", branch)).number_pool_id
-    schema = copy.deepcopy(schema)
-    _pool_parameters(_nodes_by_name(schema)["Ticket"].get_attribute("ticket_number")).number_pool_id = pool_id
-    return schema
-
-
 class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def schema_initial(self) -> SchemaRoot:
@@ -192,7 +184,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         ticket = await registry.manager.get_one(db=db, id=initial_dataset["ticket_3"], branch=default_branch)
         assert ticket.get_attribute("ticket_number").value == 3
 
-        schema = _with_pool_id(schema_initial, default_branch.name)
+        schema = copy.deepcopy(schema_initial)
         nodes = _nodes_by_name(schema)
         widget = nodes["Widget"]
         _number_parameters(widget.get_attribute("low_max")).max_value = 5
@@ -262,7 +254,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         """The value is created on main after the branch, so the branch cannot view it when it lowers the limit."""
         branch = await create_branch(db=db, branch_name="lower-gadget-max")
 
-        branch_schema = _with_pool_id(schema_initial, branch.name)
+        branch_schema = copy.deepcopy(schema_initial)
         _number_parameters(_nodes_by_name(branch_schema)["Gadget"].get_attribute("count")).max_value = 5
         response = await client.schema.load(schemas=[branch_schema.model_dump(mode="json")], branch=branch.name)
         assert not response.errors
@@ -293,7 +285,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
     ) -> None:
         """Renaming hierarchical kinds with stored nodes is accepted."""
         country_id = registry.schema.get_node_schema(name=COUNTRY_KIND, branch=default_branch.name).id
-        schema = _with_pool_id(schema_initial, default_branch.name)
+        schema = copy.deepcopy(schema_initial)
         nodes = _nodes_by_name(schema)
         nodes["Country"].id = country_id
         nodes["Country"].name = "Nation"

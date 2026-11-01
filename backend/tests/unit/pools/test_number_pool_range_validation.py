@@ -288,3 +288,91 @@ def test_a_range_outside_both_attribute_limits_is_refused_naming_both_bounds() -
         "Range 9 - 101 starts below the attribute's min_value (10); "
         "Range 9 - 101 ends above the attribute's max_value (100)"
     )
+
+
+SUPPORTED_NUMBERS = "outside the supported numbers (-9223372036854775807 to 9223372036854775807)"
+
+
+ACCEPTED_SUPPORTED_SPACE_CASES: list[AttributeLimitsCase] = [
+    AttributeLimitsCase(
+        name="end_on_the_largest_supported_number",
+        bounds=NumberRangeBounds(start=700, end=9223372036854775807),
+        domain=UNBOUNDED,
+    ),
+    AttributeLimitsCase(
+        name="start_on_the_smallest_supported_number",
+        bounds=NumberRangeBounds(start=-9223372036854775807, end=10),
+        domain=UNBOUNDED,
+    ),
+    AttributeLimitsCase(
+        name="weight_on_the_largest_supported_number",
+        bounds=NumberRangeBounds(start=700, end=800, weight=9223372036854775807),
+        domain=UNBOUNDED,
+    ),
+    AttributeLimitsCase(
+        name="weight_on_the_smallest_supported_number",
+        bounds=NumberRangeBounds(start=700, end=800, weight=-9223372036854775807),
+        domain=UNBOUNDED,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", ACCEPTED_SUPPORTED_SPACE_CASES, ids=lambda case: case.name)
+def test_a_range_on_the_supported_limits_is_accepted(case: AttributeLimitsCase) -> None:
+    with does_not_raise():
+        validate_ranges_within_attribute(ranges=[case.bounds], domain=case.domain)
+
+
+REFUSED_SUPPORTED_SPACE_CASES: list[RefusedLimitsCase] = [
+    RefusedLimitsCase(
+        name="end_above_the_largest_supported_number",
+        bounds=NumberRangeBounds(start=700, end=9223372036854775808),
+        message=f"Range 700 - 9223372036854775808 has end 9223372036854775808 {SUPPORTED_NUMBERS}",
+    ),
+    RefusedLimitsCase(
+        name="end_sent_by_a_javascript_client",
+        bounds=NumberRangeBounds(start=700, end=9223372036854776000),
+        message=f"Range 700 - 9223372036854776000 has end 9223372036854776000 {SUPPORTED_NUMBERS}",
+    ),
+    RefusedLimitsCase(
+        name="start_on_the_64_bit_minimum",
+        bounds=NumberRangeBounds(start=-9223372036854775808, end=10),
+        message=f"Range -9223372036854775808 - 10 has start -9223372036854775808 {SUPPORTED_NUMBERS}",
+    ),
+    RefusedLimitsCase(
+        name="start_above_the_largest_supported_number_with_an_open_end",
+        bounds=NumberRangeBounds(start=9223372036854775808, end=None),
+        message=f"Range 9223372036854775808 - MAX has start 9223372036854775808 {SUPPORTED_NUMBERS}",
+    ),
+    RefusedLimitsCase(
+        name="weight_above_the_largest_supported_number",
+        bounds=NumberRangeBounds(start=700, end=800, weight=9223372036854775808),
+        message=f"Range 700 - 800 has allocation_weight 9223372036854775808 {SUPPORTED_NUMBERS}",
+    ),
+    RefusedLimitsCase(
+        name="weight_on_the_64_bit_minimum",
+        bounds=NumberRangeBounds(start=700, end=800, weight=-9223372036854775808),
+        message=f"Range 700 - 800 has allocation_weight -9223372036854775808 {SUPPORTED_NUMBERS}",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", REFUSED_SUPPORTED_SPACE_CASES, ids=lambda case: case.name)
+def test_a_range_outside_the_supported_numbers_is_refused_without_attribute_limits(case: RefusedLimitsCase) -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        validate_ranges_within_attribute(ranges=[case.bounds], domain=UNBOUNDED)
+
+    assert exc_info.value.message == case.message
+
+
+def test_a_range_outside_the_supported_numbers_and_the_attribute_limits_is_refused_naming_both() -> None:
+    bounds = NumberRangeBounds(start=50, end=9223372036854775808, weight=9223372036854775808)
+
+    with pytest.raises(ValidationError) as exc_info:
+        validate_ranges_within_attribute(ranges=[bounds], domain=LIMITS)
+
+    assert exc_info.value.message == (
+        f"Range 50 - 9223372036854775808 has end 9223372036854775808 {SUPPORTED_NUMBERS}; "
+        f"Range 50 - 9223372036854775808 has allocation_weight 9223372036854775808 {SUPPORTED_NUMBERS}; "
+        "Range 50 - 9223372036854775808 ends above the attribute's max_value (100)"
+    )

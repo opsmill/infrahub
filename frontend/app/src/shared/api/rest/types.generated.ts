@@ -2747,11 +2747,6 @@ export interface components {
              */
             ranges?: components["schemas"]["NumberPoolRangeWrite"][] | null;
             /**
-             * Number Pool Id
-             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
-             */
-            number_pool_id?: string | null;
-            /**
              * Allocation Scope
              * @description Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
              */

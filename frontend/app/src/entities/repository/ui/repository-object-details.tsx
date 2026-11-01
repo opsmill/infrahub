@@ -1,3 +1,6 @@
+import { Icon } from "@/shared/components/display/icon";
+import { Badge } from "@/shared/components/ui/badge";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
@@ -23,6 +26,19 @@ interface RepositoryObjectDetailsProps {
 
 function hasFields({ attributes, relationships }: FieldSet): boolean {
   return attributes.length > 0 || relationships.length > 0;
+}
+
+interface BranchBadgeProps {
+  name: string;
+}
+
+function BranchBadge({ name }: BranchBadgeProps) {
+  return (
+    <Badge variant="gray" className="min-w-0 gap-1 font-normal" title={name}>
+      <Icon icon="mdi:source-branch" className="shrink-0" aria-hidden="true" />
+      <span className="truncate">{name}</span>
+    </Badge>
+  );
 }
 
 export function RepositoryObjectDetails({
@@ -52,8 +68,12 @@ export function RepositoryObjectDetails({
 
       {hasFields(branchScoped) && (
         <ObjectDetailsCard
-          title="On this branch"
-          caption={currentBranch.name}
+          title={
+            <>
+              On this branch
+              <BranchBadge name={currentBranch.name} />
+            </>
+          }
           objectSchema={{ ...objectSchema, ...branchScoped }}
           objectData={objectData}
           permission={permission}

@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.exceptions import ValidationError
-from infrahub.pools.number_ranges import OPEN_END, OPEN_START, NumberDomain, format_range_label
+from infrahub.pools.number_ranges import (
+    OPEN_END,
+    OPEN_START,
+    NumberDomain,
+    format_range_label,
+    unsupported_range_values,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable
@@ -12,11 +18,12 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class NumberRangeBounds:
-    """The inclusive bounds of a number pool range, None for an open bound, and the range's id once it is stored."""
+    """The inclusive bounds of a number pool range, None for an open bound, its weight, and its id once it is stored."""
 
     start: int | None
     end: int | None
     id: str | None = None
+    weight: int | None = None
 
     @property
     def lower(self) -> int:
@@ -78,6 +85,8 @@ def validate_number_pool_ranges(ranges: Collection[NumberRangeBounds], domain: N
 def validate_ranges_within_attribute(ranges: Collection[NumberRangeBounds], domain: NumberDomain) -> None:
     """Refuse ranges reaching outside the min_value or max_value of the attribute the pool allocates for.
 
+    A bound or weight outside the numbers the database stores is refused whatever the attribute's limits.
+
     An entered start must not be below min_value and an entered end must not be above max_value. An open end follows
     max_value, so its range is refused only when its start is above max_value; an open start follows min_value, so its
     range is refused only when its end is below min_value.
@@ -90,6 +99,12 @@ def validate_ranges_within_attribute(ranges: Collection[NumberRangeBounds], doma
     violations: list[str] = []
     for candidate in sorted(ranges, key=lambda pool_range: (pool_range.lower, pool_range.upper)):
         start, end = candidate.start, candidate.end
+        violations.extend(
+            unsupported_range_values(
+                label=candidate.label(domain),
+                values={"start": start, "end": end, "allocation_weight": candidate.weight},
+            )
+        )
         if min_value is not None and start is not None and start < min_value:
             violations.append(f"Range {candidate.label(domain)} starts below the attribute's min_value ({min_value})")
         if max_value is not None and end is not None and end > max_value:

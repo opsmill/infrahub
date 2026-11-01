@@ -2,12 +2,18 @@
 # ****************************************************************
 # STAGE : Base Python Image (build-time toolchain)
 # ****************************************************************
-ARG PYTHON_VER=3.14.7
+ARG PYTHON_VER=3.14.10
 ARG NODE_VER=24.15.0
-ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED=1
+
+# Required build argument: CI passes UV_VERSION from .github/workflows/define-versions.yml, the compose
+# files pass it too. It is declared inside the stage because an ARG above the first FROM is only in
+# scope for FROM lines. Without a value the installer URL loses its version segment and the build
+# would silently install whatever uv is latest, so the build stops instead.
+ARG UV_VER
+RUN test -n "$UV_VER" || { echo "ERROR: the UV_VER build argument is required (see UV_VERSION in .github/workflows/define-versions.yml)" >&2; exit 1; }
 
 # uv installs to /root/.local/bin
 ENV PATH="${PATH}:/root/.local/bin"
@@ -19,6 +25,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
     curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - && \
+    uv --version | grep -qF "uv $UV_VER " && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
@@ -71,10 +78,12 @@ WORKDIR /docs
 COPY docs/package.json docs/package-lock.json /docs/
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
+# Files outside docs/ that documentation pages import must be copied here, or the build cannot resolve them.
 COPY models/base/ /models/base/
 COPY models/examples/extension_rack.yml /models/examples/
 COPY development/deploy.tf /development/deploy.tf
 COPY development/k8s/ /development/k8s/
+COPY utilities/benchmark/infrahub-bench.yml /utilities/benchmark/
 COPY docs/ /docs/
 RUN npm run build
 

@@ -159,7 +159,7 @@ PoolExhaustedError
 | per-range used | group used values by `space.range_for(value)` |
 | ratios | `used / size`, `0.0` when size is 0 |
 
-## Migration m080
+## Migration m081
 
 | Step | Detail |
 |------|--------|
@@ -169,7 +169,7 @@ PoolExhaustedError
 | Idempotence | pools that already hold a range are skipped |
 | Failure | a failed pool is reported and the walk goes on; a failed page read ends the walk and is reported with the count of ranges already created |
 | Validation | number of live pools holding no range must be 0 *(amended by IFC-3432)* |
-| Version | `GRAPH_VERSION = 80` |
+| Version | `GRAPH_VERSION = 81` |
 
 ## Schema-created pool reconciliation
 

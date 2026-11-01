@@ -536,6 +536,48 @@ class TestNumberPoolRangeMutations:
         assert str(updated.errors[0].message) == "Range end (100) cannot be lower than start (200)"
         assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
 
+    async def test_range_end_outside_the_supported_numbers_is_refused_on_create_and_update(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, two_range_pool: TwoRangePool
+    ) -> None:
+        created = await _execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=CREATE_RANGE,
+            variables={
+                "pool_id": two_range_pool.pool.get_id(),
+                "start": 500,
+                "end": 9223372036854775808,
+                "weight": None,
+            },
+        )
+        updated = await _execute(
+            db=db,
+            branch=default_branch_scope_class,
+            source=UPDATE_RANGE,
+            variables={"range_id": two_range_pool.high.get_id(), "start": 300, "end": 9223372036854775808},
+        )
+
+        expected = (
+            "9223372036854775808 is outside the supported range of numbers "
+            "(-9223372036854775807 to 9223372036854775807) at end"
+        )
+        assert [error.message for error in created.errors or []] == [expected]
+        assert [error.message for error in updated.errors or []] == [expected]
+        assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
+
+    async def test_range_starting_at_the_smallest_supported_number_allocates_it(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+    ) -> None:
+        pool, _ = await _create_pool_with_range(
+            db=db, name="smallest-supported-number-pool", start=-9223372036854775807, end=-9223372036854775797
+        )
+
+        await _allocate_ticket(db=db, pool=pool, title="smallest-supported-number")
+
+        assert await _ticket_ids(db=db, branch=default_branch_scope_class, titles=["smallest-supported-number"]) == {
+            "smallest-supported-number": -9223372036854775807
+        }
+
     @pytest.mark.parametrize("case", ONE_BOUND_CASES, ids=lambda case: case.name)
     async def test_range_created_with_one_bound_leaves_the_other_open(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None, case: OpenBoundCase

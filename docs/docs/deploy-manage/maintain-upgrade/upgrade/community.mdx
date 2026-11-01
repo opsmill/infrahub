@@ -66,6 +66,25 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 # Restart deployments to apply changes
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
+kubectl rollout restart deployment/infrahub-infrahub-task-worker
+
+# Wait for the restarted pods to be ready
+kubectl rollout status deployment/infrahub-infrahub-server
+kubectl rollout status deployment/infrahub-infrahub-task-worker
+```
+
+Restart the task workers as well as the server. Task worker pods that started before `infrahub upgrade` ran can keep the schema from before the migration until they restart. While the workers have loaded different schemas, Infrahub can mark a new branch with no changes as **Schema differs from default branch**.
+
+Once the restarted pods are ready, run this query in the GraphQL sandbox to confirm that every active worker loaded the same schema. It returns `"schema_hash_synced": true` when all active workers report the same schema hash.
+
+```graphql
+query {
+  InfrahubStatus {
+    summary {
+      schema_hash_synced
+    }
+  }
+}
 ```
 
 </TabItem>

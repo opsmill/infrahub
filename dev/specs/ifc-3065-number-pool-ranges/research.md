@@ -33,7 +33,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 | "(required)" suffix | `graphql/manager.py::GraphQLSchemaManager.generate_graphql_object` | Appended to the description of non-optional attributes; the only site. |
 | Published contract | `tasks/backend.py` (`number_pool_parameters_fields`, `_field`, `_sdk_extension_field`), ADR 0010 | SDK parameter families are hand-listed, scalar-only; generated into `python_sdk/infrahub_sdk/schema/generated/`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `docs/docs/snippets/attribute-kind-params.mdx`. |
 | Frontend readers | `frontend/app/src/entities/schema/ui/attribute-display.tsx`, `entities/resource-manager/ui/number-pool-form.tsx` | GraphQL types already `Maybe<>`; REST parameter types are non-optional; attribute display formats `parameters.start_range` without a null guard; the pool form tolerates missing values. |
-| Migrations | `backend/infrahub/core/migrations/graph/`, `core/graph/__init__.py::GRAPH_VERSION = 80` | `m080` adds the range kind, `minimum_version = 79`. Graph migrations run before `cli/db.py::update_core_schema`; `m073` bootstraps a new core kind inside the migration with `registry.schema.create_node_in_db`, guarded by a count query. |
+| Migrations | `backend/infrahub/core/migrations/graph/`, `core/graph/__init__.py::GRAPH_VERSION = 81` | `m081` adds the range kind, `minimum_version = 80`. Graph migrations run before `cli/db.py::update_core_schema`; `m073` bootstraps a new core kind inside the migration with `registry.schema.create_node_in_db`, guarded by a count query. |
 | Benchmarks | `backend/tests/query_benchmark/` | No pool benchmark exists; `test_node_unique_attribute_constraint.py` is the pattern. |
 
 ## Decisions
@@ -54,7 +54,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 **Alternatives**: derive on read (generator special case, rejected for the same reason the addendum rejects field-specific deprecation); drop the scalars (breaks every existing consumer).
 
-**Rollback property**: a server running the previous release reads the populated shorthand on every single-range pool and ignores `ranges`, so rolling back after m080 loses nothing for pools that have not been given a second range.
+**Rollback property**: a server running the previous release reads the populated shorthand on every single-range pool and ignores `ranges`, so rolling back after m081 loses nothing for pools that have not been given a second range.
 
 ### D3. Effective-space calculator, pure Python
 
@@ -84,9 +84,9 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 **Rationale**: matches the IP pool shape that the frontend already renders, and gives the deferred frontend what it needs without a second contract change.
 
-### D7. Data migration m080 bootstraps the range kind and materialises one range per pool
+### D7. Data migration m081 bootstraps the range kind and materialises one range per pool
 
-**Decision**: `m080_number_pool_ranges` is an `ArbitraryMigration`. It bootstraps `CoreNumberPoolRange` into the database schema the way `m073` bootstraps the IP pool generic (`create_node_in_db`) and adds only the `ranges` relationship to the stored pool schema through a diff-based update, then, through the Node API, creates one range (`start = start_range`, `end = end_range`, no weight, a missing bound resolving to `1` or `sys.maxsize`) for every live `CoreNumberPool` that carries a bound and has no range peer. `validate_migration` counts pools that carry a bound and have no range. `GRAPH_VERSION` becomes 80.
+**Decision**: `m081_number_pool_ranges` is an `ArbitraryMigration`. It bootstraps `CoreNumberPoolRange` into the database schema the way `m073` bootstraps the IP pool generic (`create_node_in_db`) and adds only the `ranges` relationship to the stored pool schema through a diff-based update, then, through the Node API, creates one range (`start = start_range`, `end = end_range`, no weight, a missing bound resolving to `1` or `sys.maxsize`) for every live `CoreNumberPool` that carries a bound and has no range peer. `validate_migration` counts pools that carry a bound and have no range. `GRAPH_VERSION` becomes 80.
 
 **Rationale**: graph migrations run before the core schema update, so the kind must exist before ranges can be written. The "has a range → skip" guard makes re-runs create nothing (SC-004).
 

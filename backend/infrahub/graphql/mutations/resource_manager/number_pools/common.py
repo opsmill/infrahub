@@ -63,14 +63,14 @@ def pool_target_attribute(db: InfrahubDatabase, pool: Node, branch: Branch) -> A
 def refuse_ranges_outside_attribute(
     attribute: AttributeSchema, ranges: Iterable[NumberPoolRangeParameters | NumberRangeBounds]
 ) -> None:
-    """Refuse ranges reaching outside the attribute's min_value / max_value.
+    """Refuse ranges reaching outside the attribute's min_value / max_value or the numbers the database stores.
 
     Raises:
         ValidationError: Listing every range reaching outside the attribute's bounds, lowest range first.
 
     """
     validate_ranges_within_attribute(
-        ranges=[NumberRangeBounds(start=item.start, end=item.end) for item in ranges],
+        ranges=[NumberRangeBounds(start=item.start, end=item.end, weight=item.weight) for item in ranges],
         domain=attribute_domain(attribute),
     )
 
@@ -146,7 +146,12 @@ def pool_lock(pool_id: str) -> lock.InfrahubLock:
 
 def range_bounds(ranges: Sequence[CoreNumberPoolRange]) -> list[NumberRangeBounds]:
     return [
-        NumberRangeBounds(start=pool_range.start.value, end=pool_range.end.value, id=pool_range.get_id())
+        NumberRangeBounds(
+            start=pool_range.start.value,
+            end=pool_range.end.value,
+            id=pool_range.get_id(),
+            weight=pool_range.allocation_weight.value,
+        )
         for pool_range in ranges
     ]
 

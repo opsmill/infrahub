@@ -24,6 +24,7 @@ backfills
 backpressure
 bcrypt
 Biome
+Bitnami
 bool
 boolean
 booleans
@@ -108,6 +109,7 @@ hardcoding
 hfid
 HFIDs
 hostname
+hostnames
 Http
 human_friendly_id
 id_token

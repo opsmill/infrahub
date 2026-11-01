@@ -113,6 +113,7 @@ Start a new ADR from [template.md](adr/template.md).
 
 Backend guides in [guides/backend/](guides/backend/):
 
+- [choosing-tests.md](guides/backend/choosing-tests.md) - Choose unit or component coverage and remove redundant tests
 - [creating-events.md](guides/backend/creating-events.md) - How to create new events
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages

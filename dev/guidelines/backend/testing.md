@@ -6,31 +6,35 @@ Testing standards for the Python backend.
 
 ## Test Organization
 
-Tests are organized by type:
+Choose the smallest tier that can detect the failure you care about. Classify the behavior and the
+collaborators it exercises, not the source module's name or the number of classes it calls.
 
-- **Unit tests** (`tests/unit/`): No external dependencies, only file access
-- **Component tests** (`tests/component/`): Small scope but may require database access
-- **Functional tests** (`tests/functional/`): Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
-- **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
-- **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
+| Tier | Behavior it proves |
+|------|--------------------|
+| Unit (`tests/unit/`) | In-memory decisions, parsing, validation, and transformations; no database or network access. Local files and injected recording/failing adapters are allowed. |
+| Component (`tests/component/`) | A focused component working with real infrastructure: query results, persistence, constraints, cache operations, or lock coordination. |
+| Functional (`tests/functional/`) | Several components working together in one process, with async tasks executed inline. |
+| Integration Docker (`tests/integration_docker/`) | Behavior requiring the deployed services or separate workers. |
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
+`tests/integration/` also contains older functional tests; see the
+[infrastructure reference](../../knowledge/backend/testing.md#integration-tests-backendtestsintegration).
+
+A database query and its result mapping belong in a component test against the real database,
+directly or through their caller. Do not fabricate `QueryResult` rows to unit-test the mapping.
+An independently complex transformation can have unit cases, with real query/result coverage retained.
+A retry policy using scripted HTTP responses can be a unit test; the server's actual deletion and
+transaction behavior require component coverage. SQLite is a real database even when embedded.
+
+Remove unused database fixtures from a policy test instead of moving an expensive fixture into the
+unit suite. Keep one real integration path when it verifies wiring that the adapters cannot prove.
+For a worked decision process, see [Choosing tests](../../guides/backend/choosing-tests.md).
 
 ### Where a test goes
 
 A unit test mirrors the source path: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`. A component test goes in the topic directory of its area — a node metadata query in `backend/tests/component/graphql/metadata/`, not appended to `test_graphql_query.py` — and starts a new module there when no module fits, so the next coverage check finds it beside the tests of the same feature.
 
-### Running integration_docker tests locally
-
-Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
-
-These tests never need signed commits. Disable signing for the run by pointing git's config at `/dev/null`:
-
-```bash
-GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/tests/integration_docker/<file>
-```
-
-With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
+For local Docker-suite setup, see
+[Running integration_docker tests locally](../../guides/backend/choosing-tests.md#running-integration_docker-tests-locally).
 
 ## Test Documentation
 
@@ -61,30 +65,29 @@ A useful rule of thumb: if the test would still pass after we delete our impleme
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
 
-**Skip a test that duplicates coverage the suite already has.** Before writing one, find the existing coverage by tracing the code's callers to the test that asserts their output. A grep for the class or method name is not a coverage check: the component suite drives most core classes through the resolver or manager that calls them, so the name never appears in the test that covers it. The diff-count query is the worked case below: `DiffCountChanges` is reached through the diff-tree resolver and, via a wrapper, the diff coordinator, and nothing in the test tree names it — yet `backend/tests/component/graphql/diff/test_diff_tree_query.py` drives the resolver path and asserts the two untracked-change counts it produces against the real database; a unit test that hand-builds `QueryResult` rows for the same method re-asserts a mapping while missing the one thing that can break — what the driver actually returns. When the higher layer leaves a case unasserted, add the case to that test rather than opening a unit file beside it.
+### Redundant coverage
 
-```python
-# ❌ Bad - fabricates driver output, so it passes whatever the real query returns
-def test_each_row_is_mapped_to_its_branch() -> None:
-    query = DiffCountChanges(branch_names=["main", "feature"], diff_from=Timestamp(), diff_to=Timestamp())
-    query.results = [QueryResult(data=["main", 3], labels=["branch_name", "num_changes"])]
+Treat a test as redundant when removing it loses no distinct behavior, boundary, failure mode, or
+useful focused diagnosis that the retained tests assert. Shared setup, similar names, or execution
+of the same production lines do not establish redundancy.
 
-    assert query.get_num_changes_by_branch() == {"main": 3, "feature": 0}
+Before adding or removing a test, trace the callers to existing assertions. A search for the class
+name alone misses coverage through a resolver or manager. Name the retained test and the regression
+it catches; if the scenario is missing, extend the existing test at the tier that owns the behavior.
 
-# ✅ Good - the component test that already drives the query through the resolver asserts the
-#           field it populates, against the real database
-async def test_diff_tree_one_attr_change(db: InfrahubDatabase, default_branch: Branch, diff_branch: Branch) -> None:
-    ...
-    result = await graphql(
-        schema=params.schema,
-        source=DIFF_TREE_QUERY,
-        context_value=params.context,
-        root_value=None,
-        variable_values={"branch": diff_branch.name},
-    )
+- Keep unit policy cases and a component wiring case when they catch different failures. Do not
+  repeat the whole policy matrix through every caller or through the full stack.
+- Parameterize repeated setup and assertions when inputs exercise distinct cases. Parameterization
+  removes duplicated code; it does not make equivalent cases useful.
+- Remove a separate accessor test when a real query test already asserts that mapping. Add unit
+  cases only for independently meaningful transformation logic.
+- Keep client protocol assertions separate from CLI output/exit assertions: either can fail while
+  the other remains correct. Assert exact requests when a scripted transport cannot reject a wrong
+  method or URL by itself.
 
-    assert result.data["DiffTree"]["num_untracked_diff_changes"] == 2
-```
+Use the [redundancy review procedure](../../guides/backend/choosing-tests.md#review-overlapping-tests)
+to compare failure modes before deleting coverage. The rules for third-party behavior above and
+[independent expected values](#assert-exact-expectations) still apply.
 
 ## Async tests
 

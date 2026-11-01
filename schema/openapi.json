@@ -7454,18 +7454,6 @@
                         "title": "Ranges",
                         "description": "Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range"
                     },
-                    "number_pool_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Number Pool Id",
-                        "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned."
-                    },
                     "allocation_scope": {
                         "anyOf": [
                             {

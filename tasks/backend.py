@@ -906,6 +906,7 @@ class SdkSchemaGenerator:
 
         from infrahub.core.constants import ComputedAttributeKind, UpdateSupport, Visibility
         from infrahub.core.schema.definitions.internal import (
+            SchemaAttribute,
             attribute_schema,
             base_node_schema,
             generic_schema,
@@ -1002,12 +1003,14 @@ class SdkSchemaGenerator:
                 optional=True,
             ),
             ranges_field,
-            self._field(
-                "number_pool_id",
-                "Text",
-                "The ID of the numberpool associated with this attribute. "
+            # Only the schema synchronizer assigns the pool, so a schema load ignores a submitted id.
+            SchemaAttribute(
+                name="number_pool_id",
+                kind="Text",
+                description="The ID of the numberpool associated with this attribute. "
                 "Only set after the number pool has been provisioned.",
                 optional=True,
+                extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.READ},
             ),
             self._field(
                 "allocation_scope",
@@ -1202,6 +1205,8 @@ class SdkSchemaGenerator:
         return families
 
     def _pre_families(self, minimum: "Visibility", suffix: str) -> list[dict[str, Any]]:
+        from infrahub.core.schema.definitions.internal import SchemaAttribute
+
         base = f"AttributeParameters{suffix}"
         return [
             {"class_name": base, "parent": "BaseModel", "attributes": []},
@@ -1228,7 +1233,11 @@ class SdkSchemaGenerator:
             {
                 "class_name": f"NumberPoolParameters{suffix}",
                 "parent": base,
-                "attributes": self.number_pool_parameters_fields,
+                "attributes": [
+                    attribute
+                    for attribute in self.number_pool_parameters_fields
+                    if not isinstance(attribute, SchemaAttribute) or attribute.visibility >= minimum
+                ],
             },
             {
                 "class_name": f"DropdownChoice{suffix}",

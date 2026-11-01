@@ -13,6 +13,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub import config
+from infrahub.constants.database import MAX_SUPPORTED_INTEGER, MIN_SUPPORTED_INTEGER
 from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
@@ -849,6 +850,26 @@ class Integer(BaseAttribute):
         # Note that we might want to do this check directly in parent function.
         if value_to_check.__class__ != cls.type:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Refuse a number the database cannot store, then apply the checks shared by every attribute.
+
+        Raises:
+            ValidationError: When the value is outside the supported range of numbers, or fails a shared check.
+
+        """
+        value_to_check = value.value if schema.enum and isinstance(value, Enum) else value
+        if not MIN_SUPPORTED_INTEGER <= value_to_check <= MAX_SUPPORTED_INTEGER:
+            raise ValidationError(
+                {
+                    name: (
+                        f"{value} is outside the supported range of numbers "
+                        f"({MIN_SUPPORTED_INTEGER} to {MAX_SUPPORTED_INTEGER})"
+                    )
+                }
+            )
+        super().validate_content(value=value, name=name, schema=schema)
 
 
 class IntegerOptional(Integer):

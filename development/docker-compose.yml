@@ -32,6 +32,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_BROKER_NAMESPACE: ${INFRAHUB_BROKER_NAMESPACE:-infrahub}
   INFRAHUB_BROKER_PASSWORD: &broker_password ${INFRAHUB_BROKER_PASSWORD:-infrahub}
   INFRAHUB_BROKER_PORT:
+  INFRAHUB_BROKER_QUEUE_TYPE: ${INFRAHUB_BROKER_QUEUE_TYPE:-classic}
   INFRAHUB_BROKER_RABBITMQ_HTTP_PORT:
   INFRAHUB_BROKER_RPC_TIMEOUT: ${INFRAHUB_BROKER_RPC_TIMEOUT:-120}
   INFRAHUB_BROKER_TLS_CA_FILE:
@@ -48,6 +49,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_TLS_CA_FILE:
   INFRAHUB_CACHE_TLS_ENABLED: ${INFRAHUB_CACHE_TLS_ENABLED:-false}
   INFRAHUB_CACHE_TLS_INSECURE: ${INFRAHUB_CACHE_TLS_INSECURE:-false}
+  INFRAHUB_CACHE_URL:
   INFRAHUB_CACHE_USERNAME: &cache_username ${INFRAHUB_CACHE_USERNAME:-}
   INFRAHUB_CONFIG:
   INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-localhost}
@@ -185,7 +187,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        UV_VER: ${UV_VERSION:-0.11.8}
+        UV_VER: ${UV_VERSION:-0.13.6}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
@@ -242,7 +244,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        UV_VER: ${UV_VERSION:-0.11.8}
+        UV_VER: ${UV_VERSION:-0.13.6}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"

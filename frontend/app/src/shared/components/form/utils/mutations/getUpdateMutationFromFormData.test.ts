@@ -483,6 +483,24 @@ describe("getUpdateMutationFromFormData - test", () => {
         expected: { vlan_id: { value: 10, from_pool: null } },
       },
       {
+        title: "removes the number from its pool when the value tab is emptied",
+        defaultValue: trackedDefault,
+        formValue: { source: { type: "user" }, value: null } satisfies FormAttributeValue,
+        expected: { vlan_id: { value: null, from_pool: null } },
+      },
+      {
+        title: "removes the number from its pool when it is reset to the schema default",
+        defaultValue: trackedDefault,
+        formValue: { source: { type: "schema" }, value: 5 } satisfies FormAttributeValue,
+        expected: { vlan_id: { is_default: true, from_pool: null } },
+      },
+      {
+        title: "resets an untracked number to the schema default without naming a pool",
+        defaultValue: untrackedDefault,
+        formValue: { source: { type: "schema" }, value: 5 } satisfies FormAttributeValue,
+        expected: { vlan_id: { is_default: true } },
+      },
+      {
         title: "sends nothing when the value tab is visited and the pool default is restored",
         defaultValue: trackedDefault,
         formValue: trackedDefault,
