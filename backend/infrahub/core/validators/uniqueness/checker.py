@@ -35,8 +35,11 @@ if TYPE_CHECKING:
 def get_attribute_path_from_string(
     path: str, schema: MainSchemaTypes
 ) -> tuple[AttributeSchema | RelationshipSchema, str | None]:
-    if "__" in path:
-        name, property_name = path.split("__")
+    path_parts = path.split("__")
+    if len(path_parts) > 2:
+        raise ValueError(f"{path} is not valid on {schema.kind}")
+    if len(path_parts) == 2:
+        name, property_name = path_parts
     else:
         name, property_name = path, None
     attribute_schema = schema.get_attribute_or_none(name=name)

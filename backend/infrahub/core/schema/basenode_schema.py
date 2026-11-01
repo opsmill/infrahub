@@ -558,6 +558,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         else:
             raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
 
+        max_parts = 3 if relationship_piece else 2
+        if len(path_parts) > max_parts:
+            raise AttributePathParsingError(f"{path} has too many segments on schema {self.kind}")
+
         if relationship_piece and not schema:
             raise AttributePathParsingError("schema must be provided in order to check a path with a relationship")
 
