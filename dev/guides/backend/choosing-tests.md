@@ -38,9 +38,11 @@ test that assigns fabricated driver rows and checks a trivial accessor cannot de
 If the returned rows undergo an independently complex transformation, cover that transformation's
 cases in unit tests and keep the component assertion on real query output.
 
-For a policy test, remove unrelated setup. Test retry decisions with supplied failure and success
-responses; no database setup is needed. Test the server's database changes separately against real
-storage. Keep a representative integration test that verifies the client and server work together.
+When testing a decision rule, remove unrelated setup. For a retry policy, supply failure and success
+responses in a unit test and check the decisions, e.g., retry after a temporary failure, stop at the
+retry limit, and return immediately after success. No database setup is needed. Test the server's
+database changes separately against real storage. Keep a representative integration test that verifies
+the client and server work together.
 
 ## Review overlapping tests
 
