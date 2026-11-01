@@ -142,34 +142,38 @@ class NodeDeleteValidator:
         if not full_relationship_identifiers:
             return {node.get_id() for node in start_nodes}
 
-        query = await RelationshipGetByIdentifierQuery.init(
-            db=self.db, full_identifiers=full_relationship_identifiers, branch=self.branch, at=at
-        )
-        await query.execute(db=self.db)
-
-        peer_data_by_source_id = self._build_peer_data_map(peers_datas=query.get_peers())
+        peer_data_by_source_id: defaultdict[str, list[RelationshipPeersData]] = defaultdict(list)
         node_ids_to_check = {node.get_id() for node in start_nodes}
         node_ids_to_delete: set[str] = set()
-        dependent_node_details_map: dict[str, list[RelationshipPeersData]] = {}
+        dependent_node_details_map: defaultdict[str, list[RelationshipPeersData]] = defaultdict(list)
 
         while node_ids_to_check:
-            node_id = node_ids_to_check.pop()
-            node_ids_to_delete.add(node_id)
-            if node_id not in peer_data_by_source_id:
-                continue
-            peer_data_list = peer_data_by_source_id[node_id]
-            for peer_data in peer_data_list:
-                relationship_types = self.index.get_relationship_types(
-                    src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
-                )
-                peer_id = str(peer_data.destination_id)
-                if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-                    if peer_id not in node_ids_to_delete:
-                        node_ids_to_check.add(peer_id)
-                if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
-                    if peer_id not in dependent_node_details_map:
-                        dependent_node_details_map[peer_id] = []
-                    dependent_node_details_map[peer_id].append(peer_data)
+            query = await RelationshipGetByIdentifierQuery.init(
+                db=self.db,
+                full_identifiers=full_relationship_identifiers,
+                node_ids=sorted(node_ids_to_check),
+                # The relationships of the nodes checked in earlier rounds have been read already.
+                excluded_node_ids=sorted(node_ids_to_delete),
+                branch=self.branch,
+                at=at,
+            )
+            await query.execute(db=self.db)
+            self._add_to_peer_data_map(peer_data_by_source_id=peer_data_by_source_id, peers_datas=query.get_peers())
+
+            node_ids_to_delete.update(node_ids_to_check)
+            next_node_ids_to_check: set[str] = set()
+            for node_id in node_ids_to_check:
+                for peer_data in peer_data_by_source_id.pop(node_id, []):
+                    relationship_types = self.index.get_relationship_types(
+                        src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
+                    )
+                    peer_id = str(peer_data.destination_id)
+                    if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
+                        if peer_id not in node_ids_to_delete:
+                            next_node_ids_to_check.add(peer_id)
+                    if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
+                        dependent_node_details_map[peer_id].append(peer_data)
+            node_ids_to_check = next_node_ids_to_check
 
         missing_delete_ids = set(dependent_node_details_map.keys()) - node_ids_to_delete
         if not missing_delete_ids:
@@ -180,25 +184,19 @@ class NodeDeleteValidator:
         validation_error = self._build_validation_error(missing_delete_peers_data=missing_delete_peers_data)
         raise validation_error
 
-    def _build_peer_data_map(
-        self, peers_datas: Iterable[RelationshipPeersData]
-    ) -> dict[str, list[RelationshipPeersData]]:
-        peer_data_by_source_id: dict[str, list[RelationshipPeersData]] = {}
+    def _add_to_peer_data_map(
+        self,
+        peer_data_by_source_id: defaultdict[str, list[RelationshipPeersData]],
+        peers_datas: Iterable[RelationshipPeersData],
+    ) -> None:
         for peer_data in peers_datas:
-            source_id = str(peer_data.source_id)
-            if source_id not in peer_data_by_source_id:
-                peer_data_by_source_id[source_id] = []
-            peer_data_by_source_id[source_id].append(peer_data)
+            peer_data_by_source_id[str(peer_data.source_id)].append(peer_data)
             # check if this relationship also needs to be tracked going the other way
             if not self.index.get_relationship_types(
                 src_kind=peer_data.destination_kind, relationship_identifier=peer_data.identifier
             ):
                 continue
-            dest_id = str(peer_data.destination_id)
-            if dest_id not in peer_data_by_source_id:
-                peer_data_by_source_id[dest_id] = []
-            peer_data_by_source_id[dest_id].append(peer_data.reversed())
-        return peer_data_by_source_id
+            peer_data_by_source_id[str(peer_data.destination_id)].append(peer_data.reversed())
 
     def _build_validation_error(self, missing_delete_peers_data: Iterable[RelationshipPeersData]) -> ValidationError:
         validation_errors = []
