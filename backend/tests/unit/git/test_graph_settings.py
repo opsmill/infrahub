@@ -12,14 +12,24 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git.graph_settings import resolve_graph_settings
 
 
+@dataclass
 class StubString(String):
-    def __init__(self, value: str) -> None:
-        self.value = value
+    value: str
+    name: str = "value"
+    id: str | None = None
+    is_default: bool | None = None
+    is_from_profile: bool | None = None
+    is_inherited: bool | None = None
+    updated_at: str | None = None
+    is_protected: bool | None = None
+
+    @property
+    def is_loaded(self) -> bool:
+        return True
 
 
-class StubDropdown(Dropdown):
-    def __init__(self, value: str) -> None:
-        self.value = value
+class StubDropdown(StubString, Dropdown):
+    pass
 
 
 class StubRepositoryNode(CoreRepository):
