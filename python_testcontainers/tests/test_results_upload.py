@@ -9,10 +9,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import override
 
 from infrahub_testcontainers import performance_test as performance_test_module
 from infrahub_testcontainers.measurements import BRANCH_MERGE_TIME
-from infrahub_testcontainers.performance_test import InfrahubPerformanceTest, ResultsUploadError
+from infrahub_testcontainers.performance_test import DEFAULT_UPLOAD_RETRIES, InfrahubPerformanceTest, ResultsUploadError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -34,7 +35,8 @@ class Endpoint:
                 self.send_response(endpoint.statuses.pop(0) if endpoint.statuses else 200)
                 self.end_headers()
 
-            def log_message(self, *args: object) -> None:
+            @override
+            def log_message(self, format: str, *args: object) -> None:
                 pass
 
         self.server = HTTPServer(("127.0.0.1", 0), Handler)
@@ -64,8 +66,10 @@ def closed_port_url() -> str:
     return f"http://127.0.0.1:{port}/"
 
 
-def performance_test(url: str, **options: object) -> InfrahubPerformanceTest:
-    test = InfrahubPerformanceTest(results_url=url, **options)  # type: ignore[arg-type]
+def performance_test(
+    url: str, *, compress: bool = False, retries: int = DEFAULT_UPLOAD_RETRIES, result_file: Path | None = None
+) -> InfrahubPerformanceTest:
+    test = InfrahubPerformanceTest(results_url=url, compress=compress, retries=retries, result_file=result_file)
     test.initialize(name="test_results_upload")
     test.add_measurement(BRANCH_MERGE_TIME, value=100)
     return test
