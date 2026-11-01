@@ -136,6 +136,12 @@ class TestRepositoryDelivery:
         hook.write_text(REJECT_MAIN_HOOK, encoding="utf-8")
         hook.chmod(0o755)
 
+        # The host owns this disposable remote, but the Enterprise worker pushes as UID 1000.
+        # Both must be able to write Git metadata so the push reaches the rejection hook.
+        git_directory = remote / ".git"
+        for path in (git_directory, *git_directory.rglob("*")):
+            path.chmod(path.stat().st_mode | 0o022)
+
         await git_repo.add_to_infrahub(infrahub_client)
         repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)
         deadline = Deadline(f"the import of the branch {branch_name}")
