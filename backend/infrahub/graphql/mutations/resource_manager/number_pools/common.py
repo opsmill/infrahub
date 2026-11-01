@@ -7,9 +7,10 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from infrahub.core.node.lock_utils import NUMBER_POOL_TARGET_LOCK_NAMESPACE, RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.query.resource_manager import NumberPoolGetHeldOutsideRanges
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_overlap import NumberPoolOverlapChecker
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
     validate_ranges_within_attribute,
@@ -142,6 +143,47 @@ def _holding_branch(branches: Sequence[str]) -> str:
 
 def pool_lock(pool_id: str) -> lock.InfrahubLock:
     return lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE)
+
+
+def pool_target_lock(kind: str, attribute_name: str) -> lock.InfrahubLock:
+    """Return the lock serializing range writes of every pool allocating numbers for the kind's attribute.
+
+    Taken before the lock of a pool, never after.
+    """
+    return lock.registry.get(name=f"{kind}.{attribute_name}", namespace=NUMBER_POOL_TARGET_LOCK_NAMESPACE)
+
+
+async def refuse_ranges_overlapping_other_pools(
+    db: InfrahubDatabase, pool: Node, attribute: AttributeSchema, ranges: Sequence[NumberRangeBounds]
+) -> None:
+    """Refuse pool ranges overlapping a range of another pool allocating numbers for the same unique attribute.
+
+    A pool serves every branch, so the attribute counts as unique when it is unique on the request's branch or on the
+    default branch.
+
+    Raises:
+        ValidationError: Naming every other pool's range that one of `ranges` overlaps.
+
+    """
+    kind = str(pool.get_attribute("node").value)
+    await NumberPoolOverlapChecker(pool_reader=NumberPoolRepository(db=db)).check(
+        pool_id=pool.get_id(),
+        pool_name=str(pool.get_attribute("name").value),
+        kind=kind,
+        attribute=_unique_on_default_branch_or(attribute=attribute, kind=kind),
+        ranges=ranges,
+    )
+
+
+def _unique_on_default_branch_or(attribute: AttributeSchema, kind: str) -> AttributeSchema:
+    """Return the default branch's schema of the attribute when only that branch makes it unique, else `attribute`."""
+    if attribute.unique:
+        return attribute
+    default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+    if not default_schema_branch.has(name=kind):
+        return attribute
+    default_attribute = default_schema_branch.get(name=kind, duplicate=False).get_attribute_or_none(name=attribute.name)
+    return default_attribute if default_attribute is not None and default_attribute.unique else attribute
 
 
 def range_bounds(ranges: Sequence[CoreNumberPoolRange]) -> list[NumberRangeBounds]:

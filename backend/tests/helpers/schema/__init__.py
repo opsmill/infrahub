@@ -19,7 +19,7 @@ from .recompute import CASCADE_NODE, CYCLE_A, CYCLE_B
 from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from .tag import TAG
 from .thing import THING
-from .ticket import TICKET
+from .ticket import SHARED_NUMBER_TICKET, TICKET
 from .tshirt import TSHIRT
 from .widget import WIDGET
 
@@ -110,6 +110,7 @@ __all__ = [
     "RACK",
     "RACK_SCHEMA",
     "SFP",
+    "SHARED_NUMBER_TICKET",
     "SITE",
     "SLOT",
     "TAG",

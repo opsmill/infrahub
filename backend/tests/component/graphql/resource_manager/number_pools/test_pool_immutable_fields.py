@@ -57,7 +57,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         """Upsert with all identical values (including node/node_attribute) succeeds."""
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
@@ -101,7 +101,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         """Upsert with unchanged node/node_attribute but updated range succeeds and persists the new range."""
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
@@ -150,7 +150,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         result = await execute(
             db=db,
@@ -175,7 +175,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
         await pool.new(db=db, name="pool-upsert-multi", node="TestingTicket", node_attribute="ticket_id")
@@ -207,7 +207,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         """CoreNumberPoolUpdate succeeds when node/node_attribute are present but unchanged.
 
@@ -257,7 +257,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         """CoreNumberPoolUpdate rejects a payload that changes node_attribute."""
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
@@ -296,7 +296,7 @@ class TestNumberPoolUpsertImmutableFields:
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
-        loaded_ticket_schema_scope_class: None,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         """CoreNumberPoolUpdate rejects a payload that changes node."""
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
@@ -332,7 +332,10 @@ class TestNumberPoolUpsertImmutableFields:
         assert str(update_changed_node.errors[0].message) == "The fields 'node' or 'node_attribute' can't be changed."
 
     async def test_number_pool_update(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, loaded_ticket_schema_scope_class: None
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        loaded_shared_number_ticket_schema_scope_class: None,
     ) -> None:
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
 

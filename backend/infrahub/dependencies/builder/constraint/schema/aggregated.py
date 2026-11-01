@@ -15,6 +15,7 @@ from .inherit_from import SchemaInheritFromConstraintDependency
 from .node_attribute import SchemaNodeAttributeAddConstraintDependency
 from .node_hierarchy import SchemaNodeHierarchyConstraintDependency
 from .node_relationship import SchemaNodeRelationshipAddConstraintDependency
+from .number_pool_overlap import SchemaNumberPoolOverlapConstraintDependency
 from .number_pool_scope import SchemaNumberPoolScopeConstraintDependency
 from .relationship_count import SchemaRelationshipCountConstraintDependency
 from .relationship_optional import SchemaRelationshipOptionalConstraintDependency
@@ -50,6 +51,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaRelationshipPeerConstraintDependency.build(context=context),
                 SchemaRelationshipPeerParentConstraintDependency.build(context=context),
                 SchemaNumberPoolScopeConstraintDependency.build(context=context),
+                SchemaNumberPoolOverlapConstraintDependency.build(context=context),
             ],
             db=context.db,
             branch=context.branch,

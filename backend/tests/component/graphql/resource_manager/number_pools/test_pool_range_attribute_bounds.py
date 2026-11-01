@@ -11,7 +11,7 @@ from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import SHARED_NUMBER_TICKET, load_schema
 
 from .helpers import (
     CREATE_NUMBER_POOL_WITH_BOUNDS,
@@ -92,7 +92,7 @@ class TestNumberPoolRangeAttributeBounds:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> None:
-        ticket = deepcopy(TICKET)
+        ticket = deepcopy(SHARED_NUMBER_TICKET)
         ticket.get_attribute(name="ticket_id").parameters = NumberAttributeParameters(
             min_value=MIN_VALUE, max_value=MAX_VALUE
         )

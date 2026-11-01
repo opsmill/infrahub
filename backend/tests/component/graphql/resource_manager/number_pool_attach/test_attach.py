@@ -239,9 +239,8 @@ class TestNumberPoolAttach:
     async def test_naming_another_pool_moves_the_attribute_and_allocates_from_it(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        # Pool B overlaps pool A, so a number left behind in A would still fall inside A's range and be reported.
         pool_a = await new_pool(db=db, name="re-pool-a", start_range=600, end_range=649)
-        pool_b = await new_pool(db=db, name="re-pool-b", start_range=600, end_range=699)
+        pool_b = await new_pool(db=db, name="re-pool-b", start_range=650, end_range=699)
         ticket = await create_ticket(
             db=db, branch=main_branch, title="re-pool", ticket_id={"from_pool": {"id": pool_a.id}}
         )
@@ -251,16 +250,16 @@ class TestNumberPoolAttach:
             db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool_b.id}}
         )
 
-        assert moved["ticket_id"]["value"] == 600, "pool B reads only its own records, so it offers the lowest number"
+        assert moved["ticket_id"]["value"] == 650
         assert await open_is_reserved_edges(db=db, pool=pool_a) == set()
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_a) == []
-        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (600,))}
+        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (650,))}
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_b) == [
-            (ticket["id"], "main", 600, "allocated")
+            (ticket["id"], "main", 650, "allocated")
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_b.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == pool_source(600, pool_b)
+        assert reads["ticket_id"] == pool_source(650, pool_b)
 
     async def test_naming_another_pool_with_a_number_outside_the_first_pool_moves_the_attribute(
         self, db: InfrahubDatabase, main_branch: Branch
