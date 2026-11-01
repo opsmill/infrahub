@@ -24,7 +24,6 @@ describe("BulkMutateGroups Component", () => {
   const groupSchema = generateNodeSchema({ kind: "CoreGroup" });
 
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(getRelationships).mockResolvedValue(mockGroups);
     store.set(nodeSchemasAtom, [groupSchema]);
   });

@@ -44,7 +44,11 @@ export function ScrollArea({
       className={cn("relative overflow-hidden", className)}
       {...props}
     >
-      <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]" ref={ref}>
+      <ScrollAreaPrimitive.Viewport
+        // `isolate` keeps z-indexed content, such as sticky table cells, from painting over the overlay scrollbars.
+        className="isolate size-full rounded-[inherit]"
+        ref={ref}
+      >
         {children}
       </ScrollAreaPrimitive.Viewport>
       {scrollX && <ScrollBar orientation="horizontal" className={scrollBarClassName} />}

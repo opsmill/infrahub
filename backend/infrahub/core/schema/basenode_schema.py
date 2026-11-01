@@ -128,6 +128,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return self.namespace + self.name
 
     @property
+    def concrete_kinds(self) -> tuple[str, ...]:
+        """The concrete kinds this schema stands for: itself, unless a generic expands to its implementations."""
+        return (self.kind,)
+
+    @property
     def menu_title(self) -> str:
         return self.label or self.name
 

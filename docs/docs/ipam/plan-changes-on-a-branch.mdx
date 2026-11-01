@@ -18,7 +18,7 @@ IPAM hierarchy reconciliation runs immediately after each mutation on a branch, 
 
 Infrahub handles one allocation request at a time for each resource pool, on any branch and across every Infrahub worker. Two clients requesting the next address or prefix from the same pool at the same time get different values. See [Concurrent requests](../resource-manager/overview.mdx#concurrent-requests) on the Resource Manager page.
 
-Creating or updating a prefix with an explicit value is locked on any branch as well, so two clients cannot create the same prefix concurrently. Creating or updating an address with an explicit value is only locked on the default branch — on other branches, concurrent clients can create the same address value without contention.
+Creating or updating a prefix with an explicit value is locked on any branch as well, so two clients cannot create the same prefix concurrently. Creating or updating an address with an explicit value is locked per namespace only on the default branch, so on other branches concurrent clients creating different addresses do not wait for each other. When the address schema declares a uniqueness constraint, creates of the same address value are locked on any branch: one create succeeds and the others are rejected with the uniqueness error.
 
 ## Worked example: redesign a subnet on a branch
 

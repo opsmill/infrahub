@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
@@ -17,10 +17,6 @@ describe("ObjectTableToolbar Component", () => {
   ] as NodeObject[];
 
   const mockOnClose = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   test("renders correctly with selected rows", async () => {
     // GIVEN

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { LOGIN_ERRORS } from "@/entities/authentication/domain/model/login-error";
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -17,10 +17,6 @@ beforeEach(() => {
     setToken,
     user: null,
   });
-});
-
-afterEach(() => {
-  vi.clearAllMocks();
 });
 
 describe("CredentialsForm", () => {

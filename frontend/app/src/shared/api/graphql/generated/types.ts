@@ -21831,7 +21831,7 @@ export type MutationSchemaEnumRemoveArgs = {
 export type NestedEdgedBuiltinIpAddress = {
   __typename: 'NestedEdgedBuiltinIPAddress';
   node: Maybe<BuiltinIpAddress>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21840,7 +21840,7 @@ export type NestedEdgedBuiltinIpAddress = {
 export type NestedEdgedBuiltinIpNamespace = {
   __typename: 'NestedEdgedBuiltinIPNamespace';
   node: Maybe<BuiltinIpNamespace>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21849,7 +21849,7 @@ export type NestedEdgedBuiltinIpNamespace = {
 export type NestedEdgedBuiltinIpPrefix = {
   __typename: 'NestedEdgedBuiltinIPPrefix';
   node: Maybe<BuiltinIpPrefix>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21894,7 +21894,7 @@ export type NestedEdgedCoreAccountRole = {
 export type NestedEdgedCoreAction = {
   __typename: 'NestedEdgedCoreAction';
   node: Maybe<CoreAction>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21930,7 +21930,7 @@ export type NestedEdgedCoreArtifactDefinition = {
 export type NestedEdgedCoreArtifactTarget = {
   __typename: 'NestedEdgedCoreArtifactTarget';
   node: Maybe<CoreArtifactTarget>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21957,7 +21957,7 @@ export type NestedEdgedCoreArtifactValidator = {
 export type NestedEdgedCoreBasePermission = {
   __typename: 'NestedEdgedCoreBasePermission';
   node: Maybe<CoreBasePermission>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -21984,7 +21984,7 @@ export type NestedEdgedCoreChangeThread = {
 export type NestedEdgedCoreCheck = {
   __typename: 'NestedEdgedCoreCheck';
   node: Maybe<CoreCheck>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22002,7 +22002,7 @@ export type NestedEdgedCoreCheckDefinition = {
 export type NestedEdgedCoreComment = {
   __typename: 'NestedEdgedCoreComment';
   node: Maybe<CoreComment>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22011,7 +22011,7 @@ export type NestedEdgedCoreComment = {
 export type NestedEdgedCoreCredential = {
   __typename: 'NestedEdgedCoreCredential';
   node: Maybe<CoreCredential>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22065,7 +22065,7 @@ export type NestedEdgedCoreFileCheck = {
 export type NestedEdgedCoreFileObject = {
   __typename: 'NestedEdgedCoreFileObject';
   node: Maybe<CoreFileObject>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22146,7 +22146,7 @@ export type NestedEdgedCoreGeneratorValidator = {
 export type NestedEdgedCoreGenericAccount = {
   __typename: 'NestedEdgedCoreGenericAccount';
   node: Maybe<CoreGenericAccount>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22155,7 +22155,7 @@ export type NestedEdgedCoreGenericAccount = {
 export type NestedEdgedCoreGenericRepository = {
   __typename: 'NestedEdgedCoreGenericRepository';
   node: Maybe<CoreGenericRepository>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22191,7 +22191,7 @@ export type NestedEdgedCoreGraphQlQueryGroup = {
 export type NestedEdgedCoreGroup = {
   __typename: 'NestedEdgedCoreGroup';
   node: Maybe<CoreGroup>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22227,7 +22227,7 @@ export type NestedEdgedCoreIpAddressPool = {
 export type NestedEdgedCoreIpPool = {
   __typename: 'NestedEdgedCoreIPPool';
   node: Maybe<CoreIpPool>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22245,7 +22245,7 @@ export type NestedEdgedCoreIpPrefixPool = {
 export type NestedEdgedCoreKeyValue = {
   __typename: 'NestedEdgedCoreKeyValue';
   node: Maybe<CoreKeyValue>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22254,7 +22254,7 @@ export type NestedEdgedCoreKeyValue = {
 export type NestedEdgedCoreMenu = {
   __typename: 'NestedEdgedCoreMenu';
   node: Maybe<CoreMenu>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22272,7 +22272,7 @@ export type NestedEdgedCoreMenuItem = {
 export type NestedEdgedCoreNode = {
   __typename: 'NestedEdgedCoreNode';
   node: Maybe<CoreNode>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22290,7 +22290,7 @@ export type NestedEdgedCoreNodeTriggerAttributeMatch = {
 export type NestedEdgedCoreNodeTriggerMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerMatch';
   node: Maybe<CoreNodeTriggerMatch>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22326,7 +22326,7 @@ export type NestedEdgedCoreNumberPool = {
 export type NestedEdgedCoreObjectComponentTemplate = {
   __typename: 'NestedEdgedCoreObjectComponentTemplate';
   node: Maybe<CoreObjectComponentTemplate>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22344,7 +22344,7 @@ export type NestedEdgedCoreObjectPermission = {
 export type NestedEdgedCoreObjectTemplate = {
   __typename: 'NestedEdgedCoreObjectTemplate';
   node: Maybe<CoreObjectTemplate>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22371,7 +22371,7 @@ export type NestedEdgedCorePasswordCredential = {
 export type NestedEdgedCoreProfile = {
   __typename: 'NestedEdgedCoreProfile';
   node: Maybe<CoreProfile>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22425,7 +22425,7 @@ export type NestedEdgedCoreRepositoryValidator = {
 export type NestedEdgedCoreResourcePool = {
   __typename: 'NestedEdgedCoreResourcePool';
   node: Maybe<CoreResourcePool>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22488,7 +22488,7 @@ export type NestedEdgedCoreStaticKeyValue = {
 export type NestedEdgedCoreTaskTarget = {
   __typename: 'NestedEdgedCoreTaskTarget';
   node: Maybe<CoreTaskTarget>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22497,7 +22497,7 @@ export type NestedEdgedCoreTaskTarget = {
 export type NestedEdgedCoreThread = {
   __typename: 'NestedEdgedCoreThread';
   node: Maybe<CoreThread>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22533,7 +22533,7 @@ export type NestedEdgedCoreTransformPython = {
 export type NestedEdgedCoreTransformation = {
   __typename: 'NestedEdgedCoreTransformation';
   node: Maybe<CoreTransformation>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22542,7 +22542,7 @@ export type NestedEdgedCoreTransformation = {
 export type NestedEdgedCoreTriggerRule = {
   __typename: 'NestedEdgedCoreTriggerRule';
   node: Maybe<CoreTriggerRule>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22560,7 +22560,7 @@ export type NestedEdgedCoreUserValidator = {
 export type NestedEdgedCoreValidator = {
   __typename: 'NestedEdgedCoreValidator';
   node: Maybe<CoreValidator>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22569,7 +22569,7 @@ export type NestedEdgedCoreValidator = {
 export type NestedEdgedCoreWebhook = {
   __typename: 'NestedEdgedCoreWebhook';
   node: Maybe<CoreWebhook>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22578,7 +22578,7 @@ export type NestedEdgedCoreWebhook = {
 export type NestedEdgedCoreWeightedPoolResource = {
   __typename: 'NestedEdgedCoreWeightedPoolResource';
   node: Maybe<CoreWeightedPoolResource>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22641,7 +22641,7 @@ export type NestedEdgedIpamNamespace = {
 export type NestedEdgedLineageOwner = {
   __typename: 'NestedEdgedLineageOwner';
   node: Maybe<LineageOwner>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22650,7 +22650,7 @@ export type NestedEdgedLineageOwner = {
 export type NestedEdgedLineageSource = {
   __typename: 'NestedEdgedLineageSource';
   node: Maybe<LineageSource>;
-  node_metadata: InfrahubNodeMetadata;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };

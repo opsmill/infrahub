@@ -32,6 +32,15 @@ def test_workflow_definition_default_priority(workflow: WorkflowDefinition) -> N
     assert isinstance(workflow.default_priority, WorkflowPriority)
 
 
+@pytest.mark.parametrize(
+    "workflow",
+    [pytest.param(workflow, id=workflow.name) for workflow in get_workflows() if workflow.cron == "* * * * *"],
+)
+def test_every_minute_workflow_does_not_persist_result(workflow: WorkflowDefinition) -> None:
+    """Validate that a workflow scheduled every minute does not store a result for each run."""
+    assert workflow.load_function().persist_result is False
+
+
 def test_workflow_definition_flow_names() -> None:
     """Validate that each workflow has a unique name defined."""
     flow_names = [workflow.name for workflow in get_workflows()]

@@ -367,7 +367,7 @@ async def sync_repository_from_origin(
         log.info(exc.message)
 
 
-@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
+@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories", persist_result=False)
 async def sync_remote_repositories() -> None:
     db = await get_database()
 

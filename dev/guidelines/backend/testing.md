@@ -6,29 +6,35 @@ Testing standards for the Python backend.
 
 ## Test Organization
 
-Tests are organized by type:
+Choose the smallest tier that can detect the failure you care about. Classify the behavior and the
+collaborators it exercises, not the source module's name or the number of classes it calls.
 
-- **Unit tests** (`tests/unit/`): No external dependencies, only file access
-- **Component tests** (`tests/component/`): Small scope but may require database access
-- **Functional tests** (`tests/functional/`): Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
-- **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
-- **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
+| Tier | Behavior it proves |
+|------|--------------------|
+| Unit (`tests/unit/`) | In-memory decisions, parsing, validation, and transformations; no database or network access. Local files and injected recording/failing adapters are allowed. |
+| Component (`tests/component/`) | A focused component working with real infrastructure: query results, persistence, constraints, cache operations, or lock coordination. |
+| Functional (`tests/functional/`) | Several components working together in one process, with async tasks executed inline. |
+| Integration Docker (`tests/integration_docker/`) | Behavior requiring the deployed services or separate workers. |
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it. A `Query` subclass is the standing example: its Cypher and the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through the resolver or manager that calls it — never by a unit test that hand-builds `QueryResult` rows.
+`tests/integration/` also contains older functional tests; see the
+[infrastructure reference](../../knowledge/backend/testing.md#integration-tests-backendtestsintegration).
 
-### Running integration_docker tests locally
+A database query and its result mapping belong in a component test against the real database,
+directly or through their caller. Do not fabricate `QueryResult` rows to unit-test the mapping.
+An independently complex transformation can have unit cases, with real query/result coverage retained.
+A retry policy using scripted HTTP responses can be a unit test; the server's actual deletion and
+transaction behavior require component coverage. SQLite is a real database even when embedded.
 
-Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
+Remove unused database fixtures from a policy test instead of moving an expensive fixture into the
+unit suite. Keep one real integration path when it verifies wiring that the adapters cannot prove.
+For a worked decision process, see [Choosing tests](../../guides/backend/choosing-tests.md).
 
-These tests never need signed commits. Disable signing for the run by pointing git's config at `/dev/null`:
+### Where a test goes
 
-```bash
-GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/tests/integration_docker/<file>
-```
+A unit test mirrors the source path: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`. A component test goes in the topic directory of its area — a node metadata query in `backend/tests/component/graphql/metadata/`, not appended to `test_graphql_query.py` — and starts a new module there when no module fits, so the next coverage check finds it beside the tests of the same feature.
 
-With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
-
-Test files mirror source structure: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`
+For local Docker-suite setup, see
+[Running integration_docker tests locally](../../guides/backend/choosing-tests.md#running-integration_docker-tests-locally).
 
 ## Test Documentation
 
@@ -59,30 +65,32 @@ A useful rule of thumb: if the test would still pass after we delete our impleme
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
 
-**Skip a test that duplicates coverage the suite already has.** Before writing one, find the existing coverage by tracing the code's callers to the test that asserts their output. A grep for the class or method name is not a coverage check: the component suite drives most core classes through the resolver or manager that calls them, so the name never appears in the test that covers it. The diff-count query is the worked case below: `DiffCountChanges` is reached through the diff-tree resolver and, via a wrapper, the diff coordinator, and nothing in the test tree names it — yet `backend/tests/component/graphql/diff/test_diff_tree_query.py` drives the resolver path and asserts the two untracked-change counts it produces against the real database; a unit test that hand-builds `QueryResult` rows for the same method re-asserts a mapping while missing the one thing that can break — what the driver actually returns. When the higher layer leaves a case unasserted, add the case to that test rather than opening a unit file beside it.
+### Redundant coverage
 
-```python
-# ❌ Bad - fabricates driver output, so it passes whatever the real query returns
-def test_each_row_is_mapped_to_its_branch() -> None:
-    query = DiffCountChanges(branch_names=["main", "feature"], diff_from=Timestamp(), diff_to=Timestamp())
-    query.results = [QueryResult(data=["main", 3], labels=["branch_name", "num_changes"])]
+Treat a test as redundant when removing it loses no distinct behavior, boundary, failure mode, or
+useful focused diagnosis that the retained tests assert. Shared setup, similar names, or execution
+of the same production lines do not establish redundancy.
 
-    assert query.get_num_changes_by_branch() == {"main": 3, "feature": 0}
+Before adding or removing a test, trace the callers to existing assertions. A search for the class
+name alone misses coverage through a resolver or manager. Name the retained test and the regression
+it catches; if the scenario is missing, extend the existing test at the tier that owns the behavior.
 
-# ✅ Good - the component test that already drives the query through the resolver asserts the
-#           field it populates, against the real database
-async def test_diff_tree_one_attr_change(db: InfrahubDatabase, default_branch: Branch, diff_branch: Branch) -> None:
-    ...
-    result = await graphql(
-        schema=params.schema,
-        source=DIFF_TREE_QUERY,
-        context_value=params.context,
-        root_value=None,
-        variable_values={"branch": diff_branch.name},
-    )
+- Keep unit policy cases and a component wiring case when they catch different failures. Do not
+  repeat the whole policy matrix through every caller or through the full stack.
+- Parameterize unit tests when inputs exercise distinct cases with the same setup and assertions.
+  Measure component-test setup and suite time before expanding the cases; avoid parameterizing
+  functional and integration tests by default. See
+  [Account for setup cost](../../guides/backend/choosing-tests.md#account-for-setup-cost) for fixture
+  sharing and the tradeoffs of combining checks. Equivalent cases still add no useful coverage.
+- Remove a separate accessor test when a real query test already asserts that mapping. Add unit
+  cases only for independently meaningful transformation logic.
+- Keep client protocol assertions separate from CLI output/exit assertions: either can fail while
+  the other remains correct. Assert exact requests when a scripted transport cannot reject a wrong
+  method or URL by itself.
 
-    assert result.data["DiffTree"]["num_untracked_diff_changes"] == 2
-```
+Use the [redundancy review procedure](../../guides/backend/choosing-tests.md#review-overlapping-tests)
+to compare failure modes before deleting coverage. The rules for third-party behavior above and
+[independent expected values](#assert-exact-expectations) still apply.
 
 ## Async tests
 
@@ -114,39 +122,28 @@ coordinator = build_coordinator(db)
 await asyncio.gather(coordinator.update(), coordinator.update())
 ```
 
-Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so does GraphQL execution. A component a test calls directly does not.
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so do GraphQL query resolvers (see [GraphQL Execution Paths](../../knowledge/backend/graphql-execution.md#a-query-resolver-opens-its-own-database-session)). A component a test calls directly does not.
 
 ## Test Schemas
 
-Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
+Search for an existing schema before defining one in a test, and search by the shape the test needs (an optional cardinality-one relationship to a generic, a hierarchy), not by name. Shared schemas live in two places:
 
-### Available helpers
+- [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/): node and generic constants (`CAR`, `DEVICE`, `TAG`, `PERSON`) and `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`), registered with the `load_schema` helper
+- the schema fixtures in `backend/tests/conftest.py` and `backend/tests/component/conftest.py`, such as `car_person_schema`, `generic_car_person_schema` and `hierarchical_location_schema`
 
-The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, etc.) as well as pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`, `SNOW_TICKET_SCHEMA`, etc.). A `load_schema` helper function handles registering a schema in the branch registry during tests.
+```python
+# ❌ Bad - a new inline schema for an optional cardinality-one relationship to a generic
+raw_schema = {"generics": [{"name": "Vehicle", ...}], "nodes": [{"name": "Rider", ...}]}
 
-### Guidelines
+# ✅ Good - generic_car_person_schema already has one: TestPerson.car -> TestCar
+async def test_person_without_car(db: InfrahubDatabase, default_branch: Branch, generic_car_person_schema: None) -> None: ...
+```
 
-1. **Check existing helpers first.** Before defining a new schema in a test file, look at the schemas already available in `tests/helpers/schema/`. An existing schema may already cover your needs.
+When a shared schema almost fits, `deepcopy` it and change the copy (`car_with_mileage = deepcopy(CAR)`, then append the attribute). Never modify a shared schema for one test, because every test that uses it changes too. Keep a schema that only one module needs in that module, and promote it to `tests/helpers/schema/` or a `conftest.py` only when several modules use it.
 
-2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes instead of writing a new schema from scratch:
+## Share one schema and data load across a class
 
-   ```python
-   from copy import deepcopy
-
-   from infrahub.core.schema import AttributeSchema
-   from tests.helpers.schema import CAR
-
-   car_with_mileage = deepcopy(CAR)
-   car_with_mileage.attributes.append(
-       AttributeSchema(name="mileage", kind="Number")
-   )
-   ```
-
-   This avoids modifying the shared helper (which would risk breaking other tests) while keeping the test schema close to the canonical definition.
-
-3. **Only create new helpers for broadly useful schemas.** If a schema is only needed by a single test file, keep it local to that file. Promote a local schema to `tests/helpers/schema/` only when multiple test modules would benefit from sharing it.
-
-4. **Never modify an existing helper schema to satisfy a single test.** Changes to shared schemas affect every test that uses them. If an existing helper almost fits but not quite, use `deepcopy` as shown above.
+When several tests or parametrized cases read the same schema and data, put them in a class and build that data once in `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants, then vary the query per method or case. A function-scoped schema or data fixture runs again for every test and every parametrized case. A class-scoped fixture cannot request a function-scoped one, so a schema fixture without a `_scope_class` variant needs one added beside it. `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters` follows this pattern; the fixture chain is in [Backend Testing — Schema Fixtures](../../knowledge/backend/testing.md#schema-fixtures).
 
 ## Pin settings the test depends on
 

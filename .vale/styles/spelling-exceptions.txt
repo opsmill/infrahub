@@ -24,12 +24,14 @@ backfills
 backpressure
 bcrypt
 Biome
+Bitnami
 bool
 boolean
 booleans
 Buildkite
 cAdvisor
 Ceph
+certifi
 changelog
 chatbot
 conftest
@@ -79,6 +81,7 @@ Docusaurus
 dropdown
 DSSE
 edit_default_branch
+emSign
 enablement
 end_user
 Entra
@@ -106,6 +109,7 @@ hardcoding
 hfid
 HFIDs
 hostname
+hostnames
 Http
 human_friendly_id
 id_token

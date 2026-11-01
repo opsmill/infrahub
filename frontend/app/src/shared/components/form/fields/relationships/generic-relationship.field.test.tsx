@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
@@ -54,10 +54,6 @@ describe("GenericRelationshipField", () => {
     store.set(nodeSchemasAtom, [deviceA, deviceB]);
     store.set(genericSchemasAtom, [genericPeer]);
     vi.mocked(getRelationships).mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   const defaultProps: DynamicRelationshipFieldProps = {

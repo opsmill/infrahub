@@ -666,8 +666,6 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.locks.tasks",
     function="clean_up_deadlocks",
-    concurrency_limit=1,
-    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
     default_priority=WorkflowPriority.HIGH,
 )
 

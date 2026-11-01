@@ -8,6 +8,7 @@ from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import GenericSchema
 
 from ..interface import ConstraintCheckerInterface
+from ..renamed_kinds import get_kinds_with_previous_names
 from ..shared import RelationshipSchemaValidatorQuery
 
 if TYPE_CHECKING:
@@ -21,17 +22,16 @@ if TYPE_CHECKING:
 class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch, duplicate=False)
-        allowed_peer_kinds = [peer_schema.kind]
-        if isinstance(peer_schema, GenericSchema):
-            allowed_peer_kinds += peer_schema.used_by
+    def __init__(self, allowed_peer_kinds: list[str], **kwargs: Any) -> None:
+        self.allowed_peer_kinds = allowed_peer_kinds
+        super().__init__(**kwargs)
 
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         self.params["relationship_id"] = self.relationship_schema.identifier
-        self.params["allowed_peer_kinds"] = allowed_peer_kinds
+        self.params["allowed_peer_kinds"] = self.allowed_peer_kinds
 
         # ruff: noqa: E501
         query = """
@@ -102,6 +102,8 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
 class RelationshipPeerChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipPeerUpdateValidatorQuery]
+    # Writing a relationship already checks the peer kind, so only a change to the peer in the schema can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
@@ -114,13 +116,30 @@ class RelationshipPeerChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
+    def _get_allowed_peer_kinds(self, request: SchemaConstraintValidatorRequest) -> list[str]:
+        if not request.schema_path.field_name:
+            raise ValueError("field_name is not defined")
+        relationship = request.node_schema.get_relationship(name=request.schema_path.field_name)
+        # The peer can be a kind added by the same schema change, so it is read from the candidate schema.
+        peer_schema = request.schema_branch.get(name=relationship.peer, duplicate=False)
+        candidate_kinds = [peer_schema.kind]
+        if isinstance(peer_schema, GenericSchema):
+            candidate_kinds += peer_schema.used_by
+
+        return get_kinds_with_previous_names(db=self.db, request=request, kinds=candidate_kinds)
+
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
+        allowed_peer_kinds = self._get_allowed_peer_kinds(request=request)
 
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                allowed_peer_kinds=allowed_peer_kinds,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

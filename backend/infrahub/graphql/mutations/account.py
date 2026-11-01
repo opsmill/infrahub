@@ -21,6 +21,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import (
+    AuthorizationError,
     DatabaseError,
     NodeNotFoundError,
     PermissionDeniedError,
@@ -73,7 +74,7 @@ class AccountMixin:
         graphql_context: GraphqlContext = info.context
 
         if not graphql_context.account_session:
-            raise ValueError("An account_session is mandatory to execute this mutation")
+            raise AuthorizationError("An account_session is mandatory to execute this mutation")
 
         if graphql_context.account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")

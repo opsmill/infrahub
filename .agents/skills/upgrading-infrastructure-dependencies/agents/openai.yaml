@@ -1,0 +1,7 @@
+---
+interface:
+  display_name: "Upgrading Infrastructure Dependencies"
+  short_description: "Upgrade Neo4j, Prefect, Redis, RabbitMQ, PostgreSQL or NATS in all three repositories"
+  default_prompt: "Use $upgrading-infrastructure-dependencies to upgrade Neo4j to the latest version."
+policy:
+  allow_implicit_invocation: true

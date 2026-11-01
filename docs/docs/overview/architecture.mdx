@@ -323,7 +323,7 @@ A highly available deployment eliminates single points of failure through redund
 
 - **Neo4j Cluster**: 3+ nodes for graph database redundancy with automatic failover
 - **Redis Sentinel**: Automatic detection of master failures and promotion of replicas
-- **RabbitMQ Cluster**: Message bus redundancy with mirrored queues
+- **RabbitMQ Cluster**: Message bus redundancy with quorum queues replicated across the cluster nodes
 - **PostgreSQL Replication**: Task manager database with primary-replica setup
 - **Multiple API/Worker Instances**: Distributed across multiple availability zones
 - **Load Balancers**: Redundant load balancers for API layer access

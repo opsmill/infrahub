@@ -20,11 +20,14 @@ from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch.tasks import post_process_branch_merge
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
@@ -40,7 +43,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
     from pathlib import Path
 
     from fast_depends import Provider
@@ -50,6 +53,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
+    from infrahub.workflows.constants import WorkflowPriority
+    from infrahub.workflows.models import WorkflowDefinition
     from tests.adapters.cache import MemoryCache
 
 SOURCE_BRANCH = "feature/merge-selective-regen"
@@ -61,6 +67,8 @@ UNRELATED_KIND = "TestUnrelated"
 FINGERPRINT = "fingerprint-computed"
 TRANSFORM_DEPENDENCIES = ["templates/device.j2", "queries/device_jinja.gql"]
 GENERATOR_DEPENDENCIES = ["generators/device.py"]
+# A generator records the nodes it writes in a group named "<definition name>-<md5 hex>".
+GENERATOR_TRACKING_GROUP = "device-generator-0123456789abcdef0123456789abcdef"
 
 SELECTIVE_SCHEMA = SchemaRoot(
     nodes=[
@@ -92,6 +100,39 @@ query GetGenDevice($ids: [ID!]!) {
     }
 }
 """
+
+
+class _GeneratorWritingRecorder(WorkflowRecorder):
+    """Records every workflow call and performs the configured graph writes whenever a generator definition runs."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.generator_writes: Callable[[], Awaitable[None]] | None = None
+
+    def reset(self) -> None:
+        super().reset()
+        self.generator_writes = None
+
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: type | None = None,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> Any:
+        result = await super().execute_workflow(
+            workflow=workflow,
+            expected_return=expected_return,
+            context=context,
+            parameters=parameters,
+            tags=tags,
+            priority=priority,
+        )
+        if workflow == REQUEST_GENERATOR_DEFINITION_RUN and self.generator_writes is not None:
+            await self.generator_writes()
+        return result
 
 
 class _MergeSelectiveRegenBase(TestInfrahubApp):
@@ -251,6 +292,17 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
         await query_group.save(db=db)
         return query_group
 
+    async def _subscribe_artifacts(
+        self, db: InfrahubDatabase, *, devices: list[Node], artdef: Node, query_id: str
+    ) -> None:
+        for device in devices:
+            artifact = await self._make_artifact_subscriber(
+                db, name=f"artifact-{device.name.value}", device=device, artdef=artdef
+            )
+            await self._make_query_group(
+                db, name=f"qg-{device.name.value}", query_id=query_id, member=device, subscriber=artifact
+            )
+
     def _context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
         return InfrahubContext(
             branch=BranchContext(name=default_branch.name),
@@ -275,6 +327,10 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
             context=self._context(admin_account, default_branch),
             merge_diff_cache_key=DIFF_CACHE_KEY,
         )
+
+    async def _stored_diff_ids(self, *, db: InfrahubDatabase, default_branch: Branch) -> set[str]:
+        diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=default_branch)
+        return {root.uuid for root in await diff_repository.get_roots_metadata(exclude_merged=False)}
 
     @staticmethod
     def _artifact_requests(recorder: WorkflowRecorder) -> list[Any]:
@@ -380,6 +436,7 @@ class TestRelevantChange(_MergeSelectiveRegenBase):
     async def test_relevant_change_dispatches_matching_definitions(
         self,
         dataset: dict[str, Any],
+        db: InfrahubDatabase,
         default_branch: Branch,
         admin_account: CoreAccount,
         memory_cache: MemoryCache,
@@ -389,8 +446,10 @@ class TestRelevantChange(_MergeSelectiveRegenBase):
 
         The generator is awaited but performs no writes here, so its captured output is empty and adds no
         artifacts; the merge diff's own selection stands, dispatched by selective requests, not a blanket
-        trigger.
+        trigger. Capturing that output leaves the stored diffs as they were.
         """
+        stored_before = await self._stored_diff_ids(db=db, default_branch=default_branch)
+
         await self._run_follow_up(
             default_branch=default_branch,
             admin_account=admin_account,
@@ -407,6 +466,100 @@ class TestRelevantChange(_MergeSelectiveRegenBase):
         assert generator_models[0].target_members == []
         # The empty generator capture triggers no blanket regeneration; the merge-diff selection stands.
         assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
+        assert await self._stored_diff_ids(db=db, default_branch=default_branch) == stored_before
+
+
+class TestGeneratorOutputSelection(_MergeSelectiveRegenBase):
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_recorder(
+        self,
+        workflow_local: Any,
+        dependency_provider: Provider,
+    ) -> AsyncGenerator[_GeneratorWritingRecorder, None]:
+        # workflow_local scopes build_workflow to the live local backend; depend on it so it runs
+        # first, then re-scope to the recorder as the inner (active) provider for the follow-up.
+        with override_workflow(_GeneratorWritingRecorder(), dependency_provider=dependency_provider) as recorder:
+            yield recorder
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        git_sources_dir: Path,
+        git_repos_dir: Path,
+    ) -> dict[str, Any]:
+        await self._seed_schema(db)
+        device1 = await self._make_device(db, name="dev1", color="red")
+        device2 = await self._make_device(db, name="dev2", color="blue")
+        repo_node, transform, query = await self._import_transform(db, client, git_sources_dir)
+        group = await self._make_group(db, name="regen-targets", members=[device1, device2])
+        artdef = await self._make_artifact_definition(
+            db, name="device-artifact", group=group, transform_id=transform.id
+        )
+        # Existing subscribers for both members let the selection narrow to the member whose name changed.
+        await self._subscribe_artifacts(db, devices=[device1, device2], artdef=artdef, query_id=query.id)
+        await self._make_generator(
+            db, name="device-generator", query_name="GetGenDevice", group=group, repo_node=repo_node
+        )
+        await create_branch(branch_name=SOURCE_BRANCH, db=db)
+        return {"device1_id": device1.id, "device2_id": device2.id}
+
+    async def test_generator_output_regenerates_only_the_artifacts_of_the_members_it_wrote(
+        self,
+        dataset: dict[str, Any],
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: _GeneratorWritingRecorder,
+    ) -> None:
+        """The artifact reading what an after-merge generator wrote regenerates for that member alone."""
+
+        async def generator_writes() -> None:
+            written = await NodeManager.get_one(db=db, id=dataset["device1_id"], kind=DEVICE_KIND, raise_on_error=True)
+            written.name.value = "dev1-generated"
+            await written.save(db=db)
+            tracking_group = await Node.init(db=db, schema=InfrahubKind.GENERATORGROUP)
+            await tracking_group.new(db=db, name=GENERATOR_TRACKING_GROUP, members=[written])
+            await tracking_group.save(db=db)
+            # Lands on the default branch while the generator runs, but outside its tracking group.
+            concurrent = await NodeManager.get_one(
+                db=db, id=dataset["device2_id"], kind=DEVICE_KIND, raise_on_error=True
+            )
+            concurrent.name.value = "dev2-renamed"
+            await concurrent.save(db=db)
+
+        workflow_recorder.generator_writes = generator_writes
+        stored_before = await self._stored_diff_ids(db=db, default_branch=default_branch)
+
+        # The artifact query does not read the field the merge changed, so only the generator output can select it.
+        await self._run_follow_up(
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["device2_id"],
+                    kind=DEVICE_KIND,
+                    branch=default_branch.name,
+                    action="UPDATED",
+                    display_label="device",
+                    field_names=["color"],
+                )
+            ],
+        )
+
+        assert [
+            model.generator_definition.definition_name for model in self._generator_run_models(workflow_recorder)
+        ] == ["device-generator"]
+        assert [
+            (request.artifact_definition_name, request.members)
+            for request in self._artifact_requests(workflow_recorder)
+        ] == [("device-artifact", [dataset["device1_id"]])]
+        assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
+        assert await self._stored_diff_ids(db=db, default_branch=default_branch) == stored_before
 
 
 class TestGeneratorExecuteAfterMergeFalse(_MergeSelectiveRegenBase):
@@ -483,13 +636,7 @@ class TestMemberNarrowing(_MergeSelectiveRegenBase):
         )
         # Existing subscribers for both members mean neither is treated as new, so the narrowing is
         # driven purely by which member's queried field the diff changed.
-        for device in (device1, device2):
-            artifact = await self._make_artifact_subscriber(
-                db, name=f"artifact-{device.name.value}", device=device, artdef=artdef
-            )
-            await self._make_query_group(
-                db, name=f"qg-{device.name.value}", query_id=query.id, member=device, subscriber=artifact
-            )
+        await self._subscribe_artifacts(db, devices=[device1, device2], artdef=artdef, query_id=query.id)
         await create_branch(branch_name=SOURCE_BRANCH, db=db)
         return {"device1_id": device1.id, "device2_id": device2.id}
 
@@ -531,13 +678,7 @@ class TestMemberDeletion(_MergeSelectiveRegenBase):
         artdef = await self._make_artifact_definition(
             db, name="device-artifact", group=group, transform_id=transform.id
         )
-        for device in (device1, device2):
-            artifact = await self._make_artifact_subscriber(
-                db, name=f"artifact-{device.name.value}", device=device, artdef=artdef
-            )
-            await self._make_query_group(
-                db, name=f"qg-{device.name.value}", query_id=query.id, member=device, subscriber=artifact
-            )
+        await self._subscribe_artifacts(db, devices=[device1, device2], artdef=artdef, query_id=query.id)
         device1_id = device1.id
         # The member is removed on the branch and the deletion applies on merge; the live target group
         # no longer carries it when the follow-up reconciles.
@@ -587,13 +728,7 @@ class TestConcurrentlyAddedMember(_MergeSelectiveRegenBase):
         )
         # Only the two long-lived members carry a subscriber; the third models a member that main
         # gained while the branch existed, so it has no artifact yet.
-        for device in (device1, device2):
-            artifact = await self._make_artifact_subscriber(
-                db, name=f"artifact-{device.name.value}", device=device, artdef=artdef
-            )
-            await self._make_query_group(
-                db, name=f"qg-{device.name.value}", query_id=query.id, member=device, subscriber=artifact
-            )
+        await self._subscribe_artifacts(db, devices=[device1, device2], artdef=artdef, query_id=query.id)
         await create_branch(branch_name=SOURCE_BRANCH, db=db)
         return {"device1_id": device1.id, "device2_id": device2.id, "device3_id": device3.id}
 

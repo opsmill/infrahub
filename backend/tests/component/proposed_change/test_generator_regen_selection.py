@@ -265,21 +265,16 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         await repo.new(db=db, name="generator-regen-repo", location="https://github.com/test/generator-regen-repo.git")
         await repo.save(db=db)
 
-        # ``models`` is populated by the GraphQL mutation analyzer in production; nodes created
-        # directly against the database must set it explicitly so the data-change (MODIFIED_KINDS)
-        # path has the queried kinds to match against.
         query_a = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_a.new(db=db, name="GetADevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query_a.new(db=db, name="GetADevice", query=QUERY_A)
         await query_a.save(db=db)
 
         query_b = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_b.new(db=db, name="GetBDevice", query=QUERY_B, models=["TestNetworkDevice"])
+        await query_b.new(db=db, name="GetBDevice", query=QUERY_B)
         await query_b.save(db=db)
 
         query_source_only = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_source_only.new(
-            db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY, models=["TestNetworkDevice"]
-        )
+        await query_source_only.new(db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY)
         await query_source_only.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -412,6 +407,29 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
             memory_cache=memory_cache,
             workflow_recorder=workflow_recorder,
             diff_summary=[make_node_diff(dataset["device_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"])],
+        )
+        assert selected == ["device-gen-a", "device-gen-a2", "device-gen-b", "device-gen-source-only"]
+
+    async def test_profile_change_selects_generators_reading_profiled_kind(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A change touching only a profile selects every generator whose query reads the profiled kind.
+
+        The diff carries the profile kind alone; the profiled node kind is what the queries read, so the
+        selection widens the profile to that node kind and dispatches every generator reading it.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[make_node_diff(str(uuid.uuid4()), "ProfileTestNetworkDevice", SOURCE_BRANCH, ["color"])],
         )
         assert selected == ["device-gen-a", "device-gen-a2", "device-gen-b", "device-gen-source-only"]
 
@@ -611,7 +629,7 @@ class TestGeneratorRegenLegacyFallback(GeneratorRegenTestBase):
         await repo.save(db=db)
 
         query = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A)
         await query.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)

@@ -34,7 +34,6 @@ describe("notifyRetryScheduled", () => {
   afterEach(() => {
     for (const handle of handles.splice(0)) handle("abandoned");
     vi.useRealTimers();
-    vi.clearAllMocks();
     toastMock.isActive.mockReturnValue(false);
   });
 
