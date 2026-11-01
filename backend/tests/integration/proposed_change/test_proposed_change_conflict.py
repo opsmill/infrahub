@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 from infrahub_sdk.context import ContextAccount, RequestContext
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
+from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange, CoreStandardCheck, CoreUserValidator
 
 from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, ValidatorConclusion
 from infrahub.core.diff.model.path import BranchTrackingId
@@ -127,6 +127,20 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         steve = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await steve.new(db=db, name="Steve", height=178)
         await steve.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def user_check_branch(self, initial_dataset: None, client: InfrahubClient) -> str:
+        branch_name = f"user_checks-{uuid4()}"
+        await client.branch.create(branch_name=branch_name, sync_with_git=True)
+        paul = await client.create(
+            kind=TestKind.PERSON, branch=branch_name, data={"name": "Paul", "height": 182, "age": 40}
+        )
+        await paul.save()
+        people = await client.get(kind=InfrahubKind.STANDARDGROUP, name__value="people", branch=branch_name)
+        await people.members.fetch()
+        people.members.add(paul.id)
+        await people.save()
+        return branch_name
 
     @pytest.fixture(scope="class")
     async def conflict_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
@@ -449,6 +463,38 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         result = await client.execute_graphql(query=query, variables={"id": initial_dataset})
         assert result["InfrahubRepositoryConnectivity"]["ok"]
         assert result["InfrahubRepositoryConnectivity"]["message"] == "Successfully accessed repository"
+
+    async def test_rerun_user_checks_updates_each_existing_check(
+        self, user_check_branch: str, client: InfrahubClient
+    ) -> None:
+        proposed_change = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": user_check_branch, "destination_branch": "main", "name": "user-checks-rerun"},
+        )
+        await proposed_change.save()
+
+        validators = await client.filters(kind=CoreUserValidator, proposed_change__ids=[proposed_change.id])
+        age_check = next(validator for validator in validators if validator.label.value == "Check: owner_age_check")
+        first_checks = await client.filters(kind=CoreStandardCheck, validator__ids=[age_check.id])
+        assert len({check.name.value for check in first_checks}) == len(first_checks) == 2
+
+        await client.execute_graphql(query=RUN_USER_CHECKS, variables={"proposed_change": proposed_change.id})
+
+        rerun_checks = await client.filters(kind=CoreStandardCheck, validator__ids=[age_check.id])
+        assert {check.id: check.name.value for check in rerun_checks} == {
+            check.id: check.name.value for check in first_checks
+        }
+        first_created_at = {check.id: check.created_at.value for check in first_checks}
+        assert all(check.created_at.value != first_created_at[check.id] for check in rerun_checks)
+
+
+RUN_USER_CHECKS = """
+mutation RunUserChecks($proposed_change: String!) {
+    CoreProposedChangeRunCheck(data: {id: $proposed_change, check_type: USER}) {
+        ok
+    }
+}
+"""
 
 
 QUERY_EVENT = """

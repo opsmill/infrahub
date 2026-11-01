@@ -1185,9 +1185,6 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
     log = get_run_logger()
     client = get_client()
 
-    validator = await client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
-    await validator.checks.fetch()
-
     repo = await get_initialized_repo(
         client=client,
         repository_id=model.repository_id,
@@ -1221,14 +1218,14 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
         log_entries = f"FATAL Error/n:{exc.message}"
 
     check = None
-    for relationship in validator.checks.peers:
-        existing_check = relationship.peer
-        if (
-            existing_check.typename == InfrahubKind.STANDARDCHECK
-            and existing_check.kind.value == "CheckDefinition"
-            and existing_check.name.value == model.name
-        ):
-            check = existing_check
+    existing_check = await client.filters(
+        kind=InfrahubKind.STANDARDCHECK,
+        validator__ids=[model.validator_id],
+        name__value=model.name,
+        kind__value="CheckDefinition",
+    )
+    if existing_check:
+        check = existing_check[0]
 
     if check:
         check.created_at.value = Timestamp().to_string()
