@@ -53,11 +53,13 @@ We are committed to resolving security vulnerabilities in a timely and coordinat
 
 ## How We Prepare and Release Security Fixes
 
-The severity we assign during triage decides where we prepare the fix for a vulnerability in Infrahub's own code:
+The severity we assign during triage decides where we prepare the fix for a vulnerability in the code of the public Infrahub repository, which Infrahub Community and Infrahub Enterprise both include:
 
 * **Critical:** We prepare the fix in a private repository and add it to the public Infrahub repository at release time. Infrahub Community and Infrahub Enterprise receive the fix in the same release. We publish the security advisory after that release is available.
 * **High, Moderate, or Low:** We prepare the fix in a public pull request in the [Infrahub repository](https://github.com/opsmill/infrahub). The fix is visible to everyone before it is released and before we publish the security advisory.
 
 At every severity, we publish the security advisory and request a CVE as described in the timeline above.
+
+Code that ships only in Infrahub Enterprise is not public, so we fix vulnerabilities in it in a private repository at every severity. The fix ships in an Infrahub Enterprise release.
 
 When a vulnerability in a third-party package that Infrahub depends on is already published, we update that package in a public pull request whatever its severity.
