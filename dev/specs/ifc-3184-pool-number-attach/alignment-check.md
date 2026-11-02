@@ -138,6 +138,6 @@ added to. No remediation pass needed.
   pool-sourced attributes; P1's FR-030a / Decision 2 are superseded. No change to this slice —
   FR-030b/FR-030c were already written this way. Remaining action is mechanical: amend
   `POOL-RANGES-PRD.md` before P1 enters spec-kit.
-- ~~**OQ2**~~ — **RESOLVED 2026-09-16: out of scope.** P1 deletes the hand-set-value scan outright
-  per its unchanged FR-011; this slice adds no enumeration surface and needs no cross-slice
-  agreement.
+- ~~**OQ2**~~ — **RESOLVED 2026-09-16: out of scope.** This slice adds no enumeration surface.
+  *(Amended 2026-10-31: P1 kept the hand-set-value scan per its own FR-011, so this slice deletes it;
+  see spec.md FR-011.)*

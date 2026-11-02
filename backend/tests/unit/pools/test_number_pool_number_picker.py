@@ -14,7 +14,6 @@ from tests.unit.pools.helpers import InMemoryNumberPoolNumbers
 
 BRANCH = Branch(name="main")
 UNIQUE_ATTRIBUTE = NumberAttributeSchema(name="ticket_id", kind="Number", unique=True)
-SHARED_ATTRIBUTE = NumberAttributeSchema(name="ticket_id", kind="Number", unique=False)
 
 
 @pytest.fixture
@@ -56,42 +55,6 @@ async def test_a_full_range_hands_over_to_the_next_one(pool: CoreNumberPool) -> 
     assert numbers.free_lookups == [(1, 3), (10, 12)]
 
 
-async def test_a_run_of_values_held_by_hand_costs_a_single_free_lookup(pool: CoreNumberPool) -> None:
-    """Values the target holds outside the pool are stepped over in memory, not one lookup per value."""
-    numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], taken={1, 2, 3})
-
-    assert (
-        await NumberPoolNumberPicker(number_reader=numbers).next_number(
-            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
-        )
-        == 4
-    )
-    assert numbers.free_lookups == [(4, 10)]
-
-
-async def test_a_free_number_the_target_holds_by_hand_is_skipped(pool: CoreNumberPool) -> None:
-    numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], accounted={1}, taken={2})
-
-    assert (
-        await NumberPoolNumberPicker(number_reader=numbers).next_number(
-            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
-        )
-        == 3
-    )
-    assert numbers.free_lookups == [(1, 10), (3, 10)]
-
-
-async def test_a_shared_attribute_ignores_values_held_by_hand(pool: CoreNumberPool) -> None:
-    numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], taken={1, 2, 3})
-
-    assert (
-        await NumberPoolNumberPicker(number_reader=numbers).next_number(
-            pool=pool, branch=BRANCH, attribute=SHARED_ATTRIBUTE
-        )
-        == 1
-    )
-
-
 async def test_the_numbers_the_attribute_accepts_clip_the_ranges(pool: CoreNumberPool) -> None:
     numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)])
     attribute = NumberAttributeSchema(
@@ -109,7 +72,7 @@ async def test_the_numbers_the_attribute_accepts_clip_the_ranges(pool: CoreNumbe
 
 
 async def test_a_pool_without_a_free_number_is_exhausted(pool: CoreNumberPool) -> None:
-    numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=3)], accounted={1, 2}, taken={3})
+    numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=3)], accounted={1, 2, 3})
 
     with pytest.raises(PoolExhaustedError) as exc_info:
         await NumberPoolNumberPicker(number_reader=numbers).next_number(

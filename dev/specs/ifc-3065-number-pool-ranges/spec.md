@@ -37,7 +37,7 @@ P1 delivers **several weighted ranges per number pool**, for pools a user create
 1. **The pool never refuses a value; the schema does.** Ranges decide where allocation draws from. Whether a value is valid is decided by the attribute's own domain (`min_value`, `max_value`, `excluded_values`) and its uniqueness constraints.
 2. **Ranges are branch-agnostic**, like the pool that owns them. A range edit takes effect on every branch immediately and nothing about a range is stored per branch.
 3. **One arithmetic.** Size, utilization, allocation order and fullness all come from one effective-space calculation: union of ranges, intersected with `[min_value, max_value]`, minus the excluded values that fall inside that union.
-4. **What a pool knows stays as today.** P1 keeps the existing skip of values already sitting on a unique attribute, generalised over the range set. Making the pool blind to its attribute belongs to P2.
+4. **What a pool knows stays as today.** P1 keeps the existing skip of values already sitting on a unique attribute, generalised over the range set. Making the pool blind to its attribute belongs to P2. *(Amended 2026-10-31: P2 removed the skip; see `ifc-3184-pool-number-attach/spec.md` FR-011.)*
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -155,7 +155,7 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 - A pool ends up with zero ranges (declared with `ranges: []`, or with every range removed): legal; size 0, utilization 0 %, allocation raises the pool-exhausted error.
 - A schema declaration drops to zero ranges (`ranges: []`) while objects hold values: the load is refused and the objects identified, because every held value is then outside every range.
 - Two user-created pools over the same kind and attribute have overlapping ranges: allowed; a collision is refused only by a uniqueness constraint.
-- A unique attribute already holds a value nobody allocated: allocation skips it, across every range, as it does today.
+- A unique attribute already holds a value nobody allocated: allocation skips it, across every range, as it does today. *(Superseded 2026-10-31: P2 removed the skip, so the pool offers that value and the uniqueness constraint refuses the save until the value is attached.)*
 - `start_range` / `end_range` written on a multi-range user pool: refused with the list of ranges; on a schema pool: the existing schema-pool refusal fires first.
 - Both spellings supplied, on a pool mutation or in a schema declaration: refused.
 - Exactly one of `start_range` / `end_range` declared in a schema: the other is stored as open (null) and counts as `1` / `sys.maxsize` during allocation. *(Amended by IFC-3432: open range bounds.)*
@@ -180,7 +180,7 @@ An API or SDK consumer discovers, through introspection and schema-load warnings
 - **FR-008**: A pool MUST report itself full only when every effective range is exhausted. A range that clamps to empty against the attribute's domain counts as exhausted. *(PRD FR-007)*
 - **FR-009**: A pool with zero ranges MUST be legal. Its size is 0, its utilization reports 0 of 0 as 0 %, and allocation from it raises the existing pool-exhausted error.
 - **FR-010**: Size, utilization, allocation order and fullness MUST all be derived from the same effective-space calculation, so that no two figures the pool reports can disagree.
-- **FR-011**: The existing skip of values already present on a unique attribute MUST keep working and MUST cover every range of the pool. *(PRD FR-011 as amended by the addendum: scan kept in P1)*
+- **FR-011**: The existing skip of values already present on a unique attribute MUST keep working and MUST cover every range of the pool. *(PRD FR-011 as amended by the addendum: scan kept in P1)* *(Superseded 2026-10-31: P2 removed the skip and `NumberPoolGetTaken`; see `ifc-3184-pool-number-attach/spec.md` FR-011.)*
 - **FR-012**: Which numbers are unavailable MUST be worked out in the database across the range set. How much data sits inside a pool's ranges MUST NOT change how much memory an allocation holds. *(PRD FR-013)*
 
 #### Single-bound shorthand
@@ -270,7 +270,7 @@ Using the repository's "ask first" list.
 - The schema that validates a number-pool attribute's ranges is the default-branch schema, consistent with the existing schema-pool refusal text.
 - Weight semantics are those of the weighted-resource generic already used by IP pools: higher is drawn from first.
 - Removal of `start_range` / `end_range` happens in a later major version and is not planned here.
-- The hand-set-value skip on unique attributes (FR-011) is kept exactly as shipped in 1.11, generalised to the range set; its removal and the associated upgrade note belong to P2.
+- The hand-set-value skip on unique attributes (FR-011) is kept exactly as shipped in 1.11, generalised to the range set; its removal and the associated upgrade note belong to P2. *(P2 removed it on 2026-10-31.)*
 - The server-side log emitted when a deprecated attribute is processed was written for customer schemas; whether to restrict it to non-core namespaces or accept it firing for the core pool attributes is decided at planning time.
 - The exact identifier under which the `ranges` parameter change registers for schema-change validation (FR-026) is confirmed against the existing validation code at implementation time.
 

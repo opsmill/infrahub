@@ -24,7 +24,6 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetAllocated,
     NumberPoolGetHeldOutsideRanges,
     NumberPoolGetReserved,
-    NumberPoolGetTaken,
     NumberPoolGetTrackingPool,
     NumberPoolGetUsed,
     NumberPoolReleaseReserved,
@@ -687,7 +686,7 @@ async def incident_pool_holding_one_to_ten(
 
 
 class TestRangeListFiltering:
-    async def test_used_allocated_and_taken_values_are_reported_only_inside_the_ranges(
+    async def test_used_and_allocated_values_are_reported_only_inside_the_ranges(
         self, db: InfrahubDatabase, default_branch: Branch, incident_pool_holding_one_to_ten: CoreNumberPoolProtocol
     ) -> None:
         used = await NumberPoolGetUsed.init(
@@ -703,15 +702,11 @@ class TestRangeListFiltering:
             pool=incident_pool_holding_one_to_ten,
             ranges=GAPPED_RANGES,
         )
-        taken = await NumberPoolGetTaken.init(
-            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=GAPPED_RANGES
-        )
-        for query in (used, allocated, taken):
+        for query in (used, allocated):
             await query.execute(db=db)
 
         assert [result.value for result in used.iter_results()] == [2, 3, 7, 8]
         assert [result.value for result in allocated.get_data()] == [2, 3, 7, 8]
-        assert taken.get_taken_values() == {2, 3, 7, 8}
 
 
 async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: str) -> int:

@@ -150,6 +150,9 @@ for segment in space.segments:
 PoolExhaustedError
 ```
 
+*Amended 2026-10-31:* P2 removed `taken` and `get_taken`. Each segment now returns the first result of
+`NumberPoolGetFree(segment.start, segment.end)` or falls through to the next one.
+
 ## Utilization
 
 | Figure | Source |

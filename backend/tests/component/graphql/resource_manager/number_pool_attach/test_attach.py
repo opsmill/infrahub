@@ -113,6 +113,41 @@ class TestNumberPoolAttach:
         assert await open_is_reserved_edges(db=db, pool=pool) == {(first["id"], ())}
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(first["id"], "main", 200, "provided")]
 
+    async def test_a_number_held_by_hand_blocks_allocation_until_it_is_attached(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """The pool reads only its own records, so it offers a number held by hand until that number is attached."""
+        pool = await new_pool(db=db, name="brownfield", start_range=9500, end_range=9509)
+        held = [
+            await create_ticket(db=db, branch=main_branch, title=f"brownfield-{value}", ticket_id={"value": value})
+            for value in (9500, 9501, 9502)
+        ]
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET,
+            variables={"title": "brownfield-new", "ticket_id": {"from_pool": {"id": pool.id}}},
+        )
+
+        assert message == "Violates uniqueness constraint 'ticket_id'"
+        assert await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "brownfield-new"}) == []
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
+
+        for ticket in held:
+            await update_ticket(
+                db=db,
+                branch=main_branch,
+                node_id=ticket["id"],
+                ticket_id={"value": ticket["ticket_id"]["value"], "from_pool": {"id": pool.id}},
+            )
+        allocated = await create_ticket(
+            db=db, branch=main_branch, title="brownfield-new", ticket_id={"from_pool": {"id": pool.id}}
+        )
+
+        assert allocated["ticket_id"]["value"] == 9503
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == [9500, 9501, 9502, 9503]
+
     async def test_each_holder_of_an_attached_duplicate_is_reported_and_the_number_is_not_reallocated(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
@@ -216,16 +251,16 @@ class TestNumberPoolAttach:
             db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool_b.id}}
         )
 
-        assert moved["ticket_id"]["value"] == 601, "the ticket's own number is taken under the uniqueness constraint"
+        assert moved["ticket_id"]["value"] == 600, "pool B reads only its own records, so it offers the lowest number"
         assert await open_is_reserved_edges(db=db, pool=pool_a) == set()
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_a) == []
-        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (601,))}
+        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (600,))}
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_b) == [
-            (ticket["id"], "main", 601, "allocated")
+            (ticket["id"], "main", 600, "allocated")
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_b.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == pool_source(601, pool_b)
+        assert reads["ticket_id"] == pool_source(600, pool_b)
 
     async def test_naming_another_pool_with_a_number_outside_the_first_pool_moves_the_attribute(
         self, db: InfrahubDatabase, main_branch: Branch
