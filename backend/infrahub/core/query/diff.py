@@ -392,9 +392,11 @@ CALL (p, q, diff_rel, row_from_time) {
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
     AND r_node.from < $to_time
+    AND (r_node.to IS NULL OR r_node.to >= row_from_time)
     AND r_node.branch = top_diff_rel.branch
     AND r_node.status = top_diff_rel.status
     AND r_prop.from < $to_time
+    AND (r_prop.to IS NULL OR r_prop.to >= row_from_time)
     AND r_prop.branch = top_diff_rel.branch
     AND r_prop.status = top_diff_rel.status
     // ------------------------
