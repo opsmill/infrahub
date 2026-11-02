@@ -126,7 +126,7 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
     assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [1, 2, 3]
 
 
-async def test_allocate_reuses_value_when_attribute_not_globally_unique(
+async def test_allocate_hands_out_a_number_held_by_hand(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A pool hands out the lowest number its own records leave free, even one an object holds by hand."""
