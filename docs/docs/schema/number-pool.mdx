@@ -114,7 +114,7 @@ The declaration sets the ranges Infrahub creates for the pool:
 
 - Declare no range, with neither `ranges` nor `start_range`/`end_range`, and the pool holds one range without a start or an end. It allocates from 1 to `MAX`.
 - Declare `ranges: []` and the pool holds no range. Every allocation from it fails with `Pool <pool> has no number the attribute accepts in its ranges.`, where `<pool>` is the pool's name and id.
-- Declare `start_range` and `end_range` and the pool holds one range with those bounds. These two parameters are deprecated. Set only one of them for a range without the other bound. They cannot be combined with `ranges`.
+- Declare `start_range` and `end_range` and the pool holds one range with those bounds. These two parameters are deprecated, see [How to migrate number pools to `ranges`](../release-notes/deprecation-guides/number-pool-ranges). Set only one of them for a range without the other bound. They cannot be combined with `ranges`.
 
 When a later schema load changes the declaration, Infrahub adds, updates and removes the pool's ranges to match it. When a later load declares neither `ranges` nor `start_range`/`end_range`, Infrahub keeps the ranges the pool already holds. To remove every range, declare `ranges: []`. Infrahub refuses a schema load that leaves a number held by an object outside every range of the pool, and identifies the objects that hold those numbers.
 
