@@ -48,3 +48,16 @@ We are committed to resolving security vulnerabilities in a timely and coordinat
 2. **Patch Development (Time Varies):** Once the vulnerability is confirmed, our engineering team will begin working on a fix. The time required for this step depends on the complexity of the issue. We will keep you updated on our progress.
 3. **Coordinated Disclosure (Typically 90 days):** Upon the development of a patch or a solid mitigation strategy, we will work with you to coordinate a public disclosure. The standard industry timeline for this is **90 days** from the initial report. This period allows us to ensure a fix is widely available before the vulnerability is made public.
 4. **CVE Assignment:** As part of the coordinated disclosure, we will request a Common Vulnerabilities and Exposures (CVE) identifier for the issue. The CVE ID provides a standardized name for the vulnerability, allowing for easier tracking and communication across the security community.
+
+***
+
+## How We Prepare and Release Security Fixes
+
+The severity we assign during triage decides where we prepare the fix for a vulnerability in Infrahub's own code:
+
+* **Critical:** We prepare the fix in a private repository and add it to the public Infrahub repository at release time. Infrahub Community and Infrahub Enterprise receive the fix in the same release. We publish the security advisory after that release is available.
+* **High, Moderate, or Low:** We prepare the fix in a public pull request in the [Infrahub repository](https://github.com/opsmill/infrahub). The fix is visible to everyone before it is released and before we publish the security advisory.
+
+When a vulnerability in a third-party package that Infrahub depends on is already published, we update that package in a public pull request whatever its severity.
+
+For every severity, we publish the security advisory and request a CVE as described in the timeline above.
