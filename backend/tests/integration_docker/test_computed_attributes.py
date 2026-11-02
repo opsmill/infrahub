@@ -6,7 +6,7 @@ import time
 from asyncio import sleep
 from copy import deepcopy
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
@@ -187,7 +187,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         final_display_label = "Explorer - Sunrise"
         first_hfid = ["Explorer", "Sunset"]
         final_hfid = ["Explorer", "Sunrise"]
-        data = {
+        data: dict[str, Any] = {
             "name": "Sunset",
             "description": "A bold, vibrant orange that captures the warmth of the setting sun.",
         }

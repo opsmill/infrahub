@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
+    from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
@@ -67,7 +68,7 @@ class ArtifactRegenGateHarness(TestInfrahubApp):
         admin_account: CoreAccount,
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
-        diff_summary: list[dict] | None = None,
+        diff_summary: list[NodeDiff] | None = None,
         files_added: list[str] | None = None,
         files_changed: list[str] | None = None,
         files_removed: list[str] | None = None,
