@@ -77,6 +77,10 @@ Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/
 - [entities-structure.md](knowledge/frontend/entities-structure.md) - Entity layers (`ui → domain → api`)
 - [request-priority.md](knowledge/frontend/request-priority.md) - The `X-Priority` header the frontend emits
 
+CI documentation in [knowledge/](knowledge/):
+
+- [agentic-workflows.md](knowledge/agentic-workflows.md) - The gh-aw agent workflows (bug pipeline, issue triage), their generated lock files and the weekly upgrade
+
 ## Current ADRs
 
 Architecture Decision Records in [adr/](adr/):

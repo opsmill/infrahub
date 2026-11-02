@@ -1,0 +1,159 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Upgrade agentic workflows
+
+# Regenerates the gh-aw agentic workflows (.github/workflows/*.md) with the
+# newest gh-aw release, which also pins the newest Claude Code release that gh-aw
+# supports, and opens a pull request for a person to review.
+# See dev/knowledge/agentic-workflows.md.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upgrade-agentic-workflows
+  cancel-in-progress: false
+
+env:
+  BASE_BRANCH: stable
+  BRANCH_NAME: ci/upgrade-agentic-workflows
+  BOT_NAME: opsmill-bot
+  BOT_EMAIL: github-bot@opsmill.com
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the base branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          # The newly downloaded gh-aw runs before any write token exists in this job.
+          persist-credentials: false
+
+      - name: Install the newest gh-aw release
+        id: gh-aw
+        uses: github/gh-aw-actions/setup-cli@221ba4f4319de6b8e809d1a15528b3ae6a818aa5 # v1.0.1
+        with:
+          version: latest
+
+      - name: Regenerate the agentic workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --approve accepts new secrets and actions; the pull request body lists them for the reviewer.
+        run: gh aw upgrade --approve
+
+      - name: Commit the changes and write the pull request body
+        id: describe
+        env:
+          GH_AW_VERSION: ${{ steps.gh-aw.outputs.installed-version }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "::notice::The agentic workflows are already generated with gh-aw $GH_AW_VERSION."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          lock_headers() {
+            for file in .github/workflows/*.lock.yml; do
+              if [ "$1" = HEAD ]; then
+                git show "HEAD:$file" 2>/dev/null || true
+              else
+                cat "$file"
+              fi | sed -n "s/^# $2: //p"
+            done
+          }
+          versions() {
+            lock_headers "$1" gh-aw-metadata | jq -rs '
+              "gh-aw " + ([.[] | .compiler_version] | unique | join(", ")) +
+              "; Claude Code " + ([.[] | .engine_versions.claude // "unknown"] | unique | join(", "))'
+          }
+          added() {
+            jq -rn \
+              --argjson before "$(lock_headers HEAD gh-aw-manifest | jq -s "[.[].$1[]?$2] | unique")" \
+              --argjson after "$(lock_headers worktree gh-aw-manifest | jq -s "[.[].$1[]?$2] | unique")" \
+              '($after - $before) | if length == 0 then "none" else map("`" + . + "`") | join(", ") end'
+          }
+
+          TITLE="ci: upgrade agentic workflows to gh-aw $GH_AW_VERSION"
+          cat > "$RUNNER_TEMP/pr-body.md" <<EOF
+          Regenerates the agentic workflows with the newest gh-aw release.
+
+          - Before: $(versions HEAD)
+          - After: $(versions worktree)
+          - New secrets the workflows read: $(added secrets "")
+          - New actions the workflows use: $(added actions .repo)
+
+          gh-aw skips some secrets when they are not set. For each new secret, check in the gh-aw documentation whether the workflows need it: a required secret that is missing makes them fail.
+
+          Before merging, check the points in [Reviewing an upgrade pull request](https://github.com/$REPOSITORY/blob/$BASE_BRANCH/dev/knowledge/agentic-workflows.md#reviewing-an-upgrade-pull-request).
+
+          Opened by the [Upgrade agentic workflows]($RUN_URL) run.
+          EOF
+
+          git config user.name "$BOT_NAME"
+          git config user.email "$BOT_EMAIL"
+          git add --all
+          git commit --quiet --message "$TITLE"
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Create a GitHub App token
+        if: steps.describe.outputs.changed == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.GH_AW_APP_ID }}
+          private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - name: Open or refresh the pull request
+        if: steps.describe.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPOSITORY: ${{ github.repository }}
+          TITLE: ${{ steps.describe.outputs.title }}
+        run: |
+          set -euo pipefail
+
+          OPEN_PR=$(gh pr list --repo "$REPOSITORY" --head "$BRANCH_NAME" --base "$BASE_BRANCH" \
+            --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$OPEN_PR" ]; then
+            # Someone may have pushed fixes to the open pull request; a force push would discard them.
+            OTHER_AUTHORS=$(gh pr view "$OPEN_PR" --repo "$REPOSITORY" --json commits \
+              --jq "[.commits[].authors[].email | select(. != \$ENV.BOT_EMAIL)] | length")
+            if [ "$OTHER_AUTHORS" != "0" ]; then
+              echo "::notice::Pull request #$OPEN_PR has commits from other authors, so it is left as it is. Close it to get a fresh one next week."
+              exit 0
+            fi
+            git fetch --quiet origin "refs/heads/$BRANCH_NAME"
+            if [ "$(git rev-parse 'FETCH_HEAD^{tree}')" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+              echo "::notice::Pull request #$OPEN_PR already holds these changes."
+              exit 0
+            fi
+          fi
+
+          gh auth setup-git
+          git push --force origin "HEAD:refs/heads/$BRANCH_NAME"
+
+          if [ -n "$OPEN_PR" ]; then
+            gh pr edit "$OPEN_PR" --repo "$REPOSITORY" --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
+          else
+            gh pr create --repo "$REPOSITORY" --base "$BASE_BRANCH" --head "$BRANCH_NAME" \
+              --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md" \
+              --label type/housekeeping --label ci/skip-changelog --label group/ci
+          fi
