@@ -8,7 +8,9 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
 from infrahub.log import get_logger
 
@@ -28,10 +30,6 @@ async def resolver_graphql_query(
     params: dict[str, Any] | None = None,
     interval: int = 10,
 ) -> AsyncGenerator[dict[str, Any], None]:
-    # Deferred to break the schema initialization import cycle.
-    from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker  # noqa: PLC0415
-    from infrahub.graphql.initialization import prepare_graphql_params  # noqa: PLC0415
-
     graphql_context: GraphqlContext = info.context
     account_session = graphql_context.active_account_session
     permission_checker = build_graphql_query_permission_checker()
