@@ -1,0 +1,20 @@
+dev/guides/updating-agentic-workflows.md
+  s_b5a172beeb66a5::t_c4491f46d63d53 38-40,42
+  s_b5a172beeb66a5::t_740eee17e68226 54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af46d39e5f3037f90d7b5190c774e40a1e7f677e",
+  "prompts": {},
+  "sessions": {
+    "s_b5a172beeb66a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0a1e516-ac04-4c03-a92c-b70df2892d18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
