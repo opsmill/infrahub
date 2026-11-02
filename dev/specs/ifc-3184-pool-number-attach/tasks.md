@@ -699,8 +699,8 @@ These need someone outside the development team.
       nothing displayed while the pool tracks the field. Covered by SC-019 and T023.
       *(Critique E13, risks R2/R14.)*
 - [x] **OQ2 — RESOLVED 2026-09-16: out of scope.** Operators manually name the values they want a
-      pool to track. P1 deletes the hand-set-value scan outright per its FR-011, unchanged, and this
-      slice adds no enumeration surface. The tasks that carried it are removed; FR-011a and SC-023 are gone
+      pool to track. This slice adds no enumeration surface. *(Amended 2026-10-31: P1 kept the
+      hand-set-value scan, so this slice deletes it; see spec.md FR-011.)* The tasks that carried it are removed; FR-011a and SC-023 are gone
       from the spec; the ergonomic cost on the brownfield path is accepted knowingly and recorded in
       *Out of Scope*. A migration tool may be added later if adoption shows it is needed.
 

@@ -191,9 +191,8 @@ second object while the first still holds it — a manufactured collision, repro
 
 Run **both polarities**:
 - **non-unique** — reproduces today;
-- **unique** — masked today by the 1.11 hand-set-value scan, and starts failing when P1 deletes it
-  (FR-011). P1 therefore converts a latent read defect into a live collision, which is why this fix
-  cannot land after P1.
+- **unique** — masked by the 1.11 hand-set-value scan until this slice deletes it (FR-011), which
+  converts a latent read defect into a live collision, so this fix cannot land after the deletion.
 
 **Keep the passing case as a regression**: a branch-level **value change** must **not** free the
 default branch's value. That works today and must keep working — it is a different mechanism (a new

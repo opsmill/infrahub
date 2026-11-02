@@ -14,11 +14,11 @@ from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from tests.helpers.number_pool import (
     add_pool_range,
     create_range_only_pool,
     create_ticket,
+    pool_used_numbers,
     schema_domains,
     shorthand_mirror,
     ticket_schema_with_parameters,
@@ -65,6 +65,12 @@ async def test_allocation_from_a_pool_without_range_reports_the_pool_exhausted(
 async def _create_hand_set_ticket(db: InfrahubDatabase, kind: str, value: int) -> None:
     ticket = await Node.init(db=db, schema=kind)
     await ticket.new(db=db, title=f"manual {value}", ticket_id=value)
+    await ticket.save(db=db)
+
+
+async def _create_attached_ticket(db: InfrahubDatabase, pool: CoreNumberPool, value: int) -> None:
+    ticket = await Node.init(db=db, schema=TICKET.kind)
+    await ticket.new(db=db, title=f"attached {value}", ticket_id={"value": value, "from_pool": {"id": pool.id}})
     await ticket.save(db=db)
 
 
@@ -283,18 +289,18 @@ async def test_a_pool_holding_no_range_is_empty(
         await _next_number(db=db, branch=default_branch, pool=pool)
 
 
-async def test_hand_set_values_are_skipped_in_every_range(
+async def test_attached_numbers_are_skipped_in_every_range(
     db: InfrahubDatabase, default_branch: Branch, ticket_schema: None
 ) -> None:
     pool = await create_range_only_pool(db=db)
     await add_pool_range(db=db, pool=pool, start=1, end=5, weight=10)
     await add_pool_range(db=db, pool=pool, start=10, end=15)
-    for value in (1, 3, 7, 10, 11):
-        await _create_hand_set_ticket(db=db, kind=TICKET.kind, value=value)
+    for value in (1, 3, 10, 11):
+        await _create_attached_ticket(db=db, pool=pool, value=value)
+    # Outside every range, so no range is affected by it.
+    await _create_hand_set_ticket(db=db, kind=TICKET.kind, value=7)
 
-    repository = NumberPoolRepository(db=db)
-    space = EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain())
-    assert await repository.get_taken(pool=pool, branch=default_branch, space=space) == {1, 3, 10, 11}
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [1, 3, 10, 11]
 
     allocated = [await create_ticket(db=db, kind=TICKET.kind, pool=pool) for _ in range(4)]
 
