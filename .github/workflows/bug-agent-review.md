@@ -179,7 +179,9 @@ Determine which mode you are in based on the PR body markers:
 - **Fix review:** PR body contains `AGENT_FIX_COMPLETE`.
   The fixer has implemented a fix. Evaluate the fix and the test together.
 
-If neither marker is present, do nothing and stop.
+A marker counts with or without backslashes before its underscores (`AGENT\_FIX\_COMPLETE`
+is `AGENT_FIX_COMPLETE`), because agent output is posted with underscores outside backticks
+escaped. If neither marker is present, do nothing and stop.
 
 ## Instructions
 

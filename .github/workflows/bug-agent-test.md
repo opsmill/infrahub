@@ -144,6 +144,10 @@ Determine which mode you are in:
 You can tell which mode from the GitHub context: if the command was posted on a pull request,
 you are in revision mode; otherwise, initial test mode.
 
+A marker counts with or without backslashes before its underscores (`AGENT\_ANALYSIS\_COMPLETE`
+is `AGENT_ANALYSIS_COMPLETE`), because agent output is posted with underscores outside
+backticks escaped.
+
 ### Initial test -- setup
 
 The workflow has already validated that an `AGENT_ANALYSIS_COMPLETE` comment from the

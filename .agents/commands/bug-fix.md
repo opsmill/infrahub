@@ -30,7 +30,9 @@ Find the draft PR opened by `/bug-tdd`:
 gh pr list --search "head:ai-bug-pipeline-<issue_number>" --json number,title,body,headRefName --jq '.[0]'
 ```
 
-Validate the PR:
+Validate the PR. A marker counts with or without backslashes before its underscores
+(`AGENT\_TEST\_COMPLETE` is `AGENT_TEST_COMPLETE`), because the pipeline posts agent output
+with underscores outside backticks escaped.
 - PR body must contain `AGENT_TEST_COMPLETE`. If not, inform the developer:
   "No `AGENT_TEST_COMPLETE` marker found. Run `/bug-tdd` first." and **STOP**.
 - PR body must NOT contain `AGENT_FIX_COMPLETE`. If it does, inform the developer:

@@ -143,7 +143,9 @@ Determine which mode you are in:
 
 The workflow has already validated the gate markers (`AGENT_TEST_COMPLETE`,
 prior `TEST_APPROVED` verdict for initial mode, prior `FIX_CHANGES_REQUESTED`
-verdict for revision mode) before invoking you. You may proceed.
+verdict for revision mode) before invoking you. You may proceed. A marker counts with or
+without backslashes before its underscores (`AGENT\_FIX\_COMPLETE` is `AGENT_FIX_COMPLETE`),
+because agent output is posted with underscores outside backticks escaped.
 
 ### Initial fix -- setup
 
