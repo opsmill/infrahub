@@ -35,10 +35,11 @@ least as new as before.
 
 ## Review an upgrade pull request
 
-A new gh-aw release can change a default without any error, and `gh aw upgrade` only rewrites fields
-that were renamed. Before merging:
+`gh aw upgrade` rewrites renamed fields and regenerates the lock files, but it does not flag a default
+that a new gh-aw release changed. A source that does not set a field gets the new default without any
+error. Before merging:
 
-1. Compare the `claude` command line in one lock file before and after: `--permission-mode`,
+1. In each lock file, compare the `claude` command line before and after: `--permission-mode`,
    `--allowed-tools`, `--disallowed-tools` and whether `--bare` appears. The bug agents need to edit
    files and run commands.
 2. Check that no `create-github-app-token` step in the lock files asks for `permission-workflows`.
@@ -50,5 +51,6 @@ that were renamed. Before merging:
 ### Verification
 
 After merging, start `issue-triage-sweep` by hand from the Actions tab, and comment `/bug-analyze` on
-a bug issue. Check in the logs of both runs that the agent started with the expected model and
-finished.
+a bug issue. Both make real changes: the sweep labels the open issues that still lack a label, as its
+Monday run does, and the analyst posts its analysis on the issue. Check in the logs of both runs that
+the agent started with the expected model and finished.
