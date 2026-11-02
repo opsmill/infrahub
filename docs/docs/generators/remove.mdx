@@ -6,7 +6,7 @@ title: Remove a generator
 
 Removing a Generator involves three separate things: the **Generator definition** registered from `.infrahub.yml`, the **objects the Generator created** in Infrahub, and the **groups** that track those objects and the Generator's query. Removing the definition stops the Generator from running and deletes its Generator instances. It does not delete the objects the Generator created or its Generator groups — those stay in Infrahub until you remove them.
 
-Handle the objects first, then the definition, then the query, then the Generator groups.
+Handle the objects first, then the definition and its query, then the Generator groups.
 
 ## Delete the objects the Generator created
 
@@ -28,15 +28,7 @@ generator_definitions:
     class_name: YourGenerator
 ```
 
-Remove the Generator's Python file. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). Infrahub removes the `CoreGeneratorDefinition` registration on the next repository sync.
-
-## Remove the query in a second change
-
-After the definition is removed, remove any query used only by this Generator from `.infrahub.yml` in a separate branch and Proposed Change. On the next repository sync, Infrahub deletes the query and its GraphQL query groups.
-
-Do not remove the definition and its query in the same change. Infrahub cannot delete a query while a Generator definition still uses it, and the repository sync processes queries before Generator definitions.
-
-The repository sync deletes queries only while `.infrahub.yml` still lists at least one query. If you remove the last query of the repository, delete the query yourself through the UI, GraphQL, or the SDK.
+Remove the Generator's Python file, and any query used only by this Generator. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). On the next repository sync, Infrahub removes the `CoreGeneratorDefinition` registration and the queries you removed, with their GraphQL query groups.
 
 ## Delete the groups the Generator leaves behind
 

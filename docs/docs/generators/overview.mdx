@@ -22,7 +22,7 @@ Generators are defined as a **Generator definition** within an [.infrahub.yml](.
 
 Running a Generator definition will create new objects as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
-The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
+The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator instances record the run for each target object, and Generator groups (`CoreGeneratorGroup` or `CoreGeneratorAwareGroup`) track the objects that a run created.
 
 The [GraphQL query](../development-resources/graphql/overview) defines the data that will be collected when running the Generator. Any object identified in this step is added as a member to a GraphQL query [group](../groups/overview) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
 
