@@ -129,26 +129,31 @@ jobs:
         run: |
           set -euo pipefail
 
+          # A fork can open a pull request from a branch with the same name.
           OPEN_PR=$(gh pr list --repo "$REPOSITORY" --head "$BRANCH_NAME" --base "$BASE_BRANCH" \
-            --state open --json number --jq '.[0].number // empty')
+            --state open --json number,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)][0].number // empty')
+          PUSH_MODE=--force
 
           if [ -n "$OPEN_PR" ]; then
-            # Someone may have pushed fixes to the open pull request; a force push would discard them.
-            OTHER_AUTHORS=$(gh pr view "$OPEN_PR" --repo "$REPOSITORY" --json commits \
-              --jq "[.commits[].authors[].email | select(. != \$ENV.BOT_EMAIL)] | length")
-            if [ "$OTHER_AUTHORS" != "0" ]; then
-              echo "::notice::Pull request #$OPEN_PR has commits from other authors, so it is left as it is. Close it to get a fresh one next week."
+            git fetch --quiet --depth=1 origin "refs/heads/$BRANCH_NAME"
+            REMOTE_HEAD=$(git rev-parse FETCH_HEAD)
+            COMMITS=$(gh pr view "$OPEN_PR" --repo "$REPOSITORY" --json commits --jq '.commits | length')
+            # Amending keeps the original author but not the committer, so the committer shows a person's edit.
+            if [ "$COMMITS" != "1" ] || [ "$(git log -1 --format=%ce "$REMOTE_HEAD")" != "$BOT_EMAIL" ]; then
+              echo "::notice::Pull request #$OPEN_PR has changes from someone other than the bot, so it is left as it is. Close it to get a fresh one next week."
               exit 0
             fi
-            git fetch --quiet origin "refs/heads/$BRANCH_NAME"
-            if [ "$(git rev-parse 'FETCH_HEAD^{tree}')" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+            if [ "$(git rev-parse "$REMOTE_HEAD^{tree}")" = "$(git rev-parse 'HEAD^{tree}')" ]; then
               echo "::notice::Pull request #$OPEN_PR already holds these changes."
               exit 0
             fi
+            # Someone may push to the branch between the checks above and this push.
+            PUSH_MODE="--force-with-lease=refs/heads/$BRANCH_NAME:$REMOTE_HEAD"
           fi
 
           gh auth setup-git
-          git push --force origin "HEAD:refs/heads/$BRANCH_NAME"
+          git push "$PUSH_MODE" origin "HEAD:refs/heads/$BRANCH_NAME"
 
           if [ -n "$OPEN_PR" ]; then
             gh pr edit "$OPEN_PR" --repo "$REPOSITORY" --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
