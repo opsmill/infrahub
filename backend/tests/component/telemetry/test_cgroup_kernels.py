@@ -32,7 +32,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 from testcontainers.core.image import DockerImage
 
-RESOURCES_MODULE = Path(__file__).parents[3] / "infrahub" / "telemetry" / "resources.py"
+RESOURCES_MODULE = Path(__file__).resolve().parents[3] / "infrahub" / "telemetry" / "resources.py"
 
 _MEBIBYTE = 1024**2
 _NANO_CPUS_PER_CPU = 10**9
