@@ -1,0 +1,19 @@
+backend/infrahub/core/node/node_property_attribute.py
+  s_9eff2675aa8a9f::t_0835df69f490f2 124-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a9f989b1d5514bcaf6f93deeb16a585f62c05a2",
+  "prompts": {},
+  "sessions": {
+    "s_9eff2675aa8a9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b0be214-5bc1-41c9-bde6-1b33f06c8e7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
