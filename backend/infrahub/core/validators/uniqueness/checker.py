@@ -39,7 +39,7 @@ def get_attribute_path_from_string(
     path_parts = path.split("__")
     if len(path_parts) > SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS:
         raise ValueError(f"{path} is not valid on {schema.kind}")
-    if len(path_parts) == 2:
+    if len(path_parts) == SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS:
         name, property_name = path_parts
     else:
         name, property_name = path, None
