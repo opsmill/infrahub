@@ -481,11 +481,16 @@ async def test_node_nodes_query_lists_branch_aware_nodes_added_or_removed_on_bra
 
 
 async def test_node_delete_main_time_range_previous_value(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
-    """A node deleted on main within a time range reports the attribute values it had at the start of the range."""
+    """A node deleted on main within a time range reports the field values it had at the start of the range."""
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
     car_main.nbr_seats.value = 7
+    await car_main.owner.update(db=db, data=person_jane_main)
     await car_main.save(db=db)
     from_time = Timestamp()
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -508,3 +513,10 @@ async def test_node_delete_main_time_range_previous_value(
     assert value_property.action is DiffAction.REMOVED
     assert value_property.previous_value == 7
     assert value_property.new_value in (None, "NULL")
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.REMOVED
+    assert {(r.peer_id, r.action) for r in relationship_diff.relationships} == {
+        (person_jane_main.id, DiffAction.REMOVED)
+    }
