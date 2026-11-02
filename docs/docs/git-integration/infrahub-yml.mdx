@@ -64,6 +64,8 @@ Infrahub processes configuration sections in a specific order to handle dependen
 5. **Jinja2 transformations**: Loaded after their required queries are available
 6. **Artifact definitions**: Loaded last to reference existing transformations
 
+When Infrahub cannot use an entry, such as a schema path that does not exist, the import of the branch fails. See [when the import of a branch fails](./overview.mdx#when-the-import-of-a-branch-fails).
+
 ### File vs. directory handling
 
 When you specify a directory in any resource list:

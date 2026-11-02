@@ -241,6 +241,14 @@ Read-only repositories are not checked this way. Their `ref` can be a branch, a 
 
 :::
 
+:::info A repository that fails the connectivity check is removed
+
+When you add a repository, Infrahub asks a task worker to check the connection to the remote, and waits for the answer before it responds to your request. If the check fails, or if no task worker answers within `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (120 by default), Infrahub deletes the repository it created and returns the error. Fix the cause, then add the repository again with the same name.
+
+When no task worker answers, the error has the code `WORKER_TIMEOUT` and the HTTP status 504, as described in the [error catalogue](../reference/error-catalogue.mdx#worker_timeout). Check that the task workers are running.
+
+:::
+
 :::success Check repository connectivity
 
 After creation, your new repository should appear under **Integrations > Git Repositories**. If the status shows `Unknown` or an error state, please refer to the [troubleshooting section](#troubleshoot-repository-connections).
@@ -381,7 +389,7 @@ After triggering the import, the repository will fetch from the remote and re-im
 
 If you encounter issues with your repository connections, you can use the following steps to diagnose and resolve them:
 
-The repository sync status indicator in the header tells you whether anything is wrong without opening a repository. It turns red with a pulsing dot when any repository on the branch you are viewing has an `Import Error` sync status, and selecting it opens the repository list filtered to those repositories. When nothing is failing it opens the full list instead. It reads sync status rather than task results, so it still reports a failure when the task that ran the import finished successfully.
+The repository sync status indicator in the header tells you whether anything is wrong without opening a repository. It turns red with a pulsing dot when any repository on the branch you are viewing has an `Import Error` sync status, and selecting it opens the repository list filtered to those repositories. When nothing is failing it opens the full list instead. It reads sync status rather than task results, so it still reports a failure when the task that ran the import finished successfully. It does not report the **Tracked Ref Missing** status of a read-only repository; see [when the tracked ref of a read-only repository is deleted](./overview.mdx#when-the-tracked-ref-of-a-read-only-repository-is-deleted).
 
 1. Check the repository status indicators:
    - **Admin status**: Indicates if Infrahub is actively using the repository
@@ -402,9 +410,19 @@ The repository sync status indicator in the header tells you whether anything is
    - Select **Reimport current commit** to force reimport without changing the reference
    - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
-4. **Check which worker holds the repository lock.** The **Repository activity** card names the worker that holds the repository lock and when it requested it. A held lock is not an error on its own: short tasks such as fetches also hold it.
+4. **Check that a task worker answers.** When you select **Check connectivity**, open the **Commits** tab, or add a repository, Infrahub waits for a task worker to answer for up to `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (120 by default). When no task worker answers in that time, the request fails with the error code `WORKER_TIMEOUT`. Check that the task workers are running, then try again.
 
-5. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
+5. **Check which worker holds the repository lock.** The **Repository activity** card names the worker that holds the repository lock and when it requested it. A held lock is not an error on its own: short tasks such as fetches also hold it.
+
+6. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
+
+7. **Clear a Tracked Ref Missing status.** On a branch where a read-only repository shows **Tracked Ref Missing**, use one of these:
+   - Change the `ref` of the repository on that branch. Infrahub imports the new target.
+   - Restore the branch or tag on the remote, then run **Reimport current commit** on that branch.
+
+   If you reimport while the ref is still missing from the remote, the status stays **Tracked Ref Missing**. For when Infrahub sets this status and what it blocks, see [when the tracked ref of a read-only repository is deleted](./overview.mdx#when-the-tracked-ref-of-a-read-only-repository-is-deleted).
+
+8. **Fix an `.infrahub.yml` entry that fails the import.** When the task log names an entry of `.infrahub.yml`, fix that entry in the repository and push the commit. Infrahub imports the new commit of a read-write repository at the next synchronization. For a read-only repository, run **Import latest commit**. The [entries that fail the import](./overview.mdx#entries-in-infrahubyml-that-fail-the-import) are listed on the Git integration overview.
 
 :::success Validation
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
