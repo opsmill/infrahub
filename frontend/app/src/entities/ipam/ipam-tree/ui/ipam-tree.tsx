@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
+import * as R from "remeda";
 
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -55,7 +56,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
     return <ErrorScreen message={error.message} />;
   }
 
-  const items = data.pages.flat();
+  const items = R.uniqueBy(data.pages.flat(), (node) => node.id);
 
   const defaultExpandedKeys = ancestorsData
     ? ancestorsData
@@ -120,7 +121,7 @@ function IpamTreeItem({
 
   const { schema: nodeSchema } = useSchema(node.__typename);
   const nodeLabel = getNodeLabel(node);
-  const childrenNodes = data?.pages.flat() ?? [];
+  const childrenNodes = R.uniqueBy(data?.pages.flat() ?? [], (childNode) => childNode.id);
 
   return (
     <TreeItem
