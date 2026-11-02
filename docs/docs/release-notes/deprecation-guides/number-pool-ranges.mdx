@@ -90,7 +90,7 @@ an error.
 
 ## Migrate schema pools
 
-### Step 1: Update schema files
+### Update schema files
 
 In the `parameters` of each `NumberPool` attribute, replace `start_range` and `end_range` with
 `ranges`. Each range has a `start` and an `end`, both included and both optional, and an optional
@@ -172,7 +172,7 @@ existing pool. The load is refused while an object holds a number from the pool.
 | `end` lower than `start` | `Range end (200) cannot be lower than start (300)` |
 | A range shortened below a number already allocated, for example `100`–`200` changed to `100`–`100` while `101` is allocated | `Attribute-level 'number_pool' constraint violation on schema 'InfraService'. Node (<SERVICE-NAME>) is not compliant. The error relates to field service_identifier=101.` |
 
-### Step 2: Apply schema changes
+### Load the schema
 
 If you're using Git integration, commit the changes and let Infrahub import them.
 
@@ -214,7 +214,7 @@ Python SDK:
 
 ## Migrate user pools
 
-### In GraphQL scripts
+### In GraphQL
 
 In GraphQL, the weight is `allocation_weight`.
 
@@ -293,7 +293,7 @@ Each range must stay within the `min_value` and `max_value` of the attribute the
 for. With `min_value: 1` and `max_value: 4094` on `vlan_id`, a range from `100` to `5000` is refused.
 A range that starts below `min_value` is refused the same way.
 
-### In Python SDK scripts
+### With the Python SDK
 
 The SDK takes the same fields as GraphQL: each range is a dictionary with `start`, `end` and
 `allocation_weight`, any of which can be left out.
