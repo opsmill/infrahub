@@ -631,7 +631,7 @@ async def test_delete_cascade_generator_instances(
     default_branch: Branch,
     car_person_data_generic: dict[str, Node],
 ) -> None:
-    """Deleting the target of a generator instance must cascade-delete the instance and keep the other instances."""
+    """Deleting the target of a generator instance deletes the instance, and deleting an instance keeps its target."""
     c1 = car_person_data_generic["c1"]
     c2 = car_person_data_generic["c2"]
     q1 = car_person_data_generic["q1"]
@@ -672,6 +672,11 @@ async def test_delete_cascade_generator_instances(
     assert {d.id for d in deleted} == {c1.id, instances[c1.id].id}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, instances[c1.id].id, instances[c2.id].id])
     assert set(node_map) == {instances[c2.id].id}
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[node_map[instances[c2.id].id]])
+
+    assert {d.id for d in deleted} == {instances[c2.id].id}
+    assert await NodeManager.get_one(db=db, id=c2.id) is not None
 
     await verify_graph(db=db)
 
