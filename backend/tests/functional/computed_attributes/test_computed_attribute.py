@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.protocols import CoreRepository
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
@@ -125,7 +126,7 @@ class TestComputedAttribute(TestInfrahubApp):
     ) -> None:
         await client.branch.create(branch_name="branch2")
 
-        repo = await client.get(kind="CoreRepository", name__value="computed-attributes-functional", branch="branch2")
+        repo = await client.get(kind=CoreRepository, name__value="computed-attributes-functional", branch="branch2")
         repo.commit.value = "decc6d49679404b201c54bbe7b0c788e268e25b7"
         await repo.save()
 

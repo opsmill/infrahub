@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.branch import BranchStatus
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreFileCheck, CoreGenericRepository, CoreProposedChange, CoreStandardCheck
+from infrahub_sdk.protocols import (
+    BuiltinTag,
+    CoreFileCheck,
+    CoreGenericRepository,
+    CoreProposedChange,
+    CoreStandardCheck,
+)
 
 from infrahub.core.constants import (
     InfrahubKind,
@@ -204,9 +210,9 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
         assert branch.status == BranchStatus.OPEN
 
         for branch_name in ("main", BRANCH_NAME):
-            tag = await client.create(kind=InfrahubKind.TAG, branch=branch_name, data={"name": f"after-{branch_name}"})
+            tag = await client.create(kind=BuiltinTag, branch=branch_name, data={"name": f"after-{branch_name}"})
             await tag.save()
-            stored = await client.get(kind=InfrahubKind.TAG, id=tag.id, branch=branch_name)
+            stored = await client.get(kind=BuiltinTag, id=tag.id, branch=branch_name)
             assert stored.name.value == f"after-{branch_name}"
 
     async def test_checks_clear_once_the_imports_succeed(

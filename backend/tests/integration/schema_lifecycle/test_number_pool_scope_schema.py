@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from infrahub_sdk.protocols import CoreNumberPool
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -24,7 +25,6 @@ from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
-    from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -62,10 +62,10 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
     """A schema load and a schema check that break an element dividing a user-created pool, and a rename of it."""
 
     @pytest.fixture(scope="class")
-    async def scoped_pool(self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient) -> InfrahubNode:
+    async def scoped_pool(self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient) -> CoreNumberPool:
         await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, branch_name=default_branch.name, update_db=True)
         pool = await client.create(
-            kind=InfrahubKind.NUMBERPOOL,
+            kind=CoreNumberPool,
             name=DEVICE_POOL_BY_SITE,
             node=SCOPED_DEVICE.kind,
             node_attribute="vlan_id",
@@ -77,7 +77,7 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         return pool
 
     @pytest.fixture(scope="class")
-    async def other_branch(self, db: InfrahubDatabase, scoped_pool: InfrahubNode) -> Branch:
+    async def other_branch(self, db: InfrahubDatabase, scoped_pool: CoreNumberPool) -> Branch:
         return await create_branch(db=db, branch_name="scope-checker")
 
     @staticmethod
@@ -95,7 +95,7 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         assert await self._stored_device_hash(db=db, branch=branch) == before
 
     async def test_step01_load_on_default_branch_is_refused(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, scoped_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, scoped_pool: CoreNumberPool
     ) -> None:
         await self._assert_load_refused(db=db, client=client, branch=default_branch)
 
@@ -105,7 +105,7 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         await self._assert_load_refused(db=db, client=client, branch=other_branch)
 
     async def test_step03_check_reports_the_refusal_without_loading(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, scoped_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, scoped_pool: CoreNumberPool
     ) -> None:
         before = await self._stored_device_hash(db=db, branch=default_branch)
 
@@ -122,7 +122,7 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         service: InfrahubServices,
-        scoped_pool: InfrahubNode,
+        scoped_pool: CoreNumberPool,
     ) -> None:
         site_id = (
             registry.schema.get_node_schema(name=SCOPED_DEVICE.kind, branch=default_branch)
@@ -140,11 +140,11 @@ class TestNumberPoolScopeCheckerSchemaLifecycle(TestInfrahubApp):
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         renamed = schema_branch.get_node(name=SCOPED_DEVICE.kind, duplicate=False).get_relationship(name="location")
         assert renamed.id == site_id
-        pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=scoped_pool.id)
+        pool = await client.get(kind=CoreNumberPool, id=scoped_pool.id)
         assert pool.allocation_scope.value == [{"id": site_id, "name": "location"}]
 
     async def test_step05_new_device_allocates_per_site_after_the_rename(
-        self, client: InfrahubClient, default_branch: Branch, scoped_pool: InfrahubNode
+        self, client: InfrahubClient, default_branch: Branch, scoped_pool: CoreNumberPool
     ) -> None:
         pool_id = scoped_pool.id
         await client.schema.all(branch=default_branch.name, refresh=True)
@@ -192,7 +192,7 @@ def _declared_schema_root(scope: list[str]) -> SchemaRoot:
     )
 
 
-def _declared_refusal(pool: InfrahubNode, field: str, detail: str) -> str:
+def _declared_refusal(pool: CoreNumberPool, field: str, detail: str) -> str:
     return (
         f"'number_pool.scope' constraint violation on schema '{InfrahubKind.NUMBERPOOL}'. Node ({pool.name.value}) is"
         f" not compliant. The error relates to field {field}={f'ScopeDevice.vlan_id: {detail}'!r}."
@@ -208,17 +208,17 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def schema_pool(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient, service: InfrahubServices
-    ) -> InfrahubNode:
+    ) -> CoreNumberPool:
         await load_schema(
             db=db, schema=_declared_schema_root(scope=["site"]), branch_name=default_branch.name, update_db=True
         )
         await run_schema_updated_workflow(service=service, branch=default_branch)
-        pools = await client.filters(kind=InfrahubKind.NUMBERPOOL, node__value=SCOPED_DEVICE.kind)
+        pools = await client.filters(kind=CoreNumberPool, node__value=SCOPED_DEVICE.kind)
         assert len(pools) == 1
         return pools[0]
 
     @pytest.fixture(scope="class")
-    async def declaration_branch(self, db: InfrahubDatabase, schema_pool: InfrahubNode) -> Branch:
+    async def declaration_branch(self, db: InfrahubDatabase, schema_pool: CoreNumberPool) -> Branch:
         return await create_branch(db=db, branch_name="scope-declaration")
 
     @staticmethod
@@ -241,7 +241,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         assert await self._stored_device(db=db, branch=branch) == before
 
     async def test_step01_declaring_another_element_is_refused(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: CoreNumberPool
     ) -> None:
         assert schema_pool.allocation_scope.value == [{"id": self._site_id(branch=default_branch), "name": "site"}]
 
@@ -254,7 +254,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         )
 
     async def test_step02_clearing_the_declaration_is_refused(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: CoreNumberPool
     ) -> None:
         await self._assert_load_refused(
             db=db,
@@ -265,7 +265,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         )
 
     async def test_step03_leaving_the_declaration_out_keeps_it(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: CoreNumberPool
     ) -> None:
         """A load merges a parameter it leaves out as unchanged, so the stored declaration and the pool's scope stay."""
         before = await self._stored_device(db=db, branch=default_branch)
@@ -277,11 +277,11 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         assert not response.errors
         assert await self._stored_device(db=db, branch=default_branch) == before
         assert before[1] == ["site"]
-        pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=schema_pool.id)
+        pool = await client.get(kind=CoreNumberPool, id=schema_pool.id)
         assert pool.allocation_scope.value == [{"id": self._site_id(branch=default_branch), "name": "site"}]
 
     async def test_step04_declaring_another_element_is_refused_on_a_branch(
-        self, db: InfrahubDatabase, client: InfrahubClient, declaration_branch: Branch, schema_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, declaration_branch: Branch, schema_pool: CoreNumberPool
     ) -> None:
         await self._assert_load_refused(
             db=db,
@@ -309,7 +309,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         )
 
     async def test_step06_renaming_the_element_without_updating_the_declaration_is_refused(
-        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: InfrahubNode
+        self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, schema_pool: CoreNumberPool
     ) -> None:
         device = _declared_device(scope=["site"])
         _field(device, "site").update(name="location", id=self._site_id(branch=default_branch))
@@ -332,7 +332,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         service: InfrahubServices,
-        schema_pool: InfrahubNode,
+        schema_pool: CoreNumberPool,
     ) -> None:
         site_id = self._site_id(branch=default_branch)
         device = _declared_device(scope=["location"])
@@ -344,7 +344,7 @@ class TestNumberPoolScopeDeclarationSchemaLifecycle(TestInfrahubApp):
 
         _, declaration = await self._stored_device(db=db, branch=default_branch)
         assert declaration == ["location"]
-        pool = await client.get(kind=InfrahubKind.NUMBERPOOL, id=schema_pool.id)
+        pool = await client.get(kind=CoreNumberPool, id=schema_pool.id)
         assert pool.allocation_scope.value == [{"id": site_id, "name": "location"}]
 
     @staticmethod

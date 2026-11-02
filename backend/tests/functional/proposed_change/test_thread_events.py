@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.protocols import CoreChangeThread
 from prefect import get_client
 from tests.helpers.test_app import TestInfrahubApp
 
-from infrahub.core.constants.infrahubkind import CHANGETHREAD, PROPOSEDCHANGE, THREADCOMMENT
+from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE, THREADCOMMENT
 from infrahub.core.initialization import create_branch
 
 if TYPE_CHECKING:
@@ -41,7 +42,7 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         )
         await proposed_change.save()
 
-        pc_thread = await client.create(kind=CHANGETHREAD, data={"change": proposed_change.id})
+        pc_thread = await client.create(kind=CoreChangeThread, data={"change": proposed_change.id})
         await pc_thread.save()
 
         pc_thread_comment = await client.create(kind=THREADCOMMENT, data={"thread": pc_thread.id, "text": "A comment"})
