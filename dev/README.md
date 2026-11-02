@@ -112,6 +112,10 @@ Backend guides in [guides/backend/](guides/backend/):
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
 
+CI guides in [guides/](guides/):
+
+- [updating-agentic-workflows.md](guides/updating-agentic-workflows.md) - Change an agentic workflow's settings and review the weekly upgrade pull request
+
 ## Current Commands
 
 Agent commands live in [../.agents/commands/](../.agents/commands/); run one by its name:

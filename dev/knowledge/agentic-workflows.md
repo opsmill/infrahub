@@ -22,8 +22,9 @@ Each workflow has two files:
   GitHub runs this file. Do not edit it: the next regeneration overwrites the edit.
 
 The lock file reads the prompt from the source when it runs, so a change to the body of a source
-file takes effect without regenerating. A change to the frontmatter needs a regeneration. Each run
-starts with a gh-aw step that checks whether the lock file is out of date with its source.
+file takes effect without regenerating. A change to the frontmatter needs a regeneration, see
+[Updating agentic workflows](../guides/updating-agentic-workflows.md). Each run starts with a gh-aw
+step that checks whether the lock file is out of date with its source.
 
 The lock file fixes everything the run depends on, and its first lines record it:
 
@@ -44,8 +45,9 @@ No pull request check compares the lock files with their sources. actionlint ski
   them with the gh-aw GitHub App (`GH_AW_APP_ID`). The `safe-outputs` frontmatter caps how many of
   each the agent may request.
 - `network: defaults` limits the agent to gh-aw's default list of domains.
-- `min-integrity` removes content by authors below a trust level from the agent's GitHub reads, and
-  `approval-labels` lifts that for an issue or pull request carrying one of the labels.
+- In a source that sets them, `min-integrity` removes content by authors below a trust level from the
+  agent's GitHub reads, and `approval-labels` lifts that for an issue or pull request carrying one of
+  the labels. The bug agents set both, with the `state/ai-pipeline-ready` label.
   [Integrity filtering](https://github.github.com/gh-aw/reference/integrity/) lists who reaches each
   level.
 - The repository variable `GH_AW_DEFAULT_MAX_AI_CREDITS` sets the AI credit budget of each run, 1000
@@ -72,56 +74,31 @@ Two engine settings decide whether an agent can edit files:
 - `bare`: keep it `false`, the default. Bare mode skips the repository instruction files and limits
   Claude Code to the Bash, Edit and Read tools.
 
-## Changing a workflow
-
-Edit the `.md` file. When the change touches the frontmatter, regenerate the lock file and commit
-both files together:
-
-```bash
-gh extension upgrade gh-aw
-gh aw compile bug-agent-analyst
-```
-
-Use a gh-aw version at least as new as the `compiler_version` of the lock files, or the
-regeneration downgrades them. A regeneration can also change `.gitattributes` and
-`.github/aw/actions-lock.json`; commit those changes too.
-
 ## Keeping gh-aw and Claude Code current
 
 Dependabot skips gh-aw's own actions, so `.github/workflows/upgrade-agentic-workflows.yml` is what
-moves the lock files to newer gh-aw and Claude Code releases. It runs every Monday and can be started
-by hand:
+moves the lock files to newer gh-aw and Claude Code releases. It runs every Monday, can be started by
+hand, and has two jobs:
 
-1. Checks out `stable` and installs the newest gh-aw release.
-2. Runs `gh aw upgrade --approve`, which rewrites renamed frontmatter fields, updates
-   `.github/aw/actions-lock.json` and the gh-aw agent file, and regenerates every lock file.
-3. When anything changed, commits it and opens a pull request from `ci/upgrade-agentic-workflows`
-   to `stable`. The description lists the gh-aw and Claude Code versions before and after, and the
-   secrets and actions the workflows did not use before.
+1. The upgrade job checks out `stable`, installs the newest gh-aw release and runs
+   `gh aw upgrade --approve`, which rewrites renamed frontmatter fields, updates
+   `.github/aw/actions-lock.json` and the gh-aw agent file, and regenerates every lock file. When
+   anything changed, it commits the result and writes the pull request description: the gh-aw and
+   Claude Code versions before and after, and the secrets and actions the workflows did not use
+   before.
+2. The publish job starts on a fresh runner, loads that commit and pushes it to
+   `ci/upgrade-agentic-workflows` with the gh-aw GitHub App, then opens or updates the pull request to
+   `stable`.
+
+gh-aw runs only in the upgrade job, which has no token that can write. The publish job never runs
+gh-aw, so nothing the newly installed release leaves on its runner can reach the App token. That
+token needs write access to repository contents, pull requests and workflows. The agents ask the same
+app for tokens with a fixed list of permissions that does not include workflows.
 
 `--approve` accepts the secrets and actions that a regeneration adds, which strict mode would
-otherwise hold for approval. The pull request review is where a person checks them.
+otherwise hold for approval. The pull request review is where a person checks them, following
+[Review an upgrade pull request](../guides/updating-agentic-workflows.md#review-an-upgrade-pull-request).
 
 A later run replaces an open upgrade pull request only while it still holds the bot's single commit,
-so a fix someone pushed or amended stays until the pull request is merged or closed.
-
-The workflow pushes with the gh-aw GitHub App, which needs write access to repository contents, pull
-requests and workflows. The agents ask the same app for tokens with a fixed list of permissions that
-does not include workflows.
-
-## Reviewing an upgrade pull request
-
-A new gh-aw release can change a default without any error, and `gh aw upgrade` only rewrites fields
-that were renamed. Before merging:
-
-- Compare the `claude` command line in one lock file before and after: `--permission-mode`,
-  `--allowed-tools`, `--disallowed-tools` and whether `--bare` appears. The bug agents need to edit
-  files and run commands.
-- Check that no `create-github-app-token` step in the lock files asks for `permission-workflows`.
-- For each new secret in the description, check whether the workflows need it. gh-aw skips some
-  secrets when they are not set; a missing required secret makes the workflows fail.
-- Read the [gh-aw release notes](https://github.com/github/gh-aw/releases) between the two versions
-  for changed defaults.
-- After merging, start one of the scheduled agentic workflows by hand from the Actions tab and run
-  `/bug-analyze` on a bug issue. Check in the run logs that the agent started with the expected
-  model and finished.
+so a fix someone pushed or amended stays until the pull request is merged or closed. It leaves the
+pull request alone when it already holds the same changes and has no merge conflict.
