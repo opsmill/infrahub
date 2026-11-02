@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreChangeThread
+from infrahub_sdk.protocols import CoreChangeThread, CoreProposedChange, CoreThreadComment
 from prefect import get_client
 from tests.helpers.test_app import TestInfrahubApp
 
-from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE, THREADCOMMENT
 from infrahub.core.initialization import create_branch
 
 if TYPE_CHECKING:
@@ -37,7 +36,7 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         """Create a proposed change thread and then mark it as resolved all of this while asserting that events are being fired."""
         source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc"},
         )
         await proposed_change.save()
@@ -45,7 +44,9 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         pc_thread = await client.create(kind=CoreChangeThread, data={"change": proposed_change.id})
         await pc_thread.save()
 
-        pc_thread_comment = await client.create(kind=THREADCOMMENT, data={"thread": pc_thread.id, "text": "A comment"})
+        pc_thread_comment = await client.create(
+            kind=CoreThreadComment, data={"thread": pc_thread.id, "text": "A comment"}
+        )
         await pc_thread_comment.save()
 
         await self.assert_event(
