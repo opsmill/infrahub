@@ -73,7 +73,11 @@ When you attach a number, Infrahub:
 - never allocates it to another object
 - returns the pool as the attribute's `source`, in place of any source you set on the attribute
 
+:::warning
+
 Attaching is branch-agnostic: it takes effect on every branch as soon as you save, whichever branch you save on. Deleting the branch you attached on does not undo it.
+
+:::
 
 The number must be inside one of the pool's ranges. Infrahub refuses a number outside them:
 
