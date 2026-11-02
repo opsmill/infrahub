@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -56,6 +56,8 @@ class BulkMergeNodeExistenceQuery(Query):
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
             "excluded_node_uuids": self.excluded_node_uuids,
+            "generator_instance_kind": InfrahubKind.GENERATORINSTANCE,
+            "generator_instance_identifiers": ["generator__node", "generator__generator_definition"],
         }
         query = """
 // ==============================
@@ -151,6 +153,38 @@ CALL (n, tgt_n, src) {
         MATCH (other:Node {uuid: n.uuid})-[active_ipo:IS_PART_OF {branch: $source_branch, status: "active"}]->(:Root)
         WHERE active_ipo.to IS NULL
         AND other <> n
+    }
+    // Generator instances are branch-local, so the deletion of their target or definition does not reach them.
+    CALL (tgt_n, src) {
+        MATCH (tgt_n)-[target_edge:IS_RELATED]-(target_rel:Relationship)
+              -[instance_edge:IS_RELATED]-(instance:Node {kind: $generator_instance_kind})
+              -[existence:IS_PART_OF]->(instance_root:Root)
+        WHERE target_rel.name IN $generator_instance_identifiers
+        AND all(edge IN [target_edge, instance_edge, existence]
+                  WHERE edge.branch = $target_branch AND edge.status = "active" AND edge.to IS NULL)
+        WITH DISTINCT instance, existence, instance_root, src
+        SET existence.to = $at, existence.to_user_id = src.from_user_id
+        CREATE (instance)-[:IS_PART_OF {
+            branch: $target_branch, branch_level: $branch_level, status: "deleted",
+            from: $at, from_user_id: src.from_user_id
+        }]->(instance_root)
+        SET instance.previous_updated_at = instance.updated_at,
+            instance.previous_updated_by = instance.updated_by,
+            instance.updated_at = $at, instance.updated_by = src.from_user_id
+        CALL (instance, src) {
+            MATCH (instance)-[field_edge:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)-[peer_edge]-()
+            WHERE field_edge.branch = $target_branch AND peer_edge.branch = $target_branch
+              AND field_edge.status = "active" AND peer_edge.status = "active"
+              AND field_edge.to IS NULL AND peer_edge.to IS NULL
+            SET field_edge.to = $at, field_edge.to_user_id = src.from_user_id,
+                peer_edge.to = $at, peer_edge.to_user_id = src.from_user_id
+        }
+        CALL (instance, src) {
+            MATCH (instance)<-[metadata_edge:HAS_OWNER|HAS_SOURCE]-()
+            WHERE metadata_edge.branch = $target_branch
+              AND metadata_edge.status = "active" AND metadata_edge.to IS NULL
+            SET metadata_edge.to = $at, metadata_edge.to_user_id = src.from_user_id
+        }
     }
     // ------------------------------
     // close IS_RELATED and HAS_ATTRIBUTE sub-edges
