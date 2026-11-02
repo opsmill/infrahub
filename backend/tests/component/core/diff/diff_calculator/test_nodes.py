@@ -478,3 +478,45 @@ async def test_node_nodes_query_lists_branch_aware_nodes_added_or_removed_on_bra
     node_uuids = query.get_node_uuids()
     assert len(node_uuids) == 2
     assert set(node_uuids) == {new_person.id, john_main.id}
+
+
+async def test_node_delete_main_time_range_previous_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    """A node deleted on main within a time range reports the field values it had at the start of the range."""
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.nbr_seats.value = 7
+    await car_main.owner.update(db=db, data=person_jane_main)
+    await car_main.save(db=db)
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.delete(db=db)
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    node_diffs_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.REMOVED
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    properties_by_type = {prop.property_type: prop for prop in attributes_by_name["nbr_seats"].properties}
+    value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert value_property.action is DiffAction.REMOVED
+    assert value_property.previous_value == 7
+    assert value_property.new_value in (None, "NULL")
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.REMOVED
+    assert {(r.peer_id, r.action) for r in relationship_diff.relationships} == {
+        (person_jane_main.id, DiffAction.REMOVED)
+    }
