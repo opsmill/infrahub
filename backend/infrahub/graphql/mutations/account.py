@@ -135,7 +135,7 @@ class AccountMixin:
 
         results = await NodeManager.query(
             schema=InternalAccountToken,
-            filters={"account_ids": [account.id], "ids": [token_id]},
+            filters={"account__ids": [account.id], "ids": [token_id]},
             db=db,
             order=OrderModel(disable=True),
         )
