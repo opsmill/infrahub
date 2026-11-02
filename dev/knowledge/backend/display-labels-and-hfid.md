@@ -3,7 +3,6 @@
 > Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md), [merge-recompute.md](merge-recompute.md)
 
 Display labels and HFIDs are computed node properties. Display labels use Jinja2 templates; HFIDs use schema path lists.
-
 ## Schema Definition
 
 On `BaseNodeSchema`:
@@ -13,25 +12,6 @@ On `BaseNodeSchema`:
 - **`display_labels`** (deprecated): Legacy list format, auto-converted to `display_label` during schema processing
 
 Schema paths use `__` separators: `color__name__value` means "follow the `color` relationship, read the `name` attribute's `value` property."
-
-### Schema path limits
-
-Validate schema paths with `BaseNodeSchema.parse_schema_path()`. The shared limits are defined in
-[`core/constants/schema.py`](../../../backend/infrahub/core/constants/schema.py):
-
-- `SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS = 2`: an attribute and its optional property (`name__value`).
-- `SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS = 3`: one relationship, a peer attribute, and its optional
-  property (`owner__name__value`); hierarchical `parent` paths use the same limit.
-
-These constants describe the supported grammar. Increasing them alone does not implement deeper
-relationship traversal; parsing and value resolution must support any new path form together.
-`SchemaBranch.validate_schema_path()` applies each field's additional requirements, such as mandatory
-relationships of cardinality one for HFIDs. The uniqueness checker's
-`get_attribute_path_from_string()` uses the attribute-path limit for its local attribute/property
-input and rejects excess segments before unpacking.
-
-For composite HFIDs, keep each path in a separate list item: `["firstname__value", "lastname__value"]`.
-The parser rejects `firstname__value__lastname__value` before it can become a uniqueness constraint.
 
 ## Key Classes
 
@@ -88,7 +68,7 @@ Registration happens during schema processing: display labels are registered ins
 
 When a node's display label or HFID template references relationship peer attributes (e.g., `color__name__value`), those attributes must be loaded during `Relationship.resolve()`. The `resolve_relationships()` method calls `_collect_extra_filters()`, which reads `relationship_fields` from the registries and builds the filter map. These are then passed as `extra_filters` to each `RelationshipManager.resolve()`.
 
-```text
+```
 resolve_relationships()
   -> _collect_extra_filters()
        -> read relationship_fields from schema_branch.hfids / schema_branch.display_labels
@@ -148,7 +128,7 @@ Loading a node object to call `get_display_label()` costs one attribute and one 
 
 When a schema is updated to add or change a `display_label` or a `human_friendly_id`, the async Prefect workflow chain updates existing nodes:
 
-```text
+```
 SchemaUpdatedEvent
   -> display_labels_setup_jinja2 / hfid_setup (gathers triggers, detects new/changed definitions)
   -> trigger_update_display_labels / trigger_update_hfid (pages through all node ids of the kind in uuid order, at the client's pagination size, never below one submission chunk)
@@ -181,6 +161,7 @@ For attribute kinds whose accepted input form differs from their normalized stor
 `_normalize_value()` is a `classmethod` so a value can be checked without building an attribute instance. `AttributeKindUpdateValidatorQuery` relies on that to enforce canonicality when an attribute's kind changes: a kind change runs no data migration over the stored values, so a value that parses under the new kind but is not already in its canonical form would survive un-rewritten and then miss every `__value` filter and uniqueness comparison. The check is unconditional — kinds that do not normalize inherit the identity `_normalize_value()`, so it is a no-op for them and a newly added normalizing kind is covered without touching the validator.
 
 The practical consequence is that a kind change into a normalizing kind is only allowed when the existing values are already canonical. Converting `Text` → `MacAddress` over `aa-bb-cc-dd-ee-ff` is refused, and `IPAddress` ↔ `IPHost` is refused in both directions because neither side's stored form is canonical for the other.
+
 
 ## Hierarchical Relationships and Inline Fragments
 

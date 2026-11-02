@@ -1,8 +1,9 @@
 # Constants and literals
 
-Create named constants for values that encode domain rules, limits, defaults, thresholds, timeouts,
-retry counts, or protocol requirements. Apply this when writing and reviewing backend and frontend
-code. A single use still needs a name when the literal hides its meaning or reason for changing.
+Avoid magic numbers. Create named constants for values that encode domain rules, limits, defaults,
+thresholds, timeouts, retry counts, or protocol requirements. Apply this when writing and reviewing
+backend and frontend code. A single use still needs a name when the literal hides its meaning or
+reason for changing.
 
 ## Find and reuse the owner
 
