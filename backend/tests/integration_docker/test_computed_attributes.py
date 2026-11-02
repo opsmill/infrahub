@@ -270,6 +270,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_transform_based_computed_attribute(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         src_directory = CURRENT_DIRECTORY / "test_files/repos/computed_attribute"
         repo = GitRepo(name="computed_attribute", src_directory=src_directory, dst_directory=remote_repos_dir)
+        assert repo._repo is not None
         commit = repo._repo.git[repo._repo.git.head()]
         assert len(list(repo._repo.git.get_walker())) == 1
         assert isinstance(commit, Commit)
