@@ -119,8 +119,7 @@ def _exhausted_division_message(pool: CoreNumberPool, exc: DivisionExhaustedErro
     return (
         f"Pool {number_pool_label(pool=pool)} has no free number left in its ranges for"
         f" {scope.describe(division=exc.division)}: {node_count} node(s) of {kind} being filled are in this division"
-        f" and the ranges hold {space}. If the scope element was added in the same schema load, add and fill it in an"
-        " earlier load."
+        f" and the ranges hold {space}."
     )
 
 

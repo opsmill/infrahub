@@ -939,8 +939,7 @@ def _switch_pool_exhaustion_pattern(description: str, count: int) -> str:
         f"^{re.escape(f'Pool {SCOPED_SWITCH.kind}.{SCOPED_ATTRIBUTE_NAME} [')}{pool_id}{re.escape('] (')}{pool_id}"
         + re.escape(
             f") has no free number left in its ranges for {description}: {count} node(s) of {SCOPED_SWITCH.kind}"
-            " being filled are in this division and the ranges hold 10 number(s). If the scope element was added"
-            " in the same schema load, add and fill it in an earlier load."
+            " being filled are in this division and the ranges hold 10 number(s)."
         )
         + "$"
     )
