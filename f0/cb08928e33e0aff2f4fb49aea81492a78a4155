@@ -1,0 +1,25 @@
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_71e9cb725a3331::t_2a950c668a37a9 158-168
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_71e9cb725a3331::t_021581776da94b 62-100
+  s_71e9cb725a3331::t_5d2292966c948c 14,19
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_71e9cb725a3331::t_c46fbb508d45a5 87-105
+  s_71e9cb725a3331::t_34be7fe5342e8d 22,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0cb08928e33e0aff2f4fb49aea81492a78a4155",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
