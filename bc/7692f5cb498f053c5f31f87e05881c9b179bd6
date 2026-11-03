@@ -1,0 +1,25 @@
+backend/tests/component/graphql/queries/test_ip_prefix_utilization.py
+  s_d9de296e59360e::t_f5945e89fc6c81 41-46
+  s_d9de296e59360e::t_fea60114721f52 82,90,94-96
+  s_d9de296e59360e::t_18d465a5209049 181-203
+  s_d9de296e59360e::t_1871456854cc82 12
+  s_d9de296e59360e::t_c7cf2d89a49df9 132-157
+backend/infrahub/core/node/ipam.py
+  s_d9de296e59360e::t_8cf7f70c4f8c98 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc7692f5cb498f053c5f31f87e05881c9b179bd6",
+  "prompts": {},
+  "sessions": {
+    "s_d9de296e59360e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ddf27-a157-483c-8f33-0db9d9a78d7d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

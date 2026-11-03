@@ -1,0 +1,25 @@
+dev/knowledge/backend/database-schema.md
+  s_3f9deeaacc6b91::t_222d4c12066b93 203
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  s_3f9deeaacc6b91::t_f0636325117512 49
+backend/infrahub/core/branch/data_deleter.py
+  s_3f9deeaacc6b91::t_67bbe5e0b9aaf0 111-115
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_3f9deeaacc6b91::t_222d4c12066b93 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e2e10545fe7c79d6ccde478620c8ecd3e8859ab",
+  "prompts": {},
+  "sessions": {
+    "s_3f9deeaacc6b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392c7c19-e9cd-4b2b-8ea7-49599ccbe72f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

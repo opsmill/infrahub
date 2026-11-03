@@ -1,0 +1,27 @@
+backend/tests/component/telemetry/test_resources.py
+  s_131c69042d4e58::t_a29f5952ba0db7 195-200,202-203,207-208,210,226
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_131c69042d4e58::t_024dd652d320ec 184-196
+  s_131c69042d4e58::t_7a2733fe2d5664 226,231,234-239
+  s_131c69042d4e58::t_08cd65be64434c 253-262
+  s_131c69042d4e58::t_4af787b013df2d 43-44,46
+  s_131c69042d4e58::t_78b4d6e79b0149 305-306
+  s_131c69042d4e58::t_81ca9c27e73cca 60-61
+  s_131c69042d4e58::t_d53103a2b0edab 104-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dca47b2b3a23f157bbc81d1cefb921aee60605c",
+  "prompts": {},
+  "sessions": {
+    "s_131c69042d4e58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27139e14-b3da-4440-b781-9d3c90307ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

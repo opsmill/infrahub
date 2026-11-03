@@ -1,0 +1,23 @@
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_20e0c986f2472f::t_abbc11a0fbbcd3 6,12,154-166,177-189,203-217,235-241,259-310
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_20e0c986f2472f::t_92c7c4dcea44d6 3,60-62,73-77,80,88
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_20e0c986f2472f::t_56dbccdf775a03 30-35,60,78-79,92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ee9f1e079206a18da536ca344bd94e3d7f5e6da",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

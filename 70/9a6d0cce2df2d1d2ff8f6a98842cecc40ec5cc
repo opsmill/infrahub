@@ -1,0 +1,26 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_9a65b7e7908928::t_6d4a2af5ec3e5b 136
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_9a65b7e7908928::t_6d4a2af5ec3e5b 167
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_9a65b7e7908928::t_6d4a2af5ec3e5b 87
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_9a65b7e7908928::t_cef4d6acc7b1b5 114,122
+  s_9a65b7e7908928::t_6d4a2af5ec3e5b 24,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "709a6d0cce2df2d1d2ff8f6a98842cecc40ec5cc",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

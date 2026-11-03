@@ -1,0 +1,25 @@
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_fb819cbbe44071::t_77bf07529f3ba0 49,57-60,65,70-86
+backend/tests/component/core/regeneration/test_impact.py
+  s_fb819cbbe44071::t_e0cbade95f55ce 359-375,457,491-519
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_fb819cbbe44071::t_f4f18fd0425deb 12,60-65,74,134-176
+changelog/+regen-generic-fragment-reads.fixed.md
+  s_fb819cbbe44071::t_a4e58f05fa4344 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e083293180dc7d3c5c6a35e9ec77c9fa2b43374a",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+backend/infrahub/config.py
+  s_4e7f701e8c4e49::t_5a46cfe7e15ba8 20,30,402-406,408-410,419-427,444-462,1237-1240,1248-1251
+backend/infrahub/exceptions.py
+  s_4e7f701e8c4e49::t_90f7e0e98cdd20 65-72
+backend/infrahub/lock.py
+  s_4e7f701e8c4e49::t_6366ad7464beaa 21-22,279-282
+backend/infrahub/services/adapters/cache/connection.py
+  s_4e7f701e8c4e49::t_6786f939c2a324 1-251
+backend/infrahub/services/adapters/cache/redis.py
+  s_4e7f701e8c4e49::t_743ac8868b0011 7,15
+backend/infrahub/workflows/initialization.py
+  s_4e7f701e8c4e49::t_5599df677d4b85 23-47,50,52-58,64-77,82-90
+backend/tests/component/services/adapters/redis/test_redis_sentinel.py
+  s_4e7f701e8c4e49::t_7862468fb3ab9f 1-36
+backend/tests/component/services/adapters/redis/test_redis_url.py
+  s_4e7f701e8c4e49::t_af7821ba298830 1-36
+backend/tests/conftest.py
+  s_4e7f701e8c4e49::t_08a108bc95fb5c 21,23,79,422-497
+backend/tests/helpers/constants.py
+  s_4e7f701e8c4e49::t_20f7649fb25ce1 8
+backend/tests/unit/config/test_config.py
+  s_4e7f701e8c4e49::t_aa6738f83086e6 11-12,102-131
+backend/tests/unit/services/adapters/cache/test_connection.py
+  s_4e7f701e8c4e49::t_98404a81d9938c 1-221
+backend/tests/unit/workflows/test_initialization.py
+  s_4e7f701e8c4e49::t_7bef6a5f2ae4c5 137-176
+changelog/added/9449.md
+  s_4e7f701e8c4e49::t_659f264ffb3143 1
+development/k8s/infrahub-values.yaml
+  s_4e7f701e8c4e49::t_dc464555cb6ecb 17,50,94-97
+docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx
+  s_4e7f701e8c4e49::t_658dad4b36a760 64,66-67,70-77,130-147
+docs/docs/reference/configuration.mdx
+  s_4e7f701e8c4e49::t_c196e0ff47355e 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85c83129e9628e542adafb3049283e7938eb5453",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

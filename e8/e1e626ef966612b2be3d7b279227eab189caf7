@@ -1,0 +1,20 @@
+backend/tests/component/telemetry/test_task_manager.py
+  s_cfd0841cea4d76::t_7d6d4629b543b0 17,95-96,102,155
+  s_cfd0841cea4d76::t_0cb4861fe3daed 84-94,97-100,153-154,156,192-194,205,208-210,219,280-282,286-287,296,298,302-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8e1e626ef966612b2be3d7b279227eab189caf7",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

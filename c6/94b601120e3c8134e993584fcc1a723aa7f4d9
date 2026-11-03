@@ -1,0 +1,19 @@
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_f4cdafdd905485::t_acab0694e53bcd 38,39-47,48-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c694b601120e3c8134e993584fcc1a723aa7f4d9",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

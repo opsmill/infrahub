@@ -1,0 +1,25 @@
+backend/infrahub/core/relationship/model.py
+  s_760cbcf248de37::t_0a8b14d9e8e186 36
+backend/infrahub/core/node/__init__.py
+  s_760cbcf248de37::t_ddca28654d7b85 64
+backend/infrahub/core/node/create.py
+  s_760cbcf248de37::t_12df32c1825f3b 17
+backend/infrahub/pools/default_allocator.py
+  s_760cbcf248de37::t_bd2d73dbacef2b 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d27a5da13452d7937dce829596e149b1db621ba",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

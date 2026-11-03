@@ -1,0 +1,21 @@
+changelog/+ifc-3098-derived-read-narrowing.changed.md
+  s_30ef62c88955ec::t_956db014bbb8b0 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_30ef62c88955ec::t_457dcaae90f1f9 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9a97f388bf51f19e2fcc398c52b0f1f68567094",
+  "prompts": {},
+  "sessions": {
+    "s_30ef62c88955ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2db79d2-d750-4a19-bc6a-ee1269cbfbe3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

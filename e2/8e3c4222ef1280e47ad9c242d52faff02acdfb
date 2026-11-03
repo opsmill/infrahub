@@ -1,0 +1,20 @@
+dev/specs/jev-issue-triage/spec.md
+  s_aafacfc47dd310::t_2111c346842074 260-261
+  s_aafacfc47dd310::t_fb07d15b1d4678 1-259,262-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e28e3c4222ef1280e47ad9c242d52faff02acdfb",
+  "prompts": {},
+  "sessions": {
+    "s_aafacfc47dd310": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7a6fe13-0b0a-40f8-ba25-e5fae68a98a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

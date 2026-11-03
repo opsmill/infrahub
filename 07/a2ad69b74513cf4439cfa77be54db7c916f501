@@ -1,0 +1,41 @@
+backend/infrahub/core/node/__init__.py
+  s_90d57abc1cfeb7::t_4b5129a44546ee 502-506
+backend/infrahub/profiles/mandatory_fields_checker.py
+  s_90d57abc1cfeb7::t_4b5129a44546ee 68,70-73,86-90
+  s_90d57abc1cfeb7::t_40e637d1bea84f 101-102
+backend/infrahub/profiles/queries/get_profile_data.py
+  s_90d57abc1cfeb7::t_40e637d1bea84f 1-2,4,8-11,22-26,35-37
+  s_90d57abc1cfeb7::t_8eb47d544024e4 38
+backend/tests/component/core/resource_manager/test_number_pool_scope_profiles.py
+  s_90d57abc1cfeb7::t_c32cf9a4f52833 70,72,83
+  s_90d57abc1cfeb7::t_a1f70e3575ab9f 16,33,36-37,43,97-108,123,145-159,161-165,168-175,178,200,202
+backend/infrahub/profiles/node_applier.py
+  s_90d57abc1cfeb7::t_c32cf9a4f52833 200
+  s_90d57abc1cfeb7::t_4b5129a44546ee 215,217-218,272-273,275-276
+  s_90d57abc1cfeb7::t_40e637d1bea84f 232,234,268,298,300,303
+  s_90d57abc1cfeb7::t_424ceae1a45ce8 214
+backend/infrahub/profiles/data_reader.py
+  s_90d57abc1cfeb7::t_77b5922a37e357 3,9-10,16-25,27-29,35,38,40-43,46-49,54-59,62-65,67-79
+  s_90d57abc1cfeb7::t_d2c01d4b222d02 12,30,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07a2ad69b74513cf4439cfa77be54db7c916f501",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_90d57abc1cfeb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b28fc3-cccd-4e87-800f-1b76c5baaacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

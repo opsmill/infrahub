@@ -1,0 +1,57 @@
+backend/infrahub/config.py
+  s_28a24420e8443a::t_374f5f2935c29a 376-379
+backend/infrahub/api/artifact.py
+  s_28a24420e8443a::t_df3b70da34d0ff 67
+  s_28a24420e8443a::t_374f5f2935c29a 8,64-66
+  s_28a24420e8443a::t_63a06ec9bf6ecd 17
+changelog/+artifact-checksum-check.security.md
+  s_28a24420e8443a::t_be8e106ab58523 1
+backend/infrahub/exceptions.py
+  s_28a24420e8443a::t_631062324cb144 574-587
+docs/docs/reference/configuration.mdx
+  s_28a24420e8443a::t_f65ff20bacc6b0 364
+backend/tests/component/api/test_11_artifact.py
+  s_28a24420e8443a::t_5a5124b33bb698 307-335
+  s_28a24420e8443a::t_560358da5632f5 281-285
+  s_28a24420e8443a::t_dfd26c783ac35e 18,287-289,295
+  s_28a24420e8443a::t_374f5f2935c29a 224-248
+  s_28a24420e8443a::t_b42f95d414f7c5 1,26-32,92-93,98,167,182-223,249-280,286,290-294,296-305
+  s_28a24420e8443a::t_a84d5d954dcd42 306
+backend/infrahub/artifacts/content.py
+  s_28a24420e8443a::t_7015e638917868 1-11,13-16,19,27,30,33,37,47
+  s_28a24420e8443a::t_63a06ec9bf6ecd 12,17,24-25,28-29,31-32,34-36,38-39,42-46,48-51
+  s_28a24420e8443a::t_374f5f2935c29a 18,20-23,26,40-41
+backend/infrahub/api/storage/storage.py
+  s_28a24420e8443a::t_374f5f2935c29a 11,47-49
+  s_28a24420e8443a::t_63a06ec9bf6ecd 14
+docs/docs/artifact-file-storage/overview.mdx
+  s_28a24420e8443a::t_e96004f7f2cc5d 80-81,83
+  s_28a24420e8443a::t_faf38f75c67077 82
+backend/infrahub/artifacts/queries.py
+  s_28a24420e8443a::t_63a06ec9bf6ecd 3,13-17,25,50,52-55
+  s_28a24420e8443a::t_459b38f5341fd4 1-2,4-12,18-24,26-49,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88c9f34f7b019609bd6f904789499df64b21f832",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    },
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

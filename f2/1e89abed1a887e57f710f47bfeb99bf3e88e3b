@@ -1,0 +1,31 @@
+backend/infrahub/pools/number_pool_mock.py
+  s_c37e68507bd16d::t_3fe5111022a6cf 1-445
+backend/infrahub/graphql/queries/number_pool.py
+  s_c37e68507bd16d::t_ab373066f32031 1-328
+backend/infrahub/graphql/queries/__init__.py
+  s_c37e68507bd16d::t_cd6e437deb2b25 6,32-34
+backend/infrahub/graphql/queries/resource_manager.py
+  s_c37e68507bd16d::t_9219efc231ffe4 38-47,67-69,92-94,200-202,424,429-433
+backend/infrahub/graphql/schema.py
+  s_c37e68507bd16d::t_5838aefa2152a7 49-51,112-114
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_c37e68507bd16d::t_9874404a0db4c1 23795-23966,24882,24895,24910,26146-26154,26160,26162,38290-38312
+schema/schema.graphql
+  s_c37e68507bd16d::t_08dfa34f9c4ad1 11694-11876,12736-12738,12749-12751,12765-12767,26188-26196,26202-26204,26206-26208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f21e89abed1a887e57f710f47bfeb99bf3e88e3b",
+  "prompts": {},
+  "sessions": {
+    "s_c37e68507bd16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1ad7ee8-1d0e-4c64-aebc-c3a0119e98fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

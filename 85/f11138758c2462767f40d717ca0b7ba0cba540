@@ -1,0 +1,52 @@
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_c29bc2a8dbf032::t_f93edb947aae9b 39-40,49,56
+  s_c29bc2a8dbf032::t_8dae73bd7008b0 22
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_c29bc2a8dbf032::t_87d5ff45163197 23,424-426
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_c29bc2a8dbf032::t_22c367b274c5fe 9,94
+backend/infrahub/pools/number_pool_repository.py
+  s_c29bc2a8dbf032::t_12ac2af6c80864 3,25-41
+backend/infrahub/pools/number_pool_shorthand.py
+  s_c29bc2a8dbf032::t_a912e0b15230cc 14,25
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_c29bc2a8dbf032::t_f02ad570dce42c 24,46-47,55,59
+backend/infrahub/pools/tasks.py
+  s_c29bc2a8dbf032::t_b992179ec0512c 10,31-33,35
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_c29bc2a8dbf032::t_1aa9353ed7b076 20,31-34
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_c29bc2a8dbf032::t_a51b9233479d97 34,90,95
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_c29bc2a8dbf032::t_54867a526f1b79 28,36-39
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_c29bc2a8dbf032::t_526b6510ba1a82 12,43-48
+backend/tests/component/pools/test_schema_number_pool_upserter.py
+  s_c29bc2a8dbf032::t_67457cec0cb951 13,68,84,100,122,146,169,195,264,287,302,322
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_c29bc2a8dbf032::t_8f79cc98526f4f 13,212-217
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_c29bc2a8dbf032::t_097afd6f93c9df 12,72-77
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_c29bc2a8dbf032::t_608c451d168c95 17,63-68
+backend/tests/helpers/number_pool.py
+  s_c29bc2a8dbf032::t_13ec17db0ce83e 45-48
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_c29bc2a8dbf032::t_57501edd016a90 17,161-163,169,406-408,414,451-453,459,671-676
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85f11138758c2462767f40d717ca0b7ba0cba540",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

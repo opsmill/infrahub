@@ -1,0 +1,222 @@
+docs/docs/media/concepts-git-integration.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+dev/knowledge/backend/query-pattern.md
+  s_9ab565af291b9a::t_bcb569ae271389 249,251-273
+docs/docs/media/concepts-history-ownership.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+backend/tests/integration/proposed_change/test_merge_selective_regen.py
+  s_9ab565af291b9a::t_bcb569ae271389 23,27,30,47,57-59,71-72,106-138,300-310,336-339,444,454,456-457,474-567,644,686,736
+.specify/extensions.yml
+  s_9ab565af291b9a::t_bcb569ae271389 18-19,22-23
+backend/tests/component/test_lock.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-249
+.agents/skills/upgrading-infrastructure-dependencies/SKILL.md
+  s_9ab565af291b9a::t_bcb569ae271389 1-217
+backend/infrahub/core/query/relationship.py
+  s_9ab565af291b9a::t_bcb569ae271389 1023
+backend/tests/unit/config/test_config.py
+  s_9ab565af291b9a::t_bcb569ae271389 8-9,14-15,382-503
+dev/guidelines/git-workflow.md
+  s_9ab565af291b9a::t_bcb569ae271389 17-18
+.github/workflows/ci.yml
+  s_9ab565af291b9a::t_bcb569ae271389 1254
+backend/tests/component/core/diff/diff_calculator/test_kind_migration.py
+  s_9ab565af291b9a::t_bcb569ae271389 1522,1529-1534,1577-1578,1585,1593-1594
+  s_9ab565af291b9a::t_e80e0322977125 1595
+backend/infrahub/workflows/initialization.py
+  s_9ab565af291b9a::t_bcb569ae271389 7,13,20,71-73,75
+backend/tests/unit/workflows/test_initialization.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-2,5-12,14
+docs/docs/media/concepts-automation.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+docs/docs/media/concepts-change-review.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+backend/tests/component/core/diff/test_coordinator.py
+  s_9ab565af291b9a::t_bcb569ae271389 483,599-605,622-630
+docs/docs/schema/default-ordering.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 80
+docker-compose.yml
+  s_9ab565af291b9a::t_bcb569ae271389 54,72,287,320,366
+backend/infrahub/core/migrations/graph/m080_delete_generator_capture_diffs.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-144
+docs/docs/schema/display_label.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 47,134,263,269,271,288,290
+docs/docs/schema/order-weight.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 31,42,45,68,78-79,96,102,109-110,239,247,251,255,273,282,308,312
+docs/sidebars.ts
+  s_9ab565af291b9a::t_bcb569ae271389 148,219
+.devcontainer/Dockerfile
+  s_9ab565af291b9a::t_bcb569ae271389 1,39
+backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py
+  s_9ab565af291b9a::t_bcb569ae271389 31,153-158,363-449
+  s_9ab565af291b9a::t_0e799814e97ae8 450-451
+backend/infrahub/services/adapters/cache/redis.py
+  s_9ab565af291b9a::t_bcb569ae271389 5,8,17,24-26,28,32,44,51-54,61
+backend/tests/constants/__init__.py
+  s_9ab565af291b9a::t_bcb569ae271389 2,4
+backend/infrahub/workers/infrahub_async.py
+  s_9ab565af291b9a::t_bcb569ae271389 19,58
+dev/knowledge/backend/tls.md
+  s_9ab565af291b9a::t_bcb569ae271389 48,79-81
+development/k8s/infrahub-values.yaml
+  s_9ab565af291b9a::t_bcb569ae271389 5,17-18,51-52,84-87,100-108
+docs/archive/topics/local-demo-environment.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 30
+docs/docs/object-templates/use.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 124-129
+backend/tests/unit/core/schema/definitions/core/test_documentation_links.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-56
+docs/docs/reference/menu.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 18,37,45,73,76,79,82
+docs/docs/deploy-manage/maintain-upgrade/upgrade/enterprise.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 66-84
+backend/tests/unit/core/validators/test_checks_runner.py
+  s_9ab565af291b9a::t_bcb569ae271389 58-61,67,91-102
+.agents/skills/upgrading-infrastructure-dependencies/agents/openai.yaml
+  s_9ab565af291b9a::t_bcb569ae271389 1-7
+backend/tests/unit/core/merge/selective_regen/test_generator_output.py
+  s_9ab565af291b9a::t_bcb569ae271389 7,10,19-23,29-30,36-47,56-57,59-61,63,65-70,72-81,98-101,107-111,123-124,128-129,132-133,136-137,139,141-142,144-157,162,164-165,167,170-171,174,176,178-179,181,184,235-238
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 28,194-195,235
+  s_9ab565af291b9a::t_8009640078f845 236
+docs/docs/overview/concepts.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 2-3,6,8,10,12,14-16,18,20,22,24,26-28,30,32,34,36,38,40-42,44,46,48,50,52,54-56,58,60,62-68,70,72,74,76,78,80,82,84,86,88,90-91,94,96,98,100,102,104
+dev/knowledge/backend/async-tasks.md
+  s_9ab565af291b9a::t_bcb569ae271389 98-108,471
+backend/infrahub/core/merge/selective_regen/generator_output.py
+  s_9ab565af291b9a::t_bcb569ae271389 58-61,79,84-85,87
+backend/infrahub/services/adapters/message_bus/rabbitmq.py
+  s_9ab565af291b9a::t_bcb569ae271389 4,40-48,153,170
+backend/infrahub/config.py
+  s_9ab565af291b9a::t_bcb569ae271389 20,32,79-80,86,180-184,593-600,616-621,623-625,641-657,692-725,2186-2189,2198-2199,2247-2251
+backend/infrahub/core/graph/__init__.py
+  s_9ab565af291b9a::t_bcb569ae271389 1,3-5
+backend/infrahub/core/query/subquery.py
+  s_9ab565af291b9a::t_bcb569ae271389 5,7,17-24,60,87-105,149-229
+  s_9ab565af291b9a::t_c65901856e031d 230-231
+dev/knowledge/backend/message-bus.md
+  s_9ab565af291b9a::t_bcb569ae271389 160-167
+python_testcontainers/infrahub_testcontainers/container.py
+  s_9ab565af291b9a::t_bcb569ae271389 38
+docs/docs/deploy-manage/install-configure/hardware-requirements.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 5,7,93-94,121-159
+docs/docs/media/concepts-checks.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_9ab565af291b9a::t_bcb569ae271389 17,64,67-70,72,74
+docs/docs/overview/architecture.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 326
+development/deploy.tf
+  s_9ab565af291b9a::t_bcb569ae271389 26,36,57,92,126-129,142-150
+docs/docs/menu/nested-menus.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 1-266
+backend/infrahub/workflows/models.py
+  s_9ab565af291b9a::t_bcb569ae271389 20-22
+development/docker-compose.yml
+  s_9ab565af291b9a::t_bcb569ae271389 35,52,190,247
+docs/docs/release-notes/infrahub/release-1_11_10.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 1-61
+utilities/benchmark/infrahub-bench.yml
+  s_9ab565af291b9a::t_bcb569ae271389 1-51
+backend/infrahub/core/branch/tasks.py
+  s_9ab565af291b9a::t_bcb569ae271389 698-723
+backend/infrahub/core/query/node.py
+  s_9ab565af291b9a::t_bcb569ae271389 42,45-52,1830-1848,1862-1863,2262,2690-2710,2724-2725,2738-2739
+CHANGELOG.md
+  s_9ab565af291b9a::t_bcb569ae271389 14-53
+backend/infrahub/core/diff/calculator.py
+  s_9ab565af291b9a::t_bcb569ae271389 39,108-109,150-154,189,195,221
+backend/tests/integration/services/adapters/workflow/test_setup.py
+  s_9ab565af291b9a::t_bcb569ae271389 2,6,26-28
+.agents/commands/cut-release.md
+  s_9ab565af291b9a::t_bcb569ae271389 106-113
+.vale/styles/Infrahub/sentence-case.yml
+  s_9ab565af291b9a::t_bcb569ae271389 20-21
+backend/infrahub/redis_connection.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-136
+backend/tests/component/core/test_reads_by_value_on_branch.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-486
+backend/tests/constants/paths.py
+  s_9ab565af291b9a::t_bcb569ae271389 6-7
+backend/tests/unit/config/test_tls_settings.py
+  s_9ab565af291b9a::t_bcb569ae271389 306-316
+backend/infrahub/lock.py
+  s_9ab565af291b9a::t_bcb569ae271389 14-15,20,26-27,63-66,183-266,284,291-296,306-318,322-324,330,352,356,380-383,385,454-455,458-459,521-530
+backend/tests/unit/conftest.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-2,20-24
+  s_9ab565af291b9a::t_6baee2f4a953dd 25-26
+backend/tests/unit/test_lock.py
+  s_9ab565af291b9a::t_bcb569ae271389 21,186,197,231,265-316
+development/Dockerfile
+  s_9ab565af291b9a::t_bcb569ae271389 5,11-17,28,81,86
+docs/docs/objects/create-objects.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 162-163
+docs/docs/reference/configuration.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 168,180
+.github/workflows/define-versions.yml
+  s_9ab565af291b9a::t_bcb569ae271389 8,10
+changelog/+key-concepts.changed.md
+  s_9ab565af291b9a::t_bcb569ae271389 1
+docs/docs/overview/next-steps.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 19
+backend/infrahub/core/validators/checks_runner.py
+  s_9ab565af291b9a::t_bcb569ae271389 9,24,37-42
+pyproject.toml
+  s_9ab565af291b9a::t_bcb569ae271389 28,32,60,722-730,744-750,755,766,780-782,784,798,816,818,827,857,862,895,952,976,1000,1002,1004,1006-1011,1059-1071
+docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 25,44-53,74,76-77,80-93,141,162-347
+  s_9ab565af291b9a::t_c8f8de70775cae 348
+.vale/styles/spelling-exceptions.txt
+  s_9ab565af291b9a::t_bcb569ae271389 27,112
+backend/tests/unit/test_redis_connection.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-480
+docs/docs/development/changelog.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 43
+docs/docs/media/concepts-connected-data.svg
+  s_9ab565af291b9a::t_bcb569ae271389 1-5
+tasks/shared.py
+  s_9ab565af291b9a::t_bcb569ae271389 57
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 365-381
+backend/infrahub/core/diff/coordinator.py
+  s_9ab565af291b9a::t_bcb569ae271389 349,357,371,817-821,832
+docs/docs/menu/overview.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 12,52,56,72,74,84,130,133,136,139,182-184
+  s_9ab565af291b9a::t_fa1dee875a0093 185
+docs/docs/schema/field-visibility.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 23,32-33,39-40,44-62,68,89-100,103-117,119,121,123,127
+backend/tests/component/core/migrations/graph/test_080_delete_generator_capture_diffs.py
+  s_9ab565af291b9a::t_bcb569ae271389 1-343
+docs/docs/objects/import-from-csv.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 80
+docs/docs/deploy-manage/maintain-upgrade/upgrade/community.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 69-87
+docs/AGENTS.md
+  s_9ab565af291b9a::t_bcb569ae271389 131
+backend/infrahub/core/query/__init__.py
+  s_9ab565af291b9a::t_bcb569ae271389 97,101-106
+  s_9ab565af291b9a::t_d7d211c72e6f04 107
+docs/docs/overview/quickstart.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 74-85
+  s_9ab565af291b9a::t_ec281d45b7a422 86
+docs/docs/object-templates/import-from-netbox.mdx
+  s_9ab565af291b9a::t_bcb569ae271389 1-284
+uv.lock
+  s_9ab565af291b9a::t_b32d2777fdf92e 302,306,308,310,885,887,889,1590,1618,1629,1763-1774,3009,3015,3017,3413,3430,3432,3780,3782,3784,4509,4511,4513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5c7802c8d22ef0d5a8ed1c12011fab97dab0a06",
+  "prompts": {},
+  "sessions": {
+    "s_9ab565af291b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c6129b7-6134-49b1-8a6f-a7599ea0d463",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

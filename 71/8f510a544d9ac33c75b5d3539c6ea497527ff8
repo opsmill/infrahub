@@ -1,0 +1,19 @@
+backend/tests/unit/pools/test_scope.py
+  s_2f19172ef06710::t_990620e71ff89f 7,42-44,705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "718f510a544d9ac33c75b5d3539c6ea497527ff8",
+  "prompts": {},
+  "sessions": {
+    "s_2f19172ef06710": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee0c8485-c488-4159-992d-c4c5bde2b6cc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+docker-compose.yml
+  s_4b6d9b01e3fb12::t_be16b896ce7655 253
+backend/infrahub/server.py
+  s_4b6d9b01e3fb12::t_1868d42fafecb1 31
+  s_4b6d9b01e3fb12::t_e7c8aa923878dd 110
+backend/tests/unit/health/test_health.py
+  s_4b6d9b01e3fb12::t_a729c647442d2e 115
+  s_4b6d9b01e3fb12::t_673266ebd5b38a 202
+changelog/8508.added.md
+  s_4b6d9b01e3fb12::t_b7a49b322206b9 1
+backend/infrahub/health.py
+  s_4b6d9b01e3fb12::t_a91105025c1c73 138,144
+backend/infrahub/services/adapters/message_bus/local.py
+  s_4b6d9b01e3fb12::t_4ee6059f939e4b 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "721c30188ae7ead2ffad38ace6df1ea21da8298b",
+  "prompts": {},
+  "sessions": {
+    "s_4b6d9b01e3fb12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cac221d-22c3-4344-a782-f06dcad89c77",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

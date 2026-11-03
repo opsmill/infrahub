@@ -1,0 +1,41 @@
+backend/infrahub/core/regeneration/branch_artifacts.py
+  s_9128a279c50f90::t_708c476b463fc3 16-17
+  s_0299ffd4541c60::t_814d41c6cb7957 1-15,18-41
+backend/infrahub/core/regeneration/members.py
+  s_9128a279c50f90::t_f4e279dc310afc 46-48
+  s_0299ffd4541c60::t_e4c49a27105805 9,40-45,49-56
+backend/infrahub/proposed_change/tasks.py
+  s_9128a279c50f90::t_ddc3e7ef0deb2f 51,55,807-813,841-850,1380-1385,1422-1426
+backend/tests/component/proposed_change/test_artifact_regen_branch_point.py
+  s_9128a279c50f90::t_9ce9b8d8229956 1-346
+backend/tests/unit/core/regeneration/test_members.py
+  s_9128a279c50f90::t_70ed0fd6547fa5 12,118-175
+changelog/11217.fixed.md
+  s_9128a279c50f90::t_6fa446742cc6cb 1
+backend/infrahub/core/regeneration/models.py
+  s_9128a279c50f90::t_e7440830485549 211,234-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfedccb5484469a6234d3d15f02e20ea0b73c271",
+  "prompts": {},
+  "sessions": {
+    "s_0299ffd4541c60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83af699b-aa91-41b4-b423-d0988dd7fc3a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

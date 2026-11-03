@@ -1,0 +1,2084 @@
+changelog/+repository-activity-query.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/shared/components/form/pool-allocation-panel.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 7,27-29,60-62
+  s_8c17013005c1b9::t_5d75b87e4669dd 63
+backend/tests/unit/git/writeback/test_abandoner.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-538
+dev/adr/0021-resource-allocation-telemetry.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-204
+backend/infrahub/git/refs_check/tracked_commit.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-38
+backend/tests/component/merge_recompute_coalescing/test_bulk_recompute_writer.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5-6,11,34,46,51,62-71,85,433,456,483,515,545,575
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_8c17013005c1b9::t_ece5e7226bf648 95-96,101-102,115-123
+  s_8c17013005c1b9::t_9bb6f6019f55bc 124-125
+dev/specs/ifc-3371-number-pool-field-tabs/critiques/critique-20261009.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-115
+dev/specs/ifc-3184-pool-number-attach/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-69
+backend/infrahub/message_bus/messages/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,6,15,18,28,35
+backend/infrahub/core/schema/generated/relationship_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 30
+backend/tests/component/git/writeback/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-164
+backend/infrahub/core/merge/post_merge.py
+  s_8c17013005c1b9::t_ece5e7226bf648 42,60,68,86-90,185
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-147
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-269
+dev/specs/archive/infp-46-dark-theme-completion/EXTRACTED.md
+  s_8c17013005c1b9::t_554f63c61569fc 8-9
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16-18,171-181
+backend/tests/component/core/resource_manager/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-145
+dev/specs/infp-631-resource-telemetry/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-163
+frontend/app/src/entities/tasks/ui/logs.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 18
+backend/tests/helpers/graphql.py
+  s_8c17013005c1b9::t_ece5e7226bf648 22,95,104
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,19-20,24
+docs/docs/reference/menu.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 11-12
+frontend/app/src/entities/repository/ui/queries/get-repository-commits.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-86
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-divisions.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-20
+backend/infrahub/telemetry/database.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17-22,43-85,101-103
+.github/workflows/push-bench-image.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 67,79
+backend/tests/unit/pools/test_number_pool_lookup.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-114
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-168
+backend/tests/unit/git/writeback/test_service.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1230
+docs/docs/release-notes/infrahub/release-1_11_5.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-table.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-189
+backend/tests/unit/graphql/mutations/test_attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-55
+backend/infrahub/git/refs_check/checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-464
+backend/tests/component/git/test_git_rpc.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3-4,7,21-22,25-26,37,42,44,46-47,49-58,62,68-70,153-154,163-165,170,175-177,180-187,202,215,320-325,401,403,432,434,473-474,478-694
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocation-count.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-62
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-555
+frontend/app/src/entities/repository/ui/repository-commits-header.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-127
+backend/infrahub/core/regeneration/impact.py
+  s_8c17013005c1b9::t_ece5e7226bf648 22,28-31,38-46,50,66-68
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-177
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6-10,20,24,26-28,36,38-40,42,44,47-48,51-62,64-75,77-78,80-81,83-89
+backend/tests/component/core/test_node_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-4,10,13,25-26,35,37,42-43,620-675
+backend/tests/unit/graphql/queries/test_repository_activity_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-66
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-245
+frontend/app/src/entities/tasks/ui/toast-task-started.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-22
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_8c17013005c1b9::t_ece5e7226bf648 63-70,77-82,93-103,140-141,149-192,212,218-229,308-311
+dev/knowledge/backend/database-schema.md
+  s_8c17013005c1b9::t_ece5e7226bf648 135,164-257,401
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-155
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-utilization.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-72
+frontend/app/src/entities/repository/api/get-repository-push-state-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-49
+backend/tests/component/computed_attribute/test_coalesced_recompute_python.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14-15,43,55,215-220,403-405,408-418,424
+dev/specs/ifc-3365-number-pool-form/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+backend/infrahub/core/merge/python_target_resolution.py
+  s_8c17013005c1b9::t_ece5e7226bf648 29,48,55,223,245-257
+  s_8c17013005c1b9::t_a9f67a9a18bc2c 258-259
+frontend/app/src/entities/artifacts/ui/artifact-details-menu.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 12-16,53,63,69
+backend/infrahub/graphql/queries/number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-362
+frontend/app/src/entities/repository/ui/repository-activity-card/active-run-row.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+backend/tests/unit/git/state/test_bus_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-254
+dev/specs/ifc-3365-number-pool-form/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-64
+frontend/app/src/entities/repository/domain/rules/is-push-state-attribute.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6
+frontend/app/src/shared/components/a11y/copied-announcement.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-13
+backend/infrahub/core/regeneration/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 26-29
+backend/infrahub/core/merge/builder.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3-5,8,16,25-27,34-37,42-46,53,56-57,120-123,148-153,179-266
+backend/infrahub/groups/ancestors.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,28
+backend/infrahub/core/query/branch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 89-132
+backend/tests/unit/git/writeback/test_retry_and_recovery.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1006
+frontend/app/src/entities/resource-manager/ui/routing/number-pool-urls.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-64
+backend/infrahub/graphql/types/enums.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19-20
+changelog/+ifc-3101-repository-commits-api.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/infrahub/core/schema/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15,50-54,172,175-186
+  s_8c17013005c1b9::t_73071ff9b75e16 187
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-be-scoped-by.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-90
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-86
+backend/tests/helpers/merge_recompute/dataset.py
+  s_8c17013005c1b9::t_ece5e7226bf648 199-216
+backend/tests/helpers/schema/snow.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,5,15-22
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-78
+backend/infrahub/core/convert_object_type/repository_conversion.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,5,17-18,31,36-42,44-58,60,62-69,71-72,74-93,95-97,99-108
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1008
+frontend/app/src/shared/components/buttons/copy-to-clipboard-button.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 5,13,16-30
+changelog/+ifc-3399-repository-activity-card.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+changelog/+ifc-3408-relationship-remove-mandatory-peer.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/component/graphql/test_manager_number_pool_ranges_input.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-62
+backend/infrahub/pools/number_pool_usage_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-149
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-180
+backend/infrahub/pools/number_pool_shorthand.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-55
+backend/tests/component/git/test_import_failure_logs.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,31,39,48,128-149,155,163,169,175,181,187,193,199,205,213-237,261-278,289,344-347,349-351,386,395,397-398,402-403,411-417,421,423-424,449,476-482,507-513,643-645,717-727,729-739
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-430
+dev/specs/ifc-3184-pool-number-attach/contracts/from-pool-intent.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-160
+frontend/app/src/entities/resource-manager/api/get-number-pool-divisions-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-56
+backend/infrahub/git/writeback/service.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-649
+.github/workflows/ci.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 121,157,200,241,468,517,928,1054,1092,1276,1418,1427
+dev/specs/ifc-3184-pool-number-attach/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-299
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-header.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-223
+dev/knowledge/backend/async-tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 228,446-451,466,474
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-65
+frontend/app/src/entities/repository/ui/repository-activity-card/elapsed-time.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-38
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+dev/README.md
+  s_8c17013005c1b9::t_554f63c61569fc 104-105
+  s_8c17013005c1b9::t_ece5e7226bf648 67,103
+backend/tests/integration/git/test_repository_warm_up.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-587
+frontend/app/src/entities/repository/domain/rules/get-commit-web-url.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-48
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-857
+docs/docs/ipam/plan-changes-on-a-branch.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 21
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,6-7,9,13-15,17-18,20,31,33,38-53,63,66-67,74,77,81,85,87,91,95,98-118,137-143,146-150,155-181,184,188,192,201,207-209,215,221-223,233,241,244-246,253-254,258,279-289,299
+docs/docs/git-integration/branch-synchronization.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 346-497
+backend/infrahub/telemetry/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,31-32,38,131-159,183-190,204,206-207
+backend/tests/component/core/node/test_lock_utils.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9-11,42-53
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 59-70,146,153-163
+  s_8c17013005c1b9::t_e302dfd46188fc 164
+frontend/app/src/entities/diff/ui/file-diff/file-content-diff.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 279
+backend/tests/component/pools/schema_number_pool_synchronizer/test_range_reconciliation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-175
+dev/specs/ifc-3365-number-pool-form/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-61
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 11,18,22,311,406-409,443-444,456,671-742
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-467
+backend/tests/unit/pools/test_intent.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-236
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-division-invalid.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-53
+backend/tests/unit/git/test_integrator.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3,22-24,127-195
+  s_8c17013005c1b9::t_aee924c5483158 196-197
+backend/tests/component/graphql/resource_manager/test_number_pool_concurrent_re_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-127
+backend/infrahub/graphql/mutations/convert_object_type.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,9,17,98-102
+  s_8c17013005c1b9::t_c578d36224a5da 103
+backend/tests/component/api/test_40_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 703-743
+changelog/+resource-telemetry.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/component/graphql/auth/query_permission_checker/test_merge_operation_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,153
+backend/tests/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 383-400,409-411,1343-1348
+backend/tests/unit/git/state/test_commit_log_wire.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-67
+frontend/app/src/entities/resource-manager/api/number-pool-division.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+backend/infrahub/tasks/recurring.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17-20
+backend/tests/component/git/test_readonly_rewrite.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6-7,22,26,28,34,36-42,48,121-130,389-485
+frontend/app/src/entities/repository/domain/rules/get-push-actions.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-27
+frontend/app/src/entities/resource-manager/ui/routing/number-pool-urls.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+backend/tests/component/git/writeback/test_git_adapter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-70
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_8c17013005c1b9::t_ece5e7226bf648 142-143,150-151,173-174
+frontend/app/src/entities/repository/ui/repository-check-remote-button.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-84
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-288
+frontend/app/src/entities/repository/api/get-repository-commits-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-70
+backend/tests/unit/test_exceptions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,85-89,140,144-186,241,249-250,252
+backend/infrahub/pools/number_pool_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-289
+frontend/app/src/entities/navigation/ui/sidebar/app-sidebar.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 50-52
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,19,22,31-38,155-243
+  s_8c17013005c1b9::t_79c3ae31386882 244
+frontend/app/src/entities/resource-manager/api/get-number-pool-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-71
+dev/specs/ifc-3185-number-pool-scopes/alignment-check.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-49
+backend/infrahub/pools/intent.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-57
+backend/infrahub/generators/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16,153-157,171-178
+backend/tests/component/graphql/test_manager_deprecation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-378
+backend/infrahub/core/node/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,23,29,39-41,44,46-47,63,67,108-112,437,442,446,463,472,478,482,485,487-491,504-508,511-519,537,545-547,550-553,567,571-588,663-668,670-674,699-708,711,721-748,1018-1058,1060,1062,1064-1071,1144-1146,1464-1477,1479,1483-1486,1492-1493
+  s_8c17013005c1b9::t_954e80a9a704ca 1494
+backend/infrahub/services/adapters/workflow/worker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,9,12,87-98,100-102
+backend/tests/unit/git/writeback/test_credentials.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-99
+docs/docs/schema/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 13-14
+backend/infrahub/git/bounded_command.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-85
+backend/infrahub/graphql/schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 34-42,56-58,61-62,112-114,126-128,157,160-169
+backend/infrahub/git/activity/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-57
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_8c17013005c1b9::t_ece5e7226bf648 62-77
+changelog/+number-pool-field-attach.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-23
+backend/infrahub/serve/processes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-14
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-122
+frontend/app/src/entities/repository/ui/queries/check-remote-refs.mutation.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-17
+frontend/app/src/entities/repository/ui/queries/repository.query-keys.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 8-46,64,66
+backend/infrahub/pools/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,11,14,32,34-36,38,40-41,53-55
+  s_8c17013005c1b9::t_a1f25cb30a0633 56
+frontend/app/src/entities/repository/domain/use-cases/get-repository-push-state.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-57
+backend/infrahub/core/schema/attribute_parameters.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,185-213,215-221,224-235,243-284,288-304,307-321,324
+backend/tests/unit/git/state/test_models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-129
+backend/infrahub/git/ref_resolution.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-30
+backend/tests/unit/workers/test_submission.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-231
+dev/specs/ifc-3365-number-pool-form/contracts/number-pool-form.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-94
+backend/tests/component/core/test_node_get_list_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 24,599-601,651-653,712-714
+docs/src/components/HomePage/card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 10,16,22
+backend/infrahub/workers/reservations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/migration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-250
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity-card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-94
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_8c17013005c1b9::t_ece5e7226bf648 83-85,90,117,145-147
+  s_8c17013005c1b9::t_8ca507107dd4bb 148
+backend/tests/component/core/profiles/test_mandatory_fields_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 11,92-94,116-118,140-142,168-170,201-203,222-224
+backend/infrahub/core/migrations/graph/m042_profile_attrs_in_db.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14,84
+dev/specs/ifc-3184-pool-number-attach/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-370
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-122
+backend/infrahub/message_bus/operations/git/commit_log.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-30
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-427
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-79
+dev/specs/ifc-3362-number-pool-body/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-156
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-23
+backend/tests/unit/services/test_scheduler.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,63,67-70
+backend/tests/unit/core/merge/test_regeneration_barrier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1046
+backend/infrahub/message_bus/messages/git_commit_log_get.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-50
+backend/tests/integration/services/adapters/workflow/test_workflow_execution.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,12,19,82-100
+frontend/app/src/entities/repository/ui/hooks/use-refresh-after-repository-run.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-163
+backend/infrahub/git/integrator.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8,73-74,227-271,420-421,426,467-471,473-485,489-490,544-546,552-555,560,564-565,577,586,592,598,606,610,616,625,633,645,663,666-667,676,678,684
+frontend/app/src/entities/repository/ui/queries/import-current-commit.mutation.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1,10,23,27-34,37-43
+backend/tests/component/proposed_change/test_artifact_regen_selection.py
+  s_8c17013005c1b9::t_ece5e7226bf648 174,201-222
+  s_8c17013005c1b9::t_2cf98fe2f06b9c 223
+backend/infrahub/services/adapters/message_bus/local.py
+  s_8c17013005c1b9::t_ece5e7226bf648 45-50
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-57
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-178
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-33
+frontend/app/src/shared/api/errors/index.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 275
+changelog/+ifc-3113.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/entities/repository/domain/rules/count-branch-outcomes.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-25
+backend/tests/component/git/test_git_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,27,34,56,59-61,63-64,66,71-86,88,626,651,661-668,674-676,678-681,683-685,688-737,740-787,789-795,797-801,810,812-813,919,921-923,931-970,1802-1917
+backend/infrahub/core/validators/enum.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13-14
+backend/infrahub/pools/number_pool_usage.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-89
+frontend/app/src/pages/resource-manager/resource-pool-details-body.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-140
+.github/CODEOWNERS
+  s_8c17013005c1b9::t_ece5e7226bf648 8-10,12-19,23-24
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-170
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-237
+backend/infrahub/proposed_change/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 89-90,470-480,541-543,835-837,1131-1133,1400-1410
+backend/tests/unit/pools/test_number_ranges.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-225
+dev/specs/ifc-3220-writeback-failure-handling/contracts/repository_delivery.graphql
+  s_8c17013005c1b9::t_ece5e7226bf648 24,27,30,33,36,39,42,45,48
+backend/tests/integration/workers/test_submission_window.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-116
+frontend/app/src/shared/components/form/type.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 91-99
+frontend/app/src/entities/resource-manager/ui/hooks/use-number-pool-division-table-state.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-46
+backend/tests/component/graphql/resource_manager/test_resource_manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20
+backend/tests/component/core/resource_manager/test_number_pool_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-347
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-495
+backend/infrahub/git/writeback/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-767
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_8c17013005c1b9::t_ece5e7226bf648 40,117,121-122,147,165-166
+backend/infrahub/profiles/node_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6,11-29,42,45,52-59,69,73-76,152-169,191,206-261,276,280-281,283-284,306,308,311
+frontend/app/src/entities/resource-manager/domain/model/pool.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 5-7,15
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17,21,54-78,89-98,107,303-378
+backend/infrahub/serve/worker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9-10,43-46
+dev/specs/ifc-3371-number-pool-field-tabs/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+backend/tests/integration/schema_lifecycle/test_number_pool_ranges_load.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-86
+frontend/app/src/assets/infrahub-logo-dark-theme.svg
+  s_8c17013005c1b9::t_ece5e7226bf648 1-85
+backend/infrahub/profiles/data_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-79
+frontend/app/src/entities/repository/domain/use-cases/get-repository-commits.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-38
+frontend/app/src/entities/resource-manager/ui/queries/get-number-pool-utilization.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-41
+dev/adr/0022-experimental-flag-gates-pre-release-ui.md
+  s_8c17013005c1b9::t_cf4b0d8adc61ea 1-87
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-126
+backend/tests/component/proposed_change/test_definition_run_repository_filter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-154
+frontend/app/src/entities/schema/ui/attribute-display.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 116-118,166-167
+backend/infrahub/workflows/catalogue.py
+  s_8c17013005c1b9::t_ece5e7226bf648 234-256,506-522,762-763,775-776,783
+frontend/app/src/entities/repository/ui/get-repository-commits-columns.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-90
+frontend/app/src/entities/repository/domain/use-cases/retry-repository-push.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-29
+frontend/app/src/entities/repository/ui/repository-commits-notice.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-11
+frontend/app/src/entities/resource-manager/api/get-number-pool-allocation-count-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-55
+backend/infrahub/core/schema/definitions/core/resource_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 205-207,211-216,226-287
+backend/tests/component/templates/test_template_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,166,169,189,192,213,216,244,247,273,276,307,310,331,334,406,409,449,452,469,472,499,537,543,546-548,563,569,587,593,637,640,670,673,701,704,737,740,756,759
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 11,46
+dev/knowledge/frontend/shared-components.md
+  s_8c17013005c1b9::t_ece5e7226bf648 135-136,149-150
+frontend/app/src/entities/resource-manager/ui/queries/get-number-pool-allocations.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-71
+frontend/app/src/shared/components/errors/no-data-found.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 6
+frontend/app/graphql.config.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 23
+frontend/app/src/entities/repository/domain/rules/get-repository-location.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-8
+backend/infrahub/services/adapters/message_bus/nats.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15,98,100-102,104-110,292-297,299-300,311-334
+frontend/app/src/shared/components/form/utils/getFieldDefaultValue.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 25,189-206,208
+docs/docs/reference/message-bus-events.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 17-44,95-111,225-251
+  s_8c17013005c1b9::t_452cfd0a19be9e 252
+backend/tests/unit/test_trace_tls.py
+  s_8c17013005c1b9::t_ece5e7226bf648 231-233,290-292
+dev/specs/ifc-3185-number-pool-scopes/critiques/critique-20261008-2.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-171
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-79
+frontend/app/src/entities/repository/domain/rules/get-repository-location.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-23
+changelog/+ifc-3364-number-pool-header.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/infrahub/git/writeback/constants.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+backend/infrahub/graphql/manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 43-44,49,66,338-343,353-363,395-396,475-478,490-494,511-513,515-518,521-525,597,675-677,712-714,836-838,844,847-849,852-856,892-894,900,903-905,909-912,953-955,961,964-966,969-973
+backend/infrahub/graphql/mutations/resource_manager/ip_pools.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-156
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-allocate-to.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+dev/specs/ifc-3184-pool-number-attach/alignment-check.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-143
+dev/specs/ifc-3366-allocation-scope-table/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-59
+backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-356
+dev/specs/ifc-3220-writeback-failure-handling/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 195-197,303-308,459-461,747-751,763-765
+backend/infrahub/git_credential/helper.py
+  s_8c17013005c1b9::t_ece5e7226bf648 81-88
+frontend/app/src/entities/repository/ui/queries/retry-repository-push.mutation.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-42
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,8,11,31,34-36,38,43-50,101-149,656-785
+changelog/+readonly-repository-moved-tag-follow.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/protocols.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,525-526,528-535,578-586
+frontend/app/src/entities/nodes/object/ui/routing/object-urls.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-85
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,234
+docs/docs/release-notes/infrahub/release-1_11_6.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-32
+backend/infrahub/api/schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 226
+backend/infrahub/core/attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,26,52,83-101,115,149-151,171-172,187,371,584,627-632,655-668,675-676,678-679,751-755
+  s_8c17013005c1b9::t_1c46d7682255fb 756
+dev/specs/ifc-3101-repo-commit-visibility/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-600
+backend/tests/helpers/repository_sync.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9-10,19,30,35,94,96-109,162-172
+frontend/app/src/entities/repository/domain/rules/should-retry-git-unavailable.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-18
+backend/tests/unit/pools/test_number_pool_allocations_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-50
+CHANGELOG.md
+  s_8c17013005c1b9::t_ece5e7226bf648 14-69
+dev/specs/ifc-3364-number-pool-header/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_accepted_declarations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-245
+backend/infrahub/pools/number_ranges.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-151
+frontend/app/src/entities/resource-manager/ui/hooks/use-number-pool-division.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-47
+dev/specs/ifc-3366-allocation-scope-table/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+backend/tests/unit/core/merge/test_python_read_set_source.py
+  s_8c17013005c1b9::t_ece5e7226bf648 24-25,41-42,52-55
+backend/infrahub/graphql/mutations/attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,51,56
+dev/knowledge/backend/telemetry.md
+  s_8c17013005c1b9::t_ece5e7226bf648 35-36,41,55-141,181,186-190,212-216
+dev/specs/ifc-3101-repo-commit-visibility/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-275
+frontend/app/src/entities/repository/api/get-repository-commits-from-api.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-52
+backend/infrahub/core/branch/data_deleter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,109-116,133-142,145-146
+backend/infrahub/git/sync.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7-8,12,23,29,37-38,142,144,146-148,155-171,173,175,177-180,225,232,249-253,264-265,274,280,285,301,307,313-341
+backend/tests/adapters/delivery_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-10
+docs/docs/resource-manager/allocate-number.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 87
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-178
+dev/specs/ifc-3065-number-pool-ranges/contracts/number-pool-parameters.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-61
+backend/infrahub/services/scheduler.py
+  s_8c17013005c1b9::t_ece5e7226bf648 11,58-60
+  s_8c17013005c1b9::t_392ed1d0baab0f 61
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+backend/tests/unit/core/validators/number_pool_scope/test_refused_changes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-277
+backend/tests/unit/test_lock.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,11,16-17,43-87
+  s_8c17013005c1b9::t_b2250f4bf7e8aa 88-89
+dev/specs/ifc-3362-number-pool-body/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-73
+backend/tests/component/core/profiles/test_node_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17-18,53-92,111-113,176-178,238-240,378-380,424-426,505-507,574-576,601-603,647-649,674-676,718-720,795-797,855-857,914-916,970-972,1024-1026,1040-1042
+backend/tests/unit/git/writeback/test_store.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-94
+backend/tests/unit/message_bus/test_mappings.py
+  s_8c17013005c1b9::t_ece5e7226bf648 30
+backend/infrahub/database/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,53,99-101,104-106,625-632
+  s_8c17013005c1b9::t_eb081d959ef0e0 633-634
+dev/specs/ifc-3065-number-pool-ranges/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-161
+dev/specs/ifc-3366-allocation-scope-table/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-87
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-74
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,12,15,33-40,50-57,61-86,95,100-109,117,208-254
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-91
+backend/tests/helpers/git.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4,180-181,215-217
+  s_8c17013005c1b9::t_e01ed37906c6d8 218
+frontend/app/src/entities/repository/api/import-current-commit-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 28-29
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17,34-35,39,46,56,58,548,604-607,623-715,1003,1010-1019,1101-1225
+frontend/app/src/entities/resource-manager/ui/hooks/use-number-pool-division.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-88
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-578
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12-13,16,213-222,234-239,285,301
+frontend/app/src/entities/repository/ui/repository-commits.view.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-225
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+frontend/app/src/shared/components/buttons/clipboard.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 22-26
+backend/infrahub/telemetry/resources.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-517
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-793
+frontend/app/src/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-52
+backend/infrahub/telemetry/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6-14,60-74,106-107
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-49
+backend/infrahub/git/activity/factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+backend/tests/functional/convert_object_type/test_convert_repositories.py
+  s_8c17013005c1b9::t_ece5e7226bf648 125-141,345,397,493,534
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-408
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/migration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-115
+backend/infrahub/git/writeback/queries.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+backend/tests/component/graphql/mutations/test_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,24,30,294-470
+  s_8c17013005c1b9::t_e9e2582c15f64b 471-472
+backend/infrahub/workers/dependencies.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14,24,179-181
+docs/docs/deploy-manage/install-configure/install/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 26
+frontend/app/src/entities/repository/domain/rules/get-push-actions.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-13
+backend/infrahub/git/refs_check/constants.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+backend/infrahub/git/state/classification.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-52
+frontend/app/src/entities/repository/ui/repository-commit-row-actions.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-88
+backend/infrahub/pools/scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-506
+frontend/app/src/entities/repository/ui/repository-object-details-render-failure.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 20-22
+backend/infrahub/graphql/queries/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,16-19,36-38,41-42
+backend/infrahub/core/merge/regeneration_release.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-349
+backend/tests/db_snapshot.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14-20,31,48,598-600
+backend/infrahub/graphql/mutations/node_getter/by_default_filter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,46
+dev/specs/ifc-3065-number-pool-ranges/contracts/graphql-schema-changes.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-100
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-282
+dev/knowledge/backend/task-workers.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-96
+backend/infrahub/git/repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,23,32,36-37,55,60,139,147-150,212-220,283-287,417,436-438,466,503,552-554,592,668,718,723,743,821,849-942,1110-1135,1140-1141,1151,1163-1167,1175-1178,1294,1310,1315-1316,1329-1333,1343-1344,1355-1360,1364-1365,1368,1372,1377
+backend/infrahub/pools/number.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,15-16,25-28,31-33,35-37,40-41,44-45,49-66,69-123
+backend/tests/unit/core/merge/test_coalesced_python_family.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10-12,34-43,58,63-70,101,122,147,167,185,208
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-256
+dev/specs/ifc-3371-number-pool-field-tabs/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,9,20-27,54-82,89-99,101-197,200,203-206,218,241,243,269,272-274,277-299,312,316,325-421
+frontend/app/src/shared/components/form/core-file-form.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 103
+frontend/app/src/entities/diff/ui/content-diff/react-diff-view-overrides.css
+  s_8c17013005c1b9::t_ece5e7226bf648 1-25
+backend/tests/component/git/writeback/test_enqueue.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1166
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 29,32-35,38,41,44,47,50,53-56,59,62,65,68,71,74,77,80,83,86,89,92,95,98-101,104,107,110,113,116,119,122,124-125,128,131,134,137,140,143,146,149,152,155,158,160-161,164,167,170,173-176,179-191,194,197,199-200,203,206,209,211-212,215,218,220-221,224,227,230,233,236,239,241-242,245,248,251,254-260,263-266,269-272,275,278,281,284,287,290
+backend/infrahub/core/query/resource_manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7-12,14-15,18-19,21,23-31,77-79,116,152,191,201-209,216-219,223-226,231-242,244,247-251,254,257-277,292-294,301-307,315,320,327,334-342,345-372,376-378,381,384,387,391-395,413-414,416-417,419-424,426-430,432-464,467,502,509-513,518-727,729-730,733-844,850-851,855-856,861,863-867,869-871,874-882,884-1022,1024,1028,1046-1051,1058-1060,1066,1071-1072,1075-1084,1086,1089-1091,1103,1151,1155,1160,1171-1172,1174,1176,1188,1204-1218,1226-1228,1233-1235,1242-1246,1254,1259-1264,1266-1422,1447
+backend/tests/unit/git/state/test_classification.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-253
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-last-runs.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-69
+backend/infrahub/git/state/commit_log_wire.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-102
+dev/specs/infp-631-resource-telemetry/alignment-check.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-24
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-233
+dev/adr/README.md
+  s_8c17013005c1b9::t_ece5e7226bf648 29
+  s_8c17013005c1b9::t_554f63c61569fc 30-31
+backend/infrahub/computed_attribute/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15-16,743,757,769-771,810-818,824-825
+backend/infrahub/core/schema/manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 187,231
+frontend/app/src/shared/components/form/fields/common.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 24,100-104
+backend/infrahub/core/protocols.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,509-510,512-519,562-570
+backend/infrahub/graphql/mutations/repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7-17,19,22-28,31,33-34,37,39-40,45,49,53-54,68,291-297,307-310,375-580
+backend/tests/integration/schema_lifecycle/test_number_pool_parameters_update.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 365,395,397,399-406,408,410,460,585,660,793,849,946,996-1010,1071,1123-1124,1177,1182,1198-1222
+backend/tests/component/pools/schema_number_pool_synchronizer/test_declared_scope_provisioning.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-118
+backend/infrahub/graphql/mutations/ipam.py
+  s_8c17013005c1b9::t_ece5e7226bf648 160-174
+backend/tests/component/git/test_import_failure_containment.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,24,50-58,71-79,84-87,98-106,110-112,118-127,143,146-147,150-155,173,175-177,180-181
+backend/tests/component/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 92,1856-1863
+  s_8c17013005c1b9::t_e0d79ef6caea80 1864-1865
+frontend/app/src/entities/repository/ui/queries/get-repository-push-state.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-40
+frontend/app/src/entities/repository/domain/use-cases/get-repository-commits.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-166
+backend/infrahub/pools/attribute_pool_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-405
+frontend/app/src/entities/repository/domain/use-cases/get-repository-activity.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-18
+backend/tests/helpers/schema/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 61-66
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-menu.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 30-35,37-41,63,92,108,114,129,227-232
+  s_8c17013005c1b9::t_80fa2a0e37f0a9 233-234
+backend/tests/unit/git/state/test_cache_keys.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-49
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocations.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-20
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-567
+backend/infrahub/core/query/node_agnostic_retirement.py
+  s_8c17013005c1b9::t_ece5e7226bf648 25,27-40,54,56-59,89-112,120-121,123-125,128,141,145
+backend/infrahub/git/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,27-29,31-32,34-36,38,40,48-49,51,53,56,89-91,103,107-108,112,121-139,152-159,202,207,209-210,212,227-234,238-239,263-264,266-281,283-286,288,322-340,342-353,355,377,393,430,436-441,447,450-457,459-474,476-484,489-490,492-494,496-497,500-503,534-538,544-545,553-555,560,574-576,578-580,588-589,594-597,601-606,618-622,677,698,755-760,772-782,784-814,822,828,830-843,859,862-880,882-890,893-919,954-974,994-999,1004,1007-1012,1178,1183-1186,1188-1210,1212-1217,1219-1227,1244-1245,1252,1256,1258-1277,1279-1285,1287-1288,1290,1294-1314,1316-1319,1321-1446,1451-1452,1454-1457,1459-1463,1466-1472,1474-1492,1500-1502,1504-1532,1545,1547-1677,1680-1715,2025-2026,2029-2031,2038
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-451
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-269
+dev/specs/ifc-3362-number-pool-body/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-272
+dev/specs/ifc-3365-number-pool-form/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-attribute-select.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-72
+backend/tests/component/graphql/resource_manager/number_pool_attach/conftest.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-22
+backend/tests/unit/graphql/test_metadata.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-133
+dev/specs/ifc-3185-number-pool-scopes/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+frontend/app/src/entities/repository/api/retry-repository-push-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+docs/docs/schema/generics-and-inheritance.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 7,13,15,17,19,21-37,39-64,66-70,72-77,79,81,83,85,87-89,91-92,94,96-100,103-131,133,135,137,139,143-144,146,152-153,155-156,158,161-170,172,174,176,178-179,183-184,186,188-197,201-205,208,210,212,229,237,242,247,249,253,258
+backend/tests/unit/pools/test_number_pool_range_validation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-133
+dev/specs/ifc-3101-repo-commit-visibility/critiques/critique-20260903-1439.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-787
+backend/infrahub/dependencies/builder/constraint/schema/attribute_number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-8
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-allocate-to.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6
+frontend/app/src/entities/repository/api/repository-activity.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-27
+frontend/app/src/entities/repository/api/date-time.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-11
+frontend/app/src/entities/permission/domain/model/permission.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 6-7
+backend/infrahub/pools/number_pool_usage_factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocates-input.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-159
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-80
+docs/docs/faq/faq.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 237-240
+backend/tests/component/git/test_git_branch_create.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,13-14,17-18,20-25,92,103-260
+docs/docs/schema/nodes-and-attributes.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 157-182,260
+dev/specs/ifc-3364-number-pool-header/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-251
+backend/tests/helpers/number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6-8,10-18,20-23,25-28,31-36,42-43,65-69,71-78,80-500
+backend/tests/component/graphql/mutations/test_repository_delivery_retry.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-377
+frontend/app/src/app/router.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 151-153,310-312,376-379
+  s_8c17013005c1b9::t_6c8bec18fb64e9 150,380
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-295
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocation-scope-select.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-211
+backend/infrahub/core/merge/regeneration_dispatcher.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3-4,7-9,11,13-15,17-18,24,28,34-35,39-47,49-53,55-57,62-78,82-89,91,93-100,108,114,123,125-130,133-136,140-143,150-153,161-163,167-170,173-238,245-246,248-252,265-276,278-288,297-300,303-304,309-311,315,320-321,323,340,358-360,367,370-398,400-402,405-407,409-472
+changelog/+ifc-3101-repository-commits-tab.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3
+dev/specs/ifc-3101-repo-commit-visibility/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-511
+backend/tests/unit/api/test_schema_load_contract.py
+  s_8c17013005c1b9::t_ece5e7226bf648 408-434
+dev/specs/ifc-3184-pool-number-attach/contracts/reservation-ledger.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+frontend/app/src/entities/repository/ui/repository-object-details.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 5-6,11-12,14,16,34-41,64-69
+backend/tests/component/git/test_read_only_import_reaches_the_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-133
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-have-allocation-scope.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6
+dev/specs/ifc-3220-writeback-failure-handling/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 33,40
+backend/tests/adapters/python_target_sources.py
+  s_8c17013005c1b9::t_ece5e7226bf648 77-79,102-103
+  s_8c17013005c1b9::t_fd78b27e516b66 104
+backend/infrahub/core/schema/definitions/core/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 97,200
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17,20-21,92-98,110-112,116
+frontend/app/src/entities/repository/ui/repository-object-details.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 24-26,338-416
+backend/tests/adapters/workflow.py
+  s_8c17013005c1b9::t_ece5e7226bf648 128-154
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-244
+backend/tests/helpers/flow_run_reservations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-16
+backend/tests/unit/core/merge/selective_regen/test_gate.py
+  s_8c17013005c1b9::t_ece5e7226bf648 28,46,65,130,137
+backend/tests/component/core/merge/test_post_merge.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3-5,9,21,25,44-46,49-59,65
+docs/docs/git-integration/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 55-56,150,179-186,192-193
+backend/tests/unit/core/merge/test_regeneration_release.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-946
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3
+backend/infrahub/repositories/create_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 69-71,84-100
+backend/infrahub/lock.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,77-99
+  s_8c17013005c1b9::t_b96df9c4595dc6 100-101
+backend/infrahub/pools/number_pool_utilization_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-61
+backend/tests/adapters/message_bus.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,3-4,9-10,17-22,47-52,56-64,110-115,131-254
+backend/tests/component/computed_attribute/test_scoped_recompute_python.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3-4,9,17-18,151-235
+backend/tests/unit/telemetry/test_resources.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-537
+docs/docs/release-notes/infrahub/release-1_11_7.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-27
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-243
+dev/specs/ifc-3101-repo-commit-visibility/opsmill-implement-report.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-159
+backend/tests/unit/pools/test_number_pool_usage_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-109
+frontend/app/src/entities/repository/domain/rules/get-commit-web-url.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_8c17013005c1b9::t_ece5e7226bf648 68,217,219-221,288-291,293,295,453
+frontend/app/src/entities/diff/ui/content-diff/content-diff.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 30,66-68,81
+backend/infrahub/pools/number_pool_space.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-83
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-109
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-131
+backend/tests/component/git/writeback/test_store.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-937
+backend/tests/unit/git/activity/test_recorder.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-339
+backend/tests/component/git/test_utils.py
+  s_8c17013005c1b9::t_ece5e7226bf648 79,81,87,89,127,134-136,143,150-152,187,193-194,213,219-220
+frontend/app/src/entities/resource-manager/api/get-number-pool-utilization-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-59
+backend/tests/unit/telemetry/test_tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-95
+frontend/app/src/entities/repository/ui/repository-activity-card/last-run-row.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-130
+dev/specs/ifc-3371-number-pool-field-tabs/alignment-check.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-29
+backend/infrahub/core/merge/regeneration_barrier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-299
+backend/tests/component/core/agnostic_retirement/test_on_node_delete.py
+  s_8c17013005c1b9::t_ece5e7226bf648 46,91,418,421-429,439-440,442-445,452
+backend/tests/component/core/regeneration/impact/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-22
+dev/guidelines/backend/checklist.md
+  s_8c17013005c1b9::t_ece5e7226bf648 139-159
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-324
+backend/infrahub/core/schema/definitions/core/repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6-7,11,59-230,411-419
+dev/specs/ifc-3362-number-pool-body/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-187
+backend/tests/component/graphql/test_query_analyzer.py
+  s_8c17013005c1b9::t_ece5e7226bf648 344-461
+frontend/app/src/entities/repository/ui/hooks/use-pending-push-permissions.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-44
+frontend/app/src/entities/repository/ui/queries/abandon-repository-push.mutation.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-45
+development/Dockerfile
+  s_8c17013005c1b9::t_ece5e7226bf648 134-135,139
+frontend/app/src/entities/repository/domain/use-cases/abandon-repository-push.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-29
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-394
+frontend/app/src/entities/nodes/object/ui/object-details/object-details.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 14-16
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-508
+backend/infrahub/core/migrations/query/attribute_rename.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,9,75-80,133-144,149-160,165-199,201-223
+frontend/app/src/entities/repository/ui/repository-commits-manager.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-810
+backend/infrahub/graphql/queries/resource_manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 21-25,32,36-48,75-79,121,123,223-227,312-317,319-326,328-333,335-349,351-356,373,382-395,397,399,401-403,406-409,411,413-416,418-421,434,439-443
+backend/infrahub/services/component.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,7,15-20,31-45,53,55,101-103,107-112,114-120,192-193,196-259,267-268,281-282
+backend/infrahub/git/refs_check/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-120
+dev/specs/ifc-3065-number-pool-ranges/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-306
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-create-form.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-48
+backend/infrahub/git/state/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-292
+backend/tests/component/graphql/test_mutation_relationship.py
+  s_8c17013005c1b9::t_ece5e7226bf648 27
+frontend/app/src/entities/repository/ui/repository-commits-tab.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-48
+dev/specs/ifc-3365-number-pool-form/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-166
+backend/tests/unit/core/validators/number_pool_scope/test_scope_dependency.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-127
+dev/specs/ifc-3364-number-pool-header/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-111
+backend/infrahub/git/writeback/factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-150
+backend/infrahub/graphql/error_formatter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,30,44,105-108
+backend/tests/component/graphql/profiles/test_mutation_relationship_override.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15,139
+backend/tests/component/core/profiles/test_create_profile_reads.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14,91-93
+dev/knowledge/backend/merge-recompute.md
+  s_8c17013005c1b9::t_ece5e7226bf648 3,11,19,55,71-80,133-134
+backend/tests/component/core/test_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 25-30,35-38,176-278,280
+  s_8c17013005c1b9::t_cc7eceb3a7062c 279
+backend/infrahub/graphql/mutations/relationship.py
+  s_8c17013005c1b9::t_ece5e7226bf648 35,283,579-608,626-628
+changelog/+repository-import-task-branch.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+dev/specs/ifc-3101-repo-commit-visibility/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-373
+changelog/+import-failure-step-summary.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/component/message_bus/operations/git/test_refresh_git_fetch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4,8-9,80-182
+  s_8c17013005c1b9::t_41631ec0b9098d 183-184
+dev/specs/ifc-3364-number-pool-header/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-152
+dev/specs/ifc-3362-number-pool-body/contracts/ui.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-116
+backend/tests/helpers/repository_activity.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-54
+frontend/app/src/entities/repository/domain/rules/get-pending-import-count.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+dev/specs/ifc-3101-repo-commit-visibility/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-490
+frontend/app/src/entities/repository/domain/rules/repository-column-surface.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-58
+frontend/app/src/shared/api/graphql/client.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 12,16,28-32
+backend/infrahub/core/protocols_base.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16,133-139
+backend/infrahub/pools/number_pool_lookup.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-55
+frontend/app/src/pages/resource-manager/number-pool-details.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-319
+backend/tests/component/git/test_sync_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,6,17,20-21,38-39,49-51,54-56,58,61,65,69,80,210-219,496-503,534-538,575-579,600-603,617,673-679,691,709-758,792,813-816,850-851,902-911,967-976,1001-1050,1078,1081-1082,1085-1086,1095-1098,1116-1119,1161-1417
+backend/infrahub/git/state/cache_keys.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-65
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16,31,64-69,78,83,119-252,314,320,322-323
+docs/docs/development-resources/graphql/single-target-queries.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 161,163-183,185
+frontend/app/src/entities/resource-manager/domain/rules/sort-ranges-by-fill-order.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-86
+backend/tests/unit/git/test_tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3,21,26-40,187,200,224,239-277,279
+  s_8c17013005c1b9::t_9a30724f6f8d43 278,280-281
+backend/infrahub/core/node/lock_utils.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8-10,25-29,31-40,96-103,116
+backend/infrahub/git/state/warm_up.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-107
+backend/tests/unit/graphql/test_error_formatter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,29,197-218,222-224
+  s_8c17013005c1b9::t_d66890ad2b7449 225-226
+backend/tests/integration/git/test_repository_commits_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-129
+backend/infrahub/git/state/reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-32
+dev/specs/ifc-3184-pool-number-attach/opsmill-implement-report.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-330
+backend/infrahub/graphql/mutations/node_getter/by_hfid.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4,34,78
+backend/infrahub/workers/submission.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-81
+backend/tests/component/core/agnostic_retirement/test_on_rebase.py
+  s_8c17013005c1b9::t_ece5e7226bf648 40,137,170,201,232,262,298,339
+backend/tests/component/graphql/resource_manager/number_pools/test_scoped_pool_allocation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-228
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  s_8c17013005c1b9::t_ece5e7226bf648 39-40,55-70,74,83-89,95-109,125,127-131,134,136-137
+dev/specs/ifc-3101-repo-commit-visibility/contracts/message_bus.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-126
+backend/tests/unit/telemetry/test_database.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+dev/specs/ifc-3366-allocation-scope-table/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-290
+dev/specs/ifc-3101-repo-commit-visibility/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-53
+backend/infrahub/core/merge/selective_regen/gate.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,12,35,45
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_upsert.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-88
+docs/_templates/schema/attribute_kind_params.j2
+  s_8c17013005c1b9::t_ece5e7226bf648 1,7,12-13,17
+frontend/app/src/assets/infrahub-mark.svg
+  s_8c17013005c1b9::t_ece5e7226bf648 1-111
+backend/infrahub/pools/number_pool_allocations_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-111
+backend/infrahub/graphql/mutations/resource_manager/number_pools/common.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-87
+docs/docs/proposed-changes/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 66-67
+frontend/app/src/entities/repository/ui/repository-commit-state-badges.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-20
+backend/infrahub/pools/attribute_pool_applier_factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+backend/tests/integration/message_bus/operations/request/test_proposed_change.py
+  s_8c17013005c1b9::t_ece5e7226bf648 40,46,114,116-117
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-be-scoped-by.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-17
+changelog/+number-pool-object-conversion.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/entities/repository/ui/queries/reimport-last-commit.mutation.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1,10,23,31-37
+backend/tests/component/git/test_git_read_only_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 59-98,109-135
+backend/infrahub/message_bus/operations/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,21
+dev/specs/ifc-3362-number-pool-body/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+dev/specs/infp-631-resource-telemetry/EXTRACTED.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+development/docker-compose.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 36,82
+frontend/app/src/shared/components/form/pool-backed-field.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 36,63,69
+backend/tests/component/git/test_ref_missing_store.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-140
+dev/knowledge/backend/git-sync.md
+  s_8c17013005c1b9::t_ece5e7226bf648 3,78-94,97-112,220-227,232-238,271-275,306-307,345-431,454,457-463
+backend/infrahub/git/state/factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-23
+backend/tests/component/git/test_check_refs.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1456
+backend/tests/unit/git/test_git_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 41,639,641-643,933,990-1013,1015,1022,1254-1256,1270,1307-1312,1327-1335,1358-1363,1378-1382,1461-1463,1482-1484,1500-1502,1560-1562,1576-1577
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-165
+backend/tests/component/git_credential/test_git_helper.py
+  s_8c17013005c1b9::t_ece5e7226bf648 42-50
+backend/tests/unit/pools/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-173
+frontend/app/src/entities/resource-manager/api/number-pool-allocation.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-38
+backend/tests/component/pools/test_schema_number_pool_upserter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4-5,8,11,15,17,21,28,34-43,75,91,107,123-208,215,239,262,288,357,380,395,415
+dev/specs/ifc-3130-repository-branches-card/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 571-574,578-580,582-585,594-597
+dev/specs/ifc-3371-number-pool-field-tabs/contracts/form-submission.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-32
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,10,18-19,21,24-25,27-28,31,36,39-41,49-56,66-73,94,97,100,116-120,122-124,129,132-159,229-232,271-274,305-307,316,323,326-327,336-338,340,342-345,352,355-356,364-365,367-369,371,378,381-382,396-397,399,401-402,404,411,414-415,432-434,437,439-445,448,455,458-459,475-509,511-540,542-567,569-572,574,576-587,594-648,654,656-657,664-673,675-682,686-831
+backend/tests/component/graphql/auth/query_permission_checker/test_object_permission_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,247-288,483-516
+  s_8c17013005c1b9::t_cafa2244ab32f7 517
+backend/tests/integration/git/test_sync_branch_flag.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,59
+docs/docs/snippets/attribute-kind-params.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 8-12,23-25
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-295
+docs/docs/reference/schema/validator-migration.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 83
+frontend/app/src/entities/repository/domain/rules/is-read-only-repository.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-30
+backend/tests/component/graphql/auth/query_permission_checker/test_super_admin_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,125
+backend/infrahub/core/merge/recompute_coalescing.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,8-9,12,25-26,38-39,149,153-230,634,643,648,651-652,661,666-681,689,697,702,715,749,754,792
+frontend/app/src/shared/components/form/utils/getFieldDefaultValue.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 669-697
+backend/infrahub/core/merge/repository_import_guard.py
+  s_8c17013005c1b9::t_ece5e7226bf648 20,27-41
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_artifact_selector.py
+  s_8c17013005c1b9::t_ece5e7226bf648 41,49
+dev/specs/ifc-3364-number-pool-header/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-60
+backend/tests/component/core/profiles/test_node_create_with_profiles.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,59-61,81-83,128-130,167-169,194-196
+docs/docs/menu/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 182-262
+docs/docs/git-integration/connect-repository.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 374,403-405,417-460,531,547
+backend/infrahub/core/node/create.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8,13,22,27-30,40,43,247,255-258,275-282,291-293,314,332-338,343-345,360,380,391,403,429,457-479,483-484,498-504,515,578-579,581-589,604-605,621-623,628-629,644-646
+dev/specs/ifc-3101-repo-commit-visibility/contracts/repository_git_state.graphql
+  s_8c17013005c1b9::t_ece5e7226bf648 1-144
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6,12-91
+backend/tests/component/core/migrations/graph/test_066_consolidate_duplicate_number_pools.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,62,132,135-139,141-145
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 14-16,19-20,22,164,446-448,829-831,889,892-895,950-1096
+  s_8c17013005c1b9::t_7d071a79886763 1097-1098
+backend/tests/unit/git/test_refs_check.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-489
+backend/tests/unit/git/writeback/test_constants.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-24
+dev/specs/ifc-3365-number-pool-form/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-146
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity-card.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-206
+backend/infrahub/git/activity/recorder.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-224
+backend/tests/component/pools/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+backend/infrahub/git/divergence/gateway.py
+  s_8c17013005c1b9::t_ece5e7226bf648 38-44,47,61-63,92-94,128
+backend/tests/unit/core/regeneration/test_definitions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,6-7,9,120-154
+frontend/app/src/shared/components/buttons/copy-to-clipboard-button.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-51
+backend/infrahub/git/branch_mapping.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-57
+backend/tests/unit/git/writeback/test_classifier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-518
+frontend/app/src/entities/repository/domain/model/repository.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 2-10,27-63,92-103
+  s_8c17013005c1b9::t_084f69355f9f61 1
+backend/tests/component/core/merge/test_repository_merge_dispatcher.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,7-8,10,14-17,25-26,56-81,134-157,180,183,186,189-193,224-226
+backend/infrahub/config.py
+  s_8c17013005c1b9::t_ece5e7226bf648 34,575-577,881-886,1978
+frontend/app/src/entities/repository/ui/queries/get-repository-activity.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-38
+frontend/app/src/entities/repository/domain/rules/get-pending-import-count.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-13
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity.view.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-70
+dev/knowledge/backend/git-integration.md
+  s_8c17013005c1b9::t_ece5e7226bf648 3,119,122,127-133,142-145,153,155-162,164-167,192-194,202-207,212-233,245,328-333,338,353-354,379-388
+docs/docs/artifacts/overview.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 37,94-204
+  s_8c17013005c1b9::t_c66ac568281f1b 205
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-344
+docs/docs/release-notes/infrahub/release-1_11_8.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-40
+frontend/app/src/entities/repository/ui/repository-check-remote-button.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-335
+frontend/app/src/entities/repository/domain/rules/should-retry-git-unavailable.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-5
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocates-input.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-315
+backend/infrahub/core/query/agnostic_field_closure.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,3
+frontend/app/src/pages/objects/object-items.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 8-10,24-29
+frontend/app/src/entities/repository/ui/repository-push-to-remote-card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-216
+frontend/app/src/entities/repository/api/repository-activity.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-65
+backend/infrahub/core/schema/definitions/internal.py
+  s_8c17013005c1b9::t_ece5e7226bf648 878
+backend/tests/unit/workers/test_reservations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-108
+frontend/app/src/entities/resource-manager/domain/rules/sort-ranges-by-fill-order.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-10
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-table.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-129
+dev/specs/ifc-3371-number-pool-field-tabs/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+docs/docs/reference/configuration.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 94,166
+changelog/+ifc-3101-bounded-worker-rpc.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/entities/repository/ui/repository-menu-section.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 4-14,19-20,27-80,86,100-112,115-133,142,164,184,205,226,246,264,284,304,316-588
+backend/infrahub/graphql/resolvers/object_by_id.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-73
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-form.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-79
+backend/infrahub/git/writeback/runs.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-82
+backend/infrahub/graphql/resolvers/resolver.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,12,254-255,406-413,420
+dev/specs/ifc-3364-number-pool-header/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-69
+frontend/app/src/entities/repository/ui/repository-activity-card/activity-markers.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-167
+frontend/app/src/entities/repository/ui/repository-commits-tab.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-163
+backend/tests/helpers/agnostic_edges.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,15-18,20,25,62-70,237-253,388-417,444-449,452,454,456,461-562
+  s_8c17013005c1b9::t_b484f2192ef428 563-564
+backend/tests/component/telemetry/test_resources.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-379
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocations.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-82
+frontend/app/src/entities/repository/domain/model/repository-git-unavailable-error.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-16
+frontend/app/src/entities/repository/ui/queries/get-repository-activity.query.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-34
+frontend/app/src/entities/repository/domain/model/repository-push-state.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-40
+backend/tests/integration/git/test_git_live_remote.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8,10-12,14-15,19,22-23,26-27,29,31-32,46,52,55-61,63-65,68-78,80,99,101,103,106,108,110-112,118-140,198-439,495-515,518-519,523,526-527,529-531,533-556,1030-1031,1033-1038,1040-1043,1045-1827,1879-1884,1921,2202,2209-2212,2214-2232,2238,2244,2246,2253-2272
+backend/infrahub/git/base.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4,36-45,48,55-56,93-109,123-135,354,374,377-379,381,387,476-480,484-487,521-527,557,560-562,567,675-676,690-691,958-959,970,978-1007,1309-1310,1346-1349,1363-1366,1369-1373
+frontend/app/src/entities/repository/domain/use-cases/get-remote-check-task.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-22
+backend/tests/unit/git/test_branch_mapping.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-169
+frontend/app/src/entities/repository/api/get-remote-check-task-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-24
+backend/infrahub/core/convert_object_type/object_conversion.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,18,161,196-197,205-214
+  s_8c17013005c1b9::t_25b45b227cbd21 215
+dev/specs/ifc-3365-number-pool-form/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-323
+backend/infrahub/git/refs_check/gateway.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-207
+backend/tests/component/git/test_import_objects_activity.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-123
+backend/tests/component/pools/schema_number_pool_synchronizer/test_scope_name_refresh.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-179
+docs/src/components/HomePage/linkGroup.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-44
+frontend/app/src/assets/infrahub-logo-light-theme.svg
+  s_8c17013005c1b9::t_ece5e7226bf648 1-116
+dev/specs/ifc-3220-writeback-failure-handling/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 34,52-53,72,77,109-130,163-164,182-184,207-210,237,241-243,263-264,299,301,304,326-330,337-339,357,359,378-380
+backend/tests/component/core/constraint_validators/test_relationship_profiles_removal.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,95-97,140-142,182-184,246-248,291-293,331-333,378-380,417-419,465-467,512-514,561-563
+dev/specs/ifc-3366-allocation-scope-table/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-153
+backend/infrahub/pools/number_pool_usage_nodes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-66
+dev/specs/ifc-3184-pool-number-attach/contracts/effective-space.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-129
+backend/tests/adapters/machine.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-25
+frontend/app/src/entities/repository/api/abandon-repository-push-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+frontend/app/src/entities/repository/ui/queries/repository-commits.constants.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-4
+frontend/app/src/shared/components/form/object-form.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 30-31,105-111
+backend/infrahub/git/writeback/classifier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-115
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_8c17013005c1b9::t_ece5e7226bf648 172,177-178
+frontend/app/src/entities/repository/ui/abandon-repository-push-modal.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-170
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-162
+dev/knowledge/frontend/entities-structure.md
+  s_8c17013005c1b9::t_ece5e7226bf648 373-379
+frontend/app/src/entities/resource-manager/ui/hooks/use-allocation-scope-fields.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-17
+frontend/app/src/entities/resource-manager/api/number-pool-allocation.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-26
+backend/tests/unit/pools/test_number_pool_divisions_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-112
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_8c17013005c1b9::t_ece5e7226bf648 11,24,30-32,46-48,50,54-61,66,71-87,104-105,114,127-128
+dev/knowledge/backend/testing.md
+  s_8c17013005c1b9::t_ece5e7226bf648 277
+backend/infrahub/git/writeback/credentials.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-18
+docs/docs/schema/relationships.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 44-45
+docs/docs/development-resources/developer-guide.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 61
+frontend/app/src/entities/repository/ui/repository-commit-row-actions.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-63
+frontend/app/src/entities/repository/domain/model/repository-activity.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-40
+.github/workflows/chromatic.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 37,44
+backend/infrahub/git/refs_check/ref_missing.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-192
+backend/infrahub/core/query/vertex_metadata.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-19
+backend/tests/helpers/selective_regen.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17,27,60-66,74-76,80
+backend/tests/unit/git/test_git_error_enrichment.py
+  s_8c17013005c1b9::t_ece5e7226bf648 40-45,107,111,119,141-148,432-438
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-100
+backend/tests/unit/serve/test_processes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-224
+backend/tests/component/graphql/queries/test_repository_git_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1232
+dev/specs/ifc-3101-repo-commit-visibility/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-381
+backend/infrahub/git/constants.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3,8-20,29-35
+  s_8c17013005c1b9::t_92d62330557655 36
+dev/specs/ifc-3366-allocation-scope-table/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-138
+frontend/app/src/entities/repository/domain/use-cases/get-repository-push-state.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-209
+backend/tests/unit/services/test_component.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-250
+frontend/app/src/pages/resource-manager/resource-pool-details.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-4,19-22,66-76,109,137
+backend/infrahub/pools/number_pool_number_picker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-82
+backend/tests/component/core/resource_manager/test_number_pool_is_reserved_retirement.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-432
+frontend/app/src/entities/repository/domain/rules/count-branch-outcomes.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-14
+backend/tests/unit/core/test_attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 2-3,7,145,154,164,166-210
+.github/workflows/ci-docker-image.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 134,149,274
+backend/infrahub/exceptions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 70-80,103-106,502-552,615-630,633,647-654,657-660
+  s_8c17013005c1b9::t_d05c3c872bfdc9 661
+backend/infrahub/message_bus/operations/git/repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 11,59-75
+  s_8c17013005c1b9::t_2f4473e2ca97bd 76-77
+backend/infrahub/pools/number_pool_range_reconciler.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-218
+backend/infrahub/graphql/mutations/main.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,31-32,357-368,382-384,438-443,459-465,496-501
+dev/specs/ifc-3371-number-pool-field-tabs/opsmill-implement-report.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-94
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity.view.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-72
+frontend/app/src/entities/repository/api/repository-commits.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-39
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8,16,39,44
+backend/infrahub/git/writeback/git_adapter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-298
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/queries.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-253
+backend/tests/unit/git/test_branch_reconciliation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7-8,24,26,33,190-192,214-216,233-235,261-262,281-282,300-301,317-320,334-336,352-353,375-376,382,409-411,435-437,462-464,469,497-499,517-518,542-544,570-572,578,597-599,604,634-636,664-666,681-685,701-704,721-723,747-749,755,762,809-811,919-922,943,966-969,976,996-999,1021-1024,1030,1043-1046,1068-1071,1079-1082,1100-1103,1122-1125,1133-1136,1158,1198,1212,1231,1238-1438
+dev/specs/infp-631-resource-telemetry/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+backend/tests/component/core/merge/test_held_regeneration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-1031
+backend/tests/component/core/test_node.py
+  s_8c17013005c1b9::t_ece5e7226bf648 25,1014-1016,1141-1143
+backend/infrahub/core/validators/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,38,55-59
+backend/infrahub/git/utils.py
+  s_8c17013005c1b9::t_ece5e7226bf648 27,79,96,108-112,122-125,254-257
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_8c17013005c1b9::t_ece5e7226bf648 23,424-426,458,460-466
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-167
+backend/tests/component/graphql/mutations/relationship/test_relationship_remove.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-501
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges_relationship_edits.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-88
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source_through_other_reads.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-141
+backend/infrahub/message_bus/operations/git/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,3
+backend/tests/unit/core/merge/test_regeneration_dispatcher.py
+  s_8c17013005c1b9::t_ece5e7226bf648 4-6,14,17,28-29,38,50-53,208,222,249-277,282,284,289-296,331,354,367,382,397,410,434,460,480,498,517,560,568-871
+docs/src/components/HomePage/styles.module.css
+  s_8c17013005c1b9::t_ece5e7226bf648 15,19-61,64-65,67-68,71-72,101-182
+  s_8c17013005c1b9::t_e16ade6fbf08ab 183
+frontend/app/src/entities/repository/ui/repository-activity-card/elapsed-time.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-14
+backend/tests/helpers/repository_git_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+backend/infrahub/git/writeback/ports.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-254
+backend/tests/component/git/writeback/test_repository_conversion.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-264
+changelog/+display-label-hfid-precise-regeneration.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-28
+backend/tests/unit/pools/test_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-841
+docker-compose.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 55,107,284,317,363
+dev/specs/ifc-3184-pool-number-attach/critiques/critique-20260916.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-178
+frontend/app/src/pages/resource-manager/number-pool-details.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-118
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-56
+backend/tests/integration/git/test_readonly_refs_check.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-355
+backend/infrahub/graphql/mutations/schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 324
+backend/tests/component/graphql/auth/query_permission_checker/test_default_branch_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,113,164,220,264,308
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-select.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-58
+backend/tests/unit/pools/test_number_pool_number_picker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-142
+backend/tests/component/git/writeback/test_delivery_retry.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+frontend/app/src/entities/repository/ui/repository-menu-section.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 10-17,20,23,29,37,40,45,57,79,89-92,96-99,103-176
+docs/docs/home.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 9,17-18,22-24,27-29,32-34,37-39,41-44,48,51-89,93,96-132,136,142,148,151-153
+frontend/app/src/shared/components/form/utils/mutations/buildFromPoolMutationValue.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 3-6,100-128
+  s_8c17013005c1b9::t_7d0eb81ac161f7 129
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,21,122-124,133-157,172-174
+frontend/app/src/entities/repository/ui/repository-commits.view.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-578
+dev/specs/ifc-3220-writeback-failure-handling/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 24-25,60-62,66,136-137,141,166-167,193,276,295,314
+backend/tests/functional/templates/test_template_resource_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,527,587-589,593-596,880,896
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-59
+frontend/app/src/entities/branches/ui/hooks/use-default-branch.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-838
+dev/knowledge/backend/templates.md
+  s_8c17013005c1b9::t_ece5e7226bf648 135
+backend/infrahub/core/constants/infrahubkind.py
+  s_8c17013005c1b9::t_ece5e7226bf648 58
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+backend/tests/component/core/test_attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 23,33-35,457-467,1511,1556
+dev/specs/005-git-status-header-ifc-3199/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 125,137
+dev/specs/ifc-3220-writeback-failure-handling/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 39-42,131,139-142,150-153,158-160,167-171,173-176,180-184,186,190-193,196-200,203,211-214,216,220-230,232-236,239-247,267,271-272,278,281,284,293,307,313,315,321-323,331,336-339,344,350,355,357,363,365-374,382,385-388,394,398,403,420-421,425,432-433,436,440-441,443,445,451,469,472,475,478,482,489,496,502,510,512-515,520,522,524,529,531,548,550-559,567,579,581-583,586,588-590,608-609,618,622,627-629,631,635-636,641,646,660-663,670,681-686,694-697,699,785,794
+docs/docs/reference/error-catalogue.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 7,522-551
+  s_8c17013005c1b9::t_4a232054ac3f29 552-558
+frontend/app/src/shared/components/form/fields/number.field.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 5,35-36,43,122,124-192,197,200,202-203,212-260,263,271,275,294-325,327
+backend/infrahub/core/validators/pool/scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-504
+frontend/app/src/entities/nodes/object/ui/routing/object-urls.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3,5-6,17,22,46-47,57-84
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-815
+backend/infrahub/templates/node_applier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,13,47-68,76-77,85-92,98-101,181-185,194-204,212-216,226
+backend/tests/unit/git/test_sync_status.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-175
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-186
+backend/infrahub/core/regeneration/definitions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 116-127
+backend/tests/component/message_bus/operations/git/test_commit_log.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-845
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-utilization.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-23
+backend/infrahub/git/state/bus_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-36
+backend/infrahub/graphql/types/repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-249
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_8c17013005c1b9::t_ece5e7226bf648 3,9,19-21,23,26,30-32,36-43,63-64,70-90,101-102,109-116,129-134,137,139-141,143-145
+backend/infrahub/errors/payloads.py
+  s_8c17013005c1b9::t_ece5e7226bf648 80-85
+frontend/app/src/entities/nodes/object/ui/objects-manager.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 5,14,17,29
+backend/tests/component/git/writeback/test_schema_contract.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-48
+changelog/+ifc-3366-number-pool-allocation-scopes.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-793
+dev/specs/ifc-2950-selective-regen-part2/qa-checklist.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-145
+backend/infrahub/core/schema/write_json_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 28-32
+backend/tests/unit/git/writeback/fakes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-459
+frontend/app/src/entities/repository/ui/queries/get-repository-push-state.query.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-46
+dev/specs/ifc-3366-allocation-scope-table/contracts/graphql.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-47
+.github/workflows/update-sdk-compatibility-docs.yml
+  s_8c17013005c1b9::t_ece5e7226bf648 32
+backend/infrahub/git/refs_check/factory.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-130
+backend/infrahub/core/query/agnostic_retention.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,7-9
+  s_8c17013005c1b9::t_683b6cfc817b41 10
+backend/tests/component/core/agnostic_retirement/support.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16-21,31-33,35-36,39,115-140
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_permissions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-340
+frontend/app/src/shared/components/form/fields/number.field.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 6,8,13-14,31-35,46-49,63,65-67,75-77
+backend/infrahub/workflows/constants.py
+  s_8c17013005c1b9::t_ece5e7226bf648 39
+dev/specs/ifc-3362-number-pool-body/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-96
+docs/src/components/HomePage/header.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 14,19-24,28,45,56-61
+frontend/app/src/entities/repository/ui/abandon-repository-push-modal.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-75
+backend/tests/adapters/cache.py
+  s_8c17013005c1b9::t_ece5e7226bf648 2,4,37-90
+  s_8c17013005c1b9::t_2f57e968b9e7b8 91-92
+backend/infrahub/core/graph/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/tests/unit/git/writeback/test_single_writer.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-96
+frontend/app/src/entities/repository/api/check-remote-refs-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+backend/tests/component/graphql/resource_manager/test_number_pool_lookup_by_name.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,83
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-439
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-46
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-lock-row.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-37
+backend/tests/unit/workflows/test_catalogue.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10-11,43-45
+  s_8c17013005c1b9::t_e4e3fe3a17e6b9 46-47
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-117
+backend/infrahub/core/manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,387,423,467,478,489,1096-1110,1154-1158,1165
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,91-92,96,114,116-122
+backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py
+  s_8c17013005c1b9::t_ece5e7226bf648 8,316-319
+  s_8c17013005c1b9::t_cd06fde59f93ab 320
+dev/specs/ifc-3065-number-pool-ranges/data-model.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-185
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-attribute-select.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-32
+backend/tests/helpers/regeneration_barrier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-25
+backend/infrahub/git/sync_status.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,24-36,55-56,63-73,82-84,124-134,139-140,145-162,164
+backend/tests/component/repositories/test_create_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-81
+backend/AGENTS.md
+  s_8c17013005c1b9::t_ece5e7226bf648 133,142
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-division-card.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-153
+backend/infrahub/git/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,45-48,169-190,216-254,369,380
+backend/infrahub/message_bus/messages/refresh_git_clone.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-12
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocation-count.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-18
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-240
+dev/knowledge/frontend/column-visibility.md
+  s_8c17013005c1b9::t_ece5e7226bf648 74-76
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-division-card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-125
+backend/infrahub/services/adapters/message_bus/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 66-78
+frontend/app/.betterer.results
+  s_8c17013005c1b9::t_ece5e7226bf648 50,55,113,187,205,248,263,269,273,276,278,280
+changelog/+git-remote-writeback-failure-handling.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-9
+frontend/app/src/entities/repository/api/get-repository-activity-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-73
+backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-334
+backend/tests/component/message_bus/operations/event/test_branch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15,49
+backend/infrahub/git/writeback/recovery.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-106
+backend/tests/unit/git/writeback/test_git_adapter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-364
+dev/specs/ifc-3220-writeback-failure-handling/contracts/internal-interfaces.md
+  s_8c17013005c1b9::t_ece5e7226bf648 21-26,29,40,52,75-76,80-87,90-107,112,114,116,118,120,122-123,127,129-130,139-141,152-155,157-171,181,199-202,205,211-221,229-234,239-240,243-249,251-256,259-260,270-273,276-277,301,304,308-314,332-339,348-352,356-369,396-402,421,423,426,434-454,469,481-486,489-501,504-505,588-595,609,629-633,644-649,665,668,671-673,676,681-683
+docs/docs/deploy-manage/install-configure/production-deployment/private-ca.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 204-211,217,221,224,230-278
+backend/tests/unit/core/test_manager.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-64
+backend/tests/component/graphql/auth/test_repository_git_state_permissions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-592
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-header.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-178
+backend/tests/component/core/node/test_create_node_field_names.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-53
+backend/infrahub/graphql/initialization.py
+  s_8c17013005c1b9::t_ece5e7226bf648 16,45,143
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,4-6,9-13,90-357
+dev/specs/ifc-3364-number-pool-header/contracts/number-pool-header.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-116
+backend/infrahub/graphql/types/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 19,66
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-647
+frontend/app/src/entities/repository/ui/queries/get-remote-check-task.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-80
+backend/tests/component/git/writeback/test_import_deferral.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-475
+frontend/app/src/entities/resource-manager/domain/rules/find-overlapping-ranges.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-69
+frontend/app/src/entities/repository/domain/rules/is-read-only-repository.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-6
+backend/tests/unit/git/test_bounded_command.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-148
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-3
+dev/specs/ifc-3065-number-pool-ranges/critiques/critique-20260917-130000.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-152
+backend/infrahub/core/schema/schema_branch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 61,72-75,740-745,748,792,801,1396-1406,1412-1450,2133-2135,2139-2142
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 31-34,50,88
+changelog/+deprecation-log-restricted-namespaces.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+dev/specs/ifc-3371-number-pool-field-tabs/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-236
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_8c17013005c1b9::t_ece5e7226bf648 92-101,281-317
+backend/tests/component/query/test_node_agnostic_retirement_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 28,96-140,515,540-586
+backend/tests/component/core/resource_manager/test_number_pool_ranges_allocation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-280
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_reported_once.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-132
+backend/tests/functional/pools/test_numberpool_ranges.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-169
+dev/specs/ifc-3371-number-pool-field-tabs/tasks.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-196
+backend/infrahub/git/state/models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-156
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15-17,19-20,29,51-52,60,64,118-121,136-137,174-179,182-188,192-193,195-229,234-257
+  s_8c17013005c1b9::t_aaa14f273e8085 258
+frontend/app/src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 274
+backend/tests/component/core/diff/test_refresh_diff.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,105-106
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-716
+dev/specs/infp-631-resource-telemetry/critiques/critique-20260721-121437.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-84
+frontend/app/src/entities/resource-manager/ui/queries/resource-manager.query-keys.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 3-7,17-43,63-111
+backend/infrahub/git/writeback/content.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-158
+backend/tests/unit/core/schema/test_write_json_schema.py
+  s_8c17013005c1b9::t_ece5e7226bf648 249-256
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-207
+backend/tests/component/pools/test_number_pool_repository.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-290
+changelog/+ifc-3101-readonly-refs-check.added.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-5
+backend/infrahub/graphql/queries/repository_git_state.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-474
+dev/specs/ifc-3371-number-pool-field-tabs/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-176
+backend/infrahub/profiles/queries/get_profile_data.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-2,4,8-11,22-26,35-37
+  s_8c17013005c1b9::t_cbb77a53c85a41 38
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-156
+dev/specs/ifc-3220-writeback-failure-handling/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 199-216,264,359-362,530-532,534,536,573-574,598-603,617-619,643-648,652-653,655-656,664-665,681-687,772-773,833-834,845-849,982-983,1014-1025,1050-1051,1062,1072-1074,1109-1110,1143-1145,1147-1151,1196-1204,1215-1217,1420,1423,1449-1455,1465-1474,1499-1507,1520-1524
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-divisions.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-68
+frontend/app/src/entities/nodes/object/api/create-object-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 4,12,21,49
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-have-allocation-scope.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-28
+frontend/app/src/entities/repository/ui/queries/get-repository-commits.query.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-295
+backend/tests/unit/core/schema/test_schema_branch_deprecations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-85
+backend/tests/component/core/resource_manager/test_number_pool_scope_profiles.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-224
+changelog/+ifc-3362-number-pool-body.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+frontend/app/src/shared/components/container.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 5,11
+backend/tests/component/graphql/resource_manager/number_pool_attach/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-217
+backend/infrahub/errors/catalogue.py
+  s_8c17013005c1b9::t_ece5e7226bf648 17,41,207-217
+  s_8c17013005c1b9::t_f463666438c1b2 218-219
+backend/infrahub/core/metadata/model.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18-22
+frontend/app/src/entities/resource-manager/api/number-pool-division.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-97
+backend/infrahub/graphql/resolvers/ipam.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15,21,406-409,419
+backend/tests/component/proposed_change/test_merge_selective_regen.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,5,11,19,25-26,192,282-294,301
+dev/knowledge/backend/mutations.md
+  s_8c17013005c1b9::t_ece5e7226bf648 186-201
+dev/specs/ifc-3185-number-pool-scopes/critiques/critique-20261008.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-172
+backend/infrahub/core/merge/python_target_sources.py
+  s_8c17013005c1b9::t_ece5e7226bf648 50,54,100,131,182,214-221
+  s_8c17013005c1b9::t_f4edb5bf22846b 222
+backend/infrahub/graphql/types/attribute.py
+  s_8c17013005c1b9::t_ece5e7226bf648 59-68
+changelog/+merge-after-force-push.fixed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+backend/infrahub/graphql/metadata.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,5,7-11,34-36,46-48,52,71-72,79-103,108-109,117-119,127-129
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-157
+backend/infrahub/core/recompute/dispatch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 7,76-77,87
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_8c17013005c1b9::t_ece5e7226bf648 75-77
+frontend/app/src/entities/repository/ui/pending-merge-list.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-27
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_refused_declarations.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-282
+frontend/app/src/entities/repository/api/repository-commits.mappers.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-75
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 15,10934-10935,10938-10941,10955-10959,10998-11025,11066-11067,11069-11072,11081-11085,11096-11248,11257-11258,11260-11263,11273-11277,11290-11291,11293-11296,11306-11310,13032-13049,17714-17720,20117-20124,20306,20310-20313,21423-21446,22016-22020,22037-22046,22743-22751,23543-23550,23960-24116,24601-24608,25056-25057,25060-25066,26256,26302-26307,26313-26314,26317-26319,26321,30072-30116,33997-34002,34076-34095,34118-34233,35427-35480,38831-38852,38863-38867,38882-38888,39705-39710,39821-40069
+frontend/app/src/entities/resource-manager/domain/rules/find-overlapping-ranges.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-20
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-91
+dev/specs/ifc-3362-number-pool-body/contracts/graphql-queries.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-86
+frontend/app/src/entities/repository/domain/rules/repository-column-surface.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-9
+dev/adr/0023-application-owned-theme-resolution.md
+  s_8c17013005c1b9::t_cf4b0d8adc61ea 1-72
+dev/specs/ifc-3371-number-pool-field-tabs/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-100
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-create-form.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-149
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-90
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocation-scope-select.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-193
+backend/infrahub/pools/number_pool_range_validation.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-101
+backend/tests/component/git/test_sync_status_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-98
+frontend/app/src/entities/repository/ui/queries/retry-repository-push.mutation.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-71
+backend/infrahub/core/constants/__init__.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,233,237-273,282-305,447-453,464-467,481
+frontend/app/src/entities/repository/domain/use-cases/check-remote-refs.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-22
+dev/knowledge/backend/computed-attributes.md
+  s_8c17013005c1b9::t_ece5e7226bf648 56,110
+frontend/app/src/entities/repository/ui/queries/abandon-repository-push.mutation.test.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-71
+backend/infrahub/core/merge/repository_merge_dispatcher.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,12-14,19-21,24-25,44-45,48-54,59-60,63-65,67,90-108,110-118,120-124,126-153,155-159,161-202
+backend/infrahub/core/merge/selective_regen/definition_selector/generator_selector.py
+  s_8c17013005c1b9::t_ece5e7226bf648 3,21-23,35-53
+  s_8c17013005c1b9::t_93e26430557637 54
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_resume.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-168
+frontend/app/src/entities/repository/ui/repository-commits-manager-load-more.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-129
+frontend/app/src/entities/repository/ui/hooks/use-refresh-after-repository-run.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-44
+backend/infrahub/profiles/mandatory_fields_checker.py
+  s_8c17013005c1b9::t_ece5e7226bf648 15-16,57,60,68,70-73,86-90,101-102
+frontend/app/src/entities/nodes/object/api/update-object-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 4,18,27,132
+backend/infrahub/workers/infrahub_async.py
+  s_8c17013005c1b9::t_ece5e7226bf648 5,31,34,46-47,51-53,57-60,125,184-187,231-270
+  s_8c17013005c1b9::t_4aa21407a39364 271
+backend/infrahub/graphql/subscription/graphql_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 13,56
+backend/tests/component/proposed_change/test_generator_regen_selection.py
+  s_8c17013005c1b9::t_ece5e7226bf648 269,273,277,632
+backend/infrahub/core/validators/pool/scope_dependency.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-101
+backend/tests/component/pools/schema_number_pool_synchronizer/helpers.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-70
+dev/specs/ifc-3366-allocation-scope-table/contracts/url.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-46
+dev/specs/infp-631-resource-telemetry/opsmill-implement-report.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-76
+backend/tests/component/graphql/mutations/test_ipam.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1,3,7,12,1488-1547
+backend/infrahub/core/query/node.py
+  s_8c17013005c1b9::t_ece5e7226bf648 22,24,27,40,43,60-61,120,269,274-284,298-312,374-379,401-406,430,436,461,467,758,761-765,769-771,782-787,797,833-865,1001,1071-1078
+  s_8c17013005c1b9::t_855af3ab8ee898 1079
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_attribute_bounds.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-205
+dev/guidelines/frontend/page-architecture.md
+  s_8c17013005c1b9::t_ece5e7226bf648 9,13,16-18,23,25,28,30,32,34-46,57
+frontend/app/src/entities/repository/ui/queries/repository-polling.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 4-8
+frontend/app/src/entities/branches/ui/branch-details/branch-details-header.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 37-39
+backend/tests/unit/pools/test_number_pool_space.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-138
+backend/infrahub/core/branch/tasks.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18-24,37-41,53,59,197,299,302-303,316,318,472,633,640,642-644,650-651,659,668,693,696-698,703,706-713
+backend/tests/unit/git/writeback/test_models.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-761
+frontend/app/src/entities/repository/ui/repository-push-to-remote-card.test.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-386
+dev/specs/ifc-3065-number-pool-ranges/checklists/requirements.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-35
+frontend/app/src/pages/objects/object-details/repository-commits.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-20
+dev/knowledge/backend/schema-definitions.md
+  s_8c17013005c1b9::t_ece5e7226bf648 57
+frontend/app/src/entities/resource-manager/ui/queries/get-number-pool.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+backend/infrahub/graphql/mutations/profile.py
+  s_8c17013005c1b9::t_ece5e7226bf648 18,81-83,234-236
+backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py
+  s_8c17013005c1b9::t_ece5e7226bf648 95
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-231
+backend/tests/integration/git/test_sync_merged_branch.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,67
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pool_range_writes.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-247
+dev/knowledge/backend/git-push-queue.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-450
+backend/tests/component/graphql/test_graphql_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,1615-1673
+  s_8c17013005c1b9::t_c7fecbc2a8dedc 1674-1675
+docs/docs/branches/delete.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 22
+dev/knowledge/backend/message-bus.md
+  s_8c17013005c1b9::t_ece5e7226bf648 53-67
+backend/tests/component/git/test_sync_lock_scope.py
+  s_8c17013005c1b9::t_ece5e7226bf648 10,13,34,37-38
+dev/specs/ifc-3065-number-pool-ranges/alignment-check.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-30
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-127
+backend/infrahub/pools/number_pool_divisions_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-123
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-955
+backend/infrahub/pools/division_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-93
+frontend/app/src/entities/repository/ui/repository-commits-manager.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-173
+backend/infrahub/graphql/analyzer.py
+  s_8c17013005c1b9::t_ece5e7226bf648 181,287-293,315-316,320,329-330,344-347,355-359,413-442,449-450,841,843,878-880,884-898,910,913-915
+backend/tests/unit/pools/test_number_pool_range_reconciler.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-173
+docs/docs/branches/parallel-branches.mdx
+  s_8c17013005c1b9::t_ece5e7226bf648 102
+frontend/app/src/entities/resource-manager/api/get-number-pool-allocations-from-api.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-81
+backend/tests/component/graphql/profiles/test_query.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,158-160,237-239,410-412,496-498
+dev/specs/ifc-3366-allocation-scope-table/spec.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-121
+backend/tests/component/pools/test_number_pool_shorthand.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-158
+changelog/+ifc-3365-number-pool-form.changed.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1
+dev/specs/ifc-3364-number-pool-header/research.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-187
+frontend/app/src/entities/repository/ui/repository-activity-card/idle-row.tsx
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+frontend/app/src/entities/resource-manager/ui/queries/get-number-pool-divisions.query.ts
+  s_8c17013005c1b9::t_ece5e7226bf648 1-31
+dev/specs/ifc-3362-number-pool-body/plan.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-181
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_8c17013005c1b9::t_ece5e7226bf648 9,14,18,21,163-165,168,172,409-411,414,418,455-457,460,464,583-587,678-687,785-789
+backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py
+  s_8c17013005c1b9::t_ece5e7226bf648 21,48,133,179,240,314,363,400,427,451,515
+backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py
+  s_8c17013005c1b9::t_ece5e7226bf648 334-341
+  s_8c17013005c1b9::t_64cbd7e7c1ea4d 332-333
+backend/infrahub/git/writeback/store.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-439
+backend/infrahub/services/adapters/message_bus/rabbitmq.py
+  s_8c17013005c1b9::t_ece5e7226bf648 12,95,97-99,101-107,217-222,224-225,234-257
+backend/infrahub/git/state/log_reader.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-362
+dev/specs/ifc-3065-number-pool-ranges/quickstart.md
+  s_8c17013005c1b9::t_ece5e7226bf648 1-84
+backend/infrahub/git/writeback/abandoner.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-140
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_8c17013005c1b9::t_ece5e7226bf648 6,8,11,21-36,49,66,74,76-124,139,170,192-194,224,232-235,244-250,252-255,257-259,269-272,281-283,286,293-298,301-312,317-410,447,467-470,503,528,530-532,537-631
+backend/tests/unit/services/adapters/message_bus/test_rpc_timeout.py
+  s_8c17013005c1b9::t_ece5e7226bf648 1-215
+.github/workflows/bug-agent-analyst.lock.yml
+  s_8c17013005c1b9::t_e9e732c82f65c3 458,565,582,1126,1204,1244,1291,1467,1547,1646,1788,1839
+.github/workflows/bug-agent-fix.lock.yml
+  s_8c17013005c1b9::t_40b429992072eb 464,632,676,697,1299,1378,1418,1465,1643,1723,1822,1966,1979,2041
+.github/workflows/bug-agent-review.lock.yml
+  s_8c17013005c1b9::t_d14370c027eecb 439,554,571,1114,1193,1233,1280,1436,1516,1615,1843,1894
+.github/workflows/bug-agent-test.lock.yml
+  s_8c17013005c1b9::t_a5bc9600478ae0 465,635,679,700,1306,1385,1425,1472,1650,1730,1829,1975,1988,2050
+.github/workflows/issue-triage-labeler.lock.yml
+  s_8c17013005c1b9::t_5c11a0595ff9ce 410,518,537,1046,1122,1162,1209,1365,1445,1544,1671,1722
+.github/workflows/issue-triage-sweep.lock.yml
+  s_8c17013005c1b9::t_2ff628fe35e4fe 396,504,523,1032,1108,1148,1195,1351,1431,1530,1657,1708
+frontend/app/src/shared/api/errors/catalogue.generated.ts
+  s_8c17013005c1b9::t_9eb9ae0468613b 74-79,96,120,141
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_8c17013005c1b9::t_9345e65a267356 2680,2682,2685,2687-2692,2698-2702,2708,2710,2713-2718,2720,2726-2766
+frontend/app/src/shared/components/form/utils/mutations/buildFromPoolMutationValue.ts
+  s_8c17013005c1b9::t_b0e74023f3a81a 51-67
+frontend/app/src/shared/components/form/utils/mutations/getCreateMutationFromFormData.test.ts
+  s_8c17013005c1b9::t_f7d62ac5eea136 298-385
+frontend/app/src/shared/components/form/utils/mutations/getCreateMutationFromFormData.ts
+  s_8c17013005c1b9::t_037c9119cac512 7-10,13,40-45
+frontend/app/src/shared/components/form/utils/mutations/getUpdateMutationFromFormData.test.ts
+  s_8c17013005c1b9::t_af13217276173e 394-528
+frontend/app/src/shared/components/form/utils/mutations/getUpdateMutationFromFormData.ts
+  s_8c17013005c1b9::t_3c72ca563ba9e0 4-7,10-11,17-21,34,40-53,77-82,140-141,144-147
+frontend/app/src/shared/components/form/utils/updateFormFieldValue.test.ts
+  s_8c17013005c1b9::t_1ae97273185eb5 6,396-463
+frontend/app/src/shared/components/form/utils/updateFormFieldValue.ts
+  s_8c17013005c1b9::t_1c8527f8461b0d 84-125
+frontend/app/src/shared/components/inputs/pool-select.tsx
+  s_8c17013005c1b9::t_a881d4b9911f74 5,18-19,367-431
+frontend/app/src/shared/components/loading/infrahub-loading.tsx
+  s_8c17013005c1b9::t_9806dba9ab9d2b 3
+frontend/app/src/shared/components/menu/copy-to-clipboard-menu-item.tsx
+  s_8c17013005c1b9::t_af3bd2a340a886 9,14,19-25
+frontend/app/src/shared/components/modals/modal-danger.tsx
+  s_8c17013005c1b9::t_e6de6e9fa3f1fc 17,29,37
+frontend/app/src/shared/components/table/data-table.test.tsx
+  s_8c17013005c1b9::t_29dcc71f361273 2-3,231-285
+frontend/app/src/shared/components/table/data-table.tsx
+  s_8c17013005c1b9::t_53a9bdbad3e48c 26,41-59,76-102,110,112,118,127,244
+frontend/app/src/shared/components/ui/form.tsx
+  s_8c17013005c1b9::t_516bfa59b3d359 7-8,21,23-25,27-29,32,41-42,69-70
+frontend/app/src/shared/components/ui/infrahub-logo.tsx
+  s_8c17013005c1b9::t_46813d98350383 3-4
+frontend/app/src/shared/config/qsp.ts
+  s_8c17013005c1b9::t_a5ffe447b35b15 17-21
+frontend/app/src/shared/hooks/useCopyToClipboard.test.tsx
+  s_8c17013005c1b9::t_a05a0ffc384882 1,8,13,23,99-182
+frontend/app/src/shared/hooks/useCopyToClipboard.ts
+  s_8c17013005c1b9::t_90925c7cee2241 3,9-11,13-18,21-32
+frontend/app/src/shared/utils/clipboard.test.ts
+  s_8c17013005c1b9::t_f0f3784cb6383d 1-125
+frontend/app/src/shared/utils/clipboard.ts
+  s_8c17013005c1b9::t_92813caa53ddf0 1-37
+frontend/app/tests/fake/number-pool.ts
+  s_8c17013005c1b9::t_66b5bb030cd8f7 1-134
+frontend/app/tests/fake/repository-activity.ts
+  s_8c17013005c1b9::t_98697d318f198a 1-42
+frontend/app/tests/fake/repository-commit.ts
+  s_8c17013005c1b9::t_9c5f6c05ea1f46 1-197
+frontend/app/tests/fake/repository-refs-check.ts
+  s_8c17013005c1b9::t_be1c9a531bd3ed 1-29
+frontend/packages/ui/src/components/select/select.tsx
+  s_8c17013005c1b9::t_967bcc94725117 26
+frontend/packages/ui/src/styles/theme.css
+  s_8c17013005c1b9::t_a245d8076f4ebb 249-250
+pyproject.toml
+  s_8c17013005c1b9::t_c4a2932be64fd4 40,1401,1419-1420,1437
+python_sdk
+  s_78603417e7799d::t_af9e71f6f36653 1
+python_testcontainers/pyproject.toml
+  s_8c17013005c1b9::t_017f0f06cc4380 18
+python_testcontainers/uv.lock
+  s_8c17013005c1b9::t_ab8eb89d7bd5df 6-7,596-597,652-713,739-740,892,900,902,907,912-1049,1267-1268,1278-1410,1456-1715,1903,1905,1907,1912,1917,1919,2030-2031
+schema/error-catalogue.json
+  s_8c17013005c1b9::t_9715f1c7f59291 354-382
+schema/openapi.json
+  s_8c17013005c1b9::t_8ad12bec3a2eb5 7107-7114,7116,7119-7126,7128-7136,7149-7163,7172-7179,7181,7184-7191,7193-7208,7221-7235,7241-7304
+schema/schema.graphql
+  s_8c17013005c1b9::t_f2f79c02f5b78b 5071-5074,5077-5080,5095-5099,5110-5113,5115-5118,5126-5130,5139-5228,5236-5239,5241-5244,5253-5257,5268-5271,5273-5276,5285-5289,5974-6003,8378-8383,10044-10051,10247,10251-10258,10795-10802,11530-11536,11895,11903,11911-12098,12548-12554,12979-12988,17601-17645,21732-21737,21821-21840,21861-21984,23238-23291,26793-26802,26809-26815,26845-26855,26857-26859,27703-27707,27809-28074
+tasks/backend.py
+  s_8c17013005c1b9::t_2aefb801726677 10,975-983,988-990,993-996,998,1006-1020,1144,1157,1224-1228,1232-1234,1349
+tasks/docs.py
+  s_8c17013005c1b9::t_f91cb7c4110fc2 237,243,261-262
+tests/e2e/object-template/test_template_with_number_pool.py
+  s_8c17013005c1b9::t_0c3ffc9d7aec34 12,48-53
+tests/e2e/objects/test_object_details_delete.py
+  s_8c17013005c1b9::t_4079368ccb9158 13,57-63
+tests/e2e/repository/test_repository_check_remote.py
+  s_8c17013005c1b9::t_0c93e523747508 1-163
+tests/e2e/repository/test_repository_delivery.py
+  s_8c17013005c1b9::t_786c38c69304e2 1-228
+tests/e2e/resource-manager/test_number_pool.py
+  s_8c17013005c1b9::t_88198835c08b35 3-7,20,37-87,106-112,114-115,125-127,129-130,134,137-190,193-202,207-233,235-254,260,294-399
+tests/e2e/tutorial/guides/test_resource_manager_guide.py
+  s_8c17013005c1b9::t_00d4ee96dc9a79 99-105
+uv.lock
+  s_8c17013005c1b9::t_316bf81416c150 1519,1619,1990,1995,1997,2161-2251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5551e9d39d5291e90a13005c673459a8c6bfcb0d",
+  "prompts": {},
+  "sessions": {
+    "s_78603417e7799d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f5e57e0-ed36-4b58-b93a-7592ce8f9ab3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_8c17013005c1b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8d08fa-4476-4774-b545-04e2c7d3a1e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

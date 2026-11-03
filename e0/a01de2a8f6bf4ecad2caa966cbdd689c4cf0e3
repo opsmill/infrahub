@@ -1,0 +1,31 @@
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_fb819cbbe44071::t_28cdab743458c9 5,7-8,30-35
+backend/infrahub/proposed_change/tasks.py
+  s_fb819cbbe44071::t_2e6ecc4be160af 86-87,462-467,820-825,1116-1121,1387-1392
+backend/tests/component/core/regeneration/impact/helpers.py
+  s_fb819cbbe44071::t_5c5122c9a5f2ee 3-6,9-12,17-22
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_fb819cbbe44071::t_c3536f7c2dbbdc 16,160,207,289,321
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_fb819cbbe44071::t_a0674d1f286112 16-17,172,201,229
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_fb819cbbe44071::t_7547dff88074cd 16,131
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_746df9cb98d660 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0a01de2a8f6bf4ecad2caa966cbdd689c4cf0e3",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

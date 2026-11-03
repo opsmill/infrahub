@@ -1,0 +1,19 @@
+backend/tests/unit/config/test_tls_settings.py
+  s_deb1a88485ad83::t_7989870c138904 5,24-26,114-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "220066fdb8c760649bed4de6fbc464ea99b7ec01",
+  "prompts": {},
+  "sessions": {
+    "s_deb1a88485ad83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e40e20-e3ee-47e4-947c-536631360821",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

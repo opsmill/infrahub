@@ -1,0 +1,43 @@
+backend/infrahub/computed_attribute/tasks.py
+  s_1e9479e8606b35::t_9440371c6f6d5f 17,111,115-116,122-129,133-137
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_1e9479e8606b35::t_83e0e10f6061fb 1-109
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_1e9479e8606b35::t_a6651a8777f9b1 1-168
+backend/infrahub/core/regeneration/impact.py
+  s_1e9479e8606b35::t_a1cd770dd6686f 15-16,83-84,92
+backend/infrahub/core/schema/basenode_schema.py
+  s_1e9479e8606b35::t_35e8b3246c148e 130-134
+backend/infrahub/core/schema/derived_path.py
+  s_1e9479e8606b35::t_150ca49244e3c9 1-92
+backend/infrahub/core/schema/generic_schema.py
+  s_1e9479e8606b35::t_cfb079b9632830 17-20
+backend/infrahub/core/schema/schema_branch_computed/python_transform.py
+  s_1e9479e8606b35::t_b2514d8c2a5588 10,16,25-27,40-42
+backend/tests/unit/computed_attribute/test_python_transform_deriver.py
+  s_1e9479e8606b35::t_5fe04f3869e3b1 11-12,21-28,298-301,306
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_1e9479e8606b35::t_7ed7bcb3e60c1d 1-274
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_1e9479e8606b35::t_9dbd91d54335c5 1-289
+backend/tests/unit/core/schema/test_derived_path.py
+  s_1e9479e8606b35::t_3ed3a54e4e52db 3,8-17,21,24-43,46-55,62-105,107,109-111,114-125,127-133,135-139,141-145,147-151,153-157,159-169,174-180
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_1e9479e8606b35::t_959365a19e34fc 36,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74ab30a6e8aa7fc9172d453e68fefb530cc7e068",
+  "prompts": {},
+  "sessions": {
+    "s_1e9479e8606b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fabdad-ef16-45db-a6ce-4bed9900a15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

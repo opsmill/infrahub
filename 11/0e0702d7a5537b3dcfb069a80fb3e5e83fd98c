@@ -1,0 +1,21 @@
+backend/infrahub/core/node/__init__.py
+  s_90d57abc1cfeb7::t_ec7cc2d9e4089e 504-506
+backend/infrahub/templates/node_applier.py
+  s_90d57abc1cfeb7::t_b873f2fa16e37c 212,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "110e0702d7a5537b3dcfb069a80fb3e5e83fd98c",
+  "prompts": {},
+  "sessions": {
+    "s_90d57abc1cfeb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b28fc3-cccd-4e87-800f-1b76c5baaacf",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

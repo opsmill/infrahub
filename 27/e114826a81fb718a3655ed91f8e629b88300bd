@@ -1,0 +1,19 @@
+dev/specs/ifc-2843-retire-agnostic-edges/plan.md
+  s_d52982193a4de3::t_a2e11cb1df531b 523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27e114826a81fb718a3655ed91f8e629b88300bd",
+  "prompts": {},
+  "sessions": {
+    "s_d52982193a4de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56f21911-e56e-4ea4-a675-cca05f6cbad4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

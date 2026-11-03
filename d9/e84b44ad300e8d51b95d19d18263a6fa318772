@@ -1,0 +1,19 @@
+backend/tests/integration/schema_lifecycle/test_number_pool_parameters_update.py
+  s_0bc59054fef4ea::t_32b46c9d71250f 1-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9e84b44ad300e8d51b95d19d18263a6fa318772",
+  "prompts": {},
+  "sessions": {
+    "s_0bc59054fef4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "373c6d27-fa2a-4490-8e9d-d14c775f400c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

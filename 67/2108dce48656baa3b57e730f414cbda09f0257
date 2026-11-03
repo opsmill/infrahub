@@ -1,0 +1,24 @@
+backend/infrahub/pools/number_ranges.py
+  s_c47d1ff1b9fc75::t_34d67fbce228ae 19-30,70,74,78,91,127-129
+  s_c47d1ff1b9fc75::t_f2ac14c16bfc4e 130
+backend/tests/unit/pools/test_number_ranges.py
+  s_c47d1ff1b9fc75::t_0353aba7fe00fa 1
+  s_c47d1ff1b9fc75::t_3ce2ff35a6fcdc 182-210
+  s_c47d1ff1b9fc75::t_eceafc8e92a120 211-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "672108dce48656baa3b57e730f414cbda09f0257",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

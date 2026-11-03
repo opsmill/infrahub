@@ -1,0 +1,19 @@
+backend/tests/unit/services/test_component.py
+  s_b134b1501718e5::t_2dae7803feecf5 198-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d68b22a6a557fc69ed51f19f84d218bbd3b502c8",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

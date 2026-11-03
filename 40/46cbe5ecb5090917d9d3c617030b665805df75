@@ -1,0 +1,54 @@
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_5e2325ba340dbd::t_40ef3e6e6c25b6 7,50-51,55-71
+  s_5e2325ba340dbd::t_dbe030acc0569b 11,53
+  s_5e2325ba340dbd::t_124f94ecf98769 6,30-49,52,54
+  s_5e2325ba340dbd::t_7791efd6ef7127 72
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_5e2325ba340dbd::t_dbe030acc0569b 184-185
+  s_5e2325ba340dbd::t_3a4b377d4304de 187-194
+  s_5e2325ba340dbd::t_449bc4e4c0516e 20,149-151,180-183
+  s_5e2325ba340dbd::t_fce45da36a0271 163,178-179
+  s_5e2325ba340dbd::t_102b7620239617 124
+  h_7ec9b28dd2a5ab 137-139,144,170-171,173,175
+  s_5e2325ba340dbd::t_eb768a907f3ff7 154,276
+  s_5e2325ba340dbd::t_74e57881c92cd0 157-159,177,186
+backend/infrahub/pools/scope.py
+  h_7ec9b28dd2a5ab 58
+  s_5e2325ba340dbd::t_dbe030acc0569b 57,132-136,142,145,164,177,233,243,271
+  s_5e2325ba340dbd::t_a1e721497278de 59-128,137,143,148-151,153-154
+backend/tests/unit/pools/test_scope.py
+  s_5e2325ba340dbd::t_fc2acc3de6ea87 102-107,109,127,129,145,149,170,173,186,205,234,236-237
+  s_5e2325ba340dbd::t_d797959f8ee109 36-49,54,59,66,75,88,96,114,130
+  s_5e2325ba340dbd::t_e6f8e4fada3ff0 12,65,77-79,87,95,113,132-133,182,191,203,211,225,233,241,449,451,460-463,467-470
+  s_5e2325ba340dbd::t_71a2962eabcc6f 50-51,97,126,128,131,134-144,146-148,150-169,171-172,174-181,183-185,187-190,192-202,204,206-210,212-224,226-232,235,238-240,242-244
+  s_5e2325ba340dbd::t_754d67aadf34f9 245-246
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py
+  s_5e2325ba340dbd::t_9b9b7bad661c16 73-74,143,152-185,245-254,256-262,266,278,372,381-405
+  s_5e2325ba340dbd::t_ae374b62fee67d 10,13,27,499,502-503,515-517,544-582,602-604,645-646
+  s_5e2325ba340dbd::t_2c95dc323ab81f 265,281-309
+  s_5e2325ba340dbd::t_fce45da36a0271 255
+  s_5e2325ba340dbd::t_5e173d1bb911ae 500,587-589,622-626
+  s_5e2325ba340dbd::t_ce2843cefcab83 513,599
+  s_5e2325ba340dbd::t_620d3f1fdcc63e 263-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4046cbe5ecb5090917d9d3c617030b665805df75",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_5e2325ba340dbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f13d975-fc0a-496a-904d-6e1b5a6aec1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

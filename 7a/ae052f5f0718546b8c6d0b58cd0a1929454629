@@ -1,0 +1,23 @@
+backend/tests/component/pools/schema_number_pool_synchronizer/test_declared_scope_provisioning.py
+  s_04e9c61d1d4032::t_fc3b915bc145a4 17,29,72
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_04e9c61d1d4032::t_fc3b915bc145a4 30,61,106,138,154
+backend/tests/component/pools/schema_number_pool_synchronizer/test_scope_name_refresh.py
+  s_04e9c61d1d4032::t_fc3b915bc145a4 18,164,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aae052f5f0718546b8c6d0b58cd0a1929454629",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

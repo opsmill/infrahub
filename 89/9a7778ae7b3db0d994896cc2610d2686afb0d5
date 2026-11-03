@@ -1,0 +1,19 @@
+backend/tests/component/branch/test_purge_deleted_branch_tasks.py
+  s_2fae1787d146ee::t_5c3b8a457dc57e 8-9,18,21,23-25,39-41,44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "899a7778ae7b3db0d994896cc2610d2686afb0d5",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

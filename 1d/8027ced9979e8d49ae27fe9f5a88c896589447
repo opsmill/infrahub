@@ -1,0 +1,19 @@
+backend/infrahub/graphql/resolvers/resolver.py
+  s_332201fa331861::t_12bb49ab240617 406-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d8027ced9979e8d49ae27fe9f5a88c896589447",
+  "prompts": {},
+  "sessions": {
+    "s_332201fa331861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75bb2dd3-334f-43d2-b4e2-8692ee03124b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

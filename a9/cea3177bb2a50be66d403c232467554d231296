@@ -1,0 +1,36 @@
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_fa5a277802e975 6,10-11
+dev/specs/infp-507-task-history-retention/contracts/configuration.md
+  s_cfd0841cea4d76::t_fa5a277802e975 19
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_cfd0841cea4d76::t_fa5a277802e975 34
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_cfd0841cea4d76::t_fa5a277802e975 21
+dev/specs/infp-507-task-history-retention/research.md
+  s_cfd0841cea4d76::t_fa5a277802e975 28,35,38
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_fa5a277802e975 39,95-96,104,107-108,130,138,211
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_cfd0841cea4d76::t_fa5a277802e975 11,54,60
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_9f0e47e6751b70 61-62,64,128
+  s_cfd0841cea4d76::t_fa5a277802e975 31-34,51-52,59-60
+dev/specs/infp-507-task-history-retention/plan.md
+  s_cfd0841cea4d76::t_fa5a277802e975 49,113,131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9cea3177bb2a50be66d403c232467554d231296",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

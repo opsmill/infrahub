@@ -1,0 +1,19 @@
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_fb819cbbe44071::t_28144380c2114c 110,119,131,148,159,175,193,206,226,239,249,258,278,299,325,386,485,490,495,500,502,562,568,578,591,604,618,624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "045b11bde8aba059d8cd0ffb7597d1cdb8591f27",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

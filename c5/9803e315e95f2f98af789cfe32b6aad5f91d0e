@@ -1,0 +1,26 @@
+AGENTS.md
+  s_3b635b8269392c::t_3469fc0bad45f8 184
+dev/guides/backend/creating-migrations.md
+  s_3b635b8269392c::t_66beec905d6de6 186-187
+.agents/skills/audit-docs/SKILL.md
+  s_3b635b8269392c::t_33d1216bbace69 4
+dev/guidelines/repository-organization.md
+  s_3b635b8269392c::t_4d4fd7175cfee4 326-327,333-335
+  s_3b635b8269392c::t_6e1dbf8769b307 336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c59803e315e95f2f98af789cfe32b6aad5f91d0e",
+  "prompts": {},
+  "sessions": {
+    "s_3b635b8269392c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc8480ff-3382-476d-aaa7-26d805ff3272",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

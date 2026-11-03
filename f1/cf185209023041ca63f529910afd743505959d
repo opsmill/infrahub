@@ -1,0 +1,19 @@
+backend/tests/component/graphql/auth/query_permission_checker/test_object_permission_checker.py
+  s_fb819cbbe44071::t_5ca821d3539f06 246-275,470-510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1cf185209023041ca63f529910afd743505959d",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

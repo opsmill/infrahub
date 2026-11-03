@@ -1,0 +1,59 @@
+dev/specs/ifc-3185-scoped-number-pools/checklists/requirements.md
+  s_f79f241964f1cc::t_b270d5db3fddee 16
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_f79f241964f1cc::t_00953f5a6d8f08 55-56
+  s_f79f241964f1cc::t_ba701627869041 372,376-377,379-381,383-384,389-394
+  s_f79f241964f1cc::t_758c9f953d9ddf 814
+  s_f79f241964f1cc::t_7e34765c6172ab 773
+  s_f79f241964f1cc::t_eb9a3d421d342c 747-766
+  s_f79f241964f1cc::t_89cb672fd1c7df 81-102,107-124
+  s_f79f241964f1cc::t_d75b6de2fa3636 820-827
+  s_f79f241964f1cc::t_b5f74a549a853e 125
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_f79f241964f1cc::t_85cef48d332ce2 202,204-210
+  s_f79f241964f1cc::t_755eef962fdb78 487-489
+  s_f79f241964f1cc::t_7d700183a62a50 196-197
+  s_f79f241964f1cc::t_cf175e661a0ac1 130
+  s_f79f241964f1cc::t_a47c45007fee4a 138-141
+  s_f79f241964f1cc::t_92cb164914f430 301-302
+  s_f79f241964f1cc::t_e71d3e12ae5775 324-327,329
+  s_f79f241964f1cc::t_1fc83b5c244775 311-317
+  s_f79f241964f1cc::t_3ec3bcbc508506 454
+  s_f79f241964f1cc::t_1a5386a971e1b8 273-278
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_f79f241964f1cc::t_09c509730de299 65-66,68
+  s_f79f241964f1cc::t_938c2e3c772be1 29-39
+  s_f79f241964f1cc::t_7086aa11a77693 20
+  s_f79f241964f1cc::t_cb8604eef3cf10 383-387
+  s_f79f241964f1cc::t_f69adff8d02d3b 268-269
+  s_f79f241964f1cc::t_15b8bf7f14fc6d 46-47
+  s_f79f241964f1cc::t_a0f8481cdf02fa 12-13,17
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f79f241964f1cc::t_80c15a71702962 13-33,37-39,41-43,47,49-51,53,83-85,89,91-93,95-99,101-143,145,154-162,180-181,192,202-203,206,210,212-215,217-223,227-329,346-347,349,372,374,382,401-409,415,417-419,421-422,433-441,443,447,449-451,453,470,473,477,479-482,484,486-487,489,491-547,549-586,588-625,627,640-641,645-648,650,652,654-658,662-665,667,683,687-720,735-739,742-756,758,764-771,773-775,807-850,852-857,861-876
+  s_f79f241964f1cc::t_b68cd8e687b444 777-804
+  s_f79f241964f1cc::t_356554076cf86f 776
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  s_f79f241964f1cc::t_6816a6ea73269f 130-131
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_f79f241964f1cc::t_258110a7b8225c 610,614,619,623,632,637,641,645
+dev/specs/ifc-3185-scoped-number-pools/alignment-check.md
+  s_f79f241964f1cc::t_7a63732c1ea7ae 62-70
+dev/specs/ifc-3185-scoped-number-pools/opsmill-implement-report.md
+  s_f79f241964f1cc::t_09da02d418d328 77-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be99c13088f5008da9e3f6d5e65bea63a9d4dce4",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

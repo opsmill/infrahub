@@ -1,0 +1,25 @@
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_9a65b7e7908928::t_15473f9f89e0db 21
+  s_9a65b7e7908928::t_6992f31634345e 80-88,110
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_9a65b7e7908928::t_15473f9f89e0db 1105-1107
+  s_9a65b7e7908928::t_6992f31634345e 1094-1104,1108-1140
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_9a65b7e7908928::t_6992f31634345e 174-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8f5313036de81653f631646d0aebc8145982a77",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

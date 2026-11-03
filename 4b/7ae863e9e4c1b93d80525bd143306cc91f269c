@@ -1,0 +1,27 @@
+backend/infrahub/core/regeneration/models.py
+  s_fb819cbbe44071::t_8046086a4c2b99 5,10-33,40-41,47-63
+backend/infrahub/graphql/analyzer.py
+  s_fb819cbbe44071::t_a3cf139b6b848e 43,46,56-58,123-124,285-357,371-374,379-385,456,463-495,590-594,1114-1115
+backend/tests/component/graphql/test_query_analyzer.py
+  s_fb819cbbe44071::t_75f63cc704ba4c 572
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_fb819cbbe44071::t_0960249faa1081 10,422-529
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_fb819cbbe44071::t_301f8909d02f8f 3-6,8,11,323-504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b7ae863e9e4c1b93d80525bd143306cc91f269c",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 195-198
+  s_2fdf558427eaa2::t_94218187ce9c5c 193
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_2fdf558427eaa2::t_82f029a3ce8692 992
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_2fdf558427eaa2::t_801144e2fb6d3d 88,225,248,383,385,484,502,541,555
+  s_2fdf558427eaa2::t_82f029a3ce8692 30
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_2fdf558427eaa2::t_e2b514283aa2df 1-245
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 605-609,697-698
+  s_2fdf558427eaa2::t_94218187ce9c5c 76-77,657-658,672-674,756
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_2fdf558427eaa2::t_8aeecabfa6678b 176
+backend/tests/unit/graphql/test_metadata.py
+  s_2fdf558427eaa2::t_8a521f4d09a06d 1-60
+backend/infrahub/graphql/manager.py
+  s_2fdf558427eaa2::t_1e8c2c2207a862 73
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_2fdf558427eaa2::t_94218187ce9c5c 10934,11066,11257,11290
+backend/infrahub/core/constants/__init__.py
+  s_2fdf558427eaa2::t_1e8c2c2207a862 402-405
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_2fdf558427eaa2::t_82f029a3ce8692 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,143,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221,224,227,230,233
+  s_2fdf558427eaa2::t_94218187ce9c5c 140-142,146-154
+dev/knowledge/backend/templates.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 135
+backend/infrahub/graphql/metadata.py
+  s_2fdf558427eaa2::t_1e8c2c2207a862 3,5,8-10,32-34,44-45,49,68-69,76-82,87,95-96,104
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 336-342,483,521-523,726-727,729-732,749-750,773-774
+  s_2fdf558427eaa2::t_94218187ce9c5c 227,330-331,335,412-413,423,471,520,568-569,575-578,673-675,695-697,699-700,770-772
+backend/infrahub/graphql/resolvers/resolver.py
+  s_2fdf558427eaa2::t_1e8c2c2207a862 253
+dev/specs/ifc-3184-pool-number-attach/quickstart.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 170-172
+  s_2fdf558427eaa2::t_94218187ce9c5c 163,165-168,173-175,281-283
+dev/knowledge/backend/database-schema.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 199-201,210-213
+schema/schema.graphql
+  s_2fdf558427eaa2::t_94218187ce9c5c 5072,5111,5237,5269
+backend/tests/component/graphql/resource_manager/number_pool_attach/helpers.py
+  s_2fdf558427eaa2::t_801144e2fb6d3d 46-47,185,189,193-199
+dev/specs/ifc-3184-pool-number-attach/data-model.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 195
+  s_2fdf558427eaa2::t_94218187ce9c5c 196,199-200,230-232,298-299,304-305,312-314,357-358
+backend/infrahub/core/attribute.py
+  s_2fdf558427eaa2::t_c8cc4705a79bd1 20
+  s_2fdf558427eaa2::t_1e8c2c2207a862 629-632,667-671
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_2fdf558427eaa2::t_94218187ce9c5c 185,299,311,315-316,346,362,367-368,381
+  s_2fdf558427eaa2::t_6a0c6679ac1018 301-305,309-310,312-313
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_2fdf558427eaa2::t_1e8c2c2207a862 149,171
+  s_2fdf558427eaa2::t_8aeecabfa6678b 142
+dev/specs/ifc-3184-pool-number-attach/contracts/effective-space.md
+  s_2fdf558427eaa2::t_6a0c6679ac1018 126-127
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_2fdf558427eaa2::t_94218187ce9c5c 6,15,21,24-25,100,106,110-111,119-123,136,145
+  s_2fdf558427eaa2::t_6a0c6679ac1018 105,107,115-118,125-132,138-142
+  s_2fdf558427eaa2::t_915e7e7202c342 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77a740b6399830e2eca8d284c6862ef283a56a6d",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+docker-compose.yml
+  s_cc23bb5658950a::t_b89127dac51c6c 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "14fed981e63dddefb9288bec08041009a50c1e52",
+  "prompts": {},
+  "sessions": {
+    "s_cc23bb5658950a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7be26c30-7ba2-406f-b618-97627518913b",
+        "model": "unknown"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

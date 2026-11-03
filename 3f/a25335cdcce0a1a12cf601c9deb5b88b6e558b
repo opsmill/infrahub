@@ -1,0 +1,34 @@
+backend/tests/component/core/ipam/test_ipam_utilization.py
+  s_d9de296e59360e::t_cd0bafe92b1484 1-2,211-230
+  s_d9de296e59360e::t_764060d38863d4 8,231-241
+backend/infrahub/core/ipam/size.py
+  s_d9de296e59360e::t_700f42a3f42d73 5-7
+changelog/11260.fixed.md
+  s_d9de296e59360e::t_7f1aea88035eed 1
+backend/infrahub/core/node/ipam.py
+  s_d9de296e59360e::t_249b6be9c16076 5
+  s_d9de296e59360e::t_d77cf6f50ef0ad 39,47,49-62
+backend/tests/component/graphql/queries/test_ip_prefix_utilization.py
+  s_d9de296e59360e::t_dba768ac48d2ce 1-154
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_d9de296e59360e::t_1889f3f8d23c22 795-854
+backend/tests/component/conftest.py
+  s_d9de296e59360e::t_3ec808cdb53304 2594-2597,2599-2604
+  s_d9de296e59360e::t_aedc91874f9871 2598
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fa25335cdcce0a1a12cf601c9deb5b88b6e558b",
+  "prompts": {},
+  "sessions": {
+    "s_d9de296e59360e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ddf27-a157-483c-8f33-0db9d9a78d7d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

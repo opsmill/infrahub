@@ -1,0 +1,26 @@
+backend/infrahub/graphql/queries/repository_git_state.py
+  s_6a5d5821c03c7e::t_6c69870b45f2ec 83-85,89,106-108,121,303-306,439-440
+  s_6a5d5821c03c7e::t_aca7a04f3e0701 41
+backend/infrahub/graphql/queries/number_pool.py
+  s_6a5d5821c03c7e::t_3afc2734308171 35,38,175-178,275-278,356-359
+backend/infrahub/graphql/queries/repository_branch_status/resolver.py
+  s_6a5d5821c03c7e::t_17e0790f01e19f 127-136,138-163,165-170,172-196,198-216
+backend/infrahub/proposed_change/action_checker.py
+  s_6a5d5821c03c7e::t_b688900c261582 117-118,121,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bbd2492454eb5b4d8f6442a8bea5b7cac3d4ad85",
+  "prompts": {},
+  "sessions": {
+    "s_6a5d5821c03c7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8070733-e44d-4f54-9e15-7eda3b16d41f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/infrahub/core/regeneration/impact.py
+  s_1e9479e8606b35::t_5bb6b4a3d7b989 91-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3139c5471b4c1895eae113c9bf66fdb8893e3618",
+  "prompts": {},
+  "sessions": {
+    "s_1e9479e8606b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fabdad-ef16-45db-a6ce-4bed9900a15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

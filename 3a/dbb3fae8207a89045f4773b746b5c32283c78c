@@ -1,0 +1,25 @@
+backend/infrahub/core/regeneration/poc/run.py
+  s_6947b4d8b10fbd::t_3ab3dd67335f88 6,199,296,302-307,310-317
+backend/infrahub/core/regeneration/poc/selector.py
+  s_6947b4d8b10fbd::t_43b5e22b1a97a7 12-13,31-32,152-153,268,272-285,287-288,297-310
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_8644db2789b19b 350-409
+backend/tests/unit/core/regeneration/poc/test_selector.py
+  s_6947b4d8b10fbd::t_b1ca3e8415ef4a 128-159,659-729
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3adbb3fae8207a89045f4773b746b5c32283c78c",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

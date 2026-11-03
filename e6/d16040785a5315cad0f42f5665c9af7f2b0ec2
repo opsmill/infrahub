@@ -1,0 +1,19 @@
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_d52982193a4de3::t_a985c83ca57df9 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6d16040785a5315cad0f42f5665c9af7f2b0ec2",
+  "prompts": {},
+  "sessions": {
+    "s_d52982193a4de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56f21911-e56e-4ea4-a675-cca05f6cbad4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

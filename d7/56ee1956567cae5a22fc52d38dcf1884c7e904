@@ -1,0 +1,21 @@
+backend/tests/component/api/test_license_header.py
+  s_1df8eb94da3d51::t_b1682787ba1943 12,25
+backend/tests/unit/license/test_middleware.py
+  s_1df8eb94da3d51::t_b1682787ba1943 16-21,29,60,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d756ee1956567cae5a22fc52d38dcf1884c7e904",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+dev/specs/dependabot-autopilot/research.md
+  s_ce99ced981c340::t_c5248f3ad270b4 81
+  s_ce99ced981c340::t_7a4001c3fb20fb 105
+dev/specs/dependabot-autopilot/tasks.md
+  s_ce99ced981c340::t_c5248f3ad270b4 58
+dev/specs/dependabot-autopilot/data-model.md
+  s_ce99ced981c340::t_7a4001c3fb20fb 39,88
+dev/specs/dependabot-autopilot/spec.md
+  s_ce99ced981c340::t_7a4001c3fb20fb 78-81,94-95,104,116,120
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_ce99ced981c340::t_7a4001c3fb20fb 43,50
+dev/specs/dependabot-autopilot/plan.md
+  s_ce99ced981c340::t_7a4001c3fb20fb 119,125-127,130
+dev/specs/dependabot-autopilot/quickstart.md
+  s_ce99ced981c340::t_7a4001c3fb20fb 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b26eabf596bf3bad8d756a46968de6949c92149c",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

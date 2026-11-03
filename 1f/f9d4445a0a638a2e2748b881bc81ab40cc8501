@@ -1,0 +1,21 @@
+backend/infrahub/graphql/analyzer.py
+  s_fb819cbbe44071::t_6c1ce6538ad78b 342-343,351-352
+backend/tests/unit/graphql/reached_path_resolver/test_hop_filters.py
+  s_fb819cbbe44071::t_6b26ba172152df 150-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ff9d4445a0a638a2e2748b881bc81ab40cc8501",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

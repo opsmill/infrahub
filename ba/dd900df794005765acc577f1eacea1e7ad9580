@@ -1,0 +1,25 @@
+backend/tests/unit/graphql/reached_path_resolver/helpers.py
+  s_fb819cbbe44071::t_01ed5bb9d44234 1-136
+backend/tests/unit/graphql/reached_path_resolver/test_hop_filters.py
+  s_fb819cbbe44071::t_aaa115da0749e0 1-164
+backend/tests/unit/graphql/reached_path_resolver/test_reached_paths.py
+  s_fb819cbbe44071::t_746110ab6dfd86 3-29
+backend/tests/unit/graphql/reached_path_resolver/test_relationship_reads.py
+  s_fb819cbbe44071::t_071d8204a261bd 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "badd900df794005765acc577f1eacea1e7ad9580",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

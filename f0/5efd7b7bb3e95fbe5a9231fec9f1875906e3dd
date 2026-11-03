@@ -1,0 +1,33 @@
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_fb819cbbe44071::t_842bd0a6c565a7 68,217,219-221,288-291,293,295,454
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_fb819cbbe44071::t_d93fb0262ea7be 40,117,121-122,147,165-166
+changelog/+regen-narrow-through-fragments.changed.md
+  s_fb819cbbe44071::t_8cdf176d73fccc 1
+backend/infrahub/graphql/analyzer.py
+  s_fb819cbbe44071::t_6880f694821f5f 181,287-292,326-327,341-343,351-353,835,904
+backend/tests/component/core/regeneration/test_impact.py
+  s_fb819cbbe44071::t_925f25d266b1b4 376-391,536-563
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_fb819cbbe44071::t_e8a7d10729e8cb 59-80,105-126,128-129,132,230,239-243,252-310
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_fb819cbbe44071::t_b1ec4ddd3758c5 63-70,77-82,93-98,135-136,144-183,287-290
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_929a8162b5fd72 35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f05efd7b7bb3e95fbe5a9231fec9f1875906e3dd",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

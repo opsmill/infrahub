@@ -1,0 +1,30 @@
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_0749c4d5bfb929::t_625d2a0dbd0a81 1-48,58-59,61-69,71-117,129-178,180-296
+  s_e03da21de6e012::t_5d008094c70bf6 49-57,60,70,118-128,179
+backend/infrahub/proposed_change/tasks.py
+  s_0749c4d5bfb929::t_f496db739b805b 819-820
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3911ec6203385d453177f79d436ac16b1fa2e59c",
+  "prompts": {},
+  "sessions": {
+    "s_0749c4d5bfb929": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca8397f9-c882-4a5d-99a6-4c7998f4971c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_e03da21de6e012": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44ea8146-11c8-4cdf-9a7c-2fbc147c28cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

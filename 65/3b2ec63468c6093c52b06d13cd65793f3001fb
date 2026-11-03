@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "653b2ec63468c6093c52b06d13cd65793f3001fb",
+  "prompts": {},
+  "sessions": {
+    "s_30ef62c88955ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2db79d2-d750-4a19-bc6a-ee1269cbfbe3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

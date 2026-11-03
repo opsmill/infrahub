@@ -1,0 +1,33 @@
+dev/specs/infp-589-resource-telemetry/contracts/telemetry-resources.md
+  s_2dcffc265e72b7::t_4fb317a0687537 16-17,26,60,63
+backend/tests/component/telemetry/test_resources.py
+  s_2dcffc265e72b7::t_4fb317a0687537 182,346
+dev/specs/infp-589-resource-telemetry/data-model.md
+  s_2dcffc265e72b7::t_4fb317a0687537 78
+dev/specs/infp-589-resource-telemetry/research.md
+  s_2dcffc265e72b7::t_4fb317a0687537 24,26
+dev/specs/infp-589-resource-telemetry/quickstart.md
+  s_2dcffc265e72b7::t_4fb317a0687537 48
+changelog/+resource-telemetry.added.md
+  s_2dcffc265e72b7::t_9504b41c7e24a8 1
+dev/specs/infp-589-resource-telemetry/plan.md
+  s_2dcffc265e72b7::t_4fb317a0687537 84-87
+dev/specs/infp-589-resource-telemetry/spec.md
+  s_2dcffc265e72b7::t_4fb317a0687537 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "741a1c9250b79e7c8525254945351dbf9d2489f9",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+backend/tests/component/proposed_change/test_generator_regen_selection.py
+  s_fb819cbbe44071::t_4685462aec2eed 269,273,277,632
+backend/tests/component/proposed_change/test_merge_selective_regen.py
+  s_fb819cbbe44071::t_0efaec51e986ec 186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e284dc3208a40c02338bc0105a26dc6cce3cf40",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

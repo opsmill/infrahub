@@ -1,0 +1,39 @@
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 28
+frontend/app/src/entities/resource-manager/api/get-number-pool-utilization-from-api.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 18
+frontend/app/tests/fake/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 39,55
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 12-15,63-64,68-84,101
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_f4804ce89d1616::t_4cf249a149fede 188-190
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 15,19-28,41,43
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 35
+frontend/app/src/pages/resource-manager/number-pool-details.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 189,313
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 150,270
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 110,262
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "422a0b8f301e1f0afcdb27b12273d4b839cee37b",
+  "prompts": {},
+  "sessions": {
+    "s_f4804ce89d1616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3055b56a-6f63-4403-9864-1ac7a9372a6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

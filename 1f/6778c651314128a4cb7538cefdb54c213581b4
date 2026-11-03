@@ -1,0 +1,21 @@
+backend/infrahub/graphql/manager.py
+  s_e334a8acd54e5c::t_f6231e263fbc90 1256-1261
+  s_e334a8acd54e5c::t_c89b486b7dfc14 1176-1181
+  s_e334a8acd54e5c::t_b08cb31eefa242 126-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f6778c651314128a4cb7538cefdb54c213581b4",
+  "prompts": {},
+  "sessions": {
+    "s_e334a8acd54e5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a35e15a-d1c7-45b9-805f-1a51227935c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

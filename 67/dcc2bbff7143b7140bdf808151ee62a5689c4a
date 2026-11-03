@@ -1,0 +1,37 @@
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 17,25,59-62
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 40,122,147,155-156
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 53,67,91,96-97,149,153,163
+  s_0e6589ba6b4589::t_c27b2bcd8779f0 162
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 25,27-31,40,85,132-135,164,176,178,203
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 12,89-90,212
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 44,46-48,51,78
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_0e6589ba6b4589::t_dcd1e644fa8a31 53,55,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67dcc2bbff7143b7140bdf808151ee62a5689c4a",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

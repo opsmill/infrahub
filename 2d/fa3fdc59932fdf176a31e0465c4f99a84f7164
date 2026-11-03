@@ -1,0 +1,24 @@
+backend/infrahub/graphql/resolvers/tracking_pool.py
+  s_4e40d3932a4480::t_7ed3ac141a7533 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dfa3fdc59932fdf176a31e0465c4f99a84f7164",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_4e40d3932a4480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f02a017-4e80-45de-9d17-f4bd994f113c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

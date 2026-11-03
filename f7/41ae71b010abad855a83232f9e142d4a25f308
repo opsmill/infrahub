@@ -1,0 +1,21 @@
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  s_760cbcf248de37::t_80812b4e07e497 1-63,70-208,218
+  s_760cbcf248de37::t_fcca5a4ff3918b 209-217,219-224
+  s_760cbcf248de37::t_fc8ab93345c7fc 64-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f741ae71b010abad855a83232f9e142d4a25f308",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

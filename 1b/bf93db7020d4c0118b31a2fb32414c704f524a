@@ -1,0 +1,19 @@
+backend/tests/component/graphql/test_mutation_create_object_template.py
+  s_760cbcf248de37::t_e656f3ab1f809f 1-2,20-25,29,80,360,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bbf93db7020d4c0118b31a2fb32414c704f524a",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

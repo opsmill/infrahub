@@ -1,0 +1,47 @@
+backend/infrahub/core/changelog/hfid_resolver.py
+  s_20e0c986f2472f::t_eaf69b0e7729b8 43,86
+backend/infrahub/core/node/__init__.py
+  s_20e0c986f2472f::t_08162da583c68f 1169-1172
+backend/tests/component/core/changelog/test_relationship_mapper.py
+  s_20e0c986f2472f::t_b3c633f3cff5a2 40
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_20e0c986f2472f::t_e8b0359b7c1a0b 36-38,42,47-48,50-52,60-63
+  s_20e0c986f2472f::t_491368ca7235c1 9,28,55,64-89
+backend/infrahub/core/changelog/peer_labels.py
+  s_20e0c986f2472f::t_af0a9b4fae3d8a 37
+  s_20e0c986f2472f::t_bb4d345eaff868 1-36,38-67
+backend/infrahub/core/changelog/builder.py
+  s_20e0c986f2472f::t_616dfe51931685 10-11,13,38-39,41-45
+backend/infrahub/core/changelog/reciprocal.py
+  s_20e0c986f2472f::t_4e72254e376431 1-111
+backend/infrahub/core/changelog/relationship_getter.py
+  s_20e0c986f2472f::t_829d75af87d0ff 7,22-24,36-43,46-48,61-62,65-67,72,87,97,100,108,113,122,126,132,135,147,153-164,166,176,180,184-185,187-192,195-196
+backend/infrahub/core/changelog/secondary_merger.py
+  s_20e0c986f2472f::t_11b78ea9445c3a 1-45
+backend/tests/component/core/changelog/test_enrichment.py
+  s_20e0c986f2472f::t_e0075498f2eb65 15,23-24,26,165-167,183-185,209-213,235-237
+backend/tests/component/core/changelog/test_models.py
+  s_20e0c986f2472f::t_0eebc0beb2839b 5,177,318,426,509,583,639,757
+backend/tests/unit/core/changelog/test_models.py
+  s_20e0c986f2472f::t_bbbf3b663cd950 7
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_20e0c986f2472f::t_e71478ffc68109 1-100
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_20e0c986f2472f::t_17a0e4dfb280f8 1-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0d6476502bc912c514b9af1acbe72315169fb78",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

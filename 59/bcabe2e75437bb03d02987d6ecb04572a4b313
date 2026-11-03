@@ -1,0 +1,23 @@
+backend/tests/unit/core/changelog/test_hfid_resolver.py
+  s_86fff168c93aab::t_9212d9ef9132e9 304-336
+backend/infrahub/core/changelog/hfid_resolver.py
+  s_86fff168c93aab::t_b752c804842d25 55-60,62-63
+dev/knowledge/backend/changelog-enrichment.md
+  s_86fff168c93aab::t_8ccdc7674089a9 57-58,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59bcabe2e75437bb03d02987d6ecb04572a4b313",
+  "prompts": {},
+  "sessions": {
+    "s_86fff168c93aab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cff568f-f1a2-413f-81d2-b41800811650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

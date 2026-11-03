@@ -1,0 +1,21 @@
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_4f825534f462ce 4,8,25-27,31-37
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_4f825534f462ce 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "557b9fa5c19e6c68e8c10782b3c4d79435a2b3eb",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

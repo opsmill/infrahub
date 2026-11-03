@@ -1,0 +1,14 @@
+backend/tests/unit/core/regeneration/helpers.py
+  h_bd00275aefc321 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "240acecdaa4a3d85a2484534d5517cae98aeaf95",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

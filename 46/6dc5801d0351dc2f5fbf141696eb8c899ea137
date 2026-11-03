@@ -1,0 +1,14 @@
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  h_bd00275aefc321 17-18,795-860
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "466dc5801d0351dc2f5fbf141696eb8c899ea137",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

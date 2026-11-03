@@ -1,0 +1,26 @@
+backend/tests/component/graphql/metadata/test_relationship_node_metadata.py
+  s_3854dbdc202654::t_804b8aec0ed9f1 8
+  s_3854dbdc202654::t_fb4a4beb2f1d13 143,145-146,148
+  s_3854dbdc202654::t_d82e11edd71055 221,223-228
+  s_3854dbdc202654::t_10b911bff9f0c6 147
+  s_3854dbdc202654::t_0ed1197d6fed7e 81,83-86
+backend/tests/component/conftest.py
+  s_3854dbdc202654::t_3b77f99fbb0652 2215
+  s_3854dbdc202654::t_1c4b1b5a1c758c 3148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a85a500f43e3d4d383f55079ac4b565adc34a1bd",
+  "prompts": {},
+  "sessions": {
+    "s_3854dbdc202654": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9dc8349-7389-4f6a-ad7a-3ee438cbb330",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

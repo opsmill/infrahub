@@ -1,0 +1,29 @@
+backend/tests/unit/core/changelog/test_enrichment.py
+  s_bc9261dc1ecdb3::t_5dadae8f45cd89 15-18,152-257
+backend/tests/component/graphql/test_mutation_relationship_enrichment.py
+  s_bc9261dc1ecdb3::t_1477540231267e 12,24,28,77-79,99,125,147-149,172-174
+backend/infrahub/core/changelog/builder.py
+  s_bc9261dc1ecdb3::t_5dadae8f45cd89 24-31
+dev/knowledge/backend/display-labels-and-hfid.md
+  s_bc9261dc1ecdb3::t_5dadae8f45cd89 130
+backend/tests/component/core/changelog/test_enrichment.py
+  s_bc9261dc1ecdb3::t_5dadae8f45cd89 37-42,48,50,185,190,200-202,206,211,218-246
+backend/infrahub/core/changelog/enrichment.py
+  s_bc9261dc1ecdb3::t_5dadae8f45cd89 10,19-21,87-98,108,114-121,124-125,128-163,183-195,197,200-212,250-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dd61b1fba37acfd1c07012944ac32d05f8ae904",
+  "prompts": {},
+  "sessions": {
+    "s_bc9261dc1ecdb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0818cbd0-fdd5-4fe1-a906-3a515e96a4cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

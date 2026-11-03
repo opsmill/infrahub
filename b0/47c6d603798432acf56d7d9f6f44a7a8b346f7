@@ -1,0 +1,19 @@
+frontend/app/src/shared/api/rate-limit/shed-envelope.ts
+  s_27255c77800f21::t_38840253f05e80 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b047c6d603798432acf56d7d9f6f44a7a8b346f7",
+  "prompts": {},
+  "sessions": {
+    "s_27255c77800f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc719768-dfb4-4c2a-85fb-2d1bc2095d01",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

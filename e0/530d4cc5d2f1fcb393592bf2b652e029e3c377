@@ -1,0 +1,30 @@
+backend/infrahub/__init__.py
+  h_846b829e71a038 1-12
+backend/infrahub/_compat/__init__.py
+  h_846b829e71a038 1-6
+backend/infrahub/_compat/orjson_shim.py
+  h_846b829e71a038 1-117
+backend/infrahub/trace.py
+  h_846b829e71a038 70-76
+development/Dockerfile
+  h_846b829e71a038 4,135-155,158-166,172,177-183,186-193,195
+development/infrahub-serve.sh
+  h_846b829e71a038 26-31,75-107
+pyproject.toml
+  h_846b829e71a038 28,33-34,50,55-56,80-101,106-108
+tasks/shared.py
+  h_846b829e71a038 57
+uv.lock
+  h_846b829e71a038 9-19,270-331,1191-1233,1306-1337,1425,1445,1497,1513,1533,1539,2035-2074,2827,2846,3864,4257-4258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0530d4cc5d2f1fcb393592bf2b652e029e3c377",
+  "prompts": {},
+  "humans": {
+    "h_846b829e71a038": {
+      "author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

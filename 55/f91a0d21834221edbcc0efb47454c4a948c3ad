@@ -1,0 +1,39 @@
+backend/infrahub/core/attribute.py
+  h_7ec9b28dd2a5ab 103
+  s_1bb7a99c5eb9a8::t_f323a33a8cd6a8 214-215,218-226,228
+  s_1bb7a99c5eb9a8::t_d2d5d253631a09 102,104-107,157,216-217,227,392
+backend/tests/unit/core/test_attribute.py
+  s_1bb7a99c5eb9a8::t_2d63b7068734ae 9,11,213-248
+backend/infrahub/graphql/mutations/proposed_change.py
+  s_1bb7a99c5eb9a8::t_50dea87a79bd63 166
+backend/tests/component/core/test_node_query.py
+  s_1bb7a99c5eb9a8::t_5410f046d9b343 641-642,647,650-662
+  s_1bb7a99c5eb9a8::t_99ebebe8e76fb0 688
+backend/infrahub/graphql/mutations/repository.py
+  s_1bb7a99c5eb9a8::t_50dea87a79bd63 136
+backend/infrahub/core/query/node.py
+  s_1bb7a99c5eb9a8::t_512b092668c601 121,1072-1075
+backend/infrahub/graphql/mutations/ipam.py
+  s_1bb7a99c5eb9a8::t_50dea87a79bd63 211,374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55f91a0d21834221edbcc0efb47454c4a948c3ad",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_1bb7a99c5eb9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf0b992-85d6-410b-a484-060d05b1526d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

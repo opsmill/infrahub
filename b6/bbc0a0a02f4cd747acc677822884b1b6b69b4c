@@ -1,0 +1,19 @@
+.agents/skills/reviewing-pull-requests/agents/openai.yaml
+  s_fd720d10ce69fc::t_48637cfb039b84 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6bbc0a0a02f4cd747acc677822884b1b6b69b4c",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

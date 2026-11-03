@@ -1,0 +1,19 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_08b6563d17c535::t_3810874c20ba5b 333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4479ded9d0c55f3fb49ffaa91cb7a86d0675b851",
+  "prompts": {},
+  "sessions": {
+    "s_08b6563d17c535": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "faa50090-585e-45c8-8bcb-ce3529487882",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

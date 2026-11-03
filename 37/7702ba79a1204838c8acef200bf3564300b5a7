@@ -1,0 +1,28 @@
+backend/infrahub/core/graph/constraints.py
+  s_a0950a9990f6b7::t_fb30f888822752 196
+  s_a0950a9990f6b7::t_0fc9038564ee4d 138-139
+  s_a0950a9990f6b7::t_36b500ff343318 4
+  s_a0950a9990f6b7::t_5c8d1d803aa1bc 170
+backend/infrahub/core/utils.py
+  s_a0950a9990f6b7::t_c30510d1ed9710 146-147
+dev/specs/infp-1991-graph-path-traversal/quickstart.md
+  s_a0950a9990f6b7::t_7a69d4b901740e 18
+dev/specs/infp-1991-graph-path-traversal/tasks.md
+  s_a0950a9990f6b7::t_593d7cf8b03f5c 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "377702ba79a1204838c8acef200bf3564300b5a7",
+  "prompts": {},
+  "sessions": {
+    "s_a0950a9990f6b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a3d1235-d987-4260-90f6-d37d5eefaff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

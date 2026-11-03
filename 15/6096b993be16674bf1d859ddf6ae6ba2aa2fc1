@@ -1,0 +1,21 @@
+docs/docs/release-notes/deprecation-guides/number-pool-ranges.mdx
+  s_fd0c128a7b3dd4::t_493978d0934ee0 20-21,23
+  s_fd0c128a7b3dd4::t_0251e298f1aaf6 12-18
+  s_fd0c128a7b3dd4::t_864fc25435841b 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "156096b993be16674bf1d859ddf6ae6ba2aa2fc1",
+  "prompts": {},
+  "sessions": {
+    "s_fd0c128a7b3dd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e92e46bb-6843-4c8c-ba3a-944b2c66f5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

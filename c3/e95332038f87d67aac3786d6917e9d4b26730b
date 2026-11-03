@@ -1,0 +1,39 @@
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_f79f241964f1cc::t_4577a4600004ed 342-344,347-349
+  s_f79f241964f1cc::t_9184d570384bf6 369-371
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_f79f241964f1cc::t_e298e8488fda1e 184
+  s_f79f241964f1cc::t_f8d5a47452a3b8 400-402
+  s_f79f241964f1cc::t_699b9f676fc032 207
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f79f241964f1cc::t_b3b677aaf3d64f 855-856
+  s_f79f241964f1cc::t_b76a0eebbff554 259
+  s_f79f241964f1cc::t_9128d77f6c4a29 471,473-474
+  s_f79f241964f1cc::t_b2d67ae9905c13 85
+  s_f79f241964f1cc::t_7776da3d80facf 286-288
+  s_f79f241964f1cc::t_16960b640534f7 1018
+dev/specs/ifc-3185-scoped-number-pools/quickstart.md
+  s_f79f241964f1cc::t_6788e804a9f062 118
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_f79f241964f1cc::t_223df133954a84 804
+  s_f79f241964f1cc::t_945671c375fc6c 725-728
+  s_f79f241964f1cc::t_878031e92e7f5a 252-253
+  s_f79f241964f1cc::t_f511be8d86a189 945-946
+  s_f79f241964f1cc::t_a442ce99e171e0 484-485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3e95332038f87d67aac3786d6917e9d4b26730b",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

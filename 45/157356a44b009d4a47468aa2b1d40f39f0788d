@@ -1,0 +1,46 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_scoped_pool_allocation.py
+  s_72ef99026f2c9f::t_6925c51d3fc0d4 1-78
+backend/tests/component/core/resource_manager/test_number_pool_scope.py
+  s_72ef99026f2c9f::t_7e83cc7d3cd69b 15-16
+backend/tests/helpers/number_pool.py
+  s_72ef99026f2c9f::t_6925c51d3fc0d4 28,30,248-344
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_72ef99026f2c9f::t_5c886f9e8c63c1 75,78,89-96,98-99
+  s_72ef99026f2c9f::t_6925c51d3fc0d4 18,20-23,29,31
+  s_72ef99026f2c9f::t_019ce6bf94230e 1-17,19,24-28,30,32-74,76-77,79-88,97,100-216
+backend/infrahub/pools/attribute_pool_applier.py
+  s_72ef99026f2c9f::t_6f6546de08d827 52-55,285,288
+backend/tests/component/core/resource_manager/conftest.py
+  s_72ef99026f2c9f::t_7e83cc7d3cd69b 16
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_72ef99026f2c9f::t_96df73c92cb572 7,10,20,39,41-47,50,54-57,63,75-88
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_72ef99026f2c9f::t_8885e07dde77d7 20,34,44-52,68
+backend/infrahub/pools/number_pool_number_picker.py
+  s_72ef99026f2c9f::t_892ff7f4aeab79 15,25-32,41-44,70
+backend/tests/unit/pools/helpers.py
+  s_72ef99026f2c9f::t_34ab2525dcbe30 15,66-73
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_72ef99026f2c9f::t_4aaa76d220b60e 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45157356a44b009d4a47468aa2b1d40f39f0788d",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_72ef99026f2c9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be44e175-9c81-4c5f-8671-68044dd6782f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

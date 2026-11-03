@@ -1,0 +1,37 @@
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_849d53d45b72cc::t_7ab8a371b748e6 469-470,472-473,475-478,480-481,483
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_849d53d45b72cc::t_ffa2f6c4ea1c4c 80-81,84,99-100,134-135,140-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51bffa5d2794993f0712538227cb060a48578659",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_e4eae83a7f609f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "273d2e4a-e59a-404e-888a-c07c0af73892",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

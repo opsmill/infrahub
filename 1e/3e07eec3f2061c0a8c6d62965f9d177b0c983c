@@ -1,0 +1,19 @@
+backend/tests/component/core/migrations/graph/test_079_range_diff_indexes.py
+  s_27255c77800f21::t_b8762e684074d2 1-2,10,21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e3e07eec3f2061c0a8c6d62965f9d177b0c983c",
+  "prompts": {},
+  "sessions": {
+    "s_27255c77800f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc719768-dfb4-4c2a-85fb-2d1bc2095d01",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

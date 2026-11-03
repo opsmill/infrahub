@@ -1,0 +1,23 @@
+backend/tests/unit/pools/test_number_pool_usage_state.py
+  s_a427983bc77dab::t_aec943518fb454 1-106
+  s_a427983bc77dab::t_70fdb1178bb302 107-108
+backend/tests/unit/pools/test_number_pool_divisions_reader.py
+  s_a427983bc77dab::t_66ade3ca2e963a 1-103
+  s_a427983bc77dab::t_029b17f82c1c46 104-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b266d88a242824c52932947c6643c67b50320636",
+  "prompts": {},
+  "sessions": {
+    "s_a427983bc77dab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "197966fb-2d15-4323-b476-e77092d2126f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

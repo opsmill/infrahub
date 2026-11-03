@@ -1,0 +1,29 @@
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 54,77,95
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 77-78,91-93
+dev/specs/infp-631-resource-telemetry/research.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 36,162
+dev/adr/0021-resource-allocation-telemetry.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 69-70,114-115
+dev/knowledge/backend/telemetry.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 186-188
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_a8a2cf071e3fde::t_033f3c4572e63c 55,59,61,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4403df7ce2a1a158f4fd68d881b1d63fd4b553dc",
+  "prompts": {},
+  "sessions": {
+    "s_a8a2cf071e3fde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d231458-0060-44ad-b475-96da42cba12f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+backend/infrahub/pools/number_pool_repository.py
+  s_c47d1ff1b9fc75::t_a9ad5e9229c984 27-28
+  s_c47d1ff1b9fc75::t_eb1abae45fe6aa 67
+  s_c47d1ff1b9fc75::t_834a4f2f6da74a 85
+backend/infrahub/pools/number_pool_shorthand.py
+  s_c47d1ff1b9fc75::t_727938cd8fa6e6 24
+  s_c47d1ff1b9fc75::t_47deec28f41cb7 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77716f0f9439011ffad3d3c78001f5b17ab53acb",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

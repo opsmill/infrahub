@@ -1,0 +1,19 @@
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_7d719d42034f96::t_ee97e944ded616 70-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bee7c6cb319d03f4dee8ae3a9c5c8729af701d9b",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

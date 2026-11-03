@@ -1,0 +1,133 @@
+backend/tests/unit/graphql/reached_path_resolver/helpers.py
+  s_332201fa331861::t_2364f68d0f70d8 1-136
+backend/tests/unit/graphql/reached_path_resolver/test_hop_filters.py
+  s_332201fa331861::t_2364f68d0f70d8 1-189
+backend/tests/unit/graphql/reached_path_resolver/test_reached_paths.py
+  s_332201fa331861::t_2364f68d0f70d8 1-262
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_332201fa331861::t_2364f68d0f70d8 44
+.github/workflows/chromatic.yml
+  s_332201fa331861::t_2364f68d0f70d8 44
+backend/tests/unit/graphql/reached_path_resolver/test_relationship_reads.py
+  s_332201fa331861::t_2364f68d0f70d8 1-150
+backend/tests/unit/graphql/test_graphql_argument.py
+  s_332201fa331861::t_2364f68d0f70d8 1-109
+dev/guidelines/backend/testing.md
+  s_332201fa331861::t_2364f68d0f70d8 19,21-25,127,129-130,132-133,135-138,140-146,164-168
+backend/tests/unit/core/regeneration/test_relevant_node_changes.py
+  s_332201fa331861::t_2364f68d0f70d8 8,181-222
+.vale/styles/spelling-exceptions.txt
+  s_332201fa331861::t_2364f68d0f70d8 33,83
+backend/infrahub/core/regeneration/impact.py
+  s_332201fa331861::t_2364f68d0f70d8 12,14-16,19,25,28-29,36,41-67,70,107-132,140,143-145,157-159,162,165-168,178
+.github/workflows/ci.yml
+  s_332201fa331861::t_2364f68d0f70d8 1365,1374
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_332201fa331861::t_2364f68d0f70d8 12,91-92,102-104,111-113,121-123,142-148,150-153
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_332201fa331861::t_2364f68d0f70d8 25,132
+backend/tests/component/core/regeneration/test_peer_query.py
+  s_332201fa331861::t_2364f68d0f70d8 1-120
+backend/infrahub/graphql/resolvers/peer_filters.py
+  s_332201fa331861::t_2364f68d0f70d8 1-19
+backend/infrahub/core/regeneration/filtered_peers.py
+  s_332201fa331861::t_2364f68d0f70d8 1-320
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_332201fa331861::t_2364f68d0f70d8 10,83-87,335-354,447-554
+backend/infrahub/core/diff/conflicts_enricher.py
+  s_332201fa331861::t_2364f68d0f70d8 5,24-33,94-97
+backend/infrahub/graphql/manager.py
+  s_332201fa331861::t_2364f68d0f70d8 132-149,1245-1250,1325-1330
+docker-compose.yml
+  s_332201fa331861::t_2364f68d0f70d8 285,318,364
+backend/tests/component/core/diff/test_conflicts_enricher.py
+  s_332201fa331861::t_2364f68d0f70d8 7,1011-1049
+  s_332201fa331861::t_e8088385d88ea4 1050
+backend/tests/unit/core/regeneration/helpers.py
+  s_332201fa331861::t_2364f68d0f70d8 1-96
+.pre-commit-config.yaml
+  s_332201fa331861::t_2364f68d0f70d8 10-16,30-34
+pyproject.toml
+  s_332201fa331861::t_2364f68d0f70d8 19-20
+schema/schema.graphql
+  s_332201fa331861::t_2364f68d0f70d8 10336,10344,10352,10394,10430,10454,10480,10496,10504,10554,10628,10636,10668,10704,10722,10730,10746,10764,10806,10822,10846,10898,10954,10962,10994,11004,11020,11028,11038,11096,11104
+CHANGELOG.md
+  s_332201fa331861::t_2364f68d0f70d8 14-29
+backend/tests/component/core/regeneration/impact/test_filtered_peer_reads.py
+  s_332201fa331861::t_2364f68d0f70d8 1-622
+backend/infrahub/core/regeneration/models.py
+  s_332201fa331861::t_2364f68d0f70d8 5,10-40,47-48,54-79
+backend/infrahub/core/regeneration/peer_query.py
+  s_332201fa331861::t_2364f68d0f70d8 1-53
+backend/infrahub/graphql/resolvers/resolver.py
+  s_332201fa331861::t_2364f68d0f70d8 22,131,372-377,384,426,433-436
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_332201fa331861::t_2364f68d0f70d8 17-23,327,346-347,355-371
+backend/infrahub/core/regeneration/predicates.py
+  s_332201fa331861::t_2364f68d0f70d8 10,57-58,63-68,72-75,93-94,96-98,106-108
+docs/docs/release-notes/infrahub/release-1_11_9.mdx
+  s_332201fa331861::t_2364f68d0f70d8 1-36
+backend/tests/component/graphql/metadata/test_relationship_node_metadata.py
+  s_332201fa331861::t_2364f68d0f70d8 1-233
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_332201fa331861::t_2364f68d0f70d8 793,798-803,808,812,815,818,820-821,827,836-837,841,845,847-848,850,852,856,859-861,863,866,872,879-880,884-885,887-889,896-897
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_332201fa331861::t_2364f68d0f70d8 29,292-486
+backend/infrahub/core/manager.py
+  s_332201fa331861::t_2364f68d0f70d8 398
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_332201fa331861::t_2364f68d0f70d8 5-6,135,139,143,146-147,169,173-174,184-257
+  s_332201fa331861::t_3ea17fbfd4ec53 258
+backend/infrahub/graphql/analyzer.py
+  s_332201fa331861::t_2364f68d0f70d8 42-43,46,117-118,120-140,301-381,395-397,402-410,481,488-516,606-610,614-619,1126,1134,1138-1167
+AGENTS.md
+  s_332201fa331861::t_2364f68d0f70d8 11
+backend/tests/component/graphql/test_query_analyzer.py
+  s_332201fa331861::t_2364f68d0f70d8 13,497-506,562-572
+backend/tests/unit/core/regeneration/test_peer_filters.py
+  s_332201fa331861::t_2364f68d0f70d8 1-93
+.agents/rules/testing-python.md
+  s_332201fa331861::t_2364f68d0f70d8 108-109,114-118
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_332201fa331861::t_2364f68d0f70d8 4,7,9,12-18,21-22,40,53,61-68,76,84-91,102,111-122,142,160,168-175,183,193-207,209,212-214,218-230
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_332201fa331861::t_2364f68d0f70d8 22252,22261,22270,22315,22351,22378,22405,22423,22432,22486,22567,22576,22612,22648,22666,22675,22693,22711,22756,22774,22801,22855,22918,22927,22963,22972,22990,22999,23008,23071,23080
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_332201fa331861::t_2364f68d0f70d8 22,231
+backend/tests/component/conftest.py
+  s_332201fa331861::t_2364f68d0f70d8 16-17,2142-2145,2225-2234,2249-2255,3220-3230,3287-3288
+backend/tests/unit/core/regeneration/test_filtered_peers.py
+  s_332201fa331861::t_2364f68d0f70d8 1-470
+.github/workflows/bug-agent-analyst.lock.yml
+  s_332201fa331861::t_512eb8c375759d 152,1191,1801
+.github/workflows/bug-agent-fix.lock.yml
+  s_332201fa331861::t_b41d4246be38ce 152,1364,1985
+.github/workflows/bug-agent-review.lock.yml
+  s_332201fa331861::t_a0a4d1072f02a3 164,1180,1856
+.github/workflows/bug-agent-test.lock.yml
+  s_332201fa331861::t_4b4323abacddb6 152,1371,1994
+.github/workflows/issue-triage-labeler.lock.yml
+  s_332201fa331861::t_f8152c7c23efd4 153,1109,1684
+.github/workflows/issue-triage-sweep.lock.yml
+  s_332201fa331861::t_75fc78c58ffdce 150,1095,1670
+python_testcontainers/uv.lock
+  s_332201fa331861::t_d07651bebf0182 83,85,87
+uv.lock
+  s_332201fa331861::t_422964c3975465 438,440,442,1608-1609,2315,2320,2322,2327,2332-2360,2823-2873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac8bbdb53465604566330802873ee326f68bc43f",
+  "prompts": {},
+  "sessions": {
+    "s_332201fa331861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75bb2dd3-334f-43d2-b4e2-8692ee03124b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

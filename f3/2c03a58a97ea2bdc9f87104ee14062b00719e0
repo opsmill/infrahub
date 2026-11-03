@@ -1,0 +1,43 @@
+.github/scripts/dependabot_autopilot/tests/fixtures/check_runs.json
+  s_43d8e382eba497::t_07575e485254d9 1-89
+.github/scripts/dependabot_autopilot/tests/fixtures/check_runs_in_progress.handcrafted.json
+  s_43d8e382eba497::t_2ce17d36b19955 1-26
+.github/scripts/dependabot_autopilot/tests/fixtures/commit.json
+  s_43d8e382eba497::t_26df12ab63a237 1-15
+.github/scripts/dependabot_autopilot/tests/fixtures/pull.json
+  s_43d8e382eba497::t_090280fbbf476a 1-71
+.github/scripts/dependabot_autopilot/tests/fixtures/pull_commits.handcrafted.json
+  s_43d8e382eba497::t_e2b0956a467eba 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/pull_files.json
+  s_43d8e382eba497::t_676cdcb6803542 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/pulls_open.handcrafted.json
+  s_43d8e382eba497::t_ba41984a4a683d 1-24
+.github/scripts/dependabot_autopilot/tests/fixtures/reviews.json
+  s_43d8e382eba497::t_4febdb04da221e 1-32
+.github/scripts/dependabot_autopilot/tests/fixtures/run_artifacts.json
+  s_43d8e382eba497::t_a20b7ab3800f9f 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/status.json
+  s_43d8e382eba497::t_3952a5b62f4958 1-6
+.github/scripts/dependabot_autopilot/tests/fixtures/status_entries.handcrafted.json
+  s_43d8e382eba497::t_1ef4af3e20ae10 1-25
+.github/scripts/dependabot_autopilot/tests/fixtures/workflow_runs.json
+  s_43d8e382eba497::t_3db5c01324dbbf 1-137
+.github/scripts/dependabot_autopilot/tests/fixtures/workflow_runs_queued.json
+  s_43d8e382eba497::t_683498b33bef11 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f32c03a58a97ea2bdc9f87104ee14062b00719e0",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

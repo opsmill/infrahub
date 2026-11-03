@@ -1,0 +1,23 @@
+backend/infrahub/services/scheduler.py
+  s_b134b1501718e5::t_5700cba0563c3e 58
+backend/infrahub/serve/processes.py
+  s_b134b1501718e5::t_acc1cfd8bac38a 9
+backend/infrahub/services/component.py
+  s_b134b1501718e5::t_08a36e911ef62f 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66ce833c937d0ca2651de5798f9124653adaeab9",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

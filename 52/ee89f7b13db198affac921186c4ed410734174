@@ -1,0 +1,35 @@
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_0e6589ba6b4589::t_ef1641b774a2ef 72
+backend/tests/unit/pools/test_scope.py
+  s_0e6589ba6b4589::t_ef1641b774a2ef 649-650
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  h_7ec9b28dd2a5ab 143
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_0e6589ba6b4589::t_ef1641b774a2ef 228
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_0e6589ba6b4589::t_ef1641b774a2ef 399
+backend/infrahub/pools/scope.py
+  s_0e6589ba6b4589::t_ef1641b774a2ef 265
+  h_7ec9b28dd2a5ab 111,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52ee89f7b13db198affac921186c4ed410734174",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

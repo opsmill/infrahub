@@ -1,0 +1,19 @@
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_a8a133dd3a7907::t_c821863da04eea 25-30,32-35,133,155,181,203,235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50c10412bbcd86b9d23e0bd1bde9bb0ea9c8a500",
+  "prompts": {},
+  "sessions": {
+    "s_a8a133dd3a7907": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "125da3d6-bd83-4066-a232-ce4d6528c3d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+backend/tests/unit/git/test_git_error_enrichment.py
+  s_d5954718fc8fe8::t_2324fefd3ae12b 387
+  s_d5954718fc8fe8::t_293e798a9755b7 375-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c52e6924cf580073ef5f795aadc08db4553fee96",
+  "prompts": {},
+  "sessions": {
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

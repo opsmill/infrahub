@@ -1,0 +1,27 @@
+changelog/+branch-delete-purge-race.fixed.md
+  s_2fae1787d146ee::t_a569167b683839 1
+backend/infrahub/task_manager/flow_run/branch_cleanup.py
+  s_2fae1787d146ee::t_c9e4362444c96e 72
+  s_2fae1787d146ee::t_1965b38e2ab231 45
+  s_2fae1787d146ee::t_420ebd17794f32 47,55-58
+dev/knowledge/backend/events.md
+  s_2fae1787d146ee::t_d09e76f945adbc 103
+dev/knowledge/backend/async-tasks.md
+  s_2fae1787d146ee::t_aafa2265be0d40 211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e652cd67b1b618066b709634d48f8efe19d4995",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

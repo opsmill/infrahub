@@ -1,0 +1,19 @@
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_d6bb76affb8018::t_691f4011b132ef 4,56-58,93-131,143-144,146,159-160,165-172,175-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ad77b586dfd86af2c4ae6ddf1a84d6381f0405",
+  "prompts": {},
+  "sessions": {
+    "s_d6bb76affb8018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c396dbd-8e86-4438-b25e-16e3fabccdb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

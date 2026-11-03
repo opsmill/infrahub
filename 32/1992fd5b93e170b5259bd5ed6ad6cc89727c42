@@ -1,0 +1,33 @@
+.github/scripts/dependabot_autopilot/decision.py
+  s_ce99ced981c340::t_c3b93fc17bacc8 11,135-138,157-163
+  s_ce99ced981c340::t_87780cba40bdee 164-165
+.github/scripts/dependabot_autopilot/flow.py
+  s_ce99ced981c340::t_6cb728864bf193 37
+  s_ce99ced981c340::t_c3b93fc17bacc8 38,175-182
+.github/workflows/dependabot-autopilot-analyze.md
+  s_ce99ced981c340::t_8382b50e142478 52-53
+.github/scripts/dependabot_autopilot/tests/test_evaluate_flow.py
+  s_ce99ced981c340::t_228d845e43e774 93,445-447
+  s_ce99ced981c340::t_6cb728864bf193 14,84-86,438-444,448-453
+  s_ce99ced981c340::t_1227b1cf63e2b2 454-455
+.github/scripts/dependabot_autopilot/tests/test_decision.py
+  s_ce99ced981c340::t_6cb728864bf193 217-227
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_ce99ced981c340::t_d4b95ce8cb9ed5 1,1588
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "321992fd5b93e170b5259bd5ed6ad6cc89727c42",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

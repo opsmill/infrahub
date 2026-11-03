@@ -1,0 +1,28 @@
+backend/AGENTS.md
+  s_d969e75850efeb::t_e9d0904ce5d7a9 112
+  s_d969e75850efeb::t_8222bb5950e9df 51-53
+  s_d969e75850efeb::t_b3a03401c77975 146
+dev/guides/backend/creating-migrations.md
+  s_d969e75850efeb::t_af9744bb55f33c 20-25
+  s_d969e75850efeb::t_132aadbc316acd 16
+  s_d969e75850efeb::t_1c234e860d55fa 26
+dev/guidelines/backend/checklist.md
+  s_d969e75850efeb::t_23dd1479d5036f 20-31
+  s_d969e75850efeb::t_cb522ed8e24380 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b424f883b427c3bdac637b1eb451f778dd2befb",
+  "prompts": {},
+  "sessions": {
+    "s_d969e75850efeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b762af3-872a-4129-bf40-5b4f11e2f601",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_9a65b7e7908928::t_c4bd7bda921e2e 1-7,9-27,48-53,57,59,75-85
+  s_9a65b7e7908928::t_ea59f380203ff8 8,28-47,54-55,58,60-74
+  s_9a65b7e7908928::t_66d7308b881678 86
+  s_9a65b7e7908928::t_7a628b8c95f093 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0bda7504fa91f691bf63131add94cbf2b25fe9c",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

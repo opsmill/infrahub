@@ -1,0 +1,41 @@
+changelog/+generator-capture-unstored-diff.fixed.md
+  s_9595999eed8325::t_c17e900c1d982e 1
+backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
+  s_9595999eed8325::t_5b35983d9bdd60 7,10,12,18-19,25-36,45-46,48-49,51,53-57,59-63,80-83,89-93,105,109,112-113,116,118,120-121,123-133,138,140,142,145,148,150,152,154,157
+backend/tests/integration/proposed_change/test_merge_selective_regen.py
+  s_9595999eed8325::t_75fbe3c618a55b 320-323
+  s_9595999eed8325::t_d538edeca28164 483-551,553-572,575-578
+  s_9595999eed8325::t_2b5c44b0d1f606 105-137
+  s_9595999eed8325::t_6f9259dd0f9416 456-481
+  s_9595999eed8325::t_440b58a384da7e 30
+  s_9595999eed8325::t_aed308e9308118 552
+  s_9595999eed8325::t_a154b2ae8c4c75 46,56-58
+  s_9595999eed8325::t_7a3ee178ce18e2 70-71
+  s_9595999eed8325::t_3caf2ed1c28940 573-574
+  s_9595999eed8325::t_bc5f5770be4f37 27
+  s_9595999eed8325::t_a6475587837284 23
+  s_9595999eed8325::t_cac8682f23e8b1 482
+backend/infrahub/core/merge/selective_regen/generator_diff_capturer.py
+  s_9595999eed8325::t_334a2309625726 59-60,62-64
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_9595999eed8325::t_f40affc7416968 58
+  s_9595999eed8325::t_68c4913004f5be 17
+  s_9595999eed8325::t_b469c4c85c7302 60
+  s_9595999eed8325::t_ebefb629fd21ef 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57078b9089f6c4f1d37bb5f9f3f50106c9502c2c",
+  "prompts": {},
+  "sessions": {
+    "s_9595999eed8325": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "109c86ec-725f-47bc-8f4f-f23df2a60d80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

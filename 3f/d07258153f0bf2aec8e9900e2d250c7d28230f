@@ -1,0 +1,35 @@
+backend/infrahub/core/regeneration/poc/run.py
+  s_6947b4d8b10fbd::t_3e6c8857f51be5 87,141,143,155,168-171,407
+backend/tests/unit/core/regeneration/poc/test_models.py
+  s_6947b4d8b10fbd::t_165b9ce8e6ced9 100-102
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_440fea5d3607cf 403-443
+  s_6947b4d8b10fbd::t_fbe70459306482 149-177
+  s_6947b4d8b10fbd::t_165b9ce8e6ced9 297-299,378-380,726-728
+backend/infrahub/core/regeneration/poc/models.py
+  s_6947b4d8b10fbd::t_ae45300e7b672c 145-147,149-150
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_04993a71792d75 101
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_04993a71792d75 398-400
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_1770802a469396 29-34,59,221-261,272-276,340,346-347,373,385,390,392-394,396-398,402,515-517,557,559-563,572-581,583-586,595,604-610,617-619,637,647,649-656,747-755
+backend/tests/component/core/regeneration/poc/test_scaling.py
+  s_6947b4d8b10fbd::t_e8ebea47287509 1-618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fd07258153f0bf2aec8e9900e2d250c7d28230f",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

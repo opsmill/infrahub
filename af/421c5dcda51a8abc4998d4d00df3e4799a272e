@@ -1,0 +1,36 @@
+backend/infrahub/prefect_server/task_history_models.py
+  s_cfd0841cea4d76::t_bb021834863a13 74
+  s_cfd0841cea4d76::t_3d4900be354ea8 73,75-76
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_60b92b478b4896 18,102,109,111-122
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_7417db91d54735 34-35,127-135,504-515
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_104de324ace046 134-135,139,143
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_40fe14fe5943c2 128-164
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_ebc002436af2d4 313-317,322-325
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_5c8a66855f5fa0 344,351-352
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_a10e2f95854b7d 34-43,80-97,101,116-117,126,144
+changelog/+task-manager-retention.added.md
+  s_cfd0841cea4d76::t_4ac037d01f1039 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af421c5dcda51a8abc4998d4d00df3e4799a272e",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
