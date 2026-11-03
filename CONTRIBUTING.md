@@ -24,7 +24,7 @@ PR synced           ──► reviewer auto-runs → FIX_APPROVED | FIX_CHANGES_
 
 The pipeline uses a single PR throughout: `/bug-tdd` opens it, `/bug-fix` adds the fix to the same branch. To revise a rejected step, re-run the same command on that PR — `/bug-tdd` after `TEST_CHANGES_REQUESTED`, `/bug-fix` after `FIX_CHANGES_REQUESTED`.
 
-The agents write each marker inside backticks. A marker written outside them is posted with its underscores escaped, and the gates do not find it.
+The agents write each marker inside backticks. A marker written outside them is posted with its underscores escaped, and the gates remove that escaping before they match.
 
 ### Running the pipeline on community-reported issues
 

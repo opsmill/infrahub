@@ -44,8 +44,9 @@ steps:
       ISSUE_JSON=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")
       IS_PR=$(echo "$ISSUE_JSON" | jq -r 'if .pull_request then "true" else "false" end')
 
+      # Agent output is posted with underscores outside code spans escaped, so markers are matched with that escaping removed.
       if [ "$IS_PR" = "true" ]; then
-        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // ""')
+        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // "" | gsub("\\\\_"; "_")')
 
         if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
           fail "Cannot run /bug-tdd here: PR has no AGENT_TEST_COMPLETE marker."
@@ -56,7 +57,7 @@ steps:
 
         REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
           --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-            and (.body | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
+            and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
         fi
@@ -65,7 +66,7 @@ steps:
 
       ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
         --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-          and (.body | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
+          and (.body | gsub("\\\\_"; "_") | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
       fi
