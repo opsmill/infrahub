@@ -13,7 +13,13 @@ from infrahub.core.merge.selective_regen.generator_output import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
-from tests.helpers.diff_factories import EnrichedAttributeFactory, EnrichedNodeFactory, EnrichedRootFactory
+from tests.helpers.diff_factories import (
+    EnrichedAttributeFactory,
+    EnrichedNodeFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
@@ -42,16 +48,37 @@ def _changed_node(uuid: str) -> EnrichedDiffNode:
     )
 
 
+def _deleted_node(uuid: str, peer_ids: list[str]) -> EnrichedDiffNode:
+    return EnrichedNodeFactory.build(
+        uuid=uuid,
+        kind="TestInterface",
+        label=uuid,
+        action=DiffAction.REMOVED,
+        attributes=set(),
+        relationships={
+            EnrichedRelationshipGroupFactory.build(
+                name="device",
+                action=DiffAction.REMOVED,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(peer_id=peer_id, action=DiffAction.REMOVED)
+                    for peer_id in peer_ids
+                },
+            )
+        },
+    )
+
+
 def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
     peers = [SimpleNamespace(peer=SimpleNamespace(id=member_id)) for member_id in member_ids]
     return SimpleNamespace(name=SimpleNamespace(value=name), members=SimpleNamespace(peers=peers))
 
 
 class _WindowDiffCoordinator(DiffCoordinator):
-    """Returns a diff of the requested window that changed the given nodes, recording the nodes it was scoped to."""
+    """Returns a diff of the requested window that changed or deleted the given nodes, recording the nodes it was scoped to."""
 
-    def __init__(self, changed_node_ids: list[str]) -> None:
+    def __init__(self, changed_node_ids: list[str], deleted_node_peers: dict[str, list[str]] | None = None) -> None:
         self._changed_node_ids = changed_node_ids
+        self._deleted_node_peers = deleted_node_peers or {}
         self.requested_node_uuids: list[set[str] | None] = []
 
     async def calculate_arbitrary_timeframe_diff(  # noqa: PLR0913, PLR0917
@@ -71,22 +98,40 @@ class _WindowDiffCoordinator(DiffCoordinator):
                 _changed_node(uuid=node_id)
                 for node_id in self._changed_node_ids
                 if node_uuids is None or node_id in node_uuids
+            }
+            | {
+                _deleted_node(uuid=node_id, peer_ids=peer_ids)
+                for node_id, peer_ids in self._deleted_node_peers.items()
+                if node_uuids is None or node_id in node_uuids
             },
         )
 
 
 class _FakeClient:
-    """Returns canned generator tracking groups per queried definition name, recording the queries."""
+    """Returns canned generator tracking groups per queried definition name and time, recording the queries."""
 
-    def __init__(self, groups_by_name: dict[str, list[SimpleNamespace]]) -> None:
+    def __init__(
+        self,
+        groups_by_name: dict[str, list[SimpleNamespace]],
+        groups_at_since_by_name: dict[str, list[SimpleNamespace]] | None = None,
+    ) -> None:
         self._groups_by_name = groups_by_name
-        self.queried_names: list[str] = []
+        self._groups_at_since_by_name = groups_at_since_by_name or {}
+        self.queries: list[tuple[str, Timestamp | None]] = []
 
-    async def filters(
-        self, *, kind: Any, branch: str, name__value: str, partial_match: bool, include: list[str]
+    async def filters(  # noqa: PLR0913
+        self,
+        *,
+        kind: Any,
+        branch: str,
+        at: Timestamp | None,
+        name__value: str,
+        partial_match: bool,
+        include: list[str],
     ) -> list[SimpleNamespace]:
-        self.queried_names.append(name__value)
-        return self._groups_by_name.get(name__value, [])
+        self.queries.append((name__value, at))
+        groups = self._groups_by_name if at is None else self._groups_at_since_by_name
+        return groups.get(name__value, [])
 
 
 def _capturer(client: _FakeClient, coordinator: _WindowDiffCoordinator) -> GeneratorTrackingGroupDiffCapturer:
@@ -117,8 +162,10 @@ async def test_capture_returns_only_the_changes_to_the_nodes_the_generators_trac
     coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "n3", "nX", "concurrent"])
     capturer = _capturer(client, coordinator)
 
-    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+    since = Timestamp()
+    result = await capturer.capture(since=since, generator_definition_names=["set_description"])
 
+    assert client.queries == [("set_description", None), ("set_description", since)]
     assert coordinator.requested_node_uuids == [{"n1", "n2", "n3"}]
     assert _captured_ids(result) == {"n1", "n2", "n3"}
 
@@ -130,11 +177,12 @@ async def test_capture_returns_every_change_in_the_window_when_no_tracking_group
     coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
     capturer = _capturer(client, coordinator)
 
-    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+    since = Timestamp()
+    result = await capturer.capture(since=since, generator_definition_names=["set_description"])
 
     # The full window alone would also come back if the lookup stopped happening: no query leaves no
     # ids, which widens too. The queried names separate a miss from a skipped lookup.
-    assert client.queried_names == ["set_description"]
+    assert client.queries == [("set_description", None)]
     assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
@@ -144,9 +192,10 @@ async def test_capture_returns_every_change_in_the_window_when_the_tracking_grou
     coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "concurrent"])
     capturer = _capturer(client, coordinator)
 
-    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+    since = Timestamp()
+    result = await capturer.capture(since=since, generator_definition_names=["set_description"])
 
-    assert client.queried_names == ["set_description"]
+    assert client.queries == [("set_description", None), ("set_description", since)]
     assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
@@ -160,7 +209,7 @@ async def test_capture_ignores_groups_whose_name_is_not_a_tracking_group() -> No
 
     result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
 
-    assert client.queried_names == ["set_description"]
+    assert client.queries == [("set_description", None)]
     assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "concurrent"}
 
@@ -172,11 +221,56 @@ async def test_capture_returns_every_change_when_any_definition_lacks_a_tracking
     coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "n2", "written-by-genB"])
     capturer = _capturer(client, coordinator)
 
-    result = await capturer.capture(since=Timestamp(), generator_definition_names=["genA", "genB"])
+    since = Timestamp()
+    result = await capturer.capture(since=since, generator_definition_names=["genA", "genB"])
 
-    assert client.queried_names == ["genA", "genB"]
+    assert client.queries == [("genA", None), ("genA", since), ("genB", None)]
     assert coordinator.requested_node_uuids == [None]
     assert _captured_ids(result) == {"n1", "n2", "written-by-genB"}
+
+
+async def test_capture_includes_the_nodes_the_generators_dropped_from_their_tracking_groups() -> None:
+    # The run stopped writing "dropped" and deleted it, so only the membership at the capture start lists it.
+    client = _FakeClient(
+        {"set_description": [_group(f"set_description-{_HASH_A}", ["n1"])]},
+        groups_at_since_by_name={"set_description": [_group(f"set_description-{_HASH_A}", ["n1", "dropped"])]},
+    )
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["n1", "dropped", "concurrent"])
+    capturer = _capturer(client, coordinator)
+
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+
+    assert coordinator.requested_node_uuids == [{"n1", "dropped"}]
+    assert _captured_ids(result) == {"n1", "dropped"}
+
+
+async def test_capture_returns_every_change_when_the_tracking_group_only_existed_at_the_capture_start() -> None:
+    # Without a group after the run, the nodes the run wrote are unknown, so the earlier members cannot narrow.
+    client = _FakeClient(
+        {}, groups_at_since_by_name={"set_description": [_group(f"set_description-{_HASH_A}", ["dropped"])]}
+    )
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["dropped", "concurrent"])
+    capturer = _capturer(client, coordinator)
+
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_description"])
+
+    assert coordinator.requested_node_uuids == [None]
+    assert _captured_ids(result) == {"dropped", "concurrent"}
+
+
+async def test_capture_includes_the_peers_of_a_tracked_node_the_generators_deleted() -> None:
+    # Deleting eth1 also changed the relationship on dev1, which the generator never tracked.
+    client = _FakeClient(
+        {"interfaces": [_group(f"interfaces-{_HASH_A}", ["eth0"])]},
+        groups_at_since_by_name={"interfaces": [_group(f"interfaces-{_HASH_A}", ["eth0", "eth1"])]},
+    )
+    coordinator = _WindowDiffCoordinator(changed_node_ids=["dev1", "concurrent"], deleted_node_peers={"eth1": ["dev1"]})
+    capturer = _capturer(client, coordinator)
+
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["interfaces"])
+
+    assert coordinator.requested_node_uuids == [{"eth0", "eth1"}, {"eth0", "eth1", "dev1"}]
+    assert _captured_ids(result) == {"eth1", "dev1"}
 
 
 def _generator_run(name: str) -> RequestGeneratorDefinitionRun:

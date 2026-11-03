@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub_sdk.protocols import CoreGeneratorGroup
 
+from infrahub.core.constants import DiffAction
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
@@ -57,8 +59,10 @@ class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
     A time-window diff of the branch alone would also carry any concurrent write landing on it while the
     generators ran. Each generator records the nodes it saves into a tracking group, so calculating the
     window diff for those nodes only yields the generator's own output with per-field detail, free of the
-    concurrent noise. When no tracked node can be resolved the window diff is calculated unscoped, so a
-    lookup miss widens the selection rather than dropping a consuming artifact.
+    concurrent noise. A tracked node the generators deleted brings in the peers it was related to, whose
+    side of the removed relationships is part of the same output. When no tracked node can be resolved the
+    window diff is calculated unscoped, so a lookup miss widens the selection rather than dropping a
+    consuming artifact.
     """
 
     def __init__(
@@ -74,46 +78,75 @@ class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
         self.branch = branch
 
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]:
-        node_ids = await self._output_node_ids(generator_definition_names=generator_definition_names)
+        node_ids = await self._output_node_ids(since=since, generator_definition_names=generator_definition_names)
+        until = Timestamp()
 
-        diff = await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
+        # an empty tracking group widens the read like a missing one, instead of selecting no node
+        diff = await self._window_diff(since=since, until=until, node_uuids=node_ids or None)
+        if node_ids:
+            # Deleting a node also removes its relationships on the side of each peer, which is not tracked.
+            peer_ids = _peers_of_deleted_nodes(diff=diff) - node_ids
+            if peer_ids:
+                diff = await self._window_diff(since=since, until=until, node_uuids=node_ids | peer_ids)
+        return self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
+
+    async def _window_diff(
+        self, *, since: Timestamp, until: Timestamp, node_uuids: set[str] | None
+    ) -> EnrichedDiffRoot:
+        return await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
             base_branch=self.branch,
             diff_branch=self.branch,
             from_time=since,
-            to_time=Timestamp(),
-            # an empty tracking group widens the read like a missing one, instead of selecting no node
-            node_uuids=node_ids or None,
+            to_time=until,
+            node_uuids=node_uuids,
         )
-        return self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
 
-    async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str] | None:
-        """Resolve the nodes the just-run generators wrote from their tracking groups on the target branch.
+    async def _output_node_ids(self, *, since: Timestamp, generator_definition_names: list[str]) -> set[str] | None:
+        """Resolve the nodes the just-run generators wrote or deleted from their tracking groups on the target branch.
 
-        Returns ``None`` when any requested definition has no resolved tracking group: narrowing on the
+        The groups are read both now and as they were at ``since``: a run deletes the nodes it no longer
+        writes, which also drops them from its group, so only the earlier membership still lists them.
+
+        Returns ``None`` when any requested definition has no resolved tracking group now: narrowing on the
         partial aggregate would drop that generator's output, so the caller widens the read instead.
         """
         node_ids: set[str] = set()
         for definition_name in generator_definition_names:
-            groups = await self.client.filters(
-                kind=CoreGeneratorGroup,
-                branch=self.branch.name,
-                name__value=definition_name,
-                partial_match=True,
-                include=["members"],
-            )
-            matched = [
-                group
-                for group in groups
-                if self._is_tracking_group(group_name=group.name.value, definition_name=definition_name)
-            ]
-            if not matched:
+            current = await self._tracking_groups(definition_name=definition_name, at=None)
+            if not current:
                 return None
-            for group in matched:
+            earlier = await self._tracking_groups(definition_name=definition_name, at=since)
+            for group in (*current, *earlier):
                 node_ids.update(relationship.peer.id for relationship in group.members.peers)
         return node_ids
+
+    async def _tracking_groups(self, *, definition_name: str, at: Timestamp | None) -> list[CoreGeneratorGroup]:
+        groups = await self.client.filters(
+            kind=CoreGeneratorGroup,
+            branch=self.branch.name,
+            at=at,
+            name__value=definition_name,
+            partial_match=True,
+            include=["members"],
+        )
+        return [
+            group
+            for group in groups
+            if self._is_tracking_group(group_name=group.name.value, definition_name=definition_name)
+        ]
 
     def _is_tracking_group(self, *, group_name: str, definition_name: str) -> bool:
         # ``partial_match`` matches any name containing the definition name; keep only this generator's own
         # "<definition name>-<hash>" groups
         suffix = group_name.removeprefix(f"{definition_name}-")
         return suffix != group_name and bool(_TRACKING_HASH.fullmatch(suffix))
+
+
+def _peers_of_deleted_nodes(*, diff: EnrichedDiffRoot) -> set[str]:
+    return {
+        element.peer_id
+        for node in diff.nodes
+        if node.action is DiffAction.REMOVED
+        for relationship in node.relationships
+        for element in relationship.relationships
+    }
