@@ -4,7 +4,7 @@ title: Remove a generator
 
 # Remove a generator
 
-Removing a Generator involves three separate things: the **Generator definition** registered from `.infrahub.yml`, the **objects the Generator created** in Infrahub, and the **groups** that track those objects and the Generator's query. Removing the definition stops the Generator from running and deletes its Generator instances. It does not delete the objects the Generator created or its Generator groups — those stay in Infrahub until you remove them.
+Removing a Generator involves three separate things: the **Generator definition** registered from `.infrahub.yml`, the **objects the Generator created** in Infrahub, and the **groups** that track those objects and the Generator's query. Removing the definition stops the Generator from running and deletes its Generator instances. On the default branch, Infrahub deletes the instances when the branch that removes the definition is merged. If that delete fails, Infrahub only logs the error, and the instances remain. It does not delete the objects the Generator created or its Generator groups — those stay in Infrahub until you remove them.
 
 Handle the objects first, then the definition and its query, then the Generator groups.
 
