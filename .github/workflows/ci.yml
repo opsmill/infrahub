@@ -1066,7 +1066,7 @@ jobs:
         run: "uv sync --all-groups"
       - name: "Install npm dependencies"
         working-directory: ./docs
-        run: npm ci
+        run: npm install
       - name: "Build docs"
         run: "uv run invoke docs.build"
 
