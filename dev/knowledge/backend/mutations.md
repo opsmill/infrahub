@@ -94,6 +94,15 @@ with the action applied, so it gets its own event (see [Events](events.md#events
 The records live on the returned node, so a retried attempt discards the records of a failed one
 along with its node.
 
+## Number pool values for existing nodes
+
+A schema change that adds a NumberPool attribute, and the repair of missing number pool rows, give
+existing nodes their numbers through `pools/existing_node_numbers.py`. It reads each node's division
+with `NodeNumberPoolDivisionReader`, the reader the create path uses, so an existing node gets the
+number a create would give it. The pre-load check that refuses a pool smaller than the kind's node
+count skips scoped pools, because their limit applies to each division; the allocation raises when
+one division runs out.
+
 ## Transaction Retry
 
 `retry_db_transaction` (in `backend/infrahub/database/__init__.py`) replays the *entire* wrapped
