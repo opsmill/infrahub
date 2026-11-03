@@ -510,10 +510,10 @@ class TestChangedNodesTimeWindows:
         await query.execute(db=db)
         return sorted(query.get_node_uuids())
 
-    async def test_same_kind_relationship_has_an_edge_to_a_node(
+    async def test_mentor_relationship_has_an_edge_to_the_mentor(
         self, db: InfrahubDatabase, change_history: ChangeHistory
     ) -> None:
-        """The relationship between two nodes of one kind has an edge from the Relationship to a Node."""
+        """The mentor relationship added on the branch is the only edge of that step from a Relationship to a Node."""
         results = await db.execute_query(
             query="""
             MATCH (:Relationship)-[r:IS_RELATED {branch: $branch_name, from: $at}]->(n:Node)
