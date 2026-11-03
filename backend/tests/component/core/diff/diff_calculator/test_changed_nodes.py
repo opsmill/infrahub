@@ -276,6 +276,9 @@ async def change_history(
     node.height.value = 99
     await node.save(db=db, at=times["main_changes"])
     mainman = await _create(db, main, "TestPerson", times["main_changes"], name="Mainman", height=130)
+    node = await _get(db, main, accord.id)
+    await node.driver.update(db=db, data=jane.id)
+    await node.save(db=db, at=times["main_changes"])
     node_ids["mainman"] = mainman.id
 
     times["end"] = Timestamp()
@@ -483,8 +486,8 @@ CHANGED_NODES_CASES = [
         from_step="main_changes",
         to_step=None,
         on_default_branch=True,
-        expected_field_nodes=["mainman"],
-        expected_property_nodes=["alfred", "mainman"],
+        expected_field_nodes=["accord", "jane", "mainman"],
+        expected_property_nodes=["accord", "alfred", "jane", "mainman"],
     ),
     ChangedNodesCase(
         name="default_branch_as_diff_branch_ignores_branch_changes",
