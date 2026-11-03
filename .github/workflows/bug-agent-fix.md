@@ -22,6 +22,8 @@ tools:
     toolsets: [default]
     min-integrity: approved
     approval-labels: [state/ai-pipeline-ready]
+    # GitHub marks this bot's comments as CONTRIBUTOR, which min-integrity hides, but the agents must read them.
+    trusted-users: ["opsmill-bug-pipeline[bot]"]
 network: defaults
 checkout:
   fetch-depth: 0
