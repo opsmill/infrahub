@@ -231,7 +231,9 @@ A Generator run leaves four kinds of data in Infrahub: the Generator instance, t
 |---|---|---|---|---|
 | You remove the target object from the target group | Not deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted |
 | You delete the target object | Deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted. The deleted object is no longer a member. |
-| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted on the default branch, also when you remove the query from `.infrahub.yml`. |
+| You remove the Generator definition | Deleted. On the default branch, Infrahub deletes it when the branch that removes the definition is merged. | Not deleted | Not deleted | Not deleted on the default branch, also when you remove the query from `.infrahub.yml`. |
+
+When a target object or a definition is deleted on a branch, Infrahub deletes the Generator instances on the default branch after the branch is merged. If that delete fails, Infrahub logs the error and does not fail the merge; the instances remain until you delete them, and the proposed change Generator checks skip them.
 
 Infrahub does not delete Generator groups automatically. Infrahub deletes a GraphQL query group with its query only on the branch where the query is deleted. Query groups are branch-local, so when that branch is merged, the query groups on the default branch remain. To remove both with a retired Generator, see [Remove a generator](./remove).
 
