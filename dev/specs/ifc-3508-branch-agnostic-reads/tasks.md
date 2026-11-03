@@ -96,23 +96,23 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 **Base**: `origin/release-1.12`. Branch: `global-only-reads-ifc-3508`.
 
-- [ ] T016 [US2] Create a worktree for `global-only-reads-ifc-3508` from `origin/release-1.12`.
-- [ ] T017 [US2] Classify the callers research R3 found outside the brief:
+- [X] T016 [US2] Create a worktree for `global-only-reads-ifc-3508` from `origin/release-1.12`. Result: created at `.claude/worktrees/global-only-reads-ifc-3508` from `cb19b585e`, with no upstream.
+- [X] T017 [US2] Classify the callers research R3 found outside the brief:
   - `backend/infrahub/pools/number_pool_repository.py` (3 calls)
   - `backend/infrahub/pools/number_pool_lookup.py`
   - `backend/infrahub/pools/scoped_number_pool_reader.py` (2 calls)
   - `backend/infrahub/core/migrations/graph/m080_number_pool_ranges/migration.py`
 
-  For each call, check the branch support of the kind it reads and of every relationship it follows, for example `CoreNumberPoolRange.pool`, in `backend/infrahub/core/schema/definitions/`. Record the result in the PR description. Only calls verified as reading `-global-` data are changed in T024. `m080` is a shipped migration and is not edited.
-- [ ] T018 [P] [US2] Remove `branch_agnostic=True` from the `get_many` call in `backend/infrahub/graphql/loaders/account.py`, and remove its comment.
-- [ ] T019 [P] [US2] Remove `branch_agnostic=True` from `NodeManager.query` in `backend/infrahub/graphql/resolvers/resolver.py::is_externally_managed_resolver`.
-- [ ] T020 [P] [US2] Remove `branch_agnostic=True` from `NodeManager.query` in `backend/infrahub/webhook/tasks/invalidate.py`.
-- [ ] T021 [P] [US2] Remove `branch_agnostic=True` from all three calls in `backend/infrahub/pools/schema_number_pool_synchronizer.py`.
-- [ ] T022 [P] [US2] Remove `branch_agnostic=True` from all three calls in `backend/infrahub/pools/schema_number_pool_upserter.py`.
-- [ ] T023 [P] [US2] Remove `branch_agnostic=True` from `proposed_change.validations.get_peers` in `backend/infrahub/core/integrity/object_conflict/conflict_recorder.py::ObjectConflictValidatorRecorder.get_validator`.
-- [ ] T024 [US2] Apply the same change to the calls T017 verified.
-- [ ] T025 [US2] Check whether `GetGlobalPermissionAttributesQuery` in `backend/infrahub/core/migrations/graph/m062_recompute_permission_display_labels.py` reads the `branch_agnostic` argument. If it ignores the argument, remove it from both calls as a no-op and say so in the PR. If it does not ignore it, leave the shipped migration unchanged and record why.
-- [ ] T026 [US2] Run the tests of each changed caller:
+  For each call, check the branch support of the kind it reads and of every relationship it follows, for example `CoreNumberPoolRange.pool`, in `backend/infrahub/core/schema/definitions/`. Record the result in the PR description. Only calls verified as reading `-global-` data are changed in T024. `m080` is a shipped migration and is not edited. Result: on the current `release-1.12` the migration is `m081_number_pool_ranges`, left unchanged. In `number_pool_repository.py`, only `delete_pool` reads `CoreNumberPool`; `get_used` and `get_free` run `NumberPoolGetUsed` and `NumberPoolGetFree`, which read branch-aware values across live branches and never read the flag, so they stay unchanged for PR 3.
+- [X] T018 [P] [US2] Remove `branch_agnostic=True` from the `get_many` call in `backend/infrahub/graphql/loaders/account.py`, and remove its comment.
+- [X] T019 [P] [US2] Remove `branch_agnostic=True` from `NodeManager.query` in `backend/infrahub/graphql/resolvers/resolver.py::is_externally_managed_resolver`.
+- [X] T020 [P] [US2] Remove `branch_agnostic=True` from `NodeManager.query` in `backend/infrahub/webhook/tasks/invalidate.py`.
+- [X] T021 [P] [US2] Remove `branch_agnostic=True` from all three calls in `backend/infrahub/pools/schema_number_pool_synchronizer.py`.
+- [X] T022 [P] [US2] Remove `branch_agnostic=True` from all three calls in `backend/infrahub/pools/schema_number_pool_upserter.py`.
+- [X] T023 [P] [US2] Remove `branch_agnostic=True` from `proposed_change.validations.get_peers` in `backend/infrahub/core/integrity/object_conflict/conflict_recorder.py::ObjectConflictValidatorRecorder.get_validator`.
+- [X] T024 [US2] Apply the same change to the calls T017 verified. Result: changed `NumberPoolRepository.delete_pool`, `NumberPoolRangeLookup.get_ranges` and both calls in `ScopedNumberPoolReader`; `branch_agnostic` is also removed from the `NumberPoolRangeNodeReader` protocol, which required it.
+- [X] T025 [US2] Check whether `GetGlobalPermissionAttributesQuery` in `backend/infrahub/core/migrations/graph/m062_recompute_permission_display_labels.py` reads the `branch_agnostic` argument. If it ignores the argument, remove it from both calls as a no-op and say so in the PR. If it does not ignore it, leave the shipped migration unchanged and record why. Result: `query_init` matches only `-global-` edges, hardcoded, and never reads the flag; the argument is removed from both calls.
+- [X] T026 [US2] Run the tests of each changed caller:
   - `backend/tests/component/graphql/`, filtered with `-k account`
   - `backend/tests/component/webhook/`
   - `backend/tests/component/pools/`
@@ -120,8 +120,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - `backend/tests/component/core/integrity/`
   - `backend/tests/component/core/migrations/graph/`, filtered with `-k m062`
 
-  All pass unchanged.
-- [ ] T027 [US2] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12`. Add no changelog fragment, because no user can notice the change.
+  All pass unchanged. Result: all pass; `backend/tests/component/core/integrity/` does not exist on `release-1.12`, so the conflict recorder was tested through `backend/tests/integration/proposed_change/test_proposed_change_conflict.py` and `test_proposed_change_cardinality_one_conflict.py`, `-k m062` matches no test, so `test_062_recompute_permission_display_labels.py` was run directly, and the 42 `-k account` failures in `graphql/auth/query_permission_checker/` come from the filter deselecting their setup tests and pass when those files run unfiltered.
+- [ ] T027 [US2] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12`. Add no changelog fragment, because no user can notice the change. Result: pre-push checks pass; the PR is not opened, because the user asked for a local branch.
 
 **Checkpoint**: US2 is complete and independent of the other stories.
 
