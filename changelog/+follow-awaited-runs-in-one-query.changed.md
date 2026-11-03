@@ -1,0 +1,1 @@
+Shortened the validation of a proposed change with many checks and reduced the requests it sends to the task manager: Infrahub now reads the state of all the runs a validation waits on together, once a second, instead of reading each run separately.

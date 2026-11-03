@@ -7,7 +7,11 @@ on:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
-engine: claude
+engine:
+  id: claude
+  bare: false
+  permission-mode: acceptEdits
+model: opus
 timeout-minutes: 60
 permissions:
   contents: read
@@ -65,7 +69,7 @@ steps:
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
       fi
-  - uses: actions/setup-python@v6
+  - uses: actions/setup-python@v7.1.0
     with:
       python-version: "3.12"
   - uses: astral-sh/setup-uv@v7
@@ -75,7 +79,7 @@ steps:
   - uses: pnpm/action-setup@v4
     with:
       version: 10
-  - uses: actions/setup-node@v6
+  - uses: actions/setup-node@v7.1.0
     with:
       # https://github.com/microsoft/playwright/issues/41000
       node-version: 24.15.0
@@ -98,7 +102,7 @@ safe-outputs:
     allowed-base-branches: [stable]
   push-to-pull-request-branch:
     max: 3
-  missing-tool:
+  report-missing-tool:
 ---
 
 # Bug test-writer agent
