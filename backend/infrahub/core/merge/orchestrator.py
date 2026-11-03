@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.log import InfrahubLogger
 
+    from .generator_instance_cleaner import GeneratorInstanceCleaner
     from .graph_merger import GraphMerger
     from .post_merge import PostMergeDispatcher
     from .rollback_handler import MergeRollbackHandler
@@ -52,6 +53,7 @@ class BranchMergeOrchestrator:
         post_merge_dispatcher: PostMergeDispatcher,
         merge_write_blocker: MergeWriteBlocker,
         ipam_diff_parser: IpamDiffParser,
+        generator_instance_cleaner: GeneratorInstanceCleaner,
         diff_repository: DiffRepository,
         diff_serializer: DiffSummarySerializer,
         diff_summary_cache: DiffSummaryCache,
@@ -68,6 +70,7 @@ class BranchMergeOrchestrator:
         self.post_merge_dispatcher = post_merge_dispatcher
         self.merge_write_blocker = merge_write_blocker
         self.ipam_diff_parser = ipam_diff_parser
+        self.generator_instance_cleaner = generator_instance_cleaner
         self.diff_repository = diff_repository
         self.diff_serializer = diff_serializer
         self.diff_summary_cache = diff_summary_cache
@@ -149,6 +152,11 @@ class BranchMergeOrchestrator:
                 source_branch_name=self.source_branch.name,
                 target_branch_name=self.destination_branch.name,
             )
+            # Deleted after the MERGED transition for the same reason: a node delete stamps vertex
+            # metadata without the snapshot that the rollback restores.
+            orphaned_generator_instance_ids = await self.generator_instance_cleaner.find_orphaned_instances(
+                merge_at=merge_at
+            )
         except BaseException as exc:
             self.log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
             await self.rollback_handler.rollback(
@@ -175,6 +183,8 @@ class BranchMergeOrchestrator:
         # Lift the write protection now that the merge has fully succeeded.
         await self.merge_write_blocker.delete()
 
+        await self._delete_orphaned_generator_instances(instance_ids=orphaned_generator_instance_ids, user_id=user_id)
+
         # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
         merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
 
@@ -194,6 +204,13 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    async def _delete_orphaned_generator_instances(self, instance_ids: set[str], user_id: str) -> None:
+        # The proposed change checks skip an orphaned instance, so a failure here must not fail the merge.
+        try:
+            await self.generator_instance_cleaner.delete(instance_ids=instance_ids, user_id=user_id)
+        except Exception:
+            self.log.exception("Generator instance cleanup failed after merge; merge is committed, continuing")
 
     async def _record_merge_start(self, *, merge_at: Timestamp, user_id: str) -> None:
         """Persist the merge-start markers a recovery depends on.
