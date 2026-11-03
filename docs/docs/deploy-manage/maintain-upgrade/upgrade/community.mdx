@@ -35,6 +35,8 @@ For earlier versions, please refer to the [release notes](../../../release-notes
 <Tabs groupId="deployment" queryString>
 <TabItem value="docker" label="Docker" default>
 
+The upgrade runs while the instance is stopped. When the task manager reports at least 100,000 finished task runs older than the task history retention, the upgrade deletes them in its last step, which adds to the time the instance is down. In OpsMill benchmarks of an earlier version of the cleanup, before it limited each delete transaction to 1,000 runs, it took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. The duration depends on the hardware and the data of your instance; see [Run the cleanup command](./overview.mdx#run-the-cleanup-command). To restart the instance sooner, run `docker compose run infrahub-server infrahub upgrade --no-task-history-cleanup` instead, then run the cleanup command below once the instance runs again.
+
 ```bash
 # Stop the current instance
 docker compose down
@@ -70,6 +72,9 @@ You can do this with: `docker image prune -a`
 # Upgrade the Helm release
 helm upgrade
 
+# Wait until the new task manager runs
+kubectl rollout status deployment/prefect-server
+
 # Run the unified upgrade command inside the server pod
 kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 
@@ -77,6 +82,10 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
 ```
+
+Run `infrahub upgrade` after the rollout of the task manager has finished. Before that, the upgrade reaches the task manager of the previous release. On the first upgrade to this release, that task manager does not report its task history, so the upgrade skips the task history cleanup.
+
+When the pre-upgrade hook of the chart runs the upgrade (`upgrade.enabled`), the chart passes `--no-task-history-cleanup` to it, because Helm waits at most 5 minutes for a hook by default. The hook also runs before Helm replaces the task manager. Run the cleanup command below after the upgrade.
 
 <SnippetTaskHistoryCleanup />
 

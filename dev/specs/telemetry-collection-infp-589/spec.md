@@ -191,9 +191,10 @@ in-window events.
 
 ### Edge Cases
 
-- **Event-retention leakage**: With the default retentions (7 days for events, 30 days
-  for webhook flow runs) the task manager stores records outside the 24h window, so a
-  correct window must never include retained-but-out-of-window records.
+- **Event-retention leakage**: With the default retentions (7 days for events, or 30 days
+  with OpsMill's Enterprise Docker Compose file and Helm chart, and 30 days for webhook flow
+  runs) the task manager stores records outside the 24h window, so a correct window must
+  never include retained-but-out-of-window records.
 - **Retention shorter than the window's age**: The job reads the window 26 to 27 hours
   after the window starts. When the activity log or task history retention is shorter
   than that (both settings accept 1 day), the hourly cleanup has already deleted the
@@ -363,8 +364,9 @@ in-window events.
   boundary, not job-execution time), so consecutive daily snapshots tile exactly.
   All in-window records are available at gather time only while the event
   retention and the webhook flow-run retention are both longer than the window's
-  age at gather time, 26 to 27 hours. The defaults (7 days for events, 30 days for
-  flow runs) meet this; a 1-day retention, which the settings accept, does not.
+  age at gather time, 26 to 27 hours. The defaults (7 days for events, or 30 days with
+  OpsMill's Enterprise Docker Compose file and Helm chart, and 30 days for flow runs) meet
+  this; a 1-day retention, which the settings accept, does not.
 - Activity counts are best-effort trend signals (event dispatch can drop), not
   billing-grade exact figures; correctness is judged on windowing behavior, not
   against an external ground truth.

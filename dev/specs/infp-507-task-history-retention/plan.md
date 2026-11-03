@@ -8,9 +8,9 @@
 
 Bound the task manager's storage and make the activity log retention configurable, without adding tables or indexes to Prefect's database:
 
-- **Task history (part 1)**: turn on Prefect's built-in cleanup of old runs, driven by a new Infrahub retention setting; reimplement `infrahub tasks flush flow-runs` as a task-manager job that deletes with set-based SQL and, with `--rewrite`, rewrites each task history and activity log table whose live rows hold less than half of its disk space, whoever deleted the rows; operators of existing instances with a lot of task history run it once after the upgrade, which prints the task history size and the command.
+- **Task history (part 1)**: turn on Prefect's built-in cleanup of old runs, driven by a new Infrahub retention setting; reimplement `infrahub tasks flush flow-runs` as a task-manager job that deletes with set-based SQL and, with `--rewrite`, rewrites each task history and activity log table whose live rows hold less than half of its disk space, whoever deleted the rows; the upgrade prints the task history size and the old runs, and as its last step runs the same cleanup when at least 100,000 runs are older than the retention, or prints why it skipped and the command, which operators then run after the upgrade.
 - **Activities page (part 2)**: filter on Prefect's indexed resource IDs instead of labels, read newest first in widening time windows, count only on request, plan each query for its values (PR #10379), and page by time on the frontend.
-- **Activity log (part 3)**: keep Infrahub events for the activity log retention and delete Prefect's own events after their own retention, through a list of Prefect event types guarded by a test.
+- **Activity log (part 3)**: keep Infrahub events for the activity log retention and delete Prefect's own events after their own retention, through a list of Prefect event types guarded by a test. The activity log default stays 7 days in the code; OpsMill's Enterprise Docker Compose file and Helm chart set 30 days.
 - **Documentation (part 4)**: configuration reference, CLI reference, upgrade guides, sizing, knowledge docs.
 
 Research and code locations: [research.md](research.md).
@@ -44,14 +44,19 @@ and [HTTP contract](contracts/task-manager-api.md).
 ### Operator commands and upgrade
 
 `run_task_history_cleanup` is the CLI's HTTP client: it starts or follows a job, retries transient
-responses and reports progress and failures. `task_history_size_hint` only reads the bounded size
-and old-run count during upgrade. The backup wrapper detects which CLI contract the worker supports;
-the task manager owns the retention cutoff. Review the [CLI contract](contracts/cli.md).
+responses and reports progress and failures. In the upgrade, `read_task_history` reads the bounded
+size and old-run count in the task manager step, and `clean_up_task_history_for_upgrade` runs the
+command's cleanup as the last step when `upgrade_cleanup_skip_reason` finds at least
+`UPGRADE_CLEANUP_MIN_OLD_RUNS` (100,000) old runs, waiting at most `UPGRADE_CLEANUP_GIVE_UP_AFTER`
+(2 minutes) without a cleanup to follow; a failed cleanup does not fail the upgrade. The backup
+wrapper detects which CLI contract the worker supports; the task manager owns the retention cutoff.
+Review the [CLI contract](contracts/cli.md).
 
 ### Event retention
 
 `PREFECT_EVENT_TYPES` identifies Prefect internal events, including heartbeats. Translation assigns
-their per-type retention, 2 days by default, while Infrahub activity keeps its 7-day default.
+their per-type retention, 2 days by default, while Infrahub activity keeps its 7-day default, or
+the 30 days that OpsMill's Enterprise Docker Compose file and Helm chart set.
 Prefect's background services delete expired events and their related resources. Event cleanup
 requires both the `events` vacuum type and an enabled event persister. Review the [event-type registry](data-model.md#prefect-event-types-list-new-constant)
 and its coverage when upgrading Prefect.
@@ -79,7 +84,7 @@ and the [page request](data-model.md#activities-page-request-changed).
 
 **Project Type**: Web service (backend + frontend) with an operator CLI
 
-**Performance Goals**: Indicative, from the design doc: Activities default view and single filters about 1 s repeat / 3 s first load with a year of activity log; combined filters 3 to 6 s, at most 10 s. Upgrade only reads a size hint, bounded to 10 s; operator cleanup runs separately after upgrade.
+**Performance Goals**: Indicative, from the design doc: Activities default view and single filters about 1 s repeat / 3 s first load with a year of activity log; combined filters 3 to 6 s, at most 10 s. The upgrade reads the task history size within 10 s; its cleanup runs only for a backlog of at least 100,000 old runs, and then takes as long as the command for old runs (Q1).
 
 **Constraints**: No new tables, indexes or extensions in Prefect's database; queries must work on Postgres 14 and later; Infrahub sets Prefect settings, it does not patch Prefect
 
@@ -99,7 +104,7 @@ and the [page request](data-model.md#activities-page-request-changed).
 | VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite`. See Complexity Tracking. Settings input is validated at start. |
 | VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during operator cleanup does not stop the job. See Complexity Tracking. |
 
-**Post-design re-check**: No new dependency. The settings translation serves the task manager and the background-services command. The cleanup job serves the operator CLI; the upgrade only reads the size endpoint. The job and polling are justified by the cleanup's lifetime, not by multiple callers.
+**Post-design re-check**: No new dependency. The settings translation serves the task manager and the background-services command. The cleanup job serves the operator CLI and the upgrade's last step; the upgrade also reads the size endpoint. The job and polling are justified by the cleanup's lifetime, not by multiple callers.
 
 ## Project Structure
 
@@ -139,8 +144,8 @@ backend/infrahub/
 │   └── flow_run/retention.py          # FlowRunRetention kept for stale-runs
 ├── graphql/queries/event.py           # include_total from selected fields, branch name → ID resolution
 └── cli/
-    ├── tasks.py                       # flush flow-runs via the job, background-services command
-    └── upgrade.py                     # task history size hint in the task manager step
+    ├── tasks.py                       # flush flow-runs via the job, background-services command, the upgrade's reading and cleanup
+    └── upgrade.py                     # task history size in the task manager step, cleanup as step 7/7, --no-task-history-cleanup
 
 backend/tests/
 ├── unit/task_manager/event/           # filter construction
@@ -163,7 +168,7 @@ tests/performance/test_task_history_retention.py, test_task_history_upgrade.py, 
 changelog/                             # fragments per part
 ```
 
-**Structure Decision**: Existing backend/frontend layout. New task-manager code lives in `backend/infrahub/prefect_server/` next to Infrahub's existing routes, because only the task manager connects to Prefect's database. The Helm chart change (background-services command) is a separate PR in opsmill/infrahub-helm; the chart's upgrade hook needs no extra option.
+**Structure Decision**: Existing backend/frontend layout. New task-manager code lives in `backend/infrahub/prefect_server/` next to Infrahub's existing routes, because only the task manager connects to Prefect's database. The Helm chart change (background-services command, `--no-task-history-cleanup` for the optional pre-upgrade hook, and the 30-day activity log in the Enterprise chart) is a separate PR in opsmill/infrahub-helm ([#100](https://github.com/opsmill/infrahub-helm/pull/100)); the Enterprise Docker Compose file in opsmill/infrahub-private also sets the 30-day activity log.
 
 ## Evidence: infrahub-private-tests
 
@@ -190,18 +195,21 @@ Keeping it separate keeps this repository's implementation context free of the p
 
 ## Delivery Order
 
-1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite modes `never` and `if_freed`, the latter for the command's rewrite option and per table over the six task history and two activity log tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, the task history size route and the upgrade's hint, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command) ships in the same release.
+1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite modes `never` and `if_freed`, the latter for the command's rewrite option and per table over the six task history and two activity log tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, the task history size route, the upgrade's task history line and its cleanup step for a backlog of at least 100,000 old runs with `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, the hook's `--no-task-history-cleanup`) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
-3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
+3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults. The 30-day Enterprise default ships in the same release in the Enterprise Docker Compose file (opsmill/infrahub-private) and the Enterprise Helm chart (opsmill/infrahub-helm#100).
 4. **Part 4, documentation**: ships with parts 1 and 3.
 
-Each of parts 1 to 3 merges only with its private-test evidence. The final run on the release candidate (T057) covers all three together. The release notes explain how to raise the activity log retention and its cost, and the upgrade notes lead with the cleanup step after the upgrade, for existing instances with a lot of task history, and its expected duration.
+Each of parts 1 to 3 merges only with its private-test evidence. The final run on the release candidate (T057) covers all three together. The release notes explain how to raise the activity log retention and its cost, and the upgrade notes lead with the upgrade's cleanup of a large task history, the time it adds to a Docker Compose upgrade, and the command for old runs on Helm and after an upgrade that skipped the cleanup.
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| The cleanup step takes hours on large instances (Q1) | It runs after the upgrade with the instance up, not inside the upgrade; commits of at most 1,000 runs, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
+| The upgrade's cleanup takes hours on large instances (Q1), and on Docker Compose the instance is down meanwhile | It runs only for a backlog of at least 100,000 old runs; commits of at most 1,000 runs, progress output, re-runnable; operators can pass `--no-task-history-cleanup` and run the command for old runs later with the instance up, or set a longer retention before upgrading. Release notes wait for the measurements on restored backups. |
+| The upgrade's cleanup fails, cannot start or meets a cleanup on another replica | It never fails the upgrade: it prints the error, what was deleted and the command that finishes the cleanup, and waits at most 2 minutes without a cleanup to follow. |
+| Helm waits at most 5 minutes for a hook by default, and the pre-upgrade hook reaches the previous task manager | The chart passes `--no-task-history-cleanup` to the hook; Helm operators run the command for old runs after the upgrade, and wait for the task manager's rollout before running the upgrade with `kubectl exec`. |
+| The 30-day Enterprise activity log keeps about 4 times as many Infrahub events as 7 days | The activity log documentation gives the disk sizing (5.7 to 8.1 GiB per million stored events). |
 | API clients that select `count` | They still get it, and still wait for it (about 10 minutes for level 0 events on a year of activity log), as the design doc states. |
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
 | New Prefect event type not in the list | Integration-docker guard on the full stack (real workers, failure paths) plus unit tests over the event names, name patterns, statuses, lifecycle record kinds and state names in the pinned Prefect's source; a missed type only costs disk. |

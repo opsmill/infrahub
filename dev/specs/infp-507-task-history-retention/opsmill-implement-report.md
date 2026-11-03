@@ -248,3 +248,71 @@ availability and edition-specific restrictions remain undecided.
 
 Upgrade only reads task-history size and prints cleanup guidance. The operator command starts the
 cleanup job; earlier text describing upgrade as a cleanup or rewrite caller is superseded.
+
+## Update: upgrade cleanup and Enterprise activity log default (3 November 2026)
+
+Two product decisions of 3 November 2026 change what this report records above. This entry supersedes:
+
+- §6 item 13, which says that the upgrade deletes nothing and that its cleanup step and `--no-task-history-cleanup` are gone;
+- §7 item 3, which says that the chart's upgrade hook is unchanged;
+- §7 item 10, on the Enterprise Docker Compose file, for which changes are now prepared;
+- the sentences in §6 item 3 and in the erratum of 29 October that say Enterprise availability and edition restrictions remain undecided, and the erratum's line that the upgrade only reads the task history size.
+
+The body above is kept as written.
+
+### The upgrade cleans up a large task history
+
+- **Decision**: `infrahub upgrade` deletes a large backlog of old task runs itself. It has seven steps again, and its last step, "Task history cleanup", runs after the branch rebase. When the task manager reports at least 100,000 finished top-level runs older than the task history retention, the step runs the same cleanup as `infrahub tasks flush flow-runs --rewrite`. Otherwise it prints why it skipped and the command: `--no-task-history-cleanup` given, the task history not reported (an older task manager, or one that cannot be reached), Prefect's vacuum switch keeping old runs (without the command), or fewer than 100,000 old runs, which Prefect's hourly cleanup deletes. A cleanup that fails or cannot start never fails the upgrade. This reverses the decisions of 4 and 11 October that the upgrade deletes no task runs, that there is no skip option and that `--no-task-history-cleanup` is removed.
+- **Code** (T066):
+  - `backend/infrahub/cli/tasks.py`: `read_task_history` and `TaskHistoryReading` replace the size hint, and the task manager step's line no longer gives the command. `upgrade_cleanup_skip_reason` and `clean_up_task_history_for_upgrade` decide and run the cleanup, with `UPGRADE_CLEANUP_MIN_OLD_RUNS` (100,000) and `UPGRADE_CLEANUP_GIVE_UP_AFTER` (2 minutes without a cleanup to follow, against the command's 3 hours).
+  - `backend/infrahub/cli/upgrade.py`: steps 1/7 to 7/7, `_upgrade_task_history` as step 7, and the `--no-task-history-cleanup` option.
+  - `OLD_RUNS_COUNT_LIMIT` moved to `backend/infrahub/prefect_server/task_history_models.py`.
+  - `docs/docs/reference/infrahub-cli/infrahub-upgrade.mdx` regenerated with the option.
+- **Deployments**:
+  - Docker Compose runs the upgrade with the instance stopped (`docker compose run`), so the cleanup adds to the time the instance is down. The only durations at hand are those of the earlier local benchmark: about 8.5 minutes on 25 GB of task history and about 2 hours 20 minutes on 100 GB. Measurements on restored backups are running.
+  - On Helm, `kubectl exec ... infrahub upgrade` after `helm upgrade` reaches the new task manager only after the task manager's rollout has finished, so the guide must say to wait for it. The chart's optional pre-upgrade hook reaches the previous task manager on the first upgrade to this release, so the cleanup is skipped there; the chart passes `--no-task-history-cleanup` to the hook, because Helm waits at most 5 minutes for a hook by default (prepared in [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100), T068). Helm operators therefore run the command for old runs after the upgrade.
+- **Local-pass evidence** (T067):
+
+  | Test id | Type | Run command | Passed at (UTC) | Environment context | Verbatim pass line |
+  |---|---|---|---|---|---|
+  | `backend/tests/unit/cli/test_upgrade_task_history.py` (11 tests, 23 cases) | unit | `PYTHONPATH=backend uv run --no-sync pytest backend/tests/unit/cli/test_upgrade_task_history.py -q -n 0 -p no:cacheprovider` | 2026-11-03T19:19:57Z | worktree of `feat/infp-507-retention-consolidated` with the change not yet committed | `23 passed, 16 warnings in 2.54s` |
+
+- **Upgrade output of 3 November** (19:08 to 19:10, as the capture prints the time; the stack it ran on is not recorded here). With more than 100,000 old runs, the task manager step and the end of the cleanup step printed:
+
+  ```text
+  Task history takes 864.3 MB, with more than 100,000 runs older than the retention.
+  Deleted 150000 runs that ended before 2026-10-04 19:09 UTC
+  Task history and activity log tables: 885.7 MB before, 27.3 MB after
+  Rewrote flow_run, flow_run_state, task_run, log, artifact
+  Left task_run_state, events, event_resources as they are, because their live rows hold at least half of their disk space
+  Upgrade complete SUCCESS
+  ```
+
+  Between them, 13 progress lines ran from `Deleting the runs that ended on 2026-07-10, 8080 runs deleted so far` to `Deleting the runs that ended on 2026-10-03, 150000 runs deleted so far`. This capture does not show the line that the current code prints before the deletes, `Deleting the finished runs older than the task history retention, because at least 100,000 runs are that old, then rewriting the tables that are mostly free space`, which `test_a_large_backlog_is_deleted_and_the_mostly_free_tables_are_rewritten` checks; whether the capture came from an earlier build is not known.
+
+  With no old runs, and then with `--no-task-history-cleanup`, the cleanup step printed:
+
+  ```text
+  Task history cleanup skipped, because fewer than 100,000 runs are older than the retention, which the task manager's hourly cleanup deletes. To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite
+  Task history cleanup skipped, because --no-task-history-cleanup was given. To get the disk space of old task history back, run: infrahub tasks flush flow-runs --rewrite
+  ```
+
+- **Open**:
+  - T068: the Helm hook option, in opsmill/infrahub-helm#100.
+  - T069: the harness of [opsmill/infrahub-private-tests#62](https://github.com/opsmill/infrahub-private-tests/pull/62) asserts that the upgrade deleted no restored task history and that its output gives the command, which no longer holds for a backlog of at least 100,000 old runs.
+  - T022: the measurements on restored backups.
+
+  T073 is done: the upgrade guides, the activity log page, the knowledge page and the changelog fragments were edited alongside this entry and reviewed against the code on 3 Nov (see [tasks.md](tasks.md)).
+
+### Activity log default: 7 days on Community, 30 days on Enterprise
+
+- **Decision**: OpsMill's Enterprise Docker Compose file and Enterprise Helm chart set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` to 30 days, the way they set `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE`. The Infrahub code default stays 7 days. Both editions have the same settings and the same range, 1 to 365 days, with no edition gate, and nothing stops a Community operator from raising the value. This replaces every statement above that the edition decision is pending.
+- **Code** (T070): the description of `activity_log` in `backend/infrahub/prefect_server/retention_settings.py` now says `The Enterprise Docker Compose file and Helm chart set 30 days.`, and `docs/docs/reference/configuration.mdx` is regenerated.
+- **Consequences**:
+  - An Enterprise setup that does not use OpsMill's Compose file or Helm chart, such as its own manifests or a configuration in `infrahub.toml` only, keeps 7 days unless it sets `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`.
+  - In Helm, a list set by the operator in `prefect-server.global.prefect.env` (Infrahub chart) or `infrahub.prefect-server.global.prefect.env` (Enterprise chart) replaces the chart's list as a whole, so it must set all three retention values.
+  - 30 days keeps about 4 times as many Infrahub events as 7 days; the activity log documentation gives the disk sizing.
+- **Open**:
+  - T071: the Enterprise Docker Compose file in opsmill/infrahub-private. Two changes are prepared, the 30-day default and the start of `task-manager-background-svc` with `infrahub tasks background-services`; both wait until the file's pointer to this repository includes [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289).
+  - T072: the Enterprise Helm chart, in opsmill/infrahub-helm#100.
+- **Both decisions**: update the [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activity-log-retention-3dc228b830258012ba28dc3a23eece65) for them; whether it records them already is not known.

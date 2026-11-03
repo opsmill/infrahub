@@ -124,9 +124,10 @@ test seeds events at exactly `window_start` — counted — and exactly `window_
 **Rationale**: Logins are events stored in Prefect (ADR 0002); Neo4j has no `last_login`. The
 event name is `infrahub.account.logged_in` (`AccountLoggedInEvent.event_name`). The `occurred`
 filter keeps out events that are still stored but fall outside the window, so there is no
-retention leakage (SC-002). Events are kept for the activity log retention, 7 days by default;
-Decision 4 states when the whole window is still stored at gather time. Counting by resource id
-is the natural distinct-count primitive without pulling every event.
+retention leakage (SC-002). Events are kept for the activity log retention, 7 days by default
+and 30 days with OpsMill's Enterprise Docker Compose file and Helm chart; Decision 4 states
+when the whole window is still stored at gather time. Counting by resource id is the natural
+distinct-count primitive without pulling every event.
 
 **Alternatives considered**: (a) modify `gather_prefect_events` to add a window — rejected by
 FR-007 (must not change existing output). (b) pull all events and de-dup in Python —

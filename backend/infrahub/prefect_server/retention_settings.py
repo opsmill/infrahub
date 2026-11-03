@@ -75,6 +75,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         description=(
             "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
             "duration (`P7D`), from 1 to 365 days, and at least `prefect_own_events`. "
+            "The Enterprise Docker Compose file and Helm chart set 30 days. "
             "`PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name `PREFECT_EVENTS_RETENTION_PERIOD`, takes "
             "precedence when set. When `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not "
             "turn on `events`, old events are not deleted."
