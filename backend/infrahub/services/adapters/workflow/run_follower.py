@@ -30,14 +30,15 @@ class FlowRunReader(Protocol):
 
 
 class FlowRunFollower:
-    """Follow every flow run awaited through one Prefect client with one query per poll for all of them."""
+    """Follow every flow run awaited through one Prefect client, reading them all at each poll in pages of 200."""
 
-    def __init__(self, poll_interval: float) -> None:
+    def __init__(self, client: FlowRunReader, poll_interval: float) -> None:
+        self._client = client
         self._poll_interval = poll_interval
         self._waiters: dict[UUID, asyncio.Future[FlowRun]] = {}
         self._poller: asyncio.Task[None] | None = None
 
-    async def wait(self, client: FlowRunReader, flow_run_id: UUID) -> FlowRun:
+    async def wait(self, flow_run_id: UUID) -> FlowRun:
         """Return the flow run once it reaches a final state.
 
         Raises:
@@ -47,17 +48,17 @@ class FlowRunFollower:
         future: asyncio.Future[FlowRun] = asyncio.get_running_loop().create_future()
         self._waiters[flow_run_id] = future
         if self._poller is None or self._poller.done():
-            self._poller = asyncio.create_task(self._poll(client=client))
+            self._poller = asyncio.create_task(self._poll())
         try:
             return await future
         finally:
             self._waiters.pop(flow_run_id, None)
 
-    async def _poll(self, client: FlowRunReader) -> None:
+    async def _poll(self) -> None:
         while self._waiters:
             await asyncio.sleep(self._poll_interval)
             try:
-                final_runs = await self._read_final_runs(client=client, flow_run_ids=list(self._waiters))
+                final_runs = await self._read_final_runs(flow_run_ids=list(self._waiters))
             except Exception as exc:
                 for future in self._waiters.values():
                     if not future.done():
@@ -68,12 +69,11 @@ class FlowRunFollower:
                 if waiter is not None and not waiter.done():
                     waiter.set_result(flow_run)
 
-    @staticmethod
-    async def _read_final_runs(client: FlowRunReader, flow_run_ids: list[UUID]) -> list[FlowRun]:
+    async def _read_final_runs(self, flow_run_ids: list[UUID]) -> list[FlowRun]:
         final_runs: list[FlowRun] = []
         for start in range(0, len(flow_run_ids), READ_PAGE_SIZE):
             final_runs.extend(
-                await client.read_flow_runs(
+                await self._client.read_flow_runs(
                     flow_run_filter=FlowRunFilter(
                         id=FlowRunFilterId(any_=flow_run_ids[start : start + READ_PAGE_SIZE]),
                         state=FlowRunFilterState(type=FlowRunFilterStateType(any_=FINAL_STATE_TYPES)),
