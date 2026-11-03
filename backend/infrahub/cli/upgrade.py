@@ -44,7 +44,14 @@ from .db import (
     trigger_rebase_branches,
     update_core_schema,
 )
-from .tasks import task_history_size_hint
+from .tasks import (
+    TASK_HISTORY_REWRITE_COMMAND,
+    UPGRADE_CLEANUP_MIN_OLD_RUNS,
+    UPGRADE_CLEANUP_OPTION,
+    TaskHistoryReading,
+    clean_up_task_history_for_upgrade,
+    read_task_history,
+)
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -99,6 +106,16 @@ async def upgrade_cmd(
             "Has no effect without --rebase-branches."
         ),
     ),
+    no_task_history_cleanup: bool = typer.Option(
+        False,
+        UPGRADE_CLEANUP_OPTION,
+        help=(
+            "Do not clean up the task history during the upgrade. Without this option, when at least "
+            f"{UPGRADE_CLEANUP_MIN_OLD_RUNS:,} finished task runs are older than the task history retention, the "
+            "upgrade deletes them with their logs and artifacts, then rewrites each task history and activity log "
+            f"table that is mostly free space. Run '{TASK_HISTORY_REWRITE_COMMAND}' later instead."
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         help=(
@@ -148,6 +165,7 @@ async def upgrade_cmd(
         rebase_branches=rebase_branches,
         interactive=interactive,
         verbose=verbose,
+        skip_task_history_cleanup=no_task_history_cleanup,
     )
 
     await dbdriver.close()
@@ -159,9 +177,10 @@ async def _upgrade_execute(
     rebase_branches: bool = False,
     interactive: bool = False,
     verbose: bool = False,
+    skip_task_history_cleanup: bool = False,
 ) -> None:
     """Execute the full upgrade sequence with structured step output."""
-    console.log("[bold]Step 1/6: Database migrations[/bold]")
+    console.log("[bold]Step 1/7: Database migrations[/bold]")
     migrations = await detect_migration_to_run(current_graph_version=root_node_graph_version)
 
     if verbose:
@@ -174,33 +193,33 @@ async def _upgrade_execute(
                 console.log(f"Upgrade cancelled due to migration failure. {FAILED_BADGE}")
                 return
 
-    console.log("[bold]Step 2/6: Internal schema[/bold]")
+    console.log("[bold]Step 2/7: Internal schema[/bold]")
     await initialize_internal_schema()
     console.log("Internal schema initialized")
 
-    console.log("[bold]Step 3/6: Core schema[/bold]")
+    console.log("[bold]Step 3/7: Core schema[/bold]")
     if verbose:
         await update_core_schema(db=db, initialize=False)
     else:
         with suppress_internal_logs():
             await update_core_schema(db=db, initialize=False)
 
-    console.log("[bold]Step 4/6: Internal objects[/bold]")
+    console.log("[bold]Step 4/7: Internal objects[/bold]")
     await upgrade_menu(db=db)
     await upgrade_permissions(db=db)
 
-    console.log("[bold]Step 5/6: Task manager[/bold]")
+    console.log("[bold]Step 5/7: Task manager[/bold]")
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
         await trigger_configure_all()
-        task_history_hint = await task_history_size_hint(client=client)
+        task_history = await read_task_history(client=client)
     console.log("Task manager configured")
-    if task_history_hint is not None:
-        console.log(task_history_hint)
+    if task_history.line is not None:
+        console.log(task_history.line)
 
-    console.log("[bold]Step 6/6: Branch rebase[/bold]")
+    console.log("[bold]Step 6/7: Branch rebase[/bold]")
     branches = await mark_branches_needing_rebase(db=db)
     plural = len(branches) != 1
     console.log(
@@ -222,7 +241,16 @@ async def _upgrade_execute(
             with suppress_internal_logs():
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
+    await _upgrade_task_history(reading=task_history, skip=skip_task_history_cleanup)
+
     console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
+
+
+async def _upgrade_task_history(reading: TaskHistoryReading, skip: bool) -> None:
+    """Run the last step, which cleans up a large task history backlog after the branches are rebased."""
+    console.log("[bold]Step 7/7: Task history cleanup[/bold]")
+    async with get_client(sync_client=False) as client:
+        await clean_up_task_history_for_upgrade(client=client, reading=reading, skip=skip, console=console)
 
 
 async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:

@@ -4,6 +4,9 @@ from typing import assert_never
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Counting stops here, so the count of old runs stays fast on a task history of millions of runs.
+OLD_RUNS_COUNT_LIMIT = 100_000
+
 
 class CleanupJobState(StrEnum):
     RUNNING = "running"

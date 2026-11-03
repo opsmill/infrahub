@@ -23,7 +23,14 @@ from sqlalchemy.dialects.postgresql import REGCLASS
 from sqlalchemy.exc import DBAPIError
 
 from .retention import task_run_deletion_off_reason
-from .task_history_models import CleanupJob, CleanupJobState, CleanupRequest, CleanupRewrite, TaskHistorySize
+from .task_history_models import (
+    OLD_RUNS_COUNT_LIMIT,
+    CleanupJob,
+    CleanupJobState,
+    CleanupRequest,
+    CleanupRewrite,
+    TaskHistorySize,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -38,8 +45,6 @@ _TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_stat
 _ACTIVITY_LOG_TABLES = ("events", "event_resources")
 # Above this many pages a table's live size is estimated from a sample of its pages, so a mostly live table is not read whole.
 _EXACT_MEASURE_PAGES = 10_000
-# Counting stops here, so the count of old runs stays fast on a task history of millions of runs.
-_OLD_RUNS_COUNT_LIMIT = 100_000
 # Bounds how long one delete holds its runs locked and how much a failure rolls back, while each statement still removes many rows.
 _RUNS_PER_TRANSACTION = 1_000
 # A lock held this long belongs to a stuck or long-running session, which would otherwise hold the cleanup until the maintenance timeout.
@@ -828,15 +833,15 @@ async def read_task_history_size(
     vacuum = get_current_settings().server.services.db_vacuum
     tables = TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters(), lock_timeout=None)
     counted = await tables.count_runs(
-        ended_before=datetime.now(UTC) - vacuum.retention_period, limit=_OLD_RUNS_COUNT_LIMIT + 1
+        ended_before=datetime.now(UTC) - vacuum.retention_period, limit=OLD_RUNS_COUNT_LIMIT + 1
     )
     size = None
     if isinstance(db.database_config, AsyncPostgresConfiguration):
         size = await total_size(db=db, tables=_TASK_HISTORY_TABLES)
     return TaskHistorySize(
         size=size,
-        old_runs=min(counted, _OLD_RUNS_COUNT_LIMIT),
-        old_runs_limit_reached=counted > _OLD_RUNS_COUNT_LIMIT,
+        old_runs=min(counted, OLD_RUNS_COUNT_LIMIT),
+        old_runs_limit_reached=counted > OLD_RUNS_COUNT_LIMIT,
         deletion_off_reason=task_run_deletion_off_reason(vacuum=vacuum),
     )
 
