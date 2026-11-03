@@ -154,9 +154,7 @@ class BranchMergeOrchestrator:
             )
             # Deleted after the MERGED transition for the same reason: a node delete stamps vertex
             # metadata without the snapshot that the rollback restores.
-            orphaned_generator_instance_ids = await self.generator_instance_cleaner.find_orphaned_instances(
-                merge_at=merge_at
-            )
+            orphaned_generator_instance_ids = await self._find_orphaned_generator_instances(merge_at=merge_at)
         except BaseException as exc:
             self.log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
             await self.rollback_handler.rollback(
@@ -204,6 +202,14 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    async def _find_orphaned_generator_instances(self, merge_at: Timestamp) -> set[str]:
+        # The proposed change checks skip an orphaned instance, so a failure here must not roll back the merge.
+        try:
+            return await self.generator_instance_cleaner.find_orphaned_instances(merge_at=merge_at)
+        except Exception:
+            self.log.exception("Generator instance lookup failed during merge; continuing without the cleanup")
+            return set()
 
     async def _delete_orphaned_generator_instances(self, instance_ids: set[str], user_id: str) -> None:
         # The proposed change checks skip an orphaned instance, so a failure here must not fail the merge.

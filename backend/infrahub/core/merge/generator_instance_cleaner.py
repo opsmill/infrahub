@@ -53,13 +53,17 @@ class GeneratorInstanceCleaner:
             node_uuids=deleted_node_uuids, at=merge_at.subtract(microseconds=1)
         )
         # A deletion that a conflict resolved to the base branch is in the diff but did not reach the destination.
-        remaining_nodes = await NodeManager.get_many(
-            db=self.db, ids=list(instance_ids_by_node), branch=self.destination_branch, at=merge_at
-        )
+        node_uuids = list(instance_ids_by_node)
+        remaining_node_uuids: set[str] = set()
+        for i in range(0, len(node_uuids), self.batch_size):
+            remaining_nodes = await NodeManager.get_many(
+                db=self.db, ids=node_uuids[i : i + self.batch_size], branch=self.destination_branch, at=merge_at
+            )
+            remaining_node_uuids.update(remaining_nodes.keys())
         return {
             instance_id
             for node_uuid, instance_ids in instance_ids_by_node.items()
-            if node_uuid not in remaining_nodes
+            if node_uuid not in remaining_node_uuids
             for instance_id in instance_ids
         }
 
@@ -67,7 +71,10 @@ class GeneratorInstanceCleaner:
         if not instance_ids:
             return
         instances = await NodeManager.get_many(db=self.db, ids=list(instance_ids), branch=self.destination_branch)
-        self.log.info(f"Deleting {len(instances)} generator instances whose target or definition the merge deleted")
+        self.log.info(
+            f"Deleting {len(instances)} of {len(instance_ids)} generator instances whose target or definition "
+            "the merge deleted; the others no longer exist"
+        )
         await NodeManager.delete(
             db=self.db, nodes=list(instances.values()), branch=self.destination_branch, user_id=user_id
         )

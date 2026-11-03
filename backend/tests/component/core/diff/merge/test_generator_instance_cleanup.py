@@ -319,6 +319,38 @@ async def test_merging_definition_deletion_removes_destination_generator_instanc
     await verify_graph(db=db)
 
 
+async def test_merging_target_and_definition_deletion_removes_each_instance_once(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definition: Node,
+    generator_instances: tuple[Node, Node],
+) -> None:
+    branch = await create_branch(db=db, branch_name="delete-generator-target-and-definition")
+    target_on_branch = await NodeManager.get_one(
+        db=db, branch=branch, id=car_person_data_generic["c1"].id, raise_on_error=True
+    )
+    definition_on_branch = await NodeManager.get_one(
+        db=db, branch=branch, id=generator_definition.id, raise_on_error=True
+    )
+    await NodeManager.delete(db=db, branch=branch, nodes=[target_on_branch, definition_on_branch])
+    coordinator = await get_diff_coordinator(db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
+
+    for instance in generator_instances:
+        assert await NodeManager.get_one(db=db, branch=default_branch, id=instance.id) is None
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $uuid})-[edge:IS_PART_OF {branch: $branch, status: "deleted"}]->(:Root)
+        RETURN count(edge) AS deleted_edges
+        """,
+        params={"uuid": generator_instances[0].id, "branch": default_branch.name},
+    )
+    assert results[0]["deleted_edges"] == 1
+    await verify_graph(db=db)
+
+
 async def test_branch_merge_deletes_generator_instances_of_a_deleted_target(
     db: InfrahubDatabase,
     default_branch: Branch,
