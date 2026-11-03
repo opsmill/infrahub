@@ -57,6 +57,20 @@ mutation AddProfileAndAllocate($device_id: String!, $profile_ids: [RelatedNodeIn
 }
 """
 
+CREATE_DEVICE_FROM_POOL = """
+mutation CreateDeviceFromPool($name: String!, $site_id: String!, $pool_id: String!) {
+    ScopeDeviceCreate(data: {
+        name: { value: $name }
+        role: { value: "leaf" }
+        tags: { value: ["red"] }
+        site: { id: $site_id }
+        vlan_id: { from_pool: { id: $pool_id } }
+    }) {
+        ok
+    }
+}
+"""
+
 ALLOCATE_IN_PLACE = """
 mutation AllocateInPlace($device_id: String!, $pool_id: String!) {
     ScopeDeviceUpdate(data: {
@@ -226,3 +240,50 @@ async def test_an_update_that_adds_a_profile_and_allocates_saves_the_profile_val
         assert stored_site.id == sites["site-b"].id
     else:
         assert stored.get_attribute("role").value == "spine"
+
+
+async def test_a_create_into_a_full_division_names_the_division(
+    db: InfrahubDatabase, default_branch: Branch, scoped_schema: None
+) -> None:
+    pool = await scoped_pool(db=db, name="vlan-one-per-site", allocation_scope=["site"], start=1, end=1)
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    await scoped_device(db=db, branch=default_branch, pool=pool, name="device-a1", site=site_a)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_DEVICE_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "device-a2", "site_id": site_a.id, "pool_id": pool.id},
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Pool vlan-one-per-site ({pool.id}) has no free number left in its ranges for site '{site_a.id}'."
+        " at vlan_id.from_pool"
+    ]
+    assert await NodeManager.count(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch) == 1
+
+
+async def test_a_create_into_a_full_unscoped_pool_keeps_the_pool_wide_text(
+    db: InfrahubDatabase, default_branch: Branch, scoped_schema: None
+) -> None:
+    pool = await scoped_pool(db=db, name="vlan-one-shared", allocation_scope=None, start=1, end=1)
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    await scoped_device(db=db, branch=default_branch, pool=pool, name="device-a1", site=site_a)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_DEVICE_FROM_POOL,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "device-a2", "site_id": site_a.id, "pool_id": pool.id},
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Pool vlan-one-shared ({pool.id}) has no free number left in its ranges. at vlan_id.from_pool"
+    ]
+    assert await NodeManager.count(db=db, schema=SCOPED_DEVICE.kind, branch=default_branch) == 1

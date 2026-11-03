@@ -95,6 +95,23 @@ class AllocationScope:
     def element_names(self) -> tuple[str, ...]:
         return tuple(element.name for element in self.elements)
 
+    def describe(self, division: Division) -> str:
+        """Return each scope element with the value the division holds for it, in scope order, joined by commas.
+
+        Raises:
+            ValueError: When the division does not hold one value per scope element.
+
+        """
+        if len(division.values) != len(self.elements):
+            raise ValueError(
+                f"The division holds {len(division.values)} value(s) for an allocation scope of"
+                f" {len(self.elements)} element(s)"
+            )
+        return ", ".join(
+            f"{name} holds no value" if isinstance(value, str) and not value else f"{name} '{value}'"
+            for name, value in zip(self.element_names, division.values, strict=True)
+        )
+
 
 @dataclass(frozen=True)
 class DivisionElementPath:
