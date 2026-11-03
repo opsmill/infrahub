@@ -172,12 +172,25 @@ Monitors the connection between Infrahub and the Git server:
 
 ### Sync status: data consistency
 
-Indicates the state of data synchronization:
+Indicates the state of data synchronization. Infrahub records it per branch:
 
-- **In sync**: All repository resources are current in Infrahub
+- **In Sync**: All repository resources are current in Infrahub
 - **Syncing**: Synchronization operation in progress
-- **Error (import)**: Failed to import resources from repository
+- **Import Error**: Failed to import resources from repository, as described in [when the import of a branch fails](#when-the-import-of-a-branch-fails)
+- **Tracked Ref Missing** (read-only repositories only): The branch or tag in `ref` was missing from the remote when the [read-only refs check](#read-only-refs-check) last ran. Infrahub keeps using the commit it imported last
 - **Unknown**: Synchronization state cannot be determined
+
+#### When the tracked ref of a read-only repository is deleted
+
+When the read-only refs check finds that a Git branch or tag named in `ref` no longer exists on the remote, Infrahub sets the sync status to **Tracked Ref Missing** on each Infrahub branch whose own `ref` names it. The default branch always has its own `ref`. A branch that inherits its `ref` from the default branch keeps its own sync status.
+
+On a branch with this status:
+
+- Infrahub refuses to merge the branch, and the **Repository Import Check** of its Proposed Change fails. See [Merge a branch](../branches/merge.mdx#before-the-merge-starts-repository-imports).
+- The **Commits** tab shows a warning that the tracked ref no longer exists on the remote, and lists the history from the commit Infrahub still uses.
+- The sync status indicator in the header does not turn red. It reports only **Import Error**.
+
+When the branch is imported again and the ref exists on the remote, for example after you change the `ref`, Infrahub sets the status back to **In Sync**. To clear the status, see [troubleshoot repository connections](./connect-repository.mdx#troubleshoot-repository-connections).
 
 ### Push status: merges waiting for the remote
 
@@ -187,14 +200,132 @@ Stored in the `delivery_status` attribute of a read-write repository. Read it on
 - **Pending** (`pending`): A push runs, is about to run, or waits for an automatic retry
 - **Action required** (`action-required`): No automatic retry is planned; retry or abandon the pending pushes, as described in [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails)
 
+## When the import of a branch fails
+
+An import reads one commit of the repository and applies what `.infrahub.yml` declares to one Infrahub branch. When the import fails, Infrahub sets the sync status of the repository on that branch to **Import Error**, and the task of the import, `Import objects into branch <branch>`, records the cause. To read it, select that branch and open the **Tasks** tab of the repository. While the status is **Import Error**, Infrahub refuses to merge the branch, as described in [Merge a branch](../branches/merge.mdx#before-the-merge-starts-repository-imports).
+
+### Entries in `.infrahub.yml` that fail the import
+
+The import fails when `.infrahub.yml` contains one of these entries:
+
+- A schema path that does not exist, or a schema directory that contains no `.yml`, `.yaml`, or `.json` file
+- A Jinja2 Transformation whose template file is missing, is empty, is not UTF-8 text, cannot be parsed, or is outside the repository
+- A Python Transformation or a check whose `class_name` is not defined in the module that `file_path` names
+
+None of the import is applied while one of these entries is in `.infrahub.yml`. To fix an entry, see [troubleshoot repository connections](./connect-repository.mdx#troubleshoot-repository-connections).
+
+:::warning Imports that fail after an upgrade to Infrahub 1.12
+Before Infrahub 1.12, Infrahub logged a warning for a missing schema path, or for a Python Transformation or check that it could not load, and imported the rest of the branch. It also registered a Jinja2 Transformation whose template had a problem, and that Transformation failed later, when an artifact was generated. After you upgrade, Infrahub sets the branch to **Import Error** at the next import of a branch whose `.infrahub.yml` contains one of these entries.
+:::
+
+### What the task log shows
+
+For a problem in the content of the repository, such as an invalid schema, object file, or GraphQL query, the task log has one error line that names the branch, the `.infrahub.yml` entry, and the cause, without a Python traceback:
+
+```text
+Failed to import branch 'main': Schema 'schemas/network.yml': The path does not exist
+```
+
+A failure that Infrahub does not recognize is logged once, with its traceback.
+
+A warning follows the error line. It names the import step that was running when the import stopped, the steps that completed, and the steps that did not run:
+
+```text
+Import of branch 'main' stopped while importing the schema. Completed: none. Not run: GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; check definitions; generator definitions; artifact definitions; generator actions and trigger rules from object files; deletion of removed GraphQL queries, transforms, checks and generators.
+```
+
+The steps run in the order of that list. A step with nothing to import is listed among the completed steps. When the import stops while Infrahub reads the repository, before the first step, the warning says `Import of branch '<branch>' stopped before any import step ran, so nothing was imported.`
+
+Infrahub does not undo the steps that completed. When an import stops after the first step, the branch keeps what Infrahub imported in the completed steps, and has no changes from the steps that did not run. At the next successful import of the branch, Infrahub applies every step.
+
+### Failures on other branches and repositories
+
+When the import of one branch fails, Infrahub still imports the other branches of the repository. When the synchronization of one repository fails, Infrahub still synchronizes the repositories after it.
+
+A connection or credential error is different. Infrahub sets the branch to **Import Error**, stops the synchronization of that repository until the next cycle, and does not write the step summary.
+
+## When the remote history is rewritten
+
+The history of a Git branch on the remote is rewritten when someone replaces commits instead of adding to them, for example with `git push --force` after a rebase, or after removing a commit that leaked a credential. The commit that Infrahub imported is then no longer part of the history of that branch.
+
+### Read-write repositories import the new history
+
+At the next synchronization, the task worker moves its copy of the Git branch to the new head of the remote branch, and Infrahub imports that commit into the matching Infrahub branch. You do not need to take any action. Commits that exist only in the old history are discarded from the copy of the task worker. The synchronization task logs a line such as:
+
+```text
+Reconciled branch infra/vlan-update of repository network-config with the remote history: <imported commit> was discarded and replaced by <new head>
+```
+
+Infrahub does not import the new head, rewritten or not, into these Infrahub branches:
+
+- A branch with `sync_with_git` off, other than the default branch. See [choosing whether a branch syncs with Git](#choosing-whether-a-branch-syncs-with-git).
+- A branch whose status is `NEED_REBASE`, `MERGING`, `MERGE_FAILED`, `MERGED`, or `DELETING`.
+- The default branch, and the branches that pending merges come from, while the repository has pending pushes. See [what waits while a push is pending](./branch-synchronization.mdx#what-waits-while-a-push-is-pending).
+
+Infrahub refuses to merge a branch whose Git branch was rewritten until it has imported the new head, because the remote then has a commit that Infrahub has not recorded. See [Merge a branch](../branches/merge.mdx#before-the-merge-starts-repository-imports).
+
+### Read-only repositories import the new commit on request
+
+Infrahub does not import from a read-only repository on its own, so after a rewrite Infrahub keeps the imported commit until you run **Import latest commit**. Infrahub then fetches from the remote and imports the commit that the `ref` points to now, also when the tracked branch was force-pushed or the tracked tag was moved to another commit. Every task worker then moves its copy to that commit. The **Commits** tab shows that the history was rewritten before you import, as described in [the Commits tab](#commits-tab).
+
+### The rewrite record of each branch
+
+Infrahub records the last rewrite of each Infrahub branch in four read-only attributes, on both repository types:
+
+- `last_rewrite_previous_commit`: the commit Infrahub had imported on the branch before the last rewrite
+- `last_rewrite_commit`: the commit Infrahub moved the branch to after the last rewrite
+- `last_rewrite_at`: when Infrahub detected the last rewrite
+- `rewrite_count`: how many rewrites the branch has seen, including the rewrites on the default branch before the branch was created
+
+For a read-write repository, Infrahub updates them during the synchronization that imports the new history. For a read-only repository, Infrahub updates them when you run **Import latest commit** and the imported commit is no longer in the history of the tracked branch or tag. A tag moved forward, to a newer commit in the same history, is not a rewrite.
+
+Infrahub does not count these changes as rewrites:
+
+- A change of the `default_branch` of a read-write repository, when the synchronization processes it within seven days
+- A change that you make to the `ref` or `commit` of a read-only repository
+
+The **On this branch** card of the repository details page lists the four attributes for the branch you select. To read them with GraphQL, query the repository on that branch:
+
+```graphql
+query RepositoryRewrites($name: String!) {
+  CoreGenericRepository(name__value: $name) {
+    edges {
+      node {
+        last_rewrite_previous_commit { value }
+        last_rewrite_commit { value }
+        last_rewrite_at { value }
+        rewrite_count { value }
+      }
+    }
+  }
+}
+```
+
+### Limits of a history rewrite
+
+- A task that reads the repository at a commit that the rewrite removed from the remote succeeds or fails depending on the task worker that runs it. Infrahub keeps the old commit on an Infrahub branch that does not import the new head, for example a branch with `sync_with_git` off. A task worker whose clone still contains that commit runs the task. A task worker that cloned the repository after the rewrite cannot fetch the commit from the remote, so the same task fails there.
+- The import deletes the GraphQL queries, Python Transformations, Jinja2 Transformations, check definitions, Generator definitions, objects and menus that the new history no longer declares. It does not delete artifact definitions or schema. Schema has no link to the repository that loaded it, so the import leaves the schema from the removed commits in place. To remove that schema from the branch, see [how to remove a schema element](../schema/migration.mdx#state-absent-or-present).
+
 ## Repository actions and operations
 
 Beyond basic synchronization, repositories support administrative actions for troubleshooting and maintenance:
 
 - **Check connectivity**: Validates network access and authentication without modifying repository content. For a read-write **Repository** the check also confirms that Infrahub can push to the remote, so credentials that can read but not push are caught here rather than at the first branch creation or merge. The result is recorded in the repository's operational status: a successful check sets it to **Online**, while a failure sets it to the matching error state by cause - a permission or authentication failure to **Credential Error**, a transport failure (unreachable host, timeout, TLS) to **Connectivity Error**, and anything else to **Error**. **Online** confirms repository-level write access only; it does not evaluate branch protection, push rules, or pre-receive hooks, which apply only when a real push is attempted. The write check is also effective only on Git servers that enforce write authorization when advertising the receive-pack service (such as GitHub and GitLab); on servers that defer that check to the actual push, a read-only credential can still be recorded **Online**
 - **Reimport current commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors. Refused while the repository has pending pushes
-- **Retry and abandon pending pushes** (read-write repositories only, through GraphQL): The `InfrahubRepositoryDeliveryRetry` mutation pushes the pending merges of the repository to the remote again. The `InfrahubRepositoryDeliveryAbandon` mutation drops every pending merge of the repository without a push, and keeps a record of them. See [retry the pending pushes](./branch-synchronization.mdx#retry-the-pending-pushes) and [what an abandonment leaves behind](./branch-synchronization.mdx#what-an-abandonment-leaves-behind)
+- **Retry push** and **Abandon pending push** (read-write repositories only): Select **Retry push**, or send the `InfrahubRepositoryDeliveryRetry` mutation, to push the pending merges of the repository to the remote again. Select **Abandon pending push**, or send the `InfrahubRepositoryDeliveryAbandon` mutation, to drop every pending merge of the repository without a push. Infrahub keeps a record of the abandoned merges. See [retry the pending pushes](./branch-synchronization.mdx#retry-the-pending-pushes) and [what an abandonment leaves behind](./branch-synchronization.mdx#what-an-abandonment-leaves-behind)
 - **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
+
+## The repository details page
+
+The details page of a repository shows which values apply to the whole repository and which apply only to the branch you selected, the state of the repository on every branch, and what Infrahub is running on it now. Its cards appear in this order:
+
+- **Details**: the values that are the same on every branch, such as the location and the operational status.
+- **On this branch**, with the name of the branch you selected: the values that Infrahub records per branch, such as the commit, the sync status, the [rewrite record](#the-rewrite-record-of-each-branch), and the `ref` of a read-only repository. When you select another branch, only this card changes.
+- **Branches**, titled **Infrahub branches** for a read-only repository: one row per branch, with the branch name, the branch status, the sync status, the commit and, for a read-only repository, the `ref`. The default branch is marked, and the number of branches is shown next to the title. For a read-write repository, the card lists only the branches that sync with Git. Search the branch names, filter by branch name, branch status, or sync status, for example to list only the branches with **Import Error**, and sort by when a branch was created or last updated. The card shows 10 rows per page and stores the page, the filters, and the sort in the URL, so the view stays the same after a reload, and you can share the link. The card reads the same rows as the [`InfrahubRepositoryBranchStatus` query](./branch-synchronization.mdx#checking-a-repositorys-status-on-every-branch).
+- **Repository activity**: the run that is in progress on the repository, with its operation, its step and branch, the worker that runs it, and how long it has been running. The card names the worker that holds the repository lock, and, under **Last runs**, the branches that the last run of each operation changed or failed on. The operations are **Sync**, **Reimport**, **Pull**, **Add**, **Branch creation**, and **Merge**. The card shows the same activity on every branch.
+- **Push to remote**, for a read-write repository only: the pushes of merged branches that wait for the remote, as described in [read the push state of a repository](./branch-synchronization.mdx#read-the-push-state-of-a-repository).
+
+To read the activity with GraphQL, use the `InfrahubRepositoryActivity` query with the repository ID or name. It returns the runs in `active_runs`, the last run of each operation in `last_runs`, and the holder of the repository lock in `lock`.
 
 ## The Commits tab and commits not yet imported {#commits-tab}
 
@@ -221,8 +352,9 @@ Each commit row shows its hash, summary, author, and date. The labels show how a
 - **Imported**: the commit Infrahub has imported on this Infrahub branch. When the imported commit is also the remote head, the row shows both labels
 - **Pending import**: a commit after the imported commit that Infrahub has not imported, other than the remote head
 - **Not on current history**: a commit that cannot be placed relative to the imported commit, because the history was rewritten, the imported commit was not found, or nothing has been imported on this Infrahub branch yet
+- **Behind**: on an Infrahub branch that does not sync with Git, a commit after the commit that the branch uses. Only a rebase moves the branch to it
 
-Commits older than the imported commit have no label. On an Infrahub branch that does not sync with Git, other than the default branch and the branch you added the repository on, newer commits have no label either, except the remote head: Infrahub imports no commits into that branch, and its imported commit changes only when you rebase the branch.
+Commits older than the imported commit have no label. On an Infrahub branch that does not sync with Git, other than the default branch and the branch you added the repository on, Infrahub imports no commits, and the commit of the branch changes only when you rebase the branch. On that branch, the newer commits are labeled **Behind** instead of **Pending import**, and while the branch is behind, the remote head is labeled both **Remote head** and **Behind**. See [branches that do not sync with Git](#branches-that-do-not-sync-with-git).
 
 Use the row menu to copy the full commit hash or, for a repository hosted on GitHub, to open the commit on GitHub.
 
@@ -237,6 +369,21 @@ Infrahub also compares the remote head with the imported commit, and the tab sho
 | Ref missing | Read-only repositories only: the `ref` does not resolve in the task worker's copy, for example after it was deleted on the remote and a later fetch removed it from the copy. | A warning that the tracked ref no longer exists on the remote. When a commit has been imported, the list starts at that commit and Infrahub still uses it. When nothing has been imported, the list is empty. |
 | Nothing imported | No commit has been imported on this Infrahub branch yet. | The commits, with every commit except the remote head labeled **Not on current history**. For a read-write repository with no Git branch to read, or a read-only repository with no `ref`, **No commit log**. |
 | No remote branch | Read-write repositories only: the Git branch does not exist in the task worker's copy, but the Infrahub branch has an imported commit. | **No commit log**. |
+
+### Branches that do not sync with Git {#branches-that-do-not-sync-with-git}
+
+On an Infrahub branch with `sync_with_git` off, the commit of a read-write repository stays the commit that the branch had when you created it, and Infrahub imports nothing into the branch. Infrahub compares that commit with the Git branch named by the repository's `default_branch`, and the top of the **Commits** tab shows one of these states:
+
+- **Up to date with `<default_branch>`**: the branch uses the latest commit of that Git branch.
+- **Behind `<default_branch>` by N commits**: that Git branch has newer commits. The tab title also shows the number of commits, and the commits are labeled **Behind**.
+- **Diverged from `<default_branch>`**: the commit the branch uses is no longer in the history of that Git branch, for example after a force push.
+- **Commit in use not found on the remote**: the commit the branch uses is no longer on the remote.
+
+This applies to every branch with `sync_with_git` off except the default branch, and except the branch you added the repository on: on that branch, the tab says that the next sync imports the pending commits.
+
+In the last three states, the tab shows a **Rebase branch** button. A rebase moves the branch to the commit that Infrahub's default branch uses for the repository. When the branch has diverged or its commit is not found, a branch that has a commit of its own in the repository keeps that commit. Before the rebase starts, you confirm it in the **Rebase the whole branch?** dialog, because the rebase applies to all the data and all the repositories of the branch, not only to this repository, as described in [Rebase a branch](../branches/rebase.mdx). While the rebase runs, the tab shows **Rebase running**.
+
+**Rebase branch** is disabled, with the reason shown below it, when you are not signed in, when you lack the permission to rebase branches, or when the branch is the default branch, is being merged, is merged, or its merge failed.
 
 ### Updated and Checked times {#commits-freshness}
 
