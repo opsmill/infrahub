@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import UTC, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +22,7 @@ from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite, TaskHistorySize
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.flow_run.cleanup import (
+    GIVE_UP_AFTER,
     POLL_INTERVAL,
     FollowedCleanup,
     TaskHistoryCleanupError,
@@ -57,8 +59,13 @@ STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
 TASK_HISTORY_CLEANUP_NOT_PROVIDED = "The task manager does not provide the task history cleanup yet; skipped."
 TASK_HISTORY_REWRITE_COMMAND = "infrahub tasks flush flow-runs --rewrite"
-# Short, because the size only informs the hint and is not worth a long wait.
+# Short, because a task manager that does not answer by then would also hold the upgrade's cleanup.
 TASK_HISTORY_SIZE_TIMEOUT = timedelta(seconds=10)
+# Prefect's hourly cleanup deletes a smaller backlog within minutes, so the upgrade leaves it to that cleanup.
+UPGRADE_CLEANUP_MIN_OLD_RUNS = 100_000
+# Short, because a cleanup that already runs elsewhere finishes there without the upgrade.
+UPGRADE_CLEANUP_GIVE_UP_AFTER = timedelta(minutes=2)
+UPGRADE_CLEANUP_OPTION = "--no-task-history-cleanup"
 
 
 @app.command()
@@ -140,30 +147,87 @@ def flush_callback() -> None:
     """Delete old task runs, or mark stale task runs as crashed."""
 
 
-async def task_history_size_hint(
-    client: PrefectClient, answer_within: timedelta = TASK_HISTORY_SIZE_TIMEOUT
-) -> str | None:
-    """Return the disk space the task history takes and the command that returns it, or None on SQLite.
+@dataclass(frozen=True)
+class TaskHistoryReading:
+    """What the task manager measured of its task history, or why it could not be read."""
 
-    When Prefect's vacuum switch keeps old task runs, the hint gives that reason instead of the command.
-    """
+    measured: TaskHistorySize | None
+    read_error: str | None = None
+    """The name of the error that kept the size from being read, when `measured` is None."""
+
+    @property
+    def line(self) -> str | None:
+        """The size and the old runs, why they could not be read, or None on SQLite, where the size is not measured."""
+        if self.measured is None:
+            return f"Could not read the task history size from the task manager ({self.read_error})."
+        if self.measured.size is None:
+            return None
+        taken = f"Task history takes {decimal(self.measured.size)}, with {_old_runs(measured=self.measured)} older than the retention."
+        if self.measured.deletion_off_reason is not None:
+            return f"{taken} Old task runs are not deleted, because {self.measured.deletion_off_reason}."
+        return taken
+
+
+async def read_task_history(
+    client: PrefectClient, answer_within: timedelta = TASK_HISTORY_SIZE_TIMEOUT
+) -> TaskHistoryReading:
+    """Read the size and the old runs of the task history from the task manager, naming the error when that fails."""
     try:
         async with asyncio.timeout(answer_within.total_seconds()):
             measured = await read_task_history_size(client=client)
-    # The size only informs the hint, so a failure to read it is named and the command is given without it.
+    # The reading only decides whether the upgrade cleans up, so a failure to read it is named and the upgrade goes on.
     except (httpx.HTTPError, ValidationError, TimeoutError) as exc:
-        return (
-            f"Could not read the task history size from the task manager ({type(exc).__name__}). "
-            f"To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+        return TaskHistoryReading(measured=None, read_error=type(exc).__name__)
+    return TaskHistoryReading(measured=measured)
+
+
+def upgrade_cleanup_skip_reason(reading: TaskHistoryReading, skip: bool) -> str | None:
+    """Why the upgrade does not clean up the task history, or None when it has a backlog large enough to clean up."""
+    measured = reading.measured
+    if skip:
+        reason = f"{UPGRADE_CLEANUP_OPTION} was given"
+    elif measured is None:
+        reason = "the task manager did not report its task history"
+    elif measured.deletion_off_reason is not None:
+        return f"Task history cleanup skipped, because {measured.deletion_off_reason}"
+    elif measured.old_runs < UPGRADE_CLEANUP_MIN_OLD_RUNS:
+        reason = (
+            f"fewer than {UPGRADE_CLEANUP_MIN_OLD_RUNS:,} runs are older than the retention, "
+            "which the task manager's hourly cleanup deletes"
         )
-    if measured.size is None:
+    else:
         return None
-    taken = (
-        f"Task history takes {decimal(measured.size)}, with {_old_runs(measured=measured)} older than the retention."
+    return f"Task history cleanup skipped, because {reason}. To get the disk space of old task history back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+
+
+async def clean_up_task_history_for_upgrade(
+    client: PrefectClient,
+    reading: TaskHistoryReading,
+    skip: bool,
+    console: Console,
+    poll_interval: timedelta = POLL_INTERVAL,
+) -> None:
+    """Delete the old task history and return its disk space when the task manager measured a large backlog, or print why not.
+
+    A cleanup that fails or cannot start is reported with the command that finishes it, and the upgrade goes on.
+    """
+    skipped = upgrade_cleanup_skip_reason(reading=reading, skip=skip)
+    if skipped is not None:
+        console.log(skipped)
+        return
+    console.log(
+        f"Deleting the finished runs older than the task history retention, because at least "
+        f"{UPGRADE_CLEANUP_MIN_OLD_RUNS:,} runs are that old, then rewriting the tables that are mostly free space"
     )
-    if measured.deletion_off_reason is not None:
-        return f"{taken} Old task runs are not deleted, because {measured.deletion_off_reason}."
-    return f"{taken} To get the space back, run: {TASK_HISTORY_REWRITE_COMMAND}"
+    exit_code = await flush_old_flow_runs(
+        client=client,
+        rewrite=True,
+        console=console,
+        poll_interval=poll_interval,
+        give_up_after=UPGRADE_CLEANUP_GIVE_UP_AFTER,
+    )
+    if exit_code:
+        console.log(f"The upgrade goes on without the cleanup. To finish it, run: {TASK_HISTORY_REWRITE_COMMAND}")
 
 
 def _old_runs(measured: TaskHistorySize) -> str:
@@ -175,7 +239,11 @@ def _old_runs(measured: TaskHistorySize) -> str:
 
 
 async def flush_old_flow_runs(
-    client: PrefectClient, rewrite: bool, console: Console, poll_interval: timedelta = POLL_INTERVAL
+    client: PrefectClient,
+    rewrite: bool,
+    console: Console,
+    poll_interval: timedelta = POLL_INTERVAL,
+    give_up_after: timedelta = GIVE_UP_AFTER,
 ) -> int:
     """Delete the finished runs older than the task history retention, printing the progress, waits and outcome.
 
@@ -190,6 +258,7 @@ async def flush_old_flow_runs(
             on_progress=lambda progress: console.log(_progress_line(cleanup=progress)),
             on_wait=lambda wait: console.log(f"Waiting to start the cleanup, because {wait.reason}"),
             poll_interval=poll_interval,
+            give_up_after=give_up_after,
         )
     except TaskHistoryCleanupFailedError as exc:
         console.log(f"{ERROR_BADGE} {exc.message}")
