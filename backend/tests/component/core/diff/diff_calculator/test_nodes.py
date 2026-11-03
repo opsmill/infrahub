@@ -149,6 +149,48 @@ async def test_node_delete_merged_into_main_time_range(
     assert relationship_diffs_by_name["owner"].action is DiffAction.REMOVED
 
 
+async def test_node_delete_merged_into_main_after_update_in_time_range(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_accord_main: Node,
+    person_john_main: Node,
+) -> None:
+    """A node updated on main inside the range, then deleted on a branch and merged, is removed with its new value."""
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.nbr_seats.value = 7
+    await car_main.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.delete(db=db)
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await diff_merger.merge_graph(at=Timestamp())
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=True,
+    )
+
+    node_diffs_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.REMOVED
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    nbr_seats_diff = attributes_by_name["nbr_seats"]
+    assert nbr_seats_diff.action is DiffAction.REMOVED
+    properties_by_type = {prop.property_type: prop for prop in nbr_seats_diff.properties}
+    value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert value_property.action is DiffAction.REMOVED
+    assert value_property.previous_value == 5
+    assert value_property.new_value in (None, "NULL")
+
+
 async def test_node_base_delete_branch_update(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node
 ) -> None:

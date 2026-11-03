@@ -43,12 +43,17 @@ class DiffNoPeerIdError(Exception): ...
 class DiffNotFoundError(Exception): ...
 
 
+def _closed_by_node_deletion(database_path: DatabasePath, status: RelationshipStatus) -> bool:
+    """Return whether a field edge is an active edge under a deleted node, closed when the node was deleted."""
+    # A merge deletes a node by closing its active field edges instead of adding deleted ones.
+    return database_path.node_status is RelationshipStatus.DELETED and status is RelationshipStatus.ACTIVE
+
+
 def _field_change(
     database_path: DatabasePath, changed_at: Timestamp, status: RelationshipStatus
 ) -> tuple[Timestamp, RelationshipStatus]:
     """Return when and how a field edge changed, reading an active edge under a deleted node as deleted with the node."""
-    # A merge deletes a node by closing its active field edges instead of adding deleted ones.
-    if database_path.node_status is RelationshipStatus.DELETED and status is RelationshipStatus.ACTIVE:
+    if _closed_by_node_deletion(database_path=database_path, status=status):
         return database_path.node_changed_at, RelationshipStatus.DELETED
     return changed_at, status
 
@@ -551,8 +556,10 @@ class DiffQueryParser:
     def _parse_path(self, database_path: DatabasePath) -> None:
         to_time = database_path.property_to_time
         # this path was added and removed within the timeframe, so we ignore it
+        # an edge closed by the deletion of its node records that deletion, so it is kept
         if (
             to_time
+            and not _closed_by_node_deletion(database_path=database_path, status=database_path.property_status)
             and self._get_path_from_time(database_path=database_path)
             <= database_path.property_from_time
             <= to_time
