@@ -59,7 +59,8 @@ class FlowRunFollower:
             await asyncio.sleep(self._poll_interval)
             try:
                 final_runs = await self._read_final_runs(flow_run_ids=list(self._waiters))
-            except Exception as exc:
+            # Poller boundary: every waiter must receive the read failure, or it would wait forever.
+            except Exception as exc:  # noqa: BLE001
                 for future in self._waiters.values():
                     if not future.done():
                         future.set_exception(exc)
