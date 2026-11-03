@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import SYSTEM_USER_ID, DiffAction
+from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, InfrahubKind, RelationshipDirection
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.bulk_merge import (
     BulkMergeAttributePropertyEdgesQuery,
@@ -13,8 +13,11 @@ from infrahub.core.diff.query.bulk_merge import (
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import DiffMergeMetadataQuery
+from infrahub.core.manager import NodeManager
+from infrahub.core.query.node import NodeListGetRelationshipsQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
 
@@ -95,6 +98,13 @@ class DiffMerger:
             diff_branch_name=self.source_branch.name,
             tracking_id=tracking_id,
         )
+        deleted_node_uuids = await self.diff_repository.get_affected_node_uuids(
+            diff_branch_name=self.source_branch.name,
+            tracking_id=tracking_id,
+            include_actions=[DiffAction.REMOVED],
+        )
+        # Read before the merge closes the edges that link these instances to the deleted nodes.
+        instance_ids_by_node = await self._get_generator_instances_by_node(node_uuids=deleted_node_uuids, at=at)
         self._merge_started = True
 
         log.info("Running bulk node existence merge")
@@ -125,17 +135,17 @@ class DiffMerger:
                 )
                 await metadata_query.execute(db=self.db)
 
-        deleted_node_uuids = await self.diff_repository.get_affected_node_uuids(
-            diff_branch_name=self.source_branch.name,
-            tracking_id=tracking_id,
-            include_actions=[DiffAction.REMOVED],
-        )
         log.info(
             "Re-evaluating branch-agnostic retirement for merged deletions",
             candidates=len(deleted_node_uuids),
         )
         if deleted_node_uuids:
             await self._retire_agnostic_fields_of_deleted_nodes(node_uuids=deleted_node_uuids, at=at, user_id=user_id)
+
+        if instance_ids_by_node:
+            await self._delete_generator_instances_of_deleted_nodes(
+                instance_ids_by_node=instance_ids_by_node, at=at, user_id=user_id
+            )
 
         log.info("Graph merge complete")
 
@@ -163,6 +173,67 @@ class DiffMerger:
                 edges_closed=retired.edges_closed,
                 at=at.to_string(),
             )
+
+    async def _get_generator_instances_by_node(self, node_uuids: list[str], at: Timestamp) -> dict[str, set[str]]:
+        """Return the generator instances on the destination branch that require each of these nodes.
+
+        Generator instances are branch-local, so a deletion made on the source branch never reached them.
+        """
+        if not node_uuids:
+            return {}
+        instance_schema = registry.schema.get(
+            name=InfrahubKind.GENERATORINSTANCE, branch=self.destination_branch, duplicate=False
+        )
+        identifiers = [rel.get_identifier() for rel in instance_schema.relationships if not rel.optional]
+        instance_ids_by_node: dict[str, set[str]] = {}
+        for i in range(0, len(node_uuids), self.metadata_batch_size):
+            batch_uuids = node_uuids[i : i + self.metadata_batch_size]
+            query = await NodeListGetRelationshipsQuery.init(
+                db=self.db,
+                branch=self.destination_branch,
+                at=at,
+                ids=batch_uuids,
+                outbound_identifiers=[],
+                inbound_identifiers=[],
+                bidirectional_identifiers=identifiers,
+            )
+            await query.execute(db=self.db)
+            peers = query.get_peers_group_by_node()
+            for node_uuid in batch_uuids:
+                instance_ids = {
+                    peer_id
+                    for identifier in identifiers
+                    for peer_id in peers.get_peer_ids(
+                        node_id=node_uuid, rel_name=identifier, direction=RelationshipDirection.BIDIR
+                    )
+                    if peers.get_peer_kind(peer_id) == InfrahubKind.GENERATORINSTANCE
+                }
+                if instance_ids:
+                    instance_ids_by_node[node_uuid] = instance_ids
+        return instance_ids_by_node
+
+    async def _delete_generator_instances_of_deleted_nodes(
+        self, instance_ids_by_node: dict[str, set[str]], at: Timestamp, user_id: str
+    ) -> None:
+        # A deletion that a conflict resolved to the base branch is in the diff but did not reach the destination.
+        remaining_nodes = await NodeManager.get_many(
+            db=self.db, ids=list(instance_ids_by_node), branch=self.destination_branch, at=at
+        )
+        instance_ids = {
+            instance_id
+            for node_uuid, node_instance_ids in instance_ids_by_node.items()
+            if node_uuid not in remaining_nodes
+            for instance_id in node_instance_ids
+        }
+        if not instance_ids:
+            return
+        log.info("Deleting generator instances of merged deletions", instances=len(instance_ids))
+        instances = await NodeManager.get_many(
+            db=self.db, ids=list(instance_ids), branch=self.destination_branch, at=at
+        )
+        await NodeManager.delete(
+            db=self.db, nodes=list(instances.values()), branch=self.destination_branch, at=at, user_id=user_id
+        )
 
     @retry_db_transaction(name="bulk_merge_node_existence")
     async def _bulk_merge_node_existence(self, at: Timestamp, plan: MergeExclusionPlan) -> None:
