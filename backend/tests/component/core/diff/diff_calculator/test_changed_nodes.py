@@ -443,7 +443,7 @@ CHANGED_NODES_CASES: list[ChangedNodesCase] = [
         expected_property_nodes=["accord", "camry", "civic"],
     ),
     ChangedNodesCase(
-        name="kind_changed_only_through_properties",
+        name="node_kinds_with_a_property_change_only",
         from_step="attribute_source",
         to_step=None,
         node_kinds=["TestPerson"],
@@ -465,6 +465,15 @@ CHANGED_NODES_CASES: list[ChangedNodesCase] = [
         on_default_branch=True,
         expected_field_nodes=["accord", "jane", "mainman"],
         expected_property_nodes=["accord", "alfred", "jane", "mainman"],
+    ),
+    ChangedNodesCase(
+        name="default_branch_as_diff_branch_one_kind",
+        from_step="main_changes",
+        to_step=None,
+        on_default_branch=True,
+        node_kinds=["TestCar"],
+        expected_field_nodes=["accord"],
+        expected_property_nodes=["accord"],
     ),
     ChangedNodesCase(
         name="default_branch_as_diff_branch_ignores_branch_changes",

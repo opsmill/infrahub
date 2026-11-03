@@ -991,7 +991,7 @@ AND (
 )
             """
         else:
-            # Neo4j planned a vertex scan for several edge types or a vertex label here, so each part seeks one index
+            # each part names one edge type and no vertex label, so that it can start from that type's branch index
             query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
@@ -1037,7 +1037,7 @@ AND (
 )
             """
         else:
-            # Neo4j planned a vertex scan for several edge types or a vertex label here, so each part seeks one index
+            # each part names one edge type and no vertex label, so that it can start from that type's branch index
             query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
