@@ -181,6 +181,8 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-address',
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
+            'resource-manager/track-existing-numbers',
+            'resource-manager/allocate-numbers-per-scope',
             'resource-manager/weighted-allocation',
           ],
         },
@@ -710,6 +712,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/number-pool-ranges',
                 'release-notes/deprecation-guides/schema-load-write-contract',
                 'release-notes/deprecation-guides/sso-account-name-fallback',
               ],
