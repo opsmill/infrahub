@@ -17,9 +17,11 @@ from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
     pool_lock,
     pool_target_attribute,
+    pool_target_lock,
     range_bounds,
     refuse_ranges_leaving_held_numbers,
     refuse_ranges_outside_attribute,
+    refuse_ranges_overlapping_other_pools,
     refuse_schema_pool,
     sync_shorthand,
 )
@@ -67,7 +69,14 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         refuse_schema_pool(pool=pool, message=SCHEMA_POOL_RANGES_REFUSED)
         pool_id = pool.get_id()
 
-        async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
+        async with (
+            pool_target_lock(
+                kind=str(pool.get_attribute("node").value),
+                attribute_name=str(pool.get_attribute("node_attribute").value),
+            ),
+            pool_lock(pool_id=pool_id),
+            graphql_context.db.start_transaction() as dbt,
+        ):
             range_node, result = await super().mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
@@ -95,7 +104,18 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         pool = await cls._get_editable_pool(db=db, range_node=obj)
         pool_id = pool.get_id()
 
-        async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
+        async with (
+            pool_target_lock(
+                kind=str(pool.get_attribute("node").value),
+                attribute_name=str(pool.get_attribute("node_attribute").value),
+            ),
+            pool_lock(pool_id=pool_id),
+            within_transaction(db=db) as dbt,
+        ):
+            # Re-read under the lock so the bounds compared below are the ones a concurrent range write stored.
+            obj = await NodeManager.get_one(
+                db=dbt, id=obj.get_id(), kind=obj.get_kind(), branch=branch, raise_on_error=True
+            )
             stored_bounds = (obj.get_attribute("start").value, obj.get_attribute("end").value)
             range_node, result = await super()._call_mutate_update(
                 info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
@@ -178,6 +198,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             await refuse_ranges_leaving_held_numbers(
                 db=db, pool=pool, ranges=list(bounds_by_id.values()), domain=domain
             )
+            await refuse_ranges_overlapping_other_pools(db=db, pool=pool, attribute=attribute, ranges=[candidate])
         mirrored_pool = await sync_shorthand(db=db, pool_id=pool_id, ranges=ranges, user_id=user_id)
         cls._record_mirrored_pool(range_node=range_node, mirrored_pool=mirrored_pool)
 

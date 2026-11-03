@@ -14,6 +14,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import UniquenessViolationError
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_conflict import NumberPoolConflictFinder
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_usage_nodes import NumberHolderNodeReader
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
@@ -27,6 +30,9 @@ async def test_node_validate_constraint_node_uniqueness_failure(
         branch=default_branch,
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
         ),
     )
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
@@ -87,6 +93,9 @@ async def test_node_validate_constraint_node_uniqueness_success(
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
         ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
+        ),
     )
     alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
 
@@ -112,6 +121,9 @@ async def test_hierarchical_uniqueness_constraint(
         branch=default_branch,
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
         ),
     )
 

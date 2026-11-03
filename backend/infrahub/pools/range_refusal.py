@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from infrahub.core.query.resource_manager import HeldNumber
+    from infrahub.pools.number_pool_overlap import RangeClash
     from infrahub.pools.number_pool_usage import HoldingObject
     from infrahub.pools.number_ranges import PoolRange
 
@@ -122,6 +123,23 @@ def ranges_leave_held_numbers_refusal(
     return (
         f"Changing the ranges of the {pool_name} pool to {_describe_ranges(ranges)} would leave numbers it tracks "
         f"outside every range: {listed}. Keep a range covering each of these numbers, or change those numbers first."
+    )
+
+
+def other_pool_overlap_refusal(
+    pool_name: str,
+    attribute_name: str,
+    clashes: Sequence[RangeClash],
+    domain: NumberDomain,
+) -> str:
+    """Return why the pool cannot take ranges that overlap the ranges of other pools on the same unique attribute."""
+    listed = "; ".join(
+        f"{clash.range.label(domain)} overlaps {clash.other_range.label(domain)} of the '{clash.other_pool_name}' pool"
+        for clash in clashes
+    )
+    return (
+        f"The '{pool_name}' pool cannot share numbers with another pool on the unique attribute '{attribute_name}': "
+        f"{listed}. Choose ranges that no other pool on '{attribute_name}' uses."
     )
 
 

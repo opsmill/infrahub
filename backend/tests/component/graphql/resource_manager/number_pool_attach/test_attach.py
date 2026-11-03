@@ -130,7 +130,11 @@ class TestNumberPoolAttach:
             variables={"title": "brownfield-new", "ticket_id": {"from_pool": {"id": pool.id}}},
         )
 
-        assert message == "Violates uniqueness constraint 'ticket_id'"
+        assert message == (
+            "Violates uniqueness constraint 'ticket_id': the 'brownfield' pool allocated 9500, which object "
+            f"'brownfield-9500, 9500' ('{held[0]['id']}') already holds. Attach that number to the pool by updating object '{held[0]['id']}' "
+            "with value 9500 and from_pool 'brownfield', or change its number, then retry."
+        )
         assert await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "brownfield-new"}) == []
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == []
 
@@ -147,6 +151,45 @@ class TestNumberPoolAttach:
 
         assert allocated["ticket_id"]["value"] == 9503
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [9500, 9501, 9502, 9503]
+
+    async def test_a_number_another_pool_handed_out_names_both_pools_and_attaching_it_lets_allocation_go_on(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """Pools that overlapped before the overlap refusal existed each offer the numbers the other handed out."""
+        first = await new_pool(db=db, name="overlap-first", start_range=9520, end_range=9529)
+        second = await new_pool(db=db, name="overlap-second", start_range=9520, end_range=9529)
+        held = await create_ticket(
+            db=db, branch=main_branch, title="overlap-held", ticket_id={"from_pool": {"id": first.id}}
+        )
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=CREATE_TICKET,
+            variables={"title": "overlap-new", "ticket_id": {"from_pool": {"id": second.id}}},
+        )
+
+        assert message == (
+            "Violates uniqueness constraint 'ticket_id': the 'overlap-second' pool allocated 9520, which object "
+            f"'overlap-held, 9520' ('{held['id']}') already holds through the 'overlap-first' pool, because the "
+            "ranges of the two pools overlap. Attach the numbers in the overlap to one of the pools, for example by "
+            f"updating object '{held['id']}' with value 9520 and from_pool 'overlap-second', then change the ranges "
+            "of the other pool so they no longer overlap, then retry."
+        )
+
+        await update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=held["id"],
+            ticket_id={"value": 9520, "from_pool": {"id": second.id}},
+        )
+        allocated = await create_ticket(
+            db=db, branch=main_branch, title="overlap-new", ticket_id={"from_pool": {"id": second.id}}
+        )
+
+        assert allocated["ticket_id"]["value"] == 9521
+        assert await used_numbers(db=db, branch=main_branch, pool=first) == []
+        assert await used_numbers(db=db, branch=main_branch, pool=second) == [9520, 9521]
 
     async def test_each_holder_of_an_attached_duplicate_is_reported_and_the_number_is_not_reallocated(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -239,9 +282,8 @@ class TestNumberPoolAttach:
     async def test_naming_another_pool_moves_the_attribute_and_allocates_from_it(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        # Pool B overlaps pool A, so a number left behind in A would still fall inside A's range and be reported.
         pool_a = await new_pool(db=db, name="re-pool-a", start_range=600, end_range=649)
-        pool_b = await new_pool(db=db, name="re-pool-b", start_range=600, end_range=699)
+        pool_b = await new_pool(db=db, name="re-pool-b", start_range=650, end_range=699)
         ticket = await create_ticket(
             db=db, branch=main_branch, title="re-pool", ticket_id={"from_pool": {"id": pool_a.id}}
         )
@@ -251,16 +293,16 @@ class TestNumberPoolAttach:
             db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"value": None, "from_pool": {"id": pool_b.id}}
         )
 
-        assert moved["ticket_id"]["value"] == 600, "pool B reads only its own records, so it offers the lowest number"
+        assert moved["ticket_id"]["value"] == 650
         assert await open_is_reserved_edges(db=db, pool=pool_a) == set()
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_a) == []
-        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (600,))}
+        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (650,))}
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_b) == [
-            (ticket["id"], "main", 600, "allocated")
+            (ticket["id"], "main", 650, "allocated")
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_b.get_id()
         reads = await pooled_numbers(db=db, branch=main_branch, node_id=ticket["id"])
-        assert reads["ticket_id"] == pool_source(600, pool_b)
+        assert reads["ticket_id"] == pool_source(650, pool_b)
 
     async def test_naming_another_pool_with_a_number_outside_the_first_pool_moves_the_attribute(
         self, db: InfrahubDatabase, main_branch: Branch
