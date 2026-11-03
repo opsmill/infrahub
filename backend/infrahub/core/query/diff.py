@@ -991,7 +991,7 @@ AND (
 )
             """
         else:
-            # Neo4j reads a per-type branch index only for a pattern with one edge type and no vertex label
+            # Neo4j planned a vertex scan for several edge types or a vertex label here, so each part seeks one index
             query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
@@ -1037,7 +1037,7 @@ AND (
 )
             """
         else:
-            # Neo4j reads a per-type branch index only for a pattern with one edge type and no vertex label
+            # Neo4j planned a vertex scan for several edge types or a vertex label here, so each part seeks one index
             query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
@@ -1062,6 +1062,7 @@ AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
+WITH DISTINCT p
 MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
 WHERE $node_kinds IS NULL OR n.kind IN $node_kinds
             """

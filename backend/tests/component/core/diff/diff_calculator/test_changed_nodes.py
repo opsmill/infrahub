@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -103,7 +102,7 @@ MIRROR_KIND = "TestingMirror"
 
 @dataclass
 class ChangeHistory:
-    """The branch and the time of every change made in the scenario, in the order they were made."""
+    """The branch, the node ids and the start time of each step of the scenario, in the order of the steps."""
 
     branch: Branch
     node_ids: dict[str, str]
@@ -120,7 +119,7 @@ async def changed_nodes_schema(
     node_group_schema_scope_class: None,
     data_schema_scope_class: None,
 ) -> None:
-    schema = deepcopy(do_car_person_schema_unregistered())
+    schema = do_car_person_schema_unregistered()
     person = schema.get(name="TestPerson")
     person.attributes.append(
         AttributeSchema(name="badge", kind="Number", optional=True, branch=BranchSupportType.AGNOSTIC)
@@ -164,7 +163,7 @@ async def _get(db: InfrahubDatabase, branch: Branch, node_id: str) -> Node:
 async def change_history(
     db: InfrahubDatabase, default_branch_scope_class: Branch, changed_nodes_schema: None
 ) -> ChangeHistory:
-    """Make each change of the scenario at its own time, so that every time window between two changes holds one."""
+    """Start each step of the scenario at its own time, so that the window from one step to the next holds its changes only."""
     main = default_branch_scope_class
     setup_at = Timestamp()
     john = await _create(db, main, "TestPerson", setup_at, name="John", height=180, badge=1)
@@ -296,34 +295,12 @@ class ChangedNodesCase:
     node_kinds: list[str] | None = None
 
 
-STEPS = [
-    "value",
-    "between_value_and_created",
-    "created",
-    "relationship_added",
-    "relationship_removed",
-    "same_kind_relationship_added",
-    "attribute_source",
-    "attribute_owner",
-    "attribute_protected",
-    "relationship_protected",
-    "relationship_source",
-    "relationship_owner",
-    "agnostic_attribute",
-    "aware_attribute_of_agnostic_node",
-    "node_deleted",
-    "branch_node_deleted",
-    "value_changed_and_undone",
-    "main_changes",
-    "end",
-]
+def _next_step(history: ChangeHistory, step: str) -> str:
+    steps = list(history.times)
+    return steps[steps.index(step) + 1]
 
 
-def _next_step(step: str) -> str:
-    return STEPS[STEPS.index(step) + 1]
-
-
-CHANGED_NODES_CASES = [
+CHANGED_NODES_CASES: list[ChangedNodesCase] = [
     ChangedNodesCase(
         name="attribute_value_changed",
         from_step="value",
@@ -510,7 +487,7 @@ class TestChangedNodesTimeWindows:
         default_branch: Branch,
     ) -> list[str]:
         from_time = history.times[case.from_step]
-        to_time = history.times[case.to_step or _next_step(case.from_step)]
+        to_time = history.times[case.to_step or _next_step(history, case.from_step)]
         diff_branch = default_branch if case.on_default_branch else history.branch
         query = await query_class.init(
             db=db,
@@ -559,13 +536,26 @@ class TestChangedNodesTimeWindows:
         }
 
 
-@pytest.mark.parametrize("query_class", [DiffFieldNodesQuery, DiffPropertyNodesQuery])
+@dataclass
+class MigratedKindCase:
+    name: str
+    query_class: type[DiffChangedNodesQuery]
+    expected_cars: list[str]
+
+
+MIGRATED_KIND_CASES: list[MigratedKindCase] = [
+    MigratedKindCase(name="field_nodes", query_class=DiffFieldNodesQuery, expected_cars=["accord", "camry"]),
+    MigratedKindCase(name="property_nodes", query_class=DiffPropertyNodesQuery, expected_cars=["accord"]),
+]
+
+
+@pytest.mark.parametrize("case", MIGRATED_KIND_CASES, ids=lambda case: case.name)
 async def test_node_with_migrated_kind_is_listed_once(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_accord_main: Node,
     car_camry_main: Node,
-    query_class: type[DiffChangedNodesQuery],
+    case: MigratedKindCase,
 ) -> None:
     branch = await create_branch(db=db, branch_name="migrated-kind")
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -590,9 +580,6 @@ async def test_node_with_migrated_kind_is_listed_once(
     migrated_accord.color.value = "#123456"
     await migrated_accord.save(db=db)
 
-    expected = {
-        DiffFieldNodesQuery: sorted([car_accord_main.id, car_camry_main.id]),
-        DiffPropertyNodesQuery: [car_accord_main.id],
-    }
-    listed = await _changed_node_uuids(db=db, query_class=query_class, base_branch=default_branch, branch=branch)
-    assert sorted(listed) == expected[query_class]
+    car_ids = {"accord": car_accord_main.id, "camry": car_camry_main.id}
+    listed = await _changed_node_uuids(db=db, query_class=case.query_class, base_branch=default_branch, branch=branch)
+    assert sorted(listed) == sorted(car_ids[name] for name in case.expected_cars)
