@@ -108,7 +108,7 @@ class SchemaNumberPoolSynchronizer:
                 continue
             async with lock.registry.get(name=pool.id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
                 number_pool = await NodeManager.get_one(
-                    db=self.db, id=pool.id, kind=CoreNumberPool, branch_agnostic=True, raise_on_error=True
+                    db=self.db, id=pool.id, kind=CoreNumberPool, raise_on_error=True
                 )
                 self.log.info(
                     f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
@@ -122,7 +122,6 @@ class SchemaNumberPoolSynchronizer:
             db=self.db,
             schema=CoreNumberPool,
             filters={"pool_type__value": NumberPoolType.SCHEMA.value},
-            branch_agnostic=True,
         )
         for schema_number_pool in schema_number_pools:
             defined_on_branches = get_branches_with_schema_number_pool(
@@ -166,9 +165,7 @@ class SchemaNumberPoolSynchronizer:
             at = Timestamp()
             repository = self._range_store_factory(db=dbt)
             # Read inside the lock so the mirror compares against the shorthand any earlier writer left.
-            pool_node = await NodeManager.get_one(
-                db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
-            )
+            pool_node = await NodeManager.get_one(db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
             reconciliation = await NumberPoolRangeReconciler(range_store=repository).reconcile(
                 pool=pool_node, declared=declared_ranges, at=at, user_id=user_id
             )
