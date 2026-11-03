@@ -11,34 +11,32 @@ updates:
     interval: weekly
     time: "09:00"
   target-branch: stable
-- directory: /frontend
+# allow update-types limit version updates only, so security updates still reach every dependency.
+- allow:
+  - dependency-type: production
+    update-types:
+    - version-update:semver-patch
+  - dependency-type: development
+    update-types:
+    - version-update:semver-minor
+    - version-update:semver-patch
+  directory: /frontend
   groups:
     frontend-security:
       applies-to: security-updates
       patterns:
       - "*"
-    storybook:
-      patterns:
-      - "@storybook/*"
-      - storybook
-    vitest:
-      patterns:
-      - "@vitest/*"
-      - vitest
-      - vitest-browser-react
-    graphql-codegen:
-      patterns:
-      - "@graphql-codegen/*"
-    frontend-minor-patch:
+    frontend-production:
+      dependency-type: production
       patterns:
       - "*"
-      update-types:
-      - minor
-      - patch
+    frontend-development:
+      dependency-type: development
+      patterns:
+      - "*"
   labels:
   - type/housekeeping
   - ci/skip-changelog
-  open-pull-requests-limit: 5
   package-ecosystem: npm
   schedule:
     day: monday
@@ -50,40 +48,12 @@ updates:
       applies-to: security-updates
       patterns:
       - "*"
-    docusaurus:
-      patterns:
-      - "@docusaurus/*"
-    docs-minor-patch:
+    docs:
       patterns:
       - "*"
-      update-types:
-      - minor
-      - patch
   labels:
   - type/housekeeping
   - ci/skip-changelog
-  open-pull-requests-limit: 5
-  package-ecosystem: npm
-  schedule:
-    day: monday
-    interval: weekly
-    time: "09:00"
-- directory: /frontend/packages/plugins/template
-  groups:
-    plugin-template-security:
-      applies-to: security-updates
-      patterns:
-      - "*"
-    plugin-template-minor-patch:
-      patterns:
-      - "*"
-      update-types:
-      - minor
-      - patch
-  labels:
-  - type/housekeeping
-  - ci/skip-changelog
-  open-pull-requests-limit: 5
   package-ecosystem: npm
   schedule:
     day: monday
@@ -93,23 +63,15 @@ updates:
   - /
   - /python_testcontainers
   groups:
+    opentelemetry-security:
+      applies-to: security-updates
+      patterns:
+      - "opentelemetry-*"
     python-security:
       applies-to: security-updates
       patterns:
       - "*"
-    opentelemetry:
-      patterns:
-      - "opentelemetry-*"
-    python-minor-patch:
-      patterns:
-      - "*"
-      update-types:
-      - minor
-      - patch
-  labels:
-  - type/housekeeping
-  - ci/skip-changelog
-  open-pull-requests-limit: 5
+  open-pull-requests-limit: 0 # Security updates only; a limit of 0 turns version updates off.
   package-ecosystem: uv
   schedule:
     day: monday
