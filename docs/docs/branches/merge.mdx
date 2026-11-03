@@ -24,6 +24,7 @@ Infrahub refuses to merge a branch when the sync status that a Git repository re
 
 - **Import Error**: the last import of the repository on the branch failed. Push a fix to Git, run **Reimport current commit** for the repository on that branch, or set the repository to inactive on the branch, then merge again.
 - **Syncing** or **Unknown**: no completed import is recorded on the branch. Wait for the import to complete, then merge again. If the status does not change, run **Reimport current commit** for the repository on that branch.
+- **Tracked Ref Missing**: the branch or tag that a read-only repository tracks on the branch was missing from the remote when Infrahub last checked it. Change the `ref` of the repository on the branch, or restore the ref on the remote and run **Reimport current commit**, then merge again. See [when the tracked ref of a read-only repository is deleted](../git-integration/overview.mdx#when-the-tracked-ref-of-a-read-only-repository-is-deleted).
 
 A repository that never imported on the branch shows the status that the default branch had when the branch was created. That status does not block the merge. Inactive repositories are not checked.
 
