@@ -195,55 +195,60 @@ async def test_ipaddress_nextavailable(
 
 
 @dataclass
-class IPv6FilterTestCase:
+class IPFilterTestCase:
     name: str
     kind: str
     filters: str
 
 
-IPV6_FILTER_TEST_CASES: list[IPv6FilterTestCase] = [
-    IPv6FilterTestCase(
+IP_FILTER_TEST_CASES: list[IPFilterTestCase] = [
+    IPFilterTestCase(
         name="prefix_exact_compressed",
         kind="BuiltinIPPrefix",
         filters='prefix__value: "2001:db8:1:57::/127"',
     ),
-    IPv6FilterTestCase(
+    IPFilterTestCase(
         name="prefix_exact_leading_zeros",
         kind="BuiltinIPPrefix",
         filters='prefix__value: "2001:0db8:0001:57::/127"',
     ),
-    IPv6FilterTestCase(
+    IPFilterTestCase(
         name="prefix_any_partial_compressed",
         kind="BuiltinIPPrefix",
         filters='any__value: "2001:db8:1:57::", partial_match: true',
     ),
-    IPv6FilterTestCase(
+    IPFilterTestCase(
         name="prefix_any_partial_leading_zeros",
         kind="BuiltinIPPrefix",
         filters='any__value: "2001:0db8:0001:57::", partial_match: true',
     ),
-    IPv6FilterTestCase(
+    IPFilterTestCase(
         name="address_exact_leading_zeros",
         kind="BuiltinIPAddress",
         filters='address__value: "2001:0db8:0001:0057::1/127"',
     ),
-    IPv6FilterTestCase(
+    IPFilterTestCase(
         name="address_any_partial_leading_zeros",
         kind="BuiltinIPAddress",
         filters='any__value: "2001:0db8:0001:0057::1", partial_match: true',
     ),
+    IPFilterTestCase(
+        name="address_exact_ipv4_without_prefix_length",
+        kind="BuiltinIPAddress",
+        filters='address__value: "10.0.0.1"',
+    ),
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in IPV6_FILTER_TEST_CASES])
-async def test_ipv6_filter_matches_any_notation(
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in IP_FILTER_TEST_CASES])
+async def test_ip_filter_matches_any_notation(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
-    test_case: IPv6FilterTestCase,
+    test_case: IPFilterTestCase,
 ) -> None:
-    """A filter on an IPv6 prefix or address matches the saved compressed value whichever notation is typed."""
+    """A filter on an IP prefix or address matches the saved value whichever valid notation is typed."""
     prefix = await Node.init(db=db, schema="IpamIPPrefix")
     await prefix.new(db=db, prefix="2001:0db8:0001:57::/127", ip_namespace=default_ipnamespace)
     await prefix.save(db=db)
@@ -251,6 +256,10 @@ async def test_ipv6_filter_matches_any_notation(
     address = await Node.init(db=db, schema="IpamIPAddress")
     await address.new(db=db, address="2001:0db8:0001:57::1/127", ip_namespace=default_ipnamespace)
     await address.save(db=db)
+
+    ipv4_address = await Node.init(db=db, schema="IpamIPAddress")
+    await ipv4_address.new(db=db, address="10.0.0.1/32", ip_namespace=default_ipnamespace)
+    await ipv4_address.save(db=db)
 
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
