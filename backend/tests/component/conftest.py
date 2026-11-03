@@ -89,7 +89,7 @@ from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.git import clone_repository
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import SHARED_NUMBER_TICKET, TICKET, load_schema
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
@@ -1860,6 +1860,16 @@ async def loaded_ticket_schema_scope_class(
     register_core_models_schema_scope_class: SchemaBranch,
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch_scope_class.update_schema_hash()
+
+
+@pytest.fixture(scope="class")
+async def loaded_shared_number_ticket_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[SHARED_NUMBER_TICKET]))
     default_branch_scope_class.update_schema_hash()
 
 

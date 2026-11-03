@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
+NUMBER_POOL_TARGET_LOCK_NAMESPACE = "number_pool_target"
 RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 
 

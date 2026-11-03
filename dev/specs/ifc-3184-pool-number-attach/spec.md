@@ -378,10 +378,23 @@ listed here stand as written there.
 - **FR-011**: The pool never inspects its attribute. P1 kept the attribute scan (its own FR-011), so
   this slice deletes it: allocation draws the lowest number the pool's own records leave free, and
   `NumberPoolGetTaken` is removed. *(Amended 2026-10-31: each spec had assigned the deletion to the
-  other, and it had not landed.)* One consequence ships with the deletion:
+  other, and it had not landed.)* Three consequences ship with the deletion:
   - **FR-011b**: A number drawn from a pool MUST go through the uniqueness check on every create
     path, including a NumberPool attribute the payload does not name. A template cannot feed a unique
     attribute from a pool, so template paths need no change.
+  - **FR-011c**: When the uniqueness constraint refuses a number a pool just allocated, the error
+    MUST name the pool, the number and the object holding it (its ID, and its display label or
+    human-friendly ID), and say to attach that number to the pool. The pool offers the same number on
+    every attempt until the holding object's number is attached or changed, or the holding object is
+    deleted. When another pool tracks the number for the holding object, the error MUST also name that
+    pool and say to change its ranges so the two pools no longer overlap. When several fields of the
+    violated constraint hold numbers pools just allocated, the error MUST name each field, number and
+    pool. An upsert whose human-friendly ID holds a number a pool just allocated MUST be refused with
+    this error instead of updating the object that already holds that human-friendly ID.
+  - **FR-011d**: On a unique attribute, a pool's range MUST NOT overlap a range of another pool over
+    the same kind and attribute; such a range write is refused, naming the other pool's range. Making
+    an attribute unique MUST be refused while pools over it overlap. Each pool reads only its own
+    records, so overlapping pools would each offer numbers the other handed out.
 
   **Identifying which numbers to attach is the operator's job** (decided 2026-09-16). A pool adopts
   nothing, bulk attach is out of scope, and this slice ships no enumeration surface: an operator

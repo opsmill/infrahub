@@ -43,9 +43,11 @@ from .common import (
     SCOPE_UPDATE_REFUSED,
     pool_lock,
     pool_target_attribute,
+    pool_target_lock,
     range_bounds,
     refuse_ranges_leaving_held_numbers,
     refuse_ranges_outside_attribute,
+    refuse_ranges_overlapping_other_pools,
     refuse_schema_pool,
     sync_shorthand,
 )
@@ -119,7 +121,10 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             }
         pool_data = cls._without_ranges(data=data, replacements=mirrored_bounds)
 
-        async with graphql_context.db.start_transaction() as dbt:
+        async with (
+            pool_target_lock(kind=data["node"].value, attribute_name=attribute.name),
+            graphql_context.db.start_transaction() as dbt,
+        ):
             number_pool, _ = await super().mutate_create(info=info, data=pool_data, branch=branch, database=dbt)
             pool_id = number_pool.get_id()
             async with pool_lock(pool_id=pool_id):
@@ -133,6 +138,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                         pool=number_pool, declared=declared_ranges[0], user_id=graphql_context.assigned_user_id
                     )
                 cls._raise_for_range_permissions(graphql_context=graphql_context, reconciliation=reconciliation)
+                await refuse_ranges_overlapping_other_pools(
+                    db=dbt, pool=number_pool, attribute=attribute, ranges=range_bounds(reconciliation.ranges)
+                )
                 stored_pool = await sync_shorthand(
                     db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
                 )
@@ -420,7 +428,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
 
         graphql_context: GraphqlContext = info.context
         pool_id = obj.get_id()
-        async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
+        async with (
+            pool_target_lock(kind=str(obj.get_attribute("node").value), attribute_name=attribute.name),
+            pool_lock(pool_id=pool_id),
+            within_transaction(db=db) as dbt,
+        ):
             # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
             obj = await NodeManager.get_one(db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch, raise_on_error=True)
             number_pool, _ = await super()._call_mutate_update(
@@ -454,6 +466,9 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             if reconciliation.changed:
                 await refuse_ranges_leaving_held_numbers(
                     db=dbt, pool=number_pool, ranges=range_bounds(reconciliation.ranges), domain=domain
+                )
+                await refuse_ranges_overlapping_other_pools(
+                    db=dbt, pool=number_pool, attribute=attribute, ranges=range_bounds(reconciliation.ranges)
                 )
             stored_pool = await sync_shorthand(
                 db=dbt, pool_id=pool_id, ranges=reconciliation.ranges, user_id=graphql_context.assigned_user_id
