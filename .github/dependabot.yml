@@ -1,3 +1,6 @@
+# Listing a directory here turns off the repository-level grouping of security updates for it,
+# so every npm and uv entry needs its own security group that matches all packages.
+# /frontend/packages/plugins/template is left out on purpose and keeps the repository-level grouping.
 updates:
 - directory: /
   ignore:
@@ -11,8 +14,10 @@ updates:
     interval: weekly
     time: "09:00"
   target-branch: stable
-# allow update-types limit version updates only, so security updates still reach every dependency.
+# Frontend version updates: production dependencies get patch releases, development dependencies get minor and patch
+# releases, and major releases are never proposed.
 - allow:
+  # The update-types filter version updates only, so security fixes still reach every dependency at any version.
   - dependency-type: production
     update-types:
     - version-update:semver-patch
@@ -22,6 +27,7 @@ updates:
     - version-update:semver-patch
   directory: /frontend
   groups:
+    # Every frontend security fix, for production and development dependencies alike, goes in this pull request.
     frontend-security:
       applies-to: security-updates
       patterns:
@@ -42,8 +48,10 @@ updates:
     day: monday
     interval: weekly
     time: "09:00"
+# Docs: all version updates, major releases included, go in one pull request.
 - directory: /docs
   groups:
+    # Every docs security fix goes in this pull request.
     docs-security:
       applies-to: security-updates
       patterns:
@@ -59,19 +67,22 @@ updates:
     day: monday
     interval: weekly
     time: "09:00"
+# Backend: security updates only, no version updates.
 - directories:
   - /
   - /python_testcontainers
   groups:
+    # OpenTelemetry packages require matching versions of each other, so their security fixes go in their own pull request.
     opentelemetry-security:
       applies-to: security-updates
       patterns:
       - "opentelemetry-*"
+    # Every other Python security fix goes in this pull request.
     python-security:
       applies-to: security-updates
       patterns:
       - "*"
-  open-pull-requests-limit: 0 # Security updates only; a limit of 0 turns version updates off.
+  open-pull-requests-limit: 0 # A limit of 0 turns version updates off; security pull requests have their own limit of 10.
   package-ecosystem: uv
   schedule:
     day: monday
