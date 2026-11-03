@@ -156,7 +156,7 @@ async def test_merging_target_deletion_removes_destination_generator_instances(
     await verify_graph(db=db)
 
 
-async def test_merge_rollback_restores_generator_instances_and_their_peers(
+async def test_merge_rollback_after_the_instance_lookup_restores_the_graph(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_data_generic: dict[str, Node],
