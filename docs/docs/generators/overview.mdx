@@ -159,7 +159,7 @@ Generator instances enable:
 
 - **Per-target status tracking**: you can see which targets succeeded and which failed, without needing to inspect logs.
 - **Selective re-runs**: you can re-run the Generator for a single target object without affecting others. Only the instance for that target gets updated.
-- **Instance removal with its target**: when you delete a target object, Infrahub deletes the Generator instance for that target. The objects the Generator created for that target and its Generator group stay in Infrahub. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
+- **Instance removal with its target**: when you delete a target object, Infrahub deletes the Generator instance for that target. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 You can view Generator instances in the Infrahub UI under the Generator Definition detail page.
 
@@ -207,7 +207,7 @@ Adding or removing group members changes what gets targeted on the next Generato
 
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
 - **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up — see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
-- **Delete an object that is a target**: Infrahub deletes its Generator instance. The objects the Generator created for it and its Generator group are not deleted.
+- **Delete an object that is a target**: Infrahub deletes its Generator instance. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 ### Standard groups vs. Generator groups
 
