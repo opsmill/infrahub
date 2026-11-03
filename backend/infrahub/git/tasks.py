@@ -58,7 +58,7 @@ from infrahub.exceptions import (
     RepositoryCredentialsError,
     RepositoryError,
 )
-from infrahub.git.graphql_queries import GitRepositoryNodeQuery
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery, StoredUserCheckQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -2185,8 +2185,12 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
     log = get_run_logger()
     client = get_client()
 
-    validator = await client.get(kind=CoreUserValidator, id=model.validator_id)
-    await validator.checks.fetch()
+    stored_check_query = StoredUserCheckQuery(validator_id=model.validator_id, name=model.name)
+    stored_check_id = stored_check_query.parse_response(
+        response=await client.execute_graphql(
+            query=stored_check_query.render_query(), variables=stored_check_query.variables()
+        )
+    )
 
     repo = await get_initialized_repo(
         client=client,
@@ -2221,17 +2225,8 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
         log.error(exc.message)
         log_entries = f"FATAL Error/n:{exc.message}"
 
-    check = None
-    for relationship in validator.checks.peers:
-        existing_check = relationship.peer
-        if (
-            existing_check.typename == InfrahubKind.STANDARDCHECK
-            and existing_check.kind.value == "CheckDefinition"
-            and existing_check.name.value == model.name
-        ):
-            check = existing_check
-
-    if check:
+    if stored_check_id:
+        check = await client.get(kind=CoreStandardCheck, id=stored_check_id)
         check.created_at.value = Timestamp().to_string()
         check.message.value = log_entries
         check.conclusion.value = conclusion.value

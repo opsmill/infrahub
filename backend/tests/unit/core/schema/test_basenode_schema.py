@@ -1,4 +1,8 @@
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+import pytest
+
+from infrahub.core.schema import AttributePathParsingError, AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.validators.uniqueness.checker import get_attribute_path_from_string
 
 
 def _build_node_schema() -> NodeSchema:
@@ -82,3 +86,35 @@ class TestUpdateOptionalTextFields:
         node.update(other=other)
 
         assert node.description is None
+
+
+@pytest.mark.parametrize("path", ["name__value__extra", "owner__name__value__extra", "parent__name__value__extra"])
+def test_parse_schema_path_rejects_extra_segments(car_person_schema_root: SchemaRoot, path: str) -> None:
+    branch = SchemaBranch(cache={}, name="test")
+    branch.load_schema(schema=car_person_schema_root)
+    node = branch.get_node(name="TestCar")
+    node.parent = "TestPerson"
+
+    with pytest.raises(AttributePathParsingError, match=rf"^{path} has too many segments on schema TestCar$"):
+        node.parse_schema_path(path=path, schema=branch)
+
+
+def test_parse_schema_path_accepts_parent_attribute_property(car_person_schema_root: SchemaRoot) -> None:
+    branch = SchemaBranch(cache={}, name="test")
+    branch.load_schema(schema=car_person_schema_root)
+    node = branch.get_node(name="TestCar")
+    node.parent = "TestPerson"
+
+    parsed = node.parse_schema_path(path="parent__name__value", schema=branch)
+
+    assert parsed.attribute_schema is not None
+    assert parsed.attribute_schema.name == "name"
+    assert parsed.attribute_property_name == "value"
+    assert parsed.related_schema is not None
+    assert parsed.related_schema.kind == "TestPerson"
+
+
+@pytest.mark.parametrize("path", ["name__value__extra", "name__value__description__value", "owner__name__value"])
+def test_uniqueness_checker_rejects_extra_path_segments(path: str) -> None:
+    with pytest.raises(ValueError, match=rf"^{path} is not valid on TestingWidget$"):
+        get_attribute_path_from_string(path=path, schema=_build_node_schema())
