@@ -4,7 +4,8 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.selective_regen.generator_output import (
@@ -13,7 +14,14 @@ from infrahub.core.merge.selective_regen.generator_output import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
-from tests.helpers.diff_factories import EnrichedAttributeFactory, EnrichedNodeFactory, EnrichedRootFactory
+from tests.helpers.diff_factories import (
+    EnrichedAttributeFactory,
+    EnrichedNodeFactory,
+    EnrichedPropertyFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
 from tests.helpers.selective_regen import RecordingGeneratorDiffCapturer
 
 if TYPE_CHECKING:
@@ -42,6 +50,38 @@ def _changed_node(uuid: str) -> EnrichedDiffNode:
     )
 
 
+def _moved_interface(uuid: str, previous_device: str, new_device: str) -> EnrichedDiffNode:
+    """An interface whose cardinality-one device relationship moved, as consolidated by the diff enrichment."""
+    return EnrichedNodeFactory.build(
+        uuid=uuid,
+        kind="TestInterface",
+        label=uuid,
+        action=DiffAction.UPDATED,
+        attributes=set(),
+        relationships={
+            EnrichedRelationshipGroupFactory.build(
+                name="device",
+                cardinality=RelationshipCardinality.ONE,
+                action=DiffAction.UPDATED,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(
+                        peer_id=new_device,
+                        action=DiffAction.UPDATED,
+                        properties={
+                            EnrichedPropertyFactory.build(
+                                property_type=DatabaseEdgeType.IS_RELATED,
+                                previous_value=previous_device,
+                                new_value=new_device,
+                                action=DiffAction.UPDATED,
+                            )
+                        },
+                    )
+                },
+            )
+        },
+    )
+
+
 def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
     peers = [SimpleNamespace(peer=SimpleNamespace(id=member_id)) for member_id in member_ids]
     return SimpleNamespace(name=SimpleNamespace(value=name), members=SimpleNamespace(peers=peers))
@@ -50,8 +90,8 @@ def _group(name: str, member_ids: list[str]) -> SimpleNamespace:
 class _WindowDiffCoordinator(DiffCoordinator):
     """Returns a diff of the requested window that changed the given nodes, recording the nodes it was scoped to."""
 
-    def __init__(self, changed_node_ids: list[str]) -> None:
-        self._changed_node_ids = changed_node_ids
+    def __init__(self, changed_node_ids: list[str], changed_nodes: list[EnrichedDiffNode] | None = None) -> None:
+        self._changed_nodes = [_changed_node(uuid=node_id) for node_id in changed_node_ids] + (changed_nodes or [])
         self.requested_node_uuids: list[set[str] | None] = []
 
     async def calculate_arbitrary_timeframe_diff(  # noqa: PLR0913, PLR0917
@@ -67,11 +107,7 @@ class _WindowDiffCoordinator(DiffCoordinator):
         return EnrichedRootFactory.build(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,
-            nodes={
-                _changed_node(uuid=node_id)
-                for node_id in self._changed_node_ids
-                if node_uuids is None or node_id in node_uuids
-            },
+            nodes={node for node in self._changed_nodes if node_uuids is None or node.uuid in node_uuids},
         )
 
 
@@ -121,6 +157,22 @@ async def test_capture_returns_only_the_changes_to_the_nodes_the_generators_trac
 
     assert coordinator.requested_node_uuids == [{"n1", "n2", "n3"}]
     assert _captured_ids(result) == {"n1", "n2", "n3"}
+
+
+async def test_capture_adds_the_peers_of_the_relationships_the_tracked_nodes_changed() -> None:
+    # The generator moved its tracked interface from dev1 to dev2 and saved the interface only; both
+    # devices record the change on their own side, while dev3 and the concurrent write stay out.
+    client = _FakeClient({"set_device": [_group(f"set_device-{_HASH_A}", ["eth0"])]})
+    coordinator = _WindowDiffCoordinator(
+        changed_node_ids=["dev1", "dev2", "dev3", "concurrent"],
+        changed_nodes=[_moved_interface(uuid="eth0", previous_device="dev1", new_device="dev2")],
+    )
+    capturer = _capturer(client, coordinator)
+
+    result = await capturer.capture(since=Timestamp(), generator_definition_names=["set_device"])
+
+    assert coordinator.requested_node_uuids == [{"eth0"}, {"dev1", "dev2"}]
+    assert _captured_ids(result) == {"eth0", "dev1", "dev2"}
 
 
 async def test_capture_returns_every_change_in_the_window_when_no_tracking_group_resolves() -> None:

@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub_sdk.protocols import CoreGeneratorGroup
 
+from infrahub.core.constants import NULL_VALUE, DiffAction
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 
@@ -18,6 +20,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 
 # A generator tracks the nodes it writes into a per-member group named "<definition name>-<md5 hex>".
@@ -57,8 +60,10 @@ class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
     A time-window diff of the branch alone would also carry any concurrent write landing on it while the
     generators ran. Each generator records the nodes it saves into a tracking group, so calculating the
     window diff for those nodes only yields the generator's own output with per-field detail, free of the
-    concurrent noise. When no tracked node can be resolved the window diff is calculated unscoped, so a
-    lookup miss widens the selection rather than dropping a consuming artifact.
+    concurrent noise. A relationship change is recorded on both of its ends and the generator may save only
+    one, so the window diff of the peers those changes point to is added too. When no tracked node can be
+    resolved the window diff is calculated unscoped, so a lookup miss widens the selection rather than
+    dropping a consuming artifact.
     """
 
     def __init__(
@@ -75,16 +80,54 @@ class GeneratorTrackingGroupDiffCapturer(GeneratorMutationDiffCapturer):
 
     async def capture(self, *, since: Timestamp, generator_definition_names: list[str]) -> list[NodeDiff]:
         node_ids = await self._output_node_ids(generator_definition_names=generator_definition_names)
+        until = Timestamp()
 
-        diff = await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
-            base_branch=self.branch,
-            diff_branch=self.branch,
-            from_time=since,
-            to_time=Timestamp(),
+        diff = await self._window_diff(
+            since=since,
+            until=until,
             # an empty tracking group widens the read like a missing one, instead of selecting no node
             node_uuids=node_ids or None,
         )
-        return self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
+        captured = self.serializer.serialize(root=diff, target_branch_name=self.branch.name)
+        if not node_ids:
+            return captured
+
+        peer_ids = self._relationship_peer_ids(diff=diff) - node_ids
+        if peer_ids:
+            peer_diff = await self._window_diff(since=since, until=until, node_uuids=peer_ids)
+            captured.extend(self.serializer.serialize(root=peer_diff, target_branch_name=self.branch.name))
+        return captured
+
+    async def _window_diff(
+        self, *, since: Timestamp, until: Timestamp, node_uuids: set[str] | None
+    ) -> EnrichedDiffRoot:
+        return await self.diff_coordinator.calculate_arbitrary_timeframe_diff(
+            base_branch=self.branch,
+            diff_branch=self.branch,
+            from_time=since,
+            to_time=until,
+            node_uuids=node_uuids,
+        )
+
+    @staticmethod
+    def _relationship_peer_ids(*, diff: EnrichedDiffRoot) -> set[str]:
+        """Collect the peers the changed relationships of the diff's nodes point to, before and after the change."""
+        peer_ids: set[str] = set()
+        for node in diff.nodes:
+            for relationship in node.relationships:
+                for element in relationship.relationships:
+                    if element.action is DiffAction.UNCHANGED:
+                        continue
+                    peer_ids.add(element.peer_id)
+                    # a cardinality-one element carries only its latest peer, the earlier one is on this property
+                    for prop in element.properties:
+                        if prop.property_type is DatabaseEdgeType.IS_RELATED:
+                            peer_ids.update(
+                                value
+                                for value in (prop.previous_value, prop.new_value)
+                                if value not in {None, NULL_VALUE}
+                            )
+        return peer_ids
 
     async def _output_node_ids(self, *, generator_definition_names: list[str]) -> set[str] | None:
         """Resolve the nodes the just-run generators wrote from their tracking groups on the target branch.
