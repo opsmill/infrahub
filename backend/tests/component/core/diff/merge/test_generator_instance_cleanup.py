@@ -11,7 +11,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, SchemaPathType
+from infrahub.core.constants import BranchSupportType, GeneratorInstanceStatus, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -21,6 +21,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.workers.dependencies import build_cache, build_database, build_event_service
@@ -29,6 +30,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.schema import load_schema
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import get_diff_coordinator, get_diff_merger
@@ -316,6 +318,46 @@ async def test_merging_definition_deletion_removes_destination_generator_instanc
         assert await NodeManager.get_one(db=db, branch=default_branch, id=instance.id) is None
     for target in (car_person_data_generic["c1"], car_person_data_generic["c2"]):
         assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is not None
+    await verify_graph(db=db)
+
+
+@pytest.mark.xfail(
+    reason="A branch delete of an agnostic node is global, but the cascade deletes its instances only on that branch",
+    strict=True,
+)
+async def test_merging_agnostic_target_deletion_removes_destination_generator_instances(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    generator_definition: Node,
+) -> None:
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Vendor",
+                    namespace="Testing",
+                    branch=BranchSupportType.AGNOSTIC,
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                )
+            ]
+        ),
+    )
+    target = await Node.init(db=db, branch=default_branch, schema="TestingVendor")
+    await target.new(db=db, name="agnostic-vendor")
+    await target.save(db=db)
+    instance = await _create_instance(
+        db=db, branch=default_branch, definition=generator_definition, target=target, name="agnostic-target-instance"
+    )
+    branch = await create_branch(db=db, branch_name="delete-agnostic-generator-target")
+    target_on_branch = await NodeManager.get_one(db=db, branch=branch, id=target.id, raise_on_error=True)
+    await NodeManager.delete(db=db, branch=branch, nodes=[target_on_branch])
+    coordinator = await get_diff_coordinator(db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
+
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is None
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=instance.id) is None
     await verify_graph(db=db)
 
 
