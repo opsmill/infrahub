@@ -1,6 +1,6 @@
 ---
 name: neo4j-cypher-guide
-description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, and Quantified Path Patterns (QPP) for efficient graph traversal.
+description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, Quantified Path Patterns (QPP) for efficient graph traversal, and how to choose the entry point of a query so the plan starts with an index seek instead of a label scan.
 ---
 
 # Neo4j Modern Cypher Query Guide
@@ -165,6 +165,12 @@ Load the appropriate reference file when:
 - Working with paths longer than 3-4 hops
 - Complex pattern matching requirements
 
+### references/entry-points.md
+
+- A plan starts with `NodeByLabelScan` or `UnionNodeByLabelsScan` where you expected an index seek
+- Writing a query that starts from a relationship's `branch` index
+- The indexed edge is not the first hop of the pattern
+
 ## Query Generation Checklist
 
 Before finalizing any generated query:
@@ -209,65 +215,41 @@ Before finalizing any generated query:
 4. **Limit expansion depth** - Use reasonable upper bounds in quantifiers
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
+7. **Leave indexed properties unwrapped** - `toString(n.uuid) IN $ids` cannot use the `uuid` index
 
-## Planner gotcha: node labels can cost you a relationship-property index
+## Entry Point of a Branch-Scoped Query
 
-Whether a pattern is seeded from a relationship-property index or from a
-`NodeByLabelScan` is a cost-model decision, and with Infrahub's handful of
-branch values the cost model is stacked against the relationship index.
-Index statistics only tell the planner how many distinct values the indexed
-property has, so it prices a `{branch: $branch_name}` seek as an equal share
-of all edges — even when the target branch holds a fraction of a percent of
-them — and a label scan over an endpoint followed by an expand comes out
-cheaper. Confirm with `EXPLAIN` / `PROFILE` before rewriting: the entry
-operator should be `DirectedRelationshipIndexSeek` or
-`UndirectedRelationshipIndexSeek`, not `NodeByLabelScan`.
+Build one query text per entry point, and check the first operator of each plan with `EXPLAIN`.
+Neo4j reuses one plan for every parameter value: a `$ids IS NULL OR n.uuid IN $ids` check plans a
+`NodeByLabelScan` instead of the `Node(uuid)` seek, and a plan built for a small branch also runs on
+the default branch.
 
-When the plan shows a label scan, either force the seek or take the label
-scan out of the planner's options:
-
-- **Hint the index** and keep the labels: name the relationship and add
-  `USING INDEX r:REL_TYPE(branch)` after the `MATCH`. The labels are checked
-  in a filter directly above the seek, and the result set is unchanged. The
-  hint is a contract: the same `MATCH` must bind `r` with that type and put
-  a predicate on that property, or the query fails to compile (`42N77`), and
-  an index must exist on that type and property — with the default
-  `dbms.cypher.hints_error=false` a hint on an unindexed type is silently
-  ignored and the query falls back to a type scan. Only emit it for the edge
-  types and properties listed in `backend/infrahub/core/graph/index.py`.
-- **Strip the labels** from the entry pattern:
-  - Remove **every** node label in the pattern — not just on the rel's
-    endpoints, but on all node placeholders the pattern touches.
-  - Keep **only the targeted indexed property** inline on the relationship.
-    Extra inline filters (status, type combinations, etc.) can be enough to
-    push the planner away from the relationship-index seek.
-  - Re-apply the labels and any non-indexed filtering **after a planning
-    barrier** — a `WITH DISTINCT` or an aggregation. A `WHERE n:Node` on the
-    same `MATCH`, or after a plain `WITH`, is normalised back into the
-    pattern and brings the label scan back.
+- **The node uuids are known**: keep the `:Node` label and pass one list, `WHERE n.uuid IN $ids`,
+  so the plan starts with a `NodeIndexSeek` on `Node(uuid)`. Use this entry whenever the query can
+  run on the default branch, where a `branch` index seek reads nearly every edge of the type.
+- **Only the branch is known**: match the indexed edge without node labels. A small label, such as
+  a kind label, or `:Root` or `:Node` on an instance with few branches, can make the plan start
+  with a `NodeByLabelScan`. Check the labels after a `CALL () { ... }` subquery, or after `WITH DISTINCT`
+  on the start node when a second `MATCH` expands from it. A label check in the same `MATCH`, or
+  after a plain `WITH`, brings the scan back.
+- The `branch` index exists only for the edge types listed in `backend/infrahub/core/graph/index.py`.
+  A type union such as `HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}` plans one seek per type.
 
 ```cypher
-// Label scan: :Node / :Attribute make NodeByLabelScan + Expand look cheaper
-// than the REL_TYPE(branch) relationship-property index.
-MATCH (n:Node)-[:REL_TYPE {branch: $branch_name}]->(p:Attribute)
+// ❌ A kind label with few vertices makes the plan start with NodeByLabelScan
+MATCH (n:InfraDevice)-[r:HAS_ATTRIBUTE {branch: $branch_name}]->(a:Attribute)
 
-// Index hint: same pattern, same result set, seek forced.
-MATCH (n:Node)-[r:REL_TYPE {branch: $branch_name}]->(p:Attribute)
-USING INDEX r:REL_TYPE(branch)
-
-// Stripped labels: no node labels anywhere, only the indexed {branch} field
-// inline. Without the labels this matches more than the original, so restore
-// them behind a DISTINCT (or an aggregation), where they cannot be pushed
-// back into the entry pattern. DISTINCT over n, r, p keeps one row per edge.
-MATCH (n)-[r:REL_TYPE {branch: $branch_name}]->(p)
-WITH DISTINCT n, r, p
-WHERE n:Node AND p:Attribute  // labels here, after the rel-index seek
+// ✅ The seek runs first, and the labels filter its rows
+CALL () {
+    MATCH (n)-[r:HAS_ATTRIBUTE {branch: $branch_name}]->(a)
+    RETURN n, r, a
+}
+WITH n, r, a
+WHERE n:InfraDevice AND a:Attribute
 ```
 
-The same applies when the indexed edge sits deeper in a multi-hop pattern:
-a label on any node placeholder along the way is one more label-scan
-candidate for the planner to price, so keep them all label-free (or hint the
-index) and check the entry operator in the plan.
+Load `references/entry-points.md` for why the planner prefers the label scan, which plan operators
+to look for, and patterns where the indexed edge is not the first hop.
 
 ## Modern Cypher Features
 
