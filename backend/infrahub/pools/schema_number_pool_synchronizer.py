@@ -36,10 +36,21 @@ default_log = get_logger()
 
 @dataclass(frozen=True)
 class SchemaNumberPoolSyncResult:
-    """The branches whose schema the synchronization saved, and the attributes it left without a pool, with why."""
+    """The branches whose schema the synchronization saved, and the attributes and existing pools it left as they were, with why."""
 
     updated_branches: set[str]
     refused_pools: list[str] = field(default_factory=list)
+    refused_changes: list[str] = field(default_factory=list)
+    """The existing pools whose ranges, scope or deletion were not applied, with why."""
+
+    def refusal_message(self) -> str | None:
+        """Return every refusal in one message, or None when nothing was refused."""
+        parts: list[str] = []
+        if self.refused_pools:
+            parts.append(f"Number pools not created: {'; '.join(self.refused_pools)}")
+        if self.refused_changes:
+            parts.append(f"Number pool changes not applied: {'; '.join(self.refused_changes)}")
+        return "\n".join(parts) or None
 
 
 @dataclass(frozen=True)
@@ -90,17 +101,29 @@ class SchemaNumberPoolSynchronizer:
         """Execute the full synchronization process.
 
         Returns:
-            The branches where schema changes were persisted, and the attributes left without a pool.
+            The branches where schema changes were persisted, the attributes left without a pool, and the existing
+            pools left as they were.
 
         """
-        await self._sync_existing_pools_with_schema(user_id=user_id)
-        await self._refresh_scope_names(user_id=user_id)
-        return await self._process_all_branches(user_id=user_id)
+        refused_changes = await self._sync_existing_pools_with_schema(user_id=user_id)
+        refused_changes.extend(await self._refresh_scope_names(user_id=user_id))
+        result = await self._process_all_branches(user_id=user_id)
+        return SchemaNumberPoolSyncResult(
+            updated_branches=result.updated_branches,
+            refused_pools=result.refused_pools,
+            refused_changes=refused_changes,
+        )
 
-    async def _refresh_scope_names(self, user_id: str) -> None:
-        """Rewrite the stored name of each scope element whose field the default branch now names differently."""
+    async def _refresh_scope_names(self, user_id: str) -> list[str]:
+        """Rewrite the stored name of each scope element whose field the default branch now names differently.
+
+        Returns:
+            Each pool left with its previous names, with why, so that the other pools are still processed.
+
+        """
         schema_branch = self.schema_manager.get_schema_branch(name=registry.default_branch)
         resolver = AllocationScopeResolver(schema_branch=schema_branch)
+        refused_changes: list[str] = []
         for pool in await self.scope_reader.get_with_scope():
             # A pool outlives the removal of its kind from the default branch, which leaves no field to rename.
             if not schema_branch.has(name=pool.kind):
@@ -108,34 +131,48 @@ class SchemaNumberPoolSynchronizer:
             refreshed = resolver.refresh_names(scope=pool.scope, kind=pool.kind)
             if refreshed == pool.scope:
                 continue
-            async with self.pool_locker.changing(pool_id=pool.id, pool_name=pool.name):
-                number_pool = await NodeManager.get_one(
-                    db=self.db, id=pool.id, kind=CoreNumberPool, raise_on_error=True
-                )
-                self.log.info(
-                    f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
-                )
-                number_pool.allocation_scope.value = refreshed.to_stored()
-                await number_pool.save(db=self.db, user_id=user_id)
+            try:
+                async with self.pool_locker.changing(pool_id=pool.id, pool_name=pool.name):
+                    number_pool = await NodeManager.get_one(
+                        db=self.db, id=pool.id, kind=CoreNumberPool, raise_on_error=True
+                    )
+                    self.log.info(
+                        f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
+                    )
+                    number_pool.allocation_scope.value = refreshed.to_stored()
+                    await number_pool.save(db=self.db, user_id=user_id)
+            except ValidationError as exc:
+                refused_changes.append(f"{pool.kind}.{pool.tracked_attribute}: {exc.message}")
+        return refused_changes
 
-    async def _sync_existing_pools_with_schema(self, user_id: str) -> None:
-        """Update or delete existing pools based on current schema definitions."""
+    async def _sync_existing_pools_with_schema(self, user_id: str) -> list[str]:
+        """Update or delete existing pools based on current schema definitions.
+
+        Returns:
+            Each pool left as it was, with why, so that the other pools are still processed.
+
+        """
         schema_number_pools = await NodeManager.query(
             db=self.db,
             schema=CoreNumberPool,
             filters={"pool_type__value": NumberPoolType.SCHEMA.value},
         )
+        refused_changes: list[str] = []
         for schema_number_pool in schema_number_pools:
-            defined_on_branches = get_branches_with_schema_number_pool(
-                kind=schema_number_pool.node.value, attribute_name=schema_number_pool.node_attribute.value
-            )
-            if registry.default_branch in defined_on_branches:
-                await self._update_pool_from_schema(schema_number_pool, user_id=user_id)
-            elif not defined_on_branches:
-                self.log.info(
-                    f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
-                )
-                await self._delete_pool(schema_number_pool, user_id=user_id)
+            kind = schema_number_pool.node.value
+            attribute_name = schema_number_pool.node_attribute.value
+            defined_on_branches = get_branches_with_schema_number_pool(kind=kind, attribute_name=attribute_name)
+            try:
+                if registry.default_branch in defined_on_branches:
+                    await self._update_pool_from_schema(schema_number_pool, user_id=user_id)
+                elif not defined_on_branches:
+                    self.log.info(
+                        f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
+                    )
+                    await self._delete_pool(schema_number_pool, user_id=user_id)
+            except ValidationError as exc:
+                refused_changes.append(f"{kind}.{attribute_name}: {exc.message}")
+        return refused_changes
 
     async def _delete_pool(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
         """Delete a pool with its ranges and end the records it holds, so each number stays on its object untracked."""

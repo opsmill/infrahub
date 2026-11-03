@@ -53,7 +53,8 @@ async def validate_schema_number_pools(
             await service.message_bus.send(RefreshRegistryBranches())
 
     # The other pools are provisioned first, so one declaration that cannot be resolved does not block them.
-    if result.refused_pools:
-        raise ValidationError(f"Number pools not created: {'; '.join(result.refused_pools)}")
+    refusal_message = result.refusal_message()
+    if refusal_message:
+        raise ValidationError(refusal_message)
 
     return updated_branches
