@@ -140,10 +140,11 @@ then the `opsmill/infrahub-private` one. The person who cuts the release merges 
 - Versions are `YYYY.MM.PATCH`, in the images `neo4j:<version>-community` and
   `neo4j:<version>-enterprise`. The Helm charts drop the leading zero of the month (chart
   `2026.9.0` runs Neo4j `2026.09.0`), and `AGENTS.md` names `Neo4j 2026.09`. Some images can be
-  older than the current version, so search for all of them, with the exclusions of step 4:
+  older than the current version, and some of those still have a version of the earlier `X.Y.Z`
+  form, such as `5.20.0`. Search for all of them, with the exclusions of step 4:
 
   ```bash
-  git grep -nE 'neo4j:[0-9]{4}\.[0-9]{2}\.[0-9]+'
+  git grep -nE 'neo4j:[0-9]+\.[0-9]+\.[0-9]+'
   git grep -nF -e '<old chart version>' -e 'Neo4j <old YYYY.MM>'
   ```
 
