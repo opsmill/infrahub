@@ -93,6 +93,6 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
 
 ## Open items carried from the design doc
 
-- Q1: upgrade-step duration on 100 GB: about 2 h 20 min (deletes 2 h 13 min, rewrite 85 s, at most 2.2 GB extra disk, task history tables 101 to 8 GiB), measured before the deletes were limited to 1,000 runs per transaction and without the pauses between rewritten tables, which add at most 60 s per table after the first. Blocks the release notes only. Since 3 Nov the upgrade runs this cleanup for a backlog of at least 100,000 old runs; measurements on restored backups are running.
+- Q1: upgrade-step duration on 100 GB: about 2 h 20 min (deletes 2 h 13 min, rewrite 85 s, at most 2.2 GB extra disk, task history tables 101 to 8 GiB), measured before the deletes were limited to 1,000 runs per transaction and without the pauses between rewritten tables, which add at most 60 s per table after the first. Blocks the release notes only. Since 3 Nov the upgrade runs this cleanup for a backlog of at least 100,000 old runs. On a restored backup with 7.3 GB of task history the cleanup deleted 422,735 runs in about 5 min 40 s, about 1,250 runs a second (private-tests run 41706228147, 3 Nov); 100 GB was not re-measured.
 - Q2: dropped from the design doc, which now states that the Activities page never asks for the total count (see R7).
 - Deep scrolling by time on Postgres 14 and 18: measurement in progress.
