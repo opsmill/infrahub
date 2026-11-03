@@ -20,8 +20,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
 from infrahub.exceptions import LockError, LockWaitTimeoutError
-from infrahub.locks.shared_holders.local import LocalSharedHolderStore
-from infrahub.locks.shared_holders.redis import RedisSharedHolderStore
+from infrahub.locks.shared_holders.factory import build_shared_holder_store
 from infrahub.log import get_logger
 from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
@@ -32,7 +31,7 @@ if TYPE_CHECKING:
 
     import redis.asyncio as redis
 
-    from infrahub.locks.shared_holders import SharedHolderStore
+    from infrahub.locks.shared_holders.interface import SharedHolderStore
     from infrahub.services import InfrahubServices
 
 
@@ -569,7 +568,7 @@ class InfrahubLockRegistry:
         self._process_locks: dict[str, InfrahubLock] = {}
         self.shared_locks: dict[str, InfrahubSharedLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
-        self.shared_holder_store = self._build_shared_holder_store()
+        self.shared_holder_store = build_shared_holder_store(connection=self.connection)
 
     def get_existing(
         self,
@@ -626,11 +625,6 @@ class InfrahubLockRegistry:
             ttl_seconds=config.SETTINGS.cache.shared_lock_ttl_secs,
             wait_seconds=config.SETTINGS.cache.exclusive_lock_wait_secs,
         )
-
-    def _build_shared_holder_store(self) -> SharedHolderStore:
-        if self.connection is not None:
-            return RedisSharedHolderStore(connection=self.connection)
-        return LocalSharedHolderStore()
 
     def local_schema_lock(self) -> InfrahubLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
