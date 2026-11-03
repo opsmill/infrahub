@@ -46,6 +46,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 ## Current Guidelines
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
+- **Constants and Literals**: [guidelines/constants.md](guidelines/constants.md) - When to create and reuse named values
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
 - **Python Typing**: [guidelines/backend/typing.md](guidelines/backend/typing.md)
 - **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
