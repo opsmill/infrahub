@@ -230,10 +230,10 @@ A Generator run leaves four kinds of data in Infrahub: the Generator instance, t
 | Event | Generator instance | Objects the Generator created | Generator group | GraphQL query group |
 |---|---|---|---|---|
 | You remove the target object from the target group | Not deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted |
-| You delete the target object | Deleted | Not deleted | Not deleted | Not deleted. The deleted object is no longer a member. |
-| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted, unless you also remove the query from `.infrahub.yml`. Deleting a query deletes its query groups. |
+| You delete the target object | Deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted. The deleted object is no longer a member. |
+| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted on the default branch, also when you remove the query from `.infrahub.yml`. |
 
-Infrahub does not delete Generator groups automatically. A GraphQL query group is deleted only when its query is deleted. To remove both with a retired Generator, see [Remove a generator](./remove).
+Infrahub does not delete Generator groups automatically. Infrahub deletes a GraphQL query group with its query only on the branch where the query is deleted. Query groups are branch-local, so when that branch is merged, the query groups on the default branch remain. To remove both with a retired Generator, see [Remove a generator](./remove).
 
 Generator groups appear in the list of groups in the web interface. GraphQL query groups are internal groups, which the list hides by default; remove the internal groups filter to view them. See [the visibility model](../groups/overview#the-visibility-model).
 
