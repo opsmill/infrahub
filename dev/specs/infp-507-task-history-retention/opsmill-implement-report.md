@@ -269,7 +269,7 @@ The body above is kept as written.
   - `OLD_RUNS_COUNT_LIMIT` moved to `backend/infrahub/prefect_server/task_history_models.py`.
   - `docs/docs/reference/infrahub-cli/infrahub-upgrade.mdx` regenerated with the option.
 - **Deployments**:
-  - Docker Compose runs the upgrade with the instance stopped (`docker compose run`), so the cleanup adds to the time the instance is down. The only durations at hand are those of the earlier local benchmark: about 8.5 minutes on 25 GB of task history and about 2 hours 20 minutes on 100 GB. Measurements on restored backups are running.
+  - Docker Compose runs the upgrade with the instance stopped (`docker compose run`), so the cleanup adds to the time the instance is down. On a restored backup with 7.3 GB of task history (private-tests run 41706228147), the cleanup deleted 422,735 runs in about 5 min 40 s, about 1,250 runs a second, with a longest lock wait of 4.2 s and no deadlock. The earlier local benchmark gave about 8.5 minutes on 25 GB and about 2 hours 20 minutes on 100 GB, before the deletes were limited to 1,000 runs per transaction.
   - On Helm, `kubectl exec ... infrahub upgrade` after `helm upgrade` reaches the new task manager only after the task manager's rollout has finished, so the guide must say to wait for it. The chart's optional pre-upgrade hook reaches the previous task manager on the first upgrade to this release, so the cleanup is skipped there; the chart passes `--no-task-history-cleanup` to the hook, because Helm waits at most 5 minutes for a hook by default (prepared in [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100), T068). Helm operators therefore run the command for old runs after the upgrade.
 - **Local-pass evidence** (T067):
 
