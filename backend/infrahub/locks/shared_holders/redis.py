@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from . import SharedHolderStore
+from .interface import SharedHolderStore
 
 if TYPE_CHECKING:
     import redis.asyncio as redis

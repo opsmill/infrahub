@@ -4,7 +4,7 @@ import time
 from fnmatch import fnmatchcase
 from typing import TYPE_CHECKING
 
-from . import SharedHolderStore
+from .interface import SharedHolderStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable

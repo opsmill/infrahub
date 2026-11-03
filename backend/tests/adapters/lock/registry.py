@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     import redis.asyncio as redis
 
-    from infrahub.locks.shared_holders import SharedHolderStore
+    from infrahub.locks.shared_holders.interface import SharedHolderStore
 
 GATE_TIMEOUT_SECONDS = 30
 
