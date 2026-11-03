@@ -45,13 +45,12 @@ steps:
       if [ -z "$PR_JSON" ] || [ "$(echo "$PR_JSON" | jq -r '.number // empty')" = "" ]; then
         fail "Cannot run /bug-fix here: must be invoked on a PR comment."
       fi
-      # Agent output is posted with underscores outside code spans escaped, so markers are matched with that escaping removed.
-      PR_BODY=$(echo "$PR_JSON" | jq -r '.body // "" | gsub("\\\\_"; "_")')
+      PR_BODY=$(echo "$PR_JSON" | jq -r '.body // ""')
 
       if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
         REQ=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
           --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-            and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
+            and (.body | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-fix: fix already complete and no FIX_CHANGES_REQUESTED verdict from reviewer."
         fi
@@ -64,7 +63,7 @@ steps:
 
       APPROVED=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
         --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-          and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
+          and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
       if [ "$APPROVED" = "0" ]; then
         fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
       fi
@@ -143,9 +142,7 @@ Determine which mode you are in:
 
 The workflow has already validated the gate markers (`AGENT_TEST_COMPLETE`,
 prior `TEST_APPROVED` verdict for initial mode, prior `FIX_CHANGES_REQUESTED`
-verdict for revision mode) before invoking you. You may proceed. A marker counts with or
-without backslashes before its underscores (`AGENT\_FIX\_COMPLETE` is `AGENT_FIX_COMPLETE`),
-because agent output is posted with underscores outside backticks escaped.
+verdict for revision mode) before invoking you. You may proceed.
 
 ### Initial fix -- setup
 

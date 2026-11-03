@@ -44,9 +44,8 @@ steps:
       ISSUE_JSON=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")
       IS_PR=$(echo "$ISSUE_JSON" | jq -r 'if .pull_request then "true" else "false" end')
 
-      # Agent output is posted with underscores outside code spans escaped, so markers are matched with that escaping removed.
       if [ "$IS_PR" = "true" ]; then
-        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // "" | gsub("\\\\_"; "_")')
+        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // ""')
 
         if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
           fail "Cannot run /bug-tdd here: PR has no AGENT_TEST_COMPLETE marker."
@@ -57,7 +56,7 @@ steps:
 
         REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
           --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-            and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
+            and (.body | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
         fi
@@ -66,7 +65,7 @@ steps:
 
       ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
         --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-          and (.body | gsub("\\\\_"; "_") | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
+          and (.body | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
       fi
@@ -143,10 +142,6 @@ Determine which mode you are in:
 
 You can tell which mode from the GitHub context: if the command was posted on a pull request,
 you are in revision mode; otherwise, initial test mode.
-
-A marker counts with or without backslashes before its underscores (`AGENT\_ANALYSIS\_COMPLETE`
-is `AGENT_ANALYSIS_COMPLETE`), because agent output is posted with underscores outside
-backticks escaped.
 
 ### Initial test -- setup
 
@@ -316,9 +311,9 @@ Push the branch and open a **draft Pull Request**:
 ````
 
 The literal text `AGENT_TEST_COMPLETE` MUST appear in the PR body, inside backticks as
-shown so that its underscores are not escaped when the PR is opened. The downstream
-`/bug-fix` gate scans the PR body for this exact substring; if it is missing, the
-pipeline halts.
+shown so that its underscores are not escaped when the PR body is updated later. The
+downstream `/bug-fix` gate scans the PR body for this exact substring; if it is missing,
+the pipeline halts.
 
 Post a short comment on the issue linking to the draft PR. Do NOT include
 `AGENT_TEST_COMPLETE` in that issue comment -- it belongs only in the PR body.
