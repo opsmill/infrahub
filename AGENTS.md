@@ -4,16 +4,18 @@ Infrahub is a graph-based infrastructure data management platform by OpsMill. It
 
 This file is a router: it carries repo-wide facts and points to the per-area AGENTS.md and `dev/` docs for depth.
 
-Style: be direct and substantive. No filler, preamble, or pleasantries. Challenge flawed approaches and ask before guessing intent.
+Style: be direct and substantive. Challenge flawed approaches and ask before guessing intent.
 
 ## Tech Stack
 
-- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.4), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 5.0, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
+Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/app/package.json` (frontend).
+
+- **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
+- **Frontend:** TypeScript 5, React 19, Vite 8, Tailwind CSS 4
+- **Testing:** pytest 9, Vitest 5, Playwright
+- **Linting:** ruff, mypy 2, Biome 2
 - **Package Managers:** uv (Python), pnpm (Frontend)
-- **Task Runner:** Invoke 2.2.1
+- **Task Runner:** Invoke 2
 
 ## File Structure
 
@@ -92,8 +94,8 @@ See `tests/e2e/README.md` for the suite architecture and data fixtures.
 ### Linting & Formatting
 
 ```bash
-uv run invoke format                  # Format all Python code
-uv run invoke lint                    # Lint all Python code
+uv run invoke format                  # ruff format + fix: backend, tasks, models, utilities, python_testcontainers
+uv run invoke lint                    # yamllint, ruff on the same directories, ty + mypy on backend
 cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
@@ -200,6 +202,7 @@ CI validates that all generated files are committed — the `validate-generated-
 | What are we building? | `dev/specs/` |
 | How should I write code? | `dev/guidelines/` |
 | What commands are available? | `.agents/commands/` |
+| What skills are available (`/pre-ci`, `creating-changelog-entries`, ...)? | `.agents/skills/` |
 
 ## Component Maps
 
