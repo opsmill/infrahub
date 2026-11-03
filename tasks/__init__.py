@@ -28,17 +28,17 @@ def yamllint(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """Run all formatters for main and backend code."""
+    """Run ruff formatting on every Python file, except the python_sdk submodule."""
     main.format_all(context)
-    backend.format_all(context)
 
 
 @task(name="lint")
 def lint_all(context: Context) -> None:
-    """Run all linters for YAML, main, and backend code."""
+    """Run yamllint, ruff on every Python file except the python_sdk submodule, and the type checkers."""
     yamllint(context)
     main.lint(context)
-    backend.lint(context)
+    backend.ty(context)
+    backend.mypy(context)
 
 
 @task
