@@ -465,8 +465,13 @@ class InfrahubSharedLock:
         if hold.renewal is not None:
             hold.renewal.cancel()
             await asyncio.gather(hold.renewal, return_exceptions=True)
-        if hold.key is not None:
+        if hold.key is None:
+            return
+        try:
             await self._store.remove(key=hold.key)
+        # Cleanup after the holder's work, whose outcome a failed removal must not replace; the record expires unrenewed.
+        except Exception:
+            log.exception("Failed to remove a shared lock record", lock=self.name)
 
     async def acquire_exclusive(self) -> None:
         """Take the lock alone, once every shared holder has released it.

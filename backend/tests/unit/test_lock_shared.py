@@ -276,3 +276,44 @@ async def test_an_exclusive_request_from_a_task_holding_it_shared_is_refused(
             await shared_lock.acquire_exclusive()
 
     assert not await mutex.locked()
+
+
+class FailingRemovalSharedHolderStore(RecordingSharedHolderStore):
+    """Fails every removal of a record, as an unreachable cache would."""
+
+    async def remove(self, key: str) -> None:
+        raise ConnectionError("cache unreachable")
+
+
+@pytest.fixture
+def failing_removal_lock(
+    mutex: InfrahubLock, clock: FakeClock
+) -> tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore]:
+    store = FailingRemovalSharedHolderStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME, mutex=mutex, store=store, ttl_seconds=TTL_SECONDS, wait_seconds=WAIT_SECONDS, clock=clock
+    )
+    return shared_lock, store
+
+
+async def test_a_failed_record_removal_leaves_the_holder_work_successful_and_the_record_to_expire(
+    failing_removal_lock: tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore], clock: FakeClock
+) -> None:
+    shared_lock, store = failing_removal_lock
+
+    async with shared_lock.shared():
+        pass
+
+    assert await _has_holders(store)
+    clock.advance(TTL_SECONDS)
+    assert not await _has_holders(store)
+
+
+async def test_a_failed_record_removal_keeps_the_error_of_the_holder_work(
+    failing_removal_lock: tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore],
+) -> None:
+    shared_lock, _ = failing_removal_lock
+
+    with pytest.raises(ValueError, match=r"^the work failed$"):
+        async with shared_lock.shared():
+            raise ValueError("the work failed")
