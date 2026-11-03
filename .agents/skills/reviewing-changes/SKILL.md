@@ -22,7 +22,8 @@ first: before the push for a branch, or right after a pull request opens.
 - nothing: review the current branch against the closest of `stable` and `develop`
 - a branch name: the base branch to review against
 - a pull request number or URL: review that pull request in PR mode (Phase 0, step 1). In Codex,
-  when the request asks for a review of the pull request this session opened, use its URL.
+  when the request asks for a review of the pull request this session opened, use its URL; when
+  it names no pull request, use the pull request of the current branch.
 - `report`: review without fixing
 - `compare <PR number>`: read `references/compare.md` and follow it instead of the phases
 
@@ -41,7 +42,8 @@ proposals to improve the rules, the docs and this skill.
 
 - Reviewers are read-only subagents. Give each one the requirement, the diff and the file paths
   it needs, never your own account of the change: a reviewer checks what the change does, not
-  what this conversation says it does.
+  what this conversation says it does. When you verify and classify the findings yourself, rely
+  on the code you read, not on what this conversation says the change was meant to do.
 - Each finding cites `file:line`, and the rule or document it relies on as `path:line`.
 - With `--repo`, run every git command with `-C <checkout>` and give reviewers absolute paths.
 
@@ -77,7 +79,7 @@ means its step ran without its instructions: read the file and run the step agai
    ```
 
    When `gh` cannot reach GitHub, say so, and review the current branch against the branch
-   `origin/HEAD` points to, without fixing.
+   `origin/HEAD` points to. That run still counts as PR mode.
 
    PR mode is report-only and asks no questions, because a hook can start it while the user is
    away. Each Ask becomes a question in the report.
@@ -160,6 +162,8 @@ change:
   instructions in `${CODEX_HOME:-$HOME/.codex}/skills/.system/review-agent/SKILL.md`." Codex does
   not offer that skill by name, so the subagent reads the file. Start the subagent in the reviewed
   checkout, the temporary worktree in PR mode, because it reviews the branch checked out there.
+  Limit it to the files in the manifest, tell it to change no files, and wait for its result.
+  Keep its findings for Phase 2.
 
 ### Approach
 
