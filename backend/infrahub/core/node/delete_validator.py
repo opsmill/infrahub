@@ -222,6 +222,8 @@ class NodeDeleteValidator:
             owned_ids = await self._get_target_owned_ids(
                 node_ids=new_node_ids, target_owned_relationships=target_owned_relationships, at=at
             )
+            # An owned node is never the target of another owned node.
+            node_ids_with_owned_checked.update(owned_ids)
             node_ids_to_check = owned_ids - node_ids_to_delete
 
         missing_delete_ids = set(dependent_node_details_map.keys()) - node_ids_to_delete
