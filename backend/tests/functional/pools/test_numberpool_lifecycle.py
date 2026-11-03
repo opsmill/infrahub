@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.graphql import Query
+from infrahub_sdk.protocols import CoreNumberPool as SdkCoreNumberPool
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import HashableModelState
@@ -232,7 +233,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             await incident.new(db=db, title=f"Incident #{idx}")
             await incident.save(db=db)
 
-        pools_before = await client.all(kind="CoreNumberPool", branch=default_branch.name)
+        pools_before = await client.all(kind=SdkCoreNumberPool, branch=default_branch.name)
         assert len(pools_before) == 1
         expected_pool_names = {("SnowTask", "number")}
         number_pool_details = {(pool.node.value, pool.node_attribute.value) for pool in pools_before}
@@ -256,7 +257,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         await self._post_schema_load_updates(db)
 
         # Validate that the new pool has been created
-        pools_after = await client.all(kind="CoreNumberPool", branch=default_branch.name)
+        pools_after = await client.all(kind=SdkCoreNumberPool, branch=default_branch.name)
         assert len(pools_after) == 2
         expected_pool_names.add(("SnowIncident", "new_number"))
         number_pool_details = {(pool.node.value, pool.node_attribute.value) for pool in pools_after}

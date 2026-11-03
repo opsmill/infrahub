@@ -156,6 +156,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         transform_python = await client.get(kind=CoreTransformPython, id=dataset["transform_python_id"])
 
         assert transform_jinja.dependencies_complete.value is True
+        assert transform_jinja.dependencies.value is not None
         assert set(transform_jinja.dependencies.value) == {
             "templates/device.j2",
             "partials/header.j2",
@@ -164,6 +165,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         # The Python transform declares one of its siblings through `watch.files`; the others
         # sit in the same directory and stay out of the closure.
         assert transform_python.dependencies_complete.value is True
+        assert transform_python.dependencies.value is not None
         assert set(transform_python.dependencies.value) == {
             "transforms/foo/foo.py",
             "transforms/foo/helpers.py",

@@ -14,6 +14,7 @@ from pydantic import ValidationError as PydanticValidationError
 from infrahub.api.schema import SchemaLoadAPI, SchemaReadAPI, SchemasLoadAPI
 from infrahub.core.constants import ComputedAttributeKind, HashableModelState
 from infrahub.core.schema import SchemaRoot, SchemaWarningType
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from tests.helpers.schema_errors import error_paths
 
@@ -430,5 +431,5 @@ def test_number_pool_allocation_scope_reaches_the_internal_schema() -> None:
     loaded = SchemaLoadAPI.model_validate(payload)
 
     parameters = loaded.internal_schema.nodes[0].attributes[1].parameters
-    assert parameters is not None
+    assert isinstance(parameters, NumberPoolParameters)
     assert parameters.allocation_scope == ["site"]

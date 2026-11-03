@@ -132,6 +132,7 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
 
         contents = set()
         for artifact in artifacts:
+            assert artifact.storage_id.value is not None
             content = await client.object_store.get(identifier=artifact.storage_id.value)
             contents.add(content)
         assert contents == {"! Section config for John Doe", "! Section config for Jane Doe"}
@@ -156,6 +157,7 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
 
         contents = set()
         for artifact in artifacts:
+            assert artifact.storage_id.value is not None
             content = await client.object_store.get(identifier=artifact.storage_id.value)
             contents.add(content)
         assert contents == {

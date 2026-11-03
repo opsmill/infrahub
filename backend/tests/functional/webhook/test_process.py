@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
+from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook
 
 from infrahub.core.changelog.models import NodeChangelog, RelationshipCardinalityOneChangelog
 from infrahub.core.constants import InfrahubKind
@@ -37,7 +38,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook1: Node,
         client: InfrahubClient,
     ) -> None:
-        webhook = await client.get(kind=InfrahubKind.STANDARDWEBHOOK, id=webhook1.id)
+        webhook = await client.get(kind=CoreStandardWebhook, id=webhook1.id)
         converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
 
         assert converted_webhook.model_dump() == {
@@ -56,9 +57,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook_with_headers: Node,
         client: InfrahubClient,
     ) -> None:
-        webhook = await client.get(
-            kind=InfrahubKind.STANDARDWEBHOOK, id=webhook_with_headers.id, prefetch_relationships=True
-        )
+        webhook = await client.get(kind=CoreStandardWebhook, id=webhook_with_headers.id, prefetch_relationships=True)
         converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
 
         dumped = converted_webhook.model_dump()
@@ -84,7 +83,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook2: Node,
         client: InfrahubClient,
     ) -> None:
-        webhook = await client.get(kind=InfrahubKind.CUSTOMWEBHOOK, id=webhook2.id)
+        webhook = await client.get(kind=CoreCustomWebhook, id=webhook2.id)
         converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
 
         assert converted_webhook.model_dump(exclude={"repository_id"}) == {
@@ -258,7 +257,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook2: Node,
         client: InfrahubClient,
     ) -> None:
-        node = await client.get(kind=InfrahubKind.CUSTOMWEBHOOK, id=webhook2.id)
+        node = await client.get(kind=CoreCustomWebhook, id=webhook2.id)
         webhook = await convert_node_to_webhook(webhook_node=node, client=client)
 
         context = EventContext.from_event(
