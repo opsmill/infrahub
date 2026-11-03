@@ -25,6 +25,11 @@ updates:
     update-types:
     - version-update:semver-minor
     - version-update:semver-patch
+  # New releases must be this many days old before they are proposed; the cooldown never delays security fixes.
+  cooldown:
+    default-days: 7
+    semver-minor-days: 14
+    semver-major-days: 30
   directory: /frontend
   groups:
     # Every frontend security fix, for production and development dependencies alike, goes in this pull request.
@@ -49,7 +54,12 @@ updates:
     interval: weekly
     time: "09:00"
 # Docs: all version updates, major releases included, go in one pull request.
-- directory: /docs
+- cooldown:
+    # New releases must be this many days old before they are proposed; the cooldown never delays security fixes.
+    default-days: 7
+    semver-minor-days: 14
+    semver-major-days: 30
+  directory: /docs
   groups:
     # Every docs security fix goes in this pull request.
     docs-security:
