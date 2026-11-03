@@ -81,7 +81,10 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         previous_kinds = self._previous_kinds(request=request, kind_id=kind_schema.id)
         if request.constraint_name == ATTRIBUTE_NAME_CONSTRAINT:
             refusals = await self._attribute_refusals(
-                kind_schema=kind_schema, previous_kinds=previous_kinds, field_name=field_name
+                candidate_schema=request.schema_branch,
+                kind_schema=kind_schema,
+                previous_kinds=previous_kinds,
+                field_name=field_name,
             )
         else:
             refusals = await self._kind_refusals(
@@ -121,7 +124,11 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         ]
 
     async def _attribute_refusals(
-        self, kind_schema: MainSchemaTypes, previous_kinds: list[MainSchemaTypes], field_name: str
+        self,
+        candidate_schema: SchemaBranch,
+        kind_schema: MainSchemaTypes,
+        previous_kinds: list[MainSchemaTypes],
+        field_name: str,
     ) -> list[tuple[str, str]]:
         """Return the pools that allocate numbers for the attribute under a name the change replaces.
 
@@ -133,17 +140,15 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
             return []
         renamed_attributes: set[tuple[str, str]] = set()
         for previous_kind in previous_kinds:
-            # A kind renamed by the same load is refused under its own constraint, so the pool is reported once.
-            if previous_kind.kind != kind_schema.kind:
-                continue
             previous_attribute = next(
                 (candidate for candidate in previous_kind.attributes if candidate.id == attribute.id), None
             )
             if previous_attribute is None or previous_attribute.name == attribute.name:
                 continue
-            kinds = {previous_kind.kind}
+            # A kind renamed by the same load is refused under its own constraint, so its pools are reported once.
+            kinds = {previous_kind.kind} if previous_kind.kind == kind_schema.kind else set()
             if isinstance(previous_kind, GenericSchema):
-                kinds.update(previous_kind.used_by)
+                kinds.update(kind for kind in previous_kind.used_by if candidate_schema.has(name=kind))
             renamed_attributes.update((kind, previous_attribute.name) for kind in kinds)
         if not renamed_attributes:
             return []

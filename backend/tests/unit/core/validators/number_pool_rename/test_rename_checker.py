@@ -21,6 +21,7 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     DEVICE_POOL_BY_SITE,
     HOLDER,
     HOLDER_POOL_BY_SITE,
+    POD_HOLDER,
     POD_HOLDER_POOL_BY_SITE,
     StaticSchemaSource,
     build_schema_branch,
@@ -75,6 +76,14 @@ def device_role_renamed(schema: SchemaRoot) -> None:
 
 def holder_vlan_id_renamed(schema: SchemaRoot) -> None:
     holder_of(schema).get_attribute(name="vlan_id").name = "vlan_number"
+
+
+def holder_and_its_vlan_id_renamed(schema: SchemaRoot) -> None:
+    pod_holder = next(node for node in schema.nodes if node.kind == POD_HOLDER)
+    holder = holder_of(schema)
+    holder.get_attribute(name="vlan_id").name = "vlan_number"
+    holder.name = "Base"
+    pod_holder.inherit_from = ["ScopeBase"]
 
 
 @dataclass(frozen=True)
@@ -141,6 +150,17 @@ REFUSED_CASES = [
         change=holder_vlan_id_renamed,
         expected=[attribute_refusal(HOLDER_POOL_BY_SITE), attribute_refusal(POD_HOLDER_POOL_BY_SITE)],
         expected_kinds_read=[{HOLDER, "ScopePodHolder"}],
+    ),
+    # The pool on the renamed generic is reported under the kind rename, not the pools of the kinds implementing it.
+    RenameCase(
+        name="tracked-attribute-of-a-renamed-generic",
+        constraint_name="attribute.name.update",
+        kind="ScopeBase",
+        field_name="vlan_number",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=holder_and_its_vlan_id_renamed,
+        expected=[attribute_refusal(POD_HOLDER_POOL_BY_SITE)],
+        expected_kinds_read=[{"ScopePodHolder"}],
     ),
 ]
 
