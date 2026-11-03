@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub import config
 from infrahub.auth.auth_groups.filter import ClaimFilter
 from infrahub.auth.auth_groups.service import AutoCreatedGroupsService
@@ -19,17 +21,10 @@ if TYPE_CHECKING:
 GROUP_NAME = "sso-group"
 
 
-async def _create_account(db: InfrahubDatabase) -> Node:
-    account = await Node.init(db=db, schema=CoreAccount)
-    await account.new(db=db, name="Sam Sso", account_type="User", password="sam-password")
-    await account.save(db=db)
-    return account
-
-
-async def _assign_group_claim(db: InfrahubDatabase, account: Node) -> tuple[str, ...]:
+async def _assign_group_claim(db: InfrahubDatabase, account: CoreAccount) -> tuple[str, ...]:
     service = AutoCreatedGroupsService(
         db=db,
-        account=account,  # type: ignore[arg-type]
+        account=account,
         provider_name="AzureAD-corp",
         max_per_login=10,
         emitter=RecordingAutoCreateEventEmitter(),
@@ -41,53 +36,67 @@ async def _assign_group_claim(db: InfrahubDatabase, account: Node) -> tuple[str,
 
 
 async def _members_on_branch(db: InfrahubDatabase, group_id: str, branch: Branch) -> set[str]:
-    group = await NodeManager.get_one(db=db, id=group_id, branch=branch, raise_on_error=True)
-    members = await group.get_relationship(name="members").get_peers(db=db, peer_type=CoreAccount)
+    group = await NodeManager.get_one(db=db, id=group_id, kind=CoreAccountGroup, branch=branch, raise_on_error=True)
+    members = await group.members.get_peers(db=db, peer_type=CoreAccount)
     return set(members)
 
 
-async def test_group_members_keep_member_removed_on_branch(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    autocreate_filter_enabled: None,
-) -> None:
-    account = await _create_account(db=db)
-    group = await Node.init(db=db, schema=CoreAccountGroup)
-    await group.new(db=db, name=GROUP_NAME)
-    await group.save(db=db)
-    await group.members.add(db=db, data={"id": account.id})
-    await group.members.save(db=db)
+class TestGroupMemberReads:
+    @pytest.fixture(scope="class")
+    async def account(self, db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch) -> CoreAccount:
+        account = await Node.init(db=db, schema=CoreAccount)
+        await account.new(db=db, name="Sam Sso", account_type="User", password="sam-password")
+        await account.save(db=db)
+        return account
 
-    branch = await create_branch(db=db, branch_name="drop-member-login")
-    group_on_branch = await NodeManager.get_one(db=db, id=group.id, branch=branch, raise_on_error=True)
-    await group_on_branch.members.update(db=db, data=[])
-    await group_on_branch.members.save(db=db)
+    @pytest.fixture(scope="class")
+    async def group(
+        self, db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch
+    ) -> CoreAccountGroup:
+        group = await Node.init(db=db, schema=CoreAccountGroup)
+        await group.new(db=db, name=GROUP_NAME)
+        await group.save(db=db)
+        return group
 
-    granted = await _assign_group_claim(db=db, account=account)
+    async def test_group_members_skip_member_added_on_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        account: CoreAccount,
+        group: CoreAccountGroup,
+        autocreate_filter_enabled: None,
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="add-member-login")
+        group_on_branch = await NodeManager.get_one(
+            db=db, id=group.id, kind=CoreAccountGroup, branch=branch, raise_on_error=True
+        )
+        await group_on_branch.members.add(db=db, data={"id": account.id})
+        await group_on_branch.members.save(db=db)
 
-    assert granted == (GROUP_NAME,)
-    assert await _members_on_branch(db=db, group_id=group.id, branch=default_branch) == {account.id}
-    assert await _members_on_branch(db=db, group_id=group.id, branch=branch) == set()
+        granted = await _assign_group_claim(db=db, account=account)
 
+        assert granted == (GROUP_NAME,)
+        assert await _members_on_branch(db=db, group_id=group.id, branch=default_branch_scope_class) == {account.id}
 
-async def test_group_members_skip_member_added_on_branch(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    autocreate_filter_enabled: None,
-) -> None:
-    account = await _create_account(db=db)
-    group = await Node.init(db=db, schema=CoreAccountGroup)
-    await group.new(db=db, name=GROUP_NAME)
-    await group.save(db=db)
+    async def test_group_members_keep_member_removed_on_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        account: CoreAccount,
+        group: CoreAccountGroup,
+        autocreate_filter_enabled: None,
+    ) -> None:
+        assert await _members_on_branch(db=db, group_id=group.id, branch=default_branch_scope_class) == {account.id}
 
-    branch = await create_branch(db=db, branch_name="add-member-login")
-    group_on_branch = await NodeManager.get_one(db=db, id=group.id, branch=branch, raise_on_error=True)
-    await group_on_branch.members.add(db=db, data={"id": account.id})
-    await group_on_branch.members.save(db=db)
+        branch = await create_branch(db=db, branch_name="drop-member-login")
+        group_on_branch = await NodeManager.get_one(
+            db=db, id=group.id, kind=CoreAccountGroup, branch=branch, raise_on_error=True
+        )
+        await group_on_branch.members.update(db=db, data=[])
+        await group_on_branch.members.save(db=db)
 
-    granted = await _assign_group_claim(db=db, account=account)
+        granted = await _assign_group_claim(db=db, account=account)
 
-    assert granted == (GROUP_NAME,)
-    assert await _members_on_branch(db=db, group_id=group.id, branch=default_branch) == {account.id}
+        assert granted == (GROUP_NAME,)
+        assert await _members_on_branch(db=db, group_id=group.id, branch=default_branch_scope_class) == {account.id}
+        assert await _members_on_branch(db=db, group_id=group.id, branch=branch) == set()
