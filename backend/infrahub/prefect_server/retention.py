@@ -84,6 +84,7 @@ PREFECT_EVENT_TYPES: tuple[str, ...] = (
     "prefect.automation.action.executed",
     "prefect.automation.action.failed",
     "prefect.block.redisstoragecontainer.loaded",
+    "prefect.block.redis-database.loaded",
     "prefect.block-type.created",
     "prefect.block-type.updated",
     "prefect.block-type.deleted",
