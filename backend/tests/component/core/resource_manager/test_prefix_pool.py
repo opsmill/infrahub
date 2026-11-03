@@ -1,9 +1,11 @@
 import re
+from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -44,6 +46,58 @@ async def test_get_next(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+@dataclass
+class UnreadableReservationCase:
+    name: str
+    delete_first_branch: bool
+
+
+UNREADABLE_RESERVATION_CASES = [
+    UnreadableReservationCase(name="first-reservation-on-sibling-branch", delete_first_branch=False),
+    UnreadableReservationCase(name="first-reservation-on-deleted-branch", delete_first_branch=True),
+]
+
+
+@pytest.mark.parametrize("case", UNREADABLE_RESERVATION_CASES, ids=lambda case: case.name)
+async def test_get_resource_reuses_readable_reservation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+    case: UnreadableReservationCase,
+) -> None:
+    """A branch that cannot read an identifier's first reservation keeps returning its own prefix."""
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+    net141 = ip_dataset_prefix_v4["net141"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
+    await pool.save(db=db)
+
+    branch_a = await create_branch(branch_name="reserve-a", db=db)
+    branch_b = await create_branch(branch_name="reserve-b", db=db)
+
+    async def reserve(branch: Branch) -> Node:
+        return await pool.get_resource(
+            db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="shared-id", branch=branch
+        )
+
+    prefix_a = await reserve(branch=branch_a)
+    if case.delete_first_branch:
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch_a)
+
+    first = await reserve(branch=branch_b)
+    second = await reserve(branch=branch_b)
+    third = await reserve(branch=branch_b)
+
+    assert first.id != prefix_a.id
+    assert [second.id, third.id] == [first.id, first.id]
 
 
 async def test_get_resource_conflicting_prefixlen_raises(

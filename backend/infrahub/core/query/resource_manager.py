@@ -132,6 +132,7 @@ class IPAddressPoolGetReserved(Query):
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
         self.return_labels = ["address"]
+        self.order_by = ["rel.from"]
 
 
 class IPAddressPoolSetReserved(Query):
@@ -729,6 +730,7 @@ class PrefixPoolGetReserved(Query):
         """ % {"prefix_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
         self.return_labels = ["prefix"]
+        self.order_by = ["rel.from"]
 
 
 class PrefixPoolSetReserved(Query):

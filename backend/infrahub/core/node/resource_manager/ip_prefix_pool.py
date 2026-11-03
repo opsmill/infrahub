@@ -48,12 +48,12 @@ class CoreIPPrefixPool(Node):
             if identifier:
                 query_get = await PrefixPoolGetReserved.init(db=db, pool_id=self.id, identifier=identifier)
                 await query_get.execute(db=db)
-                result = query_get.get_result()
-                if result:
-                    prefix = result.get_node("prefix")
-                    # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-                    node = await registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
-                    if node:
+                # A branch reuses the oldest reservation it can read, as a reservation made on
+                # another branch, or on a deleted one, points at a prefix it cannot see
+                reserved_ids = [result.get_node("prefix").get("uuid") for result in query_get.get_results()]
+                readable = await registry.manager.get_many(db=db, ids=reserved_ids, branch=branch)
+                for reserved_id in reserved_ids:
+                    if node := readable.get(reserved_id):
                         validate_reserved_prefix_length(
                             pool_kind="IPPrefixPool",
                             pool_name=str(self.get_attribute("name").value),

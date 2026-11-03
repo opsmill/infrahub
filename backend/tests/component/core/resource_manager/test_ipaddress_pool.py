@@ -1,10 +1,13 @@
 import re
+from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -42,6 +45,52 @@ async def test_get_next(
         db=db, address_type="IpamIPAddress", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+@dataclass
+class UnreadableReservationCase:
+    name: str
+    delete_first_branch: bool
+
+
+UNREADABLE_RESERVATION_CASES = [
+    UnreadableReservationCase(name="first-reservation-on-sibling-branch", delete_first_branch=False),
+    UnreadableReservationCase(name="first-reservation-on-deleted-branch", delete_first_branch=True),
+]
+
+
+@pytest.mark.parametrize("case", UNREADABLE_RESERVATION_CASES, ids=lambda case: case.name)
+async def test_get_resource_reuses_readable_reservation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+    case: UnreadableReservationCase,
+) -> None:
+    """A branch that cannot read an identifier's first reservation keeps returning its own address."""
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net145 = ip_dataset_prefix_v4["net145"]
+
+    adress_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=adress_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net145], ip_namespace=ns1, default_address_type="IpamIPAddress")
+    await pool.save(db=db)
+
+    branch_a = await create_branch(branch_name="reserve-a", db=db)
+    branch_b = await create_branch(branch_name="reserve-b", db=db)
+
+    address_a = await pool.get_resource(db=db, address_type="IpamIPAddress", identifier="shared-id", branch=branch_a)
+    if case.delete_first_branch:
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch_a)
+
+    first = await pool.get_resource(db=db, address_type="IpamIPAddress", identifier="shared-id", branch=branch_b)
+    second = await pool.get_resource(db=db, address_type="IpamIPAddress", identifier="shared-id", branch=branch_b)
+    third = await pool.get_resource(db=db, address_type="IpamIPAddress", identifier="shared-id", branch=branch_b)
+
+    assert first.id != address_a.id
+    assert [second.id, third.id] == [first.id, first.id]
 
 
 async def test_get_next_weighted(
