@@ -546,6 +546,43 @@ class TestChangedNodesTimeWindows:
 
 
 @dataclass
+class MigratedKind:
+    branch: Branch
+    car_ids: dict[str, str]
+
+
+@pytest.fixture(scope="class")
+async def migrated_kind(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, car_person_schema_scope_class: SchemaBranch
+) -> MigratedKind:
+    """Change the kind of TestCar on a branch, which leaves two Node vertices for each car, then change one car."""
+    main = default_branch_scope_class
+    setup_at = Timestamp()
+    john = await _create(db, main, "TestPerson", setup_at, name="John", height=180)
+    jane = await _create(db, main, "TestPerson", setup_at, name="Jane", height=170)
+    accord = await _create(db, main, "TestCar", setup_at, name="accord", owner=john)
+    camry = await _create(db, main, "TestCar", setup_at, name="camry", owner=jane)
+    branch = await create_branch(db=db, branch_name="migrated-kind")
+    schema = registry.schema.get_schema_branch(name=main.name)
+    car_schema = schema.get(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not execution_result.errors
+
+    migrated_accord = await _get(db, branch, accord.id)
+    migrated_accord.color.value = "#123456"
+    await migrated_accord.save(db=db)
+    return MigratedKind(branch=branch, car_ids={"accord": accord.id, "camry": camry.id})
+
+
+@dataclass
 class MigratedKindCase:
     name: str
     query_class: type[DiffChangedNodesQuery]
@@ -558,37 +595,23 @@ MIGRATED_KIND_CASES: list[MigratedKindCase] = [
 ]
 
 
-@pytest.mark.parametrize("case", MIGRATED_KIND_CASES, ids=lambda case: case.name)
-async def test_node_with_migrated_kind_is_listed_once(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_accord_main: Node,
-    car_camry_main: Node,
-    case: MigratedKindCase,
-) -> None:
-    branch = await create_branch(db=db, branch_name="migrated-kind")
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    car_schema = schema.get(name="TestCar")
-    car_schema.name = "NewCar"
-    car_schema.namespace = "Test2"
-    registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
-    migration = NodeKindUpdateMigration(
-        previous_node_schema=schema.get(name="TestCar"),
-        new_node_schema=car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
-    )
-    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
-    assert not execution_result.errors
-    results = await db.execute_query(
-        query="MATCH (n:Node {uuid: $uuid}) RETURN n.kind AS kind",
-        params={"uuid": car_accord_main.id},
-    )
-    assert sorted(result["kind"] for result in results) == ["Test2NewCar", "TestCar"]
+class TestNodeWithMigratedKind:
+    async def test_two_node_vertices_share_the_uuid(self, db: InfrahubDatabase, migrated_kind: MigratedKind) -> None:
+        results = await db.execute_query(
+            query="MATCH (n:Node {uuid: $uuid}) RETURN n.kind AS kind",
+            params={"uuid": migrated_kind.car_ids["accord"]},
+        )
+        assert sorted(result["kind"] for result in results) == ["Test2NewCar", "TestCar"]
 
-    migrated_accord = await _get(db, branch, car_accord_main.id)
-    migrated_accord.color.value = "#123456"
-    await migrated_accord.save(db=db)
-
-    car_ids = {"accord": car_accord_main.id, "camry": car_camry_main.id}
-    listed = await _changed_node_uuids(db=db, query_class=case.query_class, base_branch=default_branch, branch=branch)
-    assert sorted(listed) == sorted(car_ids[name] for name in case.expected_cars)
+    @pytest.mark.parametrize("case", MIGRATED_KIND_CASES, ids=lambda case: case.name)
+    async def test_listed_once(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        migrated_kind: MigratedKind,
+        case: MigratedKindCase,
+    ) -> None:
+        listed = await _changed_node_uuids(
+            db=db, query_class=case.query_class, base_branch=default_branch_scope_class, branch=migrated_kind.branch
+        )
+        assert sorted(listed) == sorted(migrated_kind.car_ids[name] for name in case.expected_cars)
