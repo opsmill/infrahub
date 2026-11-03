@@ -95,6 +95,15 @@ The internal identifier should be a UUID4, with 36 characters.
 </TabItem>
 </Tabs>
 
+### Kinds and attributes a number pool uses {#number-pool}
+
+A number pool refers to its kind and to the attribute it allocates by their names. While the pool exists, Infrahub refuses a schema change that renames the kind, by its `name` or its `namespace`, or renames the attribute. The refusal applies to pools created through a `NumberPool` attribute and to pools created in the web interface or the GraphQL API. When the attribute belongs to a generic, Infrahub also refuses the rename for the pools of the kinds that implement the generic. The error names each pool:
+
+```text
+pool <pool> allocates numbers for <kind>.<attribute>; a kind cannot be renamed while a number pool allocates numbers for it
+pool <pool> allocates numbers for <kind>.<attribute>; an attribute cannot be renamed while a number pool allocates numbers for it
+```
+
 ## Restrictions
 
 Most changes to an existing schema are supported but there are a few properties that can't be updated in the current release:

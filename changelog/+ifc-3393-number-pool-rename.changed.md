@@ -1,0 +1,1 @@
+Infrahub now refuses a schema change that renames a kind, by its name or its namespace, or renames an attribute, while a number pool allocates numbers for it. A number pool refers to its kind and its attribute by name, so the rename left the pool referring to a kind or an attribute the schema no longer has. The error names each pool that blocks the rename.
