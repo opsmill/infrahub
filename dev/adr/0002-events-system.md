@@ -97,8 +97,9 @@ The decision to store events in Prefect stands. Infrahub now sets the retention 
 `task_manager.retention` settings that the task manager translates into Prefect settings:
 
 - `activity_log` (7 days by default, at most 365 days) is Prefect's global event retention, so
-  Infrahub events are kept that long.
-- `prefect_own_events` (7 days by default, at most `activity_log`) applies to Prefect's own event
+  Infrahub events are kept that long. OpsMill's Enterprise Docker Compose file and Helm chart set it
+  to 30 days; the code checks no edition, so both editions have the same settings and range.
+- `prefect_own_events` (2 days by default, at most `activity_log`) applies to Prefect's own event
   types through Prefect's per-type retention when it is shorter than `activity_log`, so a longer
   activity log does not keep them longer.
 - `task_history` (30 days by default) bounds the flow runs stored in the same database.

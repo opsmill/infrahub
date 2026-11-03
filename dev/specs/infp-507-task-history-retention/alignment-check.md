@@ -26,3 +26,7 @@ Every behaviour row in section 2 and every decision D1 to D10 maps to a requirem
 ## Action
 
 Proceed. No remediation pass. The design doc's section 2 "Page through" row, D7 and Q2 have been corrected since.
+
+## Note (2026-11-03)
+
+The finding on the D9 Helm paragraph no longer holds after the product decision of 3 Nov: `--no-task-history-cleanup` is an option of the upgrade on every deployment, not for Helm only, and the upgrade's cleanup runs only for a backlog of at least 100,000 old runs. The Helm chart passes the option to its pre-upgrade hook ([opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100)). See the clarification session of 2026-11-03 in [spec.md](spec.md). The rest of this check stands as written on 4 Oct.

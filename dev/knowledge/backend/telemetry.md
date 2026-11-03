@@ -151,7 +151,9 @@ Not every number means the same thing over time. There are three kinds:
    tally is a raw count of each event type that the task manager still stores. The hourly
    cleanup deletes events older than `task_manager.retention.activity_log`, so this is a rolling
    window bounded by that retention: not a per-day figure, and not comparable day to day or
-   between installs with different retentions. This is the older, coarse signal.
+   between installs with different retentions. OpsMill's Enterprise Docker Compose file and Helm
+   chart set the activity log retention to 30 days, so an install on these files counts its
+   Infrahub event types over 30 days instead of 7. This is the older, coarse signal.
 
 3. **Windowed — previous full UTC day** — every `activity_24h.*` metric counts only events (or
    webhook flow-runs) that occurred within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
@@ -172,8 +174,9 @@ midnight lands in one window only, never two.
 
 ### Retention interaction
 
-The task manager keeps events for the activity log retention (7 days by default) and flow runs
-for the task history retention (30 days by default); see
+The task manager keeps events for the activity log retention (7 days by default, 30 days with
+OpsMill's Enterprise Docker Compose file and Helm chart) and flow runs for the task history
+retention (30 days by default); see
 [Task Manager Retention](task-manager-retention.md). The daily flow runs between 02:00 and
 03:00 UTC and reads a window that started 26 to 27 hours earlier, so the window is complete only
 while both retentions are longer than that. Both settings accept 1 day, and the Prefect settings

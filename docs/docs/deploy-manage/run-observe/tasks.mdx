@@ -37,7 +37,7 @@ The `task_manager.retention` section of the configuration holds three retention 
 | Setting | Environment variable | Default | Records kept |
 |---|---|---|---|
 | `task_history` | `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY` | `30d` | Finished task runs, with their logs and artifacts |
-| `activity_log` | `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` | `7d` | The events of the [activity log](./activity-log.mdx#retention) |
+| `activity_log` | `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` | `7d`, and `30d` with the Docker Compose file and the Helm chart of Infrahub Enterprise | The events of the [activity log](./activity-log.mdx#retention) |
 | `prefect_own_events` | `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | `2d` | The events that the task manager records for its own use, which the activity log does not show |
 
 ```toml
@@ -47,9 +47,11 @@ activity_log = "7d"
 prefect_own_events = "2d"
 ```
 
+The Docker Compose file and the Helm chart of Infrahub Enterprise set `activity_log` to `30d`. An Infrahub Enterprise deployment that uses neither, for example one with its own manifests or with its settings only in `infrahub.toml`, keeps `7d` unless you set `activity_log`, in the configuration file or with `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`. Both editions accept the same settings and the same range of values, so you can also raise the activity log retention in the Community Edition. A 30-day activity log retention keeps about 4 times as many Infrahub events as a 7-day one; see [Plan disk space for a longer retention](./activity-log.mdx#plan-disk-space-for-a-longer-retention).
+
 Set the values on the task manager, and on the container of its background services if they run in a container of their own: that container runs the hourly cleanups with its own values, and `infrahub tasks flush flow-runs` uses the values of the task manager. The Docker Compose file passes the three environment variables to the task manager, so you can set them in your `.env` file. [How to configure Infrahub](../install-configure/configure-infrahub.mdx) describes the ways to set environment variables. The values apply when the task manager, or the container of its background services, starts.
 
-With Helm, set them in the `env` list under `prefect-server.global.prefect` in your values file, or under `infrahub.prefect-server.global.prefect` with the Infrahub Enterprise chart. That list reaches the task manager container and, when the background services run in a container of their own, that container too. The `env` list under `prefect-server.server` reaches only the task manager. Helm replaces a list as a whole, so a list that you set replaces any list that the chart sets at the same place.
+With Helm, set them in the `env` list under `prefect-server.global.prefect` in your values file, or under `infrahub.prefect-server.global.prefect` with the Infrahub Enterprise chart. That list reaches the task manager container and, when the background services run in a container of their own, that container too. The `env` list under `prefect-server.server` reaches only the task manager. Helm replaces a list as a whole, so a list that you set replaces any list that the chart sets at the same place. The chart sets the three retention values in that list, so set all three in your list. A value that you leave out falls back to the configuration file, or else to the default of Infrahub, for example `7d` for the activity log instead of the `30d` of the Infrahub Enterprise chart.
 
 ```yaml title="values.yml"
 prefect-server:
@@ -58,6 +60,10 @@ prefect-server:
       env:
         - name: INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY
           value: "90d"
+        - name: INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG
+          value: "7d"
+        - name: INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS
+          value: "2d"
 ```
 
 Each value is a number of days, such as `30d`, or an ISO 8601 duration, such as `P30D`, from 1 to 365 days. A value outside that range, or in another form, stops the task manager at startup. It also stops every other Infrahub process that receives the value and loads the whole configuration, such as the API server and the task workers, which receive the same three environment variables in the Docker Compose file. The error names the setting:
@@ -110,7 +116,7 @@ docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 
 The summary reports the number of runs deleted, the size of the task history and activity log tables before and after, and what the rewrite did with each table: the tables it rewrote, the tables it left as they are, the tables it could not lock, the tables whose rewrite took too long, and the tables whose rewrite failed with a database error. If another session holds a lock on a table for more than 3 seconds, the command tries that table again 20 seconds later, up to four more times. When the table is still locked after these five attempts, the command skips it and names it in the summary. A rewrite that takes longer than 60 seconds is stopped, which leaves that table as it was, and this limit cannot be changed. A table whose rewrite fails with a database error, for example because there is not enough free disk space for the copy, also stays as it was, and the command goes on with the next table. Run the command again later to rewrite a table that stayed locked. For a table whose rewrite failed, fix the cause, then run the command again. For a table whose rewrite was stopped, see [A table whose rewrite takes longer than 60 seconds](../maintain-upgrade/upgrade/overview.mdx#a-table-whose-rewrite-takes-longer-than-60-seconds).
 
-Use `--rewrite` once after you upgrade an existing instance that holds a lot of task history, as described in [Clean up old task history after the upgrade](../maintain-upgrade/upgrade/overview.mdx#clean-up-old-task-history-after-the-upgrade), and after you lower the task history or the activity log retention. The next hourly cleanup deletes the records older than the new value, and the command still rewrites the tables that are mostly free space, even though it has little left to delete.
+`infrahub upgrade` runs the same cleanup, with `--rewrite`, in its last step, when the task manager reports at least 100,000 finished task runs older than the task history retention. Run the command yourself with `--rewrite` on an existing instance that holds a lot of task history when the upgrade skipped the cleanup or did not finish it, for example when the pre-upgrade hook of the Helm chart ran the upgrade, as described in [Clean up old task history during and after the upgrade](../maintain-upgrade/upgrade/overview.mdx#clean-up-old-task-history-after-the-upgrade). Also run it after you lower the task history or the activity log retention. The next hourly cleanup deletes the records older than the new value, and the command still rewrites the tables that are mostly free space, even though it has little left to delete.
 
 The command exits with:
 

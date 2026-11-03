@@ -27,6 +27,19 @@ For earlier versions, please refer to the [release notes](/release-notes/infrahu
 
 <SnippetTaskHistoryWarning />
 
+:::info The Enterprise Docker Compose file and Helm chart keep the activity log for 30 days
+
+OpsMill's Infrahub Enterprise Docker Compose file and Helm chart set the activity log retention to 30 days. Before this release, the task manager kept events for Prefect's default of 7 days. A retention of 30 days keeps about 4 times as many events of the activity log as 7 days, so the task manager database needs more disk space. See [Plan disk space for a longer retention](../../run-observe/activity-log.mdx#plan-disk-space-for-a-longer-retention). An Infrahub Enterprise instance deployed without these files, for example with your own manifests or with its configuration only in `infrahub.toml`, keeps 7 days unless you set the activity log retention.
+
+To keep the activity log for another number of days, for example 7, set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=7d`:
+
+- With Docker Compose, in the `.env` file.
+- With Helm, in the `env` list under `infrahub.prefect-server.global.prefect` in your values file. A list that you set there replaces the list of the chart as a whole, so set all three retention values in it: `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY`, `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`, and `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS`.
+
+See [Activity log retention](../../run-observe/activity-log.mdx#retention).
+
+:::
+
 ## Upgrading to Infrahub Enterprise 1.2 and after
 
 <Tabs groupId="deployment" queryString>
@@ -47,7 +60,7 @@ services:
   task-manager-background-svc:
     command: infrahub tasks background-services
     environment:
-      INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG: ${INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG:-7d}
+      INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG: ${INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG:-30d}
       INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS: ${INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS:-2d}
       INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY: ${INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY:-30d}
 ```
@@ -55,6 +68,8 @@ services:
 If the `grep` command prints nothing, you do not need this change. See [Background services in their own container](../../run-observe/tasks.mdx#background-services-in-their-own-container).
 
 :::
+
+The upgrade runs while the instance is stopped. When the task manager reports at least 100,000 finished task runs older than the task history retention, the upgrade deletes them in its last step, which adds to the time the instance is down. In OpsMill benchmarks of an earlier version of the cleanup, before it limited each delete transaction to 1,000 runs, it took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. The duration depends on the hardware and the data of your instance; see [Run the cleanup command](./overview.mdx#run-the-cleanup-command). To restart the instance sooner, run `docker compose run infrahub-server infrahub upgrade --no-task-history-cleanup` instead, then run the cleanup command below once the instance runs again.
 
 ```bash
 # Stop the current instance
@@ -115,6 +130,9 @@ Helm replaces the whole `args` list, so keep the wait loop as shown. If `kubectl
 # Upgrade the Helm release
 helm upgrade
 
+# Wait until the new task manager runs
+kubectl rollout status deployment/prefect-server
+
 # Run the unified upgrade command inside the server pod
 kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
 
@@ -141,6 +159,10 @@ query {
   }
 }
 ```
+
+Run `infrahub upgrade` after the rollout of the task manager has finished. Before that, the upgrade reaches the task manager of the previous release. On the first upgrade to this release, that task manager does not report its task history, so the upgrade skips the task history cleanup.
+
+When the pre-upgrade hook of the chart runs the upgrade (`infrahub.upgrade.enabled`), the chart passes `--no-task-history-cleanup` to it, because Helm waits at most 5 minutes for a hook by default. The hook also runs before Helm replaces the task manager. Run the cleanup command below after the upgrade.
 
 <SnippetTaskHistoryCleanup />
 

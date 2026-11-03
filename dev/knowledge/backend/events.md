@@ -217,7 +217,7 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 
 | Situation | What happens |
 |---|---|
-| An Infrahub event is emitted | Prefect stores it and its related resources, keeps it for `task_manager.retention.activity_log` (7 days by default), then its hourly vacuum deletes both; see [Event retention](task-manager-retention.md#event-retention) |
+| An Infrahub event is emitted | Prefect stores it and its related resources, keeps it for `task_manager.retention.activity_log` (7 days by default, 30 days with OpsMill's Enterprise Docker Compose file and Helm chart), then its hourly vacuum deletes both; see [Event retention](task-manager-retention.md#event-retention) |
 | Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
 | The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from now |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |

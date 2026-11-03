@@ -22,8 +22,8 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 | Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
 | `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `if_freed` with `--rewrite`, and prints the runs deleted and the tables rewritten, left as mostly live, still locked, stopped at the time limit and failed with a database error; the task manager refuses it with `403`, and the CLI exits 1, when Prefect's vacuum switch does not turn on `flow_runs` |
-| `infrahub upgrade` | Deletes nothing; in its task manager step it prints the task history size and the count of old runs from `GET /infrahub/task-history/size` and the command, or the reason instead of the command when Prefect's vacuum switch keeps old task runs, or why it has no size and the command when the size does not come within 10 s |
-| The task manager has no cleanup route (an older release) | The CLI prints that the cleanup is not provided, deletes nothing and exits 0 |
+| `infrahub upgrade` | In its task manager step it prints the task history size and the count of old runs from `GET /infrahub/task-history/size`, with the reason when Prefect's vacuum switch keeps old task runs, or why it has no size when the size does not come within 10 s. In its last step, after the branch rebase, it runs the cleanup of `flush flow-runs --rewrite` when the task manager reported at least 100,000 old runs, and otherwise prints why it skipped; a cleanup that fails or cannot start never fails the upgrade; see the upgrade cleanup in [Task history cleanup job](#task-history-cleanup-job) |
+| The task manager has no cleanup route (an older release) | `flush flow-runs` prints that the cleanup is not provided, deletes nothing and exits 0; the upgrade reads no size from it, so it skips its cleanup and prints the command |
 | A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
 | A branch is deleted | `branch-purge-tasks` deletes the finished runs tagged with the branch, independently of the retention |
@@ -67,6 +67,17 @@ prefix. `prefect_server/retention.py` turns it into Prefect variables:
   8601 readers.
 - The cleanup job takes its cutoff from Prefect's `server.services.db_vacuum.retention_period` inside
   the task manager. The configuration of the process that runs the CLI never sets the cutoff.
+- The code default of `activity_log` is 7 days in every edition. OpsMill's Enterprise Docker Compose
+  file and Enterprise Helm chart set `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` to 30 days, as
+  they set `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE`. Nothing in the code checks the edition: both
+  editions have the same settings and the same 1 to 365 days, a Community instance can set 30 days
+  too, and an Enterprise instance deployed with its own manifests, or configured in `infrahub.toml`
+  only, keeps 7 days unless it sets the variable. A Helm values file that sets its own
+  `prefect-server.global.prefect.env` list (`infrahub.prefect-server.global.prefect.env` in the
+  Enterprise chart) replaces the chart's list as a whole, so it must set all three retentions.
+  30 days keeps about 4 times as many Infrahub events as 7 days; see the
+  [task manager database storage](../../../docs/docs/deploy-manage/install-configure/hardware-requirements.mdx#task-manager-database-postgresql-storage)
+  guidance.
 
 ## Task history cleanup job
 
@@ -79,7 +90,8 @@ database, and can then rewrite the tables to return the disk space.
   /infrahub/task-history/cleanup/{id}` reads it, and `GET /infrahub/task-history/size` answers the
   disk space of the six task history tables with their indexes (`pg_total_relation_size`, no table
   data read; `null` on SQLite) and the runs that a cleanup would delete now, counted up to
-  `_OLD_RUNS_COUNT_LIMIT` (100,000) so the count stays fast, in `prefect_server/task_history.py`.
+  `prefect_server/task_history_models.py::OLD_RUNS_COUNT_LIMIT` (100,000) so the count stays fast.
+  The routes are in `prefect_server/task_history.py`.
   They have no authentication, like the existing events route and Prefect's own API. When
   Prefect's vacuum switch, as Prefect parses it, does not turn on `flow_runs`, the start answers
   `403` with the reason and the size gives it as `deletion_off_reason`
@@ -162,22 +174,58 @@ database, and can then rewrite the tables to return the disk space.
   or, after the task manager has answered once, a transport error or a `502`, `503` or `504` (a
   proxy in front of a restarting task manager) means waiting and posting again; each wait is
   reported when it starts, when its reason changes and when it starts again after a job showed, and
-  the client gives up 3 hours after it last saw a job, naming the last reason. An answer that holds
-  no job raises `TaskHistoryCleanupError` with the status and the validation errors on one line. The
-  client returns a `FollowedCleanup`: the job, plus the runs that each job the task manager lost had
-  deleted when the client last saw it. The CLI adds them to the job's and prints `at least`, because
-  a lost job may have deleted more. A failed job comes back in `TaskHistoryCleanupFailedError`, so
-  the CLI prints what it and the lost jobs had deleted and the tables it finished rewriting.
-  `cli/tasks.py::flow_runs` calls it through `cli/tasks.py::flush_old_flow_runs`.
-- **Upgrade hint**: `cli/upgrade.py::_upgrade_execute` calls `cli/tasks.py::task_history_size_hint`
-  in its task manager step. The hint reads the size route through
-  `task_manager/flow_run/cleanup.py::read_task_history_size` within 10 seconds and prints the size
-  and the count of old runs (`more than 100,000` past the limit) with the command, or with the
-  `deletion_off_reason` instead of the command; a late answer, an error answer (`404` from a task manager without the route) or
-  an answer without a size gets a line that names the error type, then the command, so the hint
-  never fails or holds up the upgrade.
-  The upgrade runs no cleanup: operators of existing instances with a lot of task history run the
-  command once after it, with the instance running.
+  the client gives up 3 hours after it last saw a job (2 minutes in the upgrade), naming the last
+  reason. An answer that holds no job raises `TaskHistoryCleanupError` with the status and the
+  validation errors on one line. The client returns a `FollowedCleanup`: the job, plus the runs that
+  each job the task manager lost had deleted when the client last saw it. The CLI adds them to the
+  job's and prints `at least`, because a lost job may have deleted more. A failed job comes back in
+  `TaskHistoryCleanupFailedError`, so the CLI prints what it and the lost jobs had deleted and the
+  tables it finished rewriting. `cli/tasks.py::flow_runs` and the upgrade cleanup call it through
+  `cli/tasks.py::flush_old_flow_runs`.
+- **Upgrade cleanup**: in its task manager step, `cli/upgrade.py::_upgrade_execute` calls
+  `cli/tasks.py::read_task_history`, which reads the size route through
+  `task_manager/flow_run/cleanup.py::read_task_history_size` within 10 seconds and returns a
+  `TaskHistoryReading`. The step prints the size and the count of old runs (`more than 100,000` past
+  the limit), followed by the `deletion_off_reason` when there is one; nothing on SQLite, where the
+  size is not measured; or, after a late answer, an error answer (`404` from a task manager without
+  the route) or an answer without a size, a line that names the error type. After the branch rebase,
+  the task history cleanup step calls `clean_up_task_history_for_upgrade`, and
+  `upgrade_cleanup_skip_reason` decides in this order:
+  - With `--no-task-history-cleanup`, it skips.
+  - Otherwise, without a reading, it skips.
+  - Otherwise, with a `deletion_off_reason`, it skips and prints the reason without the command.
+  - Otherwise, with fewer than `UPGRADE_CLEANUP_MIN_OLD_RUNS` (100,000) old runs, it skips, because
+    Prefect's hourly cleanup deletes a smaller backlog.
+  - Otherwise it runs `flush_old_flow_runs` with the rewrite, which prints the same progress and
+    summary as `flush flow-runs --rewrite`.
+
+  Every skip line starts with `Task history cleanup skipped, because <reason>`, and all but the one
+  with the `deletion_off_reason` end with the command. The size is not checked, so on SQLite the
+  step can still delete runs. Keep the threshold at most `OLD_RUNS_COUNT_LIMIT`: the count stops
+  there, so a higher threshold would never start the cleanup, and
+  `test_the_cleanup_threshold_can_be_reached_by_the_count_of_old_runs` fails. The upgrade's client
+  gives up 2 minutes after it last saw a job (`UPGRADE_CLEANUP_GIVE_UP_AFTER`), so a cleanup that
+  runs on another replica (`409`) finishes there without the upgrade, while a job already running on
+  the same replica is followed to its end. A cleanup that fails, is refused, cannot reach the task
+  manager or gives up waiting prints the error, and for a failed job what was deleted, then this
+  line, and the upgrade still ends with `Upgrade complete`:
+
+  ```text
+  The upgrade goes on without the cleanup. To finish it, run: infrahub tasks flush flow-runs --rewrite
+  ```
+
+  `--no-task-history-cleanup` keeps no runs: the hourly cleanup still deletes every run older than
+  `task_history`, so only a longer retention set before the upgrade keeps them.
+
+  Docker Compose runs the upgrade with `docker compose run` while the instance is stopped, so the
+  cleanup adds to the time the instance is down. With Helm, `kubectl exec ... infrahub upgrade`
+  reaches the new task manager only once the `prefect-server` rollout has finished. The chart's
+  optional pre-upgrade hook Job (`upgrade.enabled`, `infrahub.upgrade.enabled` in the Enterprise
+  chart) runs before Helm replaces the task manager, and the chart passes
+  `--no-task-history-cleanup` to it, because Helm waits at most 5 minutes for a hook by default.
+  Without the option, the first upgrade to a release with the cleanup would still skip it, because
+  the hook reaches the old task manager, which has no size route. Helm operators therefore run the
+  command after the upgrade.
 
 ## Stuck runs
 
@@ -253,5 +301,5 @@ deleted with their event.
 | Startup wiring | `backend/infrahub/prefect_server/app.py::apply_infrahub_settings_to_prefect` |
 | Cleanup job, size and routes | `backend/infrahub/prefect_server/task_history.py` |
 | Cleanup client | `backend/infrahub/task_manager/flow_run/cleanup.py` |
-| CLI commands, upgrade hint | `backend/infrahub/cli/tasks.py`, `backend/infrahub/cli/upgrade.py::_upgrade_execute` |
+| CLI commands, upgrade cleanup | `backend/infrahub/cli/tasks.py`, `backend/infrahub/cli/upgrade.py::_upgrade_execute` |
 | Stale-run marking | `backend/infrahub/task_manager/flow_run/retention.py::FlowRunRetention` |

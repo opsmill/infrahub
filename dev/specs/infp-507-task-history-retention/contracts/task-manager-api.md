@@ -46,7 +46,7 @@ Response `200`:
 - `size` is the disk space in bytes of the six task-history tables with their indexes, from `pg_total_relation_size`, which reads no table data; `null` on SQLite.
 - `old_runs` is the number of finished top-level runs older than the task history retention, the runs a cleanup would delete now, counted up to 100,000; `old_runs_limit_reached` is `true` when there are more. The count works on SQLite too.
 - `deletion_off_reason` is `null` when the vacuum switch, as Prefect parses it, turns on `flow_runs`. Otherwise it says why old task runs are not deleted, as the `403` of the cleanup start does after `because`, for example `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED does not turn on flow_runs`. The count of old runs does not change with it.
-- The upgrade prints the size and the count with the command that returns the space, or with the reason when `deletion_off_reason` is set. A task manager without this route answers `404`.
+- The upgrade prints the size and the count in its "Task manager" step, with the reason when `deletion_off_reason` is set. Its "Task history cleanup" step then starts a cleanup with `{"rewrite": "if_freed"}` only when `old_runs` reaches 100,000, which is also the count limit, and `deletion_off_reason` is `null`; otherwise it prints why it skipped (see [cli.md](cli.md)). A task manager without this route answers `404`, and the upgrade then skips its cleanup.
 
 ## `POST /infrahub/events/filter` (changed)
 
