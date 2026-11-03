@@ -97,6 +97,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
 
         well_formed = transforms["well_formed_report"]
         assert well_formed.dependencies_complete.value is True
+        assert well_formed.dependencies.value is not None
         assert set(well_formed.dependencies.value) == {
             "templates/partial.j2",
             "templates/report.j2",
@@ -104,6 +105,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
 
         broken = transforms["broken_report"]
         assert broken.dependencies_complete.value is False
+        assert broken.dependencies.value is not None
         assert set(broken.dependencies.value) == {"templates/broken.j2", "templates/broken_partial.j2"}
 
         # The closure-builder failure is reported against the offending transform only,

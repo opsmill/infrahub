@@ -6,7 +6,15 @@ import yaml
 from fast_depends import dependency_provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
-from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
+from infrahub_sdk.protocols import (
+    CoreCheckDefinition,
+    CoreGeneratorAction,
+    CoreGeneratorDefinition,
+    CoreGraphQLQuery,
+    CoreNodeTriggerRule,
+    CoreTransformJinja2,
+    CoreTransformPython,
+)
 
 from infrahub import config
 from infrahub.core import registry
@@ -415,11 +423,11 @@ class TestInfrahubClient:
         """
         await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")  # type: ignore[call-overload]
 
-        generator_definition = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
-        action = await client.get(kind="CoreGeneratorAction", name__value="run-tags-generator")
+        generator_definition = await client.get(kind=CoreGeneratorDefinition, name__value="tags_generator")
+        action = await client.get(kind=CoreGeneratorAction, name__value="run-tags-generator")
         assert action.generator.id == generator_definition.id
 
-        trigger = await client.get(kind="CoreNodeTriggerRule", name__value="trigger-tags-generator-update")
+        trigger = await client.get(kind=CoreNodeTriggerRule, name__value="trigger-tags-generator-update")
         assert trigger.action.id == action.id
 
 

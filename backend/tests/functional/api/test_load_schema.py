@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
-from infrahub_sdk.schema import validate_schema
+from infrahub_sdk.schema import NodeSchemaAPI, validate_schema
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.initialization import create_account
@@ -574,6 +574,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert not creation.errors
 
         schema = await client.schema.get(kind="TestCountry", refresh=True)
+        assert isinstance(schema, NodeSchemaAPI)
         assert schema.default_filter == "name__value"
         assert schema.description == "test description"
         assert schema.label == "MyPersonLabel"
@@ -594,6 +595,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert creation.schema_updated
 
         schema = await client.schema.get(kind="TestCountry", refresh=True)
+        assert isinstance(schema, NodeSchemaAPI)
         assert schema.default_filter is None
         assert schema.description is None
         assert schema.label == "Country"

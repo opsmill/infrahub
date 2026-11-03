@@ -4,7 +4,12 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.protocols import CoreGeneratorInstance
+from infrahub_sdk.protocols import (
+    CoreGeneratorDefinition,
+    CoreGeneratorInstance,
+    CoreReadOnlyRepository,
+    CoreRepository,
+)
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import State, flow, get_run_logger, task
 from prefect.cache_policies import NONE
@@ -161,7 +166,7 @@ async def run_generator_definition(
     client = get_client()
     client.request_context = context.to_request_context()
     generators = await client.filters(
-        kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
+        kind=CoreGeneratorDefinition, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
     generator_definitions: list[ProposedChangeGeneratorDefinition] = []
@@ -234,15 +239,15 @@ async def request_generator_definition_run(
         log=get_run_logger(),
     )
 
-    repository = await client.get(
-        kind=InfrahubKind.REPOSITORY,
+    repository: CoreRepository | CoreReadOnlyRepository | None = await client.get(
+        kind=CoreRepository,
         branch=model.branch,
         id=model.generator_definition.repository_id,
         raise_when_missing=False,
     )
     if not repository:
         repository = await client.get(
-            kind=InfrahubKind.READONLYREPOSITORY,
+            kind=CoreReadOnlyRepository,
             branch=model.branch,
             id=model.generator_definition.repository_id,
             raise_when_missing=True,

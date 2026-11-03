@@ -19,6 +19,8 @@ import pytest
 import yaml
 from infrahub_sdk.branch import BranchStatus
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.protocols import CoreReadOnlyRepository as SdkCoreReadOnlyRepository
+from infrahub_sdk.protocols import CoreRepository as SdkCoreRepository
 from infrahub_sdk.task.models import TaskFilter, TaskState
 from prefect.client.schemas.objects import StateType
 
@@ -2591,7 +2593,7 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
         """
         tracked = await tracked_branch_repository("retargeted-repo", "retargeted-branch")
         await _advance_and_import_the_trunk(gogs_server.container, tracked)
-        repository = await client.get(kind=InfrahubKind.REPOSITORY, id=tracked.node_id)
+        repository = await client.get(kind=SdkCoreRepository, id=tracked.node_id)
         repository.default_branch.value = tracked.branch_name
         await repository.save()
 
@@ -2688,9 +2690,7 @@ class TestReadOnlyRepositoryLineage(TestInfrahubAppHoldingWorkflows):
         main_head = commit_to_remote_branch(
             gogs_server.container, repo_name, branch="main", files={"main.txt": "main v2\n"}
         )
-        repository = await client.create(
-            kind=InfrahubKind.READONLYREPOSITORY, name=repo_name, location=location, ref="main"
-        )
+        repository = await client.create(kind=SdkCoreReadOnlyRepository, name=repo_name, location=location, ref="main")
         await repository.save()
         assert (await _read_only_repository(db=db, repository_id=repository.id)).commit.value == main_head
 
