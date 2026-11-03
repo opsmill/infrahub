@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions, RelationshipCardinality
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
@@ -13,7 +13,16 @@ from infrahub.core.migrations.graph.m083_heal_missing_number_pool_rows import Mi
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -26,12 +35,20 @@ from tests.helpers.attribute_rows import (
     build_rack_unit_attribute,
     create_damaged_node,
     create_schema_number_pool,
+    delete_attribute_rows,
     get_active_attribute_edge_details,
     get_pool_attribute_row_shape,
     get_schema_pools,
     load_server_schema,
     recording_console,
     simulate_rebase,
+)
+from tests.helpers.number_pool import (
+    SCOPED_ATTRIBUTE_NAME,
+    SCOPED_SITE,
+    provision_schema_number_pools,
+    save_schema_kinds,
+    scoped_site,
 )
 
 
@@ -395,4 +412,118 @@ async def test_pool_rows_are_left_to_this_migration_by_the_default_value_heal(
     assert node.get_attribute(name="rack_unit").value == 1
     assert (await migration.validate_migration(db=db)).errors == []
 
+    await verify_graph(db=db)
+
+
+def _equipment_schema(allocation_scope: list[str] | None) -> SchemaRoot:
+    """Switches inheriting a pooled `vlan_id` and a mandatory site from a generic, with the pool scoped as given."""
+    equipment = GenericSchema(
+        name="Equipment",
+        namespace="Scope",
+        label="Equipment",
+        attributes=[
+            AttributeSchema(
+                name=SCOPED_ATTRIBUTE_NAME,
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=allocation_scope),
+            )
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="site",
+                peer=SCOPED_SITE.kind,
+                identifier="scope_equipment__site",
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+    switch = NodeSchema(
+        name="Switch",
+        namespace="Scope",
+        label="Switch",
+        inherit_from=["ScopeEquipment"],
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    return SchemaRoot(generics=[equipment], nodes=[SCOPED_SITE, switch])
+
+
+async def _seed_switches_and_damage(
+    db: InfrahubDatabase, branch: Branch, allocation_scope: list[str] | None, damaged_names: list[str]
+) -> dict[str, str]:
+    """Create switches through the write path, then remove the `vlan_id` rows of the named ones; return {name: uuid}."""
+    await save_schema_kinds(db=db, schema=_equipment_schema(allocation_scope=allocation_scope))
+    await provision_schema_number_pools(db=db)
+
+    sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-1", "site-2")}
+    placement = {"s1-a": "site-1", "s1-b": "site-1", "s1-c": "site-1", "s2-a": "site-2"}
+    switches: dict[str, str] = {}
+    for name, site_name in placement.items():
+        switch = await Node.init(db=db, schema="ScopeSwitch", branch=branch)
+        await switch.new(db=db, name=name, site=sites[site_name])
+        await switch.save(db=db)
+        switches[name] = switch.get_id()
+
+    for name in damaged_names:
+        await delete_attribute_rows(db=db, node_uuid=switches[name], attribute_names=[SCOPED_ATTRIBUTE_NAME])
+    return switches
+
+
+async def _vlan_ids_by_name(db: InfrahubDatabase, branch: Branch, switches: dict[str, str]) -> dict[str, int]:
+    nodes = await NodeManager.get_many(db=db, branch=branch, ids=list(switches.values()))
+    return {name: nodes[uuid].get_attribute(name=SCOPED_ATTRIBUTE_NAME).value for name, uuid in switches.items()}
+
+
+@pytest.fixture
+def number_pool_node_class(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+
+
+async def test_scoped_pool_repair_gives_each_node_the_lowest_free_number_of_its_site(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    number_pool_node_class: None,
+) -> None:
+    switches = await _seed_switches_and_damage(
+        db=db, branch=default_branch, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]
+    )
+
+    result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 2
+    assert await _vlan_ids_by_name(db=db, branch=default_branch, switches=switches) == {
+        "s1-a": 1,
+        "s1-b": 2,
+        "s1-c": 3,
+        "s2-a": 1,
+    }
+    await verify_graph(db=db)
+
+
+async def test_unscoped_pool_repair_allocates_from_the_whole_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    number_pool_node_class: None,
+) -> None:
+    switches = await _seed_switches_and_damage(
+        db=db, branch=default_branch, allocation_scope=None, damaged_names=["s1-c", "s2-a"]
+    )
+    # The repair allocates in UUID order, so the damaged switch with the lower UUID receives the lower number.
+    first, second = sorted(["s1-c", "s2-a"], key=lambda name: switches[name])
+
+    result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 2
+    assert await _vlan_ids_by_name(db=db, branch=default_branch, switches=switches) == {
+        "s1-a": 1,
+        "s1-b": 2,
+        first: 3,
+        second: 4,
+    }
     await verify_graph(db=db)

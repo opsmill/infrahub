@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.attribute_add import AttributeAddQuery
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.pools.existing_node_numbers import build_existing_node_number_allocator
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -86,7 +87,7 @@ class DefaultValueRowRepairer:
 
 
 class PoolBackedRowRepairer:
-    """Create missing rows with a value allocated per node from the attribute's number pool.
+    """Create missing rows with a value allocated per node from the attribute's number pool, within the node's division.
 
     The pool is upserted the same way the schema change that introduces the attribute
     provisions it, so a damaged install missing the pool is healed rather than failed. Work
@@ -113,6 +114,9 @@ class PoolBackedRowRepairer:
 
         Raises:
             TypeError: When the upserted pool is not an allocation-capable pool node.
+            ValidationError: When the pool's scope or a node's division cannot be read.
+            NodeNotFoundError: When a scope peer named by a human-friendly id or a default filter value does not exist.
+            PoolExhaustedError: When the pool, or a node's division, has no number left to give.
 
         """
         label = f"{rows.node_schema.kind}.{rows.attribute.name}"
@@ -145,23 +149,24 @@ class PoolBackedRowRepairer:
                 )
                 await query.execute(db=dbt)
 
+                allocator = build_existing_node_number_allocator(db=dbt, branch=rows.branch)
+                nodes = await NodeManager.get_many(
+                    db=dbt,
+                    branch=rows.branch,
+                    ids=list(uuid_batch),
+                    fields=allocator.fields_to_load(
+                        pool=number_pool, kind=rows.node_schema.kind, attribute_name=rows.attribute.name
+                    ),
+                )
                 # Counted per allocated node rather than from the rows the query created.
-                nodes = await NodeManager.get_many(db=dbt, branch=rows.branch, ids=list(uuid_batch))
-                for node_uuid in sorted(nodes):
-                    node = nodes[node_uuid]
-                    node_attribute = node.get_attribute(name=rows.attribute.name)
-                    number = await number_pool.get_resource(
-                        db=dbt,
-                        branch=rows.branch,
-                        identifier=node_uuid,
-                        attribute=rows.attribute,
-                        attribute_id=node_attribute.id,
-                        at=rows.at,
-                        user_id=rows.user_id,
-                    )
-                    node_attribute.value = number
-                    await node.save(db=dbt, fields=[rows.attribute.name], at=rows.at)
-                    repaired += 1
+                repaired += await allocator.allocate(
+                    pool=number_pool,
+                    attribute=rows.attribute,
+                    nodes=[nodes[node_uuid] for node_uuid in sorted(nodes)],
+                    branch=rows.branch,
+                    at=rows.at,
+                    user_id=rows.user_id,
+                )
             if multiple_batches:
                 self.console.log(f"    {label}: allocated {repaired}/{len(rows.node_uuids)} pool value(s)")
 
