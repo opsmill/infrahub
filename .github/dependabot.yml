@@ -67,7 +67,8 @@ updates:
     day: monday
     interval: weekly
     time: "09:00"
-# Backend: security updates only, no version updates.
+# Python: security updates only, no version updates, for infrahub-server (pyproject.toml and uv.lock at the
+# repository root) and infrahub-testcontainers.
 - directories:
   - /
   - /python_testcontainers
