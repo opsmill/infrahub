@@ -1,0 +1,27 @@
+backend/tests/component/core/constraint_validators/test_number_pool_rename.py
+  s_71e9cb725a3331::t_8b84cf5cd0fab8 11,67-75,180-196
+changelog/+ifc-3393-number-pool-rename.changed.md
+  s_71e9cb725a3331::t_2abc708229924c 1
+docs/docs/schema/migration.mdx
+  s_71e9cb725a3331::t_91f2fc7840f30d 107-113
+backend/infrahub/core/validators/pool/rename.py
+  s_71e9cb725a3331::t_6bb1ca178699a9 5,33,37,44-45,63-68,76,80-82,93-97,120,126,145,157,180-220,228,230,232
+backend/tests/unit/core/validators/number_pool_rename/test_rename_checker.py
+  s_71e9cb725a3331::t_d4f91a06969b17 1,13,46,82-102,128-131,180-200,215-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36d696bdf491b8c5a179b9f1549a8c44b4cd6587",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
