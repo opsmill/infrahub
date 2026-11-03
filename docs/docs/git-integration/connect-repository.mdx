@@ -243,7 +243,7 @@ Read-only repositories are not checked this way. Their `ref` can be a branch, a 
 
 :::info A repository that fails the connectivity check is removed
 
-When you add a repository, Infrahub asks a task worker to check the connection to the remote, and waits for the answer before it responds to your request. If the check fails, or if no task worker answers within `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (120 by default), Infrahub deletes the repository it created and returns the error. Fix the cause, then add the repository again with the same name.
+When you add a repository, Infrahub asks a task worker to check the connection to the remote, and waits for the answer before it responds to your request. If the check fails, or if no task worker answers within the number of seconds set by [`INFRAHUB_BROKER_RPC_TIMEOUT`](../reference/configuration.mdx#broker), Infrahub deletes the repository it created and returns the error. Fix the cause, then add the repository again with the same name.
 
 When no task worker answers, the error has the code `WORKER_TIMEOUT` and the HTTP status 504, as described in the [error catalogue](../reference/error-catalogue.mdx#worker_timeout). Check that the task workers are running.
 
@@ -410,7 +410,7 @@ The repository sync status indicator in the header tells you whether anything is
    - Select **Reimport current commit** to force reimport without changing the reference
    - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
-4. **Check that a task worker answers.** When you select **Check connectivity**, open the **Commits** tab, or add a repository, Infrahub waits for a task worker to answer for up to `INFRAHUB_BROKER_RPC_TIMEOUT` seconds (120 by default). When no task worker answers in that time, the request fails with the error code `WORKER_TIMEOUT`. Check that the task workers are running, then try again.
+4. **Check that a task worker answers.** When you select **Check connectivity**, open the **Commits** tab, or add a repository, Infrahub waits for a task worker to answer for up to the number of seconds set by [`INFRAHUB_BROKER_RPC_TIMEOUT`](../reference/configuration.mdx#broker). When no task worker answers in that time, the request fails with the error code `WORKER_TIMEOUT`. Check that the task workers are running, then try again.
 
 5. **Check which worker holds the repository lock.** The **Repository activity** card names the worker that holds the repository lock and when it requested it. A held lock is not an error on its own: short tasks such as fetches also hold it.
 

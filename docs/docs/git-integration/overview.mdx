@@ -301,10 +301,10 @@ query RepositoryRewrites($name: String!) {
 }
 ```
 
-### What a rewrite does not undo
+### Limits of a history rewrite
 
-- Infrahub cannot reliably rebuild content from a commit that the rewrite discarded. An Infrahub branch that does not import the new head, for example a branch with `sync_with_git` off, keeps that commit. A task worker that still holds the commit can run the tasks of that branch. A task worker that cloned the repository after the rewrite does not have the commit, so the same task fails there.
-- Infrahub does not remove schema that the discarded commits loaded. The import removes the definitions that the new history no longer declares, but schema keeps no link to the repository that loaded it. Remove that schema from the branch yourself.
+- A task that reads the repository at a commit that the rewrite removed from the remote succeeds or fails depending on the task worker that runs it. Infrahub keeps the old commit on an Infrahub branch that does not import the new head, for example a branch with `sync_with_git` off. A task worker whose clone still contains that commit runs the task. A task worker that cloned the repository after the rewrite cannot fetch the commit from the remote, so the same task fails there.
+- The import deletes the GraphQL queries, Python Transformations, Jinja2 Transformations, check definitions, Generator definitions, objects and menus that the new history no longer declares. It does not delete artifact definitions or schema. Schema has no link to the repository that loaded it, so the import leaves the schema from the removed commits in place. To remove that schema from the branch, see [how to remove a schema element](../schema/migration.mdx#state-absent-or-present).
 
 ## Repository actions and operations
 
