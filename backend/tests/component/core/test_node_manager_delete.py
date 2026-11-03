@@ -626,27 +626,19 @@ async def test_delete_cascade_artifacts(
     await verify_graph(db=db)
 
 
-async def test_delete_cascade_generator_instances(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_data_generic: dict[str, Node],
-) -> None:
-    """Deleting the target of a generator instance deletes the instance, and deleting an instance keeps its target."""
-    c1 = car_person_data_generic["c1"]
-    c2 = car_person_data_generic["c2"]
-    q1 = car_person_data_generic["q1"]
-    r1 = car_person_data_generic["r1"]
-
+async def _create_generator_instances(
+    db: InfrahubDatabase, data: dict[str, Node], targets: list[Node]
+) -> dict[str, Node]:
     group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
-    await group.new(db=db, name="generator-target-group", members=[c1, c2])
+    await group.new(db=db, name="generator-target-group", members=targets)
     await group.save(db=db)
 
     definition = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
     await definition.new(
         db=db,
         name="generatordef-cascade-test",
-        query=q1,
-        repository=r1,
+        query=data["q1"],
+        repository=data["r1"],
         targets=group,
         file_path="generators/car.py",
         class_name="CarGenerator",
@@ -655,17 +647,29 @@ async def test_delete_cascade_generator_instances(
     await definition.save(db=db)
 
     instances: dict[str, Node] = {}
-    for car in (c1, c2):
+    for target in targets:
         instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE)
         await instance.new(
             db=db,
-            name=f"instance-{car.id}",
+            name=f"instance-{target.id}",
             status=GeneratorInstanceStatus.READY.value,
-            object=car,
+            object=target,
             definition=definition,
         )
         await instance.save(db=db)
-        instances[car.id] = instance
+        instances[target.id] = instance
+    return instances
+
+
+async def test_delete_cascade_generator_instances(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting the target of a generator instance deletes the instance, and deleting an instance keeps its target."""
+    c1 = car_person_data_generic["c1"]
+    c2 = car_person_data_generic["c2"]
+    instances = await _create_generator_instances(db=db, data=car_person_data_generic, targets=[c1, c2])
 
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[c1])
 
@@ -677,6 +681,30 @@ async def test_delete_cascade_generator_instances(
 
     assert {d.id for d in deleted} == {instances[c2.id].id}
     assert await NodeManager.get_one(db=db, id=c2.id) is not None
+
+    await verify_graph(db=db)
+
+
+async def test_delete_cascade_reaches_generator_instances_of_cascaded_targets(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """A target that another delete cascades to loses its generator instances too."""
+    person = car_person_data_generic["p1"]
+    c1 = car_person_data_generic["c1"]
+    c2 = car_person_data_generic["c2"]
+    c3 = car_person_data_generic["c3"]
+    instances = await _create_generator_instances(db=db, data=car_person_data_generic, targets=[c1, c3])
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person])
+
+    assert {d.id for d in deleted} == {person.id, c1.id, c2.id, instances[c1.id].id}
+    node_map = await NodeManager.get_many(db=db, ids=[instances[c1.id].id, instances[c3.id].id])
+    assert set(node_map) == {instances[c3.id].id}
 
     await verify_graph(db=db)
 
