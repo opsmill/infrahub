@@ -182,7 +182,7 @@ Indicates the state of data synchronization. Infrahub records it per branch:
 
 #### When the tracked ref of a read-only repository is deleted
 
-When the read-only refs check finds that the branch or tag in `ref` no longer exists on the remote, Infrahub sets the sync status to **Tracked Ref Missing** on the default branch and on every branch that set its own `ref` to that value. A branch that inherits its `ref` from the default branch keeps its own sync status.
+When the read-only refs check finds that a Git branch or tag named in `ref` no longer exists on the remote, Infrahub sets the sync status to **Tracked Ref Missing** on each Infrahub branch whose own `ref` names it. The default branch always has its own `ref`. A branch that inherits its `ref` from the default branch keeps its own sync status.
 
 On a branch with this status:
 
@@ -206,7 +206,7 @@ An import reads one commit of the repository and applies what `.infrahub.yml` de
 
 ### Entries in `.infrahub.yml` that fail the import
 
-The import fails when an entry in `.infrahub.yml` cannot be used:
+The import fails when `.infrahub.yml` contains one of these entries:
 
 - A schema path that does not exist, or a schema directory that contains no `.yml`, `.yaml`, or `.json` file
 - A Jinja2 Transformation whose template file is missing, is empty, is not UTF-8 text, cannot be parsed, or is outside the repository
@@ -323,7 +323,7 @@ The details page of a repository shows which values apply to the whole repositor
 - **On this branch**, with the name of the branch you selected: the values that Infrahub records per branch, such as the commit, the sync status, the [rewrite record](#the-rewrite-record-of-each-branch), and the `ref` of a read-only repository. When you select another branch, only this card changes.
 - **Branches**, titled **Infrahub branches** for a read-only repository: one row per branch, with the branch name, the branch status, the sync status, the commit and, for a read-only repository, the `ref`. The default branch is marked, and the number of branches is shown next to the title. For a read-write repository, the card lists only the branches that sync with Git. Search the branch names, filter by branch name, branch status, or sync status, for example to list only the branches with **Import Error**, and sort by when a branch was created or last updated. The card shows 10 rows per page and stores the page, the filters, and the sort in the URL, so the view stays the same after a reload, and you can share the link. The card reads the same rows as the [`InfrahubRepositoryBranchStatus` query](./branch-synchronization.mdx#checking-a-repositorys-status-on-every-branch).
 - **Repository activity**: the run that is in progress on the repository, with its operation, its step and branch, the worker that runs it, and how long it has been running. The card names the worker that holds the repository lock, and, under **Last runs**, the branches that the last run of each operation changed or failed on. The operations are **Sync**, **Reimport**, **Pull**, **Add**, **Branch creation**, and **Merge**. The card shows the same activity on every branch.
-- **Push to remote**, for a read-write repository only: the pushes of merged branches that wait for the remote, as described in [when a push to the remote fails](./branch-synchronization.mdx#read-the-push-state-of-a-repository).
+- **Push to remote**, for a read-write repository only: the pushes of merged branches that wait for the remote, as described in [read the push state of a repository](./branch-synchronization.mdx#read-the-push-state-of-a-repository).
 
 To read the activity with GraphQL, use the `InfrahubRepositoryActivity` query with the repository ID or name. It returns the runs in `active_runs`, the last run of each operation in `last_runs`, and the holder of the repository lock in `lock`.
 

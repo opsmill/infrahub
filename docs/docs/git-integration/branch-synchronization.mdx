@@ -297,10 +297,10 @@ The details page of a branch other than the default branch has two cards that sh
 The **Git repositories** card lists every repository of the branch, with three columns:
 
 - **Repository**: the name of the repository
-- **Git state**: the sync status of the repository on the branch, such as **In Sync** or **Import Error**. A warning icon follows it when Infrahub cannot reach the remote of the repository.
+- **Git state**: the sync status of the repository on the branch, such as **In Sync** or **Import Error**. A warning icon follows it when the operational status of the repository is **Credential Error**, **Connectivity Error**, or **Error**.
 - **Commit**: the commit of the repository on the branch
 
-Below the table, the card names each repository with a failed import or an unreachable remote:
+Below the table, the card names each repository whose import failed or whose operational status is an error:
 
 - A repository whose import failed on the branch, followed by `import failed` and the last error line of the failed import task, with a **View task log →** link. When Infrahub cannot find that line, the card says `The error details couldn't be found for this import.`
 - A repository whose operational status is **Credential Error**, **Connectivity Error**, or **Error**, followed by that status and the warning `Infrahub can't fetch new commits, so the commit shown may be out of date. Check the repository's credentials and location.`

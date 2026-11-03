@@ -245,7 +245,7 @@ Read-only repositories are not checked this way. Their `ref` can be a branch, a 
 
 When you add a repository, Infrahub asks a task worker to check the connection to the remote, and waits for the answer before it responds to your request. If the check fails, or if no task worker answers within the number of seconds set by [`INFRAHUB_BROKER_RPC_TIMEOUT`](../reference/configuration.mdx#broker), Infrahub deletes the repository it created and returns the error. Fix the cause, then add the repository again with the same name.
 
-When no task worker answers, the error has the code `WORKER_TIMEOUT` and the HTTP status 504, as described in the [error catalogue](../reference/error-catalogue.mdx#worker_timeout). Check that the task workers are running.
+When no task worker answers, the error has the code `WORKER_TIMEOUT`, as described in the [error catalogue](../reference/error-catalogue.mdx#worker_timeout). Check that the task workers are running.
 
 :::
 

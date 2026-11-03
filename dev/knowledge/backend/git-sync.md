@@ -331,11 +331,12 @@ trunk and records no rewrite.
   inactive repository, a default branch the remote does not hold yet, or a default branch that the
   sync skips for pending pushes keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
-- **Lost with the cache.** The marker lives only in the cache. If the cache loses it between the
-  update and the next cycle, for example after a flush, the cycle classifies the re-point as a
-  rewrite of the trunk. It writes a rewrite record, so `rewrite_count` is one too high, and the save
-  of the record sends the update event of the repository, as any other update does. The reset and
-  the import of the trunk are the same as for a re-target. This window is accepted.
+- **Lost with the cache.** The marker is stored only in the cache, which can lose it between the
+  update and the next cycle, for example after a flush. Without the marker, a re-point that the remote does not hold yet, or
+  whose new head descends from the trunk commit, is classified as it is with the marker. Otherwise, the cycle classifies the re-point as a rewrite of the
+  trunk: it writes a rewrite record, so `rewrite_count` is one too high, and the save of the record
+  sends the update event of the repository, as any other update does. The reset and the import of
+  the trunk are the same as for a re-target. This window is accepted.
 
 A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
 submits the pull and the import of the last commit with `target_changed` set, after the transaction
