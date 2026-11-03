@@ -46,12 +46,31 @@ async def test_query_NodeGetListQuery_filter_id(
     person_jim_main: Node,
     person_albert_main: Node,
     person_alfred_main: Node,
+    car_accord_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"id": person_john_main.id})
     await query.execute(db=db)
-    assert len(query.get_node_ids()) == 1
+    assert query.get_node_ids() == [person_john_main.id]
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"id": car_accord_main.id})
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+
+    before_delete = Timestamp()
+    node_to_delete = await NodeManager.get_one(id=person_jim_main.id, db=db, branch=branch)
+    await node_to_delete.delete(db=db)
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"id": person_jim_main.id})
+    await query.execute(db=db)
+    assert query.get_node_ids() == []
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=person_schema, filters={"id": person_jim_main.id}, at=before_delete
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_jim_main.id]
 
 
 async def test_query_NodeGetListQuery_filter_ids(
@@ -60,21 +79,41 @@ async def test_query_NodeGetListQuery_filter_ids(
     person_jim_main: Node,
     person_albert_main: Node,
     person_alfred_main: Node,
+    car_accord_main: Node,
     branch: Branch,
 ) -> None:
+    before_delete = Timestamp()
     node_to_delete = await NodeManager.get_one(id=person_jim_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
 
+    person_created_after = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person_created_after.new(db=db, name="Newton", height=190)
+    await person_created_after.save(db=db)
+
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     person_schema.order_by = ["height__value"]
+    ids = [person_jim_main.id, person_john_main.id, person_albert_main.id, car_accord_main.id, person_created_after.id]
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"ids": ids})
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_albert_main.id, person_john_main.id, person_created_after.id]
+
     query = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=person_schema,
-        filters={"ids": [person_jim_main.id, person_john_main.id, person_albert_main.id]},
+        db=db, branch=branch, schema=person_schema, filters={"ids": ids}, at=before_delete
     )
     await query.execute(db=db)
-    assert set(query.get_node_ids()) == {person_albert_main.id, person_john_main.id}
+    assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=person_schema, filters={"ids": ids, "name__value": "John"}
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_john_main.id]
+
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=person_schema, filters={"ids": ids}, at=before_delete, branch_agnostic=True
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
 
 
 async def test_query_NodeGetListQuery_filter_attribute_isnull(
@@ -435,6 +474,13 @@ async def test_query_NodeGetListQuery_with_generics(
         branch=branch,
         schema=schema,
     )
+    await query.execute(db=db)
+    assert query.get_node_ids() == [group_group1_main.id]
+
+    group2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=branch)
+    await group2.new(db=db, name="group2")
+    await group2.save(db=db)
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, filters={"ids": [group_group1_main.id]})
     await query.execute(db=db)
     assert query.get_node_ids() == [group_group1_main.id]
 
