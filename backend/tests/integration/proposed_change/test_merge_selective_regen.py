@@ -26,7 +26,7 @@ from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.workflows.catalogue import (
@@ -87,6 +87,73 @@ SELECTIVE_SCHEMA = SchemaRoot(
         )
     ]
 )
+
+INTERFACE_KIND = "TestNetworkInterface"
+
+DEVICE_INTERFACE_SCHEMA = SchemaRoot(
+    nodes=[
+        NodeSchema(
+            name="NetworkDevice",
+            namespace="Test",
+            default_filter="name__value",
+            display_label="name__value",
+            inherit_from=["CoreArtifactTarget"],
+            uniqueness_constraints=[["name__value"]],
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="color", kind="Text", optional=True),
+            ],
+            relationships=[
+                RelationshipSchema(
+                    name="interfaces",
+                    peer=INTERFACE_KIND,
+                    identifier="device__interface",
+                    cardinality="many",
+                    optional=True,
+                )
+            ],
+        ),
+        NodeSchema(
+            name="NetworkInterface",
+            namespace="Test",
+            default_filter="name__value",
+            display_label="name__value",
+            attributes=[AttributeSchema(name="name", kind="Text")],
+            relationships=[
+                RelationshipSchema(
+                    name="device",
+                    peer=DEVICE_KIND,
+                    identifier="device__interface",
+                    cardinality="one",
+                    optional=True,
+                )
+            ],
+        ),
+    ]
+)
+
+DEVICE_INTERFACES_QUERY = """
+query GetJinjaDevice($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges {
+            node {
+                name {
+                    value
+                }
+                interfaces {
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
 
 GENERATOR_QUERY = """
 query GetGenDevice($ids: [ID!]!) {
@@ -565,6 +632,105 @@ class TestGeneratorOutputSelection(_MergeSelectiveRegenBase):
         ] == [("device-artifact", [dataset["device1_id"]])]
         assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
         assert await self._stored_diff_ids(db=db, default_branch=default_branch) == stored_before
+
+
+class TestGeneratorOutputRelationshipToUntrackedPeer(_MergeSelectiveRegenBase):
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_recorder(
+        self,
+        workflow_local: Any,
+        dependency_provider: Provider,
+    ) -> AsyncGenerator[_GeneratorWritingRecorder, None]:
+        with override_workflow(_GeneratorWritingRecorder(), dependency_provider=dependency_provider) as recorder:
+            yield recorder
+
+    async def _seed_schema(self, db: InfrahubDatabase) -> None:
+        await load_schema(db=db, schema=DEVICE_INTERFACE_SCHEMA, update_db=True)
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        git_sources_dir: Path,
+        git_repos_dir: Path,
+    ) -> dict[str, Any]:
+        await self._seed_schema(db)
+        device1 = await self._make_device(db, name="dev1", color="red")
+        device2 = await self._make_device(db, name="dev2", color="blue")
+        device3 = await self._make_device(db, name="dev3", color="green")
+        repo_node, transform, query = await self._import_transform(db, client, git_sources_dir)
+        query.query.value = DEVICE_INTERFACES_QUERY
+        await query.save()
+        group = await self._make_group(db, name="regen-targets", members=[device1, device2, device3])
+        artdef = await self._make_artifact_definition(
+            db, name="device-artifact", group=group, transform_id=transform.id
+        )
+        await self._subscribe_artifacts(db, devices=[device1, device2, device3], artdef=artdef, query_id=query.id)
+        await self._make_generator(
+            db, name="device-generator", query_name="GetGenDevice", group=group, repo_node=repo_node
+        )
+        # An earlier run of the generator created the interface and tracks it alone, not its device.
+        interface = await Node.init(db=db, schema=INTERFACE_KIND)
+        await interface.new(db=db, name="eth0", device=device1)
+        await interface.save(db=db)
+        tracking_group = await Node.init(db=db, schema=InfrahubKind.GENERATORGROUP)
+        await tracking_group.new(db=db, name=GENERATOR_TRACKING_GROUP, members=[interface])
+        await tracking_group.save(db=db)
+        await create_branch(branch_name=SOURCE_BRANCH, db=db)
+        return {
+            "device1_id": device1.id,
+            "device2_id": device2.id,
+            "device3_id": device3.id,
+            "interface_id": interface.id,
+        }
+
+    async def test_generator_moving_a_tracked_interface_regenerates_the_artifacts_of_both_devices(
+        self,
+        dataset: dict[str, Any],
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: _GeneratorWritingRecorder,
+    ) -> None:
+        """A relationship the generator changes from its tracked end selects the artifacts reading the other end."""
+
+        async def generator_writes() -> None:
+            interface = await NodeManager.get_one(
+                db=db, id=dataset["interface_id"], kind=INTERFACE_KIND, raise_on_error=True
+            )
+            await interface.device.update(db=db, data=dataset["device2_id"])
+            await interface.save(db=db)
+
+        workflow_recorder.generator_writes = generator_writes
+
+        # The artifact query does not read the field the merge changed, so only the generator output can select it.
+        await self._run_follow_up(
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            diff_summary=[
+                node_diff(
+                    node_id=dataset["device3_id"],
+                    kind=DEVICE_KIND,
+                    branch=default_branch.name,
+                    action="UPDATED",
+                    display_label="device",
+                    field_names=["color"],
+                )
+            ],
+        )
+
+        assert [
+            model.generator_definition.definition_name for model in self._generator_run_models(workflow_recorder)
+        ] == ["device-generator"]
+        assert [
+            (request.artifact_definition_name, set(request.members))
+            for request in self._artifact_requests(workflow_recorder)
+        ] == [("device-artifact", {dataset["device1_id"], dataset["device2_id"]})]
+        assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
 
 
 class TestGeneratorExecuteAfterMergeFalse(_MergeSelectiveRegenBase):
