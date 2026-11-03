@@ -38,7 +38,7 @@ dependencies = [
     "deepdiff==8.6.2",
     "httpx>=0.28.1",
     # Dependencies specific to the API Server
-    "fastapi==0.141.1",
+    "fastapi==0.143.0",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",

@@ -152,6 +152,8 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     docs_url=None,
     redoc_url=None,
+    # The OpenTelemetry instrumentation added below traces each request, so FastAPI's own telemetry stays off.
+    telemetry={"tracing": False, "metrics": False, "logs": False},
 )
 
 
