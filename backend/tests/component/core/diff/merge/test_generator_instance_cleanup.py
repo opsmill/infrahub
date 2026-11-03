@@ -2,13 +2,20 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
-from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, MetadataOptions, SchemaPathType
+from infrahub import lock
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.context import InfrahubContext
+from infrahub.core.branch.tasks import merge_branch
+from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.generator_instance_cleaner import GeneratorInstanceCleaner
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -16,11 +23,19 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
+from infrahub.workers.dependencies import build_cache, build_database, build_event_service
+from tests.adapters.cache import MemoryCache
+from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.workflow import WorkflowRecorder
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.dependency_override import override_dependency
+from tests.helpers.workflow_override import override_workflow
 
 from .conftest import get_diff_coordinator, get_diff_merger
 
 if TYPE_CHECKING:
+    from fast_depends import Provider
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
@@ -53,6 +68,16 @@ async def _create_instance(db: InfrahubDatabase, branch: Branch, definition: Nod
     )
     await instance.save(db=db)
     return instance
+
+
+async def _merge(db: InfrahubDatabase, default_branch: Branch, branch: Branch, at: Timestamp) -> None:
+    merger = await get_diff_merger(db=db, branch=branch)
+    await merger.merge_graph(at=at)
+    cleaner = GeneratorInstanceCleaner(
+        db=db, source_branch=branch, destination_branch=default_branch, diff_repository=merger.diff_repository
+    )
+    instance_ids = await cleaner.find_orphaned_instances(merge_at=at)
+    await cleaner.delete(instance_ids=instance_ids, user_id="merge-user")
 
 
 @pytest.fixture
@@ -105,31 +130,20 @@ async def test_merging_target_deletion_removes_destination_generator_instances(
     target_on_branch = await NodeManager.get_one(db=db, branch=branch, id=target.id, raise_on_error=True)
     await NodeManager.delete(db=db, branch=branch, nodes=[target_on_branch])
     assert await NodeManager.get_one(db=db, branch=branch, id=target_instance.id) is None
-    before_merge = await NodeManager.get_one(
-        db=db,
-        branch=default_branch,
-        id=target_instance.id,
-        include_metadata=MetadataOptions.USER_TIMESTAMPS,
-        raise_on_error=True,
-    )
 
     coordinator = await get_diff_coordinator(db=db, branch=branch)
     await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    merger = await get_diff_merger(db=db, branch=branch)
-    snapshotter = DbSnapshotter(db=db)
-    before_snapshot = await snapshotter.snapshot()
-    before_edges = {edge.db_id: edge.properties for edge in before_snapshot.edge_map.values()}
     historical_at = Timestamp()
     merge_at = Timestamp()
-    await merger.merge_graph(at=merge_at)
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=merge_at)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is None
     assert await NodeManager.get_one(db=db, branch=default_branch, id=target_instance.id) is None
     assert await NodeManager.get_one(db=db, branch=default_branch, id=other_instance.id) is not None
     assert await NodeManager.get_one(db=db, branch=default_branch, id=late_instance.id) is None
     assert await NodeManager.get_one(db=db, branch=sibling, id=sibling_instance.id) is not None
-    at_merge = await NodeManager.get_one(db=db, branch=default_branch, at=merge_at, id=target_instance.id)
-    assert at_merge is None
+    # The delete lands after the merge timestamp, so a rollback of the merge never reverts it.
+    assert await NodeManager.get_one(db=db, branch=default_branch, at=merge_at, id=target_instance.id) is not None
     historical = await NodeManager.get_one(
         db=db, branch=default_branch, at=historical_at, id=target_instance.id, raise_on_error=True
     )
@@ -139,43 +153,46 @@ async def test_merging_target_deletion_removes_destination_generator_instances(
     assert (await inherited.get_relationship("object").get_peer(db=db)).id == target.id
     surviving_group = await NodeManager.get_one(db=db, branch=default_branch, id=query_group.id, raise_on_error=True)
     assert await surviving_group.get_relationship("subscribers").get_peers(db=db) == {}
-
-    after_snapshot = await snapshotter.snapshot()
-    after_edges = {edge.db_id: edge.properties for edge in after_snapshot.edge_map.values()}
-    assert before_edges.keys() <= after_edges.keys()
-    closed_edges = [
-        props for edge_id, props in after_edges.items() if edge_id in before_edges and props != before_edges[edge_id]
-    ]
-    created_edges = [props for edge_id, props in after_edges.items() if edge_id not in before_edges]
-    assert closed_edges
-    assert created_edges
-    for props in closed_edges:
-        assert props["branch"] == default_branch.name
-        assert props["status"] == "active"
-        assert props["to"] == merge_at.to_string()
-        assert props["from"] <= props["to"]
-    for props in created_edges:
-        assert props["branch"] == default_branch.name
-        assert props["branch_level"] == default_branch.hierarchy_level
-        assert props["status"] == "deleted"
-        assert props["from"] == merge_at.to_string()
-        assert props.get("to") is None
     await verify_graph(db=db)
 
-    await merger.rollback(merge_started_at=merge_at)
-    assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is not None
-    restored = await NodeManager.get_one(
-        db=db,
-        branch=default_branch,
-        id=target_instance.id,
-        include_metadata=MetadataOptions.USER_TIMESTAMPS,
-        raise_on_error=True,
+
+async def test_merge_rollback_restores_generator_instances_and_their_peers(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definition: Node,
+    generator_instances: tuple[Node, Node],
+) -> None:
+    target = car_person_data_generic["c1"]
+    query_group = await Node.init(db=db, branch=default_branch, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+    await query_group.new(
+        db=db, name="instance-query-group", query=car_person_data_generic["q1"], subscribers=[generator_instances[0]]
     )
-    assert (await restored.get_relationship("object").get_peer(db=db)).id == target.id
-    assert restored._get_updated_at() == before_merge._get_updated_at()
-    assert restored._get_updated_by() == before_merge._get_updated_by()
+    await query_group.save(db=db)
+    branch = await create_branch(db=db, branch_name="rollback-generator-target")
+    target_on_branch = await NodeManager.get_one(db=db, branch=branch, id=target.id, raise_on_error=True)
+    await NodeManager.delete(db=db, branch=branch, nodes=[target_on_branch])
+    coordinator = await get_diff_coordinator(db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    merger = await get_diff_merger(db=db, branch=branch)
+    snapshotter = DbSnapshotter(db=db)
+    before_snapshot = await snapshotter.snapshot()
+
+    merge_at = Timestamp()
+    await merger.merge_graph(at=merge_at)
+    cleaner = GeneratorInstanceCleaner(
+        db=db, source_branch=branch, destination_branch=default_branch, diff_repository=merger.diff_repository
+    )
+    assert await cleaner.find_orphaned_instances(merge_at=merge_at) == {generator_instances[0].id}
+    await merger.rollback(merge_started_at=merge_at)
+
     restored_snapshot = await snapshotter.snapshot()
-    assert {edge.db_id: edge.properties for edge in restored_snapshot.edge_map.values()} == before_edges
+    assert {edge.db_id: edge.properties for edge in restored_snapshot.edge_map.values()} == {
+        edge.db_id: edge.properties for edge in before_snapshot.edge_map.values()
+    }
+    assert {node.db_id: node.properties for node in restored_snapshot.node_map.values()} == {
+        node.db_id: node.properties for node in before_snapshot.node_map.values()
+    }
     await verify_graph(db=db)
 
 
@@ -199,8 +216,7 @@ async def test_target_deletion_resolved_to_base_preserves_generator_instances(
     assert conflicts
     for conflict in conflicts.values():
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.BASE_BRANCH)
-    merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
 
     retained_target = await NodeManager.get_one(db=db, branch=default_branch, id=target.id, raise_on_error=True)
     assert retained_target.get_attribute("name").value == "updated-on-main"
@@ -228,8 +244,7 @@ async def test_retargeted_generator_instance_survives_previous_target_deletion(
     assert await NodeManager.get_one(db=db, branch=default_branch, id=instance.id) is not None
     coordinator = await get_diff_coordinator(db=db, branch=branch)
     await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is None
     retained = await NodeManager.get_one(db=db, branch=default_branch, id=instance.id, raise_on_error=True)
@@ -272,8 +287,7 @@ async def test_merging_deletion_of_migrated_target_removes_its_generator_instanc
     diff = await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
     for conflict in diff.get_all_conflicts().values():
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
-    merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is None
     assert await NodeManager.get_one(db=db, branch=default_branch, id=generator_instances[0].id) is None
@@ -295,12 +309,44 @@ async def test_merging_definition_deletion_removes_destination_generator_instanc
     await NodeManager.delete(db=db, branch=branch, nodes=[definition_on_branch])
     coordinator = await get_diff_coordinator(db=db, branch=branch)
     await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await _merge(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=generator_definition.id) is None
     for instance in generator_instances:
         assert await NodeManager.get_one(db=db, branch=default_branch, id=instance.id) is None
     for target in (car_person_data_generic["c1"], car_person_data_generic["c2"]):
         assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is not None
+    await verify_graph(db=db)
+
+
+async def test_branch_merge_deletes_generator_instances_of_a_deleted_target(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_instances: tuple[Node, Node],
+    dependency_provider: Provider,
+) -> None:
+    lock.initialize_lock(local_only=True)
+    target = car_person_data_generic["c1"]
+    branch = await create_branch(db=db, branch_name="merge-flow-generator-target")
+    target_on_branch = await NodeManager.get_one(db=db, branch=branch, id=target.id, raise_on_error=True)
+    await NodeManager.delete(db=db, branch=branch, nodes=[target_on_branch])
+    event_recorder = MemoryInfrahubEvent()
+    cache = MemoryCache()
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+    with (
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: event_recorder, dependency_provider=dependency_provider),
+        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+    ):
+        await merge_branch(branch=branch.name, context=context)
+
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=target.id) is None
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=generator_instances[0].id) is None
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=generator_instances[1].id) is not None
     await verify_graph(db=db)
