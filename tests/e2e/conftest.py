@@ -387,7 +387,8 @@ async def demo_edge_repo(
 
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
     # GitRepo.__post_init__ runs a synchronous copy + git init/commit of the fixture repo.
-    GitRepo(name="demo-edge", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
+    # The containers can run as another user than pytest, and must be able to push to the remote.
+    GitRepo(name="demo-edge", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir, shared=True)
 
     mutation = Mutation(
         mutation="CoreRepositoryCreate",
@@ -420,7 +421,8 @@ def demo_edge_copy_location(infrahub_compose_dir: Path, infrahub_provisioned_ext
         return "https://github.com/opsmill/infrahub-demo-edge.git"
 
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-    repo = GitRepo(name="demo-edge-copy", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
+    # The containers can run as another user than pytest, and must be able to push to the remote.
+    repo = GitRepo(name="demo-edge-copy", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir, shared=True)
     return f"{repo.remote_directory_name}/{repo.name}"
 
 
