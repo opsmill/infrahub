@@ -1,4 +1,4 @@
-"""Renames of a kind that a number pool allocates numbers for."""
+"""Renames of a kind or an attribute that a number pool allocates numbers for."""
 
 from __future__ import annotations
 
@@ -19,11 +19,13 @@ from tests.unit.core.validators.number_pool_scope.helpers import (
     DEVICE,
     DEVICE_POOL_BY_ROLE,
     DEVICE_POOL_BY_SITE,
+    HOLDER,
     HOLDER_POOL_BY_SITE,
     POD_HOLDER_POOL_BY_SITE,
     StaticSchemaSource,
     build_schema_branch,
     device_of,
+    holder_of,
     saved_schema,
     scoped_pool,
 )
@@ -39,6 +41,7 @@ UNSCOPED_DEVICE_POOL = scoped_pool(pool_id="vlan-unscoped", kind=DEVICE, element
 POOLS = (DEVICE_POOL_BY_SITE, DEVICE_POOL_BY_ROLE, UNSCOPED_DEVICE_POOL, HOLDER_POOL_BY_SITE, POD_HOLDER_POOL_BY_SITE)
 
 KIND_REFUSAL = "a kind cannot be renamed while a number pool allocates numbers for it"
+ATTRIBUTE_REFUSAL = "an attribute cannot be renamed while a number pool allocates numbers for it"
 
 
 class RecordingPoolSource:
@@ -62,6 +65,18 @@ def device_namespace_renamed(schema: SchemaRoot) -> None:
     device_of(schema).namespace = "Net"
 
 
+def device_vlan_id_renamed(schema: SchemaRoot) -> None:
+    device_of(schema).get_attribute(name="vlan_id").name = "vlan_number"
+
+
+def device_role_renamed(schema: SchemaRoot) -> None:
+    device_of(schema).get_attribute(name="role").name = "function"
+
+
+def holder_vlan_id_renamed(schema: SchemaRoot) -> None:
+    holder_of(schema).get_attribute(name="vlan_id").name = "vlan_number"
+
+
 @dataclass(frozen=True)
 class RenameCase:
     name: str
@@ -77,6 +92,10 @@ class RenameCase:
 
 def kind_refusal(pool: ScopedNumberPool) -> tuple[str, str]:
     return (pool.id, f"pool {pool.name} allocates numbers for {pool.kind}.vlan_id; {KIND_REFUSAL}")
+
+
+def attribute_refusal(pool: ScopedNumberPool) -> tuple[str, str]:
+    return (pool.id, f"pool {pool.name} allocates numbers for {pool.kind}.vlan_id; {ATTRIBUTE_REFUSAL}")
 
 
 DEVICE_POOLS = (DEVICE_POOL_BY_SITE, DEVICE_POOL_BY_ROLE, UNSCOPED_DEVICE_POOL)
@@ -102,6 +121,27 @@ REFUSED_CASES = [
         expected=[kind_refusal(pool) for pool in DEVICE_POOLS],
         expected_kinds_read=[{DEVICE}],
     ),
+    RenameCase(
+        name="tracked-attribute",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="vlan_number",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=device_vlan_id_renamed,
+        expected=[attribute_refusal(pool) for pool in DEVICE_POOLS],
+        expected_kinds_read=[{DEVICE}],
+    ),
+    # A pool on a kind that implements the generic allocates numbers for the attribute it inherits.
+    RenameCase(
+        name="tracked-attribute-of-a-generic",
+        constraint_name="attribute.name.update",
+        kind=HOLDER,
+        field_name="vlan_number",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=holder_vlan_id_renamed,
+        expected=[attribute_refusal(HOLDER_POOL_BY_SITE), attribute_refusal(POD_HOLDER_POOL_BY_SITE)],
+        expected_kinds_read=[{HOLDER, "ScopePodHolder"}],
+    ),
 ]
 
 ACCEPTED_CASES = [
@@ -115,6 +155,16 @@ ACCEPTED_CASES = [
         expected=[],
         expected_kinds_read=[{DEVICE}],
         pools=(),
+    ),
+    RenameCase(
+        name="attribute-no-pool-tracks",
+        constraint_name="attribute.name.update",
+        kind=DEVICE,
+        field_name="function",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=device_role_renamed,
+        expected=[],
+        expected_kinds_read=[{DEVICE}],
     ),
 ]
 
@@ -153,7 +203,9 @@ async def check(case: RenameCase, pool_source: RecordingPoolSource) -> list[Data
 
 class TestNumberPoolRenameChecker:
     @pytest.mark.parametrize("case", REFUSED_CASES, ids=[case.name for case in REFUSED_CASES])
-    async def test_reports_each_pool_that_allocates_numbers_for_the_renamed_kind(self, case: RenameCase) -> None:
+    async def test_reports_each_pool_that_allocates_numbers_for_the_renamed_kind_or_attribute(
+        self, case: RenameCase
+    ) -> None:
         pool_source = RecordingPoolSource(pools=case.pools)
 
         data_paths = await check(case=case, pool_source=pool_source)

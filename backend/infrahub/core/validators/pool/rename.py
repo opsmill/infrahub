@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.core.schema import GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
 
 from ..interface import ConstraintCheckerInterface
@@ -28,18 +29,20 @@ class NumberPoolSource(Protocol):
 
 KIND_NAME_CONSTRAINT = "node.name.update"
 KIND_NAMESPACE_CONSTRAINT = "node.namespace.update"
+ATTRIBUTE_NAME_CONSTRAINT = "attribute.name.update"
 
 KIND_RENAME_REASON = "a kind cannot be renamed while a number pool allocates numbers for it"
+ATTRIBUTE_RENAME_REASON = "an attribute cannot be renamed while a number pool allocates numbers for it"
 
 
 class NumberPoolRenameChecker(ConstraintCheckerInterface):
-    """Refuses a schema change that renames a kind that a number pool allocates numbers for.
+    """Refuses a schema change that renames a kind, or an attribute, that a number pool allocates numbers for.
 
-    A number pool names its kind and serves every branch, so a rename would leave the pool naming a kind that the
-    schema no longer has.
+    A number pool names its kind and its attribute, and serves every branch, so a rename would leave the pool naming
+    a kind or an attribute that the schema no longer has.
     """
 
-    # Only a schema change can rename a kind, so a data change never needs this checker.
+    # Only a schema change can rename a kind or an attribute, so a data change never needs this checker.
     triggered_by_data_change = False
 
     def __init__(
@@ -54,12 +57,12 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         return "number_pool.rename"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in {KIND_NAME_CONSTRAINT, KIND_NAMESPACE_CONSTRAINT}
+        return request.constraint_name in {KIND_NAME_CONSTRAINT, KIND_NAMESPACE_CONSTRAINT, ATTRIBUTE_NAME_CONSTRAINT}
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        """Return one violation per number pool that allocates numbers for the kind the change renames.
+        """Return one violation per number pool that allocates numbers for the kind or the attribute the change renames.
 
-        A kind keeps its id when it is renamed, so a kind without an id is new and renames nothing.
+        A kind or an attribute keeps its id when it is renamed, so one without an id is new and renames nothing.
 
         Raises:
             ValueError: When the request names no field.
@@ -76,7 +79,14 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
             return []
 
         previous_kinds = self._previous_kinds(request=request, kind_id=kind_schema.id)
-        refusals = await self._kind_refusals(request=request, kind_schema=kind_schema, previous_kinds=previous_kinds)
+        if request.constraint_name == ATTRIBUTE_NAME_CONSTRAINT:
+            refusals = await self._attribute_refusals(
+                kind_schema=kind_schema, previous_kinds=previous_kinds, field_name=field_name
+            )
+        else:
+            refusals = await self._kind_refusals(
+                request=request, kind_schema=kind_schema, previous_kinds=previous_kinds
+            )
         if not refusals:
             return []
         return [
@@ -108,6 +118,43 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
                 f"pool {pool.name} allocates numbers for {pool.kind}.{pool.tracked_attribute}; {KIND_RENAME_REASON}",
             )
             for pool in pools
+        ]
+
+    async def _attribute_refusals(
+        self, kind_schema: MainSchemaTypes, previous_kinds: list[MainSchemaTypes], field_name: str
+    ) -> list[tuple[str, str]]:
+        """Return the pools that allocate numbers for the attribute under a name the change replaces.
+
+        A pool on a node can allocate numbers for an attribute the node inherits, so the kinds that implement a generic
+        are read with it.
+        """
+        attribute = kind_schema.get_attribute_or_none(name=field_name)
+        if attribute is None or not attribute.id:
+            return []
+        renamed_attributes: set[tuple[str, str]] = set()
+        for previous_kind in previous_kinds:
+            # A kind renamed by the same load is refused under its own constraint, so the pool is reported once.
+            if previous_kind.kind != kind_schema.kind:
+                continue
+            previous_attribute = next(
+                (candidate for candidate in previous_kind.attributes if candidate.id == attribute.id), None
+            )
+            if previous_attribute is None or previous_attribute.name == attribute.name:
+                continue
+            kinds = {previous_kind.kind}
+            if isinstance(previous_kind, GenericSchema):
+                kinds.update(previous_kind.used_by)
+            renamed_attributes.update((kind, previous_attribute.name) for kind in kinds)
+        if not renamed_attributes:
+            return []
+        pools = await self.pool_source.get_attached_to_kinds(kinds={kind for kind, _ in renamed_attributes})
+        return [
+            (
+                pool.id,
+                f"pool {pool.name} allocates numbers for {pool.kind}.{pool.tracked_attribute}; {ATTRIBUTE_RENAME_REASON}",
+            )
+            for pool in pools
+            if (pool.kind, pool.tracked_attribute) in renamed_attributes
         ]
 
     def _previous_kinds(self, request: SchemaConstraintValidatorRequest, kind_id: str) -> list[MainSchemaTypes]:
