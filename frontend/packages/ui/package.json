@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.2.3",
-    "@storybook/react-vite": "10.5.7",
+    "@storybook/react-vite": "10.6.5",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
@@ -42,7 +42,7 @@
     "oxlint": "^1.78.0",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "storybook": "10.5.7",
+    "storybook": "10.6.5",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
