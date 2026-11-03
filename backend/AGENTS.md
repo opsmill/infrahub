@@ -129,7 +129,6 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
 - `dev/knowledge/backend/merge-recompute.md` - One coalesced recompute of Jinja2 computed attributes, display labels and HFIDs for a whole merge or rebase; read before changing what a merge or rebase recomputes
 - `dev/knowledge/backend/selective-merge-regeneration.md` - Post-merge generator and artifact regeneration narrowed to what the merge affected (`selective_execution_after_merge`); read before changing post-merge regeneration
-- `dev/knowledge/backend/graphql-execution.md` - Sync vs async field completion in graphql-core; read before adding a resolver hook or GraphQL middleware on the hot path
 - `dev/knowledge/backend/preferences.md` - User and global preferences (internal `StandardNode` storage, dedicated GraphQL API); read before adding a preference or changing how preferences are stored or read
 - `dev/knowledge/backend/tls.md` - How outbound TLS chooses its certificate authorities; read before adding a component that opens outbound connections or touching a `tls_*` setting
 - `dev/knowledge/backend/package-init-files.md` - Keep `__init__.py` free of logic; read before adding to an `__init__.py` or creating a package
@@ -159,6 +158,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
 - `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration, renumbering one after a rebase, or fixing data a migration got wrong.
 - `dev/guides/backend/creating-permission-checkers.md` - Adding a checker to the GraphQL permission pipeline: category, registration, permission report, denial message, tests. Load when enforcing a permission that object permissions cannot express.
+- `dev/guides/backend/choosing-tests.md` - Stating the behavior a test proves, choosing unit or component coverage, and finding the tests that already cover it. Load before adding a backend test or reviewing overlapping coverage.
 
 ### ADRs (Why we decided)
 
