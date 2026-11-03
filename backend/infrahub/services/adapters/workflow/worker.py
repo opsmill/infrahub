@@ -41,12 +41,15 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
         self._creation_slots = RunCreationSlots(capacity=RUN_CREATION_SLOTS)
-        self._followers: weakref.WeakKeyDictionary[PrefectClient, FlowRunFollower] = weakref.WeakKeyDictionary()
+        # A follower holds its client, so only the follower is weak: both go away once no wait holds the follower.
+        self._followers: weakref.WeakValueDictionary[PrefectClient, FlowRunFollower] = weakref.WeakValueDictionary()
 
     def _follower(self, client: PrefectClient) -> FlowRunFollower:
-        if client not in self._followers:
-            self._followers[client] = FlowRunFollower(poll_interval=RUN_STATE_POLL_INTERVAL)
-        return self._followers[client]
+        follower = self._followers.get(client)
+        if follower is None:
+            follower = FlowRunFollower(client=client, poll_interval=RUN_STATE_POLL_INTERVAL)
+            self._followers[client] = follower
+        return follower
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
@@ -117,7 +120,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
                     tags=tags,
                     work_queue_name=work_queue_name,
                 )  # type: ignore[misc]
-            response = await self._follower(client=client).wait(client=client, flow_run_id=flow_run.id)
+            response = await self._follower(client=client).wait(flow_run_id=flow_run.id)
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 

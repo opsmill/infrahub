@@ -43,22 +43,20 @@ class UnreachableReader:
 
 async def test_each_poll_reads_all_followed_runs_in_pages() -> None:
     reader = FinishingRunsReader(polls_until_final=2)
-    follower = FlowRunFollower(poll_interval=0)
+    follower = FlowRunFollower(client=reader, poll_interval=0)
     flow_run_ids = [uuid4() for _ in range(2 * READ_PAGE_SIZE + 50)]
 
-    flow_runs = await asyncio.gather(
-        *(follower.wait(client=reader, flow_run_id=flow_run_id) for flow_run_id in flow_run_ids)
-    )
+    flow_runs = await asyncio.gather(*(follower.wait(flow_run_id=flow_run_id) for flow_run_id in flow_run_ids))
 
     assert [flow_run.id for flow_run in flow_runs] == flow_run_ids
     assert [len(ids) for ids in reader.reads] == [READ_PAGE_SIZE, READ_PAGE_SIZE, 50] * 2
 
 
 async def test_a_read_error_fails_every_followed_run() -> None:
-    follower = FlowRunFollower(poll_interval=0)
+    follower = FlowRunFollower(client=UnreachableReader(), poll_interval=0)
 
     results = await asyncio.gather(
-        *(follower.wait(client=UnreachableReader(), flow_run_id=uuid4()) for _ in range(3)),
+        *(follower.wait(flow_run_id=uuid4()) for _ in range(3)),
         return_exceptions=True,
     )
 
@@ -66,18 +64,17 @@ async def test_a_read_error_fails_every_followed_run() -> None:
 
 
 async def test_a_run_followed_after_the_previous_ones_ended_is_still_followed() -> None:
-    reader = FinishingRunsReader()
-    follower = FlowRunFollower(poll_interval=0)
+    follower = FlowRunFollower(client=FinishingRunsReader(), poll_interval=0)
     first, second = uuid4(), uuid4()
 
-    assert (await follower.wait(client=reader, flow_run_id=first)).id == first
-    assert (await asyncio.wait_for(follower.wait(client=reader, flow_run_id=second), timeout=5)).id == second
+    assert (await follower.wait(flow_run_id=first)).id == first
+    assert (await asyncio.wait_for(follower.wait(flow_run_id=second), timeout=5)).id == second
 
 
 async def test_a_cancelled_wait_stops_being_followed() -> None:
     reader = FinishingRunsReader(polls_until_final=1_000_000)
-    follower = FlowRunFollower(poll_interval=0)
-    wait = asyncio.create_task(follower.wait(client=reader, flow_run_id=uuid4()))
+    follower = FlowRunFollower(client=reader, poll_interval=0)
+    wait = asyncio.create_task(follower.wait(flow_run_id=uuid4()))
     await asyncio.sleep(0.01)
 
     wait.cancel()
