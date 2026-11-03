@@ -32,6 +32,8 @@ from tests.helpers.number_pool import (
 from .helpers import DELETE_RANGE, execute, range_bounds
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from graphql import ExecutionResult
 
     from infrahub.core.branch import Branch
@@ -81,6 +83,23 @@ async def _two_range_pool(db: InfrahubDatabase, branch: Branch, high_range_weigh
         site_1=await scoped_site(db=db, branch=branch, name="site-1"),
         site_2=await scoped_site(db=db, branch=branch, name="site-2"),
     )
+
+
+@pytest.fixture(autouse=True)
+def exclusive_lock_wait() -> Generator[None, None, None]:
+    """Give a range change the full test timeout to wait for allocations, whatever the environment sets."""
+    original = config.SETTINGS.cache.exclusive_lock_wait_secs
+    config.SETTINGS.cache.exclusive_lock_wait_secs = WAIT_TIMEOUT_SECONDS
+    yield
+    config.SETTINGS.cache.exclusive_lock_wait_secs = original
+
+
+@pytest.fixture
+def short_exclusive_lock_wait(exclusive_lock_wait: None) -> Generator[None, None, None]:
+    """Refuse a range change after one second of waiting for allocations."""
+    config.SETTINGS.cache.exclusive_lock_wait_secs = 1
+    yield
+    config.SETTINGS.cache.exclusive_lock_wait_secs = WAIT_TIMEOUT_SECONDS
 
 
 @pytest.fixture
@@ -256,9 +275,8 @@ async def test_a_range_deletion_still_waiting_for_an_allocation_at_the_wait_limi
     default_branch: Branch,
     high_range_first: TwoRangePool,
     recording_lock_registry: RecordingLockRegistry,
-    monkeypatch: pytest.MonkeyPatch,
+    short_exclusive_lock_wait: None,
 ) -> None:
-    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", 1)
     allocation_gate = recording_lock_registry.gate(high_range_first.shared_lock)
     allocation = asyncio.create_task(
         _create_device(
@@ -289,9 +307,13 @@ async def test_a_range_deletion_runs_while_an_allocation_waits_for_its_division(
     default_branch: Branch,
     high_range_first: TwoRangePool,
     recording_lock_registry: RecordingLockRegistry,
-    monkeypatch: pytest.MonkeyPatch,
+    short_exclusive_lock_wait: None,
 ) -> None:
-    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", 1)
+    """A range change does not wait for an allocation still queued behind another one in the same division.
+
+    That allocation then draws from the ranges left after the change; with the one-second wait limit, a range
+    change that waited for it would be refused instead.
+    """
     picking_lock = NumberPoolLock.picking_lock_name(
         pool_id=high_range_first.pool.get_id(), division_key=high_range_first.site_1.get_id()
     )
