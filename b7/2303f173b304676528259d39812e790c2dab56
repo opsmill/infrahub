@@ -1,0 +1,24 @@
+backend/infrahub/core/validators/pool/rename.py
+  s_71e9cb725a3331::t_6cb4cdd78df084 1-130
+backend/tests/unit/core/validators/number_pool_rename/test_rename_checker.py
+  s_71e9cb725a3331::t_c25b724d5c406f 36
+  s_71e9cb725a3331::t_efcbaac1abb48c 1-35,37-185,187-194,196-199,203,209-211,213,216-239
+  s_71e9cb725a3331::t_f5b0051cc9cc87 186,195,200-202,204-208,212,214-215
+  s_71e9cb725a3331::t_d54c657444178f 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b72303f173b304676528259d39812e790c2dab56",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
