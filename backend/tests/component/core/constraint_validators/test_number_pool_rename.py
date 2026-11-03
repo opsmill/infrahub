@@ -12,7 +12,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.dependencies.registry import get_component_registry
-from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA
+from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_HOLDER, SCOPED_POD_HOLDER, SCOPED_POOL_SCHEMA
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -71,6 +71,14 @@ def _device_inherits_a_new_generic(schema_branch: SchemaBranch) -> SchemaRoot:
         name="Tagged", namespace="Scope", attributes=[AttributeSchema(name="tag", kind="Text", optional=True)]
     )
     return SchemaRoot(generics=[tagged], nodes=[device])
+
+
+def _holder_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
+    holder = schema_branch.get_generic(name=SCOPED_HOLDER.kind)
+    pod_holder = schema_branch.get_node(name=SCOPED_POD_HOLDER.kind)
+    holder.name = "Base"
+    pod_holder.inherit_from = ["ScopeBase"]
+    return SchemaRoot(generics=[holder], nodes=[pod_holder])
 
 
 def _role_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
@@ -198,3 +206,11 @@ class TestNumberPoolRenameSchemaChange:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_pool: CoreNumberPool
     ) -> None:
         assert await self._violations(db=db, branch=default_branch_scope_class, change=_role_renamed) == []
+
+    async def test_accepts_renaming_a_generic_when_only_a_kind_implementing_it_has_a_pool(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_pool: CoreNumberPool
+    ) -> None:
+        """The kind keeps its name and its generic, renamed, keeps its id, so the kind inherits from no other generic."""
+        await _pool(db=db, name="pod-holder-vlan", kind=SCOPED_POD_HOLDER.kind)
+
+        assert await self._violations(db=db, branch=default_branch_scope_class, change=_holder_renamed) == []

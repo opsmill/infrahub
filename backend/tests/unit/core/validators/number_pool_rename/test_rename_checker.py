@@ -94,12 +94,6 @@ def inheriting_a_new_generic(kind: str) -> Callable[[SchemaRoot], None]:
     return change
 
 
-def holder_renamed(schema: SchemaRoot) -> None:
-    pod_holder = next(node for node in schema.nodes if node.kind == POD_HOLDER)
-    holder_of(schema).name = "Base"
-    pod_holder.inherit_from = ["ScopeBase"]
-
-
 def holder_and_its_vlan_id_renamed(schema: SchemaRoot) -> None:
     pod_holder = next(node for node in schema.nodes if node.kind == POD_HOLDER)
     holder = holder_of(schema)
@@ -212,17 +206,6 @@ REFUSED_CASES = [
 ]
 
 ACCEPTED_CASES = [
-    # A generic renamed by the load changes the names a kind inherits from, not the generics.
-    RenameCase(
-        name="inheritance-of-a-renamed-generic",
-        constraint_name="node.inherit_from.update",
-        kind=POD_HOLDER,
-        field_name="inherit_from",
-        path_type=SchemaPathType.NODE,
-        change=holder_renamed,
-        expected=[],
-        expected_kinds_read=[],
-    ),
     RenameCase(
         name="new-generic-without-pool",
         constraint_name="node.inherit_from.update",
