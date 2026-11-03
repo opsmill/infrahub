@@ -1,4 +1,4 @@
-"""Renames of a kind or an attribute that a number pool allocates numbers for."""
+"""Renames of a kind or an attribute, and new generics of a kind, that a number pool allocates numbers for."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind, PathType, SchemaPathType
 from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.pool.rename import NumberPoolRenameChecker
 from infrahub.core.validators.pool.scope_dependency import ScopeViolationBuilder
@@ -43,6 +43,7 @@ POOLS = (DEVICE_POOL_BY_SITE, DEVICE_POOL_BY_ROLE, UNSCOPED_DEVICE_POOL, HOLDER_
 
 KIND_REFUSAL = "a kind cannot be renamed while a number pool allocates numbers for it"
 ATTRIBUTE_REFUSAL = "an attribute cannot be renamed while a number pool allocates numbers for it"
+INHERITANCE_REFUSAL = "a kind cannot inherit from another generic while a number pool allocates numbers for it"
 
 
 class RecordingPoolSource:
@@ -78,6 +79,27 @@ def holder_vlan_id_renamed(schema: SchemaRoot) -> None:
     holder_of(schema).get_attribute(name="vlan_id").name = "vlan_number"
 
 
+def inheriting_a_new_generic(kind: str) -> Callable[[SchemaRoot], None]:
+    def change(schema: SchemaRoot) -> None:
+        schema.generics.append(
+            GenericSchema(
+                name="Tagged",
+                namespace="Scope",
+                attributes=[AttributeSchema(name="tag", kind="Text", optional=True)],
+            )
+        )
+        node_schema = next(node for node in schema.nodes if node.kind == kind)
+        node_schema.inherit_from = [*node_schema.inherit_from, "ScopeTagged"]
+
+    return change
+
+
+def holder_renamed(schema: SchemaRoot) -> None:
+    pod_holder = next(node for node in schema.nodes if node.kind == POD_HOLDER)
+    holder_of(schema).name = "Base"
+    pod_holder.inherit_from = ["ScopeBase"]
+
+
 def holder_and_its_vlan_id_renamed(schema: SchemaRoot) -> None:
     pod_holder = next(node for node in schema.nodes if node.kind == POD_HOLDER)
     holder = holder_of(schema)
@@ -101,6 +123,10 @@ class RenameCase:
 
 def kind_refusal(pool: ScopedNumberPool) -> tuple[str, str]:
     return (pool.id, f"pool {pool.name} allocates numbers for {pool.kind}.vlan_id; {KIND_REFUSAL}")
+
+
+def inheritance_refusal(pool: ScopedNumberPool) -> tuple[str, str]:
+    return (pool.id, f"pool {pool.name} allocates numbers for {pool.kind}.vlan_id; {INHERITANCE_REFUSAL}")
 
 
 def attribute_refusal(pool: ScopedNumberPool) -> tuple[str, str]:
@@ -151,6 +177,27 @@ REFUSED_CASES = [
         expected=[attribute_refusal(HOLDER_POOL_BY_SITE), attribute_refusal(POD_HOLDER_POOL_BY_SITE)],
         expected_kinds_read=[{HOLDER, "ScopePodHolder"}],
     ),
+    RenameCase(
+        name="new-generic",
+        constraint_name="node.inherit_from.update",
+        kind=DEVICE,
+        field_name="inherit_from",
+        path_type=SchemaPathType.NODE,
+        change=inheriting_a_new_generic(DEVICE),
+        expected=[inheritance_refusal(pool) for pool in DEVICE_POOLS],
+        expected_kinds_read=[{DEVICE}],
+    ),
+    # The objects of the kind also count in the pools of the generics it already inherits from.
+    RenameCase(
+        name="new-generic-of-a-kind-implementing-a-pooled-generic",
+        constraint_name="node.inherit_from.update",
+        kind=POD_HOLDER,
+        field_name="inherit_from",
+        path_type=SchemaPathType.NODE,
+        change=inheriting_a_new_generic(POD_HOLDER),
+        expected=[inheritance_refusal(HOLDER_POOL_BY_SITE), inheritance_refusal(POD_HOLDER_POOL_BY_SITE)],
+        expected_kinds_read=[{POD_HOLDER, HOLDER}],
+    ),
     # The pool on the renamed generic is reported under the kind rename, not the pools of the kinds implementing it.
     RenameCase(
         name="tracked-attribute-of-a-renamed-generic",
@@ -165,6 +212,28 @@ REFUSED_CASES = [
 ]
 
 ACCEPTED_CASES = [
+    # A generic renamed by the load changes the names a kind inherits from, not the generics.
+    RenameCase(
+        name="inheritance-of-a-renamed-generic",
+        constraint_name="node.inherit_from.update",
+        kind=POD_HOLDER,
+        field_name="inherit_from",
+        path_type=SchemaPathType.NODE,
+        change=holder_renamed,
+        expected=[],
+        expected_kinds_read=[],
+    ),
+    RenameCase(
+        name="new-generic-without-pool",
+        constraint_name="node.inherit_from.update",
+        kind=DEVICE,
+        field_name="inherit_from",
+        path_type=SchemaPathType.NODE,
+        change=inheriting_a_new_generic(DEVICE),
+        expected=[],
+        expected_kinds_read=[{DEVICE}],
+        pools=(),
+    ),
     RenameCase(
         name="kind-without-pool",
         constraint_name="node.name.update",

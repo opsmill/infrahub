@@ -104,7 +104,13 @@ pool <pool> allocates numbers for <kind>.<attribute>; a kind cannot be renamed w
 pool <pool> allocates numbers for <kind>.<attribute>; an attribute cannot be renamed while a number pool allocates numbers for it
 ```
 
-Infrahub checks this rule when it loads a schema and when it validates a proposed change. A merge or a rebase started directly with `BranchMerge` or `BranchRebase` does not check it, so a branch that renamed the kind or the attribute before the pool existed can still be merged that way.
+Infrahub also refuses a schema change that makes the kind inherit from another generic, because Infrahub migrates the objects of the kind as it does for a rename. When the kind already inherits from a generic that a pool allocates numbers for, that pool blocks the change too:
+
+```text
+pool <pool> allocates numbers for <kind>.<attribute>; a kind cannot inherit from another generic while a number pool allocates numbers for it
+```
+
+Infrahub checks these rules when it loads a schema and when it validates a proposed change. A merge or a rebase started directly with `BranchMerge` or `BranchRebase` does not check them, so a branch that made one of these changes before the pool existed can still be merged that way.
 
 ## Restrictions
 

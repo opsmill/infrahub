@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core.schema import GenericSchema
+from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
 
 from ..interface import ConstraintCheckerInterface
@@ -30,16 +30,19 @@ class NumberPoolSource(Protocol):
 KIND_NAME_CONSTRAINT = "node.name.update"
 KIND_NAMESPACE_CONSTRAINT = "node.namespace.update"
 ATTRIBUTE_NAME_CONSTRAINT = "attribute.name.update"
+INHERIT_FROM_CONSTRAINT = "node.inherit_from.update"
 
 KIND_RENAME_REASON = "a kind cannot be renamed while a number pool allocates numbers for it"
 ATTRIBUTE_RENAME_REASON = "an attribute cannot be renamed while a number pool allocates numbers for it"
+INHERITANCE_REASON = "a kind cannot inherit from another generic while a number pool allocates numbers for it"
 
 
 class NumberPoolRenameChecker(ConstraintCheckerInterface):
     """Refuses a schema change that renames a kind, or an attribute, that a number pool allocates numbers for.
 
     A number pool names its kind and its attribute, and serves every branch, so a rename would leave the pool naming
-    a kind or an attribute that the schema no longer has.
+    a kind or an attribute that the schema no longer has. A kind that inherits from another generic is migrated like a
+    renamed kind, so that change is refused too.
     """
 
     # Only a schema change can rename a kind or an attribute, so a data change never needs this checker.
@@ -57,7 +60,12 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         return "number_pool.rename"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in {KIND_NAME_CONSTRAINT, KIND_NAMESPACE_CONSTRAINT, ATTRIBUTE_NAME_CONSTRAINT}
+        return request.constraint_name in {
+            KIND_NAME_CONSTRAINT,
+            KIND_NAMESPACE_CONSTRAINT,
+            ATTRIBUTE_NAME_CONSTRAINT,
+            INHERIT_FROM_CONSTRAINT,
+        }
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         """Return one violation per number pool that allocates numbers for the kind or the attribute the change renames.
@@ -65,10 +73,13 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         A kind or an attribute keeps its id when it is renamed, so one without an id is new and renames nothing.
 
         Raises:
-            ValueError: When the request names no field.
+            ValueError: When the request names no field, for a change other than the kind's inheritance.
 
         """
         field_name = request.schema_path.field_name
+        # The schema diff raises the inheritance change twice, once without a field, so the pool is reported once.
+        if request.constraint_name == INHERIT_FROM_CONSTRAINT and not field_name:
+            return []
         if not field_name:
             raise ValueError("field_name is not defined")
         kind = request.schema_path.schema_kind
@@ -79,7 +90,11 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
             return []
 
         previous_kinds = self._previous_kinds(request=request, kind_id=kind_schema.id)
-        if request.constraint_name == ATTRIBUTE_NAME_CONSTRAINT:
+        if request.constraint_name == INHERIT_FROM_CONSTRAINT:
+            refusals = await self._inheritance_refusals(
+                candidate_schema=request.schema_branch, kind_schema=kind_schema, previous_kinds=previous_kinds
+            )
+        elif request.constraint_name == ATTRIBUTE_NAME_CONSTRAINT:
             refusals = await self._attribute_refusals(
                 candidate_schema=request.schema_branch,
                 kind_schema=kind_schema,
@@ -102,13 +117,13 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         self,
         request: SchemaConstraintValidatorRequest,
         kind_schema: MainSchemaTypes,
-        previous_kinds: list[MainSchemaTypes],
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]],
     ) -> list[tuple[str, str]]:
         """Return the pools that allocate numbers for the kind under a name the change replaces."""
         # A load that changes both the name and the namespace raises both constraints, so the pool is reported once.
         renamed_kinds = {
             previous.kind
-            for previous in previous_kinds
+            for _, previous in previous_kinds
             if previous.kind != kind_schema.kind
             and (request.constraint_name == KIND_NAME_CONSTRAINT or previous.name == kind_schema.name)
         }
@@ -127,7 +142,7 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         self,
         candidate_schema: SchemaBranch,
         kind_schema: MainSchemaTypes,
-        previous_kinds: list[MainSchemaTypes],
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]],
         field_name: str,
     ) -> list[tuple[str, str]]:
         """Return the pools that allocate numbers for the attribute under a name the change replaces.
@@ -139,7 +154,7 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         if attribute is None or not attribute.id:
             return []
         renamed_attributes: set[tuple[str, str]] = set()
-        for previous_kind in previous_kinds:
+        for _, previous_kind in previous_kinds:
             previous_attribute = next(
                 (candidate for candidate in previous_kind.attributes if candidate.id == attribute.id), None
             )
@@ -162,8 +177,47 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
             if (pool.kind, pool.tracked_attribute) in renamed_attributes
         ]
 
-    def _previous_kinds(self, request: SchemaConstraintValidatorRequest, kind_id: str) -> list[MainSchemaTypes]:
-        """Return the kind as each schema before the change defines it, found by the id it keeps when renamed.
+    async def _inheritance_refusals(
+        self,
+        candidate_schema: SchemaBranch,
+        kind_schema: MainSchemaTypes,
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]],
+    ) -> list[tuple[str, str]]:
+        """Return the pools that count the objects of a kind the change makes inherit from another generic.
+
+        The objects of a kind also count in the pools of the generics it already inherits from, so those pools are read
+        too. A generic is matched by its id, so a generic renamed by the same load is not another generic.
+        """
+        if not isinstance(kind_schema, NodeSchema):
+            return []
+        generic_ids = [candidate_schema.get(name=name, duplicate=False).id for name in kind_schema.inherit_from]
+        affected_kinds: set[str] = set()
+        for previous_schema, previous_kind in previous_kinds:
+            # A kind renamed by the same load is refused under its own constraint, so its pools are reported once.
+            if previous_kind.kind != kind_schema.kind or not isinstance(previous_kind, NodeSchema):
+                continue
+            previous_ids = {
+                previous_schema.get(name=name, duplicate=False).id
+                for name in previous_kind.inherit_from
+                if previous_schema.has(name=name)
+            }
+            if any(generic_id is None or generic_id not in previous_ids for generic_id in generic_ids):
+                affected_kinds.update([previous_kind.kind, *previous_kind.inherit_from])
+        if not affected_kinds:
+            return []
+        pools = await self.pool_source.get_attached_to_kinds(kinds=affected_kinds)
+        return [
+            (
+                pool.id,
+                f"pool {pool.name} allocates numbers for {pool.kind}.{pool.tracked_attribute}; {INHERITANCE_REASON}",
+            )
+            for pool in pools
+        ]
+
+    def _previous_kinds(
+        self, request: SchemaConstraintValidatorRequest, kind_id: str
+    ) -> list[tuple[SchemaBranch, MainSchemaTypes]]:
+        """Return each schema before the change that defines the kind, with the kind found by the id it keeps.
 
         A schema load builds the candidate on the branch's own schema, while a proposed change, a merge or a rebase
         builds it on the destination's schema, so the kind is looked up on both.
@@ -171,12 +225,11 @@ class NumberPoolRenameChecker(ConstraintCheckerInterface):
         names = [request.branch.name]
         if request.schema_branch.name != request.branch.name:
             names.append(request.schema_branch.name)
-        previous_kinds: list[MainSchemaTypes] = []
+        previous_kinds: list[tuple[SchemaBranch, MainSchemaTypes]] = []
         for name in names:
+            previous_schema = self.schema_source.get_schema_branch(name=name)
             try:
-                previous_kinds.append(
-                    self.schema_source.get_schema_branch(name=name).get_by_id(id=kind_id, duplicate=False)
-                )
+                previous_kinds.append((previous_schema, previous_schema.get_by_id(id=kind_id, duplicate=False)))
             except SchemaNotFoundError:
                 continue
         return previous_kinds

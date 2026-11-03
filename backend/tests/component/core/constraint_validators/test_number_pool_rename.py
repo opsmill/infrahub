@@ -8,7 +8,7 @@ from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.dependencies.registry import get_component_registry
@@ -62,6 +62,15 @@ def _device_and_vlan_id_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
     device.name = "Router"
     device.get_attribute(name="vlan_id").name = "vlan_number"
     return SchemaRoot(nodes=[device])
+
+
+def _device_inherits_a_new_generic(schema_branch: SchemaBranch) -> SchemaRoot:
+    device = _device(schema_branch)
+    device.inherit_from = [*device.inherit_from, "ScopeTagged"]
+    tagged = GenericSchema(
+        name="Tagged", namespace="Scope", attributes=[AttributeSchema(name="tag", kind="Text", optional=True)]
+    )
+    return SchemaRoot(generics=[tagged], nodes=[device])
 
 
 def _role_renamed(schema_branch: SchemaBranch) -> SchemaRoot:
@@ -165,6 +174,23 @@ class TestNumberPoolRenameSchemaChange:
             (
                 device_pool.id,
                 _refusal(field="name", reason="a kind cannot be renamed while a number pool allocates numbers for it"),
+            )
+        ]
+
+    async def test_refuses_making_the_kind_inherit_from_another_generic(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, device_pool: CoreNumberPool
+    ) -> None:
+        violations = await self._violations(
+            db=db, branch=default_branch_scope_class, change=_device_inherits_a_new_generic
+        )
+
+        assert violations == [
+            (
+                device_pool.id,
+                _refusal(
+                    field="inherit_from",
+                    reason="a kind cannot inherit from another generic while a number pool allocates numbers for it",
+                ),
             )
         ]
 
