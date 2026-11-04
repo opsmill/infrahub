@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.ipam.constants import ANY_BRANCH
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
@@ -129,7 +130,7 @@ class CoreIPPrefixPool(Node):
     async def get_next(self, db: InfrahubDatabase, prefixlen: int) -> IPNetworkType:
         resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
         ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
-        allocator = IPAMResourceAllocator(db=db, namespace=ip_namespace, branch=self._branch, branch_agnostic=True)
+        allocator = IPAMResourceAllocator(db=db)
 
         try:
             weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
@@ -139,7 +140,11 @@ class CoreIPPrefixPool(Node):
         for resource in weighted_resources:
             resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             next_available = await allocator.get_next_prefix(
-                ip_prefix=resource_prefix, target_prefix_length=prefixlen, parent_uuid=resource.id
+                ip_prefix=resource_prefix,
+                target_prefix_length=prefixlen,
+                namespace=ip_namespace,
+                on_branch=ANY_BRANCH,
+                parent_uuid=resource.id,
             )
             if next_available:
                 return next_available
