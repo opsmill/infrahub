@@ -50,8 +50,11 @@ class ExistingNodeNumberAllocator:
         branch: Branch,
         at: Timestamp | None,
         user_id: str,
-    ) -> int:
-        """Allocate and save a number for each node, in the given order, and return how many were allocated.
+    ) -> None:
+        """Allocate and save a number for each node, in the given order.
+
+        Numbers are saved node by node, so a failure leaves the earlier nodes numbered unless the caller holds a
+        transaction.
 
         Raises:
             ValidationError: When a node's division cannot be read.
@@ -88,7 +91,6 @@ class ExistingNodeNumberAllocator:
                     )
                 ) from exc
             await node.save(db=self.db, fields=[attribute.name], at=at, user_id=user_id)
-        return len(nodes)
 
 
 def _exhausted_division_message(pool: CoreNumberPool, exc: DivisionExhaustedError, node_count: int, kind: str) -> str:

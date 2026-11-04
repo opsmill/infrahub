@@ -151,8 +151,7 @@ class PoolBackedRowRepairer:
 
                 allocator = build_existing_node_number_allocator(db=dbt, branch=rows.branch)
                 nodes = await NodeManager.get_many(db=dbt, branch=rows.branch, ids=list(uuid_batch))
-                # Counted per allocated node rather than from the rows the query created.
-                repaired += await allocator.allocate(
+                await allocator.allocate(
                     pool=number_pool,
                     attribute=rows.attribute,
                     nodes=[nodes[node_uuid] for node_uuid in sorted(nodes)],
@@ -160,6 +159,8 @@ class PoolBackedRowRepairer:
                     at=rows.at,
                     user_id=rows.user_id,
                 )
+                # Counted per allocated node rather than from the rows the query created.
+                repaired += len(nodes)
             if multiple_batches:
                 self.console.log(f"    {label}: allocated {repaired}/{len(rows.node_uuids)} pool value(s)")
 

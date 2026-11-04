@@ -65,12 +65,12 @@ async def unnumbered_router(db: InfrahubDatabase, branch: Branch, name: str, rol
 
 async def allocate_existing(
     db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool, devices: list[Node], kind: str = SCOPED_DEVICE.kind
-) -> int:
+) -> None:
     """Load the nodes from the database, then allocate their `vlan_id` in the given order."""
     allocator = build_existing_node_number_allocator(db=db, branch=branch)
     loaded = await NodeManager.get_many(db=db, branch=branch, ids=[device.id for device in devices])
     attribute = registry.schema.get(name=kind, branch=branch, duplicate=False).get_attribute(name=SCOPED_ATTRIBUTE_NAME)
-    return await allocator.allocate(
+    await allocator.allocate(
         pool=pool,
         attribute=attribute,
         nodes=[loaded[device.id] for device in devices],
@@ -136,9 +136,8 @@ class TestExistingNodeNumbers:
             ),
         ]
 
-        allocated = await allocate_existing(db=db, branch=branch, pool=pool, devices=devices)
+        await allocate_existing(db=db, branch=branch, pool=pool, devices=devices)
 
-        assert allocated == 2
         assert await stored_vlan_ids(db=db, branch=branch, devices=devices) == {
             "reservation-device-1": 1,
             "reservation-device-7": 7,
@@ -176,9 +175,8 @@ class TestExistingNodeNumbers:
         assert stored.get_attribute("role").is_from_profile is True
         assert (await stored.get_relationship("site").get_relationships(db=db))[0].is_from_profile is True
 
-        allocated = await allocate_existing(db=db, branch=branch, pool=pool, devices=devices)
+        await allocate_existing(db=db, branch=branch, pool=pool, devices=devices)
 
-        assert allocated == 4
         assert await stored_vlan_ids(db=db, branch=branch, devices=devices) == {
             "device-a-leaf": 1,
             "device-a-spine-from-profile": 1,
