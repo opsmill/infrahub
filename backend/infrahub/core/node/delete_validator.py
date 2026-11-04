@@ -4,21 +4,17 @@ from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RelationshipDeleteBehavior, RelationshipDirection
+from infrahub.core.constants import RelationshipDeleteBehavior
 from infrahub.core.node import Node
-from infrahub.core.query.node import NodeListGetRelationshipsQuery
 from infrahub.core.query.relationship import (
     FullRelationshipIdentifier,
     RelationshipGetByIdentifierQuery,
     RelationshipPeersData,
 )
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-
-# Kinds that exist only for the node at the end of their mandatory relationship to the implicit CoreNode generic.
-TARGET_OWNED_KINDS = frozenset({InfrahubKind.GENERATORINSTANCE})
 
 
 class DeleteRelationshipType(Enum):
@@ -31,8 +27,6 @@ class NodeDeleteIndex:
         self._all_schemas_map = all_schemas_map
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
-        # {relationship_identifier: owned_kind}
-        self._target_owned_relationships: dict[str, str] = {}
 
     def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         cascade_kinds = self._index_cascading_deletes(start_schemas=start_schemas)
@@ -81,37 +75,7 @@ class NodeDeleteIndex:
                 for peer_kind in peer_kinds:
                     if peer_kind not in visited:
                         kinds_to_check.add(peer_kind)
-            # Kept out of the dependency graph: its query reads every relationship with the identifier.
-            for relationship_identifier, owned_kind in self._get_target_owned_relationships(kind=kind_to_check):
-                self._target_owned_relationships[relationship_identifier] = owned_kind
-                if owned_kind not in visited:
-                    kinds_to_check.add(owned_kind)
         return visited
-
-    def _get_target_owned_relationships(self, kind: str) -> list[tuple[str, str]]:
-        """Return the (relationship identifier, owned kind) pairs that must be deleted along with a node of `kind`.
-
-        Node kinds belong to the CoreNode generic without listing it in `inherit_from`, so they cannot declare
-        the cascade towards the kinds that require them.
-        """
-        core_node_schema = self._all_schemas_map.get(InfrahubKind.NODE)
-        if (
-            kind in TARGET_OWNED_KINDS
-            or not isinstance(core_node_schema, GenericSchema)
-            or kind not in core_node_schema.used_by
-        ):
-            return []
-        owned_relationships: list[tuple[str, str]] = []
-        for owned_kind in sorted(TARGET_OWNED_KINDS):
-            owned_schema = self._all_schemas_map.get(owned_kind)
-            if owned_schema is None:
-                continue
-            owned_relationships.extend(
-                (relationship_schema.get_identifier(), owned_kind)
-                for relationship_schema in owned_schema.relationships
-                if relationship_schema.peer == InfrahubKind.NODE and not relationship_schema.optional
-            )
-        return owned_relationships
 
     def _index_dependent_schema(self, cascade_kinds: set[str]) -> None:
         start_schema_kinds: set[str] = set()
@@ -148,9 +112,6 @@ class NodeDeleteIndex:
                     )
         return full_relationship_identifiers
 
-    def get_target_owned_relationships(self) -> dict[str, str]:
-        return dict(self._target_owned_relationships)
-
     def get_relationship_types(self, src_kind: str, relationship_identifier: str) -> set[DeleteRelationshipType]:
         relationship_types: set[DeleteRelationshipType] = set()
         if src_kind not in self._dependency_graph:
@@ -176,55 +137,39 @@ class NodeDeleteValidator:
 
         return await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
 
-    async def _analyze_delete_dependencies(self, start_nodes: Iterable[Node], at: Timestamp) -> set[str]:
-        node_ids_to_check = {node.get_id() for node in start_nodes}
+    async def _analyze_delete_dependencies(self, start_nodes: Iterable[Node], at: Timestamp | str | None) -> set[str]:
         full_relationship_identifiers = self.index.get_relationship_identifiers()
-        target_owned_relationships = self.index.get_target_owned_relationships()
-        if not full_relationship_identifiers and not target_owned_relationships:
-            return node_ids_to_check
+        if not full_relationship_identifiers:
+            return {node.get_id() for node in start_nodes}
 
-        peer_data_by_source_id: dict[str, list[RelationshipPeersData]] = {}
-        if full_relationship_identifiers:
-            query = await RelationshipGetByIdentifierQuery.init(
-                db=self.db, full_identifiers=full_relationship_identifiers, branch=self.branch, at=at
-            )
-            await query.execute(db=self.db)
-            peer_data_by_source_id = self._build_peer_data_map(peers_datas=query.get_peers())
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=self.db, full_identifiers=full_relationship_identifiers, branch=self.branch, at=at
+        )
+        await query.execute(db=self.db)
 
+        peer_data_by_source_id = self._build_peer_data_map(peers_datas=query.get_peers())
+        node_ids_to_check = {node.get_id() for node in start_nodes}
         node_ids_to_delete: set[str] = set()
-        node_ids_with_owned_checked: set[str] = set()
         dependent_node_details_map: dict[str, list[RelationshipPeersData]] = {}
 
         while node_ids_to_check:
-            while node_ids_to_check:
-                node_id = node_ids_to_check.pop()
-                node_ids_to_delete.add(node_id)
-                if node_id not in peer_data_by_source_id:
-                    continue
-                peer_data_list = peer_data_by_source_id[node_id]
-                for peer_data in peer_data_list:
-                    relationship_types = self.index.get_relationship_types(
-                        src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
-                    )
-                    peer_id = str(peer_data.destination_id)
-                    if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-                        if peer_id not in node_ids_to_delete:
-                            node_ids_to_check.add(peer_id)
-                    if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
-                        if peer_id not in dependent_node_details_map:
-                            dependent_node_details_map[peer_id] = []
-                        dependent_node_details_map[peer_id].append(peer_data)
-
-            if not target_owned_relationships:
-                break
-            new_node_ids = node_ids_to_delete - node_ids_with_owned_checked
-            node_ids_with_owned_checked.update(new_node_ids)
-            owned_ids = await self._get_target_owned_ids(
-                node_ids=new_node_ids, target_owned_relationships=target_owned_relationships, at=at
-            )
-            # An owned node is never the target of another owned node.
-            node_ids_with_owned_checked.update(owned_ids)
-            node_ids_to_check = owned_ids - node_ids_to_delete
+            node_id = node_ids_to_check.pop()
+            node_ids_to_delete.add(node_id)
+            if node_id not in peer_data_by_source_id:
+                continue
+            peer_data_list = peer_data_by_source_id[node_id]
+            for peer_data in peer_data_list:
+                relationship_types = self.index.get_relationship_types(
+                    src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
+                )
+                peer_id = str(peer_data.destination_id)
+                if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
+                    if peer_id not in node_ids_to_delete:
+                        node_ids_to_check.add(peer_id)
+                if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
+                    if peer_id not in dependent_node_details_map:
+                        dependent_node_details_map[peer_id] = []
+                    dependent_node_details_map[peer_id].append(peer_data)
 
         missing_delete_ids = set(dependent_node_details_map.keys()) - node_ids_to_delete
         if not missing_delete_ids:
@@ -234,35 +179,6 @@ class NodeDeleteValidator:
             missing_delete_peers_data.extend(dependent_node_details_map[peer_id])
         validation_error = self._build_validation_error(missing_delete_peers_data=missing_delete_peers_data)
         raise validation_error
-
-    async def _get_target_owned_ids(
-        self, node_ids: set[str], target_owned_relationships: dict[str, str], at: Timestamp
-    ) -> set[str]:
-        if not node_ids:
-            return set()
-        query = await NodeListGetRelationshipsQuery.init(
-            db=self.db,
-            branch=self.branch,
-            at=at,
-            ids=list(node_ids),
-            outbound_identifiers=[],
-            inbound_identifiers=[],
-            bidirectional_identifiers=list(target_owned_relationships),
-        )
-        await query.execute(db=self.db)
-        peers = query.get_peers_group_by_node()
-        owned_ids: set[str] = set()
-        for node_id in node_ids:
-            for identifier, owned_kind in target_owned_relationships.items():
-                owned_ids.update(
-                    peer_id
-                    for peer_id in peers.get_peer_ids(
-                        node_id=node_id, rel_name=identifier, direction=RelationshipDirection.BIDIR
-                    )
-                    # From the owned node, the same relationship leads back to the node it belongs to.
-                    if peers.get_peer_kind(peer_id) == owned_kind
-                )
-        return owned_ids
 
     def _build_peer_data_map(
         self, peers_datas: Iterable[RelationshipPeersData]

@@ -429,7 +429,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             )
             await query_group.save(db=db)
 
-        # --- Instance whose target is deleted without the delete cascade ---
+        # --- Instance whose target is deleted ---
         orphan_instances = {}
         dev_deleted = await Node.init(db=db, schema="TestNetworkDevice", branch=source_branch_obj)
         await dev_deleted.new(db=db, name="dev-deleted", color="white", description="Deleted device")

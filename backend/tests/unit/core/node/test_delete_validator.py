@@ -116,21 +116,3 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
         (InfrahubKind.ACCOUNT, "account__token", InfrahubKind.ACCOUNTTOKEN),
         (InfrahubKind.ACCOUNT, "account__refreshtoken", InfrahubKind.REFRESHTOKEN),
     }
-
-
-def test_deleting_a_node_looks_up_its_generator_instances_by_id() -> None:
-    """A generator instance cannot outlive its target, yet node kinds never declare the reverse cascade.
-
-    The relationship stays out of the identifier list: that query reads every relationship with the identifier.
-    """
-    index = _index_for(InfrahubKind.TAG)
-
-    assert index.get_target_owned_relationships() == {"generator__node": InfrahubKind.GENERATORINSTANCE}
-    assert index.get_relationship_identifiers() == []
-
-
-def test_deleting_a_generator_instance_does_not_look_up_owned_nodes() -> None:
-    index = _index_for(InfrahubKind.GENERATORINSTANCE)
-
-    assert index.get_target_owned_relationships() == {}
-    assert _cascade_closure(index, InfrahubKind.GENERATORINSTANCE) == set()
