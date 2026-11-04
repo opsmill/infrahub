@@ -101,6 +101,7 @@ class TestAddRepository:
             self.mock_repo.infrahub_branch_name = self.default_branch_name
             self.mock_repo.internal_status = "active"
             self.mock_repo.get_commit_value.return_value = "0123456789abcdef0123456789abcdef01234567"
+            self.mock_repo.holds_or_imports_commit.return_value = False
             yield
 
             patch.stopall()
@@ -137,6 +138,10 @@ class TestAddRepository:
                 location=str(git_upstream_repo_01["path"]),
                 client=ANY,
                 infrahub_branch_name=self.default_branch_name,
+                update_commit_value=False,
+            )
+            self.mock_repo.record_commit_for_import.assert_awaited_once_with(
+                branch_name=self.default_branch_name, commit="0123456789abcdef0123456789abcdef01234567"
             )
             self.mock_repo.build_import_plan.assert_awaited_once_with(
                 infrahub_branch_name=self.default_branch_name,
