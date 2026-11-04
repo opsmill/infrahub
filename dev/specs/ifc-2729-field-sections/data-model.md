@@ -16,7 +16,8 @@ internal schema definitions and stored with the schema of each branch.
 | `description` | `str \| None` | no | `None` | Shown as muted text under the title when set |
 | `order_weight` | `int \| None` | no | `None` | Orders sections, lowest first; a container without a weight comes after the weighted ones, in declaration order; the backend does not fill it |
 | `collapsed` | `bool` | no | `False` | The detail view card starts collapsed; the form panel ignores it |
-| `inherited` | `bool` | no | `False` | Internal: `True` on a copy taken from a generic; never written by a schema designer, never returned by the API, absent from the SDK models |
+| `state` | `HashableModelState` | no | `present` | Written as `absent` on a reload to remove the item; the same field as on attributes and relationships, exposed to the SDK as `SchemaState` |
+| `inherited` | `bool` | no | `False` | Internal: `True` on a copy taken from a generic; never written by a schema designer, never returned by the API, absent from the SDK models; the only field hidden from the write contract |
 
 - `_sort_by = ["name"]`: the name is the item's `_sorting_id`, so `HashableModel.update` merges a
   `containers` list by name.
@@ -26,7 +27,9 @@ internal schema definitions and stored with the schema of each branch.
 - `inherited` is hidden from the API and the SDK by leaving it out of `container_schema_fields` in
   the SDK generator of `tasks/backend.py`: the SDK read, write and contract models are generated
   from that list only, and `backend/infrahub/schema/read_schema.py::build_read_schema` projects
-  the backend model onto read models declared with `extra="ignore"`.
+  the backend model onto read models declared with `extra="ignore"`. A field left out of the list
+  is read-only in the write contract, and a load that sends it drops the value with a warning, so
+  `state` must be in the list for `state: absent` to work.
 - A container name and an attribute name are separate namespaces; both may be `mtu`.
 
 ## Schema properties and where they are declared
@@ -49,9 +52,12 @@ literal `advanced` (`backend/infrahub/core/constants/__init__.py::ADVANCED_CONTA
 `None` means the field belongs to the Details section.
 
 The SDK generator in `tasks/backend.py` gains `container_schema_fields` (`name`, `label`,
-`description`, `order_weight`, `collapsed`), a `ContainerSchema{suffix}` family next to
-`DropdownChoice{suffix}`, and the internal counterpart mapping, so `infrahub_sdk.schema.generated`
-gets `ContainerSchemaRead`, `ContainerSchemaWrite` and the contract entry.
+`description`, `order_weight`, `collapsed` and `state`, the last declared the way the attribute
+`state` entry in `definitions/internal.py` is, with `internal_kind=HashableModelState` and enum
+`SchemaState`, which needs an `enum_class` passthrough in `tasks/backend.py::_field` or an explicit
+`SchemaAttribute`), a `ContainerSchema{suffix}` family next to `DropdownChoice{suffix}`, and the
+internal counterpart mapping, so `infrahub_sdk.schema.generated` gets `ContainerSchemaRead`,
+`ContainerSchemaWrite` and the contract entry.
 
 ## Inheritance merge
 
@@ -72,6 +78,8 @@ runs once per generic, in `inherit_from` order. It gains a step before the attri
   next process; a field still pointing at it then fails validation.
 - Processing twice yields the same list (FR-010).
 - A node loaded from the database with `inherited=True` copies is rebuilt from its generics.
+- The `inherited` flag is stored and hashed with the node; a change on a generic updates every
+  implementing node's stored `containers`.
 
 Field-level `container` on inherited attributes and relationships needs no new code:
 `AttributeSchema.update_from_generic` and `RelationshipSchema.update_from_generic` copy every

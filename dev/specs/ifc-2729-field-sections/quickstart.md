@@ -107,9 +107,15 @@ loads. Then, in the web UI:
 4. Select Edit: the form shows a Details panel, then LACP, Layer 2 and Advanced panels, all
    expanded. Change the minimum links inside the LACP panel and save: the toast confirms the
    update and the LACP card shows the new value.
-5. Open `Schema` in the sidebar, select `InfraLagInterface`: the Containers block lists `lacp`,
-   `layer2` and `layer3`; the `lacp` attribute shows `Container: lacp`.
-6. Open any object of a kind without containers (for example an `InfraDevice`): the detail page
+5. Open the list of `InfraLagInterfaceL3` objects (the demo data loads none) and select New: the
+   create form shows a Details panel, then LACP, Layer 3 (MTU) and Advanced panels, all expanded.
+   Fill in the required fields, save, and open the object: view a Details card, an
+   LACP card, a Layer 3 card showing MTU `1500` and a collapsed Advanced card. No Layer 2 card is
+   shown, because this node has no Layer 2 field.
+6. Open `Schema` in the sidebar, select `InfraLagInterface`: the Containers block lists `lacp`,
+   `layer2` and `layer3`; the `lacp` attribute shows `Container: lacp`. Select
+   `InfraLagInterfaceL3`: the `mtu` attribute shows `Container: layer3`.
+7. Open any object of a kind without containers (for example an `InfraDevice`): the detail page
    shows the single Details card and the edit form is the flat list, as before the change.
 
 ## End-to-end test
@@ -123,8 +129,10 @@ INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
 
 Expected: the test opens the L2 LAG interface on its own branch, finds the Details, LACP and
 Layer 2 regions and the Advanced header, finds no Layer 3 region, edits the minimum links inside
-the LACP panel, saves, and reads the new value in the LACP card. The existing object detail and
-object update tests keep passing because their kinds declare no container.
+the LACP panel, saves, and reads the new value in the LACP card; then it opens the L3 LAG interface
+that `tests/e2e/data/sites.py` loads, finds the Details, LACP and Layer 3 regions and the Advanced
+header, reads MTU inside the Layer 3 region, and finds no Layer 2 region. The existing object
+detail and object update tests keep passing because their kinds declare no container.
 
 ## Documentation
 

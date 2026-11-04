@@ -75,7 +75,7 @@ container reference and check the error message.
    **When** the schema is loaded, **Then** the load succeeds.
 6. **Given** a loaded schema, **When** the schema designer loads it again with a container removed
    from the list, **Then** the container stays, because list items are merged on reload; removing it
-   needs `state: absent` on the item, as for dropdown choices.
+   needs `state: absent` on the item, as for attributes and relationships.
 7. **Given** a schema with containers, **When** the schema designer changes a container label or
    moves a field to another container, **Then** the change is accepted without a migration and
    without a constraint check, because sections only affect rendering.
@@ -267,9 +267,12 @@ Schema contract
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
   constraint check.
 - **FR-006**: Containers and container assignments MUST be stored with the schema and returned
-  unchanged after a reload, including on a branch other than the default branch.
+  unchanged after a reload, including on a branch other than the default branch, and after a
+  branch whose schema adds or changes containers is merged into the default branch, the default
+  branch returns the merged containers.
 - **FR-007**: Reloading a schema MUST merge the `containers` list by name, as other item lists are
-  merged; removing an item requires `state: absent`.
+  merged; removing an item requires `state: absent` on the item, as for attributes and
+  relationships.
 
 Inheritance
 
@@ -342,9 +345,9 @@ Schema viewer and documentation
 - **SC-001**: A schema designer can group the fields of a node into sections by editing only the
   schema file, with no change to the menu or to the data, and the result is visible in the detail
   page and the forms after one schema load.
-- **SC-002**: On the mockup's LAG interface, an operator views the sixteen fields as four cards
-  (Details, LACP, Layer 2, Layer 3) plus Advanced, each listing exactly the fields the schema assigns
-  to it, in the schema's order.
+- **SC-002**: On the demo's LAG interfaces, an operator views the L2 LAG interface as Details,
+  LACP, Layer 2 and Advanced cards and the L3 LAG interface as Details, LACP, Layer 3 and Advanced
+  cards, each listing exactly the fields the schema assigns to it, in the schema's order.
 - **SC-003**: Every schema that loads today still loads unchanged, and every detail page and form
   of a node without containers renders exactly as before the change.
 - **SC-004**: A schema with an undeclared container reference is rejected at load time with a message
@@ -362,7 +365,8 @@ Schema viewer and documentation
 - The internal schema change (three new properties on the stored schema definitions, no graph
   migration) is approved.
 - The demo schema (`models/base/dcim.yml`) gains the LACP, Layer 2 and Layer 3 containers on the LAG
-  interface generic; the end-to-end test uses that data.
+  interface generic, and the L3 LAG interface node redeclares `mtu` in the Layer 3 container; the
+  end-to-end test uses that data.
 - The SDK formatter puts `containers` after `uniqueness_constraints` on nodes and `container` just
   before `order_weight` on attributes and relationships.
 - Nothing changes for generics in the schema viewer beyond listing their containers.

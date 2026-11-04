@@ -7,7 +7,8 @@ feature does not touch are left out of the JSON.
 ## What GET /api/schema and GET /api/schema/{kind} return
 
 - Nodes, generics, profiles and templates carry `containers`: a list of
-  `{name, label, description, order_weight, collapsed}` items, `[]` when the kind declares none.
+  `{name, label, description, order_weight, collapsed, state}` items, `[]` when the kind declares
+  none. `state` is `present` on every item a read returns, as on attributes and relationships.
   The list is the kind's view after inheritance: a node returns the containers it declares plus
   those of its generics, merged by name. A profile or template returns the containers of the node
   it was generated from. `advanced` is never listed. The internal `inherited` flag is never
@@ -27,9 +28,9 @@ Example `GET /api/schema/InfraLagInterface` (abridged):
   "namespace": "Infra",
   "kind": "InfraLagInterface",
   "containers": [
-    {"name": "lacp", "label": "LACP", "description": null, "order_weight": 100, "collapsed": false},
-    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsed": false},
-    {"name": "layer3", "label": "Layer 3", "description": null, "order_weight": 300, "collapsed": true}
+    {"name": "lacp", "label": "LACP", "description": null, "order_weight": 100, "collapsed": false, "state": "present"},
+    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsed": false, "state": "present"},
+    {"name": "layer3", "label": "Layer 3", "description": null, "order_weight": 300, "collapsed": true, "state": "present"}
   ],
   "attributes": [
     {"name": "name", "kind": "Text", "container": null, "display": "default", "order_weight": 1000},
@@ -60,8 +61,11 @@ A kind without sections returns `"containers": []` and `"container": null` on ev
 ## What POST /api/schema/load accepts
 
 - `containers` on a node or generic: a list of items with a required `name` and `label`, an
-  optional `description`, `order_weight`, `collapsed` and `state`. An unknown key inside an item
-  fails the write contract with a 422, as for any other schema key.
+  optional `description`, `order_weight`, `collapsed` and `state`. `state` is a writable field of
+  the item (`present` by default, `absent` removes the item), as on attributes and relationships;
+  `inherited` is the only field of the backend model that the write contract hides, so a load that
+  sends it gets a read-only warning and the value is dropped. An unknown key inside an item fails
+  the write contract with a 422, as for any other schema key.
 - `container` on an attribute or relationship: a string or `null`.
 - A load that only changes containers or container assignments needs no migration and no
   constraint check; the response reports none.
@@ -101,13 +105,13 @@ Example request body (abridged):
 ## Rejected loads and their 422 bodies
 
 Every rejection is a 422 whose body is
-`{"errors": [{"message": "<message>", "extensions": {"code": 422}}]}`. The messages, with the
-placeholders filled from the request:
+`{"data": null, "errors": [{"message": "<message>", "extensions": {"code": 422}}]}`. The messages,
+with the placeholders filled from the request:
 
 - A field references a container the kind does not have after inheritance:
 
 ```json
-{"errors": [{"message": "InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2", "extensions": {"code": 422}}]}
+{"data": null, "errors": [{"message": "InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2", "extensions": {"code": 422}}]}
 ```
 
   The same shape with `relationships.<name>.container` for a relationship. When the reference is on
@@ -117,13 +121,13 @@ placeholders filled from the request:
 - Two containers with the same name on one kind after inheritance:
 
 ```json
-{"errors": [{"message": "InfraLagInterface.containers: container names must be unique, duplicate 'lacp'", "extensions": {"code": 422}}]}
+{"data": null, "errors": [{"message": "InfraLagInterface.containers: container names must be unique, duplicate 'lacp'", "extensions": {"code": 422}}]}
 ```
 
 - A container named `advanced` in the list:
 
 ```json
-{"errors": [{"message": "InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared", "extensions": {"code": 422}}]}
+{"data": null, "errors": [{"message": "InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared", "extensions": {"code": 422}}]}
 ```
 
 - A container item without `label`, or with a `name` outside the attribute name rules: rejected by
@@ -138,4 +142,4 @@ placeholders filled from the request:
 - `infrahubctl schema format` places `containers` after `uniqueness_constraints` in the node key
   order and `container` as the last key before the trailing `order_weight` of an attribute or a
   relationship. Inside a container item the key order is `name`, `label`, `description`,
-  `order_weight`, `collapsed`.
+  `order_weight`, `collapsed`, `state`.

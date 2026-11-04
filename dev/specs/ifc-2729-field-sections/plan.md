@@ -69,7 +69,7 @@ section and the profile and template copy.
 | Principle | Status | Note |
 |---|---|---|
 | I. Schema-Driven Integrity | Pass | Containers are schema properties validated at load time; generated files (`core/schema/generated/`, SDK `generated/`, `openapi.json`, REST types, reference docs) are regenerated with `invoke` tasks and `pnpm codegen:openapi`, never edited. |
-| II. Branch-Safe by Default | Pass | Containers are stored with the schema of each branch and reloaded with it; the schema API test covers a non-default branch (FR-006). No new query. |
+| II. Branch-Safe by Default | Pass | Containers are stored with the schema of each branch and reloaded with it; the schema API test covers a non-default branch and a schema lifecycle test in `backend/tests/integration/schema_lifecycle/` loads containers on a branch, merges it and reads the node on the default branch (FR-006). No new query. |
 | III. Type Safety & Explicit Contracts | Pass | `ContainerSchema` is a Pydantic `HashableModel` with field constraints; the API shape is written as a contract before implementation; the frontend reads `ContainerSchema` from the generated REST types and the partition rule is generic over the item type. |
 | IV. Test Discipline | Pass | Unit tests for the model, validator, inheritance merge and partition rule; component tests for reload merge, round trip and API; Vitest component tests for card, view, form and viewer; one e2e test on the demo data. Tests are written before each task's implementation. |
 | V. Query Performance | Pass | No database query is added or changed. |
@@ -90,8 +90,14 @@ clarifications and needs no further ask.
 `internal_kind=ContainerSchema`, empty list by default) on the base node schema and `container`
 (kind `Text`, optional) on the attribute and relationship schemas, all with
 `UpdateSupport.ALLOWED` and `Visibility.WRITE`. The SDK generator in `tasks/backend.py` gets a
-`container_schema_fields` list that excludes the internal `inherited` flag, so the SDK read and
-write models and the OpenAPI schema never carry it. Details: [data-model.md](data-model.md).
+`container_schema_fields` list of `name`, `label`, `description`, `order_weight`, `collapsed` and
+`state` (`internal_kind=HashableModelState`, enum `SchemaState`, default `present`, declared the
+way the attribute `state` entry in `definitions/internal.py` is, which needs an `enum_class`
+passthrough in `tasks/backend.py::_field` or an explicit `SchemaAttribute`), and leaves out the
+internal `inherited` flag, so the SDK read and write models and the OpenAPI schema never carry it.
+A field left out of that list becomes read-only in the write contract and a load that sends it
+drops the value with a warning, which is why `state` must be in the list for `state: absent` to
+remove a container. Details: [data-model.md](data-model.md).
 
 ### D2. Inheritance merge with an internal `inherited` flag
 
@@ -131,26 +137,35 @@ declaration order, Advanced last with `collapsed: true`, sections without an ite
 (`getAttributesVisibleInDetailedView` and the relationship filter that `ObjectDataDisplay` applies
 today, which moves out of the data display module so both can call it), partitions the result, and
 renders one `ObjectDetailsCard` per section with
-`objectSchema={{ ...objectSchema, attributes, relationships }}`, the narrowing that the repository
-page already uses. `ObjectDetailsCard` gets `defaultCollapsed` and `description`; when
+`objectSchema={{ ...objectSchema, attributes, relationships }}`, where `relationships` is the
+section's visible relationships plus every relationship of the full schema for which
+`isFromResourcePoolRelationship` is true, because the summary filter drops those before the
+partition and `object-data-display.tsx` looks the `<name>_from_resource_pool` relationship up in
+the schema it receives. `ObjectDetailsCard` gets `defaultCollapsed` and `description`; when
 `defaultCollapsed` is undefined the header is unchanged for every existing caller. When defined,
-the header title becomes a react-aria `Disclosure` trigger and the Extra button stays its sibling.
+the `h2` holds the react-aria `Disclosure` trigger button with the chevron and the container label
+only, and the Extra button stays its sibling. The description renders as a `<p>` sibling under the
+header, outside the `h2` and the button, and the button carries `aria-describedby` pointing at it.
+`SectionTitle` takes `label`, `description`, `titleId` and `descriptionId` and renders the two as
+siblings, so the detail card and the form panel place the same markup.
 Contract: [contracts/frontend-components.md](contracts/frontend-components.md).
 
 ### D7. Form: one panel per section
 
 `DynamicForm` gets an optional `sections` prop. `fields` stays the single source for default values
 and submission. Without `sections`, or when only the Details section has fields, the form is the
-flat list of today. Otherwise the form partitions `fields` with the same rule, reading each field's
-container from the schema attached to it (`field.attribute?.container` or
-`field.relationship.container`), and renders one `FormSectionPanel` per section, always expanded.
+flat list of today. Otherwise the form partitions `fields` with the same rule, passing
+`(field) => "relationship" in field ? field.relationship.container : field.attribute?.container`
+as the `getContainer` argument so the container is read from the schema attached to each field,
+and renders one `FormSectionPanel` per section, always expanded.
 `NodeForm` passes `sections={schema.containers}`; no other caller changes.
 
 ### D8. Schema viewer, demo schema, documentation
 
 The schema viewer lists a node's containers and shows each field's container with the existing
 `PropertyRow`. `models/base/dcim.yml` declares the LACP, Layer 2 and Layer 3 containers on
-`InfraLagInterface` and assigns the generic's and the two implementing nodes' fields (research R7).
+`InfraLagInterface` and assigns the generic's and the two implementing nodes' fields;
+`InfraLagInterfaceL3` redeclares `mtu` with `container: layer3` (research R7).
 A new `docs/docs/schema/field-sections.mdx` page explains the properties, the built-in Advanced
 section, the default Details section, ordering, inheritance and the three errors; the generated
 reference pages come from `uv run invoke docs.generate`.
@@ -199,7 +214,8 @@ backend/tests/
 ├── unit/api/test_schema_load_contract.py                  # load contract cases
 ├── component/core/schema/schema_branch/test_process_idempotency.py
 ├── component/core/schema_manager/test_manager_schema.py   # reload merge, profile, template
-└── component/api/test_40_schema.py                        # GET and POST cases
+├── component/api/test_40_schema.py                        # GET and POST cases
+└── integration/schema_lifecycle/                          # merge of a branch with containers
 tasks/backend.py                                           # SDK generator: container_schema_fields,
                                                            # family, internal counterpart
 schema/openapi.json                                        # regenerated
@@ -223,14 +239,15 @@ frontend/app/src/
 ├── entities/nodes/object/ui/object-details/object-details.tsx           # one card per section
 ├── entities/nodes/object/ui/object-details/object-data-display/
 │   └── object-data-display.tsx                            # relationship filter made callable from the view
-├── shared/components/form/utils/getFormFieldContainer.ts  # new: container of a form field
 ├── shared/components/form/form-section-panel.tsx          # new: bordered panel with SectionTitle
 ├── shared/components/form/dynamic-form.tsx                # sections prop (+ new test)
 ├── shared/components/form/node-form.tsx                   # passes schema.containers
 └── shared/api/rest/types.generated.ts                     # regenerated by pnpm codegen:openapi
 frontend/app/tests/fake/schema.ts                          # containers and container defaults, factory
 
-models/base/dcim.yml                                       # containers on InfraLagInterface
+models/base/dcim.yml                                       # containers on InfraLagInterface,
+                                                           # mtu redeclared on InfraLagInterfaceL3
+tests/e2e/data/sites.py                                    # one InfraLagInterfaceL3 object
 tests/e2e/objects/test_object_containers.py                # new e2e test
 tests/e2e/README.md                                        # fixture catalog entry
 
@@ -268,13 +285,20 @@ unpushed submodule commit.
   `origin/infrahub-develop`, commit the regenerated `generated/*.py`, the `main.py` re-export, the
   `schema_format.py` key order and its tests, push, open the SDK PR.
 - Phase D, backend persistence and API tests (after A5 and B, parallel with C and E): reload merge
-  cases, database round trip, `GET /api/schema/{kind}` and `POST /api/schema/load` cases including
-  a non-default branch.
+  cases, database round trip, an assertion that `get_hash()` is equal after two `process()` calls
+  on a schema with inherited containers, `GET /api/schema/{kind}` and `POST /api/schema/load` cases
+  including a non-default branch, a `POST /api/schema/load` case that sends `state: absent` on a
+  container item and asserts the container is gone and no read-only warning is returned, and a
+  schema lifecycle test in `backend/tests/integration/schema_lifecycle/` that loads containers on a
+  branch, merges it and reads the node on the default branch.
 - Phase E, frontend (after B, parallel with C and D): E1 types, fixtures, model and partition rule
-  first; then E2 detail view, E3 form and E4 schema viewer in parallel; E5 the frontend gates.
+  first; then E2 detail view (with the Vitest case "a pool-allocated attribute inside a section
+  shows its pool row"), E3 form and E4 schema viewer in parallel; E5 the frontend gates.
 - Phase F, demo schema and end-to-end (after A5, E2 and E3; the e2e run needs the image built from
-  the bumped pointer of phase H): F1 `models/base/dcim.yml`; F2
-  `tests/e2e/objects/test_object_containers.py` and its catalog entry.
+  the bumped pointer of phase H): F1 `models/base/dcim.yml`, where `InfraLagInterfaceL3`
+  redeclares `mtu` with `container: layer3`; F2 one `InfraLagInterfaceL3` object in
+  `tests/e2e/data/sites.py`, `tests/e2e/objects/test_object_containers.py` asserting the L2 and
+  the L3 layouts, and its catalog entry.
 - Phase G, documentation (after B, parallel with C to F): the guide page, the sidebar entry, the
   overview link, the changelog fragment.
 - Phase H, pointer bump and repository gates: after the SDK PR merges, pin `python_sdk` to the
@@ -288,23 +312,21 @@ unpushed submodule commit.
    loaded from the database carry `inherited=True` copies that the reset in `process_inheritance`
    must drop. Guarded by the reload test that asserts `inherited` is `False` after the redeclaration
    and by `test_reload_matches_saved_schema`.
-2. Narrowed schema per card: `ObjectDataDisplay` and `hasExtraFields` receive
-   `{ ...objectSchema, attributes, relationships }` for one section. The resource-pool row lookup
-   searches `objectSchema.relationships` for `<name>_from_resource_pool`, so the section's
-   relationship list must keep that relationship next to its attribute, or the lookup must read the
-   full schema.
-3. Nested interactive elements: the Extra button must not sit inside the Disclosure trigger button.
+2. Nested interactive elements: the Extra button must not sit inside the Disclosure trigger button.
    It stays a sibling of the trigger in `CardHeader`.
-4. Validator order with profiles: profiles and templates are generated before `process_validate`,
+3. Validator order with profiles: profiles and templates are generated before `process_validate`,
    so a profile missing its containers fails the load. A4 and A5 land in the same commit.
-5. Demo schema change: every e2e shard that loads `dcim.yml` is affected. Check the file with
+4. Demo schema change: every e2e shard that loads `dcim.yml` is affected. Check the file with
    `uv run infrahubctl schema check models/base/dcim.yml` against a running instance before pushing.
-6. SDK sequencing: the schema API tests fail until the SDK PR merges and the pointer is bumped;
+5. SDK sequencing: the schema API tests fail until the SDK PR merges and the pointer is bumped;
    the Infrahub PR stays in draft until then.
-7. Demo schema and spec narrative: `mtu` is declared on `InfraInterface`, which does not own the
-   containers, and a node cannot redeclare an inherited attribute to move it, so `mtu` stays in
-   Details in the demo while the spec's narrative puts it in Layer 3. The e2e test asserts the demo
-   layout; the mockup example stays in the API contract.
+6. Demo schema `mtu` redeclaration: `mtu` is declared on `InfraInterface`. `InfraLagInterfaceL3`
+   redeclares it (`name: mtu`, `kind: Number`, `label: MTU`, `default_value: 1500`,
+   `container: layer3`): the inheritance handler skips a generic attribute whose name is local, and
+   `validate_inheritance` only requires the same kind because `allow_override` defaults to `any`.
+   The L3 node shows the Layer 3 card and exercises US2 scenario 3; the L2 node shows no Layer 3
+   card and exercises the empty-card rule. The redeclaration must keep `kind: Number`, or the load
+   fails the inheritance check.
 
 ## Complexity Tracking
 

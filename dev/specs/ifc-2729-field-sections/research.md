@@ -32,7 +32,11 @@ Code is cited as `module::Symbol`.
   `container_schema_fields` in `tasks/backend.py`: the SDK read and write models come from that
   list only, and `backend/infrahub/schema/read_schema.py::build_read_schema` projects onto read
   models declared with `extra="ignore"`. Profile and template copies use
-  `model_dump(exclude={"inherited"})`, as attribute copies exclude their own internal fields.
+  `model_dump(exclude={"inherited"})`, as attribute copies exclude their own internal fields. The
+  flag is hashed and persisted with the node: `BaseNodeSchema._exclude_from_hash` holds only
+  `attributes` and `relationships`, and the stored node is a `model_dump()` with no exclusion for
+  `containers`, so a container change on a generic rewrites the stored `containers` of every
+  implementing node, as an inherited `uniqueness_constraints` change does today.
 - **Alternatives considered**: A plain merge-by-name dictionary without a marker. It cannot tell a
   stale inherited copy from a local declaration on the next process, so it would need an
   equivalent marker anyway. Adding `containers` to the handler's `properties_to_inherit` list:
@@ -42,9 +46,10 @@ Code is cited as `module::Symbol`.
 
 ## R3. Form grouping reads the container from the field's attached schema
 
-- **Decision**: A small rule `getFormFieldContainer(field)` returns
-  `field.relationship.container` or `field.attribute?.container`. `DynamicForm` partitions its
-  `fields` with it; no new prop on the field and no name-to-container map.
+- **Decision**: `DynamicForm` partitions its `fields` with the partition rule, passing
+  `(field) => "relationship" in field ? field.relationship.container : field.attribute?.container`
+  as the `getContainer` argument; no helper file, no new prop on the field and no
+  name-to-container map.
 - **Rationale**: `FormFieldProps.attribute` and `DynamicRelationshipFieldProps.relationship` in
   `frontend/app/src/shared/components/form/type.ts` are set by `getFormFieldFromAttribute` and
   `getFormFieldFromRelationship`, including the bulk `relationship-add` and `relationship-remove`
@@ -52,14 +57,16 @@ Code is cited as `module::Symbol`.
   tests assert that every schema-built field carries its schema.
 - **Alternatives considered**: A `container` prop on every form field: duplicates data already on
   the field. A name-to-container map passed to the form: must strip the bulk prefixes from the
-  field names before the lookup.
+  field names before the lookup. A `getFormFieldContainer` helper file under
+  `shared/components/form/utils/`: it would have one caller, which principle VII forbids.
 
 ## R4. `SectionTitle` kept as a shared header piece; `FieldSet` move rejected
 
 - **Decision**: `entities/nodes/object/ui/object-details/section-title.tsx::SectionTitle` renders
-  the container label and, when set, the description as muted text under it. The detail card
-  header and the form panel header both use it. The repository entity's `FieldSet` shape stays
-  where it is.
+  the container label and, when set, the description as muted text under it, as two sibling
+  elements with the ids its caller passes, so the collapsible card can keep the description out of
+  its trigger button. The detail card header and the form panel header both use it. The
+  repository entity's `FieldSet` shape stays where it is.
 - **Rationale**: FR-020 and FR-021 require the same header in the detail card and the form panel;
   both callers land in this change, which meets the two-callers rule of principle VII.
   `dynamic-form.tsx` already imports from `@/entities/schema`, so the form panel importing from an
@@ -107,18 +114,21 @@ Code is cited as `module::Symbol`.
   "Layer 3", weight 300, `collapsed: true`). On the generic: `lacp`, `minimum_links` and `mlag` go
   to `lacp`; `max_bundle` goes to `advanced`. On `InfraLagInterfaceL2`: `l2_mode`, `untagged_vlan`
   and `tagged_vlan` go to `layer2`; `members` stays ungrouped. On `InfraLagInterfaceL3`:
-  `ip_addresses` goes to `layer3`; `members` stays ungrouped. `mtu` stays ungrouped.
+  `ip_addresses` goes to `layer3`, `members` stays ungrouped, and the node redeclares `mtu`
+  (`name: mtu`, `kind: Number`, `label: MTU`, `default_value: 1500`, `container: layer3`).
 - **Rationale**: The LAG interface is the mockup's node and `port-channel1` of `atl1-leaf1` already
-  exists in the e2e site data, so no new data is needed. The assignments exercise inheritance (the
-  containers come from the generic), the Advanced section, a description, a collapsed container
-  and the empty-card rule on both nodes: the L2 node has no Layer 3 field, and on the L3 node the
-  only Layer 3 field is tab-only, so neither node shows a Layer 3 card. `mtu` is declared on
-  `InfraInterface`, which does not own the containers, and a node cannot redeclare an inherited
-  attribute to move it.
+  exists in the e2e site data; the e2e data gains one `InfraLagInterfaceL3` object. The assignments
+  exercise inheritance (the containers come from the generic), the Advanced section, a
+  description, a collapsed container and both outcomes of the Layer 3 container. `mtu` is declared
+  on `InfraInterface`; `InfraLagInterfaceL3` can redeclare it because the inheritance handler
+  skips a generic attribute whose name is local, and `validate_inheritance` only requires the same
+  kind because `allow_override` defaults to `any`. The L3 node shows the Layer 3 card and
+  exercises US2 scenario 3; the L2 node shows no Layer 3 card and exercises the empty-card rule.
 - **Alternatives considered**: A dedicated schema loaded by the e2e test through the SDK: isolates
   the test but needs its own data, catalog entry and shard, and leaves the demo without sections.
   Declaring the containers on `InfraInterface` so that `mtu` can be grouped: puts sections on every
-  physical interface, which the product decision did not ask for.
+  physical interface, which the product decision did not ask for. Leaving `mtu` ungrouped: no
+  demo node would show a Layer 3 card, so SC-002 could not be checked on the demo.
 
 ## R8. Profiles and object templates are regenerated on every process
 

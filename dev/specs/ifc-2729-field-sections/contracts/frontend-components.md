@@ -24,8 +24,10 @@ interface ObjectDetailsCardProps {
 - `defaultCollapsed` undefined: the header is the current `h2` title plus the Extra button; the
   rows are always shown.
 - `defaultCollapsed` defined: the card wraps its header and rows in a react-aria `Disclosure`.
-  The `h2` holds the trigger button (chevron and `SectionTitle`); the rows sit in a
-  `DisclosurePanel`. `defaultCollapsed: true` starts with the panel closed; `false` starts open.
+  The `h2` holds the trigger button with the chevron and the container label only; the
+  description renders as a `<p>` sibling under the header, outside the `h2` and the button, and
+  the button carries `aria-describedby` pointing at it. The rows sit in a `DisclosurePanel`.
+  `defaultCollapsed: true` starts with the panel closed; `false` starts open.
 - The Extra button is rendered only when `hasExtraFields(objectSchema)` is true for the schema
   the card receives, so a card that receives a narrowed schema shows it only when that section has
   an `extra` field. Its state is local to the card.
@@ -44,11 +46,16 @@ The detail view (`object-details.tsx::ObjectDetails`) renders one card per secti
 interface SectionTitleProps {
   label: React.ReactNode;
   description?: string | null;
+  titleId: string;
+  descriptionId: string;
 }
 ```
 
-Renders the label and, when `description` is set, the description as muted text under it. Used by
-the detail card header and the form panel header, so both show the same header (FR-020, FR-021).
+Renders the label with `id={titleId}` and, when `description` is set, the description as a muted
+`<p>` sibling with `id={descriptionId}` under it, never inside the label element. The detail card
+header and the form panel header both use it, so both show the same header (FR-020, FR-021), and
+the collapsible card can point `aria-labelledby` at the label and `aria-describedby` at the
+description.
 
 ## Section partition rule
 
@@ -68,11 +75,8 @@ rule is pure: it does not filter, sort or copy the items. Callers:
 - The detail view, with the attributes and relationships that pass the detail view's visibility
   rules, sorted by `sortByOrderWeight`, and `getContainer = (field) => field.container`.
 - The form, with the `DynamicFieldProps[]` that `getFormFieldsFromSchema` built, and
-  `getContainer = getFormFieldContainer`.
-
-`shared/components/form/utils/getFormFieldContainer.ts::getFormFieldContainer` returns
-`field.relationship.container` for a relationship field and `field.attribute?.container` for an
-attribute field, `undefined` for a field built without a schema.
+  `getContainer = (field) => "relationship" in field ? field.relationship.container : field.attribute?.container`,
+  written inline in `DynamicForm`; it returns `undefined` for a field built without a schema.
 
 ## DynamicForm
 
@@ -112,8 +116,9 @@ interface FormSectionPanelProps {
 }
 ```
 
-Renders `Card` with `variant="panel"`, a `CardHeader` holding `SectionTitle`, and a `CardContent`
-holding the fields. No Extra control: the form never filters `display: extra` fields.
+Renders `Card` with `variant="panel"`, a `CardHeader` holding `SectionTitle` with ids the panel
+generates, and a `CardContent` holding the fields. No Extra control: the form never filters
+`display: extra` fields.
 
 ## Schema viewer
 
@@ -128,10 +133,14 @@ holding the fields. No Extra control: the form never filters `display: extra` fi
 Detail view:
 
 - Each card keeps `role="region"` and `aria-labelledby` pointing at its title, so a test can find
-  the region by its accessible name: `Details`, the container label (`LACP`), or `Advanced`.
-- A collapsible card's title is a button inside the `h2` with the container label as its
-  accessible name and `aria-expanded` reflecting the state; pressing it toggles the rows. A
-  non-collapsible card has no button in its title.
+  the region by its accessible name: `Details`, the container label (`LACP`), or `Advanced`. The
+  description is never part of that name.
+- A collapsible card's title is a button inside the `h2` whose content is the chevron and the
+  container label only, so its accessible name is the label, with `aria-expanded` reflecting the
+  state; pressing it toggles the rows. A non-collapsible card has no button in its title.
+- The container description is a `<p>` outside the `h2` and outside the button; the button's
+  `aria-describedby` points at it, so a screen reader announces it as the description of the
+  button, not as part of the name of the button, the heading or the region.
 - The Extra control is a button named `Extra`, a sibling of the title in the header, never inside
   the trigger button. It is present only on a card whose section has a `display: extra` field.
 - The chevron rotation uses the same reduced-motion classes as the repository activity card.
@@ -140,7 +149,8 @@ Form:
 
 - Each panel is a region labelled by its header, so a test can find the `LACP` region and the
   field inside it. A form without sections has no region.
-- Panel headers are not buttons.
+- Panel headers are not buttons. The description is a `<p>` sibling of the label, as in the detail
+  card, and is not part of the region's name.
 
 Tests assert through accessible roles and names (`getByRole("region", { name })`,
 `getByRole("button", { name })`), not through class names or test ids, except the existing
