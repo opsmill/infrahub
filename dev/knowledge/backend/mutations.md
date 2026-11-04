@@ -255,7 +255,7 @@ implements with two locks:
 
 | Lock | Taken by | Mode |
 |------|----------|------|
-| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools | exclusive (`changing`) |
+| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools, the schema migration that adds a NumberPool attribute | exclusive (`changing`) |
 | `resource_pool.<pool id>` | allocation that picks a new number, attaching a supplied number, editing a tracked number | shared (`holding`) |
 | `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
 
@@ -282,6 +282,15 @@ the new pool before its transaction commits, so no write can hold it.
   range change, so allocations take `picking` first. Template components are the exception: they
   allocate inside the template's transaction without taking the division's lock first, so the cycle can
   still form until the waiting range change reaches its wait limit and fails.
+- **A task that holds the pool exclusively skips `picking`.** Every other allocation picks inside its
+  shared hold, so none can pick while the pool is held exclusively, and skipping the division's lock keeps
+  the exclusive holder from waiting on an allocation that is itself queued behind it.
+- **The schema migration that adds a NumberPool attribute holds the pool exclusively until its commit.**
+  It allocates a number to every existing node in one transaction, and holds `changing` from before its
+  first allocation until the commit, so that no other allocation picks a number the migration drew but
+  has not committed yet, and no range changes under it. When writes still hold the pool after
+  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails and the schema update is rolled back.
+  The repair of missing number pool rows runs while the system is down and takes no lock.
 - **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
 - **An allocation that returns its identifier's reservation does not hold the pool.** The reserved
