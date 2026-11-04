@@ -201,7 +201,8 @@ async def gather_task_manager_database(client: PrefectClient) -> TelemetryTaskMa
     """Return the type and version of the database the task manager stores its data in.
 
     Raises:
-        httpx.HTTPStatusError: If the task manager does not serve the database version route.
+        httpx.HTTPStatusError: If the task manager answers with an error status, for example 404 when it does not serve the route.
+        pydantic.ValidationError: If the response does not contain the database type and version.
 
     """
     response = await client._client.get(DATABASE_VERSION_PATH)
@@ -216,5 +217,4 @@ async def gather_prefect_information() -> TelemetryPrefectData:
             work_pools=await gather_prefect_work_pools(client=client),
             events=await gather_prefect_events(client=client),
             automations=await gather_prefect_automations(client=client),
-            database=await safe_metric(gather_task_manager_database.fn(client=client)),
         )

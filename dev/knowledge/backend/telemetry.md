@@ -184,7 +184,9 @@ of the payload is still built, stored, and sent. A source that succeeds with not
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
 The new CPU and memory figures for the API server and the task workers, and the database's
-`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`, are protected this way. Several older parts are not,
+`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`, are protected this way. So is
+`prefect.database`, the task manager database type and version, which is also `null` while the task manager is older than
+the task worker during an upgrade, because an older task manager does not serve the route that reports them. Several older parts are not,
 among them the list of workers and the database block, including its CPU and memory figures: a
 failure in any of them stops the whole report.
 

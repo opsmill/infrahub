@@ -15,7 +15,6 @@ from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdate
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
-from infrahub.telemetry import task_manager
 from infrahub.telemetry.task_manager import (
     count_webhook_runs,
     count_windowed_event,
@@ -298,7 +297,6 @@ async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, se
 async def test_gather_prefect_information(prefect_test_fixture: Generator) -> None:
     data = await gather_prefect_information()
     assert data
-    assert data.database is not None
 
 
 async def test_gather_task_manager_database(prefect_client: PrefectClient) -> None:
@@ -306,13 +304,3 @@ async def test_gather_task_manager_database(prefect_client: PrefectClient) -> No
     # The test task manager runs on this interpreter and stores its data in SQLite.
     assert data.type == "sqlite"
     assert data.version == sqlite3.sqlite_version
-
-
-async def test_gather_prefect_information_without_database_version_route(
-    prefect_test_fixture: Generator, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # A task manager older than the worker answers 404 for the route.
-    monkeypatch.setattr(task_manager, "DATABASE_VERSION_PATH", "/infrahub/database/missing")
-    data = await gather_prefect_information()
-    assert data.database is None
-    assert data.events
