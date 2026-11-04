@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
@@ -17,7 +18,6 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
-    from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -111,11 +111,13 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             allocator = build_existing_node_number_allocator(db=db, branch=branch)
-            nodes: list[Node] = await registry.manager.query(db=db, branch=branch, schema=self.new_schema)
+            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch)
+            await node_query.execute(db=db)
             await allocator.allocate(
                 pool=number_pool,
                 attribute=self.new_attribute_schema,
-                nodes=nodes,
+                kind=self.new_schema.kind,
+                node_ids=node_query.get_node_ids(),
                 branch=branch,
                 at=at,
                 user_id=migration_input.user_id,

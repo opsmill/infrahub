@@ -15,7 +15,11 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import DivisionExhaustedError, PoolExhaustedError
-from infrahub.pools.existing_node_numbers import build_existing_node_number_allocator
+from infrahub.pools.division_reader import NodeNumberPoolDivisionReader
+from infrahub.pools.existing_node_numbers import ExistingNodeNumberAllocator, build_existing_node_number_allocator
+from infrahub.pools.scope import AllocationScopeResolver
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_DEVICE,
@@ -32,6 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.scope import Division
 
 
 # Two scalar scope elements, so two divisions can hold different values that join into the same dotted key.
@@ -66,14 +71,14 @@ async def unnumbered_router(db: InfrahubDatabase, branch: Branch, name: str, rol
 async def allocate_existing(
     db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool, devices: list[Node], kind: str = SCOPED_DEVICE.kind
 ) -> None:
-    """Load the nodes from the database, then allocate their `vlan_id` in the given order."""
+    """Allocate the `vlan_id` of the nodes in the given order."""
     allocator = build_existing_node_number_allocator(db=db, branch=branch)
-    loaded = await NodeManager.get_many(db=db, branch=branch, ids=[device.id for device in devices])
     attribute = registry.schema.get(name=kind, branch=branch, duplicate=False).get_attribute(name=SCOPED_ATTRIBUTE_NAME)
     await allocator.allocate(
         pool=pool,
         attribute=attribute,
-        nodes=[loaded[device.id] for device in devices],
+        kind=kind,
+        node_ids=[device.id for device in devices],
         branch=branch,
         at=Timestamp(),
         user_id=SYSTEM_USER_ID,
@@ -86,6 +91,21 @@ async def stored_vlan_ids(db: InfrahubDatabase, branch: Branch, devices: list[No
         str(node.get_attribute("name").value): node.get_attribute(SCOPED_ATTRIBUTE_NAME).value
         for node in loaded.values()
     }
+
+
+class SiteReadRecordingDivisionReader:
+    """Records, for each node whose division is read, whether the node's `site` peers were already loaded."""
+
+    def __init__(self, reader: NodeNumberPoolDivisionReader) -> None:
+        self.reader = reader
+        self.site_loaded: list[bool] = []
+
+    def scope_field_names(self, pool: Node, kind: str, attribute_name: str) -> list[str]:
+        return self.reader.scope_field_names(pool=pool, kind=kind, attribute_name=attribute_name)
+
+    async def read_for_pool(self, node: Node, pool: Node, attribute_name: str) -> Division | None:
+        self.site_loaded.append(node.get_relationship("site").has_fetched_relationships)
+        return await self.reader.read_for_pool(node=node, pool=pool, attribute_name=attribute_name)
 
 
 def migration_exhaustion_pattern(pool: CoreNumberPool, description: str, count: int, kind: str, size: int) -> str:
@@ -184,6 +204,48 @@ class TestExistingNodeNumbers:
             "device-b-spine": 1,
         }
         await verify_graph(db=db)
+
+    async def test_site_scope_reads_the_sites_of_all_nodes_when_loading_them(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, scoped_schema: None
+    ) -> None:
+        branch = default_branch_scope_class
+        pool = await scoped_pool(db=db, name="vlan-per-site-loaded", allocation_scope=["site"])
+        site = await scoped_site(db=db, branch=branch, name="loaded-site")
+        devices = [
+            await unnumbered_device(db=db, branch=branch, name=f"loaded-device-{index}", site=site)
+            for index in range(1, 4)
+        ]
+        recorder = SiteReadRecordingDivisionReader(
+            reader=NodeNumberPoolDivisionReader(
+                db=db,
+                scope_resolver=AllocationScopeResolver(
+                    schema_branch=registry.schema.get_schema_branch(name=branch.name)
+                ),
+                profiles_applier=NodeProfilesApplier(
+                    db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+                ),
+            )
+        )
+        allocator = ExistingNodeNumberAllocator(db=db, division_reader=recorder, node_manager=NodeManager)
+
+        await allocator.allocate(
+            pool=pool,
+            attribute=registry.schema.get(name=SCOPED_DEVICE.kind, branch=branch, duplicate=False).get_attribute(
+                name=SCOPED_ATTRIBUTE_NAME
+            ),
+            kind=SCOPED_DEVICE.kind,
+            node_ids=[device.id for device in devices],
+            branch=branch,
+            at=Timestamp(),
+            user_id=SYSTEM_USER_ID,
+        )
+
+        assert recorder.site_loaded == [True, True, True]
+        assert await stored_vlan_ids(db=db, branch=branch, devices=devices) == {
+            "loaded-device-1": 1,
+            "loaded-device-2": 2,
+            "loaded-device-3": 3,
+        }
 
     async def test_full_site_names_the_site_its_node_count_and_the_range_size(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, scoped_schema: None

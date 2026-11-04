@@ -99,7 +99,9 @@ along with its node.
 A schema change that adds a NumberPool attribute, and the repair of missing number pool rows, give
 existing nodes their numbers through `pools/existing_node_numbers.py`. It reads each node's division
 with `NodeNumberPoolDivisionReader`, the reader the create path uses, so an existing node gets the
-number a create would give it. The pre-load check that refuses a pool smaller than the kind's node
+number a create would give it. It loads the nodes with only their id, the numbered attribute and the
+fields that hold the pool's scope elements, so the peers of a relationship element are read once for
+the whole set of nodes rather than once per node. The pre-load check that refuses a pool smaller than the kind's node
 count skips scoped pools, because their limit applies to each division; the allocation raises when
 one division runs out.
 

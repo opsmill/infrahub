@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core import registry
-from infrahub.exceptions import DivisionExhaustedError, PoolExhaustedError
+from infrahub.core.manager import NodeManager
+from infrahub.exceptions import DivisionExhaustedError, NodeNotFoundError, PoolExhaustedError
 from infrahub.pools.division_reader import NodeNumberPoolDivisionReader
 from infrahub.pools.number_pool_number_picker import number_pool_label
 from infrahub.pools.scope import AllocationScope, AllocationScopeResolver
@@ -23,6 +24,16 @@ if TYPE_CHECKING:
 
 
 class DivisionReader(Protocol):
+    def scope_field_names(self, pool: Node, kind: str, attribute_name: str) -> list[str]:
+        """Return the names of the attributes and relationships of `kind` that hold the number pool's scope elements.
+
+        Raises:
+            ValidationError: When the stored scope is malformed or the schema does not define one of its elements on
+                `kind`.
+
+        """
+        ...
+
     async def read_for_pool(self, node: Node, pool: Node, attribute_name: str) -> Division | None:
         """Return the division the node holds for the number pool's scope, or None when the pool has no scope.
 
@@ -38,31 +49,35 @@ class DivisionReader(Protocol):
 class ExistingNodeNumberAllocator:
     """Give existing nodes a number from a number pool, each within the division it holds as a create would."""
 
-    def __init__(self, db: InfrahubDatabase, division_reader: DivisionReader) -> None:
+    def __init__(self, db: InfrahubDatabase, division_reader: DivisionReader, node_manager: type[NodeManager]) -> None:
         self.db = db
         self.division_reader = division_reader
+        self.node_manager = node_manager
 
     async def allocate(
         self,
         pool: CoreNumberPool,
         attribute: AttributeSchema,
-        nodes: Sequence[Node],
+        kind: str,
+        node_ids: Sequence[str],
         branch: Branch,
         at: Timestamp | None,
         user_id: str,
     ) -> None:
-        """Allocate and save a number for each node, in the given order.
+        """Load the nodes of `kind` with the given ids, then allocate and save a number for each, in the given order.
 
         Numbers are saved node by node, so a failure leaves the earlier nodes numbered unless the caller holds a
         transaction.
 
         Raises:
-            ValidationError: When a node's division cannot be read.
-            NodeNotFoundError: When a scope peer named by a human-friendly id or a default filter value does not exist.
+            ValidationError: When the pool's scope or a node's division cannot be read.
+            NodeNotFoundError: When a node does not exist on the branch, or when a scope peer named by a human-friendly
+                id or a default filter value does not exist.
             PoolExhaustedError: When the pool, or a node's division, has no number left to give; for a division, the
                 message adds how many of the nodes are in it and how many numbers the ranges hold.
 
         """
+        nodes = await self._load(pool=pool, attribute=attribute, kind=kind, node_ids=node_ids, branch=branch)
         # Every division is read before the first save, so a read failure leaves no number allocated.
         divisions = [
             await self.division_reader.read_for_pool(node=node, pool=pool, attribute_name=attribute.name)
@@ -92,6 +107,17 @@ class ExistingNodeNumberAllocator:
                 ) from exc
             await node.save(db=self.db, fields=[attribute.name], at=at, user_id=user_id)
 
+    async def _load(
+        self, pool: CoreNumberPool, attribute: AttributeSchema, kind: str, node_ids: Sequence[str], branch: Branch
+    ) -> list[Node]:
+        scope_fields = self.division_reader.scope_field_names(pool=pool, kind=kind, attribute_name=attribute.name)
+        # Naming the scope relationships reads their peers for every node in one query rather than one per node.
+        fields = dict.fromkeys(["id", attribute.name, *scope_fields], True)
+        loaded = await self.node_manager.get_many(db=self.db, branch=branch, ids=list(node_ids), fields=fields)
+        if missing := [node_id for node_id in node_ids if node_id not in loaded]:
+            raise NodeNotFoundError(node_type=kind, identifier=", ".join(missing), branch_name=branch.name)
+        return [loaded[node_id] for node_id in node_ids]
+
 
 def _exhausted_division_message(pool: CoreNumberPool, exc: DivisionExhaustedError, node_count: int, kind: str) -> str:
     scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
@@ -107,6 +133,7 @@ def build_existing_node_number_allocator(db: InfrahubDatabase, branch: Branch) -
     scope_resolver = AllocationScopeResolver(schema_branch=registry.schema.get_schema_branch(name=branch.name))
     return ExistingNodeNumberAllocator(
         db=db,
+        node_manager=NodeManager,
         division_reader=NodeNumberPoolDivisionReader(
             db=db,
             scope_resolver=scope_resolver,

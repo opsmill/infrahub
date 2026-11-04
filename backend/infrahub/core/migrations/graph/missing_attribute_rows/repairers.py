@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from itertools import batched
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.attribute_add import AttributeAddQuery
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.pools.existing_node_numbers import build_existing_node_number_allocator
@@ -115,7 +114,8 @@ class PoolBackedRowRepairer:
         Raises:
             TypeError: When the upserted pool is not an allocation-capable pool node.
             ValidationError: When the pool's scope or a node's division cannot be read.
-            NodeNotFoundError: When a scope peer named by a human-friendly id or a default filter value does not exist.
+            NodeNotFoundError: When a damaged node does not exist on the branch, or when a scope peer named by a
+                human-friendly id or a default filter value does not exist.
             PoolExhaustedError: When the pool, or a node's division, has no number left to give.
 
         """
@@ -150,17 +150,17 @@ class PoolBackedRowRepairer:
                 await query.execute(db=dbt)
 
                 allocator = build_existing_node_number_allocator(db=dbt, branch=rows.branch)
-                nodes = await NodeManager.get_many(db=dbt, branch=rows.branch, ids=list(uuid_batch))
                 await allocator.allocate(
                     pool=number_pool,
                     attribute=rows.attribute,
-                    nodes=[nodes[node_uuid] for node_uuid in sorted(nodes)],
+                    kind=rows.node_schema.kind,
+                    node_ids=uuid_batch,
                     branch=rows.branch,
                     at=rows.at,
                     user_id=rows.user_id,
                 )
                 # Counted per allocated node rather than from the rows the query created.
-                repaired += len(nodes)
+                repaired += len(uuid_batch)
             if multiple_batches:
                 self.console.log(f"    {label}: allocated {repaired}/{len(rows.node_uuids)} pool value(s)")
 
