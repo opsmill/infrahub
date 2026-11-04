@@ -71,7 +71,7 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows. Nor by a unit test that asserts on the Cypher text a query or a shared clause helper renders: that pins the wording, not the rows. See `dev/guidelines/backend/testing.md` §"What not to test".
 
 ## Check existing coverage before adding a test
 
