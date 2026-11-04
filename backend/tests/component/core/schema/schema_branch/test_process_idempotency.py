@@ -6,6 +6,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.models import HashableModelDiff, SchemaDiff
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.container import ContainerSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -90,9 +91,13 @@ DEVICE_NODE = NodeSchema(
     generate_profile=True,
     generate_template=True,
     inherit_from=["TestNetworkElement"],
+    containers=[
+        ContainerSchema(name="hardware", label="Hardware", order_weight=100),
+        ContainerSchema(name="placement", label="Placement", description="Where the device sits", collapsed=True),
+    ],
     attributes=[
         AttributeSchema(name="name", kind="Text", unique=True),
-        AttributeSchema(name="role", kind="Text", optional=True),
+        AttributeSchema(name="role", kind="Text", optional=True, container="hardware"),
     ],
     relationships=[
         RelationshipSchema(
@@ -101,6 +106,7 @@ DEVICE_NODE = NodeSchema(
             kind=RelationshipKind.ATTRIBUTE,
             cardinality=RelationshipCardinality.ONE,
             optional=True,
+            container="placement",
         ),
         RelationshipSchema(
             name="interfaces",
