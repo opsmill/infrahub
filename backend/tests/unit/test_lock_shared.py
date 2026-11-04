@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.exceptions import LockError, LockWaitTimeoutError
-from infrahub.lock import LOCK_PREFIX, InfrahubLock, InfrahubSharedLock
+from infrahub.lock import InfrahubLock, InfrahubSharedLock, get_shared_holders_key
 from infrahub.locks.shared_holders.local import LocalSharedHolderStore
 
 if TYPE_CHECKING:
@@ -29,15 +30,15 @@ class FakeClock:
 
 
 class RecordingSharedHolderStore(LocalSharedHolderStore):
-    """Keeps the holders in this process and records every key written, renewals included."""
+    """Keeps the holders in this process and records every holder written, renewals included."""
 
     def __init__(self, clock: FakeClock) -> None:
         super().__init__(clock=clock)
         self.added: list[str] = []
 
-    async def add(self, key: str, token: str, ttl_seconds: int) -> None:
-        self.added.append(key)
-        await super().add(key=key, token=token, ttl_seconds=ttl_seconds)
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        self.added.append(holder)
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
 
 
 async def _wait_until(condition: Callable[[], Awaitable[bool]]) -> None:
@@ -77,7 +78,7 @@ def shared_lock(mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: F
 
 
 async def _has_holders(store: RecordingSharedHolderStore) -> bool:
-    return await store.has_holders(pattern=f"{LOCK_PREFIX}.shared.{LOCK_NAME}.*")
+    return await store.has_holders(key=get_shared_holders_key(name=LOCK_NAME))
 
 
 async def test_two_shared_holders_hold_the_lock_at_the_same_time(shared_lock: InfrahubSharedLock) -> None:
@@ -162,7 +163,7 @@ async def test_a_shared_request_waits_while_the_lock_is_held_exclusively(
 async def test_an_exclusive_request_still_shared_at_the_wait_limit_fails_and_leaves_the_lock_free(
     shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: FakeClock
 ) -> None:
-    await store.add(key=f"{LOCK_PREFIX}.shared.{LOCK_NAME}.holder", token="token", ttl_seconds=3600)
+    await store.add(key=get_shared_holders_key(name=LOCK_NAME), holder="holder", token="token", ttl_seconds=3600)
     exclusive = asyncio.create_task(shared_lock.acquire_exclusive())
     await _wait_until(mutex.locked)
 
@@ -179,7 +180,9 @@ async def test_an_exclusive_request_still_shared_at_the_wait_limit_fails_and_lea
 async def test_the_record_of_a_holder_that_stopped_renewing_it_expires(
     shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: FakeClock
 ) -> None:
-    await store.add(key=f"{LOCK_PREFIX}.shared.{LOCK_NAME}.dead-holder", token="token", ttl_seconds=TTL_SECONDS)
+    await store.add(
+        key=get_shared_holders_key(name=LOCK_NAME), holder="dead-holder", token="token", ttl_seconds=TTL_SECONDS
+    )
     exclusive_inside = asyncio.Event()
     exclusive = asyncio.create_task(
         _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=asyncio.Event())
@@ -219,8 +222,8 @@ async def test_a_shared_holder_renews_its_record_while_it_holds_the_lock(
 class FailingOnceSharedHolderStore(RecordingSharedHolderStore):
     """Fails the first renewal of a record, as an unreachable cache would."""
 
-    async def add(self, key: str, token: str, ttl_seconds: int) -> None:
-        await super().add(key=key, token=token, ttl_seconds=ttl_seconds)
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
         if len(self.added) == 2:
             raise ConnectionError("cache unreachable")
 
@@ -281,7 +284,7 @@ async def test_an_exclusive_request_from_a_task_holding_it_shared_is_refused(
 class FailingRemovalSharedHolderStore(RecordingSharedHolderStore):
     """Fails every removal of a record, as an unreachable cache would."""
 
-    async def remove(self, key: str) -> None:
+    async def remove(self, key: str, holder: str) -> None:
         raise ConnectionError("cache unreachable")
 
 
@@ -317,3 +320,51 @@ async def test_a_failed_record_removal_keeps_the_error_of_the_holder_work(
     with pytest.raises(ValueError, match=r"^the work failed$"):
         async with shared_lock.shared():
             raise ValueError("the work failed")
+
+
+def _shared_lock_named(name: str, store: RecordingSharedHolderStore, clock: FakeClock) -> InfrahubSharedLock:
+    return InfrahubSharedLock(
+        name=name,
+        mutex=InfrahubLock(name=name),
+        store=store,
+        ttl_seconds=3600,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+
+async def test_an_exclusive_request_ignores_the_holders_of_a_lock_whose_name_extends_its_own(
+    shared_lock: InfrahubSharedLock, store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    async with _shared_lock_named(name=f"{LOCK_NAME}.child", store=store, clock=clock).shared():
+        await asyncio.wait_for(shared_lock.acquire_exclusive(), timeout=5)
+        await shared_lock.release_exclusive()
+
+
+async def test_an_exclusive_request_waits_for_the_holder_of_a_lock_named_with_glob_characters(
+    store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    name = "resource_pool.[pool-1]*?"
+    shared_lock = _shared_lock_named(name=name, store=store, clock=clock)
+    holder_inside = asyncio.Event()
+    holder_release = asyncio.Event()
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            holder_inside.set()
+            await asyncio.wait_for(holder_release.wait(), timeout=5)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(holder_inside.wait(), timeout=5)
+    exclusive = asyncio.create_task(shared_lock.acquire_exclusive())
+    await _let_other_tasks_run()
+    clock.advance(WAIT_SECONDS)
+
+    with pytest.raises(
+        LockWaitTimeoutError,
+        match=rf"^The lock {re.escape(name)} was still held in shared mode after {WAIT_SECONDS} seconds$",
+    ):
+        await asyncio.wait_for(exclusive, timeout=5)
+    holder_release.set()
+    await holder
