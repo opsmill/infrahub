@@ -736,4 +736,34 @@ describe("getFormFieldsFromSchema", () => {
 
     expect(fields[0]?.pool?.options).to.equal(undefined);
   });
+
+  it("attaches its attribute schema to every attribute field", () => {
+    const schema = {
+      attributes: [
+        generateAttributeSchema({ name: "mode", container: "lacp", order_weight: 1 }),
+        generateAttributeSchema({ name: "rate", container: "advanced", order_weight: 2 }),
+      ],
+    } as ModelSchema;
+
+    const fields = getFormFieldsFromSchema({ schema });
+
+    expect(
+      fields.map((field) => ("attribute" in field ? field.attribute?.container : null))
+    ).toEqual(["lacp", "advanced"]);
+  });
+
+  it("attaches its relationship schema to both fields of a bulk relationship pair", () => {
+    const schema = {
+      relationships: [
+        generateRelationshipSchema({ name: "members", cardinality: "many", container: "lacp" }),
+      ],
+    } as ModelSchema;
+
+    const fields = getFormFieldsFromSchema({ schema, isBulkUpdate: true });
+
+    expect(fields).toHaveLength(2);
+    for (const field of fields) {
+      expect("relationship" in field && field.relationship.container).toEqual("lacp");
+    }
+  });
 });
