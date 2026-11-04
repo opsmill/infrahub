@@ -175,16 +175,30 @@ def _build_allocated_values_query(
     return query, branch_params
 
 
+_PATH_EDGES = ("child_part_of", "namespace_edge", "child_edge", "attribute_edge", "value_edge")
+
+
+def _render_edge_in_some_window(edge: str) -> str:
+    """Render whether `edge` is active and visible in the window of at least one live branch."""
+    return (
+        f'{edge}.status = "active" AND {edge}.from <= $windows_at'
+        f" AND ({edge}.to IS NULL OR {edge}.to > oldest_origin_at)"
+        f" AND any(window IN branch_windows WHERE {render_window_filter(edge=edge)})"
+    )
+
+
 def _build_allocated_values_in_windows_query(
     *, at: Timestamp, child: _AllocatedChild, child_filter: str
 ) -> tuple[str, dict[str, Any]]:
     windows_query, windows_params = build_branch_windows_query(at=at, enabled=True)
+    path_edges = ", ".join(_PATH_EDGES)
     query = """
         %(windows_query)s
         // An edge closed before the oldest fork point is visible in no window
         WITH branch_windows, reduce(oldest = $windows_at, window IN branch_windows |
             CASE WHEN window.origin_at < oldest THEN window.origin_at ELSE oldest END
-        ) AS oldest_origin_at
+        ) AS oldest_origin_at,
+        head([window IN branch_windows WHERE window.origin_name IS NULL | window.name]) AS default_branch_name
         MATCH (ns:%(ns_label)s)-[ns_part_of:IS_PART_OF]->(:Root)
         WHERE ns.uuid = $ns_id
             AND ns_part_of.status = "active"
@@ -192,8 +206,8 @@ def _build_allocated_values_in_windows_query(
             AND (ns_part_of.to IS NULL OR ns_part_of.to > oldest_origin_at)
             AND any(window IN branch_windows WHERE %(ns_part_of_visible)s
                 AND NOT EXISTS { MATCH (ns)-[r:IS_PART_OF]->(:Root) WHERE %(competitor_visible)s AND %(outranks_ns_part_of)s })
-        WITH DISTINCT ns, branch_windows, oldest_origin_at
-        OPTIONAL CALL (ns, branch_windows, oldest_origin_at) {
+        WITH DISTINCT ns, branch_windows, oldest_origin_at, default_branch_name
+        OPTIONAL CALL (ns, branch_windows, oldest_origin_at, default_branch_name) {
             MATCH (ns)-[namespace_edge:IS_RELATED]-(ns_rel:Relationship)-[child_edge:IS_RELATED]-(child:%(node_label)s)-[attribute_edge:HAS_ATTRIBUTE]->(an:Attribute {name: "%(attribute_name)s"})-[value_edge:HAS_VALUE]->(av:%(value_label)s),
                 (child)-[child_part_of:IS_PART_OF]->(:Root)
             WHERE ns_rel.name = "%(relationship_name)s"
@@ -201,21 +215,35 @@ def _build_allocated_values_in_windows_query(
                 AND av.prefixlen >= $maxprefixlen
                 AND av.version = $ip_version
                 %(child_filter)s
-                AND all(edge IN [child_part_of, namespace_edge, child_edge, attribute_edge, value_edge]
-                    WHERE edge.status = "active" AND edge.from <= $windows_at
-                    AND (edge.to IS NULL OR edge.to > oldest_origin_at))
-            // Each edge and its competitors are read once, so testing them in every window reads nothing more
-            WITH av, branch_windows, [
-                {edge: child_part_of {%(edge_fields)s}, competitors: [(child)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]},
-                {edge: namespace_edge {%(edge_fields)s}, competitors: [(ns)-[r:IS_RELATED]-(ns_rel) | r {%(edge_fields)s}]},
-                {edge: child_edge {%(edge_fields)s}, competitors: [(ns_rel)-[r:IS_RELATED]-(child) | r {%(edge_fields)s}]},
-                {edge: attribute_edge {%(edge_fields)s}, competitors: [(child)-[r:HAS_ATTRIBUTE]->(an) | r {%(edge_fields)s}]},
-                {edge: value_edge {%(edge_fields)s}, competitors: [(an)-[r:HAS_VALUE]->() | r {%(edge_fields)s}]}
-            ] AS edges
-            // Keep the child if, on one branch, its five edges are visible and no visible edge outranks them
-            WHERE any(window IN branch_windows WHERE all(path_edge IN edges WHERE %(path_edge_visible)s
-                AND none(r IN path_edge.competitors WHERE %(competitor_visible)s AND %(outranks_path_edge)s)))
-            RETURN av
+                AND %(child_part_of_seen)s
+                AND %(namespace_edge_seen)s
+                AND %(child_edge_seen)s
+                AND %(attribute_edge_seen)s
+                AND %(value_edge_seen)s
+            // A write closes the open edge it replaces on its branch and a field never mixes default and global edges, so open default-branch edges hold the value
+            WITH ns, ns_rel, child, an, av, branch_windows, %(path_edges)s,
+                default_branch_name IS NOT NULL AND %(open_on_default_branch)s AS open_on_default_branch
+            CALL (ns, ns_rel, child, an, av, branch_windows, %(path_edges)s, open_on_default_branch) {
+                WITH av, open_on_default_branch
+                WHERE open_on_default_branch
+                RETURN av AS held_av
+                UNION ALL
+                WITH ns, ns_rel, child, an, av, branch_windows, %(path_edges)s, open_on_default_branch
+                WHERE NOT open_on_default_branch
+                // Each edge and its competitors are read once, so testing them in every window reads nothing more
+                WITH av, branch_windows, [
+                    {edge: child_part_of {%(edge_fields)s}, competitors: [(child)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]},
+                    {edge: namespace_edge {%(edge_fields)s}, competitors: [(ns)-[r:IS_RELATED]-(ns_rel) | r {%(edge_fields)s}]},
+                    {edge: child_edge {%(edge_fields)s}, competitors: [(ns_rel)-[r:IS_RELATED]-(child) | r {%(edge_fields)s}]},
+                    {edge: attribute_edge {%(edge_fields)s}, competitors: [(child)-[r:HAS_ATTRIBUTE]->(an) | r {%(edge_fields)s}]},
+                    {edge: value_edge {%(edge_fields)s}, competitors: [(an)-[r:HAS_VALUE]->() | r {%(edge_fields)s}]}
+                ] AS edges
+                // Keep the child if, on one branch, its five edges are visible and no visible edge outranks them
+                WHERE any(window IN branch_windows WHERE all(path_edge IN edges WHERE %(path_edge_visible)s
+                    AND none(r IN path_edge.competitors WHERE %(competitor_visible)s AND %(outranks_path_edge)s)))
+                RETURN av AS held_av
+            }
+            RETURN held_av AS av
         }
     """ % {
         "windows_query": windows_query,
@@ -225,12 +253,17 @@ def _build_allocated_values_in_windows_query(
         "value_label": child.value_label,
         "relationship_name": child.relationship_name,
         "child_filter": child_filter,
+        "path_edges": path_edges,
         "edge_fields": ".branch, .branch_level, .from, .to",
         "competitor_visible": render_window_filter(edge="r"),
         "ns_part_of_visible": render_window_filter(edge="ns_part_of"),
         "outranks_ns_part_of": render_outranks(edge="ns_part_of"),
         "path_edge_visible": render_window_filter(edge="path_edge.edge"),
         "outranks_path_edge": render_outranks(edge="path_edge.edge"),
+        "open_on_default_branch": " AND ".join(
+            f"{edge}.branch = default_branch_name AND {edge}.to IS NULL" for edge in _PATH_EDGES
+        ),
+        **{f"{edge}_seen": _render_edge_in_some_window(edge=edge) for edge in _PATH_EDGES},
     }
     return query, windows_params
 
