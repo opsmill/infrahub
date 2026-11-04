@@ -1,0 +1,19 @@
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_71e9cb725a3331::t_3223176ff02a8a 46,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18239a493cbe454f9447c901a830265b18a7e5c8",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
