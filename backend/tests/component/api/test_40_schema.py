@@ -1,4 +1,6 @@
+import copy
 import typing
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,6 +23,42 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.conftest import BusRPCMock, TestHelper
+from tests.helpers.schema.lag_interface import LAG_SCHEMA
+
+LAG_L2_CONTAINERS = [
+    {"name": "lacp", "label": "LACP", "description": None, "order_weight": 100, "collapsed": False, "state": "present"},
+    {
+        "name": "layer2",
+        "label": "Layer 2",
+        "description": "Switching settings of the bundle",
+        "order_weight": 200,
+        "collapsed": False,
+        "state": "present",
+    },
+    {
+        "name": "layer3",
+        "label": "Layer 3",
+        "description": None,
+        "order_weight": 300,
+        "collapsed": True,
+        "state": "present",
+    },
+]
+LAG_ATTRIBUTE_CONTAINERS = {
+    "name": None,
+    "description": None,
+    "lacp_rate": "lacp",
+    "lacp_mode": "lacp",
+    "l2_mode": "layer2",
+    "mac_address": "layer2",
+    "mtu": "layer3",
+}
+
+
+def _register_lag_schema(default_branch: Branch, extra_generic_containers: list[dict[str, Any]] | None = None) -> None:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["generics"][0]["containers"].extend(extra_generic_containers or [])
+    registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -97,6 +135,7 @@ async def test_schema_read_endpoint_visibility(
             assert not unexpected, f"attribute leaked non-read fields: {unexpected}"
             assert "inherited" in attribute  # read-level field is visible on read-back
             assert "node" not in attribute  # internal parent back-reference is never returned
+            assert "container" in attribute
             saw_inherited = saw_inherited or bool(attribute["inherited"])
         for relationship in node["relationships"]:
             unexpected = set(relationship) - relationship_fields
@@ -104,6 +143,10 @@ async def test_schema_read_endpoint_visibility(
             assert "inherited" in relationship
             assert "hierarchical" in relationship  # derived read-level field
             assert "node" not in relationship
+            assert "container" in relationship
+        assert isinstance(node["containers"], list)
+        for container in node["containers"]:
+            assert set(container) == {"name", "label", "description", "order_weight", "collapsed", "state"}
         return saw_inherited
 
     saw_inherited_attribute = False
@@ -549,6 +592,118 @@ async def test_schema_load_endpoint_constraints_not_valid(
         "errors": [{"extensions": {"code": 422}, "message": error_message}],
     }
     assert response.status_code == 422
+
+
+async def test_schema_kind_endpoint_returns_containers_and_field_containers(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    _register_lag_schema(default_branch=default_branch)
+
+    with client:
+        response = client.get("/api/schema/InfraLagInterfaceL2", headers=client_headers)
+
+    assert response.status_code == 200
+    schema = response.json()
+    assert schema["containers"] == LAG_L2_CONTAINERS
+    assert {attribute["name"]: attribute["container"] for attribute in schema["attributes"]} == LAG_ATTRIBUTE_CONTAINERS
+    relationship_containers = {
+        relationship["name"]: relationship["container"] for relationship in schema["relationships"]
+    }
+    assert relationship_containers == dict.fromkeys(relationship_containers) | {"sub_interfaces": "advanced"}
+
+
+async def test_schema_kind_endpoint_returns_empty_containers_for_a_node_without_sections(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    with client:
+        response = client.get("/api/schema/TestPerson", headers=client_headers)
+
+    assert response.status_code == 200
+    schema = response.json()
+    assert schema["containers"] == []
+    assert {attribute["container"] for attribute in schema["attributes"]} == {None}
+    assert {relationship["container"] for relationship in schema["relationships"]} == {None}
+
+
+async def test_schema_kind_endpoint_returns_containers_on_a_non_default_branch(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    _register_lag_schema(default_branch=default_branch)
+    await create_branch(branch_name="branch1", db=db)
+
+    with client:
+        response = client.get("/api/schema/InfraLagInterfaceL2?branch=branch1", headers=client_headers)
+
+    assert response.status_code == 200
+    schema = response.json()
+    assert schema["containers"] == LAG_L2_CONTAINERS
+    assert {attribute["name"]: attribute["container"] for attribute in schema["attributes"]} == LAG_ATTRIBUTE_CONTAINERS
+
+
+async def test_schema_load_endpoint_undeclared_container(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    helper: TestHelper,
+) -> None:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_container_01.json")]},
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "data": None,
+        "errors": [
+            {
+                "message": "InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2",
+                "extensions": {"code": 422},
+            }
+        ],
+    }
+
+
+async def test_schema_load_endpoint_removes_a_container_marked_absent(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    rpc_bus: BusRPCMock,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+) -> None:
+    monitoring = {"name": "monitoring", "label": "Monitoring", "order_weight": 400}
+    _register_lag_schema(default_branch=default_branch, extra_generic_containers=[monitoring])
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
+    payload = copy.deepcopy(LAG_SCHEMA)
+    payload["generics"][0]["containers"].append({**monitoring, "state": "absent"})
+
+    with client:
+        load_response = client.post("/api/schema/load", headers=admin_headers, json={"schemas": [payload]})
+        read_response = client.get("/api/schema/InfraLagInterface", headers=admin_headers)
+
+    assert load_response.status_code == 200, load_response.text
+    assert not [warning for warning in load_response.json()["warnings"] if "read-only field" in warning["message"]]
+    assert {container["name"] for container in read_response.json()["containers"]} == {"lacp", "layer2", "layer3"}
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

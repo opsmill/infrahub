@@ -1,0 +1,34 @@
+{
+    "version": "1.0",
+    "generics": [
+        {
+            "name": "LagInterface",
+            "namespace": "Infra",
+            "label": "LAG Interface",
+            "default_filter": "name__value",
+            "display_labels": ["name__value"],
+            "containers": [
+                {"name": "lacp", "label": "LACP", "order_weight": 100},
+                {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200},
+                {"name": "layer3", "label": "Layer 3", "order_weight": 300, "collapsed": true}
+            ],
+            "attributes": [
+                {"name": "name", "kind": "Text", "order_weight": 1000},
+                {"name": "lacp_rate", "kind": "Text", "optional": true, "container": "lacp", "order_weight": 2000},
+                {"name": "l2_mode", "kind": "Text", "optional": true, "container": "layer2", "order_weight": 3000},
+                {"name": "mtu", "kind": "Number", "optional": true, "container": "layer3", "order_weight": 4000}
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "name": "LagInterfaceL2",
+            "namespace": "Infra",
+            "label": "LAG Interface L2",
+            "inherit_from": ["InfraLagInterface"],
+            "attributes": [
+                {"name": "mtu", "kind": "Number", "optional": true, "container": "layer4", "order_weight": 4000}
+            ]
+        }
+    ]
+}
