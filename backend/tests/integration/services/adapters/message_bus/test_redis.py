@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import ssl
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +25,7 @@ from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable
+    from collections.abc import AsyncGenerator, Callable
 
     from fast_depends import Provider
 
@@ -58,6 +57,11 @@ async def wait_until(
         if time.monotonic() > deadline:
             raise TimeoutError(f"Condition not met within {timeout}s")
         await asyncio.sleep(interval)
+
+
+def _as_text(value: bytes | str) -> str:
+    """Return a Redis reply value as text, decoding it when the client returned bytes."""
+    return value.decode() if isinstance(value, bytes) else value
 
 
 @dataclass
@@ -94,21 +98,15 @@ class RedisManager:
     async def get_connection(self) -> redis.Redis:
         """Get or create a Redis connection."""
         if self._connection is None:
-            ssl_context = None
-            if self.settings.tls_enabled:
-                ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
-                if self.settings.tls_ca_file:
-                    ssl_context.load_verify_locations(cafile=self.settings.tls_ca_file)
-                if self.settings.tls_insecure:
-                    ssl_context.check_hostname = False
-                    ssl_context.verify_mode = ssl.CERT_NONE
-
             self._connection = redis.Redis(
                 host=self.settings.address,
                 port=self.settings.service_port,
                 username=self.settings.username or None,
                 password=self.settings.password or None,
-                ssl=ssl_context if self.settings.tls_enabled else False,
+                ssl=self.settings.tls_enabled,
+                ssl_ca_certs=self.settings.tls_ca_file,
+                ssl_cert_reqs="none" if self.settings.tls_insecure else "required",
+                ssl_check_hostname=not self.settings.tls_insecure,
                 decode_responses=True,
             )
         return self._connection
@@ -147,7 +145,7 @@ class RedisManager:
                     length = await conn.xlen(key)
                     groups_info = await conn.xinfo_groups(key)
                     group_names = [g["name"] for g in groups_info]
-                    streams.append(StreamInfo(name=key, length=length, groups=group_names))
+                    streams.append(StreamInfo(name=_as_text(key), length=length, groups=group_names))
             if cursor == 0:
                 break
 
@@ -179,14 +177,14 @@ class RedisManager:
         conn = await self.get_connection()
         try:
             entries = await conn.xrange(stream, count=count)
-            return [{"id": entry_id, "data": data} for entry_id, data in entries]
+            return [{"id": entry_id, "data": data} for entry_id, data in entries or []]
         except redis.ResponseError:
             return []
 
     async def publish_message(self, stream: str, routing_key: str, body: str, headers: dict | None = None) -> str:
         """Publish a message directly to a stream."""
         conn = await self.get_connection()
-        return await conn.xadd(
+        entry_id = await conn.xadd(
             stream,
             {
                 "routing_key": routing_key,
@@ -194,6 +192,7 @@ class RedisManager:
                 "headers": ujson.dumps(headers or {}),
             },
         )
+        return _as_text(entry_id)
 
 
 @pytest.fixture
@@ -318,7 +317,12 @@ async def _process_rpc_entry(
 
 
 async def _consume_rpc_messages(redis_api: RedisManager, bus: RedisMessageBus) -> None:
-    """Consume and process RPC messages from the stream."""
+    """Consume and process RPC messages from the stream.
+
+    Raises:
+        TypeError: If the stream read does not return a list of streams.
+
+    """
     conn = await redis_api.get_connection()
     while True:
         try:
@@ -329,14 +333,14 @@ async def _consume_rpc_messages(redis_api: RedisManager, bus: RedisMessageBus) -
                 count=1,
                 block=100,
             )
-            if not entries:
-                continue
+            if not isinstance(entries, list):
+                raise TypeError(f"Expected a list of streams from the stream read, got {type(entries).__name__}")
             for _stream_name, stream_entries in entries:
                 for message_id, message_data in stream_entries:
                     await _process_rpc_entry(message_id, message_data, bus, redis_api)
         except asyncio.CancelledError:
             break
-        except Exception:
+        except redis.RedisError:
             break
 
 
@@ -501,8 +505,7 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
     bus.DELAYED_MAX_ATTEMPTS = 2
 
     async def all_bad_entries_parked() -> bool:
-        # cast: redis-py types list commands for both sync and async clients
-        return await cast("Awaitable[int]", conn.llen(f"{redis_api.namespace}:delayed:dead")) == 2
+        return await conn.llen(f"{redis_api.namespace}:delayed:dead") == 2
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
         await bus._initialize()
@@ -511,10 +514,9 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
 
     assert await conn.xlen(good_stream) == 1
     assert await conn.zcard(delayed_queue) == 0
-    # cast: redis-py types list and hash commands for both sync and async clients
-    dead_members = await cast("Awaitable[list[str]]", conn.lrange(f"{redis_api.namespace}:delayed:dead", 0, -1))
+    dead_members = await conn.lrange(f"{redis_api.namespace}:delayed:dead", 0, -1)
     assert set(dead_members) == {poison_member, malformed_member}
-    assert await cast("Awaitable[int]", conn.hlen(f"{redis_api.namespace}:delayed:attempts")) == 0
+    assert await conn.hlen(f"{redis_api.namespace}:delayed:attempts") == 0
     assert "Failed to deliver delayed messages, retrying after a delay" in fake_log.warning_logs
     assert "Parked undeliverable delayed messages in the dead-letter list" in fake_log.error_logs
 
