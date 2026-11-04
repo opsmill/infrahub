@@ -13,7 +13,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.exceptions import ValidationError
-from infrahub.pools.number_pool_locker import NumberPoolLock
+from infrahub.pools.number_pool_locker import picking_lock_name
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.scope import Division, DivisionElementPath
 from tests.adapters.lock.timeline import LockAction
@@ -314,7 +314,7 @@ async def test_a_range_deletion_runs_while_an_allocation_waits_for_its_division(
     That allocation then draws from the ranges left after the change; with the one-second wait limit, a range
     change that waited for it would be refused instead.
     """
-    picking_lock = NumberPoolLock.picking_lock_name(
+    picking_lock = picking_lock_name(
         pool_id=high_range_first.pool.get_id(), division_key=high_range_first.site_1.get_id()
     )
     picking_held = asyncio.Event()
