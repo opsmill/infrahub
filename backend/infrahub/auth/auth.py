@@ -88,7 +88,7 @@ async def fetch_account_groups_and_roles(
     )
     group_names.extend({g.get_id(): g.name.value} for g in groups)
     for group in groups:
-        roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
+        roles = await group.roles.get_peers(db=db, peer_type=CoreAccountRole)
         role_names.extend({r.get_id(): r.name.value} for r in roles.values())
 
     return group_names, role_names

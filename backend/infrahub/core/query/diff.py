@@ -390,11 +390,20 @@ CALL (p, q, diff_rel, row_from_time) {
     AND r_node.from < $to_time
     AND (r_node.to IS NULL OR r_node.to >= row_from_time)
     AND r_node.branch = top_diff_rel.branch
-    AND r_node.status = top_diff_rel.status
     AND r_prop.from < $to_time
     AND (r_prop.to IS NULL OR r_prop.to >= row_from_time)
     AND r_prop.branch = top_diff_rel.branch
-    AND r_prop.status = top_diff_rel.status
+    // ------------------------
+    // a merge deletes a node by closing its active field edges instead of adding deleted ones
+    // ------------------------
+    AND (
+        r_node.status = top_diff_rel.status
+        OR (top_diff_rel.status = "deleted" AND r_node.status = "active" AND r_node.to = top_diff_rel.from)
+    )
+    AND (
+        r_prop.status = top_diff_rel.status
+        OR (top_diff_rel.status = "deleted" AND r_prop.status = "active" AND r_prop.to = top_diff_rel.from)
+    )
     // ------------------------
     // special handling for nodes that had their kind updated,
     // the migration leaves two nodes with the same UUID linked to the same Relationship
