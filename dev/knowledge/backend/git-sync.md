@@ -133,6 +133,19 @@ The read-write kind implements the mapping described below; the read-only kind r
   the trunk with newer commits still pending import. The merge sets the repository `active` only on
   Infrahub's default branch, so the merged branch keeps `staging` and still lists newer trunk
   commits as pending import, although no sync imports into it again.
+- The info-level "New commit detected" and "New branch detected" lines (`infrahub.git` logger) mark a
+  branch the sync is about to collect for import: each branch an active repository imports, and the
+  trunk of a staging repository. The local/remote comparison writes no line of its own, because a
+  branch it lists can still be skipped, and a skipped branch keeps differing, so a line there would
+  repeat every cycle. A branch skipped because the repository is `staging` or `inactive`, or
+  because the listed Infrahub branches show that its Infrahub branch opts out of imports or refuses a
+  commit, gets a debug line naming the reason, on the same logger. Other skipped branches keep their
+  own lines: a branch with no Infrahub branch, the colliding branch, a branch deferred by a pending
+  push, a branch the remote-branch filter drops, and a new branch whose Infrahub branch turns out not
+  to sync with Git when the sync creates it. A branch whose graph commit is behind is announced
+  on every cycle until the graph records the new commit. The graph records it before the objects are
+  imported, so a failed object import is not announced again, while a failure before the graph records
+  the commit repeats the line with its failure.
 - A branch that imported commits before `sync_with_git` gated imports keeps its last imported commit,
   and the worker's clone keeps its local branch. Neither moves again, and nothing removes them.
 
