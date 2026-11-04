@@ -1064,6 +1064,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         branch=default_branch,
         schema_branch=candidate_schema,
         constraints=result.constraints,
+        is_isolated=True,
     )
     responses = await schema_validate_migrations(message=validate_migration_data)
     error_messages = [violation.message for response in responses for violation in response.violations]

@@ -22,7 +22,9 @@ async def test_schema_validate_migrations(
         )
     ]
 
-    migration_data = SchemaValidateMigrationData(branch=default_branch, schema_branch=schema, constraints=constraints)
+    migration_data = SchemaValidateMigrationData(
+        branch=default_branch, schema_branch=schema, constraints=constraints, is_isolated=False
+    )
 
     # Validate that we can serialize and deserialize the SchemaValidateMigrationData properly
     # This is important because the message is used in Prefect

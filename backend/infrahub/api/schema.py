@@ -355,6 +355,7 @@ async def _validate_migrations(
         branch=branch,
         schema_branch=candidate_schema,
         constraints=constraints,
+        is_isolated=True,
     )
     responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,
@@ -522,6 +523,7 @@ async def check_schema(
         branch=branch,
         schema_branch=candidate_schema,
         constraints=result.constraints,
+        is_isolated=True,
     )
     responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,

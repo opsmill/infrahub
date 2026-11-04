@@ -32,7 +32,9 @@ async def test_schema_validate_migrations(
         )
     ]
 
-    message = SchemaValidateMigrationData(branch=default_branch, schema_branch=schema, constraints=constraints)
+    message = SchemaValidateMigrationData(
+        branch=default_branch, schema_branch=schema, constraints=constraints, is_isolated=True
+    )
     responses = await schema_validate_migrations(message=message)
 
     assert len(responses) == 1
