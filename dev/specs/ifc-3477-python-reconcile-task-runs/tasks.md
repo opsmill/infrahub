@@ -30,8 +30,8 @@ description: "Task list for a fixed number of task runs per Python computed-attr
 
 **Purpose**: Start from the right base and record the behavior before the change.
 
-- [ ] T001 Confirm the branch `python-reconcile-task-runs-ifc-3477` is based on `origin/stable`. Check whether the pull requests #11093 and #11095 have merged into `stable` (`gh pr view 11093 --repo opsmill/infrahub --json state`, the same for 11095). If either has merged, rebase onto `origin/stable` first. If #11095 has merged, keep its skip for a branch with no repository commit in `backend/infrahub/computed_attribute/gather.py::gather_python_transform_attributes` in every later task (research R9).
-- [ ] T002 Run the existing computed-attribute suites to record a passing baseline: `uv run pytest backend/tests/component/computed_attribute/ -v` and `uv run pytest backend/tests/functional/computed_attributes/ -v`. Note any test that already fails so it is not attributed to this change.
+- [X] T001 Confirm the branch `python-reconcile-task-runs-ifc-3477` is based on `origin/stable`. Check whether the pull requests #11093 and #11095 have merged into `stable` (`gh pr view 11093 --repo opsmill/infrahub --json state`, the same for 11095). If either has merged, rebase onto `origin/stable` first. If #11095 has merged, keep its skip for a branch with no repository commit in `backend/infrahub/computed_attribute/gather.py::gather_python_transform_attributes` in every later task (research R9).
+- [X] T002 Run the existing computed-attribute suites to record a passing baseline: `uv run pytest backend/tests/component/computed_attribute/ -v` and `uv run pytest backend/tests/functional/computed_attributes/ -v`. Note any test that already fails so it is not attributed to this change.
 
 ---
 
