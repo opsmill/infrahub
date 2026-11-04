@@ -1,0 +1,25 @@
+backend/infrahub/auth/auth.py
+  s_307fcf09196e2d::t_8f47c923c2d7a7 9,44,537-545
+backend/infrahub/graphql/app.py
+  s_307fcf09196e2d::t_76267f14ea4bf2 38,121,151
+backend/infrahub/graphql/subscription/graphql_query.py
+  s_307fcf09196e2d::t_39ba6848acaf92 6,35,49-54
+backend/tests/component/graphql/test_websocket_authorization.py
+  s_307fcf09196e2d::t_4f30fda33f2a84 16,233-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5519ad0cc99d537b78e784b68e59521f3709e3ed",
+  "prompts": {},
+  "sessions": {
+    "s_307fcf09196e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "522eb074-c19f-4858-9fe6-217c57dac947",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
