@@ -111,14 +111,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             allocator = build_existing_node_number_allocator(db=db, branch=branch)
-            nodes: list[Node] = await registry.manager.query(
-                db=db,
-                branch=branch,
-                schema=self.new_schema,
-                fields=allocator.fields_to_load(
-                    pool=number_pool, kind=self.new_schema.kind, attribute_name=self.new_attribute_schema.name
-                ),
-            )
+            nodes: list[Node] = await registry.manager.query(db=db, branch=branch, schema=self.new_schema)
             await allocator.allocate(
                 pool=number_pool,
                 attribute=self.new_attribute_schema,

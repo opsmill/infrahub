@@ -38,31 +38,9 @@ class DivisionReader(Protocol):
 class ExistingNodeNumberAllocator:
     """Give existing nodes a number from a number pool, each within the division it holds as a create would."""
 
-    def __init__(
-        self, db: InfrahubDatabase, scope_resolver: AllocationScopeResolver, division_reader: DivisionReader
-    ) -> None:
+    def __init__(self, db: InfrahubDatabase, division_reader: DivisionReader) -> None:
         self.db = db
-        self.scope_resolver = scope_resolver
         self.division_reader = division_reader
-
-    def fields_to_load(self, pool: CoreNumberPool, kind: str, attribute_name: str) -> dict[str, bool]:
-        """Return the fields a node of `kind` must be loaded with: its id, the pooled attribute and the scope fields.
-
-        Raises:
-            ValidationError: When the stored scope is malformed or the schema does not define one of its elements on
-                `kind`.
-
-        """
-        fields = {"id": True, attribute_name: True}
-        scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
-        if scope.is_empty:
-            return fields
-        element_fields = self.scope_resolver.element_fields(
-            kind=kind, scope=scope, pool=str(pool.get_attribute("name").value), attribute=attribute_name
-        )
-        for _, field in element_fields:
-            fields[field.name] = True
-        return fields
 
     async def allocate(
         self,
@@ -127,7 +105,6 @@ def build_existing_node_number_allocator(db: InfrahubDatabase, branch: Branch) -
     scope_resolver = AllocationScopeResolver(schema_branch=registry.schema.get_schema_branch(name=branch.name))
     return ExistingNodeNumberAllocator(
         db=db,
-        scope_resolver=scope_resolver,
         division_reader=NodeNumberPoolDivisionReader(
             db=db,
             scope_resolver=scope_resolver,

@@ -61,10 +61,9 @@ async def unnumbered_device(db: InfrahubDatabase, branch: Branch, name: str, sit
 async def allocate_existing(
     db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool, devices: list[Node], kind: str = SCOPED_DEVICE.kind
 ) -> int:
-    """Load the nodes with the fields the allocator asks for, then allocate their `vlan_id` in the given order."""
+    """Load the nodes from the database, then allocate their `vlan_id` in the given order."""
     allocator = build_existing_node_number_allocator(db=db, branch=branch)
-    fields = allocator.fields_to_load(pool=pool, kind=kind, attribute_name=SCOPED_ATTRIBUTE_NAME)
-    loaded = await NodeManager.get_many(db=db, branch=branch, ids=[device.id for device in devices], fields=fields)
+    loaded = await NodeManager.get_many(db=db, branch=branch, ids=[device.id for device in devices])
     attribute = registry.schema.get(name=kind, branch=branch, duplicate=False).get_attribute(name=SCOPED_ATTRIBUTE_NAME)
     return await allocator.allocate(
         pool=pool,
