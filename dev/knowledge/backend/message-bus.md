@@ -165,6 +165,14 @@ Declare a durable queue with the arguments from `infrahub/services/adapters/mess
 - **Per-process queues** (`api-*`, `worker-*`) stay classic: they are exclusive to one connection, which quorum queues cannot be, and the process declares them again when it reconnects.
 - **Changing the type** requires deleting the durable queues first: RabbitMQ refuses a redeclaration with other arguments (`PRECONDITION_FAILED`), so the server does not start. The procedure is in the high availability deployment docs.
 
+## Redis Driver Connection
+
+Build the Redis driver's client with `build_broker_redis_connection` from `infrahub/redis_connection.py`, never with `redis.Redis(...)`: it shares the cache's URL handling, so the client accepts Sentinel URLs, retries connection errors and follows a failover.
+
+- **Settings**: `broker.url` (`INFRAHUB_BROKER_URL`) supersedes `address`, `port`, `username`, `password`, `tls_enabled` and `tls_insecure`. Without it, these settings build a single-node URL on database 0. The settings fail to load when the URL is set with a driver other than `redis`.
+- **Closing**: close the client with `prefect_redis.connection.aclose_redis_client`, which also closes a Sentinel client's connections to the Sentinel nodes.
+- **After a failover**: a connection that only reads (the `XREAD` of the events and callback streams) stays on the demoted master, now a replica, until it fails, and still receives new entries through replication. A connection that sends a write command, `XREADGROUP` included, gets `READONLY` from the replica and reconnects to the promoted master.
+
 ## Key Locations
 
 | Component | Location |
@@ -174,6 +182,7 @@ Declare a durable queue with the arguments from `infrahub/services/adapters/mess
 | Message registry | `backend/infrahub/message_bus/messages/__init__.py` |
 | Operation handlers | `backend/infrahub/message_bus/operations/` |
 | Types and enums | `backend/infrahub/message_bus/types.py` |
+| Redis client for the Redis driver and the cache | `backend/infrahub/redis_connection.py` |
 
 ## See Also
 

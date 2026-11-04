@@ -596,3 +596,51 @@ class BrokerServicePortCase:
 def test_broker_service_port(case: BrokerServicePortCase) -> None:
     settings = BrokerSettings(driver=case.driver, port=case.port, tls_enabled=case.tls_enabled)
     assert settings.service_port == case.expected
+
+
+BROKER_URL_SUPERSEDED_WARNING = "INFRAHUB_BROKER_URL is set and supersedes the scalar broker connection settings"
+
+
+@pytest.mark.usefixtures("without_broker_environment")
+def test_broker_url_requires_the_redis_driver() -> None:
+    with pytest.raises(
+        ValidationError,
+        match=r"Value error, INFRAHUB_BROKER_URL is set but INFRAHUB_BROKER_DRIVER is rabbitmq, and only the redis "
+        r"driver reads the URL\.",
+    ):
+        BrokerSettings(url=SecretStr("redis://cache:6379/0"))
+
+
+@pytest.mark.usefixtures("without_broker_environment")
+def test_broker_url_supersedes_scalar_connection_fields() -> None:
+    with capture_logs() as records:
+        settings = BrokerSettings(
+            driver=BrokerDriver.Redis,
+            url=SecretStr("redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"),
+            address="other",
+        )
+
+    assert settings.url is not None
+    assert records == [
+        {
+            "event": BROKER_URL_SUPERSEDED_WARNING,
+            "log_level": "warning",
+            "superseded_settings": ["INFRAHUB_BROKER_ADDRESS"],
+        }
+    ]
+
+
+@pytest.mark.usefixtures("without_broker_environment")
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "spaces"])
+def test_blank_broker_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -> None:
+    monkeypatch.setenv("INFRAHUB_BROKER_URL", blank)
+
+    assert BrokerSettings().url is None
+
+
+@pytest.mark.usefixtures("without_broker_environment")
+def test_invalid_broker_url_fails_the_load_without_echoing_it() -> None:
+    with pytest.raises(ValidationError, match=r"Value error, A Sentinel connection URL requires a service name") as exc:
+        BrokerSettings(driver=BrokerDriver.Redis, url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
+
+    assert "topsecret" not in str(exc.value)

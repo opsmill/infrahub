@@ -151,6 +151,7 @@ Configuration settings for the message bus.
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
+| `INFRAHUB_BROKER_URL` | Full Redis connection URL for the redis driver, authoritative over the scalar connection settings when set. Accepts the same redis://, rediss://, redis+sentinel:// and rediss+sentinel:// URLs as INFRAHUB_CACHE_URL; with a Sentinel URL the message bus discovers the current master through the Sentinel nodes and follows failover. A TLS URL without ?ssl_ca_certs= verifies against broker.tls_ca_file, which the global tls.ca_bundle fills. Requires the redis driver. | string | None |
 | `INFRAHUB_BROKER_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_BROKER_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_BROKER_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
