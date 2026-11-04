@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcontext
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub import lock
@@ -101,6 +101,8 @@ class NumberPoolLock:
     def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AbstractAsyncContextManager[None]:
         """Keep a second allocation in the same division, or in the whole pool without a scope, from picking at once.
 
+        A task that holds the pool exclusively picks without taking the division's lock.
+
         Raises:
             ValidationError: When a division is given to a pool that has no allocation scope.
 
@@ -111,4 +113,7 @@ class NumberPoolLock:
             if scope.is_empty:
                 raise ValidationError(f"The pool {pool.get_id()} has no allocation scope; a division cannot be applied")
             division_key = division.key
+        if self._pool_lock(pool_id=pool.get_id()).held_exclusively_by_current_task():
+            # Every other allocation picks inside its shared hold, so none can pick while this task holds the pool alone.
+            return nullcontext()
         return lock.registry.get(name=picking_lock_name(pool_id=pool.get_id(), division_key=division_key))

@@ -281,6 +281,20 @@ async def test_an_exclusive_request_from_a_task_holding_it_shared_is_refused(
     assert not await mutex.locked()
 
 
+async def test_a_task_holds_the_lock_exclusively_only_between_its_exclusive_acquire_and_release(
+    shared_lock: InfrahubSharedLock,
+) -> None:
+    async with shared_lock.shared():
+        assert not shared_lock.held_exclusively_by_current_task()
+
+    async with shared_lock.exclusive():
+        async with shared_lock.shared():
+            assert shared_lock.held_exclusively_by_current_task()
+        assert shared_lock.held_exclusively_by_current_task()
+
+    assert not shared_lock.held_exclusively_by_current_task()
+
+
 class FailingRemovalSharedHolderStore(RecordingSharedHolderStore):
     """Fails every removal of a record, as an unreachable cache would."""
 
