@@ -1,1 +1,0 @@
-Fixed slow deletes of nodes such as devices on large databases: the check for the nodes to delete with them and for the nodes that depend on them now reads only the relationships of the nodes being deleted, not every relationship with the same name.

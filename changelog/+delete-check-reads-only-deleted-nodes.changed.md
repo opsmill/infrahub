@@ -1,0 +1,1 @@
+Improved the performance of deleting nodes, such as devices, on large databases: to find the nodes that must be deleted along with a node, and the nodes whose mandatory relationship to it blocks the delete, Infrahub now reads only the relationships of the nodes being deleted instead of every relationship with the same name.
