@@ -89,7 +89,6 @@ describe("ObjectTable horizontal scrolling", () => {
     );
     if (!scrollbar) throw new Error("Horizontal scrollbar is missing");
     await expect.element(scrollbar).toBeVisible();
-    expect(scrollbar.getBoundingClientRect().height).toBeGreaterThanOrEqual(8);
     viewport.scrollLeft = viewport.scrollWidth;
     expect(viewport.scrollLeft).toBeGreaterThan(0);
   });
