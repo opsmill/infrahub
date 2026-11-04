@@ -11,6 +11,7 @@ from infrahub.log import set_log_data
 
 class Meta(BaseModel):
     request_id: str = ""
+    user_request_id: str = Field(default="", description="Optional request-id submitted by the caller through the API")
     correlation_id: str | None = Field(default=None)
     reply_to: str | None = Field(default=None)
     initiator_id: str | None = Field(
@@ -38,6 +39,7 @@ class InfrahubMessage(BaseModel):
     def assign_meta(self, parent: InfrahubMessage) -> None:
         """Assign relevant meta properties from a parent message."""
         self.meta.request_id = parent.meta.request_id
+        self.meta.user_request_id = parent.meta.user_request_id
         self.meta.initiator_id = parent.meta.initiator_id
 
     def assign_header(self, key: str, value: Any) -> None:
@@ -54,6 +56,8 @@ class InfrahubMessage(BaseModel):
         set_log_data(key="routing_key", value=routing_key)
         if self.meta.request_id:
             set_log_data(key="request_id", value=self.meta.request_id)
+        if self.meta.user_request_id:
+            set_log_data(key="user_request_id", value=self.meta.user_request_id)
 
     @property
     def reply_requested(self) -> bool:
