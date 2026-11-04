@@ -1377,7 +1377,6 @@ class SecuritySettings(BaseSettings):
             "identity. When disabled, such a login always provisions a separate account instead of "
             "reusing an existing one. Deprecated: this setting will be removed in Infrahub 1.13."
         ),
-        deprecated="This setting will be removed in Infrahub 1.13.",
     )
 
     @model_validator(mode="after")
