@@ -115,6 +115,11 @@ def get_lock_cache_key(name: str, namespace: str | None = None) -> str:
     return f"{LOCK_PREFIX}.{LockNameGenerator().generate_name(name=name, namespace=namespace)}"
 
 
+def get_shared_holders_key(name: str) -> str:
+    """Return the store key under which the holders of the shared lock `name` are recorded."""
+    return f"{LOCK_PREFIX}.shared.{name}"
+
+
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together."""
 
@@ -389,7 +394,7 @@ class InfrahubLock:
 @dataclass(frozen=True)
 class _SharedHold:
     depth: int
-    key: str | None
+    holder: str | None
     renewal: asyncio.Task[None] | None
 
 
@@ -417,7 +422,7 @@ class InfrahubSharedLock:
         self._wait_seconds = wait_seconds
         self._poll_seconds = poll_seconds
         self._clock = clock
-        self._key_prefix = f"{LOCK_PREFIX}.shared.{name}."
+        self._holders_key = get_shared_holders_key(name=name)
         self._hold: ContextVar[_SharedHold | None] = ContextVar(f"infrahub_shared_lock_{name}", default=None)
 
     @asynccontextmanager
@@ -442,16 +447,16 @@ class InfrahubSharedLock:
             self._hold.set(replace(hold, depth=hold.depth + 1))
             return
         if self._mutex.held_by_current_task():
-            self._hold.set(_SharedHold(depth=1, key=None, renewal=None))
+            self._hold.set(_SharedHold(depth=1, holder=None, renewal=None))
             return
 
-        key = f"{self._key_prefix}{uuid.uuid4()}"
+        holder = str(uuid.uuid4())
         token = f"{current_timestamp()}{_LOCK_TOKEN_SEPARATOR}{WORKER_IDENTITY}"
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, "shared").time():
             async with self._mutex:
-                await self._store.add(key=key, token=token, ttl_seconds=self._ttl_seconds)
-        renewal = asyncio.create_task(self._renew(key=key, token=token))
-        self._hold.set(_SharedHold(depth=1, key=key, renewal=renewal))
+                await self._store.add(key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds)
+        renewal = asyncio.create_task(self._renew(holder=holder, token=token))
+        self._hold.set(_SharedHold(depth=1, holder=holder, renewal=renewal))
 
     async def release_shared(self) -> None:
         hold = self._hold.get()
@@ -465,10 +470,10 @@ class InfrahubSharedLock:
         if hold.renewal is not None:
             hold.renewal.cancel()
             await asyncio.gather(hold.renewal, return_exceptions=True)
-        if hold.key is None:
+        if hold.holder is None:
             return
         try:
-            await self._store.remove(key=hold.key)
+            await self._store.remove(key=self._holders_key, holder=hold.holder)
         # Cleanup after the holder's work, whose outcome a failed removal must not replace; the record expires unrenewed.
         except Exception:
             log.exception("Failed to remove a shared lock record", lock=self.name)
@@ -487,7 +492,7 @@ class InfrahubSharedLock:
         await self._mutex.acquire()
         try:
             deadline = self._clock() + self._wait_seconds
-            while await self._store.has_holders(pattern=f"{self._key_prefix}*"):
+            while await self._store.has_holders(key=self._holders_key):
                 if self._clock() >= deadline:
                     raise LockWaitTimeoutError(name=self.name, wait_seconds=self._wait_seconds)
                 await sleep(self._poll_seconds)
@@ -498,11 +503,11 @@ class InfrahubSharedLock:
     async def release_exclusive(self) -> None:
         await self._mutex.release()
 
-    async def _renew(self, key: str, token: str) -> None:
+    async def _renew(self, holder: str, token: str) -> None:
         while True:
             await sleep(self._ttl_seconds / 3)
             try:
-                await self._store.add(key=key, token=token, ttl_seconds=self._ttl_seconds)
+                await self._store.add(key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds)
             # A loop that must keep renewing after one failed write, since the record lapses once renewals stop.
             except Exception:
                 log.exception("Failed to renew a shared lock record", lock=self.name)
