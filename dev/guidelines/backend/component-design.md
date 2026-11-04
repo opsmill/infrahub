@@ -99,7 +99,7 @@ class InfrahubLock:
         self.backend = backend
 ```
 
-The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). `backend/infrahub/lock.py` still has the attached shape; do not copy it. If adding the interface is more than the change at hand can take, raise that before changing the union (see [Existing code](#existing-code)).
+The cache and message-bus adapters already have this shape: an ABC in `services/adapters/<kind>/__init__.py`, one module per backend, and the driver setting resolved once where the service is built (`build_cache()` in `workers/dependencies.py`). If adding the interface is more than the change at hand can take, raise that before changing the union (see [Existing code](#existing-code)).
 
 ## Interfaces to keep an out-of-domain dependency out
 
