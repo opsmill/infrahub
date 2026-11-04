@@ -1,11 +1,12 @@
 # Release-note details for the pull request description
 
-Each statement below comes from the spec's [Resolved Clarifications](spec.md#resolved-clarifications), and links to the source that section cites.
+The statements in the first two sections come from the spec's [Resolved Clarifications](spec.md#resolved-clarifications), and link to the source that section cites. The counts in the last section come from the test runs recorded in [guard-results.md](guard-results.md).
 
 ## Removing the task-manager records already written
 
 - `infrahub tasks flush flow-runs` deletes every flow run, of any flow, that is in a completed, failed or cancelled state and that started more than `--days-to-keep` days ago. `--days-to-keep` is 30 by default ([cli/tasks.py](https://github.com/opsmill/infrahub/blob/d83c03b4ebd55fd32b6b6fcbca850e5ef638c108/backend/infrahub/cli/tasks.py#L68-L87), [retention.py](https://github.com/opsmill/infrahub/blob/d83c03b4ebd55fd32b6b6fcbca850e5ef638c108/backend/infrahub/task_manager/flow_run/retention.py)).
   - The command does not select the runs of `computed-attribute-setup-python` only.
+  - With the default of 30 days, the records written in the last 30 days stay. To remove them, the operator passes a smaller `--days-to-keep`, which also deletes the history of every other flow for that period.
 - Deleting a flow run also deletes the records attached to it, in Prefect 3.7.5 and in Prefect 3.8.6:
   - its task runs and the states of each task run, through `ON DELETE CASCADE` foreign keys ([orm_models.py at 3.7.5](https://github.com/PrefectHQ/prefect/blob/3.7.5/src/prefect/server/database/orm_models.py));
   - its logs, through a background job that the delete endpoint of the Prefect API schedules ([api/flow_runs.py at 3.7.5](https://github.com/PrefectHQ/prefect/blob/3.7.5/src/prefect/server/api/flow_runs.py)).
