@@ -15,10 +15,12 @@ them. A label scan followed by an expand can then come out cheaper:
   feature branch. With three or more values, `:Node` and `:Attribute` did not start the plan in
   testing.
 
-Neo4j reuses the plan for every value of `$branch_name`. With a small kind label in the pattern,
-forcing the seek cut database hits by over 100x on a branch with 25 changed edges, and multiplied
-them by about 70x on the default branch. Use the label-free entry for a query that runs on a branch
-with few changes, and the `Node(uuid)` entry for a query that can run on the default branch.
+Every value of `$branch_name` gets the same plan. Neo4j caches one plan per length range of the
+name, such as 2 to 10 or 11 to 100 characters, and the seek estimate above is the same for every
+name. With a small kind label in the pattern, forcing the seek cut database hits by over 100x on a
+branch with 25 changed edges, and multiplied them by about 70x on the default branch. Use the
+label-free entry for a query that runs on a branch with few changes, and the `Node(uuid)` entry for
+a query that can run on the default branch.
 
 ## Plan Operators to Check
 

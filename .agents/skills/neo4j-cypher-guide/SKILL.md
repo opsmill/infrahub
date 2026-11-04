@@ -220,9 +220,11 @@ Before finalizing any generated query:
 ## Entry Point of a Branch-Scoped Query
 
 Build one query text per entry point, and check the first operator of each plan with `EXPLAIN`.
-Neo4j reuses one plan for every parameter value: a `$ids IS NULL OR n.uuid IN $ids` check plans a
-`NodeByLabelScan` instead of the `Node(uuid)` seek, and a plan built for a small branch also runs on
-the default branch.
+Neo4j plans a query text once per parameter type, such as `null` or a list, and per length range of
+a list or string, then reuses the plan for every value of that type and range. A
+`$ids IS NULL OR n.uuid IN $ids` check plans a `NodeByLabelScan` instead of the `Node(uuid)` seek
+whether `$ids` is `null` or a list, and a `{branch: $branch_name}` seek gets the same plan on a
+small branch and on the default branch.
 
 - **The node uuids are known**: keep the `:Node` label and pass one list, `WHERE n.uuid IN $ids`,
   so the plan starts with a `NodeIndexSeek` on `Node(uuid)`. Use this entry whenever the query can
