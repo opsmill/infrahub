@@ -193,6 +193,12 @@ The PRD left two questions open. Both concern what the changelog entry (FR-006) 
   - `infrahub tasks flush flow-runs` deletes each flow run through that endpoint ([retention.py](https://github.com/opsmill/infrahub/blob/d83c03b4ebd55fd32b6b6fcbca850e5ef638c108/backend/infrahub/task_manager/flow_run/retention.py)). It deletes every flow run, of any flow, that is in a completed, failed or cancelled state and that started more than `--days-to-keep` days ago, 30 by default ([cli/tasks.py](https://github.com/opsmill/infrahub/blob/d83c03b4ebd55fd32b6b6fcbca850e5ef638c108/backend/infrahub/cli/tasks.py#L68-L87)). It does not select the runs of `computed-attribute-setup-python` only.
 - **Does the task manager's PostgreSQL database return the disk space after a flush, without `VACUUM FULL`?** No. Vacuuming, including autovacuum, makes the space of deleted rows available to new rows in the same table. It returns space to the operating system only when the pages at the end of a table are empty ([PostgreSQL documentation, Recovering Disk Space](https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-FOR-SPACE-RECOVERY)). `VACUUM FULL` returns the space. It takes an `ACCESS EXCLUSIVE` lock on each table while it processes it. It also needs extra disk space, because it writes a new copy of the table and keeps the old copy until it finishes ([PostgreSQL documentation, VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)).
 
+## Related Work
+
+- Specs: [ifc-2804-selective-recompute](https://github.com/opsmill/infrahub/tree/d83c03b4ebd55fd32b6b6fcbca850e5ef638c108/dev/specs/ifc-2804-selective-recompute) added the reconcile to the Python transform lifecycle flow.
+- ADRs: none found that cover this flow.
+- Issues: [#8872](https://github.com/opsmill/infrahub/issues/8872), [#11166](https://github.com/opsmill/infrahub/issues/11166), [#11167](https://github.com/opsmill/infrahub/issues/11167). Pull requests: [#11093](https://github.com/opsmill/infrahub/pull/11093), [#11095](https://github.com/opsmill/infrahub/pull/11095).
+
 ## Assumptions
 
 - It is not known whether any user or support workflow reads the per-branch `Gather Python transform attributes for <branch>` entries. This spec assumes none does.
