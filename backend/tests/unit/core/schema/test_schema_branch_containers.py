@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
@@ -140,3 +141,25 @@ def test_advanced_reference_without_a_declaration_is_accepted() -> None:
     node = schema_branch.get(name=L2_KIND, duplicate=False)
     assert node.get_relationship(name="sub_interfaces").container == "advanced"
     assert [container.name for container in node.containers] == ["lacp", "layer2", "layer3"]
+
+
+def test_reference_resolved_through_an_inherited_container_is_accepted() -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+
+    node = schema_branch.get(name=L2_KIND, duplicate=False)
+    layer2 = next(container for container in node.containers if container.name == "layer2")
+    assert layer2.inherited is True
+    assert node.get_attribute(name="l2_mode").container == "layer2"
+
+
+def test_removing_a_container_from_the_generic_refuses_the_inherited_field_on_the_next_load() -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+    generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
+    generic["containers"] = [{"name": "layer2", "label": "Layer 2", "state": HashableModelState.ABSENT.value}]
+    schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=[generic]))
+
+    with pytest.raises(
+        ValueError,
+        match=exact_message(f"{L2_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {L2_KIND}"),
+    ):
+        schema_branch.process()

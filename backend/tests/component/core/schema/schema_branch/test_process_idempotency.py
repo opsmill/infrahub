@@ -1,7 +1,7 @@
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.models import HashableModelDiff, SchemaDiff
 from infrahub.core.registry import registry
@@ -30,8 +30,12 @@ NETWORK_ELEMENT_GENERIC = GenericSchema(
     namespace="Test",
     label="Network Element",
     include_in_menu=True,
+    containers=[
+        ContainerSchema(name="documentation", label="Documentation", order_weight=300),
+        ContainerSchema(name="lifecycle", label="Lifecycle", collapsed=True),
+    ],
     attributes=[
-        AttributeSchema(name="description", kind="Text", optional=True),
+        AttributeSchema(name="description", kind="Text", optional=True, container="documentation"),
     ],
 )
 
@@ -258,6 +262,45 @@ def test_process_idempotency(register_core_models_schema: SchemaBranch, idempote
     assert generics_after_first == generics_after_second, "generic names changed after second process()"
     assert profiles_after_first == profiles_after_second, "profile names changed after second process()"
     assert templates_after_first == templates_after_second, "template names changed after second process()"
+
+
+def test_process_twice_yields_the_same_hash_with_inherited_containers(
+    register_core_models_schema: SchemaBranch, idempotency_schema: SchemaRoot
+) -> None:
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=idempotency_schema)
+    schema_branch.process()
+    hash_after_first = schema_branch.get_hash()
+
+    schema_branch.process()
+
+    assert schema_branch.get_hash() == hash_after_first
+    for kind in ("TestDevice", "TestInterface"):
+        node = schema_branch.get_node(name=kind, duplicate=False)
+        inherited_names = [container.name for container in node.containers if container.inherited]
+        assert inherited_names == ["documentation", "lifecycle"]
+
+
+def test_generic_dropping_a_container_removes_it_from_the_node_on_reprocess(
+    register_core_models_schema: SchemaBranch, idempotency_schema: SchemaRoot
+) -> None:
+    schema_branch = register_core_models_schema
+    schema_branch.load_schema(schema=idempotency_schema)
+    schema_branch.process()
+
+    generic = NETWORK_ELEMENT_GENERIC.duplicate()
+    generic.containers = [ContainerSchema(name="lifecycle", label="Lifecycle", state=HashableModelState.ABSENT)]
+    schema_branch.load_schema(schema=SchemaRoot(generics=[generic]))
+    schema_branch.process()
+
+    device = schema_branch.get_node(name="TestDevice", duplicate=False)
+    assert [(container.name, container.inherited) for container in device.containers] == [
+        ("hardware", False),
+        ("placement", False),
+        ("documentation", True),
+    ]
+    interface = schema_branch.get_node(name="TestInterface", duplicate=False)
+    assert [container.name for container in interface.containers] == ["documentation"]
 
 
 class TestSchemaBranchDbRoundtrip:

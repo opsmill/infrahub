@@ -50,6 +50,7 @@ from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING
 from tests.helpers.schema.device import LAG_INTERFACE
+from tests.helpers.schema.lag_interface import LAG_INTERFACE_L2, LAG_SCHEMA
 
 from .conftest import _get_schema_by_kind
 
@@ -3382,6 +3383,22 @@ async def test_reload_removes_a_container_marked_absent(schema_all_in_one: dict[
     )
 
     assert criticality.containers == []
+
+
+async def test_reload_node_redeclaring_an_inherited_container_wins_on_reload() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)))
+    schema.process()
+
+    reloaded = copy.deepcopy(LAG_INTERFACE_L2)
+    reloaded["containers"] = [{"name": "layer2", "label": "Switching", "order_weight": 200}]
+    schema.load_schema(schema=SchemaRoot(version="1.0", nodes=[reloaded]))
+    schema.process()
+
+    node = schema.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    layer2 = next(container for container in node.containers if container.name == "layer2")
+    assert layer2.label == "Switching"
+    assert layer2.inherited is False
 
 
 async def test_load_schema_to_db_simple_01(
