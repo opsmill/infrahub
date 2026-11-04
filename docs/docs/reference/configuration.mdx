@@ -163,12 +163,8 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
-<<<<<<< HEAD
 | `INFRAHUB_BROKER_RPC_TIMEOUT` | The maximum number of seconds to wait for a worker to answer an RPC request | integer | 120 |
-| `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the recommended and fully supported driver. NATS JetStream is experimental and not feature-complete: some functionality does not currently work, so it is not recommended for production. | string (rabbitmq, nats) | rabbitmq |
-=======
 | `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the only supported value. | string (rabbitmq) | rabbitmq |
->>>>>>> origin/stable
 | `INFRAHUB_BROKER_QUEUE_TYPE` | RabbitMQ type of the durable queues. Use quorum on a RabbitMQ cluster to replicate these queues across nodes; a classic queue is stored on a single node. RabbitMQ does not change the type of an existing queue, so the durable queues must be deleted before this setting is changed. | string (classic, quorum) | classic |
 
 ## Cache
