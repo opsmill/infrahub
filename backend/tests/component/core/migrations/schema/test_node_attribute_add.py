@@ -1,3 +1,4 @@
+import re
 import uuid
 from copy import deepcopy
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from infrahub.core.constants import (
     MetadataOptions,
     NumberPoolType,
     PoolRecordProvenance,
+    RelationshipCardinality,
     SchemaPathType,
 )
 from infrahub.core.initialization import create_branch
@@ -35,7 +37,7 @@ from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -43,6 +45,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from infrahub.exceptions import PoolExhaustedError
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
@@ -55,6 +59,17 @@ from tests.component.core.node.test_branch_agnostic_edges import assert_no_globa
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.edge_timestamps import assert_edge_timestamps
+from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import (
+    SCOPED_ATTRIBUTE_NAME,
+    SCOPED_DEVICE,
+    SCOPED_HOLDER,
+    SCOPED_POOL_SCHEMA,
+    SCOPED_SITE,
+    save_schema_kinds,
+    scoped_pool,
+    scoped_site,
+)
 from tests.helpers.schema import save_schema
 
 
@@ -713,6 +728,214 @@ async def test_migration_numberpool_attribute_from_two_ranges_fills_the_heavier_
     servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[s.get_id() for s in servers_in_db])
     rack_units = sorted(server.get_attribute("rack_unit").value for server in servers_map.values())
     assert rack_units == [30, 31, 32]
+
+
+# Ordered by name so that the migration reads the switches, and so allocates their numbers, in a known order.
+SCOPED_SWITCH = NodeSchema(
+    name="Switch",
+    namespace="Scope",
+    label="Switch",
+    human_friendly_id=["name__value"],
+    order_by=["name__value"],
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="site",
+            peer=SCOPED_SITE.kind,
+            identifier="scope_switch__site",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+CREATE_DEVICE_FROM_POOL = """
+mutation CreateDeviceFromPool($name: String!, $site_id: String!, $pool_id: String!) {
+    ScopeDeviceCreate(data: {
+        name: { value: $name }
+        role: { value: "leaf" }
+        tags: { value: ["red"] }
+        site: { id: $site_id }
+        vlan_id: { from_pool: { id: $pool_id } }
+    }) {
+        ok
+        object { vlan_id { value } }
+    }
+}
+"""
+
+
+def _switch_with_vlan_id(allocation_scope: list[str] | None, end_range: int = 10) -> NodeSchema:
+    switch = SCOPED_SWITCH.duplicate()
+    switch.attributes.append(
+        AttributeSchema(
+            name=SCOPED_ATTRIBUTE_NAME,
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=end_range, allocation_scope=allocation_scope),
+        )
+    )
+    return switch
+
+
+@pytest.fixture
+async def scoped_switch_schema(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The scoped pool test schema with switches that hold no `vlan_id` yet, saved on the default branch."""
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
+    await save_schema_kinds(
+        db=db, schema=SchemaRoot(generics=[SCOPED_HOLDER], nodes=[*SCOPED_POOL_SCHEMA.nodes, SCOPED_SWITCH])
+    )
+
+
+async def _switch(db: InfrahubDatabase, branch: Branch, name: str, site: Node) -> Node:
+    switch = await Node.init(db=db, schema=SCOPED_SWITCH.kind, branch=branch)
+    await switch.new(db=db, name=name, site=site)
+    await switch.save(db=db)
+    return switch
+
+
+async def _add_site_scoped_vlan_id(db: InfrahubDatabase, branch: Branch, end_range: int = 10) -> list[str]:
+    """Load the switch schema with a `vlan_id` scoped by site on the branch, then run the migration that adds it."""
+    previous = registry.schema.get_node_schema(name=SCOPED_SWITCH.kind, branch=branch, duplicate=True)
+    await save_schema_kinds(
+        db=db,
+        schema=SchemaRoot(nodes=[_switch_with_vlan_id(allocation_scope=["site"], end_range=end_range)]),
+        branch_name=branch.name,
+    )
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=previous,
+        new_node_schema=registry.schema.get_node_schema(name=SCOPED_SWITCH.kind, branch=branch, duplicate=True),
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind=SCOPED_SWITCH.kind, field_name=SCOPED_ATTRIBUTE_NAME
+        ),
+    )
+    execution_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=Timestamp()), branch=await Branch.get_by_name(db=db, name=branch.name)
+    )
+    return execution_result.errors
+
+
+async def _vlan_ids(db: InfrahubDatabase, branch: Branch, kind: str) -> dict[str, int | None]:
+    nodes = await NodeManager.query(db=db, schema=kind, branch=branch)
+    return {str(node.get_attribute("name").value): node.get_attribute(SCOPED_ATTRIBUTE_NAME).value for node in nodes}
+
+
+async def test_migration_scoped_numberpool_attribute_gives_the_numbers_a_create_gives(
+    db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
+) -> None:
+    """Devices created one by one in the order the migration reads the switches hold the switches' numbers."""
+    sites = {
+        name: await scoped_site(db=db, branch=default_branch, name=name) for name in ("site-a", "site-b", "site-c")
+    }
+    placement = {
+        "node-1": "site-a",
+        "node-2": "site-b",
+        "node-3": "site-a",
+        "node-4": "site-c",
+    }
+    for name, site_name in placement.items():
+        await _switch(db=db, branch=default_branch, name=name, site=sites[site_name])
+
+    errors = await _add_site_scoped_vlan_id(db=db, branch=default_branch)
+
+    assert errors == []
+    device_pool = await scoped_pool(db=db, name="device-vlan-per-site", allocation_scope=["site"])
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    for name, site_name in placement.items():
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_DEVICE_FROM_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": name, "site_id": sites[site_name].id, "pool_id": device_pool.id},
+        )
+        assert result.errors is None
+    expected = {"node-1": 1, "node-2": 1, "node-3": 2, "node-4": 1}
+    assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == expected
+    assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_DEVICE.kind) == expected
+    await verify_graph(db=db)
+
+
+async def test_migration_scoped_numberpool_attribute_reads_the_site_on_the_branch(
+    db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
+) -> None:
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    switches = {
+        name: await _switch(db=db, branch=default_branch, name=name, site=site)
+        for name, site in (("switch-1", site_a), ("switch-2", site_a), ("switch-3", site_b), ("switch-4", site_b))
+    }
+    branch = await create_branch(db=db, branch_name="move-switch")
+    moved = await NodeManager.get_one(db=db, id=switches["switch-2"].id, branch=branch, raise_on_error=True)
+    await moved.get_relationship(name="site").update(db=db, data=site_b)
+    await moved.save(db=db)
+
+    errors = await _add_site_scoped_vlan_id(db=db, branch=branch)
+
+    assert errors == []
+    assert await _vlan_ids(db=db, branch=branch, kind=SCOPED_SWITCH.kind) == {
+        "switch-1": 1,
+        "switch-2": 1,
+        "switch-3": 2,
+        "switch-4": 3,
+    }
+    await verify_graph(db=db)
+
+
+def _switch_pool_exhaustion_pattern(description: str, count: int, size: int) -> str:
+    """Match the error of a full division of the switches' schema pool, whose id the rollback leaves unknown."""
+    pool_id = "[0-9a-f-]+"
+    return (
+        f"^{re.escape(f'Pool {SCOPED_SWITCH.kind}.{SCOPED_ATTRIBUTE_NAME} [')}{pool_id}{re.escape('] (')}{pool_id}"
+        + re.escape(
+            f") has no free number left in its ranges for {description}: {count} node(s) of {SCOPED_SWITCH.kind}"
+            f" being filled are in this division and the ranges hold {size} number(s)."
+        )
+        + "$"
+    )
+
+
+async def _count_reservation_edges(db: InfrahubDatabase) -> int:
+    results = await db.execute_query(
+        query="MATCH ()-[e:IS_RESERVED]->() RETURN count(e) AS reservations", name="count_reservation_edges"
+    )
+    return results[0]["reservations"]
+
+
+async def test_migration_scoped_numberpool_attribute_on_a_full_site_allocates_nothing(
+    db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
+) -> None:
+    site = await scoped_site(db=db, branch=default_branch, name="site-1")
+    for name in ("switch-1", "switch-2", "switch-3"):
+        await _switch(db=db, branch=default_branch, name=name, site=site)
+
+    with pytest.raises(
+        PoolExhaustedError, match=_switch_pool_exhaustion_pattern(description=f"site '{site.id}'", count=3, size=2)
+    ):
+        await _add_site_scoped_vlan_id(db=db, branch=default_branch, end_range=2)
+
+    assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == {
+        "switch-1": None,
+        "switch-2": None,
+        "switch-3": None,
+    }
+    assert await _count_reservation_edges(db=db) == 0
+    assert (
+        await NodeManager.query(
+            db=db,
+            schema=InfrahubKind.NUMBERPOOL,
+            filters={"node__value": SCOPED_SWITCH.kind, "node_attribute__value": SCOPED_ATTRIBUTE_NAME},
+            branch_agnostic=True,
+        )
+        == []
+    )
+    await verify_graph(db=db)
 
 
 # -----------------------------------------------------------------------------

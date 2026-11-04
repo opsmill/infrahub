@@ -3,9 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
+from infrahub.pools.existing_node_numbers import build_existing_node_number_allocator
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
@@ -15,7 +18,6 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
-    from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -104,26 +106,22 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         )
 
         await update_branch_registry(db=db, branch=branch)
-
-        nodes: list[Node] = await registry.manager.query(
-            db=db, branch=branch, schema=self.new_schema, fields={"id": True, self.new_attribute_schema.name: True}
-        )
+        if not isinstance(number_pool, CoreNumberPool):
+            raise TypeError(f"expected a number pool node for {self.new_schema.kind}.{self.new_attribute_schema.name}")
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
-            for node in nodes:
-                attr = node.get_attribute(name=self.new_attribute_schema.name)
-                number = await number_pool.get_resource(  # type: ignore[attr-defined]
-                    db=db,
-                    branch=branch,
-                    identifier=node.get_id(),
-                    attribute=self.new_attribute_schema,
-                    attribute_id=attr.id,
-                    at=at,
-                    user_id=migration_input.user_id,
-                )
-                attr.value = number
-
-                await node.save(db=db, fields=[self.new_attribute_schema.name], at=at)
+            allocator = build_existing_node_number_allocator(db=db, branch=branch)
+            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch)
+            await node_query.execute(db=db)
+            await allocator.allocate(
+                pool=number_pool,
+                attribute=self.new_attribute_schema,
+                kind=self.new_schema.kind,
+                node_ids=node_query.get_node_ids(),
+                branch=branch,
+                at=at,
+                user_id=migration_input.user_id,
+            )
 
         if db.is_transaction:
             await allocate_numbers(db=db)

@@ -66,6 +66,12 @@ class RefusedDeclarationCase:
     message: str
 
 
+def _device_schema_with_zone_holding_a_default(scope: list[str]) -> SchemaRoot:
+    device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=scope)
+    device.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False, default_value="default"))
+    return _schema(device=device)
+
+
 def _pod_holder_with_optional_site() -> NodeSchema:
     pod_holder = copy.deepcopy(SCOPED_POD_HOLDER)
     site = copy.deepcopy(SCOPED_HOLDER.get_relationship(name="site"))
@@ -92,6 +98,13 @@ REFUSED_DECLARATION_CASES = [
         name="optional-relationship",
         schema=_device_schema(scope=["site", "rack"]),
         message='ScopeDevice.vlan_id: allocation_scope: "rack" is optional; a scope element must be required on'
+        " ScopeDevice",
+    ),
+    # A default value makes an attribute optional, so a load cannot add a scope attribute that existing nodes lack.
+    RefusedDeclarationCase(
+        name="required-attribute-with-a-default-value",
+        schema=_device_schema_with_zone_holding_a_default(scope=["zone"]),
+        message='ScopeDevice.vlan_id: allocation_scope: "zone" is optional; a scope element must be required on'
         " ScopeDevice",
     ),
     RefusedDeclarationCase(

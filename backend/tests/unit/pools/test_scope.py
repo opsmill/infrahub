@@ -163,6 +163,66 @@ class TestDivisionKey:
             Division(elements=(DivisionElementPath(name="role"),), values=())
 
 
+@dataclass(frozen=True)
+class DivisionDescriptionCase:
+    name: str
+    elements: tuple[ScopeElement, ...]
+    division: Division
+    expected: str
+
+
+SITE_PATH = DivisionElementPath(name="scope_device__site", relationship_direction=RelationshipDirection.OUTBOUND)
+ROLE_PATH = DivisionElementPath(name="role")
+SITE_PEER_ID = "1866fa8c-0000-4000-8000-000000000003"
+
+DIVISION_DESCRIPTION_CASES = [
+    DivisionDescriptionCase(
+        name="attribute",
+        elements=(ROLE,),
+        division=Division(elements=(ROLE_PATH,), values=("leaf",)),
+        expected="role 'leaf'",
+    ),
+    DivisionDescriptionCase(
+        name="relationship",
+        elements=(SITE,),
+        division=Division(elements=(SITE_PATH,), values=(SITE_PEER_ID,)),
+        expected="site '1866fa8c-0000-4000-8000-000000000003'",
+    ),
+    DivisionDescriptionCase(
+        name="two-elements",
+        elements=(SITE, ROLE),
+        division=Division(elements=(SITE_PATH, ROLE_PATH), values=(SITE_PEER_ID, "leaf")),
+        expected="site '1866fa8c-0000-4000-8000-000000000003', role 'leaf'",
+    ),
+    DivisionDescriptionCase(
+        name="number",
+        elements=(ROLE,),
+        division=Division(elements=(ROLE_PATH,), values=(42,)),
+        expected="role '42'",
+    ),
+    DivisionDescriptionCase(
+        name="no-value",
+        elements=(SITE, ROLE),
+        division=Division(elements=(SITE_PATH, ROLE_PATH), values=("", "leaf")),
+        expected="site holds no value, role 'leaf'",
+    ),
+]
+
+
+class TestDivisionDescription:
+    @pytest.mark.parametrize("case", DIVISION_DESCRIPTION_CASES, ids=[case.name for case in DIVISION_DESCRIPTION_CASES])
+    def test_each_element_is_written_with_its_value_in_scope_order(self, case: DivisionDescriptionCase) -> None:
+        assert AllocationScope(elements=case.elements).describe(division=case.division) == case.expected
+
+    def test_a_division_with_another_number_of_values_is_refused(self) -> None:
+        scope = AllocationScope(elements=(SITE, ROLE))
+
+        with pytest.raises(
+            ValueError, match=r"^The division holds 1 value\(s\) for an allocation scope of 2 element\(s\)$"
+        ):
+            scope.describe(division=Division(elements=(ROLE_PATH,), values=("leaf",)))
+
+
 DEVICE_KIND = SCOPED_DEVICE.kind
 HOLDER_KIND = SCOPED_HOLDER.kind
 POD_HOLDER_KIND = SCOPED_POD_HOLDER.kind
