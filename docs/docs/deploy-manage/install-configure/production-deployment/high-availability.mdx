@@ -159,6 +159,51 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
 
+## Upgrading the Neo4j cluster
+
+Upgrade the Neo4j members one at a time, and upgrade the writer last. The cluster keeps a writer during the upgrade, so Infrahub keeps working. When a new Infrahub release requires a newer Neo4j version, upgrade Neo4j first, then Infrahub.
+
+The Neo4j chart version is the Neo4j version without the leading zero of the month: chart `2026.9.0` runs Neo4j `2026.09.0`. The commands below use the release names of the Helm example above. Replace `<password>` with the password of the `neo4j` user and `<new-chart-version>` with the chart version to upgrade to.
+
+Before you start, back up the database as described in [Cluster backup and restore](../../maintain-upgrade/database-backup/cluster-backup-and-restore.mdx).
+
+1. Find the member that is the writer of the `neo4j` database:
+
+   ```bash
+   kubectl exec database-0-0 --namespace infrahub -- cypher-shell -u neo4j -p <password> -d system \
+     "SHOW DATABASE neo4j YIELD address, role, currentStatus, writer"
+   ```
+
+   The `address` of each row starts with the release name of the member. The writer is the member whose `writer` column is `TRUE`.
+
+2. Upgrade a member that is not the writer, with the same values file as the installation, and wait until its pod is ready:
+
+   ```bash
+   helm upgrade database-1 neo4j/neo4j --version <new-chart-version> --namespace infrahub --values neo4j-values.yaml
+   kubectl rollout status statefulset/database-1 --namespace infrahub
+   ```
+
+3. Run the command of step 1 again. Continue only when the 3 members show `currentStatus` as `online` and one member is the writer.
+
+4. Repeat steps 2 and 3 for the other member that is not the writer, then for the writer. When the writer restarts, the cluster elects a new writer among the upgraded members.
+
+5. Check that every member runs the new Neo4j version:
+
+   ```bash
+   for member in database-0 database-1 database-2; do
+     kubectl exec $member-0 --namespace infrahub -- cypher-shell -u neo4j -p <password> -d neo4j \
+       "CALL dbms.components() YIELD name, versions WHERE name = 'Neo4j Kernel' RETURN versions[0] AS version"
+   done
+   ```
+
+6. Upgrade the headless service to the same chart version:
+
+   ```bash
+   helm upgrade database-service neo4j/neo4j-headless-service --version <new-chart-version> --namespace infrahub --values service-values.yaml
+   ```
+
+Until all members run the new version, do not run Cypher administration commands, such as `CREATE USER` or `CREATE DATABASE`.
+
 ## Connecting Infrahub to a RabbitMQ cluster
 
 RabbitMQ 4.0 removed classic queue mirroring. A classic queue is stored on one node of the cluster: when that node stops, the queue is unavailable, and Infrahub cannot send or receive the messages that use it until the node is back. A quorum queue stores a copy of its messages on several nodes, and RabbitMQ elects a new leader for the queue when the node of the current leader stops.
