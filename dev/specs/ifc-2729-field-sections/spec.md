@@ -28,6 +28,15 @@ flag ships for the detail view; this run covers the schema, the schema API, the
 detail view, the forms and the documentation; containers inherited from a generic merge by name and
 the node's definition wins; the Extra toggle is per section.
 
+## Clarifications
+
+### Session 2026-11-04
+
+- Q: Approve adding `containers` and `container` to the internal schema definitions (no graph migration, no GraphQL change)? → A: Approved.
+- Q: Add the LACP, Layer 2 and Layer 3 containers to the `InfraLagInterface` generic of the demo schema for the end-to-end test? → A: Yes, the demo schema carries the sections.
+- Q: Built-in Advanced section implicit or returned by the schema API? → A: Implicit: never stored, never returned, always accepted as a `container` value.
+- Q: Copy a node's containers onto its generated profile and object template? → A: Copy them.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Declare sections in the schema (Priority: P1)
@@ -350,12 +359,10 @@ Schema viewer and documentation
 - The Details section comes first on the page and in the form, as in the mockup and in today's
   single card.
 - The collapsed state of a card is local to the page view and is not stored per user.
-- The Advanced section stays implicit in the schema and the API; consumers know its name from the
-  documentation.
-- Profiles and object templates copy the node's containers rather than losing their container
-  references.
-- The end-to-end fixture adds containers to the LAG interface generic of the demo schema, because its
-  data already exists and no end-to-end test opens a LAG interface today.
+- The internal schema change (three new properties on the stored schema definitions, no graph
+  migration) is approved.
+- The demo schema (`models/base/dcim.yml`) gains the LACP, Layer 2 and Layer 3 containers on the LAG
+  interface generic; the end-to-end test uses that data.
 - The SDK formatter puts `containers` after `uniqueness_constraints` on nodes and `container` just
   before `order_weight` on attributes and relationships.
 - Nothing changes for generics in the schema viewer beyond listing their containers.
