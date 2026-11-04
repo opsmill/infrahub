@@ -176,22 +176,26 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - check that each fragment skips the default branch's entry, whose origin is NULL.
 
   Run T031's number pool tests, T033 and `backend/tests/component/core/resource_manager/`; all pass. Result: `_live_on_some_branch` does not exist on `release-1.12`; the fragments renamed are `EDGE_BRANCHES`, `HELD_BRANCH`, `LIVE_ATTRIBUTE_VALUES_QUERY` and `INHERITED_OPEN_VALUES_QUERY`. All number pool tests pass; the only failures are the 12 IP pool tests that fail on purpose until T039-T044.
-- [ ] T039 [US3] Rewrite `IPPrefixSubnetFetchFree` in `backend/infrahub/core/query/ipam.py` in the flat window form of research R4:
+- [X] T039 [US3] Rewrite `IPPrefixSubnetFetchFree` in `backend/infrahub/core/query/ipam.py` in the flat window form of research R4:
   - the windows clause opens the query;
   - the namespace check passes when `any(window …)` finds its `IS_PART_OF` edge latest and active, and yields no row otherwise;
   - an allocated child is kept when, in some window, its `IS_PART_OF`, both `ip_namespace` `IS_RELATED` edges, `HAS_ATTRIBUTE` and `HAS_VALUE` are latest and active;
   - candidates are bounded by `r.from <= $windows_at` and `r.to` later than the oldest `origin_at`.
-- [ ] T040 [US3] Apply T039 to `IPv6PrefixSubnetFetchFree` in `backend/infrahub/core/query/ipam.py`.
-- [ ] T041 [US3] Apply T039 to `IPPrefixIPAddressFetchFree` in `backend/infrahub/core/query/ipam.py`.
-- [ ] T042 [US3] Apply T039 to `IPv6PrefixIPAddressFetchFree` in `backend/infrahub/core/query/ipam.py`.
-- [ ] T043 [US3] In `backend/infrahub/core/node/resource_manager/ip_prefix_pool.py::CoreIPPrefixPool.get_resource` and `::get_next`, read the namespace and resources on the allocating branch as research R4 describes:
+
+  Result: the four queries share one builder for the namespace and allocated children, with a window form for branch-agnostic reads and the existing branch filter otherwise; in both forms a missing namespace now yields no row. The window form reads each child edge and its competitors once per row instead of running `NOT EXISTS` in every window, which cut the free-value query's database hits from about 522,000 to about 135,000 in the benchmark. `render_window_filter` is now false rather than NULL for the default branch's window, because a NULL inside `none()` dropped every child.
+- [X] T040 [US3] Apply T039 to `IPv6PrefixSubnetFetchFree` in `backend/infrahub/core/query/ipam.py`.
+- [X] T041 [US3] Apply T039 to `IPPrefixIPAddressFetchFree` in `backend/infrahub/core/query/ipam.py`.
+- [X] T042 [US3] Apply T039 to `IPv6PrefixIPAddressFetchFree` in `backend/infrahub/core/query/ipam.py`.
+- [X] T043 [US3] In `backend/infrahub/core/node/resource_manager/ip_prefix_pool.py::CoreIPPrefixPool.get_resource` and `::get_next`, read the namespace and resources on the allocating branch as research R4 describes:
   - read the namespace id with `ip_namespace.get_peer_id()`, then load it with `NodeManager.get_one(branch=X)`;
   - read resources by peer id, then `NodeManager.get_many(branch=X)`;
   - raise `ResourceNotFoundError` when the namespace is missing on X, and `PoolExhaustedError` when no resource remains;
   - replace the `IndexError`.
 
   Use the message templates in `contracts/user-visible-behavior.md`.
-- [ ] T044 [US3] Apply T043 to `backend/infrahub/core/node/resource_manager/ip_address_pool.py::CoreIPAddressPool`.
+
+  Result: the reads live in `backend/infrahub/core/node/resource_manager/ip_pool_branch.py`, shared by both pools. A pool with resources on X that are all full also raises `PoolExhaustedError`, with the class's default message for the prefix pool. The `IndexError` expectations in `test_prefix_pool.py` now expect `PoolExhaustedError`.
+- [X] T044 [US3] Apply T043 to `backend/infrahub/core/node/resource_manager/ip_address_pool.py::CoreIPAddressPool`.
 - [ ] T045 [US3] Run T031-T035 and:
   - `backend/tests/component/core/resource_manager/`
   - `backend/tests/component/core/ipam/`
