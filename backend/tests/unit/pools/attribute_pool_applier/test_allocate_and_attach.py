@@ -133,15 +133,34 @@ async def test_an_attached_number_is_checked_against_ranges_read_while_the_pool_
     assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
 
 
-async def test_moving_a_saved_number_to_another_pool_reads_its_ranges_while_the_pool_is_held(
+async def test_moving_a_saved_number_to_another_pool_takes_the_division_before_holding_the_pool(
     applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, pool_lock_log: PoolLockLog
 ) -> None:
+    """The ranges are read and the number drawn while the pool is held, inside the lock of the division."""
     finder.tracking_pool_ids[ATTRIBUTE_ID] = OTHER_POOL_ID
     ticket_id = make_ticket_id(payload={"value": None, "from_pool": {"id": POOL_ID}}, saved=True)
 
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
-    assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
+    assert pool_lock_log.entries == [
+        ("pick", POOL_ID),
+        ("hold", POOL_ID),
+        ("read", POOL_ID),
+        ("allocate", POOL_ID),
+        ("end hold", POOL_ID),
+        ("end pick", POOL_ID),
+    ]
+
+
+async def test_an_allocation_on_create_takes_no_lock_itself(
+    applier: AttributePoolApplier, pool_lock_log: PoolLockLog
+) -> None:
+    """With no saved number to check against other branches, the allocation alone takes the pool's locks."""
+    ticket_id = make_ticket_id(payload={"from_pool": {"id": POOL_ID}})
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
+
+    assert pool_lock_log.entries == [("allocate", POOL_ID)]
 
 
 async def test_an_attached_number_equal_to_the_schema_default_stops_being_a_default(

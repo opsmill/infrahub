@@ -90,7 +90,7 @@ class RecordingPoolLocker:
         self.log.entries.append(("end hold", pool_id))
 
     @asynccontextmanager
-    async def picking(self, pool: Node, division: Division | None) -> AsyncGenerator[None]:
+    async def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AsyncGenerator[None]:
         self.log.entries.append(("pick", pool.get_id()))
         yield
         self.log.entries.append(("end pick", pool.get_id()))
@@ -128,6 +128,8 @@ class RecordingNumberAllocator:
     attach_provenance: PoolRecordProvenance = PoolRecordProvenance.PROVIDED
     """What the pool's record says about the held number once attached, as the write reports it."""
     calls: list[PoolCall] = field(default_factory=list)
+    log: PoolLockLog = field(default_factory=PoolLockLog)
+    """Receives each allocation, so a test can place it among the holds a locker takes."""
 
     async def allocate(  # noqa: PLR0913, PLR0917
         self,
@@ -148,6 +150,7 @@ class RecordingNumberAllocator:
                 reuse_reservation=reuse_reservation,
             )
         )
+        self.log.entries.append(("allocate", pool.get_id()))
         if self.exhausted:
             raise PoolExhaustedError(f"Pool tickets ({pool.get_id()}) has no free number left in its ranges.")
         return self.number

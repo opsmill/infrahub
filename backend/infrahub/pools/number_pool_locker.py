@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.scope import Division
 
@@ -32,7 +33,7 @@ class NumberPoolLocker(Protocol):
         """Keep the pool's ranges from changing until the write reading them commits, alongside other such writes."""
         ...
 
-    def picking(self, pool: Node, division: Division | None) -> AbstractAsyncContextManager[None]:
+    def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AbstractAsyncContextManager[None]:
         """Keep a second allocation in the same division, or in the whole pool without a scope, from picking at once.
 
         Raises:
@@ -58,9 +59,13 @@ class NumberPoolLock:
         """Return the name of the lock that allocations from the same pool and division take to pick a number."""
         return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool_id}.{division_key or UNSCOPED_PICKING_KEY}"
 
+    @staticmethod
+    def _pool_lock(pool_id: str) -> lock.InfrahubSharedLock:
+        return lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE)
+
     @asynccontextmanager
     async def changing(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
-        pool_lock = lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE)
+        pool_lock = self._pool_lock(pool_id=pool_id)
         try:
             await pool_lock.acquire_exclusive()
         except LockWaitTimeoutError as exc:
@@ -74,7 +79,7 @@ class NumberPoolLock:
 
     @asynccontextmanager
     async def holding(self, pool_id: str) -> AsyncGenerator[None]:
-        shared = lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE).shared()
+        shared = self._pool_lock(pool_id=pool_id).shared()
         if self.db.can_hold_until_transaction_end:
             await self.db.hold_until_transaction_end(shared)
             yield
@@ -82,10 +87,11 @@ class NumberPoolLock:
         async with shared:
             yield
 
-    def picking(self, pool: Node, division: Division | None) -> AbstractAsyncContextManager[None]:
-        if division is None:
-            return lock.registry.get(name=self.picking_lock_name(pool_id=pool.get_id(), division_key=None))
-        scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
-        if scope.is_empty:
-            raise ValidationError(f"The pool {pool.get_id()} has no allocation scope; a division cannot be applied")
-        return lock.registry.get(name=self.picking_lock_name(pool_id=pool.get_id(), division_key=division.key))
+    def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AbstractAsyncContextManager[None]:
+        division_key = None
+        if division is not None:
+            scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
+            if scope.is_empty:
+                raise ValidationError(f"The pool {pool.get_id()} has no allocation scope; a division cannot be applied")
+            division_key = division.key
+        return lock.registry.get(name=self.picking_lock_name(pool_id=pool.get_id(), division_key=division_key))
