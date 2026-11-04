@@ -14,6 +14,20 @@ export interface ResourceAllocatedKeysParams extends PaginationParams {
   resourceId: string;
 }
 
+export interface IpPoolKeysParams {
+  poolId: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface IpPoolUtilizationKeysParams extends IpPoolKeysParams {
+  weightedKinds: string[];
+}
+
+export interface IpPoolAllocationsKeysParams extends IpPoolKeysParams {
+  resourceId: string;
+}
+
 export interface NumberPoolKeysParams {
   poolId: string;
   branchName: string;
@@ -59,6 +73,32 @@ export const resourceManagerQueryKeys = {
       params.resourceId,
       params.limit,
       params.offset,
+    ] as const,
+  ipPool: (params: IpPoolKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "ip-pool",
+      params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  ipPoolUtilization: (params: IpPoolUtilizationKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "ip-pool-utilization",
+      params.poolId,
+      params.weightedKinds,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  ipPoolAllocations: (params: IpPoolAllocationsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "ip-pool-allocations",
+      params.poolId,
+      params.resourceId,
+      params.branchName,
+      params.atDate,
     ] as const,
   numberPool: (params: NumberPoolKeysParams) =>
     [
