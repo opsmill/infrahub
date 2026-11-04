@@ -14,12 +14,10 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP, RefreshGitFetch
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractQueue
-    from nats.js.api import StreamInfo
 
 ResponseClass = TypeVar("ResponseClass")
 
@@ -138,11 +136,6 @@ class _NamedQueue:
     name: str
 
 
-@dataclass(frozen=True)
-class _NamedStream:
-    config: _NamedQueue
-
-
 class NeverReplyingBus(RabbitMQMessageBus):
     """Records every published message and never delivers a reply, so any rpc call times out.
 
@@ -165,30 +158,6 @@ class NeverReplyingBus(RabbitMQMessageBus):
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("NeverReplyingBus.reply should not be called")
-
-
-class NeverReplyingNATSBus(NATSMessageBus):
-    """Records every published message and never delivers a reply, so any rpc call times out.
-
-    No connection is opened; only `rpc` and `send` are supported.
-    """
-
-    def __init__(self, rpc_timeout: int = 1) -> None:
-        super().__init__(component_type=ComponentType.API_SERVER, settings=BrokerSettings(rpc_timeout=rpc_timeout))
-        self.messages: list[InfrahubMessage] = []
-        self.callback_queue = cast("StreamInfo", _NamedStream(config=_NamedQueue(name=CALLBACK_QUEUE_NAME)))
-
-    async def publish(
-        self,
-        message: InfrahubMessage,
-        routing_key: str,
-        delay: MessageTTL | None = None,
-        is_retry: bool = False,
-    ) -> None:
-        self.messages.append(message)
-
-    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        raise ValueError("NeverReplyingNATSBus.reply should not be called")
 
 
 class _UnreachableBrokerPublish:
@@ -234,21 +203,9 @@ class UnreachableBrokerBus(_UnreachableBrokerPublish, NeverReplyingBus):
     """Fails every publish the way a broker that cannot be reached does."""
 
 
-class UnreachableBrokerNATSBus(_UnreachableBrokerPublish, NeverReplyingNATSBus):
-    """Fails every publish the way a broker that cannot be reached does."""
-
-
 class TimingOutPublishBus(_TimingOutPublish, NeverReplyingBus):
     """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
 
 
-class TimingOutPublishNATSBus(_TimingOutPublish, NeverReplyingNATSBus):
-    """Fails every publish with a `TimeoutError` of the broker's own, not the caller's bound."""
-
-
 class StalledPublishBus(_StalledPublish, NeverReplyingBus):
-    """Never completes a publish, the way a broker withholding its confirmation does."""
-
-
-class StalledPublishNATSBus(_StalledPublish, NeverReplyingNATSBus):
     """Never completes a publish, the way a broker withholding its confirmation does."""
