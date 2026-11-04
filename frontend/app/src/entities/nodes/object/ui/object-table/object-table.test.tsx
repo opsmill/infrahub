@@ -95,8 +95,8 @@ describe("ObjectTable horizontal scrolling", () => {
   });
 
   test.each([
-    { from: "w-[1200px]", to: "w-[600px]", visible: true },
-    { from: "w-[600px]", to: "w-[1200px]", visible: false },
+    { from: "w-[2000px]", to: "w-[600px]", visible: true },
+    { from: "w-[600px]", to: "w-[2000px]", visible: false },
   ])("sets scrollbar visibility to $visible after resizing from $from to $to", async ({
     from,
     to,
