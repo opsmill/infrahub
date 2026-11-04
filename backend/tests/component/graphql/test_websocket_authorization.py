@@ -13,7 +13,7 @@ from starlette.applications import Starlette
 
 from infrahub import config
 from infrahub.auth.auth import generate_access_token
-from infrahub.core.constants import InfrahubKind, PermissionDecision
+from infrahub.core.constants import AccountStatus, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.graphql.api.endpoints import router
 from infrahub.graphql.app import subscription_tasks
@@ -230,3 +230,42 @@ async def test_saved_query_subscription_permissions(
             payload = json.loads(message["text"])["payload"]
             assert "data" not in payload
             assert payload["errors"][0]["message"] == "Authentication is required to perform this operation"
+
+
+@pytest.mark.parametrize("revocation", ["secret_key_rotated", "account_deactivated"])
+async def test_saved_query_subscription_ends_when_credentials_are_revoked(
+    db: InfrahubDatabase,
+    create_test_admin: Node,
+    default_permission_backend: None,
+    monkeypatch: pytest.MonkeyPatch,
+    revocation: str,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", False)
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag.new(db=db, name="visible-tag")
+    await tag.save(db=db)
+    saved_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await saved_query.new(db=db, name="saved_query", query=TAG_QUERY)
+    await saved_query.save(db=db)
+    if revocation == "secret_key_rotated":
+        token = generate_access_token(account_id=create_test_admin.id, session_id=uuid4())
+        headers = [(b"authorization", f"Bearer {token}".encode())]
+        expected_error = "Invalid token"
+    else:
+        headers = [(b"x-infrahub-key", b"admin-security")]
+        expected_error = "This account has been deactivated"
+
+    async with _websocket_messages(db=db, headers=headers, interval=1) as outgoing:
+        assert (await outgoing.get())["type"] == "websocket.accept"
+        assert "data" in json.loads((await outgoing.get())["text"])["payload"]
+
+        if revocation == "secret_key_rotated":
+            monkeypatch.setattr(config.SETTINGS.security, "secret_key", "rotated-secret-key")
+        else:
+            create_test_admin.status.value = AccountStatus.INACTIVE.value
+            await create_test_admin.save(db=db)
+
+        payload = json.loads((await outgoing.get())["text"])["payload"]
+        while "data" in payload:
+            payload = json.loads((await outgoing.get())["text"])["payload"]
+        assert payload["errors"][0]["message"] == expected_error

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import bcrypt
 import jwt
+from fastapi.security.utils import get_authorization_scheme_param
 from pydantic import BaseModel
 
 from infrahub import config, lock, models
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     import httpx
+    from starlette.requests import HTTPConnection
 
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -530,6 +532,15 @@ async def authentication_token(
         return await validate_jwt_access_token(token=jwt_token)
 
     return AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE)
+
+
+async def authenticate_connection(db: InfrahubDatabase, connection: HTTPConnection) -> AccountSession:
+    scheme, credentials = get_authorization_scheme_param(connection.headers.get("Authorization"))
+    api_key = connection.headers.get("X-INFRAHUB-KEY")
+    jwt_token = credentials if scheme.lower() == "bearer" and credentials else None
+    if not jwt_token and not api_key:
+        jwt_token = connection.cookies.get("access_token")
+    return await authentication_token(db=db, jwt_token=jwt_token, api_key=api_key)
 
 
 async def validate_jwt_access_token(token: str) -> AccountSession:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
+from infrahub.auth.auth import authenticate_connection
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
@@ -31,7 +32,7 @@ async def resolver_graphql_query(
     interval: int = 10,
 ) -> AsyncGenerator[dict[str, Any], None]:
     graphql_context: GraphqlContext = info.context
-    account_session = graphql_context.active_account_session
+    connection = graphql_context.request
     permission_checker = build_graphql_query_permission_checker()
     at = Timestamp()
 
@@ -45,6 +46,12 @@ async def resolver_graphql_query(
 
     while True:
         async with graphql_context.db.start_session(read_only=True) as db:
+            # Credentials can expire or be revoked while the subscription stays open.
+            account_session = (
+                await authenticate_connection(db=db, connection=connection)
+                if connection
+                else graphql_context.active_account_session
+            )
             graphql_params = await prepare_graphql_params(
                 db=db,
                 branch=graphql_context.branch,

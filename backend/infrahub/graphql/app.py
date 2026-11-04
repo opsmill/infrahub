@@ -16,7 +16,6 @@ from typing import (
 )
 
 import ujson
-from fastapi.security.utils import get_authorization_scheme_param
 from graphql import (
     ExecutionContext,
     ExecutionResult,
@@ -36,7 +35,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub import config
-from infrahub.auth.auth import authentication_token
+from infrahub.auth.auth import authenticate_connection
 from infrahub.auth.session import AccountSession  # noqa: TC001
 from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
@@ -119,7 +118,7 @@ class InfrahubGraphQLApp:
             db = request.app.state.db
 
             async with db.start_session() as db:
-                account_session = await self._authenticate_connection(connection=request, db=db)
+                account_session = await authenticate_connection(db=db, connection=request)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
@@ -149,7 +148,7 @@ class InfrahubGraphQLApp:
 
             async with db.start_session(read_only=True) as db:
                 try:
-                    account_session = await self._authenticate_connection(connection=websocket, db=db)
+                    account_session = await authenticate_connection(db=db, connection=websocket)
                     if not account_session.authenticated and not config.SETTINGS.main.allow_anonymous_access:
                         raise AuthorizationError("Authentication is required to perform this operation")
                 except AuthorizationError as exc:
@@ -165,14 +164,6 @@ class InfrahubGraphQLApp:
 
         else:
             raise ValueError(f"Unsupported scope type: ${scope['type']}")
-
-    async def _authenticate_connection(self, connection: HTTPConnection, db: InfrahubDatabase) -> AccountSession:
-        scheme, credentials = get_authorization_scheme_param(connection.headers.get("Authorization"))
-        api_key = connection.headers.get("X-INFRAHUB-KEY")
-        jwt_token = credentials if scheme.lower() == "bearer" and credentials else None
-        if not jwt_token and not api_key:
-            jwt_token = connection.cookies.get("access_token")
-        return await authentication_token(db=db, jwt_token=jwt_token, api_key=api_key)
 
     async def _get_on_get(self, request: Request) -> Response | None:
         handler = self.on_get
