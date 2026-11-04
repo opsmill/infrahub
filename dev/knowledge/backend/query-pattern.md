@@ -121,6 +121,8 @@ Readability of the raw query outranks deduplication. Do not extract repeated Cyp
 
 The bar for a shared fragment constant is a substantial body with several consumers: a predicate of dozens of lines composed into three or four queries earns a named constant, while a few-line `MATCH` used twice is pasted into both call sites — especially when the copies are not quite identical anyway.
 
+A fragment that encodes a rule every consumer must apply the same way is shared even when the copies would be short, because two copies that drift apart give different answers to the same question. The branch window clauses and predicates are the case in point: which branches are live, each branch's window, and when an edge is visible or outranks another are rendered once by `core/query/branch_windows.py` and used by every query that answers across live branches (see [Answer across every live branch](#answer-across-every-live-branch-use-branch_windowspy)).
+
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
@@ -305,6 +307,19 @@ Two earlier queries hold halves of this shape, and are the ones to read alongsid
 
 - `_check_duplicate_attributes` (`infrahub/database/validation.py`) - the per-branch election with the `branched_from` window and the `branch_level DESC, from DESC, status ASC / LIMIT 1` subquery. It derives its branch set from the graph instead of taking one as a parameter, and its default-branch arm uses a strict `from <`.
 - `DiffCountChanges` (`infrahub/core/query/diff.py`) - the grouped read over a `branch_names` list in one statement, and the Python-side backfill: `get_num_changes_by_branch` walks `self.branch_names` and fills `0` for every branch the statement returned no row for.
+
+### Answer across every live branch: use `branch_windows.py`
+
+When a query asks whether *any* live branch still holds something (an allocated value, a branch-agnostic field), build its branch windows with `core/query/branch_windows.py` instead of collecting the branches inline. The module holds the one definition of a live branch and its window, so every such query agrees on it, and its predicates return false, never NULL, for the default branch's window, so they stay correct inside `none()` and `NOT`.
+
+```python
+# ✅ one shared window definition
+windows_query, windows_params = build_branch_windows_query(at=self.at, enabled=True)
+visible = render_window_filter(edge="r")  # use inside any(window IN branch_windows WHERE ...)
+# ❌ an inline MATCH (b:Branch) ... collect(...) that redefines which branches count
+```
+
+Read `_build_allocated_values_in_windows_query` in `core/query/ipam.py` for a complete query built this way.
 
 ### Query performance
 
@@ -530,6 +545,7 @@ Specialized base classes for different domains:
 | Attribute queries | `backend/infrahub/core/query/attribute.py` |
 | Diff queries | `backend/infrahub/core/query/diff.py` |
 | Subquery filters | `backend/infrahub/core/query/subquery.py` |
+| Live branch windows | `backend/infrahub/core/query/branch_windows.py` |
 | IPAM queries | `backend/infrahub/core/query/ipam.py` |
 | Branch queries | `backend/infrahub/core/query/branch.py` |
 | Standard node queries | `backend/infrahub/core/query/standard_node.py` |
