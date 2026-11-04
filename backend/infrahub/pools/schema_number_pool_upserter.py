@@ -168,7 +168,6 @@ class SchemaNumberPoolUpserter:
                     "node_attribute__value": attribute.name,
                     "pool_type__value": NumberPoolType.SCHEMA.value,
                 },
-                branch_agnostic=True,
             )
 
             # A scope references the elements of the default branch, whichever branch declares the pool.
@@ -222,7 +221,7 @@ class SchemaNumberPoolUpserter:
                 ]
 
                 pool_node = await NodeManager.get_one(
-                    db=dbt, id=number_pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
+                    db=dbt, id=number_pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True
                 )
                 await NumberPoolShorthandMirror(repository=repository).sync(
                     pool=pool_node, ranges=ranges, at=at, user_id=user_id
@@ -334,7 +333,6 @@ class SchemaNumberPoolUpserter:
             db=self.db,
             id=pool_id,
             kind=CoreNumberPool,
-            branch_agnostic=True,
             raise_on_error=True,
         )
 
