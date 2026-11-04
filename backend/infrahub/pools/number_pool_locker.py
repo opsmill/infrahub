@@ -19,6 +19,11 @@ RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 UNSCOPED_PICKING_KEY = "all"
 
 
+def picking_lock_name(pool_id: str, division_key: str | None) -> str:
+    """Return the name of the lock that allocations from the same pool and division take to pick a number."""
+    return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool_id}.{division_key or UNSCOPED_PICKING_KEY}"
+
+
 class NumberPoolLocker(Protocol):
     def changing(self, pool_id: str, pool_name: str) -> AbstractAsyncContextManager[None]:
         """Hold the pool alone while its ranges change, once every write reading them has committed.
@@ -52,19 +57,21 @@ class NumberPoolLock:
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
+        """Keep the writes' shares of a pool on `db` until the transaction open on it ends, when there is one."""
         self.db = db
 
-    @staticmethod
-    def picking_lock_name(pool_id: str, division_key: str | None) -> str:
-        """Return the name of the lock that allocations from the same pool and division take to pick a number."""
-        return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool_id}.{division_key or UNSCOPED_PICKING_KEY}"
-
-    @staticmethod
-    def _pool_lock(pool_id: str) -> lock.InfrahubSharedLock:
+    def _pool_lock(self, pool_id: str) -> lock.InfrahubSharedLock:
+        """Return the pool's lock, which a range change takes exclusively and the writes reading the ranges share."""
         return lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE)
 
     @asynccontextmanager
     async def changing(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
+        """Hold the pool alone while its ranges change, once every write reading them has committed.
+
+        Raises:
+            ValidationError: When writes still read the ranges once the wait limit passes.
+
+        """
         pool_lock = self._pool_lock(pool_id=pool_id)
         try:
             await pool_lock.acquire_exclusive()
@@ -79,6 +86,10 @@ class NumberPoolLock:
 
     @asynccontextmanager
     async def holding(self, pool_id: str) -> AsyncGenerator[None]:
+        """Keep the pool's ranges from changing until the write reading them commits, alongside other such writes.
+
+        Inside a transaction the share is kept until the transaction commits or rolls back, not until the block ends.
+        """
         shared = self._pool_lock(pool_id=pool_id).shared()
         if self.db.can_hold_until_transaction_end:
             await self.db.hold_until_transaction_end(shared)
@@ -88,10 +99,16 @@ class NumberPoolLock:
             yield
 
     def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AbstractAsyncContextManager[None]:
+        """Keep a second allocation in the same division, or in the whole pool without a scope, from picking at once.
+
+        Raises:
+            ValidationError: When a division is given to a pool that has no allocation scope.
+
+        """
         division_key = None
         if division is not None:
             scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
             if scope.is_empty:
                 raise ValidationError(f"The pool {pool.get_id()} has no allocation scope; a division cannot be applied")
             division_key = division.key
-        return lock.registry.get(name=self.picking_lock_name(pool_id=pool.get_id(), division_key=division_key))
+        return lock.registry.get(name=picking_lock_name(pool_id=pool.get_id(), division_key=division_key))
