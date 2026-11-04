@@ -1,0 +1,1 @@
+Added the INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS setting, which sets how long a change to the ranges of a number pool waits for the allocations from that pool to finish before it fails, and the INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS setting, which sets how long an allocation from a worker that stopped keeps the pool's ranges from changing.
