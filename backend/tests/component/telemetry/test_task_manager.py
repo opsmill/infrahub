@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdate
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
+from infrahub.telemetry import task_manager
 from infrahub.telemetry.task_manager import (
     count_webhook_runs,
     count_windowed_event,
@@ -21,6 +23,7 @@ from infrahub.telemetry.task_manager import (
     gather_activity_24h,
     gather_prefect_events,
     gather_prefect_information,
+    gather_task_manager_database,
 )
 from infrahub.telemetry.utils import floor_to_midnight_utc, get_activity_window
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
@@ -295,3 +298,21 @@ async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, se
 async def test_gather_prefect_information(prefect_test_fixture: Generator) -> None:
     data = await gather_prefect_information()
     assert data
+    assert data.database is not None
+
+
+async def test_gather_task_manager_database(prefect_client: PrefectClient) -> None:
+    data = await gather_task_manager_database.fn(client=prefect_client)
+    # The test task manager runs on this interpreter and stores its data in SQLite.
+    assert data.type == "sqlite"
+    assert data.version == sqlite3.sqlite_version
+
+
+async def test_gather_prefect_information_without_database_version_route(
+    prefect_test_fixture: Generator, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A task manager older than the worker answers 404 for the route.
+    monkeypatch.setattr(task_manager, "DATABASE_VERSION_PATH", "/infrahub/database/missing")
+    data = await gather_prefect_information()
+    assert data.database is None
+    assert data.events

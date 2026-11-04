@@ -89,10 +89,16 @@ class TelemetryWorkPoolData(BaseModel):
     active_workers: int
 
 
+class TelemetryTaskManagerDatabaseData(BaseModel):
+    type: str
+    version: str | None
+
+
 class TelemetryPrefectData(BaseModel):
     events: dict[str, int]
     automations: dict[str, int]
     work_pools: list[TelemetryWorkPoolData]
+    database: TelemetryTaskManagerDatabaseData | None = Field(default=None)
 
 
 class TelemetryData(BaseModel):
