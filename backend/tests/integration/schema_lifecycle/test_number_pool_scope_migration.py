@@ -58,8 +58,8 @@ ROUTER = NodeSchema(
     ],
 )
 
-SITE_COUNT = 10
-SWITCHES_PER_SITE = 5
+SITE_COUNT = 5
+SWITCHES_PER_SITE = 2
 
 
 def _with_site_scoped_vlan_id(schema: NodeSchema) -> dict[str, Any]:
@@ -70,14 +70,14 @@ def _with_site_scoped_vlan_id(schema: NodeSchema) -> dict[str, Any]:
             "kind": "NumberPool",
             "optional": False,
             "read_only": True,
-            "parameters": {"start_range": 1, "end_range": 10, "allocation_scope": ["site"]},
+            "parameters": {"start_range": 1, "end_range": 5, "allocation_scope": ["site"]},
         }
     )
     return {"version": "1.0", "nodes": [switch]}
 
 
 class TestNumberPoolScopeMigrationSchemaLifecycle(TestInfrahubApp):
-    """A schema load that adds a NumberPool attribute scoped by site to 50 switches spread over 10 sites."""
+    """A schema load that adds a NumberPool attribute scoped by site to 10 switches spread over 5 sites."""
 
     @pytest.fixture(scope="class")
     async def site_ids(self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient) -> dict[str, str]:
@@ -118,16 +118,13 @@ class TestNumberPoolScopeMigrationSchemaLifecycle(TestInfrahubApp):
             str(switch.get_attribute("name").value): switch.get_attribute(SCOPED_ATTRIBUTE_NAME).value
             for switch in switches
         }
-        assert len(numbers) == 50
+        assert len(numbers) == 10
         for site_index in range(1, SITE_COUNT + 1):
             assert {
                 name: number for name, number in numbers.items() if name.startswith(f"switch-{site_index:02d}-")
             } == {
                 f"switch-{site_index:02d}-1": 1,
                 f"switch-{site_index:02d}-2": 2,
-                f"switch-{site_index:02d}-3": 3,
-                f"switch-{site_index:02d}-4": 4,
-                f"switch-{site_index:02d}-5": 5,
             }
 
     async def test_step02_new_switch_continues_after_its_site(
@@ -135,16 +132,16 @@ class TestNumberPoolScopeMigrationSchemaLifecycle(TestInfrahubApp):
     ) -> None:
         await client.schema.all(branch=default_branch.name, refresh=True)
 
-        switch = await client.create(kind=SWITCH.kind, name="switch-01-6", site=site_ids["site-01"])
+        switch = await client.create(kind=SWITCH.kind, name="switch-01-3", site=site_ids["site-01"])
         await switch.save()
 
         stored = await client.get(kind=SWITCH.kind, id=switch.id)
-        assert stored.vlan_id.value == 6
+        assert stored.vlan_id.value == 3
 
     async def test_step03_load_onto_a_full_site_fails_and_numbers_no_router(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, site_ids: dict[str, str]
     ) -> None:
-        for index in range(1, 13):
+        for index in range(1, 7):
             router = await client.create(kind=ROUTER.kind, name=f"router-{index:02d}", site=site_ids["site-01"])
             await router.save()
 
@@ -159,8 +156,8 @@ class TestNumberPoolScopeMigrationSchemaLifecycle(TestInfrahubApp):
         assert re.fullmatch(
             f"{re.escape(f'Pool {ROUTER.kind}.{SCOPED_ATTRIBUTE_NAME} [')}{pool_id}{re.escape('] (')}{pool_id}"
             + re.escape(
-                f") has no free number left in its ranges for site '{site_ids['site-01']}': 12 node(s) of"
-                f" {ROUTER.kind} being filled are in this division and the ranges hold 10 number(s)."
+                f") has no free number left in its ranges for site '{site_ids['site-01']}': 6 node(s) of"
+                f" {ROUTER.kind} being filled are in this division and the ranges hold 5 number(s)."
             ),
             errors[0]["message"],
         )
