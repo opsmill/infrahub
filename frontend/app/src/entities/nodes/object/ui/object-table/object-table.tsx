@@ -33,7 +33,13 @@ export const ObjectTable = () => {
   const flatData = data?.pages.flat() ?? [];
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
+    <InfiniteScroll
+      scrollX
+      type="auto"
+      scrollBarClassName="data-[orientation=horizontal]:h-2.5"
+      hasNextPage={hasNextPage}
+      onLoadMore={fetchNextPage}
+    >
       <DataTable
         columns={columns}
         count={count}
