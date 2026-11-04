@@ -1,0 +1,28 @@
+backend/tests/functional/profiles/test_profile_refresh_batching.py
+  s_cebf53084d1f2b::t_0ce521c174e98a 273,276-282
+  s_cebf53084d1f2b::t_09dee34a66e0f2 274-275
+  s_cebf53084d1f2b::t_92d2180df32b49 243
+  s_cebf53084d1f2b::t_dd0bf18013ca5e 244-245
+  s_cebf53084d1f2b::t_0f616e6d332c73 210,215
+  s_cebf53084d1f2b::t_b63d188945974f 53-79
+  s_cebf53084d1f2b::t_8d47d24ad2af6d 208,212-214,217-218
+  s_cebf53084d1f2b::t_e5fb8e88489ee1 211
+  s_cebf53084d1f2b::t_9749bb1b6f32b1 216
+  s_cebf53084d1f2b::t_8b825f02fb7e19 242,246-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "954cf5420d845798bc776995589db2da488529f7",
+  "prompts": {},
+  "sessions": {
+    "s_cebf53084d1f2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54779c52-74e3-4e16-96b7-5d2d3bd86633",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
