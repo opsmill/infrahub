@@ -32,7 +32,7 @@ from prefect.client.orchestration import PrefectClient
 from infrahub.core.constants import ArtifactStatus, InfrahubKind
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.setup import gather_all_automations
-from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS, REPOSITORY_SYNC_WAIT_RETRIES
 from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -152,7 +152,7 @@ class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, retries=REPOSITORY_SYNC_WAIT_RETRIES)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)

@@ -12,6 +12,7 @@ from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.testing.schemas.car_person import SchemaCarPerson
 
 from infrahub.core.constants import ArtifactStatus, InfrahubKind, RepositoryOperationalStatus
+from tests.helpers.constants import REPOSITORY_SYNC_WAIT_RETRIES
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -93,7 +94,9 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
             default_branch=SECTION_GIT_DEFAULT_BRANCH,
         )
         await repository.save()
-        assert await repo.wait_for_sync_to_complete(client=client, branch=default_branch, retries=12)
+        assert await repo.wait_for_sync_to_complete(
+            client=client, branch=default_branch, retries=REPOSITORY_SYNC_WAIT_RETRIES
+        )
 
     async def test_section_artifacts(self, client: InfrahubClient) -> None:
         """Section artifacts are generated with the expected content."""
@@ -117,7 +120,7 @@ class TestArtifactComposition(TestInfrahubDockerClient, SchemaCarPerson):
             dst_directory=remote_repos_dir,
         )
         await repo.add_to_infrahub(client=client)
-        assert await repo.wait_for_sync_to_complete(client=client, retries=12)
+        assert await repo.wait_for_sync_to_complete(client=client, retries=REPOSITORY_SYNC_WAIT_RETRIES)
 
     async def test_composite_artifacts(self, client: InfrahubClient) -> None:
         """Composite artifacts inline section content via the artifact_content filter."""

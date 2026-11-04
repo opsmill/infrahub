@@ -15,6 +15,10 @@ NEO4J_COMMUNITY_IMAGE = "neo4j:2026.05.0-community"
 NEO4J_ENTERPRISE_IMAGE = "neo4j:2026.05.0-enterprise"
 NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
 
+# Polls of a repository's sync status, 5 seconds apart, before a docker integration test gives up:
+# the first sync on a loaded CI runner can take longer than the SDK helper's default 30 seconds.
+REPOSITORY_SYNC_WAIT_RETRIES = 12
+
 # Upper bound in seconds when polling for Prefect events and their side effects
 # (event persistence, triggered automations, computed attribute rendering).
 PREFECT_EVENT_WAIT_SECONDS = 60
