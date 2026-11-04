@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from neo4j.exceptions import DatabaseError as Neo4jDatabaseError
+from neo4j.exceptions import DriverError
+
 from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.recompute.bulk_write import WrittenNode, send_node_updated_event
@@ -23,6 +26,8 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.event import InfrahubEventService
 
     from .node_applier import NodeProfilesApplier
+
+_DATABASE_FAILURES = (DatabaseError, QueryTimeoutError, DriverError, Neo4jDatabaseError)
 
 
 @dataclass(frozen=True)
@@ -61,7 +66,8 @@ class NodeProfilesRefresher:
         Raises:
             DatabaseError: If the database cannot be reached.
             QueryTimeoutError: If a query of the refresh times out.
-            Neo4jError: If a transaction of the refresh still fails after its retries.
+            DriverError: If the driver loses the connection to the database.
+            Neo4jError: If the database itself fails, or a transient failure remains after the retries.
 
         """
         user_id = context.account_id or SYSTEM_USER_ID
@@ -102,7 +108,7 @@ class NodeProfilesRefresher:
         # The transaction rolled back, so the chunk can be applied again without the nodes that fail.
         except Exception as exc:
             # One node at a time cannot clear these, and the transaction already retried the retriable ones.
-            if isinstance(exc, (DatabaseError, QueryTimeoutError)) or is_retriable_db_error(exc):
+            if isinstance(exc, _DATABASE_FAILURES) or is_retriable_db_error(exc):
                 raise
             if len(node_ids) == 1:
                 log.warning(f"Skipping the profile refresh of {node_ids[0]}: {exc}", exc_info=True)

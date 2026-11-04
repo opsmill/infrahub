@@ -7,7 +7,8 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 import pytest
-from neo4j.exceptions import TransientError
+from neo4j.exceptions import DatabaseError as Neo4jDatabaseError
+from neo4j.exceptions import SessionExpired, TransientError
 
 from infrahub import config, lock
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
@@ -365,6 +366,42 @@ async def test_refresh_does_not_retry_each_node_after_a_chunk_exhausts_its_retri
         )
 
     assert raised_for == [failing_node_id] * 3
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        (None, None),
+        (None, None),
+        (None, None),
+    ]
+    assert doubles.events.events == []
+
+
+@dataclass
+class DatabaseFailureTestCase:
+    name: str
+    error: Exception
+
+
+DATABASE_FAILURE_TEST_CASES: list[DatabaseFailureTestCase] = [
+    DatabaseFailureTestCase(name="driver_error", error=SessionExpired("connection lost")),
+    DatabaseFailureTestCase(name="neo4j_database_error", error=Neo4jDatabaseError("database failed")),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DATABASE_FAILURE_TEST_CASES])
+async def test_refresh_stops_at_a_database_failure_without_trying_each_node(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None, test_case: DatabaseFailureTestCase
+) -> None:
+    dataset = await _create_servers(db=db, count=3)
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_failing_applier(failing_node_id=dataset.server_ids[1], error=test_case.error),
+    )
+
+    with pytest.raises(type(test_case.error), match=rf"^{test_case.error}$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
     assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
         (None, None),
         (None, None),
