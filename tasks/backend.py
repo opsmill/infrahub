@@ -904,7 +904,7 @@ class SdkSchemaGenerator:
     def __init__(self, context: Context) -> None:
         from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-        from infrahub.core.constants import ComputedAttributeKind, UpdateSupport, Visibility
+        from infrahub.core.constants import ComputedAttributeKind, HashableModelState, UpdateSupport, Visibility
         from infrahub.core.schema.definitions.internal import (
             SchemaAttribute,
             attribute_schema,
@@ -948,6 +948,35 @@ class SdkSchemaGenerator:
                 regex=r"#[0-9a-fA-F]{6}\b",
             ),
             self._field("label", "Text", "Human friendly representation of the choice.", optional=True),
+        ]
+        self.container_schema_fields = [
+            self._field("name", "Text", "Name of the section, must be unique within the node."),
+            self._field("label", "Text", "Title of the section."),
+            self._field("description", "Text", "Description shown under the title of the section.", optional=True),
+            self._field(
+                "order_weight",
+                "Number",
+                "Position of the section among the sections of the node, lowest first.",
+                optional=True,
+            ),
+            self._field(
+                "collapsed",
+                "Boolean",
+                "Whether the section starts collapsed on the detail page.",
+                optional=True,
+                default_value=False,
+            ),
+            SchemaAttribute(
+                name="state",
+                kind="Text",
+                internal_kind=HashableModelState,
+                description="Expected state of the container after loading the schema",
+                default_value=HashableModelState.PRESENT,
+                enum=HashableModelState.available_types(),
+                enum_class="SchemaState",
+                optional=True,
+                extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
+            ),
         ]
 
         self.list_parameters_fields = [
@@ -1245,6 +1274,11 @@ class SdkSchemaGenerator:
                 "attributes": self.dropdown_choice_fields,
             },
             {
+                "class_name": f"ContainerSchema{suffix}",
+                "parent": "BaseModel",
+                "attributes": self.container_schema_fields,
+            },
+            {
                 "class_name": f"ComputedAttributeUser{suffix}",
                 "parent": "BaseModel",
                 "attributes": self.computed_user_fields,
@@ -1347,11 +1381,13 @@ class SdkSchemaGenerator:
         from infrahub.core.schema import NodeExtensionSchema, SchemaExtension
         from infrahub.core.schema import attribute_parameters as parameters_module
         from infrahub.core.schema.computed_attribute import ComputedAttribute
+        from infrahub.core.schema.container import ContainerSchema
         from infrahub.core.schema.dropdown import DropdownChoice
 
         suffix = "Write"
         internal_counterparts: dict[str, Any] = {
             f"DropdownChoice{suffix}": DropdownChoice,
+            f"ContainerSchema{suffix}": ContainerSchema,
             f"NumberPoolRange{suffix}": parameters_module.NumberPoolRangeParameters,
             f"SchemaExtension{suffix}": SchemaExtension,
             f"NodeExtension{suffix}": NodeExtensionSchema,

@@ -15,6 +15,7 @@ Below is the list of all available options to define a Generic in the schema
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
+| [**containers**](#containers) | Attribute | Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'. | False |
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_label**](#display_label) | Attribute | Attribute or Jinja2 template to use to generate the display label | False |
@@ -50,6 +51,17 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** | aware |
 | **Constraints** |  |
 | **Accepted Values** | `aware` `agnostic` `local`  |
+
+### containers
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | containers |
+| **Kind** | `List` |
+| **Description** | Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
 
 ### default_filter
 

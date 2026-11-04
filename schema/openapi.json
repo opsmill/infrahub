@@ -3102,6 +3102,116 @@
                 ],
                 "title": "ConfigAPI"
             },
+            "ContainerSchemaRead": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the section, must be unique within the node."
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label",
+                        "description": "Title of the section."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description shown under the title of the section."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Position of the section among the sections of the node, lowest first."
+                    },
+                    "collapsed": {
+                        "type": "boolean",
+                        "title": "Collapsed",
+                        "description": "Whether the section starts collapsed on the detail page.",
+                        "default": false
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the container after loading the schema",
+                        "default": "present"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "label"
+                ],
+                "title": "ContainerSchemaRead"
+            },
+            "ContainerSchemaWrite": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the section, must be unique within the node."
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label",
+                        "description": "Title of the section."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description shown under the title of the section."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Position of the section among the sections of the node, lowest first."
+                    },
+                    "collapsed": {
+                        "type": "boolean",
+                        "title": "Collapsed",
+                        "description": "Whether the section starts collapsed on the detail page.",
+                        "default": false
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the container after loading the schema",
+                        "default": "present"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "label"
+                ],
+                "title": "ContainerSchemaWrite"
+            },
             "DiffAction": {
                 "type": "string",
                 "enum": [
@@ -3519,6 +3629,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -3790,6 +3912,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -3975,6 +4109,14 @@
                         ],
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
+                    },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaRead"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
                     },
                     "uniqueness_constraints": {
                         "anyOf": [
@@ -4298,6 +4440,14 @@
                         ],
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
+                    },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaWrite"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
                     },
                     "uniqueness_constraints": {
                         "anyOf": [
@@ -4996,6 +5146,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -5247,6 +5409,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     },
                     "parameters": {
                         "anyOf": [
@@ -5744,6 +5918,14 @@
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
                     },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaRead"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
+                    },
                     "uniqueness_constraints": {
                         "anyOf": [
                             {
@@ -6087,6 +6269,14 @@
                         ],
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
+                    },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaWrite"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
                     },
                     "uniqueness_constraints": {
                         "anyOf": [
@@ -6560,6 +6750,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -6811,6 +7013,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     },
                     "parameters": {
                         "anyOf": [
@@ -7070,6 +7284,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -7321,6 +7547,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     },
                     "parameters": {
                         "anyOf": [
@@ -7764,6 +8002,14 @@
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
                     },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaRead"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
+                    },
                     "uniqueness_constraints": {
                         "anyOf": [
                             {
@@ -8156,6 +8402,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     }
                 },
                 "type": "object",
@@ -8360,6 +8618,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     }
                 },
                 "type": "object",
@@ -9038,6 +9308,14 @@
                         "title": "Order By",
                         "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
                     },
+                    "containers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ContainerSchemaRead"
+                        },
+                        "type": "array",
+                        "title": "Containers",
+                        "description": "Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'."
+                    },
                     "uniqueness_constraints": {
                         "anyOf": [
                             {
@@ -9493,6 +9771,18 @@
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
+                    },
                     "parameters": {
                         "anyOf": [
                             {
@@ -9747,6 +10037,18 @@
                         "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
+                    },
+                    "container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Container",
+                        "description": "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section."
                     },
                     "parameters": {
                         "anyOf": [

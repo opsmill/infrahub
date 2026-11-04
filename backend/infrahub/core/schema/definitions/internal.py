@@ -42,6 +42,7 @@ from infrahub.core.schema.attribute_parameters import (
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.container import ContainerSchema
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
@@ -189,6 +190,7 @@ class SchemaAttribute(BaseModel):
             AttributeSchema: "list[AttributeSchema__VARIANT__]",
             RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
             DropdownChoice: "list[DropdownChoice__VARIANT__]",
+            ContainerSchema: "list[ContainerSchema__VARIANT__]",
             ComputedAttribute: "ComputedAttribute__VARIANT__",
         }
         internal = self.internal_kind
@@ -479,6 +481,19 @@ base_node_schema = SchemaNode(
             ),
             optional=True,
             ordered=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="containers",
+            kind="List",
+            internal_kind=ContainerSchema,
+            description=(
+                "Named sections that group the attributes and relationships of this node in the UI; "
+                "a field joins one through 'container'."
+            ),
+            optional=True,
+            ordered=False,
+            default_factory="list",
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
@@ -837,6 +852,17 @@ attribute_schema = SchemaNode(
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
+        SchemaAttribute(
+            name="container",
+            kind="Text",
+            description=(
+                "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. "
+                "Unset, it shows in the main section."
+            ),
+            optional=True,
+            default_value=None,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -1085,6 +1111,17 @@ relationship_schema = SchemaNode(
             enum_class="SchemaAttributeDisplay",
             default_value=SchemaAttributeDisplay.DEFAULT,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="container",
+            kind="Text",
+            description=(
+                "Section that shows this relationship: a name from the node's 'containers' or 'advanced'. "
+                "Unset, it shows in the main section."
+            ),
+            optional=True,
+            default_value=None,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
     ],

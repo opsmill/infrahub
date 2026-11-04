@@ -1,5 +1,6 @@
 import type {
   AttributeSchema,
+  ContainerSchema,
   GenericSchema,
   NodeSchema,
   ProfileSchema,
@@ -25,6 +26,7 @@ export const generateNodeSchema = (
     menu_placement: null,
     icon: "mdi:tag-multiple",
     order_by: ["name__value"],
+    containers: [],
     uniqueness_constraints: [["name__value"]],
     documentation: null,
     attributes: [
@@ -191,6 +193,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
     menu_placement: null,
     icon: "mdi:ethernet",
     order_by: ["name__value"],
+    containers: [],
     uniqueness_constraints: [["device", "name__value"]],
     documentation: null,
     attributes: [
@@ -624,6 +627,7 @@ export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): Profi
     menu_placement: null,
     icon: null,
     order_by: null,
+    containers: [],
     uniqueness_constraints: null,
     documentation: null,
     attributes: [
@@ -797,6 +801,7 @@ export const generateTemplateSchema = (overrides?: Partial<TemplateSchema>): Tem
     menu_placement: null,
     icon: null,
     order_by: null,
+    containers: [],
     uniqueness_constraints: null,
     documentation: null,
     attributes: [
@@ -949,6 +954,7 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
     inherited: false,
     read_only: false,
     display: "default",
+    container: null,
     deprecation: null,
     parameters: {
       id: null,
@@ -982,6 +988,17 @@ export const generateRelationshipSchema = (
   allow_override: "any",
   read_only: false,
   display: "default",
+  container: null,
   deprecation: null,
+  ...overrides,
+});
+
+export const generateContainerSchema = (overrides?: Partial<ContainerSchema>): ContainerSchema => ({
+  name: "lacp",
+  label: "LACP",
+  description: null,
+  order_weight: null,
+  collapsed: false,
+  state: "present",
   ...overrides,
 });
