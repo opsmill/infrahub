@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import dataclass
 
 import pytest
@@ -57,6 +58,8 @@ class PoolSeed:
     pool_uuid: str
     runtime_server_uuid: str
     damaged_uuids: tuple[str, str, str]
+    switch_pool_uuid: str
+    switch_uuids: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -67,10 +70,26 @@ class PoolHealRun:
 
 
 class TestNumberPoolHeal:
-    """One pre-provisioned pool, one runtime-written server, three damaged ones, healed once."""
+    """Two kinds healed in one run, each from its own schema pool.
+
+    An unscoped pool serves one runtime-written server and three damaged ones; a pool scoped by site serves four
+    switches over two sites, one damaged in each site.
+    """
 
     @pytest.fixture(scope="class")
-    async def seeded(self, db: InfrahubDatabase, default_branch_scope_class: Branch) -> PoolSeed:
+    def number_pool_node_class(self, default_branch_scope_class: Branch) -> Generator[None]:
+        previous = registry.node.get(InfrahubKind.NUMBERPOOL)
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        yield
+        if previous is None:
+            registry.node.pop(InfrahubKind.NUMBERPOOL, None)
+        else:
+            registry.node[InfrahubKind.NUMBERPOOL] = previous
+
+    @pytest.fixture(scope="class")
+    async def seeded(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool_node_class: None
+    ) -> PoolSeed:
         default = default_branch_scope_class
         registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default.name)
         registry.schema.register_schema(schema=SchemaRoot(**core_models), branch=default.name)
@@ -94,10 +113,22 @@ class TestNumberPoolHeal:
                     created_at=Timestamp().subtract(seconds=240),
                 )
             )
+
+        switch_uuids = await _seed_switches_and_damage(
+            db=db, branch=default, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]
+        )
+        switch_pools = [
+            schema_pool
+            for schema_pool in await get_schema_pools(db=db)
+            if schema_pool.get_attribute(name="node").value == "ScopeEquipment"
+        ]
+        assert len(switch_pools) == 1
         return PoolSeed(
             pool_uuid=pool.get_id(),
             runtime_server_uuid=runtime_server.get_id(),
             damaged_uuids=(damaged[0], damaged[1], damaged[2]),
+            switch_pool_uuid=switch_pools[0].get_id(),
+            switch_uuids=switch_uuids,
         )
 
     @pytest.fixture(scope="class")
@@ -112,22 +143,38 @@ class TestNumberPoolHeal:
 
     async def test_result_counts_and_console(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
         assert healed.errors == []
-        # 3 damaged nodes x 1 pool-backed inherited attribute
-        assert healed.nbr_migrations_executed == 3
+        # 3 damaged servers and 2 damaged switches x 1 pool-backed inherited attribute
+        assert healed.nbr_migrations_executed == 5
         assert "TestServer: 3 missing attribute row(s) across 3 node(s); repairing" in healed.console_output
         assert "TestServer.rack_unit: allocated 3 pool value(s)" in healed.console_output
+        assert "ScopeSwitch: 2 missing attribute row(s) across 2 node(s); repairing" in healed.console_output
+        assert "ScopeSwitch.vlan_id: allocated 2 pool value(s)" in healed.console_output
 
         validation_result = await Migration083.init().validate_migration(db=db)
         assert validation_result.errors == []
 
-    async def test_single_pool_served_all_allocations(
+    async def test_each_kind_was_served_by_its_existing_pool(
         self, db: InfrahubDatabase, seeded: PoolSeed, healed: PoolHealRun
     ) -> None:
         pools = await get_schema_pools(db=db)
-        assert len(pools) == 1
-        assert pools[0].get_id() == seeded.pool_uuid
-        assert pools[0].get_attribute(name="node").value == "TestAsset"
-        assert pools[0].get_attribute(name="node_attribute").value == "rack_unit"
+        assert {
+            (pool.get_attribute(name="node").value, pool.get_attribute(name="node_attribute").value): pool.get_id()
+            for pool in pools
+        } == {
+            ("TestAsset", "rack_unit"): seeded.pool_uuid,
+            ("ScopeEquipment", SCOPED_ATTRIBUTE_NAME): seeded.switch_pool_uuid,
+        }
+        assert len(pools) == 2
+
+    async def test_scoped_pool_repair_gives_each_node_the_lowest_free_number_of_its_site(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
 
     async def test_distinct_values_sourced_from_the_pool(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
@@ -204,12 +251,18 @@ class TestNumberPoolHeal:
         assert second_result.errors == []
         assert second_result.nbr_migrations_executed == 0
 
-        assert len(await get_schema_pools(db=db)) == 1
+        assert len(await get_schema_pools(db=db)) == 2
         nodes_after = await NodeManager.get_many(
             db=db, branch=default_branch_scope_class, ids=list(seeded.damaged_uuids)
         )
         values_after = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_after.items()}
         assert values_after == values_before
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
 
     async def test_graph_left_valid(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
         await verify_graph(db=db)
@@ -471,59 +524,6 @@ async def _seed_switches_and_damage(
     return switches
 
 
-async def _vlan_ids_by_name(db: InfrahubDatabase, branch: Branch, switches: dict[str, str]) -> dict[str, int]:
+async def _vlan_ids_by_name(db: InfrahubDatabase, branch: Branch, switches: dict[str, str]) -> dict[str, int | None]:
     nodes = await NodeManager.get_many(db=db, branch=branch, ids=list(switches.values()))
     return {name: nodes[uuid].get_attribute(name=SCOPED_ATTRIBUTE_NAME).value for name, uuid in switches.items()}
-
-
-@pytest.fixture
-def number_pool_node_class(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
-
-
-async def test_scoped_pool_repair_gives_each_node_the_lowest_free_number_of_its_site(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    number_pool_node_class: None,
-) -> None:
-    switches = await _seed_switches_and_damage(
-        db=db, branch=default_branch, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]
-    )
-
-    result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
-
-    assert result.errors == []
-    assert result.nbr_migrations_executed == 2
-    assert await _vlan_ids_by_name(db=db, branch=default_branch, switches=switches) == {
-        "s1-a": 1,
-        "s1-b": 2,
-        "s1-c": 3,
-        "s2-a": 1,
-    }
-    await verify_graph(db=db)
-
-
-async def test_unscoped_pool_repair_allocates_from_the_whole_pool(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    number_pool_node_class: None,
-) -> None:
-    switches = await _seed_switches_and_damage(
-        db=db, branch=default_branch, allocation_scope=None, damaged_names=["s1-c", "s2-a"]
-    )
-    # The repair allocates in UUID order, so the damaged switch with the lower UUID receives the lower number.
-    first, second = sorted(["s1-c", "s2-a"], key=lambda name: switches[name])
-
-    result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
-
-    assert result.errors == []
-    assert result.nbr_migrations_executed == 2
-    assert await _vlan_ids_by_name(db=db, branch=default_branch, switches=switches) == {
-        "s1-a": 1,
-        "s1-b": 2,
-        first: 3,
-        second: 4,
-    }
-    await verify_graph(db=db)

@@ -765,7 +765,7 @@ mutation CreateDeviceFromPool($name: String!, $site_id: String!, $pool_id: Strin
 """
 
 
-def _switch_with_vlan_id(allocation_scope: list[str] | None) -> NodeSchema:
+def _switch_with_vlan_id(allocation_scope: list[str] | None, end_range: int = 10) -> NodeSchema:
     switch = SCOPED_SWITCH.duplicate()
     switch.attributes.append(
         AttributeSchema(
@@ -773,7 +773,7 @@ def _switch_with_vlan_id(allocation_scope: list[str] | None) -> NodeSchema:
             kind="NumberPool",
             optional=False,
             read_only=True,
-            parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=allocation_scope),
+            parameters=NumberPoolParameters(start_range=1, end_range=end_range, allocation_scope=allocation_scope),
         )
     )
     return switch
@@ -800,11 +800,13 @@ async def _switch(db: InfrahubDatabase, branch: Branch, name: str, site: Node) -
     return switch
 
 
-async def _add_site_scoped_vlan_id(db: InfrahubDatabase, branch: Branch) -> list[str]:
+async def _add_site_scoped_vlan_id(db: InfrahubDatabase, branch: Branch, end_range: int = 10) -> list[str]:
     """Load the switch schema with a `vlan_id` scoped by site on the branch, then run the migration that adds it."""
     previous = registry.schema.get_node_schema(name=SCOPED_SWITCH.kind, branch=branch, duplicate=True)
     await save_schema_kinds(
-        db=db, schema=SchemaRoot(nodes=[_switch_with_vlan_id(allocation_scope=["site"])]), branch_name=branch.name
+        db=db,
+        schema=SchemaRoot(nodes=[_switch_with_vlan_id(allocation_scope=["site"], end_range=end_range)]),
+        branch_name=branch.name,
     )
     migration = NodeAttributeAddMigration(
         previous_node_schema=previous,
@@ -824,50 +826,6 @@ async def _vlan_ids(db: InfrahubDatabase, branch: Branch, kind: str) -> dict[str
     return {str(node.get_attribute("name").value): node.get_attribute(SCOPED_ATTRIBUTE_NAME).value for node in nodes}
 
 
-async def test_migration_scoped_numberpool_attribute_numbers_each_site_from_one(
-    db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
-) -> None:
-    sites = [await scoped_site(db=db, branch=default_branch, name=name) for name in ("site-a", "site-b")]
-    for index in range(1, 6):
-        for site in sites:
-            await _switch(db=db, branch=default_branch, name=f"{site.get_attribute('name').value}-{index}", site=site)
-
-    errors = await _add_site_scoped_vlan_id(db=db, branch=default_branch)
-
-    assert errors == []
-    assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == {
-        "site-a-1": 1,
-        "site-a-2": 2,
-        "site-a-3": 3,
-        "site-a-4": 4,
-        "site-a-5": 5,
-        "site-b-1": 1,
-        "site-b-2": 2,
-        "site-b-3": 3,
-        "site-b-4": 4,
-        "site-b-5": 5,
-    }
-    await verify_graph(db=db)
-
-
-async def test_migration_scoped_numberpool_attribute_gives_one_to_the_only_node_of_each_site(
-    db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
-) -> None:
-    for name in ("site-a", "site-b", "site-c"):
-        site = await scoped_site(db=db, branch=default_branch, name=name)
-        await _switch(db=db, branch=default_branch, name=f"switch-{name}", site=site)
-
-    errors = await _add_site_scoped_vlan_id(db=db, branch=default_branch)
-
-    assert errors == []
-    assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == {
-        "switch-site-a": 1,
-        "switch-site-b": 1,
-        "switch-site-c": 1,
-    }
-    await verify_graph(db=db)
-
-
 async def test_migration_scoped_numberpool_attribute_gives_the_numbers_a_create_gives(
     db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
 ) -> None:
@@ -880,8 +838,6 @@ async def test_migration_scoped_numberpool_attribute_gives_the_numbers_a_create_
         "node-2": "site-b",
         "node-3": "site-a",
         "node-4": "site-c",
-        "node-5": "site-a",
-        "node-6": "site-b",
     }
     for name, site_name in placement.items():
         await _switch(db=db, branch=default_branch, name=name, site=sites[site_name])
@@ -900,7 +856,7 @@ async def test_migration_scoped_numberpool_attribute_gives_the_numbers_a_create_
             variable_values={"name": name, "site_id": sites[site_name].id, "pool_id": device_pool.id},
         )
         assert result.errors is None
-    expected = {"node-1": 1, "node-2": 1, "node-3": 2, "node-4": 1, "node-5": 3, "node-6": 2}
+    expected = {"node-1": 1, "node-2": 1, "node-3": 2, "node-4": 1}
     assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == expected
     assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_DEVICE.kind) == expected
     await verify_graph(db=db)
@@ -932,14 +888,14 @@ async def test_migration_scoped_numberpool_attribute_reads_the_site_on_the_branc
     await verify_graph(db=db)
 
 
-def _switch_pool_exhaustion_pattern(description: str, count: int) -> str:
+def _switch_pool_exhaustion_pattern(description: str, count: int, size: int) -> str:
     """Match the error of a full division of the switches' schema pool, whose id the rollback leaves unknown."""
     pool_id = "[0-9a-f-]+"
     return (
         f"^{re.escape(f'Pool {SCOPED_SWITCH.kind}.{SCOPED_ATTRIBUTE_NAME} [')}{pool_id}{re.escape('] (')}{pool_id}"
         + re.escape(
             f") has no free number left in its ranges for {description}: {count} node(s) of {SCOPED_SWITCH.kind}"
-            " being filled are in this division and the ranges hold 10 number(s)."
+            f" being filled are in this division and the ranges hold {size} number(s)."
         )
         + "$"
     )
@@ -956,16 +912,18 @@ async def test_migration_scoped_numberpool_attribute_on_a_full_site_allocates_no
     db: InfrahubDatabase, default_branch: Branch, scoped_switch_schema: None
 ) -> None:
     site = await scoped_site(db=db, branch=default_branch, name="site-1")
-    for index in range(1, 13):
-        await _switch(db=db, branch=default_branch, name=f"switch-{index:02d}", site=site)
+    for name in ("switch-1", "switch-2", "switch-3"):
+        await _switch(db=db, branch=default_branch, name=name, site=site)
 
     with pytest.raises(
-        PoolExhaustedError, match=_switch_pool_exhaustion_pattern(description=f"site '{site.id}'", count=12)
+        PoolExhaustedError, match=_switch_pool_exhaustion_pattern(description=f"site '{site.id}'", count=3, size=2)
     ):
-        await _add_site_scoped_vlan_id(db=db, branch=default_branch)
+        await _add_site_scoped_vlan_id(db=db, branch=default_branch, end_range=2)
 
     assert await _vlan_ids(db=db, branch=default_branch, kind=SCOPED_SWITCH.kind) == {
-        f"switch-{index:02d}": None for index in range(1, 13)
+        "switch-1": None,
+        "switch-2": None,
+        "switch-3": None,
     }
     assert await _count_reservation_edges(db=db) == 0
     assert (

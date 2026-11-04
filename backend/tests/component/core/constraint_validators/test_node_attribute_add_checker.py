@@ -45,29 +45,28 @@ def _switch_with_vlan_id(allocation_scope: list[str] | None) -> NodeSchema:
             kind="NumberPool",
             optional=False,
             read_only=True,
-            parameters=NumberPoolParameters(start_range=1, end_range=5, allocation_scope=allocation_scope),
+            parameters=NumberPoolParameters(start_range=1, end_range=1, allocation_scope=allocation_scope),
         )
     )
     return switch
 
 
 class TestNodeAttributeAddCheckerOnNumberPool:
-    """A required NumberPool attribute added to a kind holding 10 switches over 5 sites, with a range of 5 numbers."""
+    """A required NumberPool attribute added to a kind holding 2 switches over 2 sites, with a range of 1 number."""
 
     @pytest.fixture(scope="class")
-    async def ten_switches(
+    async def one_switch_per_site(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> None:
         await save_schema_kinds(db=db, schema=SchemaRoot(nodes=[SCOPED_SITE, SWITCH]))
-        for site_index in range(1, 6):
-            site = await scoped_site(db=db, branch=default_branch_scope_class, name=f"site-{site_index}")
-            for switch_index in range(1, 3):
-                switch = await Node.init(db=db, schema=SWITCH.kind, branch=default_branch_scope_class)
-                await switch.new(db=db, name=f"switch-{site_index}-{switch_index}", site=site)
-                await switch.save(db=db)
+        for index in range(1, 3):
+            site = await scoped_site(db=db, branch=default_branch_scope_class, name=f"site-{index}")
+            switch = await Node.init(db=db, schema=SWITCH.kind, branch=default_branch_scope_class)
+            await switch.new(db=db, name=f"switch-{index}", site=site)
+            await switch.save(db=db)
 
     @staticmethod
     async def _check(db: InfrahubDatabase, branch: Branch, allocation_scope: list[str] | None) -> int:
@@ -83,14 +82,14 @@ class TestNodeAttributeAddCheckerOnNumberPool:
         return sum(len(paths.get_all_data_paths()) for paths in grouped_data_paths)
 
     async def test_scoped_pool_is_not_refused_on_the_count_of_the_kind(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ten_switches: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, one_switch_per_site: None
     ) -> None:
         assert await self._check(db=db, branch=default_branch_scope_class, allocation_scope=["site"]) == 0
 
     async def test_unscoped_pool_smaller_than_the_kind_is_refused(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ten_switches: None
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, one_switch_per_site: None
     ) -> None:
         with pytest.raises(
-            ValueError, match=r"^The size of the NumberPool is smaller than the number of existing nodes 5 < 10\.$"
+            ValueError, match=r"^The size of the NumberPool is smaller than the number of existing nodes 1 < 2\.$"
         ):
             await self._check(db=db, branch=default_branch_scope_class, allocation_scope=None)
