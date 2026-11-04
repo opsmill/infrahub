@@ -103,9 +103,9 @@ The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, 
   helm repo add neo4j https://helm.neo4j.com/neo4j/
   helm repo update
   kubectl create secret generic neo4j-user --namespace infrahub --from-literal=NEO4J_AUTH=neo4j/admin
-  helm install database-0 neo4j/neo4j --version 2026.10.1 --namespace infrahub --values neo4j-values.yaml
-  helm install database-1 neo4j/neo4j --version 2026.10.1 --namespace infrahub --values neo4j-values.yaml
-  helm install database-2 neo4j/neo4j --version 2026.10.1 --namespace infrahub --values neo4j-values.yaml
+  helm install database-0 neo4j/neo4j --version 2026.5.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 2026.5.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 2026.5.0 --namespace infrahub --values neo4j-values.yaml
   ```
 
   Once all instances are running, install the headless service:
@@ -113,7 +113,7 @@ The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, 
   <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
 
   ```bash
-  helm install database-service neo4j/neo4j-headless-service --version 2026.10.1 --namespace infrahub --values service-values.yaml
+  helm install database-service neo4j/neo4j-headless-service --version 2026.5.0 --namespace infrahub --values service-values.yaml
   ```
 
   <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
