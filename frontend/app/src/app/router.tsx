@@ -314,6 +314,16 @@ export const router = createBrowserRouter([
                   },
                 ],
               },
+              // PROTO ip-pool-defaults: start
+              ...(import.meta.env.DEV
+                ? [
+                    {
+                      path: "/proto/ip-pool-defaults",
+                      lazy: () => import("@/proto/ip-pool-defaults"),
+                    },
+                  ]
+                : []),
+              // PROTO ip-pool-defaults: end
               {
                 path: "/path-traversal",
                 lazy: () => import("@/pages/path-traversal"),
