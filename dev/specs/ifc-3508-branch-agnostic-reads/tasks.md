@@ -142,16 +142,18 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 ### Tests and benchmarks for User Story 3
 
-- [ ] T028 [US3] Create a worktree for `branch-windows-ip-pools-ifc-3508` from `origin/release-1.12`.
-- [ ] T029 [P] [US3] Bring `backend/tests/benchmark/test_node_list_filter.py` from `7015435c4` (`git show 7015435c4:backend/tests/benchmark/test_node_list_filter.py`) and adapt it to the `release-1.12` API, so later PRs can report filter costs against it (research R12).
-- [ ] T030 [P] [US3] Add `backend/tests/benchmark/test_ip_pool_allocation.py`. It allocates from an IP prefix pool and an IP address pool with 50 live branches and at least 1,000 past allocations, and sums database hits with Neo4j `PROFILE` as `test_node_list_filter.py` does. Run it on the base branch and record the numbers.
-- [ ] T031 [P] [US3] Move the 8 IP pool tests of `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_pool_reads_release_1_12.py` (IPv4 and IPv6) into `backend/tests/component/core/resource_manager/test_ip_pool_branch_windows.py`, and confirm they fail. Move its 4 number pool tests into `backend/tests/component/core/resource_manager/test_number_pool_branch_windows.py`, and confirm they pass; they guard against regressions.
-- [ ] T032 [P] [US3] Add allocation tests to `backend/tests/component/core/resource_manager/test_ip_pool_allocation_on_branch.py`, one per acceptance scenario 3-6 of spec US3:
+- [X] T028 [US3] Create a worktree for `branch-windows-ip-pools-ifc-3508` from `origin/release-1.12`.
+- [X] T029 [P] [US3] Bring `backend/tests/benchmark/test_node_list_filter.py` from `7015435c4` (`git show 7015435c4:backend/tests/benchmark/test_node_list_filter.py`) and adapt it to the `release-1.12` API, so later PRs can report filter costs against it (research R12). Result: it runs on `release-1.12` unchanged.
+- [X] T030 [P] [US3] Add `backend/tests/benchmark/test_ip_pool_allocation.py`. It allocates from an IP prefix pool and an IP address pool with 50 live branches and at least 1,000 past allocations, and sums database hits with Neo4j `PROFILE` as `test_node_list_filter.py` does. Run it on the base branch and record the numbers.
+- [X] T031 [P] [US3] Move the 8 IP pool tests of `branch-agnostic-wip/audit-tests/test_audit_branch_agnostic_pool_reads_release_1_12.py` (IPv4 and IPv6) into `backend/tests/component/core/resource_manager/test_ip_pool_branch_windows.py`, and confirm they fail. Move its 4 number pool tests into `backend/tests/component/core/resource_manager/test_number_pool_branch_windows.py`, and confirm they pass; they guard against regressions.
+- [X] T032 [P] [US3] Add allocation tests to `backend/tests/component/core/resource_manager/test_ip_pool_allocation_on_branch.py`, one per acceptance scenario 3-6 of spec US3:
   - namespace only on branch B, allocation on the default branch: `ResourceNotFoundError` naming the pool, the namespace and the branch;
   - no resource exists on X: `PoolExhaustedError` naming the pool and X, for both pool kinds;
   - some resources missing on X: only the existing ones are used;
   - namespace, prefix and pool created on B: allocation succeeds on B, and on the default branch after B is merged.
-- [ ] T033 [P] [US3] Extend `backend/tests/component/core/resource_manager/test_number_pool_query.py`:
+
+  Result: on the base, the first two scenarios fail and the last two pass. A read of the pool's `resources` on the default branch already leaves out a prefix that exists only on another branch.
+- [X] T033 [P] [US3] Extend `backend/tests/component/core/resource_manager/test_number_pool_query.py`:
   - pin the current per-branch results of `NumberPoolGetAllocated` and `NumberPoolGetFree` in a state with two live branches and a value deleted on the default branch after branching;
   - add a read at a time before a branch was created.
 
