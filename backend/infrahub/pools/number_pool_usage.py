@@ -69,6 +69,16 @@ class HoldingObject:
 
 
 @dataclass(frozen=True)
+class NumberHolder:
+    """An object holding numbers, and the pools that track them."""
+
+    label: str | None
+    """The object's display label, or its human-friendly ID when its schema defines no display label."""
+    tracking_pool_ids: dict[str, str]
+    """The pool tracking each of the requested attributes that a pool tracks, by attribute name."""
+
+
+@dataclass(frozen=True)
 class RangeReference:
     id: str
     display_label: str

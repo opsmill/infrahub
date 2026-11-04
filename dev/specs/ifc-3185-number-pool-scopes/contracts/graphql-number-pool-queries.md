@@ -10,7 +10,7 @@ The surface is the one described in PR #10932, served from the database. This fi
 | `NumberPoolDivisionEntry` | `path`, `value`, `display_label`, `peer_kind` | adds `id: String!`, the schema element id of the entry | Additive |
 | `NumberPoolDivisionEntry.value`, `NumberPoolDivisionEntryInput.value` | `String!`, the value as text | `GenericScalar!`, the value as the attribute stores it (a number for a Number, NumberPool or Bandwidth attribute, a boolean for a Boolean or Checkbox attribute, a text for any other kind); a filter value of another type is refused | Breaking for a client that sends a number or a boolean element as text |
 | Descriptions mentioning "the scope in force on the request's branch" | scope could be partial on a branch | the scope is the pool's scope on every branch; a query on a branch whose schema lacks an element is refused | Wording and one refusal (decisions 1 and 7) |
-| Division of a holding object | counted under every division the object occupies on any live branch | the same | Unchanged (decision 7, revised on 2026-10-12) |
+| Division of a holding object | counted under every division the object occupies on any live branch | a number counted under every division its holding object occupies on a live branch holding the number | Figures and filter results (decision 7, revised on 2026-10-27) |
 | Enum of `NumberPoolAllocation.provenance` and of the `provenance` argument | `NumberPoolProvenance`, a type of its own | `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, with the same values `ALLOCATED` and `PROVIDED` | Breaking for a client that names the type in a query variable |
 
 Everything else (root fields, arguments, defaults, ordering, pagination, holder and range references) is unchanged. The resolvers read the database; the fixed dataset of PR #10932 is removed.
@@ -213,7 +213,7 @@ type Query {
 
 - `InfrahubNumberPoolUtilization`: on a scoped pool, `division` is required and must give a value for every scope element; the figures are those of that division over the pool and over each range. On an unscoped pool, `division` is refused and the figures cover the whole pool.
 - `InfrahubNumberPoolDivisions`: only the divisions holding at least one tracked value; figures over the whole pool; ordered by `utilization` descending then `display_label`. Empty list and empty scope on an unscoped pool.
-- A holding object counts under every division it occupies on any live branch: an object moved to another site on branch `b1` counts under the old site and the new site, on `b1` and on the default branch; an object that exists only on another branch counts. One value can count in several divisions.
+- A number counts under every division its holding object occupies on a live branch holding the number: an object moved to another site on branch `b1`, keeping its number, counts under the old site and the new site, on `b1` and on the default branch; an object moved and renumbered on `b1` counts its old number only under the old site and its new number only under the new site; an object that exists only on another branch counts. One value can count in several divisions.
 - `InfrahubNumberPoolAllocations`: all arguments except `pool_id` optional; `offset` defaults to 0, `limit` to 1000; rows are the values inside the pool's space (inside one of its ranges, not excluded by the attribute, within its `min_value` and `max_value`); `division` may name a subset of the scope elements; rows ordered by value, branch and the holding object's id; `count` is the number of rows before pagination.
 - The existing `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` keep their shape; for a number pool they ignore the scope and their descriptions point to the dedicated queries.
 
@@ -237,7 +237,7 @@ All are `ValidationError`.
 
 ## Example
 
-Pool scoped by `site`, ranges `1 - 50` and `51 - 100`; site A holds 40 values, site B holds 30 (3 of them only on branches other than the default branch), site D holds none. Device D1 holds 5 in site A on the default branch and was moved to site C on branch `b1`. Read on branch `b1`, the list holds sites A (39), B (30) and C (1); read on the default branch, it holds sites A (40) and B (30). The response below is the read on `b1`.
+Pool scoped by `site`, ranges `1 - 50` and `51 - 100`; site A holds 40 values, site B holds 30 (3 of them only on branches other than the default branch), site D holds none. Device D1 holds 5 in site A on the default branch and was moved to site C on branch `b1`, keeping its number. Read on any branch, the list holds sites A (40), B (30) and C (1): D1's 5 counts in site A on the default branch and in site C on `b1` only. The response below is the read on `b1`.
 
 ```graphql
 query {
@@ -259,11 +259,11 @@ query {
   "allocation_scope": [{ "id": "17d0a4c2…", "name": "site" }],
   "divisions": [
     { "display_label": "Site A", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "a1…", "display_label": "Site A", "peer_kind": "LocationSite" }],
-      "figures": { "size": 100, "used": 39, "used_default_branch": 39, "used_branches": 0, "utilization": 39.0 } },
+      "figures": { "size": 100, "used": 40, "used_default_branch": 40, "used_branches": 0, "utilization": 40.0 } },
     { "display_label": "Site B", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "b2…", "display_label": "Site B", "peer_kind": "LocationSite" }],
       "figures": { "size": 100, "used": 30, "used_default_branch": 27, "used_branches": 3, "utilization": 30.0 } },
     { "display_label": "Site C", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "c3…", "display_label": "Site C", "peer_kind": "LocationSite" }],
-      "figures": { "size": 100, "used": 1, "used_default_branch": 1, "used_branches": 0, "utilization": 1.0 } }
+      "figures": { "size": 100, "used": 1, "used_default_branch": 0, "used_branches": 1, "utilization": 1.0 } }
   ]
 }
 ```

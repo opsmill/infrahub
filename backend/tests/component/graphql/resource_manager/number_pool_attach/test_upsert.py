@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from .helpers import attribute_read, create_ticket, execute, new_pool, pool_source
+from infrahub.core.manager import NodeManager
+
+from .helpers import attribute_read, create_ticket, execute, new_pool, pool_source, refused_write, used_numbers
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -86,3 +88,32 @@ class TestNumberPoolUpsert:
         assert upserted["id"] == ticket["id"], "the upsert updated the existing ticket"
         assert upserted["sequence"]["value"] == 7
         assert attribute_read(upserted["ticket_id"]) == pool_source(value=ticket_id, pool=pool)
+
+    async def test_an_upsert_drawing_a_number_held_by_hand_is_refused_and_leaves_the_holding_object_alone(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """The drawn number makes the payload's human-friendly ID match another object, which the upsert never named."""
+        pool = await new_pool(db=db, name="upsert-held", start_range=720, end_range=729)
+        held = await create_ticket(db=db, branch=main_branch, title="upsert-held", ticket_id={"value": 720})
+
+        message = await refused_write(
+            db=db,
+            branch=main_branch,
+            source=UPSERT_TICKET,
+            variables={
+                "data": {
+                    "title": {"value": "upsert-held"},
+                    "ticket_id": {"from_pool": {"id": pool.id}},
+                    "sequence": {"value": 7},
+                }
+            },
+        )
+
+        assert message == (
+            f"Violates uniqueness constraint 'title-ticket_id': the 'upsert-held' pool allocated 720, which object "
+            f"'upsert-held, 720' ('{held['id']}') already holds. Attach that number to the pool by updating object '{held['id']}' with "
+            "value 720 and from_pool 'upsert-held', or change its number, then retry."
+        )
+        holding_object = await NodeManager.get_one(db=db, id=held["id"], branch=main_branch, raise_on_error=True)
+        assert holding_object.get_attribute(name="sequence").value is None
+        assert await used_numbers(db=db, branch=main_branch, pool=pool) == []

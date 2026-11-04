@@ -12,6 +12,7 @@ because what the migration moves is the edge itself.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -28,9 +29,10 @@ from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.number_pool import add_pool_range
@@ -75,8 +77,15 @@ class ReservationRecord:
     properties: dict[str, Any]
 
 
+def _shared_ticket_schema() -> NodeSchema:
+    """The ticket with a number several pools may hand out at once, so each pool counts from its own records."""
+    schema = deepcopy(TICKET)
+    schema.get_attribute(name=TRACKED_ATTRIBUTE_NAME).unique = False
+    return schema
+
+
 async def _load_ticket_schema(db: InfrahubDatabase) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await load_schema(db=db, schema=SchemaRoot(nodes=[_shared_ticket_schema()]))
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
 
@@ -98,7 +107,7 @@ async def ticket_schema_scope_class(
     await _load_ticket_schema(db=db)
 
 
-async def create_pool(db: InfrahubDatabase, name: str) -> CoreNumberPool:
+async def create_pool(db: InfrahubDatabase, name: str, start: int = POOL_START, end: int = POOL_END) -> CoreNumberPool:
     """Build a pool tracking the ticket kind's number attribute."""
     pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
     await pool.new(
@@ -106,11 +115,11 @@ async def create_pool(db: InfrahubDatabase, name: str) -> CoreNumberPool:
         name=name,
         node=TICKET.kind,
         node_attribute=TRACKED_ATTRIBUTE_NAME,
-        start_range=POOL_START,
-        end_range=POOL_END,
+        start_range=start,
+        end_range=end,
     )
     await pool.save(db=db)
-    await add_pool_range(db=db, pool=pool, start=POOL_START, end=POOL_END)
+    await add_pool_range(db=db, pool=pool, start=start, end=end)
     return pool
 
 
@@ -119,6 +128,31 @@ async def create_ticket(db: InfrahubDatabase, title: str, pool: CoreNumberPool, 
     ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
     await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
     await ticket.save(db=db)
+    return ticket
+
+
+async def create_ticket_allocated_as(
+    db: InfrahubDatabase, title: str, pool: CoreNumberPool, value: int, branch: Branch | None = None
+) -> Node:
+    """Leave what an allocation of `value` from the pool leaves, for a number today's pool cannot pick itself.
+
+    Today's pool counts only the records in today's shape, so once the fixture puts the records back in the legacy
+    shape it would hand out a number an earlier ticket already holds.
+    """
+    # The record is written before the value, as an allocation writes it.
+    reserved_at = Timestamp()
+    ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
+    await ticket.new(db=db, title=title, ticket_id=value)
+    await ticket.save(db=db)
+    attribute_id = ticket.get_attribute(TRACKED_ATTRIBUTE_NAME).id
+    assert attribute_id is not None
+    await NumberPoolRepository(db=db).reserve(
+        pool_id=pool.get_id(),
+        identifier=ticket.get_id(),
+        attribute_id=attribute_id,
+        allocated_value=value,
+        at=reserved_at,
+    )
     return ticket
 
 
@@ -520,7 +554,10 @@ class Builder:
         self.default_branch = default_branch
 
     async def build(self, cases: list[type[LegacyCase]]) -> LegacyDatabase:
-        pools = {name: await create_pool(db=self.db, name=name) for name in POOL_NAMES}
+        pools = {name: await create_pool(db=self.db, name=name) for name in POOL_NAMES if name != "repool_a"}
+        # A pool counts only from its own records, so the second pool must cover the first pool's numbers without
+        # handing out the one the object already holds.
+        pools["repool_a"] = await create_pool(db=self.db, name="repool_a", start=POOL_END // 2 + 1, end=POOL_END)
         built = [case(db=self.db, default_branch=self.default_branch, pools=pools) for case in cases]
 
         for case in built:

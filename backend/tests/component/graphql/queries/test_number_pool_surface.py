@@ -445,7 +445,7 @@ class TestNumberPoolSurface:
                 {
                     "display_label": "site-c",
                     "entries": [dataset.site_entry("site-c")],
-                    "figures": figures(size=100, default_branch=1, branches=0),
+                    "figures": figures(size=100, default_branch=0, branches=1),
                 },
             ],
         }
@@ -523,13 +523,12 @@ class TestNumberPoolSurface:
         assert [row[:3] for row in self._rows(site_a)] == [
             (1, OTHER_BRANCH, "D0"),
             (1, "main", "D0"),
-            (5, OTHER_BRANCH, "D1"),
             (5, "main", "D1"),
             (6, OTHER_BRANCH, "D2"),
             (6, "main", "D2"),
             (7, OTHER_BRANCH, "X"),
         ]
-        assert [row[:3] for row in self._rows(site_c)] == [(5, OTHER_BRANCH, "D1"), (5, "main", "D1")]
+        assert [row[:3] for row in self._rows(site_c)] == [(5, OTHER_BRANCH, "D1")]
 
     async def test_allocations_filter_on_branch_and_provenance(
         self, dataset: SurfaceDataset, gql_params: GraphqlParams

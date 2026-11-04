@@ -40,8 +40,8 @@ CONVERT_OBJECT_MUTATION = """
 
 class TestGetConversionSchemaMapping(TestInfrahubApp):
     async def test_get_fields_mapping(self, client: InfrahubClient, schemas_conversion: dict) -> None:
-        response = await client.schema.load(schemas=[schemas_conversion])
-        assert len(response.errors) == 0, response.errors
+        load_response = await client.schema.load(schemas=[schemas_conversion])
+        assert len(load_response.errors) == 0, load_response.errors
 
         query = """ query($source_kind: String!, $target_kind: String!) {
                 FieldsMappingTypeConversion(source_kind: $source_kind, target_kind: $target_kind) {
@@ -110,8 +110,8 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
 
 class TestConvertObjectType(TestInfrahubApp):
     async def test_convert_object_type(self, client: InfrahubClient, schemas_conversion: dict) -> None:
-        response = await client.schema.load(schemas=[schemas_conversion])
-        assert len(response.errors) == 0, response.errors
+        load_response = await client.schema.load(schemas=[schemas_conversion])
+        assert len(load_response.errors) == 0, load_response.errors
 
         car_1 = await client.create(kind="TestconvCar", name="car_1")
         await car_1.save()
@@ -167,8 +167,8 @@ class TestConvertObjectType(TestInfrahubApp):
         schemas_conversion: dict,
     ) -> None:
         """The public response carries the not-found error in the GraphQL envelope under a 200 status line."""
-        response = await client.schema.load(schemas=[schemas_conversion])
-        assert len(response.errors) == 0, response.errors
+        load_response = await client.schema.load(schemas=[schemas_conversion])
+        assert len(load_response.errors) == 0, load_response.errors
 
         person = await client.create(kind="TestconvPerson1", name="Jane")
         await person.save()
@@ -262,8 +262,8 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
     async def test_convert_number_pool(
         self, db: InfrahubDatabase, client: InfrahubClient, schemas_person: SchemaRoot, default_branch: Branch
     ) -> None:
-        response = await client.schema.load(schemas=[schemas_person.model_dump()])
-        assert len(response.errors) == 0, response.errors
+        load_response = await client.schema.load(schemas=[schemas_person.model_dump()])
+        assert len(load_response.errors) == 0, load_response.errors
 
         await self._run_number_pool_validator(db)
 

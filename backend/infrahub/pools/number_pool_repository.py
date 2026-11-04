@@ -11,7 +11,6 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetDivisions,
     NumberPoolGetFree,
     NumberPoolGetReserved,
-    NumberPoolGetTaken,
     NumberPoolGetUsed,
     NumberPoolReleaseAllReserved,
     NumberPoolSetReserved,
@@ -19,6 +18,8 @@ from infrahub.core.query.resource_manager import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
 from infrahub.pools.number_pool_lookup import NumberPoolRangeLookup
+from infrahub.pools.number_pool_overlap import PoolRangeSet
+from infrahub.pools.number_pool_range_validation import NumberRangeBounds
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -88,6 +89,35 @@ class NumberPoolRepository(NumberPoolRangeStore):
     async def get_pool_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[PoolRange]:
         """Return the pool's ranges as plain start, end, weight and id values, lowest start first."""
         return await self.range_lookup.get_pool_ranges(pool_id=pool_id, at=at)
+
+    async def get_pool_name(self, pool_id: str) -> str | None:
+        """Return the name of the number pool, or None when no pool has that id."""
+        pool = await NodeManager.get_one(db=self.db, id=pool_id, kind=InfrahubKind.NUMBERPOOL)
+        return str(pool.get_attribute("name").value) if pool is not None else None
+
+    async def get_attribute_pool_ranges(self, kind: str, attribute_name: str) -> list[PoolRangeSet]:
+        """Return the ranges of every pool that allocates numbers for the kind's attribute."""
+        pools = await NodeManager.query(
+            db=self.db,
+            schema=InfrahubKind.NUMBERPOOL,
+            filters={"node__value": kind, "node_attribute__value": attribute_name},
+        )
+        return [
+            PoolRangeSet(
+                pool_id=pool.get_id(),
+                pool_name=str(pool.get_attribute("name").value),
+                ranges=[
+                    NumberRangeBounds(
+                        start=pool_range.start.value,
+                        end=pool_range.end.value,
+                        id=pool_range.get_id(),
+                        weight=pool_range.allocation_weight.value,
+                    )
+                    for pool_range in await self.get_ranges(pool_id=pool.get_id())
+                ],
+            )
+            for pool in pools
+        ]
 
     async def create_range(
         self,
@@ -214,14 +244,6 @@ class NumberPoolRepository(NumberPoolRangeStore):
         )
         await query.execute(db=self.db)
         return query.get_result_value()
-
-    async def get_taken(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> set[int]:
-        """Return the values inside `space` already held by the pool's attribute on its target kind."""
-        if space.is_empty:
-            return set()
-        query = await NumberPoolGetTaken.init(db=self.db, branch=branch, pool=pool, ranges=space.as_query_ranges())
-        await query.execute(db=self.db)
-        return query.get_taken_values()
 
     async def get_reservation(
         self,

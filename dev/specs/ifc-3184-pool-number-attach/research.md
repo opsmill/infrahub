@@ -131,7 +131,7 @@ breaks object conversion (D8).
 
 Rewritten: `NumberPoolGetAllocated`, `NumberPoolGetReserved`, `NumberPoolGetUsed`,
 `NumberPoolGetFree`, `NumberPoolSetReserved`, `PoolChangeReserved`.
-Deleted by P1: `NumberPoolGetTaken` (FR-011).
+Deleted by this slice: `NumberPoolGetTaken` (FR-011; P1 kept it, amended 2026-10-31).
 Untouched: `IPAddressPoolGet/SetReserved`, `IPAddressPoolGetIdentifiers`,
 `PrefixPoolGet/SetReserved`, `PrefixPoolGetIdentifiers`.
 

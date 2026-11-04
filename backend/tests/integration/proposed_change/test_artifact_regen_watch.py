@@ -113,6 +113,7 @@ class TestWatchConfigImport(TestInfrahubApp):
         # The watched directory is expanded recursively and unioned with the auto-detected
         # closure (the template itself); the partials are present even though nothing in the
         # template references them.
+        assert watched.dependencies.value is not None
         assert set(watched.dependencies.value) == {
             "templates/report.j2",
             "templates/partials/helper.j2",

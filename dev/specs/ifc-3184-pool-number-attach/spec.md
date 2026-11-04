@@ -12,9 +12,9 @@
 ([INFP-308](https://opsmill.atlassian.net/wiki/spaces/Product/pages/854818817), as revised by
 [Number Pools — PRD, simple as possible](https://opsmill.atlassian.net/wiki/spaces/Product/pages/870514689)).
 
-**Ships with**: P1 (several ranges), one release. P1 deletes the attribute scan that this slice's
-attachment replaces; shipping one without the other leaves a release where hand-set numbers are
-neither skipped nor attachable.
+**Ships with**: P1 (several ranges), one release. This slice deletes the attribute scan that its
+attachment replaces (FR-011); P1 kept it. Shipping one without the other leaves a release where
+hand-set numbers are neither skipped nor attachable.
 
 ---
 
@@ -114,7 +114,7 @@ first genuinely free number.
 
 **Why this priority**: This is the slice. It is the only reason the feature exists, it unblocks
 adoption of Resource Manager on populated estates, and it is the replacement for the hand-set-value
-scan that P1 deletes in the same release.
+scan that this slice deletes (FR-011).
 
 **Independent Test**: Create a pool over a partly-used range, attach the objects holding numbers in
 it, and assert what the pool reports in use, in the out-of-space bucket, and as its next number.
@@ -364,18 +364,37 @@ listed here stand as written there.
   the pool report its number free on *every* branch, because liveness is resolved with a single
   cross-branch winner-takes-all and the deleting branch's tombstone wins. On a non-unique attribute
   the pool then hands the number to a second object while the first still holds it — reproduced.
-  **P1 removes the mask**: today a unique attribute is protected by the 1.11 hand-set-value scan,
-  which P1 deletes, converting a latent read defect into a live collision. This slice's remedy for
+  **Removing the scan removes the mask**: today a unique attribute is protected by the 1.11
+  hand-set-value scan, which this slice deletes (FR-011), converting a latent read defect into a live
+  collision. This slice's remedy for
   the deletion — *attach your hand-set numbers* — does not help, because the number is already
-  tracked. **Owned by this slice**; it cannot land after P1's deletion.
+  tracked. **Owned by this slice**; it cannot land after the scan's deletion.
   **Required fix**: resolve liveness per branch and take the disjunction across branches, matching
   the shape the branch-agnostic retirement work already uses for its retaining-branch predicate. No
   migration, and it lands in queries P1 is rewriting anyway.
 
 ### Requirements inherited from P1 (several ranges)
 
-- **FR-011**: The pool never inspects its attribute. The attribute scan is deleted in P1, which ships
-  with this slice. This slice relies on the deletion but does not carry it.
+- **FR-011**: The pool never inspects its attribute. P1 kept the attribute scan (its own FR-011), so
+  this slice deletes it: allocation draws the lowest number the pool's own records leave free, and
+  `NumberPoolGetTaken` is removed. *(Amended 2026-10-31: each spec had assigned the deletion to the
+  other, and it had not landed.)* Three consequences ship with the deletion:
+  - **FR-011b**: A number drawn from a pool MUST go through the uniqueness check on every create
+    path, including a NumberPool attribute the payload does not name. A template cannot feed a unique
+    attribute from a pool, so template paths need no change.
+  - **FR-011c**: When the uniqueness constraint refuses a number a pool just allocated, the error
+    MUST name the pool, the number and the object holding it (its ID, and its display label or
+    human-friendly ID), and say to attach that number to the pool. The pool offers the same number on
+    every attempt until the holding object's number is attached or changed, or the holding object is
+    deleted. When another pool tracks the number for the holding object, the error MUST also name that
+    pool and say to change its ranges so the two pools no longer overlap. When several fields of the
+    violated constraint hold numbers pools just allocated, the error MUST name each field, number and
+    pool. An upsert whose human-friendly ID holds a number a pool just allocated MUST be refused with
+    this error instead of updating the object that already holds that human-friendly ID.
+  - **FR-011d**: On a unique attribute, a pool's range MUST NOT overlap a range of another pool over
+    the same kind and attribute; such a range write is refused, naming the other pool's range. Making
+    an attribute unique MUST be refused while pools over it overlap. Each pool reads only its own
+    records, so overlapping pools would each offer numbers the other handed out.
 
   **Identifying which numbers to attach is the operator's job** (decided 2026-09-16). A pool adopts
   nothing, bulk attach is out of scope, and this slice ships no enumeration surface: an operator
@@ -593,7 +612,7 @@ is declared without a `null` default). Two new output
 - **Regression tests for FR-036a (confirmed defect)**: delete a pooled object on a branch while the
   default branch still holds it, and assert the number stays in use and is not reallocated — **once
   with the attribute non-unique**, where the collision reproduces today, and once unique, which only
-  starts failing when FR-011 lands. A working exploratory repro exists and should be promoted rather
+  starts failing once FR-011 deletes the scan. A working exploratory repro exists and should be promoted rather
   than rewritten. Keep the passing case as a regression too: a branch-level *value change* must not
   free the default branch's value.
 - **Component tests**: the ledger against a database — attach, detach, and release with duplicates
@@ -763,7 +782,7 @@ Using the "Ask First" list from `AGENTS.md`.
 2. `from_pool` alone on an object holding a non-default untracked number now errors instead of
    silently overwriting it.
 3. **Deliberate regression**: allocation no longer skips hand-set values on a unique attribute. This
-   shipped as a fix in 1.11 (#10180) and is reverted by P1 in the same release. The upgrade note —
+   shipped as a fix in 1.10.8 and 1.11 (#10180) and is reverted by this slice (FR-011). The upgrade note —
    attach your hand-set numbers — belongs with this slice, because attaching is the replacement.
    Identifying which numbers those are is the operator's job; the note must say so plainly rather
    than implying a tool exists.
@@ -782,7 +801,7 @@ Using the "Ask First" list from `AGENTS.md`.
 ## Dependencies & References
 
 - **Ships with**: P1 (several ranges). This slice consumes P1's effective-space calculator and
-  relies on P1's deletion of the hand-set-value scan (FR-011).
+  deletes the hand-set-value scan P1 kept (FR-011).
 - **Related ADR**: `dev/adr/0010-generated-user-facing-schema-contract.md` — the two new query
   fields are part of the schema we publish and generate from.
 - **Related specs**: `dev/specs/ifc-1869-from-pool-prefix-mask`,

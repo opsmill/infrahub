@@ -12,7 +12,9 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifactDefinition,
     CoreArtifactValidator,
+    CoreGeneratorCheck,
     CoreGeneratorDefinition,
+    CoreGeneratorInstance,
     CoreGeneratorValidator,
     CoreProposedChange,
 )
@@ -1003,7 +1005,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
 
     check = None
     existing_check = await client.filters(
-        kind=InfrahubKind.GENERATORCHECK, validator__ids=model.validator_id, instance__value=generator_instance.id
+        kind=CoreGeneratorCheck, validator__ids=model.validator_id, instance__value=generator_instance.id
     )
     if existing_check:
         check = existing_check[0]
@@ -1014,7 +1016,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         await check.save(request_context=context.to_request_context())
     else:
         check = await client.create(
-            kind=InfrahubKind.GENERATORCHECK,
+            kind=CoreGeneratorCheck,
             data={
                 "name": model.target_name,
                 "origin": model.repository_id,
@@ -1031,11 +1033,9 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     return conclusion
 
 
-async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClient) -> InfrahubNode:
+async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClient) -> CoreGeneratorInstance:
     if model.generator_instance:
-        instance = await client.get(
-            kind=InfrahubKind.GENERATORINSTANCE, id=model.generator_instance, branch=model.branch_name
-        )
+        instance = await client.get(kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name)
         instance.status.value = GeneratorInstanceStatus.PENDING.value
         await instance.update(do_full_update=True)
 
@@ -1044,7 +1044,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await client.filters(
-                kind=InfrahubKind.GENERATORINSTANCE,
+                kind=CoreGeneratorInstance,
                 definition__ids=[model.generator_definition.definition_id],
                 object__ids=[model.target_id],
                 branch=model.branch_name,
@@ -1055,7 +1055,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
                 await instance.update(do_full_update=True)
             else:
                 instance = await client.create(
-                    kind=InfrahubKind.GENERATORINSTANCE,
+                    kind=CoreGeneratorInstance,
                     branch=model.branch_name,
                     data={
                         "name": f"{model.generator_definition.definition_name}: {model.target_name}",
@@ -1108,7 +1108,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521
     existing_instances = await client.filters(
-        kind=InfrahubKind.GENERATORINSTANCE,
+        kind=CoreGeneratorInstance,
         definition__ids=[model.generator_definition.definition_id],
         include=["object"],
         branch=model.source_branch,

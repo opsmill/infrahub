@@ -5,7 +5,7 @@ from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import NumberPoolGetTaken, NumberPoolGetUsed
+from infrahub.core.query.resource_manager import NumberPoolGetUsed
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -76,10 +76,10 @@ class TestNumberPoolRepository:
         assert [(item.start.value, item.end.value) for item in ranges] == [(100, 200), (300, 400)]
         assert [item.get_id() for item in ranges] == [first.get_id(), second.get_id()]
 
-    async def test_an_empty_space_reads_no_used_or_taken_number_without_querying(
+    async def test_an_empty_space_reads_no_used_number_without_querying(
         self, db: InfrahubDatabase, main_branch: Branch
     ) -> None:
-        """A space holding no segment answers the used and taken reads without running their queries."""
+        """A space holding no segment answers the used read without running its query."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
         await pool.new(db=db, name="empty-pool", node="TestingTicket", node_attribute="ticket_id")
         await pool.save(db=db)
@@ -88,9 +88,7 @@ class TestNumberPoolRepository:
         space = EffectiveSpace(ranges=[], domain=NumberDomain())
 
         assert await repository.get_used(pool=pool, branch=main_branch, space=space) == []
-        assert await repository.get_taken(pool=pool, branch=main_branch, space=space) == set()
         assert counting_db.count_for(NumberPoolGetUsed.name) == 0
-        assert counting_db.count_for(NumberPoolGetTaken.name) == 0
 
     async def test_reserve_records_the_acting_account_on_the_record_and_the_pool(
         self, db: InfrahubDatabase, main_branch: Branch

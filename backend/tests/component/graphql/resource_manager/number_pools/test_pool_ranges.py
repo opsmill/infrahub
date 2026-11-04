@@ -17,7 +17,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range, pool_used_numbers
-from tests.helpers.schema import TICKET, load_schema
+from tests.helpers.schema import SHARED_NUMBER_TICKET, TICKET, load_schema
 
 from .helpers import (
     CREATE_RANGE,
@@ -233,7 +233,7 @@ OPEN_OVERLAP_CASES = [
 class TestNumberPoolRangeMutations:
     """The schema is loaded once for the class, and every test creates pools under names of its own.
 
-    `ticket_id` is unique, so the tests that hand out numbers draw them from ranges no other test hands out from.
+    `ticket_id` is not unique, so pools of different tests may hold overlapping ranges.
     """
 
     @pytest.fixture(scope="class")
@@ -243,7 +243,7 @@ class TestNumberPoolRangeMutations:
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> None:
-        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+        await load_schema(db=db, schema=SchemaRoot(nodes=[SHARED_NUMBER_TICKET]))
         default_branch_scope_class.update_schema_hash()
         await initialize_registry(db=db)
 
@@ -655,7 +655,7 @@ class TestNumberPoolRangeMutations:
         assert [error.message for error in created.errors or []] == [f"Range {case.label} overlaps {overlapped}"]
         assert await _range_bounds(db=db, pool=two_range_pool.pool) == [(100, 200), (300, 400)]
 
-    async def test_two_pools_on_one_attribute_may_hold_overlapping_ranges(
+    async def test_two_pools_on_an_attribute_that_is_not_unique_may_hold_overlapping_ranges(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
         first_pool = await _create_pool(db=db, name="first-pool")

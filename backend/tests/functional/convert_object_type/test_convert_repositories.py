@@ -6,6 +6,7 @@ from unittest.mock import patch
 from uuid import UUID
 
 import pytest
+from infrahub_sdk.protocols import CoreUserValidator
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
@@ -625,7 +626,7 @@ class TestConvertRepository(TestInfrahubApp):
         user_validators_created = False
         while elapsed_time < max_wait_time:
             users_validators = await client.all(
-                kind=InfrahubKind.USERVALIDATOR,
+                kind=CoreUserValidator,
             )
 
             if users_validators and any(validator.repository.id == repository_id for validator in users_validators):

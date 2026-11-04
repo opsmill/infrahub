@@ -12,7 +12,11 @@ on:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   needs: [review-gate]
-engine: claude
+engine:
+  id: claude
+  bare: false
+  permission-mode: acceptEdits
+model: opus
 permissions:
   contents: read
   issues: read
@@ -131,7 +135,7 @@ safe-outputs:
     discussions: false
   add-labels:
     max: 2
-  missing-tool:
+  report-missing-tool:
 ---
 
 # Bug reviewer agent

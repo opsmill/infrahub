@@ -13,23 +13,24 @@ from infrahub.git.graph_settings import resolve_graph_settings
 
 
 @dataclass
-class StubString(String):
+class StubAttribute:
+    """Sets every member of the SDK attribute protocol so the stubs below are concrete."""
+
     value: str
-    name: str = "value"
+    name: str = ""
     id: str | None = None
     is_default: bool | None = None
     is_from_profile: bool | None = None
     is_inherited: bool | None = None
     updated_at: str | None = None
     is_protected: bool | None = None
-
-    @property
-    def is_loaded(self) -> bool:
-        return True
+    is_loaded: bool = True
 
 
-class StubDropdown(StubString, Dropdown):
-    pass
+class StubString(StubAttribute, String): ...
+
+
+class StubDropdown(StubAttribute, Dropdown): ...
 
 
 class StubRepositoryNode(CoreRepository):
