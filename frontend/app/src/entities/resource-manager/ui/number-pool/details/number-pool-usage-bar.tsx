@@ -7,6 +7,7 @@ import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type { NumberPoolUsage } from "@/entities/resource-manager/domain/model/number-pool";
+import { UtilizationTooltipMessage } from "@/entities/resource-manager/ui/pool/utilization-tooltip-message";
 
 const percentOf = (part: number, total: number) => (total === 0 ? 0 : (part / total) * 100);
 
@@ -21,20 +22,6 @@ const formatUsedOfSize = (used: number, size: number | null) =>
   size === null
     ? formatNumberDisplay(used)
     : `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
-
-interface UtilizationTooltipMessageProps {
-  title: string;
-  value: string;
-}
-
-function UtilizationTooltipMessage({ title, value }: UtilizationTooltipMessageProps) {
-  return (
-    <Col className="gap-0.5">
-      <span className="text-white/70 text-xxs">{title}</span>
-      <span className="tabular-nums">{value}</span>
-    </Col>
-  );
-}
 
 interface UtilizationFiguresRowProps {
   label: string;
