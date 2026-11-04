@@ -244,9 +244,16 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
-          label: 'Immutable History',
-          link: { type: 'doc', id: 'immutable-history/overview' }, // hub
-          items: ['immutable-history/query-historical-data'],
+          label: 'Version Control',
+          link: { type: 'doc', id: 'version-control/overview' }, // hub
+          items: [
+            {
+              type: 'category',
+              label: 'Immutable History',
+              link: { type: 'doc', id: 'immutable-history/overview' }, // hub
+              items: ['immutable-history/query-historical-data'],
+            },
+          ],
         },
         {
           type: 'category',

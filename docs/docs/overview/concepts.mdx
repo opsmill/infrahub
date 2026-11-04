@@ -33,6 +33,8 @@ A **Proposed Change** is the review of a branch before merging, similar to a pul
 
 [Branches](../branches/overview.mdx) isolate branch-aware data. You can also define [shared data](../schema/branch-awareness.mdx) that stays the same across branches, such as an IP address Resource Pool.
 
+Branches, Proposed Changes, and [immutable history](#history-and-data-ownership) together make up version control in Infrahub, which is part of the database. See [Version control](../version-control/overview.mdx) for how the three work together.
+
 ## Validation before merge
 
 Schema rules describe valid data: required attributes, allowed values, and relationships. [Checks](../checks/overview.mdx) add your business and infrastructure design rules in Python, such as requiring two WAN circuits for every site. This can flag a design that leaves a site dependent on a single connection.

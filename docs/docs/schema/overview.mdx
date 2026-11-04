@@ -12,6 +12,8 @@ Because the schema is stored in the database like any other object, Infrahub sup
 
 You write the schema as YAML files and keep them in your own Git repository. Those files are not the schema itself — loading a file is what creates or updates the schema Infrahub stores. For how to write and load them, see [Create and load schema](./create-and-load).
 
+A new Infrahub deployment has only a minimal built-in schema, with no models for your infrastructure, so load a schema before you add data. Write your own, or start from a schema in the [Infrahub Marketplace](./marketplace/index.mdx), a public catalog of schemas for common domains such as device modeling and IP address management, and extend it.
+
 ## Building blocks
 
 A schema is composed of four primary types:
