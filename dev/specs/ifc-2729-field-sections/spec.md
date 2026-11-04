@@ -256,8 +256,9 @@ section render with the new properties.
 Schema contract
 
 - **FR-001**: A node or generic schema MUST accept an optional `containers` list. Each item has a
-  required `name`, a required `label`, an optional `description`, an optional `order_weight` and
-  an optional `collapsed` flag that defaults to false and applies to the detail view only.
+  required `name`, a required `label`, an optional `description`, an optional `order_weight`, an
+  optional `collapsed` flag that defaults to false and applies to the detail view only, and a
+  `state` that defaults to `present` and accepts `absent` to remove the item on reload.
 - **FR-002**: An attribute or relationship schema MUST accept an optional `container` text value.
   When unset, the field belongs to the default Details section.
 - **FR-003**: A container `name` MUST follow the attribute name format and length rules, MUST be
@@ -300,14 +301,15 @@ Detail view
   and MUST omit a card that has no field.
 - **FR-016**: Each section card MUST use the same header and rows as the Details card, titled with
   the container label, with its fields ordered by their `order_weight`.
-- **FR-017**: Each section card MUST be collapsible from its header, start collapsed when its
-  container says so, and the Advanced card MUST start collapsed.
+- **FR-017**: Each container card and the Advanced card MUST be collapsible from its header, start
+  collapsed when its container says so, and the Advanced card MUST start collapsed. The Details
+  card is not collapsible.
 - **FR-018**: Each section card MUST have its own Extra control, shown only when the section has a
   field marked `display: extra`, hiding those fields until switched on.
 - **FR-019**: A node without containers and without `advanced` fields MUST render the single Details
   card as today. Pages that reuse the Details card for other objects MUST be unchanged.
 - **FR-020**: The section header MUST show the container label and, when set, the container
-  description as muted text under the label, in the detail card and in the form panel.
+  description as muted text under the section title, in the detail card and in the form panel.
 
 Forms
 

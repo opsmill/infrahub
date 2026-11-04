@@ -89,8 +89,11 @@ Code is cited as `module::Symbol`.
   dropped (FR-015, US3 scenario 5). Filtering before partitioning is the only way the rule can
   know the section is empty. `ObjectDataDisplay` re-applies the same filters, which is idempotent,
   and `hasExtraFields` evaluated on the narrowed schema scopes the Extra control to the section
-  (FR-018). The relationship filter is a module-private function of the data display today and
-  moves out so the view can call it.
+  (FR-018). The relationship filter, `getRelationshipsVisibleInDataDisplay`, is a module-private
+  function of `object-data-display.tsx` today; it becomes a named export of that module, with no
+  new file. `domain/rules/get-relationships-visible-in-detailed-view.ts` exists with a different,
+  kind-based predicate (`isRelationshipVisibleInDetailedView`) that the data display does not
+  use, so it is not the filter the view calls.
 - **Alternatives considered**: A `fields` prop on `ObjectDetailsCard` instead of the narrowed
   schema: changes the card's contract for every caller. Partitioning the full schema and letting
   each card hide its rows: an empty card would still render its header.
@@ -99,7 +102,7 @@ Code is cited as `module::Symbol`.
 
 - **Decision**: Backend: `ADVANCED_CONTAINER_NAME = "advanced"` in
   `backend/infrahub/core/constants/__init__.py` next to `NAME_REGEX`, used by the validator and
-  its error message only. Frontend: `ADVANCED_CONTAINER` and `DETAILS_SECTION` in
+  its error message only. Frontend: `ADVANCED_SECTION` and `DETAILS_SECTION` in
   `entities/nodes/object/domain/model/field-section.ts`, imported by the partition rule and the
   views.
 - **Rationale**: Each constant sits with the code that owns the rule it expresses. The SDK needs
@@ -110,9 +113,11 @@ Code is cited as `module::Symbol`.
 ## R7. Demo schema assignments on the LAG interface
 
 - **Decision**: In `models/base/dcim.yml`, `InfraLagInterface` declares `lacp` (label "LACP",
-  weight 100), `layer2` (label "Layer 2", weight 200, with a description) and `layer3` (label
-  "Layer 3", weight 300, `collapsed: true`). On the generic: `lacp`, `minimum_links` and `mlag` go
-  to `lacp`; `max_bundle` goes to `advanced`. On `InfraLagInterfaceL2`: `l2_mode`, `untagged_vlan`
+  description "Link aggregation settings", weight 100), `layer2` (label "Layer 2", description
+  "Switching settings of the bundle", weight 200) and `layer3` (label "Layer 3", description
+  "Addressing and MTU", weight 300, `collapsed: true`). On the generic: `lacp`, `minimum_links`
+  and `mlag` go to `lacp`; `max_bundle` goes to `advanced`. The label of `minimum_links` is
+  corrected from "Mimimum links" to "Minimum links" in the same change. On `InfraLagInterfaceL2`: `l2_mode`, `untagged_vlan`
   and `tagged_vlan` go to `layer2`; `members` stays ungrouped. On `InfraLagInterfaceL3`:
   `ip_addresses` goes to `layer3`, `members` stays ungrouped, and the node redeclares `mtu`
   (`name: mtu`, `kind: Number`, `label: MTU`, `default_value: 1500`, `container: layer3`).

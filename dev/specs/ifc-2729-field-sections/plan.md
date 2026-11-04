@@ -90,10 +90,12 @@ clarifications and needs no further ask.
 `internal_kind=ContainerSchema`, empty list by default) on the base node schema and `container`
 (kind `Text`, optional) on the attribute and relationship schemas, all with
 `UpdateSupport.ALLOWED` and `Visibility.WRITE`. The SDK generator in `tasks/backend.py` gets a
-`container_schema_fields` list of `name`, `label`, `description`, `order_weight`, `collapsed` and
-`state` (`internal_kind=HashableModelState`, enum `SchemaState`, default `present`, declared the
-way the attribute `state` entry in `definitions/internal.py` is, which needs an `enum_class`
-passthrough in `tasks/backend.py::_field` or an explicit `SchemaAttribute`), and leaves out the
+`container_schema_fields` list of `name`, `label`, `description`, `order_weight` and `collapsed`
+built with `_field`, plus `state` declared as an explicit `SchemaAttribute(name="state",
+kind="Text", internal_kind=HashableModelState, enum=HashableModelState.available_types(),
+enum_class="SchemaState", default_value=HashableModelState.PRESENT, optional=True, ...)` entry that
+mirrors the attribute-level `state` entry of `definitions/internal.py::attribute_schema`
+(`_field` is not extended, because it has no `enum_class` parameter). The list leaves out the
 internal `inherited` flag, so the SDK read and write models and the OpenAPI schema never carry it.
 A field left out of that list becomes read-only in the write contract and a load that sends it
 drops the value with a warning, which is why `state` must be in the list for `state: absent` to
@@ -128,27 +130,30 @@ generators run on every process, so the copies stay current.
 takes the containers, already-filtered items and a function that reads an item's container, and
 returns ordered `FieldSection` values: Details first, declared containers by `order_weight` then
 declaration order, Advanced last with `collapsed: true`, sections without an item dropped. The
-`DETAILS_SECTION` and `ADVANCED_CONTAINER` constants and the `FieldSection` type live in
+`DETAILS_SECTION` and `ADVANCED_SECTION` constants and the `FieldSection` type live in
 `entities/nodes/object/domain/model/field-section.ts`.
 
 ### D6. Detail view: one card per section
 
 `object-details.tsx::ObjectDetails` applies the detail view's visibility filters
-(`getAttributesVisibleInDetailedView` and the relationship filter that `ObjectDataDisplay` applies
-today, which moves out of the data display module so both can call it), partitions the result, and
-renders one `ObjectDetailsCard` per section with
+(`getAttributesVisibleInDetailedView` and `getRelationshipsVisibleInDataDisplay`, which
+`object-data-display.tsx` keeps and exports as a named export so both can call it; the kind-based
+`getRelationshipsVisibleInDetailedView` of `domain/rules/` is a different predicate that the data
+display does not use), partitions the result, and renders one `ObjectDetailsCard` per section with
 `objectSchema={{ ...objectSchema, attributes, relationships }}`, where `relationships` is the
 section's visible relationships plus every relationship of the full schema for which
 `isFromResourcePoolRelationship` is true, because the summary filter drops those before the
 partition and `object-data-display.tsx` looks the `<name>_from_resource_pool` relationship up in
 the schema it receives. `ObjectDetailsCard` gets `defaultCollapsed` and `description`; when
 `defaultCollapsed` is undefined the header is unchanged for every existing caller. When defined,
-the `h2` holds the react-aria `Disclosure` trigger button with the chevron and the container label
-only, and the Extra button stays its sibling. The description renders as a `<p>` sibling under the
-header, outside the `h2` and the button, and the button carries `aria-describedby` pointing at it.
-`SectionTitle` takes `label`, `description`, `titleId` and `descriptionId` and renders the two as
-siblings, so the detail card and the form panel place the same markup.
-Contract: [contracts/frontend-components.md](contracts/frontend-components.md).
+the header DOM is `CardHeader > [h2 > Button(chevron, label)] [p.description, id=descriptionId]
+[Extra button]`: the react-aria `Disclosure` trigger button carries
+`aria-describedby={descriptionId}`, the region's `aria-labelledby` is the `h2` id, and the Extra
+button stays a sibling of the `h2`. `SectionTitle` takes `label`, `description`, `titleId` and
+`descriptionId` and renders the label slot and the description `<p>` as siblings: the detail card
+passes the trigger button as the label slot and places the description after the `h2`; the form
+panel passes plain text. Contract:
+[contracts/frontend-components.md](contracts/frontend-components.md).
 
 ### D7. Form: one panel per section
 
@@ -165,7 +170,9 @@ and renders one `FormSectionPanel` per section, always expanded.
 The schema viewer lists a node's containers and shows each field's container with the existing
 `PropertyRow`. `models/base/dcim.yml` declares the LACP, Layer 2 and Layer 3 containers on
 `InfraLagInterface` and assigns the generic's and the two implementing nodes' fields;
-`InfraLagInterfaceL3` redeclares `mtu` with `container: layer3` (research R7).
+`InfraLagInterfaceL3` redeclares `mtu` with `container: layer3` (research R7). The same change
+fixes the label of the `minimum_links` attribute (`Mimimum links` today) to `Minimum links`, a
+user-visible fix that gets its own changelog fragment.
 A new `docs/docs/schema/field-sections.mdx` page explains the properties, the built-in Advanced
 section, the default Details section, ordering, inheritance and the three errors; the generated
 reference pages come from `uv run invoke docs.generate`.

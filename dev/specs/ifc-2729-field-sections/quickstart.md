@@ -62,12 +62,13 @@ the final `git diff` exits 0 once the regenerated REST types are committed.
 ## SDK tests (inside the submodule)
 
 ```bash
-cd python_sdk && uv run pytest tests/unit/ctl/test_schema_format.py
+cd python_sdk && uv run pytest tests/unit/ctl/test_schema_format.py tests/unit/test_schema_offline_validation.py
 ```
 
 Expected: the key-order tests pass with `containers` after `uniqueness_constraints`, `container`
 right before the trailing `order_weight`, and the container item keys in the order `name`,
-`label`, `description`, `order_weight`, `collapsed`.
+`label`, `description`, `order_weight`, `collapsed`, `state`; the offline validation accepts a
+schema with containers without an error or a warning.
 
 ## Frontend tests and gates
 

@@ -51,12 +51,27 @@ Valid `container` values: a `name` declared in the node's `containers` after inh
 literal `advanced` (`backend/infrahub/core/constants/__init__.py::ADVANCED_CONTAINER_NAME`).
 `None` means the field belongs to the Details section.
 
-The SDK generator in `tasks/backend.py` gains `container_schema_fields` (`name`, `label`,
-`description`, `order_weight`, `collapsed` and `state`, the last declared the way the attribute
-`state` entry in `definitions/internal.py` is, with `internal_kind=HashableModelState` and enum
-`SchemaState`, which needs an `enum_class` passthrough in `tasks/backend.py::_field` or an explicit
-`SchemaAttribute`), a `ContainerSchema{suffix}` family next to `DropdownChoice{suffix}`, and the
-internal counterpart mapping, so `infrahub_sdk.schema.generated` gets `ContainerSchemaRead`,
+The SDK generator in `tasks/backend.py` gains `container_schema_fields`: `name`, `label`,
+`description`, `order_weight` and `collapsed` built with `_field`, and `state` as an explicit
+entry that mirrors the attribute-level `state` entry of `definitions/internal.py::attribute_schema`
+(`_field` has no `enum_class` parameter and is not extended):
+
+```python
+SchemaAttribute(
+    name="state",
+    kind="Text",
+    internal_kind=HashableModelState,
+    description="Expected state of the container after loading the schema",
+    default_value=HashableModelState.PRESENT,
+    enum=HashableModelState.available_types(),
+    enum_class="SchemaState",
+    optional=True,
+    extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
+)
+```
+
+The generator also gains a `ContainerSchema{suffix}` family next to `DropdownChoice{suffix}` and
+the internal counterpart mapping, so `infrahub_sdk.schema.generated` gets `ContainerSchemaRead`,
 `ContainerSchemaWrite` and the contract entry.
 
 ## Inheritance merge
@@ -144,7 +159,7 @@ reload, on the default branch and on any other branch (FR-006).
 
 ```typescript
 export const DETAILS_SECTION = { name: "details", label: "Details", collapsed: false };
-export const ADVANCED_CONTAINER = { name: "advanced", label: "Advanced", collapsed: true };
+export const ADVANCED_SECTION = { name: "advanced", label: "Advanced", collapsed: true };
 
 export type FieldSection<T> = {
   container: Pick<ContainerSchema, "name" | "label" | "collapsed"> &
@@ -155,7 +170,7 @@ export type FieldSection<T> = {
 
 `ContainerSchema` is `components["schemas"]["ContainerSchemaRead"]` from the generated REST
 types, exported from `entities/schema/domain/model/schema.ts`. `DETAILS_SECTION` and
-`ADVANCED_CONTAINER` are never part of a schema's `containers`; the partition rule adds them.
+`ADVANCED_SECTION` are never part of a schema's `containers`; the partition rule adds them.
 
 `groupFieldsBySection(containers, items, getContainer)` in
 `entities/nodes/object/domain/rules/group-fields-by-section.ts` returns `FieldSection<T>[]`:

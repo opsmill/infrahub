@@ -24,10 +24,10 @@ interface ObjectDetailsCardProps {
 - `defaultCollapsed` undefined: the header is the current `h2` title plus the Extra button; the
   rows are always shown.
 - `defaultCollapsed` defined: the card wraps its header and rows in a react-aria `Disclosure`.
-  The `h2` holds the trigger button with the chevron and the container label only; the
-  description renders as a `<p>` sibling under the header, outside the `h2` and the button, and
-  the button carries `aria-describedby` pointing at it. The rows sit in a `DisclosurePanel`.
-  `defaultCollapsed: true` starts with the panel closed; `false` starts open.
+  The header DOM is `CardHeader > [h2 > Button(chevron, label)] [p.description, id=descriptionId]
+  [Extra button]`: the trigger button holds the chevron and the container label only and carries
+  `aria-describedby=descriptionId`; the region's `aria-labelledby` is the `h2` id. The rows sit in
+  a `DisclosurePanel`. `defaultCollapsed: true` starts with the panel closed; `false` starts open.
 - The Extra button is rendered only when `hasExtraFields(objectSchema)` is true for the schema
   the card receives, so a card that receives a narrowed schema shows it only when that section has
   an `extra` field. Its state is local to the card.
@@ -35,7 +35,10 @@ interface ObjectDetailsCardProps {
 
 The detail view (`object-details.tsx::ObjectDetails`) renders one card per section with
 `objectSchema={{ ...objectSchema, attributes, relationships }}`, splitting the section's items with
-`isRelationshipSchema`. The Details card passes no `defaultCollapsed`; the Advanced card passes
+`isRelationshipSchema`. Each section card also receives every relationship of the full schema for
+which `isFromResourcePoolRelationship` is true, because the summary filter drops those before the
+partition and the data display looks the `<name>_from_resource_pool` relationship up in the schema
+it receives. The Details card passes no `defaultCollapsed`; the Advanced card passes
 `defaultCollapsed: true`; a declared container passes its `collapsed` value.
 
 ## SectionTitle
@@ -51,11 +54,11 @@ interface SectionTitleProps {
 }
 ```
 
-Renders the label with `id={titleId}` and, when `description` is set, the description as a muted
-`<p>` sibling with `id={descriptionId}` under it, never inside the label element. The detail card
-header and the form panel header both use it, so both show the same header (FR-020, FR-021), and
-the collapsible card can point `aria-labelledby` at the label and `aria-describedby` at the
-description.
+Renders the label slot in an `h2` with `id={titleId}` and, when `description` is set, the
+description as a muted `<p id={descriptionId}>` sibling that follows the `h2`, never inside it.
+The label slot is the trigger button in the detail card (so the button sits inside the `h2` and
+the card places the description after the `h2`, as the header DOM above shows) and plain text in
+the form panel. Both headers use it, so both show the same header (FR-020, FR-021).
 
 ## Section partition rule
 
@@ -135,14 +138,14 @@ Detail view:
 - Each card keeps `role="region"` and `aria-labelledby` pointing at its title, so a test can find
   the region by its accessible name: `Details`, the container label (`LACP`), or `Advanced`. The
   description is never part of that name.
-- A collapsible card's title is a button inside the `h2` whose content is the chevron and the
-  container label only, so its accessible name is the label, with `aria-expanded` reflecting the
-  state; pressing it toggles the rows. A non-collapsible card has no button in its title.
-- The container description is a `<p>` outside the `h2` and outside the button; the button's
-  `aria-describedby` points at it, so a screen reader announces it as the description of the
-  button, not as part of the name of the button, the heading or the region.
-- The Extra control is a button named `Extra`, a sibling of the title in the header, never inside
-  the trigger button. It is present only on a card whose section has a `display: extra` field.
+- With the header DOM of the `ObjectDetailsCard` section, a collapsible card's trigger button has
+  the container label as its accessible name, `aria-expanded` reflecting the state, and pressing
+  it toggles the rows. A non-collapsible card has no button in its title.
+- Because the description `<p>` sits outside the `h2` and the trigger button and the button's
+  `aria-describedby` points at it, a screen reader announces it as the description of the button,
+  not as part of the name of the button, the heading or the region.
+- The Extra control is a button named `Extra`, present only on a card whose section has a
+  `display: extra` field.
 - The chevron rotation uses the same reduced-motion classes as the repository activity card.
 
 Form:
