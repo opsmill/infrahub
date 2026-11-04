@@ -647,12 +647,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if self.reinitialized:
             return
 
-        infrahub_branch = registry.get_branch_from_registry(branch=plan.infrahub_branch_name)
+        await self.announce_commit_update(infrahub_branch_name=plan.infrahub_branch_name, commit=plan.commit)
+
+    async def announce_commit_update(self, infrahub_branch_name: str, commit: str) -> None:
+        """Send the event that the repository's objects on the branch now come from `commit`."""
+        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
         event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
-                commit=plan.commit,
+                commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
                 meta=EventMeta(branch=infrahub_branch, context=event_context),
