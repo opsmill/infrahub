@@ -89,6 +89,12 @@ by OpsMill staff.
   server, and a session where the customer showed the use of the Grafana MCP server with its own
   agents. See "Customer evidence" in the Summary. The customer is not named because the repository is
   public (decided by Daniel).
+- Q: Can the operator open the server to the local network or another network, without an SSH tunnel
+  or a proxy? → A: Yes. The loopback address stays the default. One setting changes the address that
+  the port listens on, and two optional settings give the server a TLS certificate and its private
+  key, which `mcp-grafana` 2.0.2 serves itself (`--server.tls-cert-file` and
+  `--server.tls-key-file`). The docs say to use TLS whenever the port is open to a network (FR-006,
+  FR-006a, [research.md](research.md) R3). Asked by Daniel on 2026-11-04.
 
 ### Critique of 2026-11-04
 
@@ -261,9 +267,15 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   token as `Authorization: Bearer` (D10, verified with `mcp-grafana` 2.0.2 on 2026-10-14).
 - **FR-006**: A user MUST connect their AI assistant with one URL and the token, and no other step
   (D10). By default, the server MUST listen only on the loopback address of the host (Compose) or on
-  a cluster-internal Service (Helm), because it serves plain HTTP and the token is its only
-  protection. Access from another computer goes through an SSH tunnel, `kubectl port-forward` or a
-  reverse proxy with TLS that the operator sets up (critique of 2026-11-04).
+  a cluster-internal Service (Helm), because without TLS it serves plain HTTP and the token is its
+  only protection (critique of 2026-11-04). The operator MUST be able to open the port to a network
+  with one setting: the listen address in Compose, the Service type or an Ingress in Helm
+  (clarification of 2026-11-04). Access through an SSH tunnel, `kubectl port-forward` or a reverse
+  proxy with TLS stays possible.
+- **FR-006a**: The operator MUST be able to give the server a TLS certificate and its private key, so
+  that the server serves HTTPS and the token is encrypted between the AI assistant and the server.
+  TLS is off by default. When only one of the two is set, the container MUST NOT start, and MUST log
+  an error that names both settings (clarification of 2026-11-04).
 - **FR-007**: The server MUST accept requests addressed to its published address. The default allowed
   hosts are `localhost:8100` and `127.0.0.1:8100`, and the operator changes them with one setting
   (D10).
@@ -350,8 +362,10 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   MUST explain:
   - how to turn on the Grafana MCP server, set the token, change the allowed hosts and connect an AI
     assistant (D10);
-  - how to reach the server from another computer: SSH tunnel, `kubectl port-forward`, or a reverse
-    proxy with TLS (FR-006);
+  - how to reach the server from another computer: open the port to a network, SSH tunnel,
+    `kubectl port-forward`, or a reverse proxy with TLS (FR-006);
+  - how to turn on TLS with a certificate and a key, that TLS must be on whenever the port is open to
+    a network, and that each AI assistant must trust the certificate (FR-006a);
   - how to change the token, and that the change needs a restart of the container;
   - that the default Grafana admin password must be changed when the server is turned on, and which
     setting the service account step reads it from.

@@ -43,3 +43,5 @@
 - FR-021 (supported Infrahub versions) was answered on 2026-11-04: 1.13 and later.
 - FR-023 follows the INFP-742 decision of 2026-10-19 (log lines are not masked; a leak is fixed where
   the line is written). The INFP-745 card was updated on 2026-11-04 to say the same.
+- FR-006 was changed and FR-006a added on 2026-11-04: one setting opens the port to a network, and the
+  server can serve HTTPS with a certificate and a key. The loopback address stays the default.

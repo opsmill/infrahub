@@ -52,6 +52,21 @@ Expected:
 - Repeat the connection with one other MCP client that speaks Streamable HTTP, and record which
   clients work in the docs (research R3, `--allowed-origins`).
 
+## 3a. Open to the network, with TLS (FR-006, FR-006a)
+
+Create a certificate for the host name of the Docker host, and make the computer of the AI assistant
+trust it. Set `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS=0.0.0.0`, the two TLS settings, and add
+`<host name>:8100` to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`. Start again with the profile.
+
+Expected:
+
+- From another computer, `https://<host name>:8100/mcp` answers, and Claude Code connects with that
+  URL and the token.
+- `http://<host name>:8100/mcp` does not answer with MCP data.
+- With only `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` set, `infrahub-grafana-mcp` exits with code 1 and its
+  log names both TLS settings.
+- Record in the docs how Claude Code handles a self-signed certificate (research R3, not verified).
+
 ## 4. No usage statistics (FR-008, SC-005)
 
 While the assistant runs a query, watch the connections of the container (for example with

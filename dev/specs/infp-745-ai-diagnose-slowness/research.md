@@ -92,6 +92,7 @@ known.
 | No usage statistics (FR-008) | `--usage-stats=disabled`; also `DO_NOT_TRACK=1` | Both set. The upstream default is `enabled`. |
 | Grafana address | `GRAFANA_URL` | `http://infrahub-grafana:3000` |
 | Grafana token | `GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`, read again on every call | The file written by the init container (R5) |
+| HTTPS for the users (FR-006a) | `--server.tls-cert-file` and `--server.tls-key-file`, both or neither. With one only, the server refuses to start: "incomplete TLS configuration". With both, `effectiveTLSEnabled` turns TLS on for `streamable-http` and `sse`, and the server uses Go's `ListenAndServeTLS`. Only command-line flags were found; no environment variable form. | Passed by the entrypoint when `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` and `INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE` are set. Not set by default. |
 | Health check | `/healthz`, outside the token check | Used by the Helm probes, on a side listener (`--healthz-address`) because a probe sends the pod IP as `Host`. Not verified. |
 
 The design document named the variable `GRAFANA_MCP_ALLOWED_HOSTS`. That name does not exist in
@@ -111,6 +112,34 @@ the client sets, so it does not limit who connects. The server serves plain HTTP
 unencrypted. Decision: publish `127.0.0.1:8100:8000` by default, which matches the default allowed
 hosts. Access from another computer goes through an SSH tunnel or a reverse proxy with TLS that the
 operator sets up. In Helm, the Service stays `ClusterIP`, and an Ingress needs TLS.
+
+**Opening the port to a network, with TLS in the server** (clarification of 2026-11-04). The
+loopback default stays. `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` (default `127.0.0.1`) sets the host
+address of the published port, for example `0.0.0.0` for every interface. In Helm, `service.type`
+can be `LoadBalancer` or `NodePort`. `mcp-grafana` 2.0.2 serves HTTPS itself when it gets a
+certificate and a key (table above), so no proxy container and no other image are needed.
+
+Do not confuse these flags with `--tls-cert-file`, `--tls-key-file`, `--tls-ca-file` and
+`--tls-skip-verify`, without the `server.` prefix: those are for the connection from the server to
+Grafana.
+
+Source: `cmd/mcp-grafana/main.go` at tag `v2.0.2`. Read, not run.
+
+Not verified:
+
+- the server running with a certificate;
+- whether `/healthz` on the side listener also uses TLS, which changes the Helm probe scheme;
+- how Claude Code and other MCP clients handle a self-signed certificate.
+
+The certificate stays the operator's job.
+
+Alternatives considered:
+
+- A reverse proxy container in the stack (for example Caddy or nginx). Not chosen: it adds an image
+  to pin and review, and the server serves TLS itself.
+- Refusing to start when the port is open to a network without TLS. Not chosen: the entrypoint runs
+  inside the container and does not see the host address of the published port. The docs say to use
+  TLS instead.
 
 ## R4. Which write tools the server keeps
 

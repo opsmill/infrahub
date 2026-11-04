@@ -13,6 +13,9 @@ standalone file generated from it.
 | `COMPOSE_PROFILES=grafana-mcp` (or `--profile grafana-mcp`) | Not set | Turns the Grafana MCP server on. Without it, the two services are not created. |
 | `INFRAHUB_GRAFANA_MCP_TOKEN` | None | The token that AI assistants send as `Authorization: Bearer`. Required when the profile is on. |
 | `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` | `localhost:8100,127.0.0.1:8100` | The `Host` values the server accepts. Change it when the server is published on another host name or port. |
+| `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` | `127.0.0.1` | The host address that port 8100 listens on. `0.0.0.0` opens it on every interface. When it is not a loopback address, turn on TLS and add the host name that users connect to to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` (spec FR-006). |
+| `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` | Not set | Path on the Docker host of the certificate (PEM), with its chain. Set with the key file, or neither. When both are set, the server serves HTTPS (spec FR-006a). |
+| `INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE` | Not set | Path on the Docker host of the private key (PEM) of that certificate. |
 | `INFRAHUB_GRAFANA_ADMIN_USER` | `admin` | The Grafana admin user. Read by the Grafana service (`GF_SECURITY_ADMIN_USER`) and by the service account step, so one setting changes both. |
 | `INFRAHUB_GRAFANA_ADMIN_PASSWORD` | `admin` | Its password, read the same way. The docs say to change it when the server is turned on (spec FR-025). Grafana applies it only when its data volume is created; a password changed later in the Grafana UI must be set here too. |
 
@@ -21,11 +24,22 @@ standalone file generated from it.
 | Service | Profile | Image | Port | Restart |
 |---------|---------|-------|------|---------|
 | `infrahub-grafana-mcp-init` | `grafana-mcp` | Image with `curl` (research R5) | None | None: runs once |
-| `infrahub-grafana-mcp` | `grafana-mcp` | `grafana/mcp-grafana:2.0.2`, pinned by digest too | `127.0.0.1:8100:8000` | See below |
+| `infrahub-grafana-mcp` | `grafana-mcp` | `grafana/mcp-grafana:2.0.2`, pinned by digest too | `${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}:8100:8000` | See below |
 
-The port listens only on the host's loopback address (spec FR-006). To reach the server from another
-computer, the operator uses an SSH tunnel (`ssh -L 8100:127.0.0.1:8100 <host>`) or a reverse proxy
-with TLS, and adds the proxy's host name to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`.
+By default, the port listens only on the host's loopback address (spec FR-006). To reach the server
+from another computer, the operator does one of these:
+
+- sets `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS`, turns on TLS with the two certificate settings, and adds
+  the host name to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`, for example `infrahub.example.com:8100`;
+- uses an SSH tunnel (`ssh -L 8100:127.0.0.1:8100 <host>`);
+- uses a reverse proxy with TLS, and adds the proxy's host name to
+  `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`.
+
+**TLS files.** When both TLS settings are set, Compose mounts the two files read-only at
+`/etc/grafana-mcp/tls/tls.crt` and `/etc/grafana-mcp/tls/tls.key`, and the entrypoint adds
+`--server.tls-cert-file` and `--server.tls-key-file` with these paths. A Compose bind mount needs a
+source path even when the setting is empty; how to mount the files only when they are set is checked
+in the Compose phase, with the restart policy.
 
 The image digest is written next to the tag in the Compose file. The entrypoint check stays valid
 when a later `mcp-grafana` release refuses to start without a token on its own.
@@ -38,6 +52,8 @@ The server runs with:
 - `--transport streamable-http --address 0.0.0.0:8000`
 - `--allowed-hosts ${INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS}`
 - `--usage-stats=disabled`, and `DO_NOT_TRACK=1`
+- `--server.tls-cert-file /etc/grafana-mcp/tls/tls.crt --server.tls-key-file
+  /etc/grafana-mcp/tls/tls.key`, only when both TLS settings are set (spec FR-006a)
 - `--disable-write --disable-api` in 1.13 (FR-010, research R4). The release of story 4 adds
   `--enable-write-tools=<dashboard, folder and annotation tools>`.
 - `GRAFANA_URL=http://infrahub-grafana:3000`
@@ -56,6 +72,7 @@ here before the service is written. The unit test checks the chosen value.
 | Case | Where | Text |
 |------|-------|------|
 | Profile on, no token | `infrahub-grafana-mcp` log, exit code 1 | `INFRAHUB_GRAFANA_MCP_TOKEN is not set: set it to the token that AI assistants send` |
+| Only one TLS setting is set | `infrahub-grafana-mcp` log, exit code 1 | `Set both INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE, or neither` |
 | Grafana not reachable after 5 minutes | `infrahub-grafana-mcp-init` log, exit code 1 | `Grafana did not answer at <url> within 5 minutes` |
 | Admin login refused | `infrahub-grafana-mcp-init` log, exit code 1 | `Grafana refused the admin login: set INFRAHUB_GRAFANA_ADMIN_USER and INFRAHUB_GRAFANA_ADMIN_PASSWORD` |
 

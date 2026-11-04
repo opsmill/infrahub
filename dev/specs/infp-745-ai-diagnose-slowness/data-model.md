@@ -13,6 +13,8 @@ The container or pod that gives an AI assistant tools to read and write in the s
 |-------|-------|------|
 | Enabled | Off by default | Compose: profile `grafana-mcp`. Helm: `grafanaMcp.enabled`. Off means no container (FR-001). |
 | Published address | Compose: `127.0.0.1:8100` to container port 8000. Helm: a `ClusterIP` Service on port 8000. | Not reachable from another computer by default (FR-006). |
+| Listen address | Compose: `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS`, default `127.0.0.1`. Helm: `service.type`, default `ClusterIP`. | One setting opens the port to a network (FR-006). |
+| TLS | Off by default | On when a certificate and its key are given; both or neither (FR-006a). |
 | Allowed hosts | Default `localhost:8100,127.0.0.1:8100` | One setting changes it (FR-007). |
 | Caller token | No default | Required when enabled; without it the container does not start (FR-003, FR-004). |
 | Usage statistics | Disabled | Always (FR-008). |

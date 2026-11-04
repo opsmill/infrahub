@@ -62,7 +62,9 @@ speak MCP over Streamable HTTP, such as Claude Code.
 **Constraints**:
 
 - With the profile off, no new container is created (FR-001).
-- The server listens on `127.0.0.1` by default (Compose) or on a `ClusterIP` Service (Helm) (FR-006).
+- The server listens on `127.0.0.1` by default (Compose) or on a `ClusterIP` Service (Helm). One
+  setting opens it to a network (FR-006), and the server serves HTTPS when it gets a certificate and a
+  key (FR-006a).
 - No new outbound connection from the operator's network (FR-008).
 - The skill finds data sources by type, never by UID (FR-013).
 
