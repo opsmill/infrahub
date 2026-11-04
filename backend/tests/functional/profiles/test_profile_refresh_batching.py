@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fast_depends import dependency_provider
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
+    from infrahub.workflows.models import WorkflowDefinition
 
 DEVICE_PROFILE_KIND = f"Profile{TestKind.DEVICE}"
 DEVICE_TEMPLATE_KIND = f"Template{TestKind.DEVICE}"
@@ -48,6 +49,23 @@ class InterfaceProfileDataset:
     profile_id: str
     linked_interface_ids: list[str]
     template_id: str
+
+
+def _submitted_calls(recorder: WorkflowRecorder) -> list[tuple[WorkflowDefinition, dict[str, Any], list[str]]]:
+    return [(call["workflow"], call["parameters"], call["tags"]) for call in recorder.submit_calls]
+
+
+def _refresh_calls(
+    branch_name: str, profile_id: str, context: EventContext, chunks: list[list[str]]
+) -> list[tuple[WorkflowDefinition, dict[str, Any], list[str]]]:
+    tags = [
+        WorkflowTag.BRANCH.render(identifier=branch_name),
+        WorkflowTag.RELATED_NODE.render(identifier=profile_id),
+    ]
+    return [
+        (PROFILE_REFRESH_MULTIPLE, {"branch_name": branch_name, "node_ids": chunk, "context": context}, tags)
+        for chunk in chunks
+    ]
 
 
 class TestProfileRefreshBatching(TestInfrahubApp):
@@ -178,20 +196,14 @@ class TestProfileRefreshBatching(TestInfrahubApp):
                 context=context,
             )
 
-        submissions = recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
-        assert len(recorder.submit_calls) == len(submissions)
-        assert [len(call["parameters"]["node_ids"]) for call in submissions] == [2, 1, 1]
-        device_chunk_ids = [node_id for call in submissions[:2] for node_id in call["parameters"]["node_ids"]]
-        assert sorted(device_chunk_ids) == sorted(dataset.linked_device_ids)
-        assert submissions[2]["parameters"]["node_ids"] == [dataset.template_id]
-        assert [call["parameters"]["branch_name"] for call in submissions] == [default_branch.name] * 3
-        assert [call["parameters"]["context"] for call in submissions] == [context] * 3
-        assert [call["tags"] for call in submissions] == [
-            [
-                WorkflowTag.BRANCH.render(identifier=default_branch.name),
-                WorkflowTag.RELATED_NODE.render(identifier=dataset.profile_id),
-            ]
-        ] * 3
+        # The id query returns the nodes in uuid order.
+        device_ids = sorted(dataset.linked_device_ids)
+        assert _submitted_calls(recorder) == _refresh_calls(
+            branch_name=default_branch.name,
+            profile_id=dataset.profile_id,
+            context=context,
+            chunks=[device_ids[:2], device_ids[2:], [dataset.template_id]],
+        )
 
     async def test_profile_refresh_reads_the_peers_of_a_generic_profile(
         self,
@@ -214,11 +226,13 @@ class TestProfileRefreshBatching(TestInfrahubApp):
                 context=context,
             )
 
-        submissions = recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
-        assert [len(call["parameters"]["node_ids"]) for call in submissions] == [2, 1, 1]
-        interface_chunk_ids = [node_id for call in submissions[:2] for node_id in call["parameters"]["node_ids"]]
-        assert sorted(interface_chunk_ids) == sorted(interface_dataset.linked_interface_ids)
-        assert submissions[2]["parameters"]["node_ids"] == [interface_dataset.template_id]
+        interface_ids = sorted(interface_dataset.linked_interface_ids)
+        assert _submitted_calls(recorder) == _refresh_calls(
+            branch_name=default_branch.name,
+            profile_id=interface_dataset.profile_id,
+            context=context,
+            chunks=[interface_ids[:2], interface_ids[2:], [interface_dataset.template_id]],
+        )
 
     async def test_send_profile_refresh_workflows_submits_one_flow_per_chunk(
         self,
@@ -242,15 +256,12 @@ class TestProfileRefreshBatching(TestInfrahubApp):
             node_ids=node_ids,
         )
 
-        submissions = recorder.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
-        assert [call["parameters"]["node_ids"] for call in submissions] == [node_ids[0:2], node_ids[2:4], node_ids[4:]]
-        assert [call["parameters"]["context"] for call in submissions] == [context] * 3
-        assert [call["tags"] for call in submissions] == [
-            [
-                WorkflowTag.BRANCH.render(identifier=default_branch.name),
-                WorkflowTag.RELATED_NODE.render(identifier=dataset.profile_id),
-            ]
-        ] * 3
+        assert _submitted_calls(recorder) == _refresh_calls(
+            branch_name=default_branch.name,
+            profile_id=dataset.profile_id,
+            context=context,
+            chunks=[node_ids[0:2], node_ids[2:4], node_ids[4:]],
+        )
 
     async def test_profile_attribute_change_reaches_the_linked_template(
         self, dataset: ProfileDataset, default_branch: Branch, client: InfrahubClient, context: EventContext
