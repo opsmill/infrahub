@@ -19,7 +19,6 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
-from .generator_instance_cleaner import GeneratorInstanceCleaner
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
@@ -130,13 +129,6 @@ async def build_branch_merge_orchestrator(
         post_merge_dispatcher=post_merge_dispatcher,
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
-        generator_instance_cleaner=GeneratorInstanceCleaner(
-            db=db,
-            source_branch=source_branch,
-            destination_branch=destination_branch,
-            diff_repository=diff_repository,
-            logger=logger,
-        ),
         diff_repository=diff_repository,
         diff_serializer=diff_summary_serializer,
         diff_summary_cache=DiffSummaryCache(

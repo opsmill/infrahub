@@ -78,9 +78,7 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    run at the merge `$at`. IPAM reconciliation is deliberately submitted *after* the `MERGED`
    transition (`core/branch/tasks.py`), so it never runs for a merge that failed before `MERGED` and
    never leaves partial IPAM state for recovery to reverse. Repository (git) merges are also deferred
-   past `MERGED`, and so is the delete of the branch-local generator instances whose target or
-   definition the merge deleted (`core/merge/generator_instance_cleaner.py`): a node delete stamps
-   vertex metadata without a `previous_*` snapshot, so it cannot run inside the window (see 5).
+   past `MERGED`.
 
 5. **Vertex metadata carries a restorable previous value.** The rollback restores
    `updated_at`/`updated_by` from `previous_updated_at`/`previous_updated_by` on every endpoint
@@ -130,7 +128,6 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 | `core/query/rollback.py` | per-phase rollback queries, `RollbackScope` |
 | `core/diff/query/merge.py` | `DiffMergeMetadataQuery` — co-writes `previous_*` for the merge diff |
 | `core/branch/tasks.py` | `_do_merge_branch` — sets `merge_started_at`/protection at `MERGING`, defers IPAM/repository past `MERGED` |
-| `core/merge/generator_instance_cleaner.py` | `GeneratorInstanceCleaner` — finds orphaned generator instances in the window, deletes them past `MERGED` |
 | `tasks/merge_watcher.py` | The recurring detection cron |
 | `cli/recover.py` | The `infrahub recover merge` operator command |
 
