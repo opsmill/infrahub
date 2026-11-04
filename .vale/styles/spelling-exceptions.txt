@@ -166,7 +166,6 @@ modeline
 modularization
 namespace
 namespaces
-nats
 netmask
 Nautobot
 Neo4j
@@ -237,6 +236,7 @@ reusability
 ROADM
 ROADMs
 rollout
+Ryuk
 Schema
 schema_mapping
 stdin
