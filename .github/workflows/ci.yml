@@ -1404,6 +1404,16 @@ jobs:
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
 
+      # valgrind-codspeed >= 3.26.0-0codspeed10 reports a 4 KiB stack under the default 8 MiB limit, which breaks
+      # Python 3.14 (BufferError), and it reads the limit at startup, so raise it on the parent process (the runner worker)
+      # for the CodSpeed steps below to inherit.
+      - name: Raise the stack limit for valgrind
+        run: |
+          if [ "$(ulimit -s)" != "unlimited" ] && [ "$(ulimit -s)" -lt 16384 ]; then
+            prlimit --pid "$PPID" --stack=16777216:
+          fi
+          prlimit --pid "$PPID" --stack
+
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
         uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
