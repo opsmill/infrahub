@@ -1,0 +1,1 @@
+Fixed the default branch of a new Git repository being imported a second time when the repository was added while another task worker had no copy of it yet, which sent its sync status back to syncing until the second import finished.

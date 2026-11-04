@@ -378,7 +378,9 @@ recompute of a Python computed attribute or an artifact generation, read the com
 A later import of the same commit does not start them again, because no fingerprint changes. The add
 flow, the sync and the seed import of a fresh clone record it first. The seed import matters because
 the periodic sync can clone a new repository before its add flow runs, while the graph has no commit.
-A clone made only to read files records nothing, because no import follows it.
+A clone made only to read files records nothing, because no import follows it. How the add flow and
+the seed import avoid importing the same commit twice is in
+[First Import of a Repository](git-first-import.md).
 
 ## Repository activity records
 

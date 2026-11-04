@@ -408,6 +408,24 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         return RecordedImport(commit=readable_commit(repository.commit.value), sync_status=repository.sync_status.value)
 
+    async def holds_or_imports_commit(self, branch_name: str, commit: str) -> bool:
+        """Whether the graph records `commit` for the branch, with its objects imported or their import under way.
+
+        A branch that failed to import the commit, or whose status is still unknown, answers no, so the
+        caller imports the commit itself.
+        """
+        repository = await self.sdk.get(
+            kind=CoreRepository,
+            id=str(self.id),
+            branch=branch_name,
+            exclude=["tags", "credential"],
+            raise_when_missing=True,
+        )
+        return readable_commit(repository.commit.value) == commit and repository.sync_status.value in {
+            RepositorySyncStatus.IN_SYNC.value,
+            RepositorySyncStatus.SYNCING.value,
+        }
+
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.
 

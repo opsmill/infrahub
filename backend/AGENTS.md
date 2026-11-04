@@ -142,6 +142,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
 - `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping, imports that stop partway, and git error surfacing; read when touching repository sync or debugging branch-import behavior
+- `dev/knowledge/backend/git-first-import.md` - How the add flow and the seed import of a fresh clone import a new repository's default branch once; read before changing either import or what they read from the graph first
 - `dev/knowledge/backend/git-push-queue.md` - The push queue of a read-write repository: delivery, retry, abandon, the imports that wait, the regeneration barrier; read when touching the push of a merge or a path that imports the default branch
 - `dev/knowledge/backend/repository-git-state.md` - How the API server reads a repository's commit log from a worker's clone (reader protocol, factory, warm-up, `fetched_at`/`checked_at`, the git cache keys); read before changing the resolver, the reader or the read-only refs check
 
