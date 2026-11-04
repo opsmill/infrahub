@@ -161,21 +161,21 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Create `backend/infrahub/core/query/branch_windows.py` with `build_branch_windows_query`, `render_window_filter` and `render_outranks`, as specified in `contracts/branch-window-helpers.md`, including `carry` and `include_deleting`. Import only `infrahub.core.constants`, and `Timestamp` under `TYPE_CHECKING`.
-- [ ] T035 [P] [US3] Add `backend/tests/unit/core/query/test_branch_windows.py`, covering:
+- [X] T034 [US3] Create `backend/infrahub/core/query/branch_windows.py` with `build_branch_windows_query`, `render_window_filter` and `render_outranks`, as specified in `contracts/branch-window-helpers.md`, including `carry` and `include_deleting`. Import only `infrahub.core.constants`, and `Timestamp` under `TYPE_CHECKING`. Result: the module also exposes `render_branch_windows_clause`, the clause without parameters, for the module-level Cypher constants that already set `$at` and `$global_branch_name`.
+- [X] T035 [P] [US3] Add `backend/tests/unit/core/query/test_branch_windows.py`, covering:
   - the disabled form;
   - parameters;
   - carried variables;
   - `deleting_branches` emitted only with `include_deleting`;
   - the rendered predicates naming the variables they are given.
-- [ ] T036 [US3] Replace the window collection in `backend/infrahub/core/query/agnostic_retention.py::UNRETAINED_AGNOSTIC_FIELD_PREDICATE` with `build_branch_windows_query(carry=["agnostic_candidates"], time_param="at")`. Keep `UNRETAINED_AGNOSTIC_FIELD_EVALUATION` unchanged. Run `backend/tests/component/core/agnostic_retirement/` and `backend/tests/component/core/migrations/graph/m078_retire_agnostic_property_edges/`.
-- [ ] T037 [US3] Replace the inline window collection in `backend/infrahub/core/query/branch_agnostic_retirement.py` with the shared clause. Run `backend/tests/component/core/agnostic_retirement/`.
-- [ ] T038 [US3] In `backend/infrahub/core/query/resource_manager.py`:
+- [X] T036 [US3] Replace the window collection in `backend/infrahub/core/query/agnostic_retention.py::UNRETAINED_AGNOSTIC_FIELD_PREDICATE` with `build_branch_windows_query(carry=["agnostic_candidates"], time_param="at")`. Keep `UNRETAINED_AGNOSTIC_FIELD_EVALUATION` unchanged. Run `backend/tests/component/core/agnostic_retirement/` and `backend/tests/component/core/migrations/graph/m078_retire_agnostic_property_edges/`.
+- [X] T037 [US3] Replace the inline window collection in `backend/infrahub/core/query/branch_agnostic_retirement.py` with the shared clause. Run `backend/tests/component/core/agnostic_retirement/`. Result: T036 and T037 use `render_branch_windows_clause`, which renders the same Cypher text as before.
+- [X] T038 [US3] In `backend/infrahub/core/query/resource_manager.py`:
   - replace `LIVE_BRANCHES_QUERY` with the shared clause (`include_deleting=True`);
   - rename `fork_at` to `origin_at` in every fragment that reads the windows: `_live_on_some_branch`, `LIVE_ATTRIBUTE_VALUES_QUERY`, `INHERITED_OPEN_VALUES_QUERY`, the division filters and `NumberPoolAttributeBranchValuesQuery`;
   - check that each fragment skips the default branch's entry, whose origin is NULL.
 
-  Run T031's number pool tests, T033 and `backend/tests/component/core/resource_manager/`; all pass.
+  Run T031's number pool tests, T033 and `backend/tests/component/core/resource_manager/`; all pass. Result: `_live_on_some_branch` does not exist on `release-1.12`; the fragments renamed are `EDGE_BRANCHES`, `HELD_BRANCH`, `LIVE_ATTRIBUTE_VALUES_QUERY` and `INHERITED_OPEN_VALUES_QUERY`. All number pool tests pass; the only failures are the 12 IP pool tests that fail on purpose until T039-T044.
 - [ ] T039 [US3] Rewrite `IPPrefixSubnetFetchFree` in `backend/infrahub/core/query/ipam.py` in the flat window form of research R4:
   - the windows clause opens the query;
   - the namespace check passes when `any(window …)` finds its `IS_PART_OF` edge latest and active, and yields no row otherwise;
