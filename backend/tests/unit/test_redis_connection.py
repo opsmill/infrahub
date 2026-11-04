@@ -15,9 +15,11 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
-from infrahub.config import CacheSettings
+from infrahub.config import BrokerDriver, BrokerSettings, CacheSettings
 from infrahub.redis_connection import (
     REDIS_HEALTH_CHECK_INTERVAL,
+    build_broker_connection_string,
+    build_broker_redis_connection,
     build_cache_connection_string,
     build_redis_connection,
     validate_redis_url,
@@ -33,7 +35,7 @@ CA_BUNDLE = str(Path(__file__).parent / "test_data" / "ca-bundle.pem")
 CA_BUNDLE_QUOTED = quote_plus(CA_BUNDLE, safe="")
 
 
-pytestmark = pytest.mark.usefixtures("without_cache_environment")
+pytestmark = pytest.mark.usefixtures("without_cache_environment", "without_broker_environment")
 
 
 def _build(url: str, **cache_kwargs: Any) -> Any:
@@ -262,6 +264,104 @@ def test_build_redis_connection_from_scalar_settings(case: ScalarCase) -> None:
 
     assert isinstance(connection, Connection)
     assert _describe(connection) == case.expected
+
+
+def _broker(**broker_kwargs: Any) -> BrokerSettings:
+    return BrokerSettings(driver=BrokerDriver.Redis, **broker_kwargs)
+
+
+@dataclass
+class BrokerConnectionStringCase:
+    name: str
+    broker_kwargs: dict[str, Any]
+    expected_url: str
+
+
+BROKER_CONNECTION_STRING_CASES = [
+    BrokerConnectionStringCase(
+        name="scalar_without_credentials",
+        broker_kwargs={"address": "redis.internal", "username": "", "password": ""},
+        expected_url="redis://redis.internal:6379/0",
+    ),
+    BrokerConnectionStringCase(
+        name="scalar_custom_port_and_credentials",
+        broker_kwargs={"address": "redis.internal", "port": 6400, "username": "user", "password": "s3cr/et"},
+        expected_url="redis://user:s3cr%2Fet@redis.internal:6400/0",
+    ),
+    BrokerConnectionStringCase(
+        name="scalar_tls_insecure",
+        broker_kwargs={
+            "address": "redis.internal",
+            "username": "",
+            "password": "",
+            "tls_enabled": True,
+            "tls_insecure": True,
+        },
+        expected_url="rediss://redis.internal:6379/0?ssl_cert_reqs=none&ssl_check_hostname=False",
+    ),
+    BrokerConnectionStringCase(
+        name="sentinel_url_returned_as_written",
+        broker_kwargs={"url": SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster/2")},
+        expected_url="redis+sentinel://s1:26379,s2:26379/mymaster/2",
+    ),
+    BrokerConnectionStringCase(
+        name="tls_url_verifies_against_the_broker_ca_file",
+        broker_kwargs={"url": SecretStr("rediss+sentinel://s1:26379/mymaster"), "tls_ca_file": CA_BUNDLE},
+        expected_url=f"rediss+sentinel://s1:26379/mymaster?ssl_ca_certs={CA_BUNDLE_QUOTED}",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", BROKER_CONNECTION_STRING_CASES, ids=lambda case: case.name)
+def test_build_broker_connection_string(case: BrokerConnectionStringCase) -> None:
+    assert build_broker_connection_string(_broker(**case.broker_kwargs)) == case.expected_url
+
+
+@dataclass
+class BrokerTLSCase:
+    name: str
+    broker_kwargs: dict[str, Any]
+    expected: dict[str, Any]
+
+
+BROKER_TLS_CASES = [
+    BrokerTLSCase(
+        name="tls_verifies_against_the_ca_file",
+        broker_kwargs={"tls_enabled": True, "tls_ca_file": CA_BUNDLE},
+        expected={**VERIFIED_TLS, **NO_CREDENTIALS, **DEFAULT_ENDPOINT, "ca_certs": CA_BUNDLE},
+    ),
+    BrokerTLSCase(
+        name="tls_insecure_skips_verification",
+        broker_kwargs={"tls_enabled": True, "tls_insecure": True},
+        expected={
+            **VERIFIED_TLS,
+            **NO_CREDENTIALS,
+            **DEFAULT_ENDPOINT,
+            "cert_reqs": ssl.CERT_NONE,
+            "check_hostname": False,
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", BROKER_TLS_CASES, ids=lambda case: case.name)
+def test_build_broker_redis_connection_applies_the_tls_settings(case: BrokerTLSCase) -> None:
+    broker = _broker(address="redis.internal", username="", password="", **case.broker_kwargs)
+
+    connection = build_broker_redis_connection(broker).connection_pool.make_connection()
+
+    assert isinstance(connection, Connection)
+    assert _describe(connection) == case.expected
+
+
+def test_build_broker_redis_connection_follows_the_sentinel_master() -> None:
+    broker = _broker(url=SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster"))
+
+    pool = build_broker_redis_connection(broker).connection_pool
+
+    assert isinstance(pool, SentinelConnectionPool)
+    assert pool.service_name == "mymaster"
+    assert pool.connection_kwargs["health_check_interval"] == REDIS_HEALTH_CHECK_INTERVAL
 
 
 def test_url_connection_retries_as_often_as_the_client_default() -> None:

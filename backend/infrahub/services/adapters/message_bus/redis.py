@@ -12,6 +12,7 @@ import ujson
 from infrahub_sdk.uuidt import UUIDT
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
+from prefect_redis.connection import aclose_redis_client
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -19,6 +20,7 @@ from infrahub.exceptions import WorkerTimeoutError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
+from infrahub.redis_connection import build_broker_redis_connection
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
@@ -199,24 +201,9 @@ class RedisMessageBus(InfrahubMessageBus):
         await message_bus._initialize()
         return message_bus
 
-    def _build_connection(self) -> redis.Redis:
-        """Build the Redis client that the broker settings describe, without connecting it."""
-        return redis.Redis(
-            host=self.settings.address,
-            port=self.settings.service_port,
-            username=self.settings.username or None,
-            password=self.settings.password or None,
-            ssl=self.settings.tls_enabled,
-            ssl_ca_certs=self.settings.tls_ca_file,
-            ssl_cert_reqs="none" if self.settings.tls_insecure else "required",
-            # The ssl module rejects CERT_NONE while hostname checking is on, so insecure mode turns both off.
-            ssl_check_hostname=not self.settings.tls_insecure,
-            decode_responses=False,  # We handle decoding ourselves for binary data
-        )
-
     async def _initialize(self) -> None:
         """Initialize Redis connection and streams."""
-        self.connection = self._build_connection()
+        self.connection = build_broker_redis_connection(self.settings)
 
         if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
@@ -242,7 +229,7 @@ class RedisMessageBus(InfrahubMessageBus):
         with contextlib.suppress(redis.RedisError):
             await self.connection.delete(self.callback_stream)
 
-        await self.connection.aclose()
+        await aclose_redis_client(self.connection)
 
     async def _deregister_consumers(self) -> None:
         """Remove this worker's consumers from their groups.

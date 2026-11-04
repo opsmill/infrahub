@@ -551,10 +551,34 @@ class DevelopmentSettings(BaseSettings):
     )
 
 
+def _superseded_scalar_settings(settings: BaseSettings, names: frozenset[str]) -> list[str]:
+    """Return the settings among ``names`` that were set to a value other than their default."""
+    fields = type(settings).model_fields
+    return sorted(
+        name for name in settings.model_fields_set & names if getattr(settings, name) != fields[name].get_default()
+    )
+
+
+# tls_ca_file is absent because a TLS URL that names no CA bundle still verifies against it.
+BROKER_URL_SUPERSEDED_FIELDS = frozenset({"address", "port", "username", "password", "tls_enabled", "tls_insecure"})
+
+
 class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
+    # hide_input_in_errors keeps a connection URL (which may embed credentials) out of any
+    # ValidationError raised for this section.
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_", hide_input_in_errors=True)
+    url: Annotated[SecretStr | None, BeforeValidator(_blank_setting_as_unset)] = Field(
+        default=None,
+        description=(
+            "Full Redis connection URL for the redis driver, authoritative over the scalar connection settings "
+            "when set. Accepts the same redis://, rediss://, redis+sentinel:// and rediss+sentinel:// URLs as "
+            "INFRAHUB_CACHE_URL; with a Sentinel URL the message bus discovers the current master through the "
+            "Sentinel nodes and follows failover. A TLS URL without ?ssl_ca_certs= verifies against "
+            "broker.tls_ca_file, which the global tls.ca_bundle fills. Requires the redis driver."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: CaBundleSetting = Field(
@@ -594,6 +618,28 @@ class BrokerSettings(BaseSettings):
     def validate_tls_configuration(self) -> Self:
         if self.tls_ca_file is not None:
             self.tls_ca_file = _resolve_ca_bundle_setting("broker.tls_ca_file", self.tls_ca_file)
+        return self
+
+    @model_validator(mode="after")
+    def validate_url(self) -> Self:
+        url = self.url
+        if url is None:
+            return self
+
+        if self.driver != BrokerDriver.Redis:
+            raise ValueError(
+                f"INFRAHUB_BROKER_URL is set but INFRAHUB_BROKER_DRIVER is {self.driver.value}, and only the redis "
+                "driver reads the URL. Set INFRAHUB_BROKER_DRIVER to redis or unset INFRAHUB_BROKER_URL."
+            )
+
+        superseded = _superseded_scalar_settings(self, BROKER_URL_SUPERSEDED_FIELDS)
+        if superseded:
+            log.warning(
+                "INFRAHUB_BROKER_URL is set and supersedes the scalar broker connection settings",
+                superseded_settings=[f"INFRAHUB_BROKER_{name.upper()}" for name in superseded],
+            )
+
+        validate_redis_url(url.get_secret_value())
         return self
 
     @property
@@ -680,12 +726,7 @@ class CacheSettings(BaseSettings):
             return self
 
         # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
-        fields = type(self).model_fields
-        superseded = sorted(
-            name
-            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
-            if getattr(self, name) != fields[name].get_default()
-        )
+        superseded = _superseded_scalar_settings(self, CACHE_URL_SUPERSEDED_FIELDS)
         if superseded:
             log.warning(
                 "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
@@ -2225,8 +2266,10 @@ class Settings(BaseSettings):
         for component, field_name in components:
             if getattr(component, field_name) is not None:
                 continue
-            # A cache URL supersedes cache.tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
-            superseded = component is self.cache and self.cache.url is not None
+            # A cache or broker URL supersedes tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
+            superseded = (component is self.cache and self.cache.url is not None) or (
+                component is self.broker and self.broker.url is not None
+            )
             if getattr(component, "tls_insecure", False) and not superseded:
                 continue
             setattr(component, field_name, ca_bundle)
