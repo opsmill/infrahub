@@ -2,7 +2,7 @@ import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip
 
 const weightOf = (resource: IpPoolResource) => resource.allocationWeight ?? 0;
 
-// mirrors the server's weight order, which applies only when every resource prefix kind has a weight; otherwise all weights are null and prefix order decides
+// mirrors the server, which fills the heaviest resource prefix first
 export const sortIpPoolResourcesByFillOrder = (resources: IpPoolResource[]): IpPoolResource[] =>
   [...resources].sort(
     (a, b) =>
