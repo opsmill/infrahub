@@ -1,0 +1,19 @@
+dev/knowledge/backend/task-manager-retention.md
+  s_cfd0841cea4d76::t_f3669ad666bfe8 70-71,82,92-94,96-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a75e347e70cc8e6ab8dc8a6d52083d8973e9b69",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

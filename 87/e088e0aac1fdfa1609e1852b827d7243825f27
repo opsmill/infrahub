@@ -1,0 +1,29 @@
+backend/tests/component/core/migrations/graph/m080_reanchor_number_pool_reservations/test_migration.py
+  s_2ebb2edda29636::t_ffac568f5a17e4 593
+backend/infrahub/core/migrations/graph/m080_reanchor_number_pool_reservations/queries.py
+  s_2ebb2edda29636::t_ffac568f5a17e4 74
+backend/tests/component/core/migrations/graph/m080_reanchor_number_pool_reservations/conftest.py
+  s_2ebb2edda29636::t_739f87caf8c464 188-189,192,194
+  s_2ebb2edda29636::t_ffac568f5a17e4 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87e088e0aac1fdfa1609e1852b827d7243825f27",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2ebb2edda29636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528cec79-301a-4732-8273-0b8b5750ba03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

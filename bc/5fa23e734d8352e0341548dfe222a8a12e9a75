@@ -1,0 +1,256 @@
+backend/tests/helpers/task_manager_seed.py
+  s_cfd0841cea4d76::t_1bf470012808ca 105-110
+  s_cfd0841cea4d76::t_1f193fb8dbbb62 3-4,6-7,13-17,24,29-36,69-74,79-104,112-115,119-193,195-209
+  s_cfd0841cea4d76::t_fc8c2393f9981e 111,116-118
+  s_cfd0841cea4d76::t_1ae21da024f97c 5,75-78
+  s_cfd0841cea4d76::t_08f56aa1e75960 194
+  s_cfd0841cea4d76::t_275375cc968f98 25
+  s_cfd0841cea4d76::t_40741bf4fee061 8-9,20,220-222,232,256-263,265-266,268,271-275,334
+  s_cfd0841cea4d76::t_e578bc55df8b7b 210-219,223-231,233-255,264,267,269-270,276-333,335-343
+  s_cfd0841cea4d76::t_9bdcceb9f0cde0 21,45
+backend/tests/component/task_manager/conftest.py
+  s_cfd0841cea4d76::t_e853c11e61ea43 1-24
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_54e4c19f98f25d 1-3,5-14,17-18,30-31,33-37,40-41,46-53,55-57,66,69-73,75,77-78,88-96,113-126,176,184-185,298,308,322,324-326,327,330-334,336,339-342,345-347,353-354,356-358,361-369
+  s_cfd0841cea4d76::t_d79d956b59d722 32,68,76,79-82,177,335,337-338,343,348,350-352,355
+  s_cfd0841cea4d76::t_93431953506a33 54,67,74
+  s_cfd0841cea4d76::t_5710a5af945b0f 359-360
+  s_cfd0841cea4d76::t_06eccad10d2bb4 344,349
+  s_cfd0841cea4d76::t_d6130af510dcc3 59-65
+  s_cfd0841cea4d76::t_37f8fd1afb03f7 321,323,328-329
+  s_cfd0841cea4d76::t_f22c1640ac7fd2 58
+  s_cfd0841cea4d76::t_1eb567c19f7cca 127-132,134-141,143-148,150-155,157-162,164-172,175,178-183,186-196,198-200,233,235,239-241,243,245-248,250-251,253-261,264-273,275-280
+  s_cfd0841cea4d76::t_f2e31ec2af894a 84-87,99-110
+  s_cfd0841cea4d76::t_d212e5c0ab60d3 4,16,19-20,21,23-28,42-43
+  s_cfd0841cea4d76::t_f101dbb6fdb43d 111-112
+  s_cfd0841cea4d76::t_9072a0d9e83001 15,38-39,83,283-318
+  s_cfd0841cea4d76::t_0f54bfd12467e9 319-320
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_cfd0841cea4d76::t_61e54d4d5b9a54 23,28-29,33,35
+  s_cfd0841cea4d76::t_0444eeee189785 34
+  s_cfd0841cea4d76::t_fa9278febbd733 10,13-14,18,32
+  s_cfd0841cea4d76::t_cffffade05ce06 21
+  s_cfd0841cea4d76::t_ad8096bacda59b 43,50-51
+  s_cfd0841cea4d76::t_cec6d418d25738 44
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_1ae21da024f97c 317-318,321-323,355,431-432,435-438
+  s_cfd0841cea4d76::t_5fae104afe3ab5 1-5,8-19,20-22,25-29,33,35,39-40,41-94,96-124,126-141,149-155,160-178,183-187,205-246,248-252,258,268,270-271,282-316,324-326,329-339,341,354,356-360,364-378,380-383,387-411,416-425,427-430,439-442,444-457
+  s_cfd0841cea4d76::t_fc8c2393f9981e 379,384-386
+  s_cfd0841cea4d76::t_a9d22963e27964 179-182
+  s_cfd0841cea4d76::t_cf0b11424fd493 30-32,412-415,426
+  s_cfd0841cea4d76::t_007280e9542aea 95,125
+  s_cfd0841cea4d76::t_c1be3440c8a9b6 281
+  s_cfd0841cea4d76::t_5997485e955007 247,269,273-276,279-280
+  s_cfd0841cea4d76::t_7becef03168abe 443
+  s_cfd0841cea4d76::t_b18aa0b02b3fb2 319-320,327-328,361-364
+  s_cfd0841cea4d76::t_f29b6ea749d6c0 255,256-257,262,265-266
+  s_cfd0841cea4d76::t_8e4851884f643d 433-434
+  s_cfd0841cea4d76::t_b2ef300e0c0392 340,344-348,350-352
+  s_cfd0841cea4d76::t_148d3e5e03a99a 259,263-264
+  s_cfd0841cea4d76::t_c238c6361b9e54 349
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_c5d0ff0cb9980a 1-3,6-8,9-11,13,14,17,19-21,29-32,33-34,37-44,47-48,53,59-60,62,67,69-71,75-77,79,82-83,111-118,121-122,124,126-130,132,135-141,144,148-151,197-204,206-207,209-210,215,218-219,221,224-227
+  s_cfd0841cea4d76::t_e578bc55df8b7b 4,15-16,18,80-81,119,125,211
+  s_cfd0841cea4d76::t_4b18c2288e84ac 45
+  s_cfd0841cea4d76::t_a96632656976a4 131,134,143,146,153,156,178-181,183-184,186-191,193-194,196,205,213,220,222-223
+  s_cfd0841cea4d76::t_8da55a9d57dc5c 120
+  s_cfd0841cea4d76::t_4163f66fc0b135 12,123,214
+backend/infrahub/prefect_server/app.py
+  s_cfd0841cea4d76::t_41054f4c026017 11,20
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_b9a0b7852f35b1 22,49-50,58
+  s_cfd0841cea4d76::t_7c7a3a8a9abdbe 52-54,62,64
+  s_cfd0841cea4d76::t_b06141021cd2b3 63
+  s_cfd0841cea4d76::t_cffffade05ce06 51
+  s_cfd0841cea4d76::t_ad8096bacda59b 87,91-93,98,100-101
+  s_cfd0841cea4d76::t_7ef0bb8db9161c 103
+  s_cfd0841cea4d76::t_0a0d824c1f86ec 94,102,104
+  s_cfd0841cea4d76::t_efca1fed53146d 124
+  s_cfd0841cea4d76::t_71772c9b2641b1 131-132
+dev/specs/infp-507-task-history-retention/plan.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 142
+  s_cfd0841cea4d76::t_ad8096bacda59b 84,87,89
+  s_cfd0841cea4d76::t_75e793da0f555a 101-102
+  s_cfd0841cea4d76::t_90163927abc586 47
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_fa9278febbd733 10,12
+  s_cfd0841cea4d76::t_cffffade05ce06 14
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 20
+dev/specs/infp-507-task-history-retention/research.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 35
+  s_cfd0841cea4d76::t_b06141021cd2b3 45
+  s_cfd0841cea4d76::t_ad8096bacda59b 55
+  s_cfd0841cea4d76::t_2f80d043e03ccf 57
+  s_cfd0841cea4d76::t_487fd6195cbd8f 54
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_18e9282daa767e 41,105,139,205
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_cfd0841cea4d76::t_fa9278febbd733 50
+  s_cfd0841cea4d76::t_cffffade05ce06 49,58
+  s_cfd0841cea4d76::t_ad8096bacda59b 69,71
+  s_cfd0841cea4d76::t_e033cb04c3e7cd 79
+changelog/+task-manager-retention.added.md
+  s_cfd0841cea4d76::t_5b32f081f6d311 6
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_06fdcf0653be1a 73
+  s_cfd0841cea4d76::t_802643a6d45b14 1-5,7,9,11-13,15-19,20-21,22-27,49-54,63-66,68-72,74,80-81,87-89,91,93-94,110-111,113-115,117-122,126-127,129-132,140-142,151-158
+  s_cfd0841cea4d76::t_b0691aede39427 135-139
+  s_cfd0841cea4d76::t_6352bc7fc39f01 10,85-86,90,95-96,98-100,102-105,107,109
+  s_cfd0841cea4d76::t_51614817910c9a 75-77
+  s_cfd0841cea4d76::t_10bb1b80f61969 114-115
+  s_cfd0841cea4d76::t_864fcb7539b63e 117-120
+docs/docs/reference/infrahub-cli/infrahub-upgrade.mdx
+  s_cfd0841cea4d76::t_e2d03a2ef5e0ba 21
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_80dc279d9156e2 1-47,65,70,72-84,89-115
+  s_cfd0841cea4d76::t_ed05e97b911309 48-59
+  s_cfd0841cea4d76::t_d346a91c546717 85-88
+  s_cfd0841cea4d76::t_776e4232cb6511 60,62-64,66-69,71
+  s_cfd0841cea4d76::t_4f825534f462ce 61
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_b0691aede39427 12
+  s_cfd0841cea4d76::t_15d04677f47a47 1-2,8-9,11,20-29,31-35,39,45,48-52,54-56,58-61,64-70,84-115,117,119-131,133-166,168,170-180,182-184,187-188,190,192,197-202,204,217-222,224-227,230-231,233-235,319-341
+  s_cfd0841cea4d76::t_ed1ef1ec66084b 272-274,276,303,304-306,313,316,319-320,323-324,333-336,338-339,342-357,359,361-371,373-375,376-392,394-396,398,400-406
+  s_cfd0841cea4d76::t_e7abc70aa7ce27 7,10,30
+  s_cfd0841cea4d76::t_4f825534f462ce 38
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_76bce10098284a 109-111
+  s_cfd0841cea4d76::t_3e0a14dbf51544 240,247
+  s_cfd0841cea4d76::t_acf7f9899d40eb 11
+  s_cfd0841cea4d76::t_271ca4347eb956 14,28-29,55-64,66-67,69,241-246,248-250
+  s_cfd0841cea4d76::t_5af5d63f3334cb 1-9,15-21,23,25-27,30-44,47,49-50,81-83,86-101,103-108,112-125,127-129,130-138,140-145,146-148,151-162,164-169,239
+  s_cfd0841cea4d76::t_b0691aede39427 12
+  s_cfd0841cea4d76::t_182af3d1ffef8e 45-46,48,51-54,65,68,70-80
+  s_cfd0841cea4d76::t_e3812a005021a9 10,13,102,126,139,149-150,163,170-171,173-176,203-214
+  s_cfd0841cea4d76::t_fb9e1b53dea2b1 223-240
+  s_cfd0841cea4d76::t_521522456ca30d 24
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_e5e6c5bcc9d244 120-121,124,127-128,143-144,146-147,149-154,167-176,187-199,204-211,213-218,226-228
+  s_cfd0841cea4d76::t_21b0d9882c36f5 1-2,5-6,14,17,34-36,39-41,48
+  s_cfd0841cea4d76::t_098fac6d61520b 52
+  s_cfd0841cea4d76::t_a8f3d032d7195b 49-51
+  s_cfd0841cea4d76::t_c629155e0eb667 125-126,129-133,135-136,139,141,145,148,155-162,166
+  s_cfd0841cea4d76::t_807285b772a021 8
+backend/infrahub/cli/upgrade.py
+  s_cfd0841cea4d76::t_468d4cb9ba6bff 52,54-57,120-124,126-128,168,180,183,196,200,207,211,219,221-222,247-251,254,257-259,261,271-274
+  s_cfd0841cea4d76::t_b0691aede39427 53
+  s_cfd0841cea4d76::t_e2d03a2ef5e0ba 125
+  s_cfd0841cea4d76::t_b8fdcb07b927f0 275-276
+  s_cfd0841cea4d76::t_fc6c0ba1cb0687 220,252-253,260
+  s_cfd0841cea4d76::t_a8f3d032d7195b 49
+  s_cfd0841cea4d76::t_d93c8421e62598 262-266,270
+  s_cfd0841cea4d76::t_5ee29ab2214b60 30
+changelog/+flush-flow-runs.changed.md
+  s_cfd0841cea4d76::t_8ed7d7c2c7912b 1
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_b0691aede39427 9-12
+  s_cfd0841cea4d76::t_3fd6657870accc 307,309-310
+  s_cfd0841cea4d76::t_fc932620893790 1-6,8,13-21,24-51,54-60,94-135,167-204,289-306,308
+  s_cfd0841cea4d76::t_78bd02dfc37490 52-53,63-64,66,67-69,72-84,85-87,89-91
+  s_cfd0841cea4d76::t_8bcd3a1c87d6cc 7,23
+  s_cfd0841cea4d76::t_974db2654fd1d9 265-286,289-291
+  s_cfd0841cea4d76::t_1c636843b30bb8 287-288
+  s_cfd0841cea4d76::t_2125e005c0a6f3 92-93
+  s_cfd0841cea4d76::t_02c6e8b605b87a 61-62,65,70-71,88
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_f97b2181ee081c 286,300-302
+  s_cfd0841cea4d76::t_47445be95b3c63 1-4,8-12,15-19,35,37-61,183-187,206-207,226,238-239,242-244,284-285,287-288,292-293,298-299,307
+  s_cfd0841cea4d76::t_f8602fb41d5329 20,36,205,240-241,289-291,303-306
+  s_cfd0841cea4d76::t_7f3db38d5c3168 180-181,248,251-256
+  s_cfd0841cea4d76::t_ddd38fef093927 5,13-14,21-22,62-67,70-83,88-89,92-96,174,176-177,183,221,225,227-237,245-247,249-250,257-272,283,308,370-390
+  s_cfd0841cea4d76::t_55f2737eb9c0f4 6,25-26,84-87,171-173,175,178-179,182,188-202,222-224,273-282,294-297
+backend/tests/unit/conftest.py
+  s_cfd0841cea4d76::t_47aa19d5552774 1-2,4,21-22,24-25
+  s_cfd0841cea4d76::t_49b8a24c104c22 26-27
+backend/tests/adapters/task_history.py
+  s_cfd0841cea4d76::t_2e795781e30b52 1-3,4,7-10,12-15,17,19-26,31-49,55,58
+  s_cfd0841cea4d76::t_07a81f4ce34f3b 48-50,55-58,62-63
+backend/tests/unit/task_manager/event/test_models.py
+  s_cfd0841cea4d76::t_c3b67a82e4742b 1-9,38-211
+backend/tests/component/task_manager/test_event_query_windows.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 64,75
+  s_cfd0841cea4d76::t_da4e5651cdff7d 1-63,65-74,76-141,149-225
+  s_cfd0841cea4d76::t_bf7293c7ea3b41 143-148
+  s_cfd0841cea4d76::t_274f84b2bffacf 142
+backend/infrahub/graphql/queries/event.py
+  s_cfd0841cea4d76::t_9615e062e760df 10,22,29-34,36-41,92-100,103
+backend/infrahub/prefect_server/database.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 42-44
+  s_cfd0841cea4d76::t_865ba91295829e 26-32,45,48,59,65-68
+  s_cfd0841cea4d76::t_f6b3338c6ff531 3,6,12-15,19-25,33-41,46-47,54,58,60-64,69
+  s_cfd0841cea4d76::t_6b339f0ddef23c 49
+backend/infrahub/prefect_server/events.py
+  s_cfd0841cea4d76::t_17a44f7405defa 32
+backend/infrahub/task_manager/event/models.py
+  s_cfd0841cea4d76::t_14f52b3a04232a 149
+  s_cfd0841cea4d76::t_ef7f7a81b32e05 18-24,35-49,68,72-73,76,102,105-116,130-134,141-147,150-169,173-174,216,245
+  s_cfd0841cea4d76::t_ea8af958c4a56e 53-57
+  s_cfd0841cea4d76::t_6c9313794227c7 50
+backend/infrahub/task_manager/event/query.py
+  s_cfd0841cea4d76::t_0419df39ff4a9e 8,14,24-25,29,440-445,452,457-468
+  s_cfd0841cea4d76::t_2eff6ac135f7df 446-451,453-456
+  s_cfd0841cea4d76::t_17a44f7405defa 391,407,436
+  s_cfd0841cea4d76::t_1bca608ce282c8 469
+dev/knowledge/backend/events.md
+  s_cfd0841cea4d76::t_99d49136d0c0da 214
+  s_cfd0841cea4d76::t_7f3b6c74fe1740 194-196
+backend/tests/helpers/event_filters.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 165-167
+  s_cfd0841cea4d76::t_3bf8768b11957e 18-19
+  s_cfd0841cea4d76::t_42873b1a64b1e5 1-17,20-164,168
+backend/tests/component/graphql/queries/test_event.py
+  s_cfd0841cea4d76::t_bba9aa5107f191 19,773-817
+  s_cfd0841cea4d76::t_00bc2771a79a5b 14,267-269,274,280,285,291,296
+  s_cfd0841cea4d76::t_5a17c484fae36a 818-819
+backend/infrahub/prefect_server/models.py
+  s_cfd0841cea4d76::t_98027642380c49 1-2,6,9-10,27,36,38-41,46-52
+  s_cfd0841cea4d76::t_c3e69b2fce25f5 42-45
+backend/tests/component/task_manager/test_event_filter_equivalence.py
+  s_cfd0841cea4d76::t_1142655b830039 1-291,293-355,357-552
+  s_cfd0841cea4d76::t_09eada88bab4f1 292,356
+backend/tests/component/task_manager/test_event.py
+  s_cfd0841cea4d76::t_ad2c3f4ecdaaa7 99-101,105
+  s_cfd0841cea4d76::t_aacdd3d04d5f3c 113-129
+frontend/app/tests/fake/event.ts
+  s_cfd0841cea4d76::t_83c07b4c3c0a1b 1-19
+frontend/app/src/entities/events/ui/queries/get-events.query.ts
+  s_cfd0841cea4d76::t_e08abf3450ef1a 30-32,36-37,43-44
+  s_cfd0841cea4d76::t_086a6833469de4 33-35
+  s_cfd0841cea4d76::t_2a46b1d86b5eb3 1,6,11-29,39-40,46-49,52-53,55
+tests/e2e/activities/test_global_activities.py
+  s_cfd0841cea4d76::t_64ab0c2f1f4337 5-8
+  s_cfd0841cea4d76::t_815ede1167556c 113-125,127-130,131-136,141-144
+  s_cfd0841cea4d76::t_96f2cc6813a1d9 13-14,18,24-25,27-53,57-64
+  s_cfd0841cea4d76::t_b60d81f8655451 137-140
+  s_cfd0841cea4d76::t_0c8651817942f3 126
+frontend/app/src/entities/events/ui/queries/get-events.query.test.ts
+  s_cfd0841cea4d76::t_653c1791175cbc 1-6,8-11,13-41,43-145
+  s_cfd0841cea4d76::t_086a6833469de4 7
+  s_cfd0841cea4d76::t_8b90af896ed91d 12
+  s_cfd0841cea4d76::t_9976492d0e8d5e 42
+changelog/+activities-retention-queries.fixed.md
+  s_cfd0841cea4d76::t_dbe579d0844a1b 1
+backend/tests/integration_docker/test_prefect_event_types.py
+  s_cfd0841cea4d76::t_c913545899d844 15,131-133
+  s_cfd0841cea4d76::t_55fd1161a3cb9e 1-8,10,12-14,16-18,20-21,24-38,40-62,66-70,74-79,83-92,94-95,97-111,125-126,128-130,134-149,151-156,158-162,166-168
+  s_cfd0841cea4d76::t_65de3fcfb498c0 9,11,19,22-23,93,112-124
+  s_cfd0841cea4d76::t_eb76a86f4adc20 39,63-65,71-73,80-82,96,127,150,163-165
+  s_cfd0841cea4d76::t_d10b907f944fcd 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc5fa23e734d8352e0341548dfe222a8a12e9a75",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

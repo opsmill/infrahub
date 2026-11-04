@@ -1,0 +1,25 @@
+backend/infrahub/graphql/queries/number_pool.py
+  s_760cbcf248de37::t_78917057070a09 212-214
+backend/infrahub/graphql/queries/resource_manager.py
+  s_760cbcf248de37::t_81f9ace08aa33b 46-47
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_760cbcf248de37::t_e72337384adef4 23950,26236
+schema/schema.graphql
+  s_760cbcf248de37::t_75dc69bccd8815 11911,26629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "321175e0aaeb4b6fc7820311c514caaf8c267195",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

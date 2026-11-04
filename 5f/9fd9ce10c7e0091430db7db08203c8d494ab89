@@ -1,0 +1,49 @@
+.agents/skills/bug-triage-rules/SKILL.md
+  s_0299ffd4541c60::t_a06fd106af4c05 1-140
+.agents/skills/setting-up-bug-triage/SKILL.md
+  s_0299ffd4541c60::t_a06fd106af4c05 1-145
+.agents/skills/setting-up-bug-triage/references/routine.md
+  s_0299ffd4541c60::t_a06fd106af4c05 1-38
+.agents/skills/bug-triage-rules/references/constitution.md
+  s_0299ffd4541c60::t_a06fd106af4c05 1-131
+.agents/bug-triage-constitution.md
+  s_0299ffd4541c60::t_a06fd106af4c05 3
+  s_0299ffd4541c60::t_738f3a80fd2e7d 21,24,37,40,56,59
+  s_0299ffd4541c60::t_983f1ee5db378e 1-2,4-20,22-23,25-36,38-39,41-43,45-52,57-58,60-73,76-83
+  s_0299ffd4541c60::t_20cb106aed658a 44,74-75
+  s_0299ffd4541c60::t_ecd8b6e60f2ae5 53-55
+.agents/skills/bug-triage-rules/references/github.md
+  s_a27647991913c7::t_e98581672fd287 1-148
+.agents/skills/bug-triage-rules/references/jira.md
+  s_0299ffd4541c60::t_6a1d34b44dd99c 1-89
+.agents/skills/bug-triage-rules/references/slack.md
+  s_0299ffd4541c60::t_8a6382b6d7ea4c 1-55
+.agents/skills/scheduling-bugs/SKILL.md
+  s_0299ffd4541c60::t_09f71af4ecda8b 1-275
+.agents/skills/triaging-new-bugs/SKILL.md
+  s_0299ffd4541c60::t_fc4661b1585cfc 1-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f9fd9ce10c7e0091430db7db08203c8d494ab89",
+  "prompts": {},
+  "sessions": {
+    "s_0299ffd4541c60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83af699b-aa91-41b4-b423-d0988dd7fc3a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_a27647991913c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7428eb91-df3b-4a86-811e-09b520518701",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

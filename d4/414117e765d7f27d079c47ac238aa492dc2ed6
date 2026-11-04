@@ -1,0 +1,34 @@
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_131c69042d4e58::t_ba62a57423f46a 110
+backend/tests/unit/telemetry/test_models.py
+  s_131c69042d4e58::t_94c49aaea4d7f6 1-52
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_131c69042d4e58::t_ba62a57423f46a 46-47
+dev/knowledge/backend/telemetry.md
+  s_131c69042d4e58::t_ba62a57423f46a 85-89
+backend/tests/component/telemetry/test_resources.py
+  s_131c69042d4e58::t_3e03385ed2cf57 10
+  s_131c69042d4e58::t_7fe43f99f75210 261-299
+dev/adr/0021-resource-allocation-telemetry.md
+  s_131c69042d4e58::t_ba62a57423f46a 56-57
+dev/specs/infp-631-resource-telemetry/research.md
+  s_131c69042d4e58::t_ba62a57423f46a 119
+backend/infrahub/telemetry/models.py
+  s_131c69042d4e58::t_639410996c3be3 1-3,8-17,21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4414117e765d7f27d079c47ac238aa492dc2ed6",
+  "prompts": {},
+  "sessions": {
+    "s_131c69042d4e58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27139e14-b3da-4440-b781-9d3c90307ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

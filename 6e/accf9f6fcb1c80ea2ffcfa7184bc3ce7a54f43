@@ -1,0 +1,27 @@
+dev/specs/ifc-3065-number-pool-ranges/data-model.md
+  s_7d719d42034f96::t_45976b2469b722 155,159-161,163-165
+dev/specs/ifc-3065-number-pool-ranges/plan.md
+  s_7d719d42034f96::t_23d8da22b4b317 17,80-81,96,135,148
+dev/specs/ifc-3065-number-pool-ranges/quickstart.md
+  s_7d719d42034f96::t_0311e383ede6e0 33
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_7d719d42034f96::t_f5259b4841f04e 36,57,87,89
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_7d719d42034f96::t_7b6d2a37254169 63,67-68,72-74,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6eaccf9f6fcb1c80ea2ffcfa7184bc3ce7a54f43",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

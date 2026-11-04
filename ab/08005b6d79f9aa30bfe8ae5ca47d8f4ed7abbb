@@ -1,0 +1,26 @@
+.github/workflows/dependabot-autopilot-act.yml
+  s_ce99ced981c340::t_9dfadeb5407b32 3,93
+dev/guides/dependabot-autopilot.md
+  s_ce99ced981c340::t_c876d001834c1d 85
+  s_ce99ced981c340::t_171c2771f58fd4 1,7,19-20,24-26,30,36,39,46,51-52,59,62-64,67-68,71,73,83,87,125,127
+.github/workflows/dependabot-autopilot-analyze.md
+  s_ce99ced981c340::t_9dfadeb5407b32 12
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_ce99ced981c340::t_f4b74e4b162207 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab08005b6d79f9aa30bfe8ae5ca47d8f4ed7abbb",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

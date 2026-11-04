@@ -1,0 +1,24 @@
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_fd720d10ce69fc::t_4dae475241e8ee 5-8
+dev/README.md
+  s_fd720d10ce69fc::t_ec311d5d7ecb24 126-131
+docs/docs/development/backend.mdx
+  s_fd720d10ce69fc::t_398974f50ca6dd 50
+  s_fd720d10ce69fc::t_41665aa0f3cd40 40-49,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90cfaf6f84b15c4413e06b3a4049b4809143e18f",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

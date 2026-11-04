@@ -1,0 +1,21 @@
+.github/workflows/jev-triage-sweep.yml
+  s_aafacfc47dd310::t_39b03861a4559e 1-40
+.github/workflows/jev-triage.yml
+  s_aafacfc47dd310::t_c343fb2113405f 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f384a491da4957c416dc4a0f2f39df4dd21ce4f3",
+  "prompts": {},
+  "sessions": {
+    "s_aafacfc47dd310": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7a6fe13-0b0a-40f8-ba25-e5fae68a98a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

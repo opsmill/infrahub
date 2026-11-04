@@ -1,0 +1,20 @@
+.github/workflows/ci-docker-image.yml
+  s_f8fd7785f03fde::t_dd741c479bbfa1 207-208
+  s_f8fd7785f03fde::t_99ba71bd5e9954 185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b8ef593a93a7b91b072b57d93f7e905d811415c5",
+  "prompts": {},
+  "sessions": {
+    "s_f8fd7785f03fde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0397ccc-7468-4918-ac3d-48341a40b58f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

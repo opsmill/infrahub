@@ -1,0 +1,19 @@
+dev/specs/dependabot-autopilot/opsmill-implement-report.md
+  s_43d8e382eba497::t_23aad6576778e4 1-476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1c0590863fdaff3f321cc9221216c680669f657",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

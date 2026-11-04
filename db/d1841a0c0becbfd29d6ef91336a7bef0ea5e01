@@ -1,0 +1,22 @@
+backend/tests/adapters/task_history.py
+  s_cfd0841cea4d76::t_07a81f4ce34f3b 41-50
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_9072a0d9e83001 15,37-38,80,243-278
+  s_cfd0841cea4d76::t_0f54bfd12467e9 279-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbd1841a0c0becbfd29d6ef91336a7bef0ea5e01",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.github/labels.yml
+  s_43d8e382eba497::t_3c39f09701fb50 266-284
+.github/workflows/dependabot-autopilot-act.yml
+  s_43d8e382eba497::t_b2db2b474ca053 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "645062cdaefa17dae2ceb345d998613a91da586d",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

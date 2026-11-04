@@ -1,0 +1,21 @@
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_ad3ff5d78595eb::t_f87b13c9ce84e6 242-249,274-277
+dev/knowledge/backend/database-schema.md
+  s_ad3ff5d78595eb::t_f87b13c9ce84e6 225-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f93a001b955724f522b3891cfa9572e8419d1847",
+  "prompts": {},
+  "sessions": {
+    "s_ad3ff5d78595eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4bad0f5-6766-42a2-bdd4-0f96787de47a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

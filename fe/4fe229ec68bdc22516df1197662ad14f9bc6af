@@ -1,0 +1,19 @@
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.test.tsx
+  s_f9d981cbf05479::t_6f1a8ee2b33af0 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe4fe229ec68bdc22516df1197662ad14f9bc6af",
+  "prompts": {},
+  "sessions": {
+    "s_f9d981cbf05479": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b33e4e2-d0e1-4ffc-b7c6-f07dfe57f803",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

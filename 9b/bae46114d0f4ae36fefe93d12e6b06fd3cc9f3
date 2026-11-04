@@ -1,0 +1,21 @@
+.github/scripts/dependabot_autopilot/lockfiles.py
+  s_43d8e382eba497::t_ac8371ea4f48b0 1-108
+.github/scripts/dependabot_autopilot/tests/test_lockfiles.py
+  s_43d8e382eba497::t_19c24510dcfc96 1-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bbae46114d0f4ae36fefe93d12e6b06fd3cc9f3",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

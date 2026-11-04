@@ -1,0 +1,23 @@
+changelog/+document-infrahub-production.added.md
+  s_4e7f701e8c4e49::t_d3597433e8cb06 1
+docs/_templates/infrahub_config.j2
+  s_4e7f701e8c4e49::t_b08c8ab4222427 51-60
+docs/docs/reference/configuration.mdx
+  s_4e7f701e8c4e49::t_ee9289a7ce1e81 349-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2102f4a6975fca232b839f7e16910c15e46936b",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

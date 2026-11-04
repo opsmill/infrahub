@@ -1,0 +1,32 @@
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_0a922a91ee3351::t_7b34dde5f33fad 10,821
+backend/infrahub/core/query/node.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 41,276,300-301
+backend/tests/helpers/agnostic_edges.py
+  s_0a922a91ee3351::t_59514a5429abf4 454
+  s_0a922a91ee3351::t_849e6eec276587 245
+  s_0a922a91ee3351::t_aac1735dd31a96 62-63
+  s_0a922a91ee3351::t_19779787a78760 551-564
+backend/infrahub/core/query/resource_manager.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 10,494,507,565,567-568,577-583,913,953,983,986,990-991,994,999-1005,1034,1046,1049-1051,1078,1082-1083
+backend/infrahub/core/query/vertex_metadata.py
+  s_0a922a91ee3351::t_eb8ced0da287c1 1-19
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_0a922a91ee3351::t_a87a68f905c4c5 17,29,168-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11471599ea4b2cb27775e5998f502340acc2c0ba",
+  "prompts": {},
+  "sessions": {
+    "s_0a922a91ee3351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9a1dd6-0122-45ea-b55b-1aba39496ed1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

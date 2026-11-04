@@ -1,0 +1,21 @@
+pyproject.toml
+  s_2dcffc265e72b7::t_fd21c5adbeedd0 40
+uv.lock
+  s_2dcffc265e72b7::t_f6ce9050936cb5 1519,1619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a9ea1e0061e95fb44bdce4fc6dcf3da5508dab2",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

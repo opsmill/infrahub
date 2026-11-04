@@ -1,0 +1,39 @@
+backend/infrahub/branch/tasks.py
+  s_2fae1787d146ee::t_d40ad448f928c2 10,40,43,46
+backend/infrahub/computed_attribute/tasks.py
+  s_2fae1787d146ee::t_b2582d1d155e56 486-487,597-598
+backend/infrahub/task_manager/flow_run/branch_cleanup.py
+  s_2fae1787d146ee::t_1a11acd79a5452 7-8,18,21-22,26,45-54,65,68,71-76,79,84,86,88-89,91-92,95-96,100
+backend/infrahub/branch/triggers.py
+  s_2fae1787d146ee::t_d40ad448f928c2 34
+backend/infrahub/hfid/tasks.py
+  s_2fae1787d146ee::t_b2582d1d155e56 91-92
+backend/infrahub/display_labels/tasks.py
+  s_2fae1787d146ee::t_b2582d1d155e56 106-107
+backend/infrahub/task_manager/flow_run/tags.py
+  s_2fae1787d146ee::t_9fd2d7ac0a5ef8 10-16
+backend/infrahub/workflows/constants.py
+  s_2fae1787d146ee::t_10c4b1beec1c7c 36-37
+backend/infrahub/task_manager/flow_run/prefect_client.py
+  s_2fae1787d146ee::t_1240ff97e74fdd 55-60
+  s_2fae1787d146ee::t_371b23f12d297f 81-83
+  s_2fae1787d146ee::t_cea525bcfd064d 134-136
+backend/infrahub/profiles/tasks.py
+  s_2fae1787d146ee::t_b2582d1d155e56 8,61,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f28dbab2544cf3e020f6dfc6b7a726973c6432f9",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

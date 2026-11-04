@@ -1,0 +1,27 @@
+dev/specs/dependabot-autopilot/opsmill-implement-report.md
+  s_ce99ced981c340::t_956e38c1811df9 455
+dev/specs/dependabot-autopilot/tasks.md
+  s_ce99ced981c340::t_956e38c1811df9 78
+dev/specs/dependabot-autopilot/plan.md
+  s_ce99ced981c340::t_63c932e664836f 129
+.github/workflows/dependabot-autopilot-act.yml
+  s_ce99ced981c340::t_f2cae1925a6d6a 26-27,30-31
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_ce99ced981c340::t_63c932e664836f 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf0035a9ec001ae21c1b911e26a470bc6ee033d8",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

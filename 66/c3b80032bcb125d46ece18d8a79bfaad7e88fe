@@ -1,0 +1,22 @@
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_9a65b7e7908928::t_83dfe16d9cb032 143-145
+  s_9a65b7e7908928::t_ce523928602c4e 1-142,146-156
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_9a65b7e7908928::t_09215ee916f452 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66c3b80032bcb125d46ece18d8a79bfaad7e88fe",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

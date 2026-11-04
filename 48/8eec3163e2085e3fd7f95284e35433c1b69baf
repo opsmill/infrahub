@@ -1,0 +1,21 @@
+backend/infrahub/core/query/resource_manager.py
+  s_760cbcf248de37::t_c8d078b602e257 196-198,210,217,231-239,241,243,255-256
+backend/tests/component/core/resource_manager/test_number_pool_divisions.py
+  s_760cbcf248de37::t_93e42f4c131675 18,314-333,414-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "488eec3163e2085e3fd7f95284e35433c1b69baf",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

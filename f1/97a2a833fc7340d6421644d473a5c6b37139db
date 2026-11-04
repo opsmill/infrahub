@@ -1,0 +1,25 @@
+backend/infrahub/core/query/read_plan/executor.py
+  s_760e6d17a1b859::t_1a727d663f44ad 46-47
+backend/infrahub/core/regeneration/poc/selector.py
+  s_760e6d17a1b859::t_09b5ceecc08d52 118
+backend/infrahub/graphql/read_plan.py
+  s_760e6d17a1b859::t_236686fb819579 111-112
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_760e6d17a1b859::t_8d4efbfe64aeed 333-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f197a2a833fc7340d6421644d473a5c6b37139db",
+  "prompts": {},
+  "sessions": {
+    "s_760e6d17a1b859": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7e7809959c009d4e",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

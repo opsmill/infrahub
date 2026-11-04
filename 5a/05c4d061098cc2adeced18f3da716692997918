@@ -1,0 +1,22 @@
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_849d53d45b72cc::t_4f2a907d0c497c 1-2
+  s_849d53d45b72cc::t_65aa2e01f23f29 19,50,83,135-136
+  s_849d53d45b72cc::t_bc4243e72c9f8a 24,49,68,84,87,101,120,128-134
+  s_849d53d45b72cc::t_35cdd695b0ccff 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a05c4d061098cc2adeced18f3da716692997918",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

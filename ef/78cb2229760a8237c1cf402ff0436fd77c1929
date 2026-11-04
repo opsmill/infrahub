@@ -1,0 +1,19 @@
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_08b6563d17c535::t_41d9973042a77d 12,17,193-206,208,216-218,224-229,231-234,238-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef78cb2229760a8237c1cf402ff0436fd77c1929",
+  "prompts": {},
+  "sessions": {
+    "s_08b6563d17c535": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "faa50090-585e-45c8-8bcb-ce3529487882",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

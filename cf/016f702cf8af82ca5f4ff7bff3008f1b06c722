@@ -1,0 +1,20 @@
+backend/tests/unit/core/changelog/test_secondaries.py
+  s_d6bb76affb8018::t_796a24cc5f9763 1-82,88-146
+  s_d6bb76affb8018::t_5a11285ad6a639 83-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf016f702cf8af82ca5f4ff7bff3008f1b06c722",
+  "prompts": {},
+  "sessions": {
+    "s_d6bb76affb8018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c396dbd-8e86-4438-b25e-16e3fabccdb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

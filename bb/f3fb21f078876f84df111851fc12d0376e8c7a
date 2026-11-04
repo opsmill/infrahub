@@ -1,0 +1,23 @@
+dev/knowledge/backend/task-manager-retention.md
+  s_cfd0841cea4d76::t_7fc9950dd62068 90-91
+  s_cfd0841cea4d76::t_b2c97f8b154863 75-80
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_cfd0841cea4d76::t_55b6096bd73c47 125
+  s_cfd0841cea4d76::t_7d5dba05164363 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bbf3fb21f078876f84df111851fc12d0376e8c7a",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

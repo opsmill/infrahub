@@ -1,0 +1,34 @@
+dev/knowledge/backend/telemetry.md
+  s_b134b1501718e5::t_0573a43b47fa93 107-116
+dev/README.md
+  s_b134b1501718e5::t_d2031f1e4506b2 102
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_b134b1501718e5::t_d2031f1e4506b2 7
+dev/knowledge/backend/async-tasks.md
+  s_b134b1501718e5::t_0573a43b47fa93 446-453
+dev/specs/infp-631-resource-telemetry/EXTRACTED.md
+  s_b134b1501718e5::t_d2031f1e4506b2 1-37
+dev/guidelines/backend/checklist.md
+  s_b134b1501718e5::t_0573a43b47fa93 138-158
+dev/adr/README.md
+  s_b134b1501718e5::t_d2031f1e4506b2 29
+dev/adr/0021-resource-allocation-telemetry.md
+  s_b134b1501718e5::t_0b8e62deab9c0b 1-64,66-78,81-131
+  s_b134b1501718e5::t_05ba6ef8cefb8c 65,79-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e44a4fff72aabe446223ad8246d2fb9a2b1077f1",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

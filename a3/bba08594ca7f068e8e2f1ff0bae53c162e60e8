@@ -1,0 +1,19 @@
+python_sdk
+  s_1f1453d66ba8e2::t_bd5927673ba7bc 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3bba08594ca7f068e8e2f1ff0bae53c162e60e8",
+  "prompts": {},
+  "sessions": {
+    "s_1f1453d66ba8e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6ab501d-96fc-44c8-8b4d-19baee49c6d5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

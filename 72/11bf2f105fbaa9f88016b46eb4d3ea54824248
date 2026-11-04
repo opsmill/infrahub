@@ -1,0 +1,43 @@
+backend/infrahub/types.py
+  2dbe9c701db40c4c 188-197,342,368
+frontend/app/src/entities/nodes/getObjectItemDisplayValue.tsx
+  2dbe9c701db40c4c 196
+docs/docs/reference/schema/attribute.mdx
+  2dbe9c701db40c4c 173
+frontend/app/src/entities/schema/constants.ts
+  2dbe9c701db40c4c 25,44
+frontend/app/src/shared/components/form/dynamic-form.tsx
+  2dbe9c701db40c4c 108-109
+frontend/app/src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx
+  2dbe9c701db40c4c 108
+backend/infrahub/core/attribute.py
+  2dbe9c701db40c4c 9,858-942
+pyproject.toml
+  2dbe9c701db40c4c 57
+frontend/app/src/entities/nodes/object/ui/object-table/cells/table-attribute-cell.tsx
+  2dbe9c701db40c4c 50
+backend/infrahub/graphql/types/attribute.py
+  2dbe9c701db40c4c 168-181
+backend/tests/component/core/test_attribute.py
+  2dbe9c701db40c4c 1514-1685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "7211bf2f105fbaa9f88016b46eb4d3ea54824248",
+  "prompts": {
+    "2dbe9c701db40c4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "385ef959-f502-4a7e-9ed2-e6feadcfeb10",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 307,
+      "total_deletions": 13,
+      "accepted_lines": 293,
+      "overriden_lines": 0
+    }
+  }
+}

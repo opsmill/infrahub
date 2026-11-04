@@ -1,0 +1,19 @@
+backend/tests/functional/pools/test_numberpool_ranges.py
+  s_c47d1ff1b9fc75::t_16f14d39f27b71 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b744ffe8dac22d6cd6275ec3562fc713cef6c93e",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

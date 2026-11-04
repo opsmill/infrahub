@@ -1,0 +1,23 @@
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_42b74b2708abe7::t_1fec0ca3e99c95 8,38
+backend/infrahub/dependencies/builder/constraint/schema/attribute_number_pool.py
+  s_42b74b2708abe7::t_36b34040cb3f04 1-8
+backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py
+  s_42b74b2708abe7::t_396e8fcc57d992 3,9-12,16,19-21,157-184,224-230,359-363,393-531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e58e48d5e51bb4047d8ab914543604df2825fede",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_f4cdafdd905485::t_86726fc3110eef 6,209-210,259-271,273-274,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2be9b639b6e29a8fb96809f4013f077f0e6e62e",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

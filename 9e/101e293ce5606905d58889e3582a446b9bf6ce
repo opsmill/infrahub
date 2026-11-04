@@ -1,0 +1,94 @@
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  h_7ec9b28dd2a5ab 73-77,85-86,91,100,103,111-112,117,123,126,151-152,157,162,168,171,219-220,229,232,240-241,253,257,263-264,270,274,277,319-320,327,333,336,342-343,349,353,356,362-363,375,378
+  h_7ec9b28dd2a5ab 21-23,82-84,108-110,148-150,216-218,237-239,260-262,316-318,339-341,359-361
+backend/tests/component/core/resource_manager/test_number_pool_is_reserved_retirement.py
+  h_7ec9b28dd2a5ab 187,207,251,270,300
+  h_7ec9b28dd2a5ab 25
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  h_7ec9b28dd2a5ab 61,73,76,91,121,124
+  h_7ec9b28dd2a5ab 16
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  h_7ec9b28dd2a5ab 142,164,181,203,234,248,251,372,378,407,410,477
+  h_7ec9b28dd2a5ab 25
+backend/infrahub/core/graph/__init__.py
+  h_7ec9b28dd2a5ab 1
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/__init__.py
+  h_7ec9b28dd2a5ab 1-3
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/migration.py
+  h_7ec9b28dd2a5ab 1-250
+backend/infrahub/core/node/resource_manager/number_pool.py
+  h_7ec9b28dd2a5ab 7,10,46,50-51,60-61,97-101,118-119,157-159
+backend/infrahub/graphql/manager.py
+  h_7ec9b28dd2a5ab 43-44,573
+backend/infrahub/graphql/mutations/resource_manager/ip_pools.py
+  h_7ec9b28dd2a5ab 8-9,11,14-15,23
+backend/infrahub/graphql/mutations/resource_manager/number_pools/common.py
+  h_7ec9b28dd2a5ab 1-48
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  h_7ec9b28dd2a5ab 1-292
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  h_7ec9b28dd2a5ab 1-120
+backend/infrahub/graphql/schema.py
+  h_7ec9b28dd2a5ab 35
+backend/infrahub/pools/number_pool_range_validation.py
+  h_7ec9b28dd2a5ab 1-81
+backend/infrahub/pools/number_pool_repository.py
+  h_7ec9b28dd2a5ab 1-114
+backend/infrahub/pools/number_pool_shorthand.py
+  h_7ec9b28dd2a5ab 1-60
+backend/tests/component/core/agnostic_retirement/test_on_node_delete.py
+  h_7ec9b28dd2a5ab 20,417-419,446,453-455
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  h_7ec9b28dd2a5ab 1-150
+backend/tests/component/core/resource_manager/test_number_pool.py
+  h_7ec9b28dd2a5ab 10,19,21,23,52,60,62,163,449,464,501-541
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  h_7ec9b28dd2a5ab 24,129,144,147,174,189,200,214,217,288
+backend/tests/component/core/resource_manager/test_number_pool_source.py
+  h_7ec9b28dd2a5ab 21,116-117,134,137
+backend/tests/component/graphql/queries/test_resource_pool.py
+  h_7ec9b28dd2a5ab 18,822-823
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  h_7ec9b28dd2a5ab 1-168
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  h_7ec9b28dd2a5ab 1-335
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  h_7ec9b28dd2a5ab 11,13-25,113,139,162-219,269,348-442
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  h_7ec9b28dd2a5ab 1-4,7,9,15,17,20-21,49-93,120-128,131,134-162,226-227,315-647
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  h_7ec9b28dd2a5ab 1-305
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  h_7ec9b28dd2a5ab 1-152
+backend/tests/component/pools/test_number_pool_repository.py
+  h_7ec9b28dd2a5ab 1-30
+backend/tests/component/pools/test_number_pool_shorthand.py
+  h_7ec9b28dd2a5ab 1-158
+backend/tests/helpers/number_pool.py
+  h_7ec9b28dd2a5ab 8,13-14,48-58
+backend/tests/unit/pools/test_number_pool_range_validation.py
+  h_7ec9b28dd2a5ab 1-133
+dev/specs/ifc-3065-number-pool-ranges/data-model.md
+  h_7ec9b28dd2a5ab 54,155,159-161,163-165,176
+dev/specs/ifc-3065-number-pool-ranges/plan.md
+  h_7ec9b28dd2a5ab 17,76,80-81,83-84,91,98,101,115,137-140,143,150
+dev/specs/ifc-3065-number-pool-ranges/quickstart.md
+  h_7ec9b28dd2a5ab 33,42
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  h_7ec9b28dd2a5ab 20,36,51,57,87,89,109,115
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  h_7ec9b28dd2a5ab 23-25,28-30,44,52,65,69-70,74-76,78,82,86,90-93,97-99,101,105,118,121,142-170,197-198,208,217-224
+pyproject.toml
+  h_7ec9b28dd2a5ab 1401,1419-1420,1437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e101e293ce5606905d58889e3582a446b9bf6ce",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 6,19,29,55-71,78,80-82,86
+  s_04e9c61d1d4032::t_2e323e099e55a2 72-77,79,84-85,87-88,91,100
+docs/docs/reference/schema/validator-migration.mdx
+  s_04e9c61d1d4032::t_3850cda6a2557c 83
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 21,80-88,110
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 1-33,36-100,103,106-108,110-120,123-125,127-129,131-157,159-161,163-179,181-191,193-202
+  s_04e9c61d1d4032::t_ea8c8274646b6c 34-35,101-102,104-105,109,121-122,126,130,158,162,180,192
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 15,17,20,118-120,135-136,173-178,181-187,193-194,206,233-249
+  s_04e9c61d1d4032::t_75f31c836f2706 191-192
+  s_04e9c61d1d4032::t_bb4600ae2786da 250
+backend/infrahub/core/validators/pool/scope.py
+  s_04e9c61d1d4032::t_0d73d97c79b319 3,6-7,9,11-18,20,39,41,43-54,110-116,129,150-154,322-511
+  s_04e9c61d1d4032::t_dc0db3a0f726a2 512
+backend/infrahub/core/schema/manager.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 187,231
+backend/infrahub/graphql/mutations/schema.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 324
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 273-288
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 224-226,257-269
+  s_04e9c61d1d4032::t_9b288e7ad34cc6 14
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 126-171
+backend/infrahub/api/schema.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 226
+backend/infrahub/core/models.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 438,455-458,645-646
+backend/infrahub/proposed_change/tasks.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 529
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 1094-1140
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_04e9c61d1d4032::t_7607a67ce87acd 109-110,115
+  s_04e9c61d1d4032::t_4318e604e992bd 114,116
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_04e9c61d1d4032::t_7607a67ce87acd 103
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_04e9c61d1d4032::t_7607a67ce87acd 55
+backend/infrahub/core/schema/definitions/internal.py
+  s_04e9c61d1d4032::t_3850cda6a2557c 878
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 1-277
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_04e9c61d1d4032::t_7607a67ce87acd 30-34,46-47
+backend/infrahub/core/schema/attribute_parameters.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 4,247,249-250,252,259-266
+  s_04e9c61d1d4032::t_e8510f2fa0c33f 267
+backend/tests/unit/core/validators/number_pool_scope/test_declared_scope.py
+  s_04e9c61d1d4032::t_0925ee08a45c0d 1-540,550-551,577-630
+  s_04e9c61d1d4032::t_11bbd977eb7e5b 541-549,552-576
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_04e9c61d1d4032::t_7607a67ce87acd 100,184
+backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 10-21,170-359
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_04e9c61d1d4032::t_e6a0b7e7547212 174-175,180-191
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_04e9c61d1d4032::t_2f1cf4451b2b5a 456-457,459,465,471,475
+  s_04e9c61d1d4032::t_7607a67ce87acd 3-4,249-264,362-455,458,460-464,466-470,472-474
+backend/infrahub/core/validators/enum.py
+  s_04e9c61d1d4032::t_e597e65c650896 14
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 1-20,22-65,71-214
+  s_04e9c61d1d4032::t_fc59630233cfa7 21,66-70
+backend/infrahub/core/schema/schema_branch.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 61,72-76,99,742-748,751,795,804,1399-1409,1415-1448
+backend/infrahub/core/validators/__init__.py
+  s_04e9c61d1d4032::t_e597e65c650896 57-59
+backend/infrahub/core/schema/generated/relationship_schema.py
+  s_04e9c61d1d4032::t_3850cda6a2557c 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34c1cb1ab331806a92607d01eb867fc8c2ef3f14",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

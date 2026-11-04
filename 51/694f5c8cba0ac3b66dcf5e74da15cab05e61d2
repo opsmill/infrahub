@@ -1,0 +1,19 @@
+backend/tests/component/core/test_reads_by_value_on_branch.py
+  s_f1da55ccf2b8ad::t_fa808632b334ee 265-276,278-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51694f5c8cba0ac3b66dcf5e74da15cab05e61d2",
+  "prompts": {},
+  "sessions": {
+    "s_f1da55ccf2b8ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d24ae489-1e5a-4594-9d74-c88273db24fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

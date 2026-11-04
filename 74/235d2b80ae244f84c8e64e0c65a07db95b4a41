@@ -1,0 +1,21 @@
+dev/knowledge/backend/events.md
+  s_760cbcf248de37::t_97237b3604dc7e 105-124,218,229
+dev/knowledge/backend/mutations.md
+  s_760cbcf248de37::t_0e45acc58eb4a4 85-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74235d2b80ae244f84c8e64e0c65a07db95b4a41",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

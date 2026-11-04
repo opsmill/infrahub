@@ -1,0 +1,27 @@
+development/docker-compose-database-neo4j.yml
+  s_4e7f701e8c4e49::t_63cdc6a2a88213 33-70
+development/docker-compose-deps.yml
+  s_4e7f701e8c4e49::t_8cbcf30fa422e6 20-24,26
+development/docker-compose.yml
+  s_4e7f701e8c4e49::t_604fdfd64b12cc 40,45,52,65,186-190,252-255
+development/neo4j/initdb.cypher
+  s_4e7f701e8c4e49::t_bba8ddb1d19fb9 1-30
+development/redis/users.acl
+  s_4e7f701e8c4e49::t_9de165e4a7c22c 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85373a33362b43e90892ee98a3ad7bcd4dfb2991",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

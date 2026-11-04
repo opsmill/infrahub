@@ -1,0 +1,28 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 1
+  s_cd4a2edbf12382::t_0ce0dccfb330a7 4
+  s_cd4a2edbf12382::t_f79a51703e4a48 74-87,89-102,112,135-136,150,152,156,181-222,226-244,246-297,299-386,388-397,399-407,409-423,425-440,442-463,465-486,488-517,519-522,524-527,529-537,539-597,599-618,620-621
+  s_cd4a2edbf12382::t_17aff8c84fdd8d 109
+  s_cd4a2edbf12382::t_f75e39278656f3 622-626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c164be928baaf2ff13137c3c0350d4c0c56a75f2",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_cd4a2edbf12382": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce0cb49-e396-4200-916d-01f7c39a1bb0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+backend/tests/component/telemetry/test_resources.py
+  s_b134b1501718e5::t_3b241cb10d589c 16,25,96-109,142-143,171-175,216-217
+  s_b134b1501718e5::t_9a5f60006c172b 24
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_b134b1501718e5::t_17e567ccb190c2 56-57,62,66,73
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_b134b1501718e5::t_17e567ccb190c2 54,66,79,88,97,111
+backend/tests/unit/telemetry/test_resources.py
+  s_b134b1501718e5::t_a2d3c74b8d1c1e 21,82-87,134,341,343,348-350,576-577,587-588,597-598,609,624-625,635
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_b134b1501718e5::t_197b74abdc23c4 10
+backend/tests/unit/services/test_component.py
+  s_b134b1501718e5::t_9a5f60006c172b 3,95-97,192-265
+backend/tests/unit/services/test_scheduler.py
+  s_b134b1501718e5::t_c0bfa97ec5a99a 10,67-70
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_b134b1501718e5::t_17e567ccb190c2 115-116,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c71076639906effe3f3395eedc9a1290bc61d792",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

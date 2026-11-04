@@ -1,0 +1,30 @@
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_fd720d10ce69fc::t_7d63485a8a9dd8 14-16,18-28
+  s_9c5b6446126571::t_771649caad90a9 29-30
+.agents/skills/reviewing-pull-requests/agents/openai.yaml
+  s_fd720d10ce69fc::t_e941d91ab7169e 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ea935bbc91c00525171bec58e91e7fa3ae38f0",
+  "prompts": {},
+  "sessions": {
+    "s_9c5b6446126571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f59d33-3322-493f-ad2a-f4f60dfe37db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

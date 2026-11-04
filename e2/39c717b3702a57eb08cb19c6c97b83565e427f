@@ -1,0 +1,32 @@
+backend/infrahub/core/validators/pool/scope.py
+  s_9a65b7e7908928::t_21a0009ec24fbd 99-274,290
+  s_9a65b7e7908928::t_f6264c19da09f1 1-98,275-289,291-305
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_9a65b7e7908928::t_1412ca019945d9 1-216
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_9a65b7e7908928::t_ebb6e2e5eb8de6 1-170
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_9a65b7e7908928::t_019b317a3eb7e2 1-59
+backend/tests/unit/core/validators/number_pool_scope/test_refused_changes.py
+  s_9a65b7e7908928::t_91c44b518fcab1 1-233
+backend/tests/unit/core/validators/number_pool_scope/test_supported_constraints.py
+  s_9a65b7e7908928::t_c78d4a65e8b159 1-74
+backend/tests/unit/core/validators/number_pool_scope/test_unloaded_branch.py
+  s_9a65b7e7908928::t_a2f5b2dad27ba9 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e239c717b3702a57eb08cb19c6c97b83565e427f",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

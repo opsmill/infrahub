@@ -1,0 +1,27 @@
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_d14ee8e09be48f::t_d09af4daaa8f9a 26227-26230,26236,26238
+  s_d14ee8e09be48f::t_389ba1e9b43676 23883-23963,23973-24039,26225-26226,38649-38670
+schema/schema.graphql
+  s_d14ee8e09be48f::t_febd7763d5e270 26614-26620,26626-26628,26630-26631
+  s_d14ee8e09be48f::t_07fc32213f4572 11830-11924,11936-12015,26611-26613,26632
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_d14ee8e09be48f::t_74f31b948fc362 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_d14ee8e09be48f::t_22a978f91052a5 995-1001,1003-1007,1174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19c04d4e8f5631dd6c8e08d1c8d4f5a4e4ce7b91",
+  "prompts": {},
+  "sessions": {
+    "s_d14ee8e09be48f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46741e2b-7bb3-43bf-b1c3-55d952eeba48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

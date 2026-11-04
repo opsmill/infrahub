@@ -1,0 +1,34 @@
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/migration.py
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-115
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_16251a0ac997a1::t_cce2bd4a8e0e5b 372,379-380,424
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-412
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/__init__.py
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-3
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_16251a0ac997a1::t_3a45adb142f94c 23,191
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-22,24-190,192-763
+backend/infrahub/core/migrations/graph/m081_reanchor_number_pool_reservations/queries.py
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-250
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_resume.py
+  s_16251a0ac997a1::t_ac8d77d4bf4259 1-168
+backend/infrahub/core/graph/__init__.py
+  s_16251a0ac997a1::t_f8eaad23ac43dc 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e043aaed79cb87cb7e0704812ae514f9b4e5c7d7",
+  "prompts": {},
+  "sessions": {
+    "s_16251a0ac997a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee76a5db-5ae7-4878-9ec0-df4a4db49ee4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

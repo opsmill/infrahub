@@ -1,0 +1,21 @@
+backend/tests/component/graphql/mutations/relationship/test_relationship_remove.py
+  s_f4cdafdd905485::t_160471834fef47 1-167
+backend/tests/component/graphql/test_mutation_relationship.py
+  s_f4cdafdd905485::t_99b6af8722fa07 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "958e0a8432f9d94ff79f8185d2416b9c9805b6b2",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

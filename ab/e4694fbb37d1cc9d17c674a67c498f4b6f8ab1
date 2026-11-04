@@ -1,0 +1,27 @@
+backend/infrahub/lock.py
+  s_4e7f701e8c4e49::t_3cd210a848f178 18,102,186,190
+backend/infrahub/services/adapters/message_bus/nats.py
+  s_4e7f701e8c4e49::t_efd1d7dd0d3d92 19,145,151,169,171,177,209
+backend/infrahub/services/adapters/message_bus/rabbitmq.py
+  s_4e7f701e8c4e49::t_88cd24b1c5251c 20,148-149,193,205
+backend/infrahub/services/component.py
+  s_4e7f701e8c4e49::t_f37b04bacf8dff 14,53,97,105,112,117,120,124,126
+backend/infrahub/worker.py
+  s_4e7f701e8c4e49::t_05cbe483a61f2d 1,8-12,15-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abe4694fbb37d1cc9d17c674a67c498f4b6f8ab1",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

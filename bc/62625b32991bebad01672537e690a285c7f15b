@@ -1,0 +1,19 @@
+backend/infrahub/git/integrator.py
+  s_821332c5759ce5::t_7168ca79e5d484 2216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc62625b32991bebad01672537e690a285c7f15b",
+  "prompts": {},
+  "sessions": {
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

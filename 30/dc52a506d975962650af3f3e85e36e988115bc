@@ -1,0 +1,28 @@
+backend/infrahub/core/regeneration/poc/window_changes.py
+  s_6947b4d8b10fbd::t_b0dad2bcfd40fa 149
+  s_6947b4d8b10fbd::t_4dbbdb03ab49fb 295
+  s_6947b4d8b10fbd::t_573b7e3f7973b2 54-72,83,151,161-163,265-267,270-271,294,296-298,352,357
+backend/tests/component/core/regeneration/poc/test_window_changes.py
+  s_6947b4d8b10fbd::t_c64d3d2a381338 113
+  s_6947b4d8b10fbd::t_2ea6ac4b9a68f4 44-46,69-84,117-118,120,122-124,143-144,146,148,153,741,744-748,750,752-758,764-780,783,785-797,800,803,806-807,810,815-820,822-835
+  s_6947b4d8b10fbd::t_0eddd2a7e5ce51 161,163-165,584-737,739-740,742-743,749,751,759-763,781-782,784,798-799,801-802,804-805,808-809,811-814,821,836-840
+  s_6947b4d8b10fbd::t_b0dad2bcfd40fa 528,738,841
+  s_6947b4d8b10fbd::t_d91a04a5122f09 7-8,11-14,16-17,19,21-24,41-43,52-68,100-105,108,112,114-116,119,121,125-142,145,147,149-152,154-159,170-176,178-179,191-192,207-214,218,220,222,225-230,477-485,519-527,529
+  s_6947b4d8b10fbd::t_9c7bfe002ce69e 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30dc52a506d975962650af3f3e85e36e988115bc",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

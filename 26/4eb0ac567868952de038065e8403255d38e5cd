@@ -1,0 +1,54 @@
+backend/infrahub/core/attribute.py
+  s_1b659ceedf2b91::t_06c3b251dafcda 97-98,765-766
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_1b659ceedf2b91::t_1f8b822acc57c8 570,822
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_1b659ceedf2b91::t_2d5fafaa5df544 56
+backend/infrahub/pools/number_pool_repository.py
+  s_1b659ceedf2b91::t_2d5fafaa5df544 188,192-196,202
+backend/infrahub/core/query/node.py
+  s_1b659ceedf2b91::t_06c3b251dafcda 299
+backend/infrahub/core/query/resource_manager.py
+  h_7ec9b28dd2a5ab 19
+  s_1b659ceedf2b91::t_630b5d7679c3c8 68-70,238,888-891,893,906,912,921,950,952-954,958-967,982,985
+  s_1b659ceedf2b91::t_06c3b251dafcda 244,261-263,894-895,955-957
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_1b659ceedf2b91::t_f7ec68371b168e 30,125,132,136,160-161
+backend/tests/component/pools/test_number_pool_repository.py
+  s_1b659ceedf2b91::t_1f8b822acc57c8 8,15-21,109,141,152,193,205-284
+backend/tests/helpers/agnostic_edges.py
+  s_1b659ceedf2b91::t_f7ec68371b168e 518-519,521,528,530
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_1b659ceedf2b91::t_97b6b0e64925ec 1-207
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_1b659ceedf2b91::t_b541ef77bd1d19 164-166,188-189,214-217,236-237,286
+  s_1b659ceedf2b91::t_d3f27e8eb440a8 79-82,105-106,136-138,140-146,287-288,337,339-340,369,406-407,467,513-515,538-544
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_1b659ceedf2b91::t_f7ec68371b168e 40,279,283,293-294
+  s_1b659ceedf2b91::t_ff7c9253af2449 275
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_1b659ceedf2b91::t_2d5fafaa5df544 75
+backend/tests/component/graphql/resource_manager/number_pool_attach/helpers.py
+  s_1b659ceedf2b91::t_487b1d878b681c 56,62,146-147,151,154-155,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "264eb0ac567868952de038065e8403255d38e5cd",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_1b659ceedf2b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41971668-9608-4279-954f-681ac371c4e7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

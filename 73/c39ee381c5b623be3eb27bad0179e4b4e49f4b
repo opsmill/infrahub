@@ -1,0 +1,49 @@
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_c629155e0eb667 90,93-94,97-107,110,113,120-129
+  s_cfd0841cea4d76::t_807285b772a021 7
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_a2858834eb37de 61
+  s_cfd0841cea4d76::t_78bd02dfc37490 51-52,60,62-102
+  s_cfd0841cea4d76::t_8bcd3a1c87d6cc 7,22
+  s_cfd0841cea4d76::t_974db2654fd1d9 188-210,213-215
+  s_cfd0841cea4d76::t_1c636843b30bb8 211-212
+  s_cfd0841cea4d76::t_2125e005c0a6f3 103-104
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_d6130af510dcc3 42-48
+  s_cfd0841cea4d76::t_37f8fd1afb03f7 112,114,119-120
+  s_cfd0841cea4d76::t_f22c1640ac7fd2 41
+backend/infrahub/cli/upgrade.py
+  s_cfd0841cea4d76::t_d93c8421e62598 261-267
+  s_cfd0841cea4d76::t_5ee29ab2214b60 30
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_fb9e1b53dea2b1 193-211
+  s_cfd0841cea4d76::t_521522456ca30d 11,24
+backend/tests/unit/conftest.py
+  s_cfd0841cea4d76::t_47aa19d5552774 1-2,4,21-25
+  s_cfd0841cea4d76::t_49b8a24c104c22 26-27
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_d346a91c546717 85-88
+  s_cfd0841cea4d76::t_776e4232cb6511 60-64,66-69,71
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_6352bc7fc39f01 9,13,25-26,46-49,53-55,59,63-78,83-86,88-92,98
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_e5b6102783ab70 183
+  s_cfd0841cea4d76::t_ed1ef1ec66084b 213-378
+  s_cfd0841cea4d76::t_e7abc70aa7ce27 3,6,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73c39ee381c5b623be3eb27bad0179e4b4e49f4b",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

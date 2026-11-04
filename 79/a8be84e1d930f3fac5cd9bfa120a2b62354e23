@@ -1,0 +1,24 @@
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  h_bd00275aefc321 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79a8be84e1d930f3fac5cd9bfa120a2b62354e23",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_deb1a88485ad83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e40e20-e3ee-47e4-947c-536631360821",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

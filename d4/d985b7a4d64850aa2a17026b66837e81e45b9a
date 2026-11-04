@@ -1,0 +1,23 @@
+SECURITY.md
+  s_307fcf09196e2d::t_8f4c496076ce6b 61,63
+  s_307fcf09196e2d::t_151dbe14fa83c9 49
+  s_307fcf09196e2d::t_1e563ff87ff719 19
+AGENTS.md
+  s_307fcf09196e2d::t_12674741494e67 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4d985b7a4d64850aa2a17026b66837e81e45b9a",
+  "prompts": {},
+  "sessions": {
+    "s_307fcf09196e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "522eb074-c19f-4858-9fe6-217c57dac947",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

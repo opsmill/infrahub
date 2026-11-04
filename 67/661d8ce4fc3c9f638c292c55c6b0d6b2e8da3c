@@ -1,0 +1,19 @@
+backend/tests/component/task_manager/test_event.py
+  s_cfd0841cea4d76::t_aacdd3d04d5f3c 113-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67661d8ce4fc3c9f638c292c55c6b0d6b2e8da3c",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

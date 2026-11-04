@@ -1,0 +1,36 @@
+docs/docs/reference/metrics.mdx
+  s_3238bd8523eda1::t_aa0a7d21c1bd30 1-95
+docs/docs/deploy-manage/run-observe/metrics.mdx
+  s_3238bd8523eda1::t_f4c47b9c1c17b8 73
+  s_3238bd8523eda1::t_75960254c95ceb 1-6,8,15-23,25-27,29,32,35-39,41-64,66,68-72,74-84,86-95
+  s_3238bd8523eda1::t_40a157cb08d80d 28
+  s_3238bd8523eda1::t_26665c4140c545 7,9-14,24,30-31,33-34
+  s_3238bd8523eda1::t_afab03a41946c5 40,67
+  s_3238bd8523eda1::t_1d1f495abd662d 65,85
+docs/docs/faq/faq.mdx
+  s_3238bd8523eda1::t_26665c4140c545 150
+  s_3238bd8523eda1::t_631f7653d30857 152
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  s_3238bd8523eda1::t_bb5bc31bd009b3 65-68
+docs/docs/deploy-manage/install-configure/install/observability-stack.mdx
+  s_3238bd8523eda1::t_bb5bc31bd009b3 6-7,18,20,26-37,44-47,84
+docs/sidebars.ts
+  s_3238bd8523eda1::t_8939258aa3264a 425,641
+  s_3238bd8523eda1::t_3e8191ac37f732 423-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ee47fe858bb804ceaf0e094e5051be6052789a66",
+  "prompts": {},
+  "sessions": {
+    "s_3238bd8523eda1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cd188c-0d97-4d96-9de5-b440a14adc2b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+backend/tests/component/core/merge/test_orchestrator.py
+  s_266a732dcb61bb::t_33687520b4fe66 174,180,183,187
+  s_266a732dcb61bb::t_72649040f99d57 305
+backend/tests/component/core/changelog/test_enrichment.py
+  s_266a732dcb61bb::t_3025c88fe5311d 15-19
+  s_266a732dcb61bb::t_b9244f54458e1f 368-402
+backend/infrahub/core/changelog/builder.py
+  s_266a732dcb61bb::t_331a1b6241a4a2 35-39,41-45
+backend/infrahub/core/merge/orchestrator.py
+  s_266a732dcb61bb::t_337293e432a022 252-255
+  s_266a732dcb61bb::t_08952707d5b4ae 52,54-59
+dev/knowledge/backend/changelog-enrichment.md
+  s_266a732dcb61bb::t_661479e6fa4796 72-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f0a58bb275e5346c8ae56029cb8915b5cd39d1d",
+  "prompts": {},
+  "sessions": {
+    "s_266a732dcb61bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e54b656-7844-41cf-a991-f1426a35d94b",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

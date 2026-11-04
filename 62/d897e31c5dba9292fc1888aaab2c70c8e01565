@@ -1,0 +1,51 @@
+backend/tests/component/core/migrations/graph/m080_reanchor_number_pool_reservations/test_resume.py
+  s_2ebb2edda29636::t_bbc0727eb7fe52 140,143-147
+  s_2ebb2edda29636::t_a1eb311304e580 1-139,141-142,148-168
+backend/tests/component/core/migrations/graph/m080_reanchor_number_pool_reservations/test_migration.py
+  h_7ec9b28dd2a5ab 89,232-233,330-331
+  s_2ebb2edda29636::t_a65c7525fcab20 729,747-748,754-755
+  s_2ebb2edda29636::t_ccc5c39c4b4371 1-38,40-64,66-88,90-231,243-269,271-272,276-319,321-329,332-334,336-341,343-351,353-383,385-404,406-416,418-441,443-489,492-493,495-575,587-692,694-728,730-746,749-753,756-762
+  s_2ebb2edda29636::t_9eba7cfdb781a9 273-275,405
+  s_2ebb2edda29636::t_8a342b4c296053 39
+  s_2ebb2edda29636::t_1418567f29013c 65,234-242,442
+  s_2ebb2edda29636::t_2e16e5eed31f8b 576-586
+  s_2ebb2edda29636::t_a1eb311304e580 270,320,335,342,352,384,417
+  s_2ebb2edda29636::t_a4c7b8ef5d24db 490-491,494,693
+backend/tests/component/core/migrations/graph/m080_reanchor_number_pool_reservations/conftest.py
+  s_2ebb2edda29636::t_1418567f29013c 25,299-300,312
+  s_2ebb2edda29636::t_f1cc85267a77d6 338,382
+  s_2ebb2edda29636::t_a1eb311304e580 384-388,394-398
+  h_7ec9b28dd2a5ab 1-21,23-24,26-28,30-41,43-255,258,260-262,265,270-271,273,275-298,301,303,311,313-315,317-337,339-381,383,389-393,399-410
+  s_2ebb2edda29636::t_ccc5c39c4b4371 256-257,259,263-264,266-269,272,274
+  s_2ebb2edda29636::t_a4c7b8ef5d24db 316
+  s_2ebb2edda29636::t_8a342b4c296053 22,29,42,302,304-310
+backend/infrahub/core/graph/__init__.py
+  h_7ec9b28dd2a5ab 1
+backend/infrahub/core/migrations/graph/m080_reanchor_number_pool_reservations/__init__.py
+  h_7ec9b28dd2a5ab 1-3
+backend/infrahub/core/migrations/graph/m080_reanchor_number_pool_reservations/migration.py
+  h_7ec9b28dd2a5ab 1-115
+backend/infrahub/core/migrations/graph/m080_reanchor_number_pool_reservations/queries.py
+  h_7ec9b28dd2a5ab 1-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62d897e31c5dba9292fc1888aaab2c70c8e01565",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2ebb2edda29636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528cec79-301a-4732-8273-0b8b5750ba03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

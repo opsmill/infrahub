@@ -1,0 +1,37 @@
+.github/scripts/dependabot_autopilot/tests/test_adapters.py
+  s_ce99ced981c340::t_e42e7cde4349ea 245-252
+.github/scripts/dependabot_autopilot/flow.py
+  s_ce99ced981c340::t_80ca391f6e41bd 14,117
+.github/scripts/dependabot_autopilot/tests/test_decision.py
+  s_ce99ced981c340::t_e42e7cde4349ea 132,308-314
+  s_ce99ced981c340::t_c303c60bd95ec3 315-316
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_ce99ced981c340::t_80ca391f6e41bd 111-112,160-163
+  s_ce99ced981c340::t_d54d681da6bef8 164
+.github/scripts/dependabot_autopilot/adapters.py
+  s_ce99ced981c340::t_80ca391f6e41bd 195-200
+.github/scripts/dependabot_autopilot/decision.py
+  s_ce99ced981c340::t_80ca391f6e41bd 22,73-74,103-105
+.github/scripts/dependabot_autopilot/tests/fixtures/pull_commits.handcrafted.json
+  s_ce99ced981c340::t_e42e7cde4349ea 1-18
+.github/scripts/dependabot_autopilot/ports.py
+  s_ce99ced981c340::t_80ca391f6e41bd 200-203
+.github/scripts/dependabot_autopilot/tests/test_evaluate_flow.py
+  s_ce99ced981c340::t_e42e7cde4349ea 391-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10bcd3c0a1d6e1f5f6acdfb8b0026654c3af5e9d",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

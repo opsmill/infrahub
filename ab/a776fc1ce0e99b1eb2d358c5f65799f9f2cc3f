@@ -1,0 +1,44 @@
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_accepted_declarations.py
+  s_04e9c61d1d4032::t_de3a9c5845462c 5,12,14-32
+  s_04e9c61d1d4032::t_68ada43ec70183 33-43
+  s_04e9c61d1d4032::t_dd005a53e7d382 1-4,6-11,13,44-192
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_refused_declarations.py
+  s_04e9c61d1d4032::t_de3a9c5845462c 12-32
+  s_04e9c61d1d4032::t_dd005a53e7d382 1-11,33-258
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/helpers.py
+  s_04e9c61d1d4032::t_dd005a53e7d382 1-9,11-197
+  s_04e9c61d1d4032::t_de3a9c5845462c 10
+  s_04e9c61d1d4032::t_bed01b667a53d6 198-200
+  s_986dc0723dc62a::t_662241a3513a88 201
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_unloaded_branch.py
+  s_04e9c61d1d4032::t_dd005a53e7d382 1-8,10-12,25-88,93-116,121-131
+  s_04e9c61d1d4032::t_68ada43ec70183 13
+  s_04e9c61d1d4032::t_de3a9c5845462c 9,14-21,23-24
+  s_04e9c61d1d4032::t_eebfaeccba74ed 22
+  s_04e9c61d1d4032::t_a414285413acaf 89-92
+  s_04e9c61d1d4032::t_f88f0764820afa 117-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aba776fc1ce0e99b1eb2d358c5f65799f9f2cc3f",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_986dc0723dc62a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4c7625fb409f1b28",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

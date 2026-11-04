@@ -1,0 +1,41 @@
+backend/infrahub/graphql/queries/resource_manager.py
+  s_1b659ceedf2b91::t_9819cda7ff3994 21
+  s_1b659ceedf2b91::t_2d5fafaa5df544 63-67,350
+backend/infrahub/graphql/types/enums.py
+  s_1b659ceedf2b91::t_e52ca5fad1d786 20
+  s_1b659ceedf2b91::t_2d5fafaa5df544 19
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_1b659ceedf2b91::t_97b6b0e64925ec 14,21-29,218-233
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_1b659ceedf2b91::t_d20e4b695187bf 24822-24823,24826-24832
+schema/schema.graphql
+  s_1b659ceedf2b91::t_d20e4b695187bf 12710-12721
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_1b659ceedf2b91::t_ab6f92b28fbde0 164,446-448
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_99e218bb2951ed::t_2a96c123d4bdff 1107-1108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fc49d0ea4c37639d74204412e7f3485174dee5c",
+  "prompts": {},
+  "sessions": {
+    "s_1b659ceedf2b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41971668-9608-4279-954f-681ac371c4e7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_99e218bb2951ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e86e0089-84dc-4d8c-85b5-db142b847f80",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

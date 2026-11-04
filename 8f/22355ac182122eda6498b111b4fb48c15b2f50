@@ -1,0 +1,24 @@
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_575f062cf51b5c::t_dd16013f2263e9 281,288,302,305-310,317,329,332-336,343,346-347,361,364-369,376,379-380,405-411,418,421-422,438,441-444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f22355ac182122eda6498b111b4fb48c15b2f50",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_575f062cf51b5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a39a1b-da6b-4ce1-a5f0-efeedace76e0",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

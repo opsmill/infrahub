@@ -1,0 +1,80 @@
+backend/infrahub/computed_attribute/tasks.py
+  s_1e9479e8606b35::t_dca7bf81c61ee1 17,111,115-116,122-129,133-137
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_1e9479e8606b35::t_316ecee17ba2b5 1-109
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_1e9479e8606b35::t_01329b7ef21246 1-168
+backend/infrahub/core/regeneration/impact.py
+  s_1e9479e8606b35::t_794bbe40852229 14-15,80-81
+backend/infrahub/core/schema/basenode_schema.py
+  s_1e9479e8606b35::t_8e384810a7c8d6 130-134
+backend/infrahub/core/schema/derived_path.py
+  s_1e9479e8606b35::t_5e657685a69d81 1-92
+backend/infrahub/core/schema/generic_schema.py
+  s_1e9479e8606b35::t_fd0097cc9a7dae 17-20
+backend/infrahub/core/schema/schema_branch_computed/python_transform.py
+  s_1e9479e8606b35::t_2dd84c1b6362f7 10,16,25-27,40-42
+backend/tests/unit/computed_attribute/test_python_transform_deriver.py
+  s_1e9479e8606b35::t_11d4c98d47ef78 11-12,21-28,298-301,306
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_1e9479e8606b35::t_3790a416f9fb6b 1-274
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_1e9479e8606b35::t_88518b30c5a1ec 1-289
+backend/tests/unit/core/schema/test_derived_path.py
+  s_1e9479e8606b35::t_e2b842222b1381 3,8-17,21,24-43,46-55,62-105,107,109-111,114-125,127-133,135-139,141-145,147-151,153-157,159-169,174-180
+changelog/+ifc-3098-derived-read-narrowing.changed.md
+  s_1e9479e8606b35::t_9be652b66e4c5d 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_1e9479e8606b35::t_5e9b7936774ba0 36,97
+backend/infrahub/core/merge/selective_regen/gate.py
+  s_1e9479e8606b35::t_0b820ba86d1de7 6,43
+  s_1e9479e8606b35::t_2cc2ee9d17f728 6,43
+backend/infrahub/core/merge/selective_regen/orchestrator.py
+  s_1e9479e8606b35::t_8165ccc0ac2fb3 5-6,22,52,56,59-62,96-99,124
+  s_1e9479e8606b35::t_87ba369ae06b30 5-6,22,52,56,59-62,96-99,124
+backend/infrahub/core/regeneration/predicates.py
+  s_1e9479e8606b35::t_f61f3bf9167ad3 100-104
+  s_1e9479e8606b35::t_c1d3dc199c3480 100-104
+backend/infrahub/core/regeneration/profiles.py
+  s_1e9479e8606b35::t_eaacdef9df703d 1-32
+  s_1e9479e8606b35::t_41b7e8ade8c4a2 1-32
+backend/infrahub/proposed_change/tasks.py
+  s_1e9479e8606b35::t_722160523db19c 62,66,425-428,465,1342-1345,1375
+  s_1e9479e8606b35::t_d0f5ac40a6a7df 62,66,425-428,465,1342-1345,1375
+backend/tests/component/proposed_change/test_generator_regen_selection.py
+  s_1e9479e8606b35::t_38e491b4531c51 418-440
+  s_1e9479e8606b35::t_41654efa2344cb 418-440
+backend/tests/helpers/selective_regen.py
+  s_1e9479e8606b35::t_f235e170de3b48 104-120
+  s_1e9479e8606b35::t_613191696c9b2f 104-120
+backend/tests/unit/core/merge/selective_regen/test_gate.py
+  s_1e9479e8606b35::t_deee8532a5a16d 104,107,110,115-126
+  s_1e9479e8606b35::t_06069076ba3118 104,107,110,115-126
+backend/tests/unit/core/merge/selective_regen/test_orchestrator.py
+  s_1e9479e8606b35::t_488c12d1a6db87 12-17,80-82,140-177,194-196
+  s_1e9479e8606b35::t_61564419eace68 12-17,80-82,140-177,194-196
+backend/tests/unit/core/regeneration/test_predicates.py
+  s_1e9479e8606b35::t_7523c4ee592653 12,395-401
+  s_1e9479e8606b35::t_b371acf25f441d 12,395-401
+backend/tests/unit/core/regeneration/test_profiles.py
+  s_1e9479e8606b35::t_135a141fccb4b8 1-59
+  s_1e9479e8606b35::t_bcfa0545e18dcc 1-59
+changelog/+ifc-2907-profile-change-generator-selection.fixed.md
+  s_1e9479e8606b35::t_098d1f63b69885 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf6b6f0998909544ef319622e0594cf8d32cde0d",
+  "prompts": {},
+  "sessions": {
+    "s_1e9479e8606b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fabdad-ef16-45db-a6ce-4bed9900a15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

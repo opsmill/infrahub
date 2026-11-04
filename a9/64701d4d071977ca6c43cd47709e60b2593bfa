@@ -1,0 +1,37 @@
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_1e9479e8606b35::t_125e34ce85e235 27
+  s_1e9479e8606b35::t_094af09b4d9dab 108-127
+backend/infrahub/graphql/analyzer.py
+  s_1e9479e8606b35::t_ac922030380dd7 399-416
+  s_1e9479e8606b35::t_cc0d2872e09611 398
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_1e9479e8606b35::t_0febca28f5b2b6 37
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_1e9479e8606b35::t_dc72fb5467a5c8 25,31-32
+  s_1e9479e8606b35::t_87fae11f14b36a 52-55
+  s_1e9479e8606b35::t_b2dbd5dfac9f4b 33
+backend/tests/component/core/regeneration/test_impact.py
+  s_1e9479e8606b35::t_28527ccc8b993f 54-67
+  s_1e9479e8606b35::t_4ac0ab06b4496e 10
+  s_1e9479e8606b35::t_41c97a1bef4786 265-297
+backend/tests/component/graphql/test_query_analyzer.py
+  s_1e9479e8606b35::t_ebd62fb8248974 344-411
+changelog/11024.fixed.md
+  s_1e9479e8606b35::t_34c63f4987d1da 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a964701d4d071977ca6c43cd47709e60b2593bfa",
+  "prompts": {},
+  "sessions": {
+    "s_1e9479e8606b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fabdad-ef16-45db-a6ce-4bed9900a15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

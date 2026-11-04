@@ -1,0 +1,28 @@
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_70984a1d6203c2 81
+  s_760cbcf248de37::t_dbf9b18a0dd27f 6,33,82-87,89-91,121
+backend/infrahub/core/mutation_context.py
+  s_760cbcf248de37::t_356d137826a859 7-8,17-24,27,34,37-38,45,48
+backend/infrahub/graphql/mutations/main.py
+  s_760cbcf248de37::t_fe532b57b4c83a 42,58,79,238,245
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_760cbcf248de37::t_cf152069116ac5 144-147,548
+dev/knowledge/backend/mutations.md
+  s_760cbcf248de37::t_27169926ac6d2f 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37571b4bcd37648ea0c9a395b0f95980581a0a1b",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

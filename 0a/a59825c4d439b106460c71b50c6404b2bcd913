@@ -1,0 +1,170 @@
+backend/tests/unit/serve/test_processes.py
+  s_b134b1501718e5::t_b9311fa8790caa 1-35
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_b134b1501718e5::t_c103beadbb5ad1 40,42,46-49,53,56-59
+  s_b134b1501718e5::t_84bda9340e3972 78
+  s_b134b1501718e5::t_88ca0ff163951f 112
+  s_b134b1501718e5::t_5c4fa7796ba1b5 34
+  s_b134b1501718e5::t_1a00e228b19635 115
+  s_b134b1501718e5::t_6ae33b8d54aa3b 116
+  s_b134b1501718e5::t_060f46fad2474c 117
+  s_b134b1501718e5::t_1d93946d33fa4e 84,86
+  s_b134b1501718e5::t_35326ff61121c1 108
+  s_b134b1501718e5::t_ccc80db02b6cb8 3
+  s_b134b1501718e5::t_3dd93f7f4822e7 7
+  s_b134b1501718e5::t_498f19b7807f24 93-96,98
+  s_b134b1501718e5::t_03d9fcc9879f72 100,102,104-106
+dev/knowledge/backend/testing.md
+  s_b134b1501718e5::t_67b8ef6681d7b2 277
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_b134b1501718e5::t_d42295938b0a7d 100
+  s_b134b1501718e5::t_7d94d1f8e5de6c 34
+  s_b134b1501718e5::t_8e5a02bdb49b38 38
+  s_b134b1501718e5::t_54dece228f0212 49
+  s_b134b1501718e5::t_b7ea134e6cbbe4 79
+  s_b134b1501718e5::t_8080a0486d997a 98
+  s_b134b1501718e5::t_684171fcd4154c 41
+  s_b134b1501718e5::t_aa342e319f99ee 77
+  s_b134b1501718e5::t_004f03dbf2625e 153
+  s_b134b1501718e5::t_a3221afc4eba46 116
+  s_b134b1501718e5::t_4f6cda7851d9b2 36
+  s_b134b1501718e5::t_3d7bb1a00c7ae9 121
+  s_b134b1501718e5::t_d8ee0c21bb7239 51
+  s_b134b1501718e5::t_4bb8b4da003095 94
+  s_b134b1501718e5::t_9a4cfb706ca5ad 37
+  s_b134b1501718e5::t_819330a171f59f 7
+  s_b134b1501718e5::t_f33ee02f2d3bef 53
+  s_b134b1501718e5::t_591ec805e928ed 26
+  s_b134b1501718e5::t_0d2582089210ce 39
+  s_b134b1501718e5::t_003b3ace34deba 75
+  s_b134b1501718e5::t_ac772a4aae5a22 95
+  s_b134b1501718e5::t_b75708cf1e3b50 32
+  s_b134b1501718e5::t_51e80d42c521d3 102
+backend/infrahub/telemetry/resources.py
+  s_b134b1501718e5::t_86c5ec3ba1ce58 476,486,488,494,496,505,508,512
+  s_b134b1501718e5::t_750534c9a2db21 58,60-61,64,429,431-434,440,445
+backend/infrahub/telemetry/models.py
+  s_b134b1501718e5::t_bff3103fc7eabc 1,6-7,9-10,64-67,71-72
+backend/infrahub/serve/worker.py
+  s_b134b1501718e5::t_b366c6a31ea170 9-10,43-47
+backend/tests/component/telemetry/test_resources.py
+  s_b134b1501718e5::t_851dc1c6505c22 228
+  s_b134b1501718e5::t_80993a3941d7ff 1,4-6,23,107,110,115,124,128,151-153,159-165,176,185,199,209-210,234,242,257,259,299,308,322-323
+backend/tests/unit/telemetry/test_resources.py
+  s_b134b1501718e5::t_290920e0262319 6-8,29-30,42,50,348
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_b134b1501718e5::t_d6b43a205ecbc7 101-108,110-111,114,116-117
+  s_b134b1501718e5::t_276c2dffcacb2a 120
+  s_b134b1501718e5::t_a5253be810174c 143
+  s_b134b1501718e5::t_0268c2fd718c58 150
+  s_b134b1501718e5::t_9df8574d85f671 36-41,47-50
+  s_b134b1501718e5::t_78e8bddb88927a 112
+  s_b134b1501718e5::t_8080a0486d997a 118
+  s_b134b1501718e5::t_3bc336644ffe46 151
+  s_b134b1501718e5::t_9d0875120f52fc 157
+  s_b134b1501718e5::t_6d898617a59e4f 126-127
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_b134b1501718e5::t_0ce78ee0b0ce5d 9,62,237
+  s_b134b1501718e5::t_851dc1c6505c22 60
+backend/tests/unit/services/test_component.py
+  s_b134b1501718e5::t_e81df0b350c444 102,110,203-204,215,218,222,228-229,231,233-234,240,244,250
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_b134b1501718e5::t_ccd7186d0954fa 107
+  s_b134b1501718e5::t_b26d7cc69e4a12 72
+  s_b134b1501718e5::t_63ea6bfb7e5d30 74-75,77
+  s_b134b1501718e5::t_9b9cab243ecf2f 114
+  s_b134b1501718e5::t_33d2c24b2b1a02 60
+  s_b134b1501718e5::t_0e540683a7ae72 63
+  s_b134b1501718e5::t_293398932204e5 86
+  s_b134b1501718e5::t_a4ca460bb8fab6 108
+  s_b134b1501718e5::t_c5be65661bcb95 104
+  s_b134b1501718e5::t_9622b52133ffe5 21
+  s_b134b1501718e5::t_c69f7cfb273658 26
+  s_b134b1501718e5::t_2b6898d9bc6000 69
+  s_b134b1501718e5::t_978013f56f8739 17
+  s_b134b1501718e5::t_336a242424c985 105
+  s_b134b1501718e5::t_0736a6875d8ed2 95
+  s_b134b1501718e5::t_1fc2af7f7dc137 92
+  s_b134b1501718e5::t_eca8070010600c 55
+  s_b134b1501718e5::t_00d5e8bded114a 70
+  s_b134b1501718e5::t_c1fed2de03f767 78
+dev/knowledge/backend/telemetry.md
+  s_b134b1501718e5::t_67b8ef6681d7b2 35-36,78-91,128-131,205
+dev/adr/0021-resource-allocation-telemetry.md
+  s_b134b1501718e5::t_8080a0486d997a 96-97
+  s_b134b1501718e5::t_793920a0c54db3 7,49-50,54-65,75-76,90-95,108-109,164-176,178,185
+backend/infrahub/serve/processes.py
+  s_b134b1501718e5::t_83a4b9de08cf74 1-21
+backend/infrahub/telemetry/tasks.py
+  s_b134b1501718e5::t_bff3103fc7eabc 18,32,131-132,135-136,138-152,157,206-207
+changelog/+resource-telemetry.added.md
+  s_b134b1501718e5::t_67b8ef6681d7b2 1
+dev/specs/infp-631-resource-telemetry/research.md
+  s_b134b1501718e5::t_bc3a5bdfcd5efb 29
+  s_b134b1501718e5::t_ba51fbba3f3cf1 88
+  s_b134b1501718e5::t_942e654420723b 108
+  s_b134b1501718e5::t_d36d64c02fee31 53,55
+  s_b134b1501718e5::t_481763f30ea3f9 103,105
+  s_b134b1501718e5::t_cceb37ebc8179d 152
+  s_b134b1501718e5::t_6260049b6ba778 129
+  s_b134b1501718e5::t_4f2082ac931c48 27
+  s_b134b1501718e5::t_cbdd776cf938e3 116
+  s_b134b1501718e5::t_ec2ade9c170893 61
+  s_b134b1501718e5::t_7d71989230f9b3 119
+  s_b134b1501718e5::t_c840e31263ba00 92
+  s_b134b1501718e5::t_68143a34c5d4df 131,133
+  s_b134b1501718e5::t_d9001b2dedff0b 96
+  s_b134b1501718e5::t_c8c289874ff16f 135
+  s_b134b1501718e5::t_e8d6f89ac44e58 136,139
+  s_b134b1501718e5::t_49d50327433704 147-151,154
+  s_b134b1501718e5::t_8080a0486d997a 153
+  s_b134b1501718e5::t_7dd693ae22ea21 85
+dev/specs/infp-631-resource-telemetry/checklists/requirements.md
+  s_b134b1501718e5::t_30dd816f480dfe 37
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_b134b1501718e5::t_35e8aed734b298 50
+  s_b134b1501718e5::t_291ee3496c7b6f 58
+  s_b134b1501718e5::t_ad8af5b099f937 65
+  s_b134b1501718e5::t_f9bc22e73ef141 26,28,30-39
+  s_b134b1501718e5::t_ddc29291dd7f44 60
+  s_b134b1501718e5::t_e5ab288c560cee 56
+dev/specs/infp-631-resource-telemetry/EXTRACTED.md
+  s_b134b1501718e5::t_8080a0486d997a 8-9
+  s_b134b1501718e5::t_46a4f22e09d7d1 14-15
+backend/infrahub/services/component.py
+  s_b134b1501718e5::t_890af6ae283844 43,101-103,107-112,114-120,207-208,216,219-221,231,236
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_b134b1501718e5::t_07dddad84f9b68 11
+  s_b134b1501718e5::t_a53c5bb727b32d 78,82-83
+  s_b134b1501718e5::t_502d02186b05b3 9
+  s_b134b1501718e5::t_6123d19565e8fc 23
+  s_b134b1501718e5::t_0192ccea0319cb 148
+  s_b134b1501718e5::t_4e3974d9b5e107 154
+  s_b134b1501718e5::t_fa59b6ad6b738e 46
+  s_b134b1501718e5::t_01e26da3d2ed71 19
+  s_b134b1501718e5::t_4973f7482b3131 43-44
+  s_b134b1501718e5::t_52a1a86eba54aa 47
+  s_b134b1501718e5::t_daaad901b2af9a 60
+  s_b134b1501718e5::t_071a298d012e5e 93-95,98-99,106-116,123-124,127-129,133-134
+backend/tests/unit/telemetry/test_tasks.py
+  s_b134b1501718e5::t_fe6810621e8354 1,3-6,15-16,18-36,40,42,44,47-61,64-66,68-69,71-76,78-82,84-86,88,93-95
+backend/infrahub/workers/dependencies.py
+  s_b134b1501718e5::t_890af6ae283844 14,24
+  s_b134b1501718e5::t_b366c6a31ea170 179-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0aa59825c4d439b106460c71b50c6404b2bcd913",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

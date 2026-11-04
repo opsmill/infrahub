@@ -1,0 +1,31 @@
+dev/specs/dependabot-autopilot/quickstart.md
+  s_ce99ced981c340::t_924da3a3f74f4f 34
+.github/workflows/dependabot-autopilot-analyze.md
+  s_ce99ced981c340::t_924da3a3f74f4f 10-11
+dev/specs/dependabot-autopilot/spec.md
+  s_ce99ced981c340::t_924da3a3f74f4f 9,15,23,39,144,170-172
+dev/specs/dependabot-autopilot/tasks.md
+  s_ce99ced981c340::t_924da3a3f74f4f 12,136
+dev/specs/dependabot-autopilot/plan.md
+  s_ce99ced981c340::t_924da3a3f74f4f 9,49,132
+.github/workflows/dependabot-autopilot-act.yml
+  s_ce99ced981c340::t_924da3a3f74f4f 26-27
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_ce99ced981c340::t_ee13ec986b661e 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e82b7ea9a1a3c0b4587aec547d60b0848621a0a5",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

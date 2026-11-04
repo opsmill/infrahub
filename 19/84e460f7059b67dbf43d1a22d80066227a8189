@@ -1,0 +1,45 @@
+backend/tests/component/core/query/read_plan/test_execution.py
+  s_6947b4d8b10fbd::t_4f585b7ae5abeb 45,60-66
+  s_6947b4d8b10fbd::t_1fdb13697bad18 1-44,46-59,67-164
+backend/infrahub/core/regeneration/poc/query_runner.py
+  s_6947b4d8b10fbd::t_479719d07e62e8 119
+  s_6947b4d8b10fbd::t_0583e5e0520f6d 1-118,120-268
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_beebfbcace082a 52
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_84dfacd7e14b43 38-54,134-142,144-147,168-173,176,180-186,192-203,219,224-228,289-298
+backend/infrahub/graphql/read_plan.py
+  s_6947b4d8b10fbd::t_b690fb1dd5ea5f 8,19-25,123-128,398
+  s_6947b4d8b10fbd::t_ea51564de1ab43 1-7,9-13,15-17,26-122,129-187,191-324,326-397,399-405
+  s_6947b4d8b10fbd::t_05ffb5b7798c87 18,188-190
+  s_6947b4d8b10fbd::t_1a7d8ba3abcb4a 14,325
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_683e186bdcef5c 125-128
+backend/infrahub/graphql/resolvers/node_reader.py
+  s_6947b4d8b10fbd::t_d9dd0dae4bb10f 54-81
+  s_6947b4d8b10fbd::t_2e1463e55033ed 210
+backend/infrahub/core/query/read_plan/executor.py
+  s_6947b4d8b10fbd::t_05ffb5b7798c87 188,323
+  s_6947b4d8b10fbd::t_75f37439ab1c23 1-18,20-102,104-187,189-322,326-331
+  s_6947b4d8b10fbd::t_1487ade268b45e 19,103
+  s_6947b4d8b10fbd::t_3f788896c5c1c9 325
+  s_6947b4d8b10fbd::t_6cbd392b3d4aa1 324
+backend/infrahub/core/query/read_plan/models.py
+  s_6947b4d8b10fbd::t_05ffb5b7798c87 166-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1984e460f7059b67dbf43d1a22d80066227a8189",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

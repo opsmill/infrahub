@@ -1,0 +1,31 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools.py
+  s_849d53d45b72cc::t_21b804783ffe8e 23,209-225,228-245,247-249,251-261,265-285
+backend/infrahub/pools/number_pool_range_validation.py
+  s_849d53d45b72cc::t_4473fab5641084 61-81
+backend/infrahub/pools/number_pool_repository.py
+  s_849d53d45b72cc::t_19dafffc11d875 51-63
+backend/tests/component/graphql/resource_manager/test_number_pool_mutation.py
+  s_849d53d45b72cc::t_b281c22e0fc464 1,8,15,30,34,304-314,519-521,523,529,535-539,542-544,546,550-551,553-738,835-836,955-994,1054,1080,1103,1130-1161
+backend/tests/component/graphql/resource_manager/test_number_pool_range.py
+  s_849d53d45b72cc::t_4b8c7b85c46a07 532-644
+backend/tests/unit/pools/test_number_pool_range_validation.py
+  s_849d53d45b72cc::t_57ce5a28414026 8,61-78
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_849d53d45b72cc::t_34c32c0019125d 90,92-93,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f26c89a15e1a6ec8d675ff9cb7b29261c5df4cb",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

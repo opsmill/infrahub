@@ -1,0 +1,35 @@
+.github/workflows/bug-agent-test.md
+  s_b5a172beeb66a5::t_e13f65d0c6f399 147-150
+.agents/commands/bug-fix.md
+  s_b5a172beeb66a5::t_cc13d208d8de40 33-35
+.github/workflows/bug-agent-review.md
+  s_b5a172beeb66a5::t_a24da72ec3de5f 182-184
+.github/workflows/bug-agent-fix.md
+  s_b5a172beeb66a5::t_3d46dd9198905a 146-148
+CONTRIBUTING.md
+  s_b5a172beeb66a5::t_9e661dacb08310 62
+  s_b5a172beeb66a5::t_dcf8359e731cfc 27-28
+  s_b5a172beeb66a5::t_0286816da3aca8 63
+.github/workflows/bug-agent-fix.lock.yml
+  s_b5a172beeb66a5::t_4718d502d34827 1
+.github/workflows/bug-agent-review.lock.yml
+  s_b5a172beeb66a5::t_cb9e7cf1a71419 1
+.github/workflows/bug-agent-test.lock.yml
+  s_b5a172beeb66a5::t_52ae71c28cfd28 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "135a7608742372395eb5441cf80024ae0dfd45d4",
+  "prompts": {},
+  "sessions": {
+    "s_b5a172beeb66a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0a1e516-ac04-4c03-a92c-b70df2892d18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

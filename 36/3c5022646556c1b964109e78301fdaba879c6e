@@ -1,0 +1,32 @@
+backend/infrahub/core/changelog/reciprocal.py
+  s_d6bb76affb8018::t_254a550949828b 17,27-29,32-35,37,39-47,52,56,60-61,87,98-99,104-107,112,118-121
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_d6bb76affb8018::t_d5f90d7c126a86 15,122,129-135,154,156,176,178,201,203,226,234,248,256,290,292,302,304
+  s_20e0c986f2472f::t_885d878556407b 136
+backend/infrahub/core/changelog/relationship_getter.py
+  s_d6bb76affb8018::t_c469b49c76a0fe 14,74-76,85,94,104,117-118,128-129,138,153-154,165-166,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "363c5022646556c1b964109e78301fdaba879c6e",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_d6bb76affb8018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c396dbd-8e86-4438-b25e-16e3fabccdb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

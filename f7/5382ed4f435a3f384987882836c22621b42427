@@ -1,0 +1,58 @@
+backend/tests/unit/core/regeneration/test_members.py
+  s_9128a279c50f90::t_d589085e8a5cad 270,273
+  s_9128a279c50f90::t_d70407cacdcaaa 12-18,126-127,130-151,153-154,156-166,168-169,171-172,174-181,183-184,186-187,189-196,198-199,201-202,204-211,213-214,216-217,219-226,228-229,231-232,234-241,243-244,246-247,252-269,271-272,274,277
+  s_9128a279c50f90::t_89871f0c870209 152,155,167,170,182,185,197,200,212,215,227,230,242,245
+backend/tests/unit/core/regeneration/test_branch_edits.py
+  s_9128a279c50f90::t_d589085e8a5cad 6,105-152
+  s_9128a279c50f90::t_7883bfa71b1785 1-5,7-104
+backend/tests/component/core/regeneration/test_branch_edits_query.py
+  s_9128a279c50f90::t_6b52dff387c881 1-57,61-64,71-72,74-75,82-89
+  s_9128a279c50f90::t_2d460e7bc2794e 58-60,65-70,76-81
+  s_9128a279c50f90::t_fb381a87f470ae 73
+backend/infrahub/core/regeneration/branch_edits.py
+  s_9128a279c50f90::t_a6d026797b9003 26-27,35-36,79-95,98-106,117-118,120-123,139-156
+  s_9128a279c50f90::t_7a7e6712cdc0d7 1-25,28-34,37-78,96-97,107-116,119,124-138,157-201
+backend/infrahub/proposed_change/models.py
+  s_9128a279c50f90::t_2d652be02b0d67 59-61
+backend/infrahub/proposed_change/tasks.py
+  s_9128a279c50f90::t_eb738c40bde831 56,58,759-806,812-813,815-829
+  s_9128a279c50f90::t_89871f0c870209 52,807-811,814
+  s_9128a279c50f90::t_4d6f95cb0e431c 13,146
+  s_9128a279c50f90::t_459fed16e3b988 1442-1457,1481-1492,1495-1510,1536,1542-1549,1553,1564
+  s_9128a279c50f90::t_3ddf65185a6303 1550-1552
+  s_9128a279c50f90::t_97252fff8c4e3f 863-869,904-909,911,918-920,922-942,944-946
+  s_9128a279c50f90::t_dec082d3000435 830-831
+backend/infrahub/core/regeneration/models.py
+  s_9128a279c50f90::t_f026afedbb2cd1 211-212,235-239
+backend/infrahub/core/regeneration/members.py
+  s_9128a279c50f90::t_42326a2c46c5f9 3,10,14-15,43-57,61-64,66-67,69-76,78-87,89-94,96-98,101,103,106,108-111,113-114,116,123
+  s_9128a279c50f90::t_89871f0c870209 58-60,65,68,95,105,112,115
+  s_9128a279c50f90::t_3ddf65185a6303 102
+  s_9128a279c50f90::t_ec044d4166a845 99-100,104,107
+backend/tests/component/proposed_change/artifact_recheck_harness.py
+  s_9128a279c50f90::t_6a5fa971a07ebb 114-119,131-148
+  s_9128a279c50f90::t_8fda31820e49a2 1-113,120-130,149-176
+backend/tests/component/proposed_change/test_artifact_regen_recheck.py
+  s_9128a279c50f90::t_4682e340ac2390 102-107,109-113,115,360-362,367,370,373,380,385,395,400,429,434,442,453,460,463-469
+  s_9128a279c50f90::t_8d8baa7f7ff3a9 26,338-355
+  s_9128a279c50f90::t_fcabecf94cdec7 1-25,27-70,75-101,114,116-337,356-359,363-366,368-369,371-372,374-375,377-379,381-384,386-394,396-399,401-428,430-433,435-441,443-452,454-459,461-462
+  s_9128a279c50f90::t_3fef521fcaa7df 71-74,108,376
+backend/infrahub/artifacts/tasks.py
+  s_9128a279c50f90::t_f97e79fd9b00d2 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f75382ed4f435a3f384987882836c22621b42427",
+  "prompts": {},
+  "sessions": {
+    "s_9128a279c50f90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11476f82-dee3-47fe-9315-70bb594190bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

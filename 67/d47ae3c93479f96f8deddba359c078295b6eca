@@ -1,0 +1,47 @@
+backend/infrahub/core/regeneration/query_analysis.py
+  s_fb819cbbe44071::t_df475f4510e3f8 1-40
+backend/tests/component/core/regeneration/test_query_analysis.py
+  s_fb819cbbe44071::t_dbda8b44cdf482 1-61
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_fb819cbbe44071::t_aac4f897302a57 81-83
+backend/infrahub/core/merge/selective_regen/gate.py
+  s_fb819cbbe44071::t_d1873e1ccbcd2c 6,12,35,45
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_fb819cbbe44071::t_4f0f16952f5842 6,25-28
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_575da272af8618 14,68
+backend/infrahub/proposed_change/tasks.py
+  s_fb819cbbe44071::t_f797a70be85dd6 66,461-468,1373-1380
+backend/tests/component/proposed_change/test_artifact_regen_selection.py
+  s_fb819cbbe44071::t_c46952956601ca 176,203-225
+backend/tests/component/proposed_change/test_generator_regen_selection.py
+  s_fb819cbbe44071::t_64b7a39445f130 269,273,277,632
+backend/tests/component/proposed_change/test_merge_selective_regen.py
+  s_fb819cbbe44071::t_381ea7d2c439ad 186
+backend/tests/helpers/selective_regen.py
+  s_fb819cbbe44071::t_80c407998316d4 16-17,28-34,45-47
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_fb819cbbe44071::t_3968b015a2245e 18-19,90-96,108-110
+backend/tests/unit/core/merge/selective_regen/test_gate.py
+  s_fb819cbbe44071::t_1b629f595d8c75 28,46,65,130,137
+changelog/+regen-query-kinds-from-text.fixed.md
+  s_fb819cbbe44071::t_838c40841f52fb 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_a0fdc443e9770d 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67d47ae3c93479f96f8deddba359c078295b6eca",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

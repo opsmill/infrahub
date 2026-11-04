@@ -1,0 +1,19 @@
+dev/specs/artifact-regeneration-poc/plan.md
+  s_e714cd5cd6f5b9::t_43900f5b985de0 204-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37675c88513d33070091bbe18b69a01ec7b13bf4",
+  "prompts": {},
+  "sessions": {
+    "s_e714cd5cd6f5b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aefa04b55d7f2013b",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

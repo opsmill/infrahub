@@ -1,0 +1,26 @@
+backend/infrahub/core/manager.py
+  s_e334a8acd54e5c::t_1c84629dd66557 422
+  s_e334a8acd54e5c::t_8f3cbd98e5b8d4 392
+backend/infrahub/graphql/resolvers/resolver.py
+  s_e334a8acd54e5c::t_0a30cfe0b737c6 422,429-432
+  s_e334a8acd54e5c::t_5f8b8dc6a2e76d 10,12
+  s_e334a8acd54e5c::t_75da721d87c294 373-378
+backend/tests/component/graphql/test_graphql_query.py
+  s_e334a8acd54e5c::t_948251e8953d38 1,15,2028-2030,2032-2035,2037,2050,2068,2074,2088-2091,2093-2262,2264-2272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90a507c78d6bc9d1ec5675a0c22249683ebe8d31",
+  "prompts": {},
+  "sessions": {
+    "s_e334a8acd54e5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a35e15a-d1c7-45b9-805f-1a51227935c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

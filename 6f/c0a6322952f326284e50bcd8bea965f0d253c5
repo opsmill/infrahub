@@ -1,0 +1,14 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  h_bd00275aefc321 132,177,180,184-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fc0a6322952f326284e50bcd8bea965f0d253c5",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

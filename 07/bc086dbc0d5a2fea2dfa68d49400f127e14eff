@@ -1,0 +1,34 @@
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_04e9c61d1d4032::t_ea8c8274646b6c 34-35,101-102,104-105,109,121-122,126,130
+  s_04e9c61d1d4032::t_7607a67ce87acd 1-33,36-100,103,106-108,110-120,123-125,127-129,131-142
+backend/infrahub/core/schema/manager.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 187,231
+backend/infrahub/core/schema/schema_branch.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 61,72-76,99,742-748,751,795,804,1399-1409,1415-1448
+backend/infrahub/graphql/mutations/schema.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 324
+backend/infrahub/core/schema/attribute_parameters.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 247,249-250
+backend/infrahub/api/schema.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 226
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 1-277
+backend/infrahub/proposed_change/tasks.py
+  s_04e9c61d1d4032::t_7607a67ce87acd 529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07bc086dbc0d5a2fea2dfa68d49400f127e14eff",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

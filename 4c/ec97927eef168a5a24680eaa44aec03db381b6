@@ -1,0 +1,23 @@
+backend/tests/integration_docker/test_prefect_event_types.py
+  s_cfd0841cea4d76::t_c913545899d844 15,131-133
+  s_cfd0841cea4d76::t_55fd1161a3cb9e 1-8,10,12-14,16-18,20-21,24-38,40-62,66-70,74-79,83-92,94-95,97-111,125-126,128-130,134-149,151-156,158-162,166-168
+  s_cfd0841cea4d76::t_65de3fcfb498c0 9,11,19,22-23,93,112-124
+  s_cfd0841cea4d76::t_eb76a86f4adc20 39,63-65,71-73,80-82,96,127,150,163-165
+  s_cfd0841cea4d76::t_d10b907f944fcd 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cec97927eef168a5a24680eaa44aec03db381b6",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

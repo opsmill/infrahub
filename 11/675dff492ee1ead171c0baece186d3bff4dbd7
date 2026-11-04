@@ -1,0 +1,23 @@
+backend/infrahub/core/schema/__init__.py
+  s_fc919c220ab1f1::t_205145bc978d70 51
+backend/tests/component/api/test_40_schema.py
+  s_fc919c220ab1f1::t_0bc3e6a14c272a 739
+backend/tests/component/core/test_schema.py
+  s_fc919c220ab1f1::t_11b7369ca0953a 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11675dff492ee1ead171c0baece186d3bff4dbd7",
+  "prompts": {},
+  "sessions": {
+    "s_fc919c220ab1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "627c800b-053c-471c-9f8c-44d182f03524",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+docs/docs/schema/number-pool.mdx
+  s_fd0c128a7b3dd4::t_97fe5a23071023 17-22,24-25
+  s_fd0c128a7b3dd4::t_d7263bb7b936ea 111,113
+  s_fd0c128a7b3dd4::t_03c490355b7a02 23
+  s_fd0c128a7b3dd4::t_83a8cf83b4d13c 51-53,144-146
+docs/docs/resource-manager/allocate-number.mdx
+  s_fd0c128a7b3dd4::t_03c490355b7a02 74
+  s_fd0c128a7b3dd4::t_e3aa4168ffa968 60-62
+  s_fd0c128a7b3dd4::t_f106b869734673 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e74050a992dfb90c18f0fc4ca0de8a5180d8188e",
+  "prompts": {},
+  "sessions": {
+    "s_fd0c128a7b3dd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e92e46bb-6843-4c8c-ba3a-944b2c66f5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

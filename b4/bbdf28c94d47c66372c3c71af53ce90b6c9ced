@@ -1,0 +1,75 @@
+backend/infrahub/workers/dependencies.py
+  s_1df8eb94da3d51::t_7dacd88bf70029 13-14,27-28,223,227-242
+backend/infrahub/license/reporting.py
+  s_1df8eb94da3d51::t_4a4c9bdc43cd79 1-4,6-38,40-45,50,55-57,64,69-70
+  s_1df8eb94da3d51::t_bc111bb6892b6d 46-49,51-54,58,65-68
+  s_1df8eb94da3d51::t_ca899d0666ea6b 5,39,59-63
+backend/tests/unit/license/test_settings.py
+  s_1df8eb94da3d51::t_624b9c0c7e15e0 3,20-25
+  s_1df8eb94da3d51::t_2e9324e47b815a 26-27
+backend/tests/unit/workers/test_dependencies.py
+  s_1df8eb94da3d51::t_edd2177347c0c8 1-90,92-96
+  s_1df8eb94da3d51::t_f39e4a03d40b73 91
+backend/tests/unit/license/test_service.py
+  s_1df8eb94da3d51::t_d5b954c117a33c 8,24-32
+  s_1df8eb94da3d51::t_611af4a6177014 33
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_fb7d7d99f8ded9 67-68,85
+  s_1df8eb94da3d51::t_bd048e97279518 69
+  s_1df8eb94da3d51::t_3dc7f8813e0c8d 81,86-88
+backend/infrahub/config.py
+  s_1df8eb94da3d51::t_c194aa1ab5dbc3 1974-1981
+backend/tests/helpers/test_worker.py
+  s_1df8eb94da3d51::t_215a3f38531146 2,22,86-90,99,110-112
+dev/specs/005-enterprise-licensing-infp-472/data-model.md
+  s_1df8eb94da3d51::t_fb7d7d99f8ded9 98-99,106
+  s_1df8eb94da3d51::t_b0e14ca25fc342 107
+backend/tests/component/api/test_license_startup_log.py
+  s_1df8eb94da3d51::t_f39e4a03d40b73 60
+  s_1df8eb94da3d51::t_285c0cb97fc0e1 1-2,4-59,61-88,104-108
+  s_1df8eb94da3d51::t_f223950f291cd0 3,89-103,109-110
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_a7dfa2df05bde0 143
+  s_1df8eb94da3d51::t_4b90a6493831af 139
+  s_1df8eb94da3d51::t_fb7d7d99f8ded9 140-142
+backend/infrahub/workers/infrahub_async.py
+  s_1df8eb94da3d51::t_f038ae109f0635 30,39,186
+  s_1df8eb94da3d51::t_7e76f50b3424d4 187
+backend/infrahub/license/service.py
+  s_1df8eb94da3d51::t_ca899d0666ea6b 70
+  s_1df8eb94da3d51::t_3c53789ec1dddc 44-62
+backend/infrahub/server.py
+  s_1df8eb94da3d51::t_f038ae109f0635 39,52,129
+  s_1df8eb94da3d51::t_2b73e63a5f49e2 130
+backend/tests/helpers/log.py
+  s_1df8eb94da3d51::t_1b2b734864b91f 43
+  s_1df8eb94da3d51::t_215a3f38531146 30-42,44-57
+dev/specs/005-enterprise-licensing-infp-472/research.md
+  s_1df8eb94da3d51::t_fb7d7d99f8ded9 7,25,57
+  s_1df8eb94da3d51::t_f7f55a2fec6158 38
+dev/specs/005-enterprise-licensing-infp-472/contracts/license-service.md
+  s_1df8eb94da3d51::t_fb7d7d99f8ded9 38,44-45,62-63,65
+  s_1df8eb94da3d51::t_f7f55a2fec6158 57,64
+backend/tests/unit/license/test_reporting.py
+  s_1df8eb94da3d51::t_f7178e3a1c08b0 5,179-185,187,189-193
+  s_1df8eb94da3d51::t_8cd503bf45b9fa 1-4,6-65,67-148,161-178,186
+  s_1df8eb94da3d51::t_f39e4a03d40b73 66,149-160,188
+backend/tests/integration/workers/test_infrahubasync.py
+  s_1df8eb94da3d51::t_215a3f38531146 2,141-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4bbdf28c94d47c66372c3c71af53ce90b6c9ced",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

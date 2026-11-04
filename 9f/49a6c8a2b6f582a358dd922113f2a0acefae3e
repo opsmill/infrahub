@@ -1,0 +1,19 @@
+dev/guidelines/git-workflow.md
+  s_751dd3b35e576b::t_d4ea4aa3069d6e 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f49a6c8a2b6f582a358dd922113f2a0acefae3e",
+  "prompts": {},
+  "sessions": {
+    "s_751dd3b35e576b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4facfa08-fdc3-48b0-b438-55c591eef311",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

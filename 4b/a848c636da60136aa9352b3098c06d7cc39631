@@ -1,0 +1,34 @@
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_99e218bb2951ed::t_8a4675ab084491 138,155-160,214-215,380-381,482-484,541-543,579-583
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-pool-scope.md
+  s_99e218bb2951ed::t_8a4675ab084491 40,47-48,62-70,94
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  s_99e218bb2951ed::t_8a4675ab084491 161,163
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_99e218bb2951ed::t_53199da5bc621c 227,250,253-257,259
+  s_99e218bb2951ed::t_50251d890d5cc5 238,265
+  s_99e218bb2951ed::t_377558648218df 219,224
+  s_99e218bb2951ed::t_8a4675ab084491 240-243,267-272
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_99e218bb2951ed::t_8a4675ab084491 126-128,131-135
+  s_99e218bb2951ed::t_81ce9235d0c074 115-116
+  s_99e218bb2951ed::t_9e68a6af5a9b8d 105-114
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_99e218bb2951ed::t_8a4675ab084491 154,199,388-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ba848c636da60136aa9352b3098c06d7cc39631",
+  "prompts": {},
+  "sessions": {
+    "s_99e218bb2951ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e86e0089-84dc-4d8c-85b5-db142b847f80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

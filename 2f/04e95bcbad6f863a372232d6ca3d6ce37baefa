@@ -1,0 +1,30 @@
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_number_pool.py
+  s_4e40d3932a4480::t_6da52077f2339c 122-124,133-137
+backend/tests/functional/templates/test_template_resource_pool.py
+  s_4e40d3932a4480::t_6da52077f2339c 54-67,601-603,607-610,996-998,1004-1006
+backend/tests/component/core/migrations/graph/test_066_consolidate_duplicate_number_pools.py
+  s_4e40d3932a4480::t_6da52077f2339c 132,135-139,141-145
+backend/infrahub/core/query/node.py
+  s_4e40d3932a4480::t_cfcd3f73d0e217 832-833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f04e95bcbad6f863a372232d6ca3d6ce37baefa",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_4e40d3932a4480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f02a017-4e80-45de-9d17-f4bd994f113c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

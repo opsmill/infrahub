@@ -1,0 +1,32 @@
+backend/infrahub/graphql/read_plan.py
+  s_6947b4d8b10fbd::t_3e31a9ab01cd17 110-113
+  s_6947b4d8b10fbd::t_47415558977349 109
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_a170e53c7e3d6b 28,49,89,115
+backend/tests/component/core/regeneration/poc/test_selection.py
+  s_6947b4d8b10fbd::t_a170e53c7e3d6b 320
+backend/infrahub/core/query/read_plan/executor.py
+  s_6947b4d8b10fbd::t_2c034e44376aaa 46-47
+  s_6947b4d8b10fbd::t_96b723c5f5d9ce 44-45
+  s_6947b4d8b10fbd::t_cc9f85e00fa8f7 48
+backend/infrahub/core/query/read_plan/models.py
+  s_6947b4d8b10fbd::t_6ee9e32c21a1b2 306-307
+backend/infrahub/core/regeneration/poc/selector.py
+  s_6947b4d8b10fbd::t_0d6def093215cc 116-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a3ee1a6c86cffdea553755c86356df398cbb6e4",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

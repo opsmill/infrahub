@@ -1,0 +1,47 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_bec9166785f63a::t_24feeea4603c95 92,94-96,98-101,349-350,352-356,361-364
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_bec9166785f63a::t_0708f24d99f305 92,115,421,432,447-449
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_bec9166785f63a::t_0708f24d99f305 714-716
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_bec9166785f63a::t_355257cbabcc7c 117,130
+backend/tests/unit/pools/test_number_pool_range_reconciler.py
+  s_bec9166785f63a::t_3f626959af4c55 39-42
+  s_bec9166785f63a::t_fcca9cf97706b6 1-38,43-95
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_bec9166785f63a::t_74141825f68b60 80,83,85,88,93-96,124-177
+  s_bec9166785f63a::t_cbe1997bb607fe 178
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_events.py
+  s_bec9166785f63a::t_0708f24d99f305 288-293
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_permissions.py
+  s_bec9166785f63a::t_348f6b913b8839 19
+  s_bec9166785f63a::t_2536531a38321e 42,51,56,58,65,146-170
+dev/specs/ifc-3065-number-pool-ranges/data-model.md
+  s_bec9166785f63a::t_355257cbabcc7c 174,176-179,183
+  s_bec9166785f63a::t_19fef983f2d825 184
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_bec9166785f63a::t_355257cbabcc7c 111,113
+backend/infrahub/pools/number_pool_range_reconciler.py
+  s_bec9166785f63a::t_ef1cc4e375809c 3,7,10,32-60,62,74-107,111-122,127-128,132-134,136-138,142-150,157-164
+  s_bec9166785f63a::t_24feeea4603c95 108-110,153-155
+  s_bec9166785f63a::t_d126278cb30438 156
+backend/tests/helpers/permissions.py
+  s_bec9166785f63a::t_8404013c574cd6 20-21,49,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4abc8d4fd4c3ed8ed8d842381984b950fbfc2c2",
+  "prompts": {},
+  "sessions": {
+    "s_bec9166785f63a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66373eb4-60d0-4641-be9f-f5b6e09e2092",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

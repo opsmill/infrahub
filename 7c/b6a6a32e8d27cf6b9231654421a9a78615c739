@@ -1,0 +1,31 @@
+backend/infrahub/core/validators/pool/scope.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 68-69,73-74,316,324,326-332,341-343,346-348
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_04e9c61d1d4032::t_cf64a1bfc24e19 59-67,82,90,92,98,104,108-110,129-136,145,151-153,162-167,170
+backend/infrahub/core/schema/schema_branch.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 1431-1436,1439-1441,1445
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 4-7,20-21
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 242-247
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_refused_declarations.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 172,178-180
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_04e9c61d1d4032::t_da8a3f3a7b4dc5 16-19,241-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7cb6a6a32e8d27cf6b9231654421a9a78615c739",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

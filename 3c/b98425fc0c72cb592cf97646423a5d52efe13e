@@ -1,0 +1,28 @@
+backend/infrahub/pools/range_refusal.py
+  s_1bb7a99c5eb9a8::t_880cfc3b5f5516 66-70
+  s_1bb7a99c5eb9a8::t_d1177aca286ea7 1-27,30-35,38-44,61-65,71-87
+  s_1bb7a99c5eb9a8::t_248d02db703e6c 28-29,36-37
+  s_1bb7a99c5eb9a8::t_b7f902fd8832cb 45-52
+  s_1bb7a99c5eb9a8::t_cf610c00535c9b 53-60
+backend/tests/unit/pools/test_range_refusal.py
+  s_1bb7a99c5eb9a8::t_de98c0f65b4663 60-62
+  s_1bb7a99c5eb9a8::t_b7f902fd8832cb 8,56-59
+  s_1bb7a99c5eb9a8::t_cf610c00535c9b 9,63-69
+  s_1bb7a99c5eb9a8::t_f063348d355caa 1-7,10-55,70-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cb98425fc0c72cb592cf97646423a5d52efe13e",
+  "prompts": {},
+  "sessions": {
+    "s_1bb7a99c5eb9a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf0b992-85d6-410b-a484-060d05b1526d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

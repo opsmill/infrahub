@@ -1,0 +1,19 @@
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_4e7f701e8c4e49::t_749e7d256ff37b 90-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4b1a56cc92ca9d6f949a3962f3d0789f171849a",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

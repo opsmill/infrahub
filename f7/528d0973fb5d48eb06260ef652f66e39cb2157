@@ -1,0 +1,31 @@
+.github/workflows/issue-triage-labeler.md
+  s_86bb4ec1d4b759::t_6b85dea9d7c934 42,66,99-101
+.github/workflows/shared/issue-taxonomy.md
+  s_86bb4ec1d4b759::t_55c975ea0325be 6-7
+  s_86bb4ec1d4b759::t_2a3a6a46a0960f 58-62
+  s_86bb4ec1d4b759::t_0d7d57e7015116 79-80
+.github/workflows/issue-triage-sweep.md
+  s_86bb4ec1d4b759::t_6b85dea9d7c934 28,52
+.github/labels.yml
+  s_86bb4ec1d4b759::t_842b7d645ba437 88-91
+.github/workflows/issue-triage-labeler.lock.yml
+  s_86bb4ec1d4b759::t_6dcae40bd377f2 1,287,289,294,296,298,300,342,344,348,563-565,571,1712
+.github/workflows/issue-triage-sweep.lock.yml
+  s_86bb4ec1d4b759::t_8eac31f4d12199 1,273,275,280,282,284,286,328,330,334,549-551,557,1698
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7528d0973fb5d48eb06260ef652f66e39cb2157",
+  "prompts": {},
+  "sessions": {
+    "s_86bb4ec1d4b759": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9f02798-e66e-44ad-a09c-0b748c9cae65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

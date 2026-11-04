@@ -1,0 +1,48 @@
+.github/dependabot.yml
+  cb37beae7e69e79d 21-22
+.github/workflows/publish-dev-docker-image.yml
+  cb37beae7e69e79d 43,45-46,48,50-51,73
+.github/workflows/publish-preview-dev-docker-image.yml
+  cb37beae7e69e79d 52
+.github/workflows/schedule-publish-docker-image.yml
+  cb37beae7e69e79d 56,111
+.github/workflows/close-docusaurus-dependabot.yml
+  cb37beae7e69e79d 2-3,6-9,12-16,18-20,22-30
+.github/workflows/dependabot-automerge.yml
+  cb37beae7e69e79d 1-37
+.github/workflows/release.yml
+  cb37beae7e69e79d 108,135,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "246bcce7ce764991b4367ae38867469789347c28",
+  "prompts": {
+    "2d85ca42e6795bca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bab5f7d2-0f4d-48b9-b586-5cd017abe937",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 226,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "cb37beae7e69e79d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40fe615f-3e23-4bb8-8327-de79b2082217",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 6181,
+      "total_deletions": 365,
+      "accepted_lines": 5268,
+      "overriden_lines": 112
+    }
+  }
+}

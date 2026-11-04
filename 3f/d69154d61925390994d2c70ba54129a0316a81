@@ -1,0 +1,29 @@
+dev/specs/dependabot-autopilot/contracts/verdict.schema.json
+  s_43d8e382eba497::t_d8c119f2b3e387 1-61
+dev/specs/dependabot-autopilot/contracts/workflows.md
+  s_43d8e382eba497::t_f0b0fc4d565718 1-60
+dev/specs/dependabot-autopilot/data-model.md
+  s_43d8e382eba497::t_fd53bd032a3b9e 1-100
+dev/specs/dependabot-autopilot/plan.md
+  s_43d8e382eba497::t_a08855f4e3407c 1-181
+dev/specs/dependabot-autopilot/quickstart.md
+  s_43d8e382eba497::t_c098acb3dd6db5 1-38
+dev/specs/dependabot-autopilot/research.md
+  s_43d8e382eba497::t_c34c6a93db35e0 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fd69154d61925390994d2c70ba54129a0316a81",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+dev/knowledge/backend/graphql-execution.md
+  s_4ee8bbf15c67e8::t_7003f814171ab4 5
+  s_4ee8bbf15c67e8::t_30d15b606c9383 53-73
+backend/AGENTS.md
+  s_4ee8bbf15c67e8::t_83b36e806b9551 123
+dev/guidelines/backend/testing.md
+  s_4ee8bbf15c67e8::t_b8622b71d827a9 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e3e419e37d29711d5b6975c231de9b386db4633",
+  "prompts": {},
+  "sessions": {
+    "s_4ee8bbf15c67e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d4d9e36-bf4c-4835-8c8e-775a7be9c746",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

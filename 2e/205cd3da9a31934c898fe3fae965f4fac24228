@@ -1,0 +1,19 @@
+dev/specs/005-enterprise-licensing-infp-472/opsmill-implement-report.md
+  s_1df8eb94da3d51::t_857c2c7598c056 77,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e205cd3da9a31934c898fe3fae965f4fac24228",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

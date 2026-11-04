@@ -1,0 +1,33 @@
+backend/tests/helpers/constants.py
+  s_4e7f701e8c4e49::t_58db52eead9aac 17-20
+backend/tests/helpers/events.py
+  s_4e7f701e8c4e49::t_39a4f32af22a51 11,40
+backend/tests/helpers/test_app.py
+  s_4e7f701e8c4e49::t_b9c51195a0e56c 44,286
+backend/tests/integration/proposed_change/test_proposed_change_conflict.py
+  s_4e7f701e8c4e49::t_bbecdb5099523f 29,301,321
+backend/tests/integration/schema_lifecycle/test_migration_attribute_branch.py
+  s_4e7f701e8c4e49::t_d64e71da2be637 17,361,375
+backend/tests/integration_docker/test_computed_attributes.py
+  s_4e7f701e8c4e49::t_23df96c1e27661 17,93,116,128,203,218,265
+backend/tests/integration_docker/test_profiles.py
+  s_4e7f701e8c4e49::t_825ab9d0419aac 12-13,33,53,81,108,130,155,182
+backend/tests/integration_docker/test_triggered_actions.py
+  s_4e7f701e8c4e49::t_84226ce7553326 33,123,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecb0f3d23440174bf098981627f57dd3d7caf21f",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

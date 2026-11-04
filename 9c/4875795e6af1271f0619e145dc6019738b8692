@@ -1,0 +1,19 @@
+backend/tests/component/core/migrations/graph/test_080_delete_generator_capture_diffs.py
+  s_b2b53418d6f8ed::t_25f010353b7728 79-88,144-150,171,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c4875795e6af1271f0619e145dc6019738b8692",
+  "prompts": {},
+  "sessions": {
+    "s_b2b53418d6f8ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a06fd280-ced2-4ade-b525-6f2d0f72e799",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

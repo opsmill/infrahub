@@ -1,0 +1,49 @@
+dev/specs/005-pr-lifecycle/opsmill-implement-report.md
+  s_87cc594590dcc7::t_75b8a70ab7ecde 1,3-6,8,10,12-14,16-17,19-22,24,26-29,31,33-54
+dev/specs/005-pr-lifecycle/tasks.md
+  s_87cc594590dcc7::t_75b8a70ab7ecde 1,3,5-8,10,12-14
+dev/specs/005-pr-lifecycle/validation.md
+  s_87cc594590dcc7::t_75b8a70ab7ecde 1-43
+dev/specs/005-pr-lifecycle/evidence/simplified-tests.txt
+  s_87cc594590dcc7::t_75b8a70ab7ecde 1-25
+dev/specs/005-pr-lifecycle/review-report.md
+  s_87cc594590dcc7::t_75b8a70ab7ecde 1,3-5,7,9-17,21-52,56-59
+.github/scripts/pr-lifecycle.cjs
+  s_727d0eaee2bc34::t_762085645b5931 176-179
+.github/scripts/pr-lifecycle.test.cjs
+  s_727d0eaee2bc34::t_d38aad348618bc 364-380
+dev/README.md
+  s_87cc594590dcc7::t_53d8902dee2a95 60,104
+dev/guides/pr-lifecycle.md
+  s_87cc594590dcc7::t_3e9f6f7b034b81 1,3-4,6,8,11-12,15-18,20,22-24,26-28,30-33,35-39,41-76,78-79
+dev/knowledge/pr-lifecycle.md
+  s_87cc594590dcc7::t_62b41e47501863 3-4,6,8,10-75
+dev/specs/005-pr-lifecycle/plan.md
+  s_87cc594590dcc7::t_1654b04a1dad98 1-20
+dev/specs/005-pr-lifecycle/spec.md
+  s_87cc594590dcc7::t_7b1e9ff84fc692 1,3,5-6,10-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b07a03d2217e8903e0332eabd47b339232c1a46",
+  "prompts": {},
+  "sessions": {
+    "s_727d0eaee2bc34": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ec2c-34b1-7541-a35c-76c2f2bab31c",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_87cc594590dcc7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e7bf-3ccc-7de2-9554-b3e32bd2648d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

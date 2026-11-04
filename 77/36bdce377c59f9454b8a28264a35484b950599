@@ -1,0 +1,39 @@
+.github/scripts/dependabot_autopilot/ports.py
+  s_ce99ced981c340::t_612139370828de 255-258
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page2.handcrafted.json
+  s_ce99ced981c340::t_22ccee7e54a0bf 1-27
+.github/scripts/dependabot_autopilot/tests/test_adapters.py
+  s_ce99ced981c340::t_6793d1afb8da64 713-745
+.github/scripts/dependabot_autopilot/adapters.py
+  s_ce99ced981c340::t_612139370828de 406-421,435,437-441,443
+  s_ce99ced981c340::t_d7ba526c541761 308-333
+.github/scripts/dependabot_autopilot/tests/test_opportunities.py
+  s_ce99ced981c340::t_d4b6f64250a6ae 267-321
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page1.handcrafted.json
+  s_ce99ced981c340::t_22ccee7e54a0bf 1-44
+.github/workflows/dependabot-autopilot-act.yml
+  s_ce99ced981c340::t_8c0fcc14effddd 164-166
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_ce99ced981c340::t_3a1bbc7b93312c 252-255,294-300
+  s_ce99ced981c340::t_d7ba526c541761 11
+.github/scripts/dependabot_autopilot/opportunities.py
+  s_ce99ced981c340::t_b7237aaf7c3939 122
+  s_ce99ced981c340::t_612139370828de 6,139-143,160-162
+  s_ce99ced981c340::t_21d334d31339a2 163-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7736bdce377c59f9454b8a28264a35484b950599",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

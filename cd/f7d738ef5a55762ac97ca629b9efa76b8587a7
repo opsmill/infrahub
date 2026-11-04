@@ -1,0 +1,61 @@
+backend/tests/unit/task_manager/event/test_models.py
+  s_cfd0841cea4d76::t_c3b67a82e4742b 1-9,38-211
+backend/tests/component/task_manager/test_event_query_windows.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 64,75
+  s_cfd0841cea4d76::t_da4e5651cdff7d 1-63,65-74,76-218
+backend/infrahub/graphql/queries/event.py
+  s_cfd0841cea4d76::t_9615e062e760df 8,10,22,29-41,92-100,103
+backend/tests/helpers/task_manager_seed.py
+  s_cfd0841cea4d76::t_9bdcceb9f0cde0 21,45
+backend/infrahub/prefect_server/database.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 42-44
+  s_cfd0841cea4d76::t_865ba91295829e 26-32,45,48,59,65-68
+  s_cfd0841cea4d76::t_f6b3338c6ff531 3,6,12-15,19-25,33-41,46-47,54,58,60-64,69
+  s_cfd0841cea4d76::t_6b339f0ddef23c 49
+backend/infrahub/prefect_server/events.py
+  s_cfd0841cea4d76::t_17a44f7405defa 32
+backend/infrahub/task_manager/event/models.py
+  s_cfd0841cea4d76::t_14f52b3a04232a 149
+  s_cfd0841cea4d76::t_ef7f7a81b32e05 18-24,35-49,68,72-73,76,102,105-116,130-134,141-147,150-169,173-174,216,245
+  s_cfd0841cea4d76::t_ea8af958c4a56e 53-57
+  s_cfd0841cea4d76::t_6c9313794227c7 50
+backend/infrahub/task_manager/event/query.py
+  s_cfd0841cea4d76::t_0419df39ff4a9e 8,14,24-25,29,440-445,452,457-468
+  s_cfd0841cea4d76::t_2eff6ac135f7df 446-451,453-456
+  s_cfd0841cea4d76::t_17a44f7405defa 391,407,436
+  s_cfd0841cea4d76::t_1bca608ce282c8 469
+dev/knowledge/backend/events.md
+  s_cfd0841cea4d76::t_99d49136d0c0da 214
+  s_cfd0841cea4d76::t_7f3b6c74fe1740 194-196
+backend/tests/helpers/event_filters.py
+  s_cfd0841cea4d76::t_09eada88bab4f1 165-167
+  s_cfd0841cea4d76::t_3bf8768b11957e 18-19
+  s_cfd0841cea4d76::t_42873b1a64b1e5 1-17,20-164,168
+backend/tests/component/graphql/queries/test_event.py
+  s_cfd0841cea4d76::t_bba9aa5107f191 18,772-816
+  s_cfd0841cea4d76::t_00bc2771a79a5b 13,266-268,273,279,284,290,295
+  s_cfd0841cea4d76::t_5a17c484fae36a 817-818
+backend/infrahub/prefect_server/models.py
+  s_cfd0841cea4d76::t_98027642380c49 1-2,6,9-10,27,36,38-49
+backend/tests/component/task_manager/test_event_filter_equivalence.py
+  s_cfd0841cea4d76::t_1142655b830039 1-291,293-355,357-552
+  s_cfd0841cea4d76::t_09eada88bab4f1 292,356
+backend/tests/component/task_manager/test_event.py
+  s_cfd0841cea4d76::t_ad2c3f4ecdaaa7 99-101,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdf7d738ef5a55762ac97ca629b9efa76b8587a7",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

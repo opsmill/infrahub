@@ -1,0 +1,21 @@
+backend/infrahub/pools/number_pool_space.py
+  s_c47d1ff1b9fc75::t_b7e8e76b9cd722 51-52,57,60
+backend/infrahub/pools/number_pool_allocator.py
+  s_c47d1ff1b9fc75::t_695d5db2aabc22 3,13-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f92bf756f50cbcdbe29183de7ee8991a2f2f2cb",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

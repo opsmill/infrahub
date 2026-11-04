@@ -1,0 +1,23 @@
+backend/infrahub/graphql/analyzer.py
+  s_fb819cbbe44071::t_d5c3e84701a97e 345-347,356-357
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_fb819cbbe44071::t_d692192abc2f7f 9,54-82,269-277
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_fb819cbbe44071::t_2aba801dee10a8 99-103,151,167,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74b844111f4abf1b0a5bdd7fd1e9d218d0e2dd0a",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

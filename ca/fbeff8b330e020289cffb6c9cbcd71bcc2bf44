@@ -1,0 +1,41 @@
+backend/infrahub/core/regeneration/impact.py
+  s_bf22b52c194546::t_60ad0241de7682 28-31,38-46,50,66-68
+backend/infrahub/proposed_change/tasks.py
+  s_bf22b52c194546::t_f9fa450e93a653 1131-1133
+  s_bf22b52c194546::t_6960d54a003ddd 835-837
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_bf22b52c194546::t_e64679b51b2d47 9,161,172,190,201,219,229
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_bf22b52c194546::t_2fbfcd95966345 84
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_bf22b52c194546::t_3f37683ae35185 11
+  s_bf22b52c194546::t_ad5c424728ce18 46-48,51
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_bf22b52c194546::t_3a7547b546809d 83,227-231
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_bf22b52c194546::t_fb83b439ded80a 110
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_bf22b52c194546::t_e64679b51b2d47 9,124,131,143,150,157,164,171,178
+backend/tests/helpers/selective_regen.py
+  s_bf22b52c194546::t_f90c9621febf66 74
+  s_bf22b52c194546::t_05ed4540b3ae66 27
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_bf22b52c194546::t_65d6e3eb6f9a06 19
+  s_bf22b52c194546::t_dd0dad25fdcc0e 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cafbeff8b330e020289cffb6c9cbcd71bcc2bf44",
+  "prompts": {},
+  "sessions": {
+    "s_bf22b52c194546": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b65c4c-e855-4360-9c0e-6521b8efb461",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

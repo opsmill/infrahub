@@ -1,0 +1,59 @@
+dev/specs/artifact-regeneration-poc/test-inventory.md
+  s_6947b4d8b10fbd::t_42359e5882099d 157-159
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_201b61a3136848 254-255
+dev/specs/artifact-regeneration-poc/contracts/state-files.md
+  s_6947b4d8b10fbd::t_9a35266128feb6 7-8
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_46a72ed9ba91b9 3-5
+  s_6947b4d8b10fbd::t_b1966b888f964f 93
+  s_6947b4d8b10fbd::t_9a12e94a835855 52-53
+  s_6947b4d8b10fbd::t_86a06845276c86 117-118
+  s_6947b4d8b10fbd::t_48736354a9e504 32-33
+  s_6947b4d8b10fbd::t_b60bd3a7eeb82e 15
+  s_6947b4d8b10fbd::t_ae931b70900f1f 6
+  s_638c6e8fe91e2a::t_94585547dbae2c 31,78-79,116
+dev/specs/artifact-regeneration-poc/research.md
+  s_6947b4d8b10fbd::t_3d4c5828d58d73 147
+  s_6947b4d8b10fbd::t_94a48bc047b26c 202
+  s_6947b4d8b10fbd::t_9a7b96d8c07dbb 199-201
+  s_6947b4d8b10fbd::t_930d63a09da010 203-204
+dev/specs/artifact-regeneration-poc/plan.md
+  s_6947b4d8b10fbd::t_6a148aa4d27448 92
+  s_6947b4d8b10fbd::t_88ea724e443901 93
+  s_6947b4d8b10fbd::t_85450cdb77589d 133-134,136,147-149,151-152,204-206
+dev/specs/artifact-regeneration-poc/quickstart.md
+  s_26df4098f7aae5::t_53ea37e8d16404 41-43,48,51-52,57-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0a7c2de0a48ce6bbde83fcf44b1f35f95353b2d",
+  "prompts": {},
+  "sessions": {
+    "s_26df4098f7aae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0a8d15b08e5631d1",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_638c6e8fe91e2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49ab5f2d-d719-4f4b-b15e-5605530f20a0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

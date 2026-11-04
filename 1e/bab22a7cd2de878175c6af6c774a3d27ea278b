@@ -1,0 +1,31 @@
+backend/tests/component/core/resource_manager/test_number_pool_is_reserved_retirement.py
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 25,322,420
+backend/tests/component/core/agnostic_retirement/support.py
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 16-21,31-33,35-36,39,115-140
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 16,150,159
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_f088f9adc7b6d8::t_34cfe46cffc089 28-31
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 21,263-265,274
+  s_f088f9adc7b6d8::t_b72d9b9c7f1dba 9-10,12,26-27,32,248-252,275-276
+backend/tests/component/core/agnostic_retirement/test_on_rebase.py
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 40,137,170,201,232,262,298,339
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_f088f9adc7b6d8::t_7ea8cb50c6e90c 25,429,438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ebab22a7cd2de878175c6af6c774a3d27ea278b",
+  "prompts": {},
+  "sessions": {
+    "s_f088f9adc7b6d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38f27343-653b-42b1-80d8-a1ea332aa8e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

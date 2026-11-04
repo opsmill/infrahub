@@ -1,0 +1,50 @@
+utilities/sync_pr/tests/test_routing.py
+  s_f9f34a44a3a084::t_a4c6c345591db5 9,193-287
+  s_f9f34a44a3a084::t_1c34d8ae6fb86e 60
+dev/specs/sync-pr-automation/contracts/engine-cli.md
+  s_f9f34a44a3a084::t_bfb33cdf7ab2b3 14,35-45
+  s_f9f34a44a3a084::t_1c32bd67100299 46
+utilities/sync_pr/tests/test_github.py
+  s_f9f34a44a3a084::t_55dd9daf6428c1 412-434
+utilities/sync_pr/conflicts.py
+  s_f9f34a44a3a084::t_6a024d7a9f8dbe 1-75
+utilities/sync_pr/models.py
+  s_f9f34a44a3a084::t_0b69f24f881ea0 61-63
+utilities/sync_pr/routing.py
+  s_f9f34a44a3a084::t_3aa2ac9e520315 19-22,36-67,71,82-83,107-108,129-138
+  s_f9f34a44a3a084::t_93de0cae4cca75 139-140
+utilities/sync_pr/tests/conftest.py
+  s_f9f34a44a3a084::t_0d455ef28a6968 166-169
+utilities/sync_pr/github.py
+  s_f9f34a44a3a084::t_0d455ef28a6968 189-190,369-380,387-390
+utilities/sync_pr/summary.py
+  s_f9f34a44a3a084::t_fc9cab4ffe6917 214-215,227-228
+  s_f9f34a44a3a084::t_1468b44750d61b 12,207-213,216-226,229,232-242
+  s_f9f34a44a3a084::t_88f3c3122f1815 230-231
+  s_f9f34a44a3a084::t_7d87f68b5420ae 243
+utilities/sync_pr/tests/test_manage.py
+  s_f9f34a44a3a084::t_1c34d8ae6fb86e 137-141
+  s_f9f34a44a3a084::t_aac467aa02d406 5,11,21,32,466-698
+utilities/sync_pr/manage.py
+  s_f9f34a44a3a084::t_aac467aa02d406 448-450
+  s_f9f34a44a3a084::t_1c34d8ae6fb86e 24,398,411,422-423
+  s_f9f34a44a3a084::t_d46e89335ce550 5,11-17,25,105-125,138,265-335,345,348-350,357-359,363,371,374,436,453,459,470
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_c930396a718f2d 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "383266dbca786339948d142cc08b057e601c33f9",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

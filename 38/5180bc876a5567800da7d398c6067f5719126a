@@ -1,0 +1,22 @@
+.github/scripts/dependabot_autopilot/flow.py
+  s_ce99ced981c340::t_0008336ecaf11c 42,387-388,391-402
+.github/scripts/dependabot_autopilot/tests/test_evaluate_flow.py
+  s_ce99ced981c340::t_89e8f35b22973c 272-273,277-287
+  s_ce99ced981c340::t_19d4c48fd88468 288-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "385180bc876a5567800da7d398c6067f5719126a",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

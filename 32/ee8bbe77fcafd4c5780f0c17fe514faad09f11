@@ -1,0 +1,46 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_42b74b2708abe7::t_ccf65151e75ffd 185-213,215-230,233-236,245-262,265-281,284-298,301
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_42b74b2708abe7::t_3149db47daeb1e 30,32-34
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_42b74b2708abe7::t_03a0282cb7adee 92-97,99-100
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_42b74b2708abe7::t_641c64e54a1f28 165-166,175-176
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_42b74b2708abe7::t_1c3fadbb48f327 1,29,44-51,61-68
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_42b74b2708abe7::t_57e3f4df30b5b6 87-173
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_42b74b2708abe7::t_a7ea9368f3d657 12,224-229
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_42b74b2708abe7::t_28fc11f3a147d5 10,31-38,48-55
+backend/tests/helpers/schema/snow.py
+  s_42b74b2708abe7::t_53c973a99c1f8d 1-2,5,15-22
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_42b74b2708abe7::t_5413dcd353f1d4 1-212,213
+  s_0bc59054fef4ea::t_07b603a5e6a3ce 214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ee8bbe77fcafd4c5780f0c17fe514faad09f11",
+  "prompts": {},
+  "sessions": {
+    "s_0bc59054fef4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "373c6d27-fa2a-4490-8e9d-d14c775f400c",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

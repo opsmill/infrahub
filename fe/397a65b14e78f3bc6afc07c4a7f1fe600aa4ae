@@ -1,0 +1,29 @@
+docs/docs/tutorials/getting-started/resource-manager.mdx
+  s_74ac4acddd24a9::t_251df569ea2e4d 31,98
+docs/docs/resource-manager/weighted-allocation.mdx
+  s_74ac4acddd24a9::t_251df569ea2e4d 129
+.vale/styles/Infrahub/branded-terms-case-swap.yml
+  s_74ac4acddd24a9::t_6135ac6e64e16f 41
+docs/docs/resource-manager/allocate-ip-address.mdx
+  s_74ac4acddd24a9::t_251df569ea2e4d 96
+docs/docs/resource-manager/allocate-number.mdx
+  s_74ac4acddd24a9::t_251df569ea2e4d 40
+docs/docs/resource-manager/allocate-ip-prefix.mdx
+  s_74ac4acddd24a9::t_251df569ea2e4d 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe397a65b14e78f3bc6afc07c4a7f1fe600aa4ae",
+  "prompts": {},
+  "sessions": {
+    "s_74ac4acddd24a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8b22b3b-01aa-429a-b864-618f066bb59c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

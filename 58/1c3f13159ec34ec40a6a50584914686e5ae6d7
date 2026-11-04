@@ -1,0 +1,19 @@
+dev/specs/ifc-3185-scoped-number-pools/opsmill-implement-report.md
+  s_c37e68507bd16d::t_5f8b4d65e7dbcd 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "581c3f13159ec34ec40a6a50584914686e5ae6d7",
+  "prompts": {},
+  "sessions": {
+    "s_c37e68507bd16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1ad7ee8-1d0e-4c64-aebc-c3a0119e98fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

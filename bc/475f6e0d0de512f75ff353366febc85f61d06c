@@ -1,0 +1,25 @@
+dev/specs/artifact-regeneration-poc/source/implementation-outline.md
+  s_6947b4d8b10fbd::t_8429ae49519b56 1-219
+dev/specs/artifact-regeneration-poc/spec.md
+  s_6947b4d8b10fbd::t_9efd03ac68f665 1-398
+dev/specs/artifact-regeneration-poc/source/requirements.md
+  s_6947b4d8b10fbd::t_8429ae49519b56 1-110
+dev/specs/artifact-regeneration-poc/checklists/requirements.md
+  s_6947b4d8b10fbd::t_3552e27852d260 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc475f6e0d0de512f75ff353366febc85f61d06c",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

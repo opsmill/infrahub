@@ -1,0 +1,21 @@
+changelog/+number-pool-start-end-range.deprecated.md
+  s_fd0c128a7b3dd4::t_aaea4622542487 1
+changelog/+number-pool-zero-ranges.changed.md
+  s_fd0c128a7b3dd4::t_5be3f0399dca4f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1e58d3ea1fd44c60ed45279023fbcdeb2b97db5",
+  "prompts": {},
+  "sessions": {
+    "s_fd0c128a7b3dd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e92e46bb-6843-4c8c-ba3a-944b2c66f5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

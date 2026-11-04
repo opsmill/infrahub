@@ -1,0 +1,35 @@
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_42b74b2708abe7::t_5b1088762a0884 23
+  s_42b74b2708abe7::t_2769ac5a90a775 224-227,258-259,291,318,431,433-435,443-506,508
+  s_42b74b2708abe7::t_93d1ba1af25397 94-97,100-102,180-184,223,260,290,292,317,319-321,354-358,393-395,432,507,509-516
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_42b74b2708abe7::t_f25cb1dc849f6b 117
+backend/infrahub/core/query/resource_manager.py
+  s_42b74b2708abe7::t_396b7b65e75bd7 83-94,212,216,222,234,577,581,587,594,630-631,642-643,712,716,721,734,746
+backend/infrahub/graphql/queries/resource_manager.py
+  s_42b74b2708abe7::t_46c668c576a8c6 23,289-296,298
+backend/infrahub/pools/number.py
+  s_42b74b2708abe7::t_4d15960dc3a224 37-43
+backend/infrahub/pools/number_pool_repository.py
+  s_42b74b2708abe7::t_0567e48705b9a8 19,25-33,53-56,64-74,81-85
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_42b74b2708abe7::t_df2eb0f7dec090 127
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_42b74b2708abe7::t_c9a7881440629b 89,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67a4d3cb227fcf3865afb1e1edba0a2b52b2b589",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

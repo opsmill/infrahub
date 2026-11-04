@@ -1,0 +1,20 @@
+backend/tests/component/graphql/test_graphql_query.py
+  s_78603417e7799d::t_d64523e94d7ba1 2028-2079,2081-2087
+  s_78603417e7799d::t_5ce0ee56e8c6a9 2080
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "429b59a06ca4c37eae0b93e6854569ae55cb28df",
+  "prompts": {},
+  "sessions": {
+    "s_78603417e7799d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f5e57e0-ed36-4b58-b93a-7592ce8f9ab3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

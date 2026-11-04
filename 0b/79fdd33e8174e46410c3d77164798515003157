@@ -1,0 +1,22 @@
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_refused_declarations.py
+  s_04e9c61d1d4032::t_f5cc8fba1dfc1f 57,62,68,145,169,235
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_accepted_declarations.py
+  s_04e9c61d1d4032::t_09d4a4bc78351f 90,132-135
+  s_04e9c61d1d4032::t_f5cc8fba1dfc1f 68,89,150,177-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b79fdd33e8174e46410c3d77164798515003157",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

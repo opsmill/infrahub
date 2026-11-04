@@ -1,0 +1,25 @@
+backend/infrahub/core/schema/definitions/internal.py
+  e6d8bb71dddbaf84 37,651
+backend/templates/attributeschema_imports.j2
+  e6d8bb71dddbaf84 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "11f24ecaa180972e807a3856bf136849abb66d68",
+  "prompts": {
+    "e6d8bb71dddbaf84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e4f99d-5ab6-4df2-bd1e-49169b02477c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}

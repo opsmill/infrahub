@@ -1,0 +1,88 @@
+dev/knowledge/backend/telemetry.md
+  s_2dcffc265e72b7::t_3993c7ab396054 34,36,57-58,78-82
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_2dcffc265e72b7::t_1e1cf71db461fb 85-86
+  s_2dcffc265e72b7::t_778977d009c58e 69
+  s_2dcffc265e72b7::t_adf5c5aaca31aa 72
+  s_2dcffc265e72b7::t_1fcaa5d3fca5e2 78
+  s_2dcffc265e72b7::t_0590a356e11822 80
+  s_2dcffc265e72b7::t_e8aee4bfb8494b 96
+  s_2dcffc265e72b7::t_01f84f9d633fdf 108
+dev/specs/infp-631-resource-telemetry/research.md
+  s_2dcffc265e72b7::t_f6cea62711dea9 104
+  s_2dcffc265e72b7::t_332c57ebc1945f 80
+  s_2dcffc265e72b7::t_cf1357fb9b3550 29
+  s_2dcffc265e72b7::t_a2d9915ba6c748 62
+  s_2dcffc265e72b7::t_980d1abcbbf80b 114
+  s_2dcffc265e72b7::t_6f91f19d8006bb 97,99-102
+  s_2dcffc265e72b7::t_976f44ed46697d 121-129
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_2dcffc265e72b7::t_58c5ba9e79c9f8 47-48,54-55
+  s_2dcffc265e72b7::t_c2b0b21770642f 64
+  s_2dcffc265e72b7::t_59f9caa1ca1a5a 60
+backend/tests/component/telemetry/test_resources.py
+  s_2dcffc265e72b7::t_bbf9e72b8c6d9b 421-424
+  s_2dcffc265e72b7::t_776d736eeab3dc 54,145-147,151-154,157,209,211,220,228-229,231-232,236-239,301,374-375,388-389,402-403
+changelog/+resource-telemetry.added.md
+  s_2dcffc265e72b7::t_1e74956b23d41c 1
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_2dcffc265e72b7::t_08a6f6c54357a1 77-79
+  s_2dcffc265e72b7::t_4dd2665e6c27f7 43
+  s_2dcffc265e72b7::t_abc5b6f4969a60 9
+  s_2dcffc265e72b7::t_1f5452a3fd7e60 13
+  s_2dcffc265e72b7::t_b81a8cabe70758 31
+  s_2dcffc265e72b7::t_09dfddfc026c50 92-94
+  s_2dcffc265e72b7::t_f77263cc1ae195 140
+  s_2dcffc265e72b7::t_f9e523c016b236 142
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_2dcffc265e72b7::t_0e9868a4bc4a31 91
+  s_2dcffc265e72b7::t_7d9b708d646507 42
+  s_2dcffc265e72b7::t_4eb33d01bef5d5 30,32,34
+  s_2dcffc265e72b7::t_a93663796b2d87 113
+  s_2dcffc265e72b7::t_6513df9b73d018 51-53,55-56,60,63-64,67
+  s_2dcffc265e72b7::t_31e912f192fbed 36
+  s_2dcffc265e72b7::t_46cc3ef10cd7f5 95
+  s_2dcffc265e72b7::t_4b1f48b5a4a9e4 93
+  s_2dcffc265e72b7::t_c824eb1f00732e 3,7
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_2dcffc265e72b7::t_a1670ccdecfab6 94-95
+  s_2dcffc265e72b7::t_de07226fd59b63 92
+  s_2dcffc265e72b7::t_9fe520ebd38001 39
+  s_2dcffc265e72b7::t_c88e43978d9f06 136
+  s_2dcffc265e72b7::t_7a4a5796a57eb1 51
+  s_2dcffc265e72b7::t_35fa8eb9962e6c 90
+  s_2dcffc265e72b7::t_298407d32b03b0 109
+  s_2dcffc265e72b7::t_a84704ee8246d9 79
+  s_2dcffc265e72b7::t_863428cea4ef32 53
+  s_2dcffc265e72b7::t_ac1e9c5b2cad1d 47,49
+  s_2dcffc265e72b7::t_141ed3a11fe4df 56
+  s_2dcffc265e72b7::t_0e1e45cb1f3552 88
+  s_2dcffc265e72b7::t_66b32dccb195b0 89
+  s_2dcffc265e72b7::t_8544d85ab1ddf8 54
+  s_2dcffc265e72b7::t_e5ddb054b65d4b 34
+  s_2dcffc265e72b7::t_d1afba1161f0de 66
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_2dcffc265e72b7::t_24c3ecd47b579e 5,29-31,34-36,42-50
+  s_2dcffc265e72b7::t_08e42b15a8ab3d 101,127,131-132,145
+  s_2dcffc265e72b7::t_83611c4be8080f 51
+backend/infrahub/telemetry/models.py
+  s_2dcffc265e72b7::t_a99e7aa22a4e0f 63-65,100-101
+backend/infrahub/telemetry/tasks.py
+  s_2dcffc265e72b7::t_7edf5a5a27153a 31,189,206-207,209,214-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69b04deeea0f7698a6ade38a3db155830245a0cf",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

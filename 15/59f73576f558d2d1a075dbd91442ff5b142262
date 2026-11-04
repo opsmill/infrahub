@@ -1,0 +1,21 @@
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_fb819cbbe44071::t_b74ef460f92297 6,9,11,14-22,25-26,44,57,73,92,122,140,156,170,178-286
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_2af79e2417dcb8 12,15,65-68,77-96,106-108,111-112,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1559f73576f558d2d1a075dbd91442ff5b142262",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

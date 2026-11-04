@@ -1,0 +1,47 @@
+backend/tests/component/core/changelog/test_enrichment.py
+  s_266a732dcb61bb::t_76b950f84e4788 96-98
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_266a732dcb61bb::t_09e1c3b283cf26 17,19,27-29,152-167
+backend/infrahub/core/changelog/relationship_getter.py
+  s_266a732dcb61bb::t_7d3b249e72bcd4 8-9,110,237-249
+  s_266a732dcb61bb::t_badd6a402ce2a2 85-87,92-109
+backend/infrahub/core/changelog/peer_labels.py
+  s_266a732dcb61bb::t_7fb5170c3bfd71 9-10
+  s_266a732dcb61bb::t_3082d5cfd08b89 62-69,73-75
+backend/tests/component/graphql/test_mutation_relationship_enrichment.py
+  s_266a732dcb61bb::t_48f94a0c45e18a 324-343,351
+  s_266a732dcb61bb::t_49ceea29079003 10,280-323,344-350,352-397
+  s_266a732dcb61bb::t_55b605ffc4302a 3
+dev/knowledge/backend/changelog-enrichment.md
+  s_266a732dcb61bb::t_c5cfe2a64285e3 37-39
+backend/tests/unit/core/changelog/test_hfid_resolver.py
+  s_266a732dcb61bb::t_019c786cca6f38 35-37,48
+  s_266a732dcb61bb::t_9f47ca27ec6900 49-50
+backend/infrahub/core/changelog/enrichment.py
+  s_266a732dcb61bb::t_3ee0e822a7d84e 276
+  s_266a732dcb61bb::t_7f5b2b811f3d92 273-275
+  s_266a732dcb61bb::t_bd03df3c1f6bc9 66
+  s_266a732dcb61bb::t_969dbc4a490546 257
+  s_266a732dcb61bb::t_66b91a371045a5 151
+  s_266a732dcb61bb::t_741feec50ecf3e 246-256
+  s_266a732dcb61bb::t_c6c9c3f362529e 67
+  s_266a732dcb61bb::t_64f8953387f70e 152
+backend/tests/unit/core/changelog/test_enrichment.py
+  s_266a732dcb61bb::t_367a73aca83107 40-42,53-55,124,138-140,432-445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a8346849e3ad69a9ef55f1139f0b1158ec82840",
+  "prompts": {},
+  "sessions": {
+    "s_266a732dcb61bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e54b656-7844-41cf-a991-f1426a35d94b",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}

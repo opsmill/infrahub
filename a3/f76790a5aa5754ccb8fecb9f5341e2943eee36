@@ -1,0 +1,70 @@
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_777884339ca007 267-268
+backend/tests/component/core/regeneration/poc/test_coverage.py
+  s_6947b4d8b10fbd::t_447b8112b866d7 9-10,12-14,16,105-107,109,111-131,727-760
+  s_6947b4d8b10fbd::t_a861f08c0b0f06 1-3,5-8,11,15,17-22,24-44,46-54,56-104,132-143,147-158,164-186,189-203,213-261,264-271,277-348,360-365,373-378,380-385,387-518,540-616,631-726,761-1069
+  s_6947b4d8b10fbd::t_782206a58877a1 45,379,386
+  s_6947b4d8b10fbd::t_c65555a4e06791 617-630
+  s_6947b4d8b10fbd::t_7a7def2734961e 4,23,55,144-146,159-163,187-188,204-212,262-263,272-276,349-359,366-372,519-539
+  s_6947b4d8b10fbd::t_1e1e3a411745cf 108,110
+backend/infrahub/core/regeneration/poc/query_runner.py
+  s_6947b4d8b10fbd::t_32effe669e8a87 218,223-224
+  s_6947b4d8b10fbd::t_554adc8ffe9b35 23
+  s_6947b4d8b10fbd::t_4ae4d358da6654 64
+dev/specs/artifact-regeneration-poc/coverage-inventory.md
+  s_6947b4d8b10fbd::t_2708afa98ff1d3 1-6,9-30,32-51,53-58,61,67-71,73-75,78,81-88,90-96,103-109,111-120
+  s_6947b4d8b10fbd::t_31bc60de61e530 7-8,31,52,59-60,62-66,72,76-77,79-80,89,97-102
+  s_6947b4d8b10fbd::t_777884339ca007 110
+backend/tests/component/core/regeneration/poc/reference.py
+  s_6947b4d8b10fbd::t_d5263fab2f5920 40-47,64-69,84-85,91,105,108,110-114,120,163,169-171
+backend/infrahub/core/regeneration/poc/evaluator.py
+  s_6947b4d8b10fbd::t_0ceff203d3073e 37-38,45-52
+  s_6947b4d8b10fbd::t_e0f03e8771f9ec 64
+backend/tests/component/core/regeneration/poc/test_reference.py
+  s_6947b4d8b10fbd::t_58757df6bdd826 31
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_126c9878489d8f 31,60-61,213-229,743-877
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_de01f254eb1b84 629-631
+  s_6947b4d8b10fbd::t_cfeff0daec5b1a 25,42,54,58,119-120,125,168-176,209,274-275,367-374,414-418,438,442,459,470,475-480,502,541,560,566,568,576,578,601,605,608-618
+  s_6947b4d8b10fbd::t_f16187a56eecba 39,652-657
+backend/tests/unit/core/regeneration/poc/test_state.py
+  s_6947b4d8b10fbd::t_1bd72d3d5e67de 176-193
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_43c42af4f34966 97-98,164,170-174,189
+backend/infrahub/core/regeneration/poc/run.py
+  s_6947b4d8b10fbd::t_a8645a16aa0f5c 165-166,171,178,186-191,193-198
+  s_6947b4d8b10fbd::t_63c071745b7a63 205-210
+  s_6947b4d8b10fbd::t_0a323fbfb535e0 97-99
+  s_6947b4d8b10fbd::t_1545e100c777a1 385-390
+  s_6947b4d8b10fbd::t_82a222321d5503 20
+dev/specs/artifact-regeneration-poc/contracts/interfaces.md
+  s_6947b4d8b10fbd::t_43c42af4f34966 229,266-267,279,351-352,362-364,380-383,396,399
+dev/specs/artifact-regeneration-poc/spec.md
+  s_6947b4d8b10fbd::t_43c42af4f34966 382
+backend/infrahub/core/regeneration/poc/state.py
+  s_6947b4d8b10fbd::t_e115b3e6f9e123 146-152
+  s_6947b4d8b10fbd::t_76a1b17935bc96 81-83
+  s_6947b4d8b10fbd::t_0e085acc2f4110 80
+backend/infrahub/core/regeneration/poc/models.py
+  s_6947b4d8b10fbd::t_ae35072c493d77 113-120
+backend/tests/unit/core/regeneration/poc/test_evaluator.py
+  s_6947b4d8b10fbd::t_126c9878489d8f 185-187
+  s_6947b4d8b10fbd::t_c969fa6738c7be 26,122-123,145-158,183-184,188-191,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3f76790a5aa5754ccb8fecb9f5341e2943eee36",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

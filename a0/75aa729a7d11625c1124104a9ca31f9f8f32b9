@@ -1,0 +1,31 @@
+backend/tests/conftest.py
+  s_6947b4d8b10fbd::t_a879c166b158c9 96
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_36393d6684c63f 160
+  s_6947b4d8b10fbd::t_f488fad7537bb9 1-159,161-383,387-408,410-419
+  s_6947b4d8b10fbd::t_34767411142656 384-386
+  s_6947b4d8b10fbd::t_2d3e7e9b2174b5 409
+backend/tests/component/core/regeneration/poc/test_reference.py
+  s_6947b4d8b10fbd::t_36393d6684c63f 36
+  s_6947b4d8b10fbd::t_c3a68c5e987edb 180,185
+  s_6947b4d8b10fbd::t_28a574bab5d0de 1-35,37-42,44-46,48-50,55-179,181-184,186-242,244-257,267-273,276
+  s_6947b4d8b10fbd::t_4d31b085115e9a 43,47,51-54,243,258-266,274-275
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_6d07bfbfc3d296 156-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a075aa729a7d11625c1124104a9ca31f9f8f32b9",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

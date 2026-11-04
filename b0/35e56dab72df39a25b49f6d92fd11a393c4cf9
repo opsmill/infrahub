@@ -1,0 +1,29 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_0619dd48f992c0::t_f408e2b4192ae5 207,209,218,222-226
+  s_0619dd48f992c0::t_39381c175b5c2a 248-258,264,270,275,278
+  s_849d53d45b72cc::t_eadb297a74dcef 247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b035e56dab72df39a25b49f6d92fd11a393c4cf9",
+  "prompts": {},
+  "sessions": {
+    "s_0619dd48f992c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d34fe67-38d5-47d7-abf0-2a449e410f8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

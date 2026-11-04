@@ -1,0 +1,23 @@
+backend/tests/component/graphql/mutations/test_account.py
+  062474dc08d69030 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "16f71f26d6d96bcf5099b7469c83a4ee0cacf2ce",
+  "prompts": {
+    "062474dc08d69030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff90b566-719d-4299-811c-ce7e088b70e7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 6,
+      "accepted_lines": 84,
+      "overriden_lines": 0
+    }
+  }
+}

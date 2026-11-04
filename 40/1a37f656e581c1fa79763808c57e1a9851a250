@@ -1,0 +1,64 @@
+backend/infrahub/core/regeneration/impact.py
+  s_1e9479e8606b35::t_01b9e33eea9348 11,18,28,99,103,122,130-133,137-169
+  s_1e9479e8606b35::t_9439270a083c00 11,18,28,99,103,122,130-133,137-138,139-169
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_1e9479e8606b35::t_6adefd610d7dcc 3,12-13,36-60,65,67-69,71-73,75-77,88,96,101-103,105-106,108-133
+  s_1e9479e8606b35::t_6012194d21d799 3,12-13,36-60,65,67-69,71-73,75-77,88,96,101-103,105-106,108-133
+backend/infrahub/core/regeneration/models.py
+  s_1e9479e8606b35::t_8f4e8288fc8211 5-28,134
+  s_1e9479e8606b35::t_961a0e405c9628 5-28,134
+backend/infrahub/graphql/analyzer.py
+  s_1e9479e8606b35::t_8ed75807543e43 3,43,49-50,278-368,418-422
+  s_1e9479e8606b35::t_d41e90ac31eba2 3,43,49-50,278-368,418-422
+backend/tests/component/core/regeneration/test_impact.py
+  s_1e9479e8606b35::t_036f3117268d07 10,13,198,204,206-208,223-247,249-380
+  s_1e9479e8606b35::t_ba9e604ace79d1 10,13,198,204,206-208,223-247,249-380
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_1e9479e8606b35::t_631adbc2099149 1-154
+  s_1e9479e8606b35::t_41867207ee17da 1-154
+backend/tests/helpers/schema/__init__.py
+  s_1e9479e8606b35::t_9887b5ebadac49 17,36,82,103-105,108
+  s_1e9479e8606b35::t_1d85608ee7c784 17,36,82,103-105,108
+backend/tests/helpers/schema/rack.py
+  s_1e9479e8606b35::t_af7ef7ee4800dc 1-45
+  s_1e9479e8606b35::t_6e291d27808553 1-45
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_1e9479e8606b35::t_653402077a249e 8,14-15,17,31-58,75,141-148,181-234,255,259-263,293,300-323
+  s_3b5c0472a4b73b::t_755db9b9654468 8,14-15,17,31-58,75,141-148,181-234,255,259-263,293,300-323
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_1e9479e8606b35::t_6f585066c40502 1-171
+  s_1e9479e8606b35::t_56378670c9b830 1-171
+backend/tests/unit/graphql/test_reached_path_resolver.py
+  s_1e9479e8606b35::t_74d5085a216e15 1-237
+  s_1e9479e8606b35::t_d82ccd62d67693 1-237
+changelog/+ifc-2946-relationship-reached-narrowing.changed.md
+  s_1e9479e8606b35::t_d1ade3c8f69312 1
+  s_1e9479e8606b35::t_dce6824698d9c1 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_1e9479e8606b35::t_58b9ff4c66ab48 34-35,96
+  s_1e9479e8606b35::t_f2270fc12bd851 34-35,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "401a37f656e581c1fa79763808c57e1a9851a250",
+  "prompts": {},
+  "sessions": {
+    "s_1e9479e8606b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fabdad-ef16-45db-a6ce-4bed9900a15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_3b5c0472a4b73b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d7d845f-e3e1-497d-b612-fb5dddd4f000",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/tests/component/core/regeneration/test_impact.py
+  s_fb819cbbe44071::t_93f0c429ce3b57 359-373,434,442-448,451,487-503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56e5ff72a84b606572f856996d0777bf272da3fe",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

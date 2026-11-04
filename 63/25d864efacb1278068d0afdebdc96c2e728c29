@@ -1,0 +1,23 @@
+backend/tests/component/telemetry/test_resources.py
+  s_a8a2cf071e3fde::t_9a89d4eb4544d6 181-195
+  s_a8a2cf071e3fde::t_91b18acdfc51e1 325-327,337,341
+  s_a8a2cf071e3fde::t_c3af1139763c96 196-197
+backend/tests/conftest.py
+  s_a8a2cf071e3fde::t_d4325a923e9f1b 383-400,409-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6325d864efacb1278068d0afdebdc96c2e728c29",
+  "prompts": {},
+  "sessions": {
+    "s_a8a2cf071e3fde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d231458-0060-44ad-b475-96da42cba12f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

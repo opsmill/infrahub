@@ -1,0 +1,80 @@
+backend/infrahub/exceptions.py
+  s_821332c5759ce5::t_46dcae3b879780 574-594
+backend/infrahub/storage_encryption/repository.py
+  s_821332c5759ce5::t_46dcae3b879780 1-21
+backend/tests/helpers/artifact.py
+  s_821332c5759ce5::t_46dcae3b879780 1-52
+docs/docs/artifact-file-storage/overview.mdx
+  s_821332c5759ce5::t_46dcae3b879780 124-129,145
+pyproject.toml
+  s_821332c5759ce5::t_46dcae3b879780 43
+backend/tests/unit/storage_encryption/test_checksums.py
+  s_821332c5759ce5::t_46dcae3b879780 1-38
+backend/tests/adapters/storage.py
+  s_821332c5759ce5::t_46dcae3b879780 4,26-27
+  s_821332c5759ce5::t_ea9ccf72598ed8 28
+backend/tests/unit/storage_encryption/test_crypto.py
+  s_821332c5759ce5::t_46dcae3b879780 1-152
+backend/infrahub/storage_encryption/queries.py
+  s_821332c5759ce5::t_46dcae3b879780 1-54
+backend/infrahub/storage_encryption/checksums.py
+  s_821332c5759ce5::t_46dcae3b879780 1-22
+backend/tests/unit/storage/test_encryption.py
+  s_821332c5759ce5::t_46dcae3b879780 1-25,29-129
+  s_821332c5759ce5::t_c8d362d6b192a2 26-28
+backend/infrahub/server.py
+  s_821332c5759ce5::t_46dcae3b879780 35,44-45,121-124
+docs/docs/reference/configuration.mdx
+  s_821332c5759ce5::t_46b844864b0d09 236,363
+backend/infrahub/api/artifact.py
+  s_821332c5759ce5::t_46dcae3b879780 16,63-64,66
+docs/sidebars.ts
+  s_821332c5759ce5::t_46dcae3b879780 333
+docker-compose.yml
+  s_821332c5759ce5::t_46dcae3b879780 176
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_821332c5759ce5::t_46dcae3b879780 61-63
+  s_821332c5759ce5::t_17652e221556d0 64
+backend/infrahub/api/storage/file_object.py
+  s_821332c5759ce5::t_46dcae3b879780 16,78,80-82,84,135,185,221
+backend/tests/component/storage_encryption/test_repository.py
+  s_821332c5759ce5::t_46dcae3b879780 1-70
+changelog/+storage-encryption.added.md
+  s_821332c5759ce5::t_46dcae3b879780 1
+development/docker-compose.yml
+  s_821332c5759ce5::t_46dcae3b879780 122
+backend/tests/component/api/test_60_storage_encryption.py
+  s_821332c5759ce5::t_46dcae3b879780 1-185
+backend/infrahub/storage_encryption/crypto.py
+  s_821332c5759ce5::t_46dcae3b879780 1-131
+backend/infrahub/config.py
+  s_821332c5759ce5::t_46dcae3b879780 350-357,1166-1170
+backend/infrahub/api/storage/content.py
+  s_821332c5759ce5::t_46dcae3b879780 1-52
+backend/infrahub/api/storage/storage.py
+  s_821332c5759ce5::t_46dcae3b879780 13,46-47
+docs/docs/deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx
+  s_821332c5759ce5::t_46dcae3b879780 137-138
+backend/infrahub/storage.py
+  s_821332c5759ce5::t_46dcae3b879780 5,13-14,18-26,86-89,91-93,95,103-112,115-120,123,126-137,140,143-146
+docs/docs/artifact-file-storage/encryption.mdx
+  s_821332c5759ce5::t_46dcae3b879780 1-47
+uv.lock
+  s_821332c5759ce5::t_c659433d38d210 1495,1596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5eade0fe885ce7349aa147fecb3208c3e08ec122",
+  "prompts": {},
+  "sessions": {
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

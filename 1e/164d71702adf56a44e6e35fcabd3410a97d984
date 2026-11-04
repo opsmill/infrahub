@@ -1,0 +1,26 @@
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_341a743835ffb1 33
+backend/tests/component/events/test_node_mutation_events.py
+  h_bd00275aefc321 222-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e164d71702adf56a44e6e35fcabd3410a97d984",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

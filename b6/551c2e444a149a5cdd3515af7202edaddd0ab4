@@ -1,0 +1,21 @@
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_fc919c220ab1f1::t_17895b3717f738 107-108
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_fc919c220ab1f1::t_2464c8a6c4d7bc 113-122,126-136,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6551c2e444a149a5cdd3515af7202edaddd0ab4",
+  "prompts": {},
+  "sessions": {
+    "s_fc919c220ab1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "627c800b-053c-471c-9f8c-44d182f03524",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
