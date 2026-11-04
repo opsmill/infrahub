@@ -53,6 +53,10 @@ def allocations_title(page: Page, title: str) -> Locator:
     return page.get_by_role("heading", level=2, name=title).locator("..")
 
 
+def allocation_count(count: int, title: str) -> re.Pattern[str]:
+    return re.compile(rf"^\s*{re.escape(title)}\s*{count:,}\s*in ")
+
+
 async def scroll_to_last_row(grid: Locator) -> None:
     """Bring the rows past the first viewport into the DOM: the grid renders only the visible ones."""
     await expect(grid.get_by_role("row").nth(1)).to_be_visible()
@@ -112,7 +116,7 @@ class TestIpPoolDetails:
         await expect(resources).not_to_contain_text("Weight")
 
         title = allocations_title(admin_page, "Allocated prefixes")
-        await expect(title).to_contain_text(str(allocated_count))
+        await expect(title).to_have_text(allocation_count(allocated_count, "Allocated prefixes"))
         await expect(title).to_contain_text(f"in {EXTERNAL_PREFIX}")
 
         grid = allocations_grid(admin_page, "Allocated prefixes")
@@ -198,7 +202,9 @@ class TestIpPoolDetails:
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option", name=EMPTY_PREFIX)).to_contain_text("0%")
-        await expect(allocations_title(admin_page, "Allocated prefixes")).to_contain_text("0")
+        await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
+            allocation_count(0, "Allocated prefixes")
+        )
         await expect(admin_page.get_by_text(f"No prefixes in {EMPTY_PREFIX} yet")).to_be_visible()
 
     async def test_prefix_allocated_on_a_branch(
@@ -217,7 +223,9 @@ class TestIpPoolDetails:
 
         # the branch view counts the main allocations plus its own
         await admin_page.goto(f"/resource-manager/{pool_id}?branch={branch}")
-        await expect(allocations_title(admin_page, "Allocated prefixes")).to_contain_text(str(main_count + 1))
+        await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
+            allocation_count(main_count + 1, "Allocated prefixes")
+        )
         grid = allocations_grid(admin_page, "Allocated prefixes")
         await scroll_to_last_row(grid)
         branch_row = grid.get_by_role("row").filter(has_text=identifier)
@@ -225,7 +233,9 @@ class TestIpPoolDetails:
 
         # the default branch does not have it
         await admin_page.goto(f"/resource-manager/{pool_id}")
-        await expect(allocations_title(admin_page, "Allocated prefixes")).to_contain_text(str(main_count))
+        await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
+            allocation_count(main_count, "Allocated prefixes")
+        )
         await scroll_to_last_row(grid)
         await expect(grid.get_by_role("row").filter(has_text=identifier)).to_have_count(0)
 
@@ -244,14 +254,18 @@ class TestIpPoolDetails:
         await infrahub_client.allocate_next_ip_address(resource_pool=pool, identifier=identifier, branch=branch)
 
         await admin_page.goto(f"/resource-manager/{pool_id}?branch={branch}")
-        await expect(allocations_title(admin_page, "Allocated addresses")).to_contain_text(str(main_count + 1))
+        await expect(allocations_title(admin_page, "Allocated addresses")).to_have_text(
+            allocation_count(main_count + 1, "Allocated addresses")
+        )
         grid = allocations_grid(admin_page, "Allocated addresses")
         await scroll_to_last_row(grid)
         branch_row = grid.get_by_role("row").filter(has_text=identifier)
         await expect(branch_row.get_by_role("link", name=LOOPBACK_SLASH_32)).to_be_visible()
 
         await admin_page.goto(f"/resource-manager/{pool_id}")
-        await expect(allocations_title(admin_page, "Allocated addresses")).to_contain_text(str(main_count))
+        await expect(allocations_title(admin_page, "Allocated addresses")).to_have_text(
+            allocation_count(main_count, "Allocated addresses")
+        )
         await scroll_to_last_row(grid)
         await expect(grid.get_by_role("row").filter(has_text=identifier)).to_have_count(0)
 

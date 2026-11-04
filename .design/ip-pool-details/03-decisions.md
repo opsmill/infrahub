@@ -13,3 +13,5 @@ One line each, with the reason. Knobs: none; the prototype carried no knob.
 - Without a resource prefix in the link, the first one in list order is selected without redirecting, so the link stays short; the breadcrumb's resource selector appears once a resource prefix is in the link.
 - The pool node is fetched with its own typed query rather than the generic object query, because the header needs the namespace's default flag to leave the `namespace` parameter out of the IPAM link.
 - The Actions menu is the number pool menu with the pool kind as a parameter, so Edit opens the existing IP pool forms.
+- The second segment's tooltip stays "This branch only", although the GraphQL field description of `utilization_branches` says "all non default branches": the resolver computes the viewing branch's usage minus the default branch's (`backend/infrahub/graphql/queries/resource_manager.py`, `max(0.0, total_utilization - default_branch_utilization)`).
+- Weights are ignored, and the list falls back to prefix order, when any resource prefix's kind has no `allocation_weight` attribute, because the backend then skips the weight sort entirely.
