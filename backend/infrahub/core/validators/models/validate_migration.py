@@ -15,6 +15,13 @@ class SchemaValidateMigrationData(BaseModel):
     branch: Branch
     schema_branch: SchemaBranch
     constraints: list[SchemaUpdateConstraintInfo]
+    is_isolated: bool = Field(
+        ...,
+        description=(
+            "Whether to read the default branch as it was when the branch was created or last rebased; False reads its "
+            "current data, which a merge or a rebase produces"
+        ),
+    )
 
     @model_serializer()
     def serialize_model(self) -> dict[str, Any]:
@@ -22,6 +29,7 @@ class SchemaValidateMigrationData(BaseModel):
             "branch": self.branch.model_dump(),
             "schema_branch": self.schema_branch.to_dict_schema_object(),
             "constraints": [constraint.model_dump() for constraint in self.constraints],
+            "is_isolated": self.is_isolated,
         }
 
     @field_validator("schema_branch", mode="before")

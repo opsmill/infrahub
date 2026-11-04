@@ -310,7 +310,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         if constraints:
             responses = await schema_validate_migrations(
                 message=SchemaValidateMigrationData(
-                    branch=user_branch, schema_branch=candidate_schema, constraints=constraints
+                    branch=user_branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
                 )
             )
             error_messages = [

@@ -10,6 +10,8 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
+from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, build_profile_schema
 
@@ -436,3 +438,282 @@ def test_malformed_hfid_is_not_propagated_to_constraints(car_person_schema_root:
         match=r"^TestCar\.human_friendly_id: name__value__color__value has too many segments on schema TestCar$",
     ):
         schema_branch.validate_human_friendly_id()
+
+
+def _set_attribute(branch: SchemaBranch, node_kind: str, attribute: str, **values: object) -> None:
+    node = branch.get(name=node_kind)
+    attribute_schema = node.get_attribute(name=attribute)
+    for name, value in values.items():
+        setattr(attribute_schema, name, value)
+    branch.set(name=node_kind, schema=node)
+
+
+def _candidate(base: SchemaBranch, destination: SchemaBranch, source: SchemaBranch) -> SchemaBranch:
+    candidate = destination.duplicate()
+    candidate.apply_changes_since(base=base, schema=source)
+    return candidate
+
+
+def _with_vehicle_nodes(schema_root: SchemaRoot, names: list[str]) -> SchemaRoot:
+    schema_root = schema_root.model_copy(deep=True)
+    schema_root.nodes.extend(
+        NodeSchema(
+            name=name,
+            namespace="Test",
+            inherit_from=["TestVehicle"],
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+        )
+        for name in names
+    )
+    return schema_root
+
+
+def _with_vehicle_generic(schema_root: SchemaRoot, wheels_description: str) -> SchemaRoot:
+    schema_root = schema_root.model_copy(deep=True)
+    schema_root.generics = [
+        GenericSchema(
+            name="Vehicle",
+            namespace="Test",
+            attributes=[AttributeSchema(name="wheels", kind="Number", optional=True, description=wheels_description)],
+        )
+    ]
+    car = next(node for node in schema_root.nodes if node.name == "Car")
+    car.inherit_from = ["TestVehicle"]
+    return schema_root
+
+
+class TestApplyChangesSince:
+    """The candidate of a merge holds the destination's schema plus the changes the source made since the base."""
+
+    @pytest.fixture
+    def base(self, car_person_schema_root: SchemaRoot) -> SchemaBranch:
+        return _load_processed_branch(schema_root=car_person_schema_root)
+
+    def test_keeps_a_property_changed_on_the_destination_only(self, base: SchemaBranch) -> None:
+        destination = base.duplicate()
+        _set_attribute(destination, "TestPerson", "height", optional=False)
+        source = base.duplicate()
+        _set_attribute(source, "TestCar", "nbr_seats", optional=False)
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.get(name="TestPerson").get_attribute(name="height").optional is False
+        assert candidate.get(name="TestCar").get_attribute(name="nbr_seats").optional is False
+
+    def test_keeps_a_kind_changed_on_the_destination_only(self, base: SchemaBranch) -> None:
+        destination = base.duplicate()
+        car = destination.get(name="TestCar")
+        nbr_seats = car.get_attribute(name="nbr_seats").model_dump(exclude={"parameters"})
+        car.attributes = [
+            TextAttributeSchema.model_validate({**nbr_seats, "kind": "Text"})
+            if attribute.name == "nbr_seats"
+            else attribute
+            for attribute in car.attributes
+        ]
+        destination.set(name="TestCar", schema=car)
+        source = base.duplicate()
+        _set_attribute(source, "TestCar", "color", description="Color of the car")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        car = candidate.get(name="TestCar")
+        nbr_seats_candidate = car.get_attribute(name="nbr_seats")
+        assert nbr_seats_candidate.kind == "Text"
+        assert isinstance(nbr_seats_candidate.parameters, TextAttributeParameters)
+        assert car.get_attribute(name="color").description == "Color of the car"
+
+    def test_rebuilds_an_attribute_whose_kind_changed_on_the_source(self, base: SchemaBranch) -> None:
+        destination = base.duplicate()
+        _set_attribute(destination, "TestCar", "nbr_seats", description="Set on the destination")
+        source = base.duplicate()
+        car = source.get(name="TestCar")
+        nbr_seats = car.get_attribute(name="nbr_seats").model_dump(exclude={"parameters"})
+        car.attributes = [
+            TextAttributeSchema.model_validate({**nbr_seats, "kind": "Text"})
+            if attribute.name == "nbr_seats"
+            else attribute
+            for attribute in car.attributes
+        ]
+        source.set(name="TestCar", schema=car)
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        nbr_seats_candidate = candidate.get(name="TestCar").get_attribute(name="nbr_seats")
+        assert nbr_seats_candidate.kind == "Text"
+        assert isinstance(nbr_seats_candidate, TextAttributeSchema)
+        assert isinstance(nbr_seats_candidate.parameters, TextAttributeParameters)
+        assert nbr_seats_candidate.description == "Set on the destination"
+
+    def test_applies_the_value_of_the_source_when_both_branches_change_a_property(self, base: SchemaBranch) -> None:
+        destination = base.duplicate()
+        _set_attribute(destination, "TestPerson", "height", description="Set on the destination")
+        source = base.duplicate()
+        _set_attribute(source, "TestPerson", "height", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.get(name="TestPerson").get_attribute(name="height").description == "Set on the source"
+
+    def test_keeps_the_attributes_added_on_either_branch(self, base: SchemaBranch) -> None:
+        destination = base.duplicate()
+        person = destination.get(name="TestPerson")
+        person.attributes.append(AttributeSchema(name="nickname", kind="Text", optional=False))
+        destination.set(name="TestPerson", schema=person)
+        source = base.duplicate()
+        person = source.get(name="TestPerson")
+        person.attributes.append(AttributeSchema(name="badge", kind="Text", optional=True))
+        source.set(name="TestPerson", schema=person)
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        person = candidate.get(name="TestPerson")
+        assert sorted(person.attribute_names) == sorted(
+            [*base.get(name="TestPerson").attribute_names, "badge", "nickname"]
+        )
+        assert person.get_attribute(name="nickname").optional is False
+        assert person.get_attribute(name="badge").optional is True
+
+    def test_leaves_out_an_attribute_removed_on_the_destination_and_unchanged_on_the_source(
+        self, base: SchemaBranch
+    ) -> None:
+        destination = base.duplicate()
+        person = destination.get(name="TestPerson")
+        person.attributes = [attribute for attribute in person.attributes if attribute.name != "height"]
+        destination.set(name="TestPerson", schema=person)
+        source = base.duplicate()
+        _set_attribute(source, "TestPerson", "name", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        person = candidate.get(name="TestPerson")
+        assert "height" not in person.attribute_names
+        assert person.get_attribute(name="name").description == "Set on the source"
+
+    def test_leaves_out_a_kind_removed_on_the_destination_and_unchanged_on_the_source(self, base: SchemaBranch) -> None:
+        tag_root = SchemaRoot(
+            nodes=[NodeSchema(name="Tag", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text")])]
+        )
+        base.load_schema(schema=tag_root)
+        base.process()
+        destination = base.duplicate()
+        destination.delete(name="TestTag")
+        source = base.duplicate()
+        _set_attribute(source, "TestPerson", "height", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.has(name="TestTag") is False
+        assert candidate.get(name="TestPerson").get_attribute(name="height").description == "Set on the source"
+
+    def test_follows_an_attribute_renamed_on_the_destination(self, base: SchemaBranch) -> None:
+        _set_attribute(base, "TestPerson", "height", id="person-height-id")
+        destination = base.duplicate()
+        _set_attribute(destination, "TestPerson", "height", name="size")
+        source = base.duplicate()
+        _set_attribute(source, "TestPerson", "height", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        person = candidate.get(name="TestPerson")
+        assert "height" not in person.attribute_names
+        size = person.get_attribute(name="size")
+        assert size.id == "person-height-id"
+        assert size.description == "Set on the source"
+
+    def test_keeps_the_change_the_destination_made_to_an_inherited_attribute(
+        self, car_person_schema_root: SchemaRoot
+    ) -> None:
+        base = _load_processed_branch(
+            schema_root=_with_vehicle_generic(car_person_schema_root, wheels_description="Number of wheels")
+        )
+        destination = _load_processed_branch(
+            schema_root=_with_vehicle_generic(car_person_schema_root, wheels_description="Set on the destination")
+        )
+        source = base.duplicate()
+        _set_attribute(source, "TestCar", "color", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        car = candidate.get(name="TestCar")
+        assert car.get_attribute(name="wheels").inherited is True
+        assert car.get_attribute(name="wheels").description == "Set on the destination"
+        assert car.get_attribute(name="color").description == "Set on the source"
+        assert candidate.get(name="TestVehicle").get_attribute(name="wheels").description == "Set on the destination"
+
+    def test_applies_the_change_of_a_node_to_its_profile_kind(
+        self, base: SchemaBranch, car_person_schema_root: SchemaRoot
+    ) -> None:
+        source_root = car_person_schema_root.model_copy(deep=True)
+        source_car = next(node for node in source_root.nodes if node.name == "Car")
+        source_car.get_attribute(name="color").description = "Set on the source"
+        source = _load_processed_branch(schema_root=source_root)
+        destination = base.duplicate()
+        _set_attribute(destination, "TestPerson", "height", description="Set on the destination")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert base.get(name="ProfileTestCar").get_attribute(name="color").description is None
+        assert candidate.get(name="ProfileTestCar").get_attribute(name="color").description == "Set on the source"
+        assert candidate.get(name="TestCar").get_attribute(name="color").description == "Set on the source"
+        assert candidate.get(name="TestPerson").get_attribute(name="height").description == "Set on the destination"
+
+    def test_keeps_the_source_version_of_an_attribute_removed_on_the_destination_and_changed_on_the_source(
+        self, base: SchemaBranch
+    ) -> None:
+        destination = base.duplicate()
+        person = destination.get(name="TestPerson")
+        person.attributes = [attribute for attribute in person.attributes if attribute.name != "height"]
+        destination.set(name="TestPerson", schema=person)
+        source = base.duplicate()
+        _set_attribute(source, "TestPerson", "height", optional=False, description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        height = candidate.get(name="TestPerson").get_attribute(name="height")
+        assert height.optional is False
+        assert height.description == "Set on the source"
+
+    def test_keeps_the_source_version_of_a_kind_removed_on_the_destination_and_changed_on_the_source(
+        self, base: SchemaBranch
+    ) -> None:
+        tag_root = SchemaRoot(
+            nodes=[NodeSchema(name="Tag", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text")])]
+        )
+        base.load_schema(schema=tag_root)
+        base.process()
+        destination = base.duplicate()
+        destination.delete(name="TestTag")
+        source = base.duplicate()
+        _set_attribute(source, "TestTag", "name", optional=False, description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        name = candidate.get(name="TestTag").get_attribute(name="name")
+        assert name.optional is False
+        assert name.description == "Set on the source"
+        assert candidate.has(name="ProfileTestTag") is True
+
+    def test_lists_the_nodes_both_branches_added_in_the_used_by_of_a_generic(
+        self, car_person_schema_root: SchemaRoot
+    ) -> None:
+        base_root = _with_vehicle_generic(car_person_schema_root, wheels_description="Number of wheels")
+        base = _load_processed_branch(schema_root=base_root)
+        destination = _load_processed_branch(schema_root=_with_vehicle_nodes(base_root, names=["Truck"]))
+        source = _load_processed_branch(schema_root=_with_vehicle_nodes(base_root, names=["Bike"]))
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.get_generic(name="TestVehicle").used_by == ["TestBike", "TestCar", "TestTruck"]
+        assert {"ProfileTestBike", "ProfileTestTruck"} <= set(candidate.get_generic(name="CoreProfile").used_by)
+
+    def test_leaves_out_of_the_used_by_of_a_generic_the_nodes_either_branch_removed(
+        self, car_person_schema_root: SchemaRoot
+    ) -> None:
+        vehicle_root = _with_vehicle_generic(car_person_schema_root, wheels_description="Number of wheels")
+        base = _load_processed_branch(schema_root=_with_vehicle_nodes(vehicle_root, names=["Bike", "Truck"]))
+        destination = _load_processed_branch(schema_root=_with_vehicle_nodes(vehicle_root, names=["Bike"]))
+        source = _load_processed_branch(schema_root=_with_vehicle_nodes(vehicle_root, names=["Truck"]))
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.get_generic(name="TestVehicle").used_by == ["TestCar"]

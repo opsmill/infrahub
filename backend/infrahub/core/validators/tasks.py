@@ -47,6 +47,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             schema_path=constraint.path,
             schema_branch=message.schema_branch,
             node_uuids=constraint.node_uuids,
+            is_isolated=message.is_isolated,
             database=await get_database(),
         )
 
@@ -67,6 +68,7 @@ async def schema_path_validate(
     schema_path: SchemaPath,
     schema_branch: SchemaBranch,
     database: InfrahubDatabase,
+    is_isolated: bool,
     node_uuids: list[str] | None = None,
 ) -> SchemaValidatorPathResponseData:
     async with database.start_session(read_only=True) as db:
@@ -77,6 +79,7 @@ async def schema_path_validate(
             schema_path=schema_path,
             schema_branch=schema_branch,
             node_uuids=node_uuids,
+            is_isolated=is_isolated,
         )
 
         component_registry = get_component_registry()
