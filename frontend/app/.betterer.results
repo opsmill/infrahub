@@ -213,9 +213,6 @@ exports[`fix ts error`] = {
     "src/pages/ipam/ipam-layout.tsx:380745861": [
       [38, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]
     ],
-    "src/pages/resource-manager/resource-allocation-details.tsx:1663248053": [
-      [78, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
-    ],
     "src/shared/components/editor/json/json-editor.tsx:3842784607": [
       [46, 49, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
     ],

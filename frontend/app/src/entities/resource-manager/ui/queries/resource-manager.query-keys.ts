@@ -1,18 +1,7 @@
-import type { PaginationParams } from "@/shared/api/types";
-
 import type {
   NumberPoolAllocationFilters,
   NumberPoolDivisionSelector,
 } from "@/entities/resource-manager/domain/model/number-pool";
-
-export interface ResourceUtilizationKeysParams {
-  poolId: string;
-}
-
-export interface ResourceAllocatedKeysParams extends PaginationParams {
-  poolId: string;
-  resourceId: string;
-}
 
 export interface IpPoolKeysParams {
   poolId: string;
@@ -63,17 +52,6 @@ export interface NumberPoolsKeysParams {
 
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
-  utilization: (params: ResourceUtilizationKeysParams) =>
-    [...resourceManagerQueryKeys.all, "utilization", params.poolId] as const,
-  allocated: (params: ResourceAllocatedKeysParams) =>
-    [
-      ...resourceManagerQueryKeys.all,
-      "allocated",
-      params.poolId,
-      params.resourceId,
-      params.limit,
-      params.offset,
-    ] as const,
   ipPool: (params: IpPoolKeysParams) =>
     [
       ...resourceManagerQueryKeys.all,
