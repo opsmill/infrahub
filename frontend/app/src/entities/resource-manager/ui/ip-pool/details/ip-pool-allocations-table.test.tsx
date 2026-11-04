@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup } from "vitest-browser-react";
 
 import { store } from "@/shared/stores";
 
@@ -77,7 +78,9 @@ describe("IpPoolAllocationsTable", () => {
     vi.stubGlobal("process", { env: { VIRT_ON: "1" } });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // unmount first, so restoring the schemas does not re-render the component against reset mocks
+    await cleanup();
     vi.resetAllMocks();
     vi.unstubAllGlobals();
     store.set(nodeSchemasAtom, initialNodeSchemas);
