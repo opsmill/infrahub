@@ -1,6 +1,8 @@
+import logging
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +15,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
@@ -20,6 +23,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 TRANSFORM_NAME = "transform_person_cars"
+GATHER_LOGGER_NAME = "infrahub.computed_attribute.gather"
 
 # TestPerson.cars peers with the TestCar generic, whose members are TestElectricCar and TestGazCar.
 # Only TestElectricCar is read through, so the other kinds behind the generic contribute no field.
@@ -251,6 +255,46 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     trigger = triggers[0]
     assert trigger.name == "TestCar_computed_desc"
     assert trigger.branch == "branch_with_computed_attr"
+
+
+async def test_gather_warns_with_branch_when_transform_is_missing(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema_computed_attr: None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with (
+        patch(
+            "infrahub.computed_attribute.gather.get_run_logger",
+            return_value=logging.getLogger(GATHER_LOGGER_NAME),
+        ),
+        caplog.at_level(logging.WARNING, logger=GATHER_LOGGER_NAME),
+    ):
+        await gather_trigger_computed_attribute_python.fn(db=db)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING] == [
+        f"No Python transform named 'transform01' was found on branch '{default_branch.name}', "
+        "but a computed attribute is assigned to it."
+    ]
+
+
+async def test_gather_failure_names_the_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_computed_attr: None,
+    gqlquery01: Node,
+    transform01: Node,
+) -> None:
+    branch = await create_branch(branch_name="branch_without_query", db=db)
+    query_on_branch = await NodeManager.get_one(db=db, id=gqlquery01.id, branch=branch, raise_on_error=True)
+    await query_on_branch.delete(db=db)
+
+    with pytest.raises(
+        LookupError,
+        match=r"^Unable to find the peer\nGathering the Python computed attributes failed on branch 'branch_without_query'$",
+    ):
+        await gather_trigger_computed_attribute_python(db=db)
 
 
 @dataclass
