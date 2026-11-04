@@ -24,6 +24,14 @@ def sso_account_name_fallback_enabled() -> Iterator[None]:
     config.SETTINGS.security.sso_account_name_fallback = original
 
 
+@pytest.fixture
+def sso_account_name_fallback_disabled() -> Iterator[None]:
+    original = config.SETTINGS.security.sso_account_name_fallback
+    config.SETTINGS.security.sso_account_name_fallback = False
+    yield
+    config.SETTINGS.security.sso_account_name_fallback = original
+
+
 async def test_new_user_creates_account_and_identity(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
@@ -314,7 +322,10 @@ async def test_name_and_email_collision_raises_processing_error(
 
 
 async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_disabled: None,
 ) -> None:
     """When the name fallback is disabled an SSO login must never adopt a pre-existing account.
 
@@ -361,7 +372,10 @@ async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
 
 
 async def test_name_fallback_disabled_both_names_taken_raises(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_disabled: None,
 ) -> None:
     """With the fallback disabled, both names already taken must fail the login.
 

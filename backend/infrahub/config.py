@@ -1383,7 +1383,8 @@ class SecuritySettings(BaseSettings):
     def warn_when_sso_account_name_fallback_enabled(self) -> Self:
         if self.sso_account_name_fallback:
             log.warning(
-                "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK is enabled: a first SSO login can claim an existing "
+                "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+                "a first SSO login can claim an existing "
                 "unlinked account whose name matches the display name sent by the identity provider. "
                 "This setting is deprecated and will be removed in Infrahub 1.13."
             )

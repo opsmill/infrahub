@@ -11,11 +11,11 @@ explains why, who is affected, and the steps to link your existing accounts and 
 the fallback before it is removed.
 
 :::warning
-From Infrahub 1.12 the fallback defaults to disabled (`false`). On 1.8.7, 1.9.7, 1.10.x and
+From Infrahub 1.12 the fallback defaults to disabled (`false`). On 1.8.7+, 1.9.7+, 1.10.x and
 1.11.x it defaults to enabled (`true`). If you upgrade to 1.12 before every SSO user has
 logged in once, set `sso_account_name_fallback = true` explicitly to keep linking existing
-accounts, then disable it once linking is complete. Infrahub logs a warning at startup while
-the fallback is enabled.
+accounts, then disable it once linking is complete. While the fallback is enabled, each
+Infrahub process logs a warning when it loads its configuration.
 :::
 
 ## Why this change exists
@@ -40,7 +40,7 @@ You are exposed while **all** of the following hold:
 - you use SSO (OIDC) for authentication, **and**
 - you have pre-existing local Infrahub accounts that have not yet been linked to an SSO
   identity, **and**
-- the display-name fallback is active, meaning you run **1.8.6 or 1.9.0–1.9.6** (no off
+- the display-name fallback is active, meaning you run **1.8.6 or 1.9.0-1.9.6** (no off
   switch), **1.8.7+, 1.9.7+, 1.10.x or 1.11.x** without setting
   `sso_account_name_fallback = false`, or **1.12.x** with `sso_account_name_fallback = true`,
   **and**
@@ -49,7 +49,7 @@ You are exposed while **all** of the following hold:
 
 On **1.8.7+, 1.9.7+, 1.10.x and 1.11.x** you can close the exposure by setting
 `sso_account_name_fallback = false`.
-On **1.8.6 and 1.9.0–1.9.6** the fallback exists but has no off switch, so upgrade to
+On **1.8.6 and 1.9.0-1.9.6** the fallback exists but has no off switch, so upgrade to
 1.8.7 / 1.9.7 (or later) first, then disable it. On **1.12.x** the fallback is disabled
 unless you enable it. From **1.13** the fallback is removed and the exposure no longer exists.
 
@@ -64,7 +64,8 @@ Administrators of Infrahub instances that:
 - still have local accounts that need to be linked to their SSO identities.
 
 If you do not use SSO, or every account is already linked, this change does not affect you,
-but you should still disable the fallback so it is off before 1.13.
+but you should still make sure the fallback is not enabled. On releases before 1.12 that means
+setting `sso_account_name_fallback = false`; on 1.12.x it is disabled unless you enabled it.
 
 ## How linking works
 
@@ -201,7 +202,7 @@ Keep this window short and prefer doing all link-ups in the single Step 3 window
 |---|---|
 | 1.8.6 | Vulnerability fixed for new setups; old behavior kept for existing setups. |
 | 1.8.7, 1.9.7, all 1.10.x and 1.11.x | Behavior placed behind the `sso_account_name_fallback` flag (default enabled). **Migrate during this window.** |
-| 1.12 | Flag default changed to disabled. Infrahub logs a warning at startup when the flag is enabled. |
+| 1.12 | Flag default changed to disabled. Infrahub logs a warning when it loads its configuration with the flag enabled. |
 | 1.13 | Flag and fallback behavior **removed**. A first SSO login always provisions its own account. |
 
 :::success
