@@ -11,6 +11,10 @@ x-ci-labels: &ci-labels
 
 services:
   message-queue:
+    # TEMPORARY (Redis message bus evaluation): the stack's broker defaults to Redis, so RabbitMQ
+    # only starts when COMPOSE_PROFILES includes rabbitmq. Revert before merge.
+    profiles:
+      - rabbitmq
     image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
     restart: unless-stopped
     environment:
@@ -243,6 +247,8 @@ services:
         condition: service_healthy
       message-queue:
         condition: service_healthy
+        # TEMPORARY (Redis message bus evaluation): message-queue only exists with the rabbitmq profile.
+        required: false
       cache:
         condition: service_healthy
       task-manager:
