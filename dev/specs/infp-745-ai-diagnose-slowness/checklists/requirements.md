@@ -33,6 +33,7 @@
 
 ## Notes
 
+- FR-010 was changed on 2026-11-04: only the dashboard, folder and annotation write tools are kept.
 - The spec names the Grafana MCP server, Docker Compose, the Helm chart and the `Authorization: Bearer`
   header. These are not implementation choices: the card and the design document (D10) decided them,
   and the operator sets and views them. No code structure, language or library inside Infrahub is

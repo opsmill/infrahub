@@ -52,6 +52,11 @@ personal data in traces and logs must not be there.
 - Q: Which Infrahub versions does the skill support? → A: 1.13 and later. INFP-742 adds and changes
   metrics in 1.13, so the checks find no data on earlier versions. On an earlier version, the skill
   says that the version is not supported (FR-021).
+- Q: Which Grafana write tools does the server keep? D10 turns on all of them. → A: Only the tools for
+  dashboards, folders and annotations, which the skill uses (D8). The tools for data sources, plugins,
+  alert rules, silences and the tool that calls any Grafana API route are off, and the Grafana service
+  account has the Editor role, which cannot create data sources or install plugins (FR-010,
+  [research.md](research.md) R4).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -211,8 +216,11 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   container uses to reach Grafana, so that the operator sets only the token that AI assistants send.
   Grafana cannot create a service account from a provisioning file, so a one-time step calls the
   Grafana API: a job in Helm and a one-time container in Compose. Not verified yet (D10, section 6).
-- **FR-010**: The server MUST have its write tools on, so that the skill can build dashboards and add
-  annotations (D8, D10). Each person's own Grafana token, instead of the shared token, is an option
+- **FR-010**: The server MUST keep only the write tools for dashboards, folders and annotations, so
+  that the skill can build dashboards and add annotations (D8). It MUST NOT keep the write tools for
+  data sources, plugins, alert rules, silences, contact points, snapshots or incidents, nor the tool
+  that calls any Grafana API route. The Grafana service account MUST have the Editor role
+  (clarification of 2026-11-04; this replaces "write tools enabled" in D10). Each person's own Grafana token, instead of the shared token, is an option
   for operators who need to know who ran which query (card, "Nice to have").
 
 #### Diagnostic skill and dashboards (stories 2 and 4)
@@ -335,8 +343,8 @@ The card's goals make the release in 1.13 depend on four items, closed in the fi
 - The log audit (FR-022).
 - The agreement of the Solution Engineering and Architecture team to host the skill in
   `infrahub-skills`.
-- The security review of the Grafana MCP server container. With its write tools, an AI assistant can
-  change data sources, alert rules and silences, and install plugins.
+- The security review of the Grafana MCP server container. Anyone with the token can read all
+  telemetry and change dashboards, folders and annotations (FR-010).
 - The creation of the Grafana service account and its token at installation (FR-009).
 
 ## Sources
