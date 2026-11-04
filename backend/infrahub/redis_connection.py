@@ -65,7 +65,7 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     A configured ``cache.url`` is returned as written, verifying against ``cache.tls_ca_file`` unless it
     names CA certificates itself; otherwise the scalar settings are assembled into a single-node URL.
     """
-    url = cache.active_url
+    url = cache.url
     if url is not None:
         return add_default_ca_bundle(url.get_secret_value(), cache.tls_ca_file)
 

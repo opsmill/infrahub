@@ -142,6 +142,8 @@ Infrahub records each element by its id in the schema, which a rename keeps. Whe
 - A load that renames it and declares `allocation_scope: ["location"]` is accepted. The pool keeps its scope, and shows the new name.
 - A load that renames it and still declares `allocation_scope: ["site"]` fails with `"site" was renamed to "location"; update allocation_scope to the new name`.
 
+Renaming the kind that holds the `NumberPool` attribute, or the attribute itself, is refused while the pool exists, as described in [Schema migration](./migration.mdx#number-pool).
+
 ## Viewing the pool
 
 Once you create an `InfraBackBoneService`, open **Resource Managers** in the menu to view the pool Infrahub created for the attribute.

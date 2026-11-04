@@ -1,7 +1,7 @@
 import asyncio
 import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -11,26 +11,19 @@ from infrahub.message_bus.messages.git_repository_connectivity import GitReposit
 from tests.adapters.message_bus import (
     CALLBACK_QUEUE_NAME,
     NeverReplyingBus,
-    NeverReplyingNATSBus,
     StalledPublishBus,
-    StalledPublishNATSBus,
     TimingOutPublishBus,
-    TimingOutPublishNATSBus,
     UnreachableBrokerBus,
-    UnreachableBrokerNATSBus,
 )
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractIncomingMessage
-    from nats.aio.msg import Msg
 
 TIMEOUT_SECONDS = 1
 CONFIGURED_TIMEOUT_SECONDS = 5
 # Only an explicit `timeout=` reaches below a second; the setting is whole seconds with a floor of one.
 BRIEF_TIMEOUT_SECONDS = 0.05
 ROUTING_KEY = "git.repository.connectivity"
-
-NeverReplying = NeverReplyingBus | NeverReplyingNATSBus
 
 
 @dataclass
@@ -39,27 +32,9 @@ class IncomingAMQPMessage:
     routing_key: str = ROUTING_KEY
 
 
-@dataclass
-class IncomingNATSMessage:
-    headers: dict[str, str] = field(default_factory=dict)
-    subject: str = ROUTING_KEY
-
-
 def amqp_reply(correlation_id: str | None) -> "AbstractIncomingMessage":
     """A reply carrying only the fields the callback reads."""
     return cast("AbstractIncomingMessage", IncomingAMQPMessage(correlation_id=correlation_id))
-
-
-def nats_reply(correlation_id: str) -> "Msg":
-    """A reply carrying only the fields the callback reads."""
-    return cast("Msg", IncomingNATSMessage(headers={"correlation_id": correlation_id}))
-
-
-def reply_for(bus: "NeverReplying", correlation_id: str) -> Any:
-    """The reply shape the given adapter's callback expects."""
-    if isinstance(bus, NeverReplyingNATSBus):
-        return nats_reply(correlation_id=correlation_id)
-    return amqp_reply(correlation_id=correlation_id)
 
 
 @pytest.fixture
@@ -70,36 +45,28 @@ def connectivity_message() -> messages.GitRepositoryConnectivity:
     )
 
 
-@pytest.fixture(params=["rabbitmq", "nats"])
-async def never_replying_bus(request: pytest.FixtureRequest) -> NeverReplying:
-    if request.param == "rabbitmq":
-        return NeverReplyingBus(rpc_timeout=TIMEOUT_SECONDS)
-    return NeverReplyingNATSBus(rpc_timeout=TIMEOUT_SECONDS)
+@pytest.fixture
+async def never_replying_bus() -> NeverReplyingBus:
+    return NeverReplyingBus(rpc_timeout=TIMEOUT_SECONDS)
 
 
-@pytest.fixture(params=["rabbitmq", "nats"])
-async def unreachable_broker_bus(request: pytest.FixtureRequest) -> NeverReplying:
-    if request.param == "rabbitmq":
-        return UnreachableBrokerBus()
-    return UnreachableBrokerNATSBus()
+@pytest.fixture
+async def unreachable_broker_bus() -> UnreachableBrokerBus:
+    return UnreachableBrokerBus()
 
 
-@pytest.fixture(params=["rabbitmq", "nats"])
-async def stalled_publish_bus(request: pytest.FixtureRequest) -> NeverReplying:
-    if request.param == "rabbitmq":
-        return StalledPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
-    return StalledPublishNATSBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+@pytest.fixture
+async def stalled_publish_bus() -> StalledPublishBus:
+    return StalledPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
 
 
-@pytest.fixture(params=["rabbitmq", "nats"])
-async def timing_out_publish_bus(request: pytest.FixtureRequest) -> NeverReplying:
-    if request.param == "rabbitmq":
-        return TimingOutPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
-    return TimingOutPublishNATSBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
+@pytest.fixture
+async def timing_out_publish_bus() -> TimingOutPublishBus:
+    return TimingOutPublishBus(rpc_timeout=CONFIGURED_TIMEOUT_SECONDS)
 
 
 async def test_rpc_gives_up_on_a_worker_that_never_answers(
-    never_replying_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
+    never_replying_bus: NeverReplyingBus, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     started = time.monotonic()
     with pytest.raises(
@@ -113,7 +80,7 @@ async def test_rpc_gives_up_on_a_worker_that_never_answers(
 
 
 async def test_rpc_addresses_the_reply_to_its_own_callback_queue(
-    never_replying_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
+    never_replying_bus: NeverReplyingBus, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     with pytest.raises(
         WorkerTimeoutError, match=r"^No worker answered git\.repository\.connectivity within 0\.05 seconds$"
@@ -150,7 +117,7 @@ async def test_rpc_honours_an_explicit_timeout_over_the_configured_one(
 
 
 async def test_a_failed_publish_leaves_no_pending_request_behind(
-    unreachable_broker_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
+    unreachable_broker_bus: UnreachableBrokerBus, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     with pytest.raises(ConnectionResetError, match=r"^broker went away$"):
         await unreachable_broker_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
@@ -159,7 +126,7 @@ async def test_a_failed_publish_leaves_no_pending_request_behind(
 
 
 async def test_a_publish_that_never_completes_is_bounded_too(
-    stalled_publish_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
+    stalled_publish_bus: StalledPublishBus, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     started = time.monotonic()
     with pytest.raises(
@@ -176,7 +143,7 @@ async def test_a_publish_that_never_completes_is_bounded_too(
 
 
 async def test_a_broker_timeout_is_not_reported_as_an_unanswered_request(
-    timing_out_publish_bus: NeverReplying, connectivity_message: messages.GitRepositoryConnectivity
+    timing_out_publish_bus: TimingOutPublishBus, connectivity_message: messages.GitRepositoryConnectivity
 ) -> None:
     with pytest.raises(TimeoutError, match=r"^broker publish timed out$"):
         await timing_out_publish_bus.rpc(message=connectivity_message, response_class=GitRepositoryConnectivityResponse)
@@ -184,30 +151,30 @@ async def test_a_broker_timeout_is_not_reported_as_an_unanswered_request(
     assert timing_out_publish_bus.futures == {}
 
 
-async def test_reply_for_an_abandoned_request_is_dropped_quietly(never_replying_bus: NeverReplying) -> None:
-    await never_replying_bus.on_callback(reply_for(never_replying_bus, correlation_id="never-registered"))
+async def test_reply_for_an_abandoned_request_is_dropped_quietly(never_replying_bus: NeverReplyingBus) -> None:
+    await never_replying_bus.on_callback(amqp_reply(correlation_id="never-registered"))
 
     assert never_replying_bus.futures == {}
 
 
 async def test_reply_arriving_after_the_timeout_cancelled_the_future_is_dropped_quietly(
-    never_replying_bus: NeverReplying,
+    never_replying_bus: NeverReplyingBus,
 ) -> None:
     correlation_id = "cancelled-by-timeout"
     future = never_replying_bus.loop.create_future()
     future.cancel()
     never_replying_bus.futures[correlation_id] = future
 
-    await never_replying_bus.on_callback(reply_for(never_replying_bus, correlation_id=correlation_id))
+    await never_replying_bus.on_callback(amqp_reply(correlation_id=correlation_id))
 
     assert never_replying_bus.futures == {}
 
 
-async def test_reply_still_resolves_a_waiting_request(never_replying_bus: NeverReplying) -> None:
+async def test_reply_still_resolves_a_waiting_request(never_replying_bus: NeverReplyingBus) -> None:
     correlation_id = "waiting"
     future = never_replying_bus.loop.create_future()
     never_replying_bus.futures[correlation_id] = future
-    reply = reply_for(never_replying_bus, correlation_id=correlation_id)
+    reply = amqp_reply(correlation_id=correlation_id)
 
     await never_replying_bus.on_callback(reply)
 
