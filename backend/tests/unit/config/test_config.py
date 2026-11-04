@@ -239,18 +239,32 @@ SSO_ACCOUNT_NAME_FALLBACK_WARNING = (
 )
 
 
-def test_sso_account_name_fallback_enabled_warns_once() -> None:
+def test_sso_account_name_fallback_enabled_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
     with capture_logs() as records:
         SecuritySettings(sso_account_name_fallback=True)
 
     assert records == [{"event": SSO_ACCOUNT_NAME_FALLBACK_WARNING, "log_level": "warning"}]
 
 
-def test_sso_account_name_fallback_default_is_silent() -> None:
+def test_sso_account_name_fallback_default_is_silent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
     with capture_logs() as records:
         SecuritySettings()
 
     assert records == []
+
+
+def test_sso_account_name_fallback_enabled_in_env_warns_when_settings_load(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", "true")
+    with capture_logs() as records:
+        settings = load(config_data={"main": {}})
+
+    assert settings.security.sso_account_name_fallback is True
+    # pydantic-settings validates the factory-built default again, which reruns the after-validator.
+    assert {(record["event"], record["log_level"]) for record in records} == {
+        (SSO_ACCOUNT_NAME_FALLBACK_WARNING, "warning")
+    }
 
 
 def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:

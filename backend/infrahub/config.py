@@ -2214,7 +2214,8 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
-    security: SecuritySettings = SecuritySettings()
+    # A factory so the account-name fallback warning reflects the loaded settings rather than the environment at import.
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
     ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()

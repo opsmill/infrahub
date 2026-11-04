@@ -37,7 +37,7 @@ The change is implemented in [PR #8774](https://github.com/opsmill/infrahub/pull
 
 You are exposed while **all** of the following hold:
 
-- you use SSO (OIDC) for authentication, **and**
+- you use SSO (OIDC or OAuth2) for authentication, **and**
 - you have pre-existing local Infrahub accounts that have not yet been linked to an SSO
   identity, **and**
 - the display-name fallback is active, meaning you run **1.8.6 or 1.9.0-1.9.6** (no off
@@ -60,7 +60,7 @@ privileged-but-unlinked account can still be claimed by a matching display name.
 
 Administrators of Infrahub instances that:
 
-- authenticate users via SSO (OIDC), and
+- authenticate users via SSO (OIDC or OAuth2), and
 - still have local accounts that need to be linked to their SSO identities.
 
 If you do not use SSO, or every account is already linked, this change does not affect you,
@@ -70,12 +70,13 @@ setting `sso_account_name_fallback = false`; on 1.12.x it is disabled unless you
 ## How linking works
 
 An already-linked identity always goes straight to its linked account. On a user's *first* SSO
-login, Infrahub matches by **account name == the SSO `name` claim**: if a matching account
-exists and has never been linked, the fallback adopts it (attaching the SSO identity).
-Otherwise a new, separate account is created and the SSO identity links to *that* account,
-while the pre-existing account is left untouched and unlinked. Get the name match right before
-the migration window, or users will be linked to brand-new empty accounts instead of their
-existing ones.
+login with the fallback enabled, Infrahub matches by **account name == the SSO `name` claim**:
+if a matching account exists and has never been linked, the fallback adopts it (attaching the
+SSO identity). Otherwise, or whenever the fallback is disabled (the default from 1.12), a new,
+separate account is created and the SSO identity links to *that* account, while the
+pre-existing account is left untouched and unlinked. Get the name match right before the
+migration window, and on 1.12.x enable the fallback first, or users will be linked to
+brand-new empty accounts instead of their existing ones.
 
 ## Migration steps
 
