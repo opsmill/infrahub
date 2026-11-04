@@ -90,6 +90,7 @@ from .activity.factory import ACTIVE_RUNS, build_repository_activity
 from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivityOperation, RepositoryActivityPhase
 from .activity.recorder import ActivityRun, RepositoryActivity
 from .branch_status import accepts_commit_write
+from .commit_id import readable_commit
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
 from .divergence.recorder import HistoryRewriteRecorder
@@ -570,7 +571,8 @@ async def bootstrap_local_repository(
     seed import. While the repository has pending pushes, a fresh clone that seeds the default branch
     records no commit and skips the seed import, because the import would remove the objects of the
     pending merges. A fresh clone of a commit the graph already holds imported, or is importing, skips
-    the seed import, because another worker or the add flow imports it.
+    the seed import, because another worker or the add flow imports it. A seed import of the first
+    commit of a repository sends the event of that commit, which no other flow then sends.
 
     Args:
         branch_accepts_commit: Whether `infrahub_branch` accepts a commit write. When it does not, the clone
@@ -580,6 +582,7 @@ async def bootstrap_local_repository(
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
     recorded_commit: str | None = None
+    announces_first_commit = False
     async with lock.registry.get(name=repo_name, namespace="repository"):
         await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
         init_failed = False
@@ -632,9 +635,8 @@ async def bootstrap_local_repository(
             # worktree even though it is built after the lock is released.
             seed_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
             # The fallback clone has already recorded its commit, so only a reinitialized copy can still tell.
-            if repo.reinitialized and await repo.holds_or_imports_commit(
-                branch_name=infrahub_branch, commit=seed_commit
-            ):
+            recorded = await repo.read_recorded_import(branch_name=infrahub_branch) if repo.reinitialized else None
+            if recorded is not None and recorded.covers(commit=seed_commit):
                 log.info(
                     f"Skipped the import of the default branch {default_import_git_branch} of repository "
                     f"{repo.name}: commit {seed_commit} is already imported or being imported"
@@ -651,10 +653,11 @@ async def bootstrap_local_repository(
                     await repo.record_commit_for_import(branch_name=infrahub_branch, commit=seed_commit)
                 if branch_accepts_commit:
                     recorded_commit = seed_commit
+                    announces_first_commit = recorded is not None and recorded.commit is None
 
     if pending_import is not None:
         try:
-            await import_branch(
+            import_error = await import_branch(
                 lock_registry=lock.registry,
                 importer=RepositoryFileImporter(),
                 repo=repo,
@@ -664,6 +667,9 @@ async def bootstrap_local_repository(
         except (RepositoryConnectionError, RepositoryCredentialsError) as exc:
             log.info(exc.message)
             return None
+        # A reinitialized copy announces no commit, and the add flow skips a commit this seed imports.
+        if import_error is None and announces_first_commit:
+            await repo.announce_commit_update(infrahub_branch_name=infrahub_branch, commit=pending_import.commit)
 
     return BootstrappedRepository(repository=repo, recorded_commit=recorded_commit)
 
@@ -844,8 +850,13 @@ async def sync_remote_repository(
             return
 
         graph_commits = select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches)
-        # The cycle read these commits before the bootstrap, which can record a commit or find one recorded since.
-        if bootstrapped.recorded_commit is not None and infrahub_branch in graph_commits:
+        # Only a missing commit is replaced: with it the syncer imports the seeded commit again, while an earlier
+        # commit is what the syncer classifies a rewrite of the remote against.
+        if (
+            bootstrapped.recorded_commit is not None
+            and infrahub_branch in graph_commits
+            and readable_commit(graph_commits[infrahub_branch]) is None
+        ):
             graph_commits[infrahub_branch] = bootstrapped.recorded_commit
 
         # The sync leaves the default branch alone in an inactive repository and while pushes wait, so neither is repaired.

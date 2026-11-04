@@ -259,7 +259,8 @@ class RepositoryAdder:
             )
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
             repo.create_commit_worktree(commit=default_commit)
-            if await repo.holds_or_imports_commit(branch_name=model.infrahub_branch_name, commit=default_commit):
+            recorded = await repo.read_recorded_import(branch_name=model.infrahub_branch_name)
+            if recorded.covers(commit=default_commit):
                 log.info(
                     f"Skipped the import of the default branch {repo.default_branch} of repository "
                     f"{repo.name}: commit {default_commit} is already imported or being imported"

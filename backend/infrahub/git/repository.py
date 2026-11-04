@@ -138,6 +138,17 @@ class RecordedImport:
     commit: str | None
     sync_status: str | None
 
+    def covers(self, commit: str) -> bool:
+        """Whether the objects of `commit` are imported, or their import is under way, so a clone need not import it.
+
+        A branch that failed to import the commit, or whose status is still unknown, answers no, so the
+        caller imports the commit itself.
+        """
+        return self.commit == commit and self.sync_status in {
+            RepositorySyncStatus.IN_SYNC.value,
+            RepositorySyncStatus.SYNCING.value,
+        }
+
 
 class ImportStep(StrEnum):
     """The phase of a branch synchronization in which a failure occurred."""
@@ -405,24 +416,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             raise_when_missing=True,
         )
         return RecordedImport(commit=readable_commit(repository.commit.value), sync_status=repository.sync_status.value)
-
-    async def holds_or_imports_commit(self, branch_name: str, commit: str) -> bool:
-        """Whether the graph records `commit` for the branch, with its objects imported or their import under way.
-
-        A branch that failed to import the commit, or whose status is still unknown, answers no, so the
-        caller imports the commit itself.
-        """
-        repository = await self.sdk.get(
-            kind=CoreRepository,
-            id=str(self.id),
-            branch=branch_name,
-            exclude=["tags", "credential"],
-            raise_when_missing=True,
-        )
-        return readable_commit(repository.commit.value) == commit and repository.sync_status.value in {
-            RepositorySyncStatus.IN_SYNC.value,
-            RepositorySyncStatus.SYNCING.value,
-        }
 
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.

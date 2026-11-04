@@ -11,15 +11,20 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
 from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus, RepositorySyncStatus
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
+from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.git import InfrahubRepository
 from infrahub.git.activity.models import RepositoryActivityOperation
+from infrahub.git.constants import UPDATE_SYNC_STATUS_MUTATION
 from infrahub.git.models import GitRepositoryAdd
 from infrahub.git.sync import RepositoryAdder, RepositoryFileImporter, RepositoryImporter
 from infrahub.git.tasks import bootstrap_local_repository, sync_remote_repositories
 from infrahub.git.writeback.store import build_intent_store
-from infrahub.workers.dependencies import build_cache
+from infrahub.workers.dependencies import build_cache, build_event_service
 from tests.adapters.cache import RecordingCache
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import LocalRemote
@@ -77,6 +82,12 @@ RECORDED_STATUS_CASES: list[RecordedStatusCase] = [
         expected_writes=ONE_IMPORT,
         expected_status=RepositorySyncStatus.IN_SYNC,
     ),
+    RecordedStatusCase(
+        name="status-unknown",
+        status=RepositorySyncStatus.UNKNOWN,
+        expected_writes=ONE_IMPORT,
+        expected_status=RepositorySyncStatus.IN_SYNC,
+    ),
 ]
 
 
@@ -114,11 +125,26 @@ async def recorded_state(client: InfrahubClient, node: Node) -> tuple[str | None
     return repository.commit.value, repository.sync_status.value
 
 
+def commit_events(events: MemoryInfrahubEvent) -> list[tuple[str, str]]:
+    return [(event.commit, event.repository_id) for event in events.events if isinstance(event, CommitUpdatedEvent)]
+
+
 def use_another_worker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, worker: str) -> None:
     """Point the repositories directory at an empty one, as on a worker that holds no copy of the repository."""
     directory = tmp_path / worker
     directory.mkdir()
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(directory))
+
+
+def add_model(node: Node, name: str, remote: LocalRemote) -> GitRepositoryAdd:
+    return GitRepositoryAdd(
+        location=str(remote.directory),
+        repository_id=node.id,
+        repository_name=name,
+        infrahub_branch_name=registry.default_branch,
+        infrahub_branch_id=str(UUIDT()),
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    )
 
 
 class TestFreshCloneImport(TestInfrahubApp):
@@ -129,6 +155,7 @@ class TestFreshCloneImport(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         initialize_registry: None,
+        dependency_provider: Provider,
         tmp_path: Path,
         git_repos_dir: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -147,6 +174,12 @@ class TestFreshCloneImport(TestInfrahubApp):
                 await added.record_commit_for_import(branch_name=registry.default_branch, commit=head)
             case RepositorySyncStatus.ERROR_IMPORT:
                 await added.record_import_failure(infrahub_branch_name=registry.default_branch)
+            case RepositorySyncStatus.UNKNOWN:
+                await client.execute_graphql(
+                    query=UPDATE_SYNC_STATUS_MUTATION,
+                    variables={"repo_id": node.id, "status": RepositorySyncStatus.UNKNOWN.value},
+                    branch_name=registry.default_branch,
+                )
             case _:
                 pass
         assert await recorded_state(client=client, node=node) == (head, case.status.value)
@@ -154,30 +187,34 @@ class TestFreshCloneImport(TestInfrahubApp):
         repository = await client.get(kind=CoreRepository, id=node.id)
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
         cache = RecordingCache()
+        events = MemoryInfrahubEvent()
 
-        async with activity_run(repository_id=node.id, cache=cache) as run:
-            bootstrapped = await call_in_flow(
-                lambda: bootstrap_local_repository(
-                    repo_name=name,
-                    repository=repository,
-                    infrahub_branch=registry.default_branch,
-                    branch_accepts_commit=True,
-                    client=client,
-                    state=delivery_state,
-                    activity=run,
+        with override_dependency(build_event_service, lambda: events, dependency_provider=dependency_provider):
+            async with activity_run(repository_id=node.id, cache=cache) as run:
+                bootstrapped = await call_in_flow(
+                    lambda: bootstrap_local_repository(
+                        repo_name=name,
+                        repository=repository,
+                        infrahub_branch=registry.default_branch,
+                        branch_accepts_commit=True,
+                        client=client,
+                        state=delivery_state,
+                        activity=run,
+                    )
                 )
-            )
 
         assert bootstrapped is not None
         assert bootstrapped.recorded_commit == head
         assert run_record_writes(cache=cache, repository_id=node.id) == case.expected_writes
         assert await recorded_state(client=client, node=node) == (head, case.expected_status.value)
+        assert commit_events(events) == []
 
     async def test_the_add_flow_skips_the_import_of_a_commit_a_fresh_clone_imported(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initialize_registry: None,
+        dependency_provider: Provider,
         tmp_path: Path,
         git_repos_dir: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -189,37 +226,34 @@ class TestFreshCloneImport(TestInfrahubApp):
         node = await create_node(db=db, remote=remote, name=name)
         repository = await client.get(kind=CoreRepository, id=node.id)
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
-        async with activity_run(repository_id=node.id) as run:
-            bootstrapped = await call_in_flow(
-                lambda: bootstrap_local_repository(
-                    repo_name=name,
-                    repository=repository,
-                    infrahub_branch=registry.default_branch,
-                    branch_accepts_commit=True,
-                    client=client,
-                    state=delivery_state,
-                    activity=run,
-                )
-            )
-        assert bootstrapped is not None
-        use_another_worker(tmp_path=tmp_path, monkeypatch=monkeypatch, worker="add-worker")
         adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
-        model = GitRepositoryAdd(
-            location=str(remote.directory),
-            repository_id=node.id,
-            repository_name=name,
-            infrahub_branch_name=registry.default_branch,
-            infrahub_branch_id=str(UUIDT()),
-            internal_status=RepositoryInternalStatus.ACTIVE.value,
-        )
         cache = RecordingCache()
+        events = MemoryInfrahubEvent()
 
-        async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD, cache=cache) as run:
-            added = await adder.add(model, activity=run)
+        with override_dependency(build_event_service, lambda: events, dependency_provider=dependency_provider):
+            async with activity_run(repository_id=node.id) as run:
+                bootstrapped = await call_in_flow(
+                    lambda: bootstrap_local_repository(
+                        repo_name=name,
+                        repository=repository,
+                        infrahub_branch=registry.default_branch,
+                        branch_accepts_commit=True,
+                        client=client,
+                        state=delivery_state,
+                        activity=run,
+                    )
+                )
+            assert bootstrapped is not None
+            use_another_worker(tmp_path=tmp_path, monkeypatch=monkeypatch, worker="add-worker")
+            async with activity_run(
+                repository_id=node.id, operation=RepositoryActivityOperation.ADD, cache=cache
+            ) as run:
+                added = await adder.add(add_model(node=node, name=name, remote=remote), activity=run)
 
         assert added.import_error is None
         assert run_record_writes(cache=cache, repository_id=node.id) == NO_IMPORT
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
+        assert commit_events(events) == [(head, node.id)]
 
     async def test_the_add_flow_marks_the_branch_syncing_before_it_releases_the_lock(
         self,
@@ -236,27 +270,19 @@ class TestFreshCloneImport(TestInfrahubApp):
         node = await create_node(db=db, remote=remote, name=name)
         importer = StateReadingImporter(client=client, node=node)
         adder = RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client)
-        model = GitRepositoryAdd(
-            location=str(remote.directory),
-            repository_id=node.id,
-            repository_name=name,
-            infrahub_branch_name=registry.default_branch,
-            infrahub_branch_id=str(UUIDT()),
-            internal_status=RepositoryInternalStatus.ACTIVE.value,
-        )
 
         async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD) as run:
-            added = await adder.add(model, activity=run)
+            added = await adder.add(add_model(node=node, name=name, remote=remote), activity=run)
 
         assert added.import_error is None
         assert importer.states_at_build == [(head, RepositorySyncStatus.SYNCING.value)]
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
 
 
-class TestSynchronisationCycleOfANewRepository(TestInfrahubApp):
-    """A synchronization cycle that finds a repository no add flow has imported yet.
+class TestSynchronisationCycleOnAFreshWorker(TestInfrahubApp):
+    """A synchronization cycle on a worker that holds no copy of the repository.
 
-    The cycle visits every repository of the stack, so this test runs in a stack of its own.
+    The cycle visits every repository of the stack, so these tests run in a stack of their own.
     """
 
     async def test_the_cycle_imports_the_default_branch_of_a_new_repository_once(
@@ -279,3 +305,34 @@ class TestSynchronisationCycleOfANewRepository(TestInfrahubApp):
 
         assert run_record_writes(cache=cache, repository_id=node.id) == [*ONE_IMPORT, ("fetching", None)]
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
+
+    async def test_the_cycle_records_a_rewrite_of_the_trunk_that_a_fresh_clone_holds(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The seed import records the rewritten commit, and the syncer still classifies it against the earlier one."""
+        name = "rewritten-for-fresh-worker"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        imported = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+        assert state.is_completed()
+        rewritten = remote.commit(branch_name=TRUNK, files={"data.txt": "rewritten\n"}, amend=True)
+        use_another_worker(tmp_path=tmp_path, monkeypatch=monkeypatch, worker="fresh-worker")
+
+        await sync_remote_repositories()
+
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert (
+            recorded.commit.value,
+            recorded.last_rewrite_previous_commit.value,
+            recorded.last_rewrite_commit.value,
+            recorded.rewrite_count.value,
+        ) == (rewritten, imported, rewritten, 1)
