@@ -32,8 +32,8 @@ def finder() -> InMemoryNumberPoolFinder:
 
 
 @pytest.fixture
-def allocator() -> RecordingNumberAllocator:
-    return RecordingNumberAllocator()
+def allocator(pool_lock_log: PoolLockLog) -> RecordingNumberAllocator:
+    return RecordingNumberAllocator(log=pool_lock_log)
 
 
 @pytest.fixture

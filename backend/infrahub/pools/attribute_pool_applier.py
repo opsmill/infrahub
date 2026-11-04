@@ -323,19 +323,35 @@ class AttributePoolApplier:
                 attribute.is_default = False
             case FromPoolIntent.ALLOCATE:
                 allocate_pool = self._require_pool(pool=pool, intent=intent)
-                if attribute.id is not None and tracking_pool_id != allocate_pool.get_id():
-                    async with self.pool_locker.holding(pool_id=allocate_pool.get_id()):
-                        ranges = await self.range_reader.get_pool_ranges(pool_id=allocate_pool.get_id())
-                        await self._check_other_branches_within_ranges(
-                            node=node, pool=allocate_pool, attribute=attribute, ranges=ranges
-                        )
-                await self._allocate(
-                    node=node,
-                    pool=allocate_pool,
-                    attribute=attribute,
-                    user_id=user_id,
-                    reuse_reservation=False,
-                )
+                division = await self._read_division(node=node, pool=allocate_pool, attribute=attribute)
+                if attribute.id is None or tracking_pool_id == allocate_pool.get_id():
+                    await self._allocate(
+                        node=node,
+                        pool=allocate_pool,
+                        attribute=attribute,
+                        user_id=user_id,
+                        reuse_reservation=False,
+                        division=division,
+                    )
+                    return
+                # The division's lock comes before the pool's hold, as in any allocation, so a range change waiting
+                # for the hold cannot leave this write and another allocation in the division waiting on each other.
+                async with (
+                    self.pool_locker.picking(pool=allocate_pool, division=division),
+                    self.pool_locker.holding(pool_id=allocate_pool.get_id()),
+                ):
+                    ranges = await self.range_reader.get_pool_ranges(pool_id=allocate_pool.get_id())
+                    await self._check_other_branches_within_ranges(
+                        node=node, pool=allocate_pool, attribute=attribute, ranges=ranges
+                    )
+                    await self._allocate(
+                        node=node,
+                        pool=allocate_pool,
+                        attribute=attribute,
+                        user_id=user_id,
+                        reuse_reservation=False,
+                        division=division,
+                    )
             case _:
                 assert_never(intent)
 
@@ -471,7 +487,10 @@ class AttributePoolApplier:
         pool = await self._find_pool(attribute=attribute, pool_ref=pool_id)
         attribute.from_pool = {"id": pool.get_id()}
         self._check_pool_targets_attribute(schema=node.get_schema(), pool=pool, attribute=attribute)
-        await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id, reuse_reservation=True)
+        division = await self._read_division(node=node, pool=pool, attribute=attribute)
+        await self._allocate(
+            node=node, pool=pool, attribute=attribute, user_id=user_id, reuse_reservation=True, division=division
+        )
 
     def _check_attach_within_ranges(
         self,
@@ -562,17 +581,20 @@ class AttributePoolApplier:
         attribute.tracking_pool = TrackingPool(pool_id=pool.get_id(), provenance=provenance)
 
     async def _allocate(
-        self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str, reuse_reservation: bool
+        self,
+        node: Node,
+        pool: CoreNumberPool,
+        attribute: BaseAttribute,
+        user_id: str,
+        reuse_reservation: bool,
+        division: Division | None,
     ) -> None:
         """Set the attribute's value from the pool, reusing the number the pool holds for it when `reuse_reservation` is set.
 
         Raises:
             ValidationError: When the pool is exhausted.
-            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
-                default filter value, a peer that does not exist.
 
         """
-        division = await self._read_division(node=node, pool=pool, attribute=attribute)
         try:
             attribute.value = await self.number_allocator.allocate(
                 pool=pool,
