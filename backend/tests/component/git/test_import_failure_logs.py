@@ -716,7 +716,7 @@ class TestImportFailureLogs(TestInfrahubApp):
 
         state = await build_intent_store(db=db, lock_registry=lock.registry)
         async with activity_run() as run:
-            repo = await call_in_flow(
+            bootstrapped = await call_in_flow(
                 lambda: bootstrap_local_repository(
                     repo_name=name,
                     repository=repository,
@@ -727,11 +727,11 @@ class TestImportFailureLogs(TestInfrahubApp):
                     activity=run,
                 )
             )
-            assert repo is not None
+            assert bootstrapped is not None
             await call_in_flow(
                 lambda: sync_repository_from_origin(
                     repository=repository,
-                    repo=repo,
+                    repo=bootstrapped.repository,
                     staging_branch=None,
                     infrahub_branch=registry.default_branch,
                     default_branch_id=str(UUIDT()),
