@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import ssl
 import time
 from dataclasses import dataclass
 from fnmatch import fnmatch
@@ -26,7 +25,7 @@ from infrahub.worker import WORKER_IDENTITY
 if TYPE_CHECKING:
     from opentelemetry.trace import Span
     from redis.commands.core import AsyncScript
-    from redis.typing import EncodableT, FieldT
+    from redis.typing import EncodableT, FieldT, XReadGroupResponse, XReadResponse
 
     from infrahub.config import BrokerSettings
     from infrahub.message_bus.types import MessageTTL
@@ -200,25 +199,24 @@ class RedisMessageBus(InfrahubMessageBus):
         await message_bus._initialize()
         return message_bus
 
-    async def _initialize(self) -> None:
-        """Initialize Redis connection and streams."""
-        ssl_context = None
-        if self.settings.tls_enabled:
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
-            if self.settings.tls_ca_file:
-                ssl_context.load_verify_locations(cafile=self.settings.tls_ca_file)
-            if self.settings.tls_insecure:
-                ssl_context.check_hostname = False
-                ssl_context.verify_mode = ssl.CERT_NONE
-
-        self.connection = redis.Redis(
+    def _build_connection(self) -> redis.Redis:
+        """Build the Redis client that the broker settings describe, without connecting it."""
+        return redis.Redis(
             host=self.settings.address,
             port=self.settings.service_port,
             username=self.settings.username or None,
             password=self.settings.password or None,
-            ssl=ssl_context if self.settings.tls_enabled else False,
+            ssl=self.settings.tls_enabled,
+            ssl_ca_certs=self.settings.tls_ca_file,
+            ssl_cert_reqs="none" if self.settings.tls_insecure else "required",
+            # The ssl module rejects CERT_NONE while hostname checking is on, so insecure mode turns both off.
+            ssl_check_hostname=not self.settings.tls_insecure,
             decode_responses=False,  # We handle decoding ourselves for binary data
         )
+
+    async def _initialize(self) -> None:
+        """Initialize Redis connection and streams."""
+        self.connection = self._build_connection()
 
         if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
@@ -332,13 +330,12 @@ class RedisMessageBus(InfrahubMessageBus):
                     continue
                 get_logger().exception("Redis error in consumer")
                 await asyncio.sleep(1)  # Back off on errors
-            except Exception:
-                # A malformed entry or driver surprise must not silently kill the
-                # consumer task; log and keep consuming.
+            # Worker loop boundary: a malformed entry or driver surprise must not kill the consumer task.
+            except Exception:  # noqa: BLE001
                 get_logger().exception("Unexpected error in consumer")
                 await asyncio.sleep(1)  # Back off on errors
 
-    async def _read_stream_entries(self, subscription: StreamSubscription, last_id: str) -> tuple[list, str]:
+    async def _read_stream_entries(self, subscription: StreamSubscription, last_id: str) -> tuple[list[list[Any]], str]:
         """Read entries from a Redis stream.
 
         Args:
@@ -348,9 +345,13 @@ class RedisMessageBus(InfrahubMessageBus):
         Returns:
             A tuple of (entries list, updated last_id).
 
+        Raises:
+            TypeError: If the reply is not the list of streams that the RESP2 protocol returns.
+
         """
+        response: XReadResponse | XReadGroupResponse
         if subscription.group:
-            entries = await self.connection.xreadgroup(
+            response = await self.connection.xreadgroup(
                 groupname=subscription.group,
                 consumername=subscription.consumer,
                 streams={subscription.stream: last_id},
@@ -358,15 +359,19 @@ class RedisMessageBus(InfrahubMessageBus):
                 block=1000,
             )
         else:
-            entries = await self.connection.xread(
+            response = await self.connection.xread(
                 streams={subscription.stream: last_id},
                 count=1,
                 block=1000,
             )
-            if entries:
-                last_id = entries[0][1][-1][0]
 
-        return entries or [], last_id
+        # Under RESP2, which this client speaks, redis-py returns a list of streams, empty when the blocking read times out.
+        if not isinstance(response, list):
+            raise TypeError(f"Expected a list of streams from the stream read, got {type(response).__name__}")
+        if response and not subscription.group:
+            last_id = response[0][1][-1][0]
+
+        return response, last_id
 
     async def _process_stream_entries(self, entries: list, subscription: StreamSubscription) -> None:
         """Process entries from a Redis stream.
@@ -394,7 +399,8 @@ class RedisMessageBus(InfrahubMessageBus):
         try:
             if self._matches_bindings(message_data=message_data, bindings=subscription.bindings):
                 await subscription.callback(message_data)
-        except Exception:
+        # Per-entry boundary: one failing entry is logged instead of stopping the consumer.
+        except Exception:  # noqa: BLE001
             # Failed messages are durably re-scheduled before their handler
             # returns, so the original entry is acknowledged either way.
             get_logger().exception("Error processing message", message_id=message_id)
@@ -717,7 +723,8 @@ class RedisMessageBus(InfrahubMessageBus):
                 break
             except redis.RedisError:
                 get_logger().exception("Redis error delivering delayed messages")
-            except Exception:
+            # Worker loop boundary: an unexpected error must not stop the delivery of delayed messages.
+            except Exception:  # noqa: BLE001
                 get_logger().exception("Unexpected error delivering delayed messages")
             await asyncio.sleep(self.DELAYED_POLL_INTERVAL)
 
