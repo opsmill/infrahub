@@ -70,7 +70,9 @@ class NodeProfilesRefresher:
         try:
             async with self.db.start_session() as session:
                 for chunk in chunked(node_ids, self.transaction_chunk_size):
-                    result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
+                    result = await self._apply_chunk_or_each_node(
+                        db=session, branch=branch, node_ids=chunk, user_id=user_id
+                    )
                     failed_node_ids.extend(result.failed_node_ids)
                     # Record the committed chunk before its events, so a failed send still recomputes its readers.
                     written.extend(
@@ -91,7 +93,7 @@ class NodeProfilesRefresher:
             await self.chain.submit(written=written, branch=branch.name, context=context, depth=0)
         return failed_node_ids
 
-    async def _apply_isolated(
+    async def _apply_chunk_or_each_node(
         self, db: InfrahubDatabase, branch: Branch, node_ids: list[str], user_id: str
     ) -> AppliedChunk:
         log = get_run_logger()
@@ -113,7 +115,7 @@ class NodeProfilesRefresher:
         applied: list[AppliedNode] = []
         failed_node_ids: list[str] = []
         for node_id in node_ids:
-            result = await self._apply_isolated(db=db, branch=branch, node_ids=[node_id], user_id=user_id)
+            result = await self._apply_chunk_or_each_node(db=db, branch=branch, node_ids=[node_id], user_id=user_id)
             applied.extend(result.applied)
             failed_node_ids.extend(result.failed_node_ids)
         return AppliedChunk(applied=applied, failed_node_ids=failed_node_ids)
