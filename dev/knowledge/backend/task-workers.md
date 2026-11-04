@@ -56,6 +56,24 @@ The window bounds runs being claimed, not runs executing: a worker runs any numb
 Prefect's `--limit` caps executing flows instead, and a high-priority run then waits for a running
 flow to finish, since nothing preempts a flow that has started.
 
+## Awaited child runs
+
+Follow every child run a flow run awaits through one shared poll, so that the flow run sends one state
+read per second for each 200 awaited runs instead of one for each run. The worker gives each flow run
+one Prefect client of 16 connections, shared by the flow's own state proposals and by every
+`execute_workflow` call it makes.
+A flow that awaited one run per member of a large group with one state read per run and per second
+kept more requests in that client than its connections could serve within
+`PREFECT_API_REQUEST_TIMEOUT`: the requests failed with `httpx.PoolTimeout`, the flow could not record
+its own failure, and the task manager marked it crashed for missing heartbeats.
+
+Inside a flow run, `execute_workflow` creates its run without waiting, then hands it to the follower of
+that flow run's client (`services/adapters/workflow/run_follower.py`), which reads the final states of
+every run it follows at each poll. Creating a run still takes several requests, so a flow run creates
+at most as many runs at a time as the submission window holds; it awaits any number of them. Each flow
+run has its own follower and slots, and a call made outside a flow run, from the API server, follows
+its run on its own.
+
 ## Reservations between workers
 
 Every worker polls the same backlog, so two workers can take the same run from the head of their

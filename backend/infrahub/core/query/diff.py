@@ -388,9 +388,11 @@ CALL (p, q, diff_rel, row_from_time) {
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
     AND r_node.from < $to_time
+    AND (r_node.to IS NULL OR r_node.to >= row_from_time)
     AND r_node.branch = top_diff_rel.branch
     AND r_node.status = top_diff_rel.status
     AND r_prop.from < $to_time
+    AND (r_prop.to IS NULL OR r_prop.to >= row_from_time)
     AND r_prop.branch = top_diff_rel.branch
     AND r_prop.status = top_diff_rel.status
     // ------------------------
@@ -599,7 +601,7 @@ WHERE intra_branch_update = FALSE
 // -------------------------------------
 // Get every path on this branch under each attribute/relationship
 // -------------------------------------
-CALL (root, r_root, p, diff_rel, q) {
+CALL (root, r_root, p, diff_rel, q, row_from_time) {
     OPTIONAL MATCH path = (
         (root:Root)<-[mid_r_root:IS_PART_OF]-(p)-[mid_diff_rel]-(q)-[r_prop]-(prop)
     )
@@ -608,6 +610,7 @@ CALL (root, r_root, p, diff_rel, q) {
     AND type(r_prop) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
     AND r_prop.from < $to_time AND r_prop.branch = mid_diff_rel.branch
+    AND (r_prop.to IS NULL OR r_prop.to >= row_from_time)
     AND (mid_diff_rel.to IS NULL OR mid_diff_rel.to >= r_prop.from)
     AND [%(id_func)s(p), type(mid_diff_rel)] <> [%(id_func)s(prop), type(r_prop)]
     // exclude paths where an active edge is below a deleted edge

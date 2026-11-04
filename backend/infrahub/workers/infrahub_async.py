@@ -47,7 +47,7 @@ from infrahub.workers.dependencies import (
 )
 from infrahub.workers.metrics import observe_start_delay, track_flow_run
 from infrahub.workers.reservations import CacheFlowRunReservations
-from infrahub.workers.submission import SubmissionWindow
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY, SubmissionWindow
 from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -57,10 +57,6 @@ if TYPE_CHECKING:
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"{RedisDatabase.get_block_type_slug()}/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
-# Half of the Prefect client's connection pool, so that polls and state proposals never queue behind submissions.
-# Prefect 3.8.6 fixes that pool at 16 connections, with no setting to change it:
-# https://github.com/PrefectHQ/prefect/blob/3.8.6/src/prefect/client/orchestration/__init__.py#L388-L399
-SUBMISSION_WINDOW_CAPACITY = 8
 
 
 def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
