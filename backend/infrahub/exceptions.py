@@ -411,6 +411,21 @@ class SchemaNotFoundError(Error):
         """
 
 
+class SchemaDiffApplyError(Error):
+    """Raised when an element a schema diff lists as added or changed is missing from the schema it was computed for."""
+
+    def __init__(self, kind: str, element_type: str, element_name: str, branch_name: str) -> None:
+        self.kind = kind
+        self.element_type = element_type
+        self.element_name = element_name
+        self.branch_name = branch_name
+        self.message = (
+            f"Unable to apply the schema changes: the {element_type} {element_name!r} of {kind!r} "
+            f"is missing from the schema of branch {branch_name!r}"
+        )
+        super().__init__(self.message)
+
+
 class QueryError(Error):
     def __init__(self, query: str, params: dict, message: str = "Unable to execute the CYPHER query.") -> None:
         self.query = query

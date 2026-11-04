@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
@@ -475,3 +479,53 @@ async def test_validator(
         )
         in data_paths
     )
+
+
+@dataclass(frozen=True)
+class ViewCase:
+    name: str
+    is_isolated: bool
+    expected_value: str
+
+
+VIEW_CASES = [
+    ViewCase(name="branch-view", is_isolated=True, expected_value="not-a-network-at-branch"),
+    ViewCase(name="merge-view", is_isolated=False, expected_value="not-a-network-on-main-after-branch"),
+]
+
+
+@pytest.mark.parametrize("case", VIEW_CASES, ids=lambda case: case.name)
+async def test_validator_on_branch_reads_the_requested_view_of_main(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, case: ViewCase
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="not-a-network-at-branch")
+    await person.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch-before-rename")
+    person.get_attribute("name").value = "not-a-network-on-main-after-branch"
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch).duplicate()
+    person_schema.get_attribute(name="name").kind = "IPNetwork"
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.kind.update",
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        is_isolated=case.is_isolated,
+    )
+
+    grouped_data_paths = await AttributeKindChecker(db=db, branch=branch).check(request)
+
+    assert len(grouped_data_paths) == 1
+    assert grouped_data_paths[0].get_all_data_paths() == [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=person.id,
+            kind="TestPerson",
+            field_name="name",
+            value=case.expected_value,
+        )
+    ]

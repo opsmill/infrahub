@@ -14,10 +14,20 @@ class SchemaValidatorQuery(Query):
         self,
         node_schema: NodeSchema | GenericSchema,
         schema_path: SchemaPath,
+        is_isolated: bool = True,
         **kwargs: Any,
     ) -> None:
+        """Initialize a query that finds the data a schema change would violate.
+
+        Args:
+            is_isolated: Whether a query on a branch reads the default branch as it was when the branch was created or
+                last rebased, instead of its current data.
+            **kwargs: Forwarded to the base query.
+
+        """
         self.node_schema = node_schema
         self.schema_path = schema_path
+        self.is_isolated = is_isolated
         super().__init__(**kwargs)
 
     async def get_paths(self) -> GroupedDataPaths:
