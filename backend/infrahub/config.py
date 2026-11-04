@@ -637,6 +637,16 @@ class CacheSettings(BaseSettings):
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
+    max_connections: int = Field(
+        default=1000,
+        ge=1,
+        description=(
+            "Maximum number of connections in each Redis connection pool of an Infrahub process; every process "
+            "has one pool for the cache and one for the locks. A command that finds every connection of its pool "
+            "in use fails with MaxConnectionsError. A max_connections query parameter in the cache URL takes "
+            "precedence."
+        ),
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -681,7 +691,7 @@ class CacheSettings(BaseSettings):
                 superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
             )
 
-        validate_redis_url(url.get_secret_value())
+        validate_redis_url(url.get_secret_value(), max_connections=self.max_connections)
         return self
 
     @model_validator(mode="after")

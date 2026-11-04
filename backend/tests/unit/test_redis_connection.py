@@ -28,6 +28,10 @@ from infrahub.redis_connection import (
 # here instead of silently stretching a failover.
 REDIS_PY_SOCKET_TIMEOUTS = 5
 
+# Pinned rather than read from the setting, so that a change to the default fails a test.
+DEFAULT_POOL_SIZE = 1000
+CONFIGURED_POOL_SIZE = 250
+
 # CA settings are validated at load, so the cases need a bundle that exists.
 CA_BUNDLE = str(Path(__file__).parent / "test_data" / "ca-bundle.pem")
 CA_BUNDLE_QUOTED = quote_plus(CA_BUNDLE, safe="")
@@ -345,6 +349,69 @@ def test_sentinel_url_carries_the_connection_defaults() -> None:
     )
 
 
+@dataclass
+class PoolSizeCase:
+    name: str
+    cache_kwargs: dict[str, Any]
+    expected_max_connections: int
+
+
+POOL_SIZE_CASES = [
+    PoolSizeCase(
+        name="scalar_settings",
+        cache_kwargs={"address": "redis.internal"},
+        expected_max_connections=DEFAULT_POOL_SIZE,
+    ),
+    PoolSizeCase(
+        name="url",
+        cache_kwargs={"url": SecretStr("redis://cache:6379/0")},
+        expected_max_connections=DEFAULT_POOL_SIZE,
+    ),
+    PoolSizeCase(
+        name="sentinel_url",
+        cache_kwargs={"url": SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster")},
+        expected_max_connections=DEFAULT_POOL_SIZE,
+    ),
+    PoolSizeCase(
+        name="scalar_settings_configured",
+        cache_kwargs={"address": "redis.internal", "max_connections": CONFIGURED_POOL_SIZE},
+        expected_max_connections=CONFIGURED_POOL_SIZE,
+    ),
+    PoolSizeCase(
+        name="sentinel_url_configured",
+        cache_kwargs={
+            "url": SecretStr("redis+sentinel://s1:26379,s2:26379/mymaster"),
+            "max_connections": CONFIGURED_POOL_SIZE,
+        },
+        expected_max_connections=CONFIGURED_POOL_SIZE,
+    ),
+    PoolSizeCase(
+        name="url_option_over_the_setting",
+        cache_kwargs={
+            "url": SecretStr("redis://cache:6379/0?max_connections=7"),
+            "max_connections": CONFIGURED_POOL_SIZE,
+        },
+        expected_max_connections=7,
+    ),
+    PoolSizeCase(
+        name="sentinel_url_option_over_the_setting",
+        cache_kwargs={
+            "url": SecretStr("redis+sentinel://s1:26379/mymaster?max_connections=7"),
+            "max_connections": CONFIGURED_POOL_SIZE,
+        },
+        expected_max_connections=7,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", POOL_SIZE_CASES, ids=lambda case: case.name)
+def test_pool_size(case: PoolSizeCase) -> None:
+    """The setting sizes the single-node and the Sentinel pool alike, and a URL option takes precedence."""
+    pool = build_redis_connection(CacheSettings(**case.cache_kwargs)).connection_pool
+
+    assert pool.max_connections == case.expected_max_connections
+
+
 VALID_URLS = [
     "redis://cache:6379/0",
     "rediss://user:pass@cache:6380/2",
@@ -357,7 +424,7 @@ VALID_URLS = [
 
 @pytest.mark.parametrize("url", VALID_URLS)
 def test_validate_redis_url_accepts(url: str) -> None:
-    validate_redis_url(url)
+    validate_redis_url(url, max_connections=CONFIGURED_POOL_SIZE)
 
 
 @dataclass
@@ -463,7 +530,7 @@ INVALID_URL_CASES = [
 @pytest.mark.parametrize("case", INVALID_URL_CASES, ids=lambda case: case.name)
 def test_validate_redis_url_rejects_without_echoing_the_url(case: InvalidUrlCase) -> None:
     with pytest.raises(ValueError, match=case.match) as exc_info:
-        validate_redis_url(case.url)
+        validate_redis_url(case.url, max_connections=CONFIGURED_POOL_SIZE)
 
     for fragment in case.secret_fragments:
         assert fragment not in str(exc_info.value)

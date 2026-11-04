@@ -91,7 +91,7 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     return f"{scheme}://{userinfo}{host}:{cache.service_port}/{cache.database}{qs}"
 
 
-def _connection_defaults() -> dict[str, Any]:
+def _connection_defaults(max_connections: int) -> dict[str, Any]:
     """Connection options that the URL's own query options override."""
     backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
     return {
@@ -99,14 +99,16 @@ def _connection_defaults() -> dict[str, Any]:
         # are retried.
         "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES, supported_errors=(RedisConnectionError,)),
         "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
+        # Each flow waiting on a lock polls it with its own command, and redis-py 8 otherwise caps a pool at 100.
+        "max_connections": max_connections,
     }
 
 
-def _redis_from_url(url: str) -> redis.Redis:
-    return redis_from_url(url, asynchronous=True, **_connection_defaults())
+def _redis_from_url(url: str, max_connections: int) -> redis.Redis:
+    return redis_from_url(url, asynchronous=True, **_connection_defaults(max_connections=max_connections))
 
 
-def validate_redis_url(url: str) -> None:
+def validate_redis_url(url: str, max_connections: int) -> None:
     """Check that a client and its connections can be built from ``url``, without opening a connection.
 
     Raises:
@@ -122,7 +124,7 @@ def validate_redis_url(url: str) -> None:
         )
     try:
         # Building a connection object, not only the client, is what rejects an unknown query option.
-        _redis_from_url(url).connection_pool.make_connection()
+        _redis_from_url(url, max_connections=max_connections).connection_pool.make_connection()
     except (TypeError, RedisError) as exc:
         raise ValueError(f"Redis URL is not valid: {exc}") from exc
 
@@ -133,4 +135,4 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     Close it with ``prefect_redis.connection.aclose_redis_client``, which also releases a Sentinel
     client's daemon connections.
     """
-    return _redis_from_url(build_cache_connection_string(settings))
+    return _redis_from_url(build_cache_connection_string(settings), max_connections=settings.max_connections)
