@@ -29,9 +29,7 @@ BRANCH_NAME = "escalation"
 
 
 @pytest.fixture
-def client(
-    dependency_provider: Provider, nats: dict[int, int] | None, redis: dict[int, int] | None
-) -> Generator[TestClient, None, None]:
+def client(dependency_provider: Provider, redis: dict[int, int] | None) -> Generator[TestClient, None, None]:
     from infrahub.server import app  # noqa: PLC0415
 
     async def _db(singleton: bool = True) -> InfrahubDatabase:
