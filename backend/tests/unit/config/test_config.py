@@ -21,6 +21,7 @@ from infrahub.config import (
     SecurityOIDCProvider1,
     SecurityOIDCProvider2,
     SecurityOIDCSettings,
+    SecuritySettings,
     Settings,
     StorageSettings,
     UserInfoMethod,
@@ -228,6 +229,27 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
 
     assert provider.id_token_verify_signature is True
     assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
+
+
+SSO_ACCOUNT_NAME_FALLBACK_WARNING = (
+    "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK is enabled: a first SSO login can claim an existing "
+    "unlinked account whose name matches the display name sent by the identity provider. "
+    "This setting is deprecated and will be removed in Infrahub 1.13."
+)
+
+
+def test_sso_account_name_fallback_enabled_warns_once() -> None:
+    with capture_logs() as records:
+        SecuritySettings(sso_account_name_fallback=True)
+
+    assert records == [{"event": SSO_ACCOUNT_NAME_FALLBACK_WARNING, "log_level": "warning"}]
+
+
+def test_sso_account_name_fallback_default_is_silent() -> None:
+    with capture_logs() as records:
+        SecuritySettings()
+
+    assert records == []
 
 
 def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:

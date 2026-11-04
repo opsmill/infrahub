@@ -6,13 +6,16 @@ an existing local account whose name matches the SSO display name. This is conve
 migrating pre-existing local accounts to SSO, but it is also the behavior behind a known
 account-takeover vulnerability.
 
-This fallback is **deprecated** and will be **removed entirely in Infrahub 1.11**. This guide
+This fallback is **deprecated** and will be **removed entirely in Infrahub 1.13**. This guide
 explains why, who is affected, and the steps to link your existing accounts and then disable
 the fallback before it is removed.
 
 :::warning
-The fallback defaults to enabled (`true`), so existing SSO setups keep working after upgrade.
-You must disable it yourself once linking is complete.
+From Infrahub 1.12 the fallback defaults to disabled (`false`). On 1.8.7, 1.9.7, 1.10.x and
+1.11.x it defaults to enabled (`true`). If you upgrade to 1.12 before every SSO user has
+logged in once, set `sso_account_name_fallback = true` explicitly to keep linking existing
+accounts, then disable it once linking is complete. Infrahub logs a warning at startup while
+the fallback is enabled.
 :::
 
 ## Why this change exists
@@ -26,7 +29,7 @@ first login, take that account over.
 This was identified as a security vulnerability and partially fixed in 1.8.6. The fix removed
 the exposure for **new** setups but, to avoid breaking **existing** SSO deployments
 mid-migration, kept the old behavior available behind this flag. Disabling the flag (and, from
-1.11, its removal) closes the exposure completely.
+1.13, its removal) closes the exposure completely.
 
 The change is implemented in [PR #8774](https://github.com/opsmill/infrahub/pull/8774).
 
@@ -37,16 +40,18 @@ You are exposed while **all** of the following hold:
 - you use SSO (OIDC) for authentication, **and**
 - you have pre-existing local Infrahub accounts that have not yet been linked to an SSO
   identity, **and**
-- you are running a version where the display-name fallback is still active, meaning anything
-  from **1.8.6 up to (but not including) 1.11**, **and**
+- the display-name fallback is active, meaning you run **1.8.6 or 1.9.0–1.9.6** (no off
+  switch), **1.8.7+, 1.9.7+, 1.10.x or 1.11.x** without setting
+  `sso_account_name_fallback = false`, or **1.12.x** with `sso_account_name_fallback = true`,
+  **and**
 - your SSO provider lets end users set or change their own display name (the `name` claim), so
   an attacker can present the display name of a privileged user.
 
-On **1.8.7+, 1.9.7+, and all 1.10.x releases** you can close the exposure by setting
+On **1.8.7+, 1.9.7+, 1.10.x and 1.11.x** you can close the exposure by setting
 `sso_account_name_fallback = false`.
 On **1.8.6 and 1.9.0–1.9.6** the fallback exists but has no off switch, so upgrade to
-1.8.7 / 1.9.7 (or later) first, then disable it. From **1.11** the fallback is removed and the exposure no
-longer exists.
+1.8.7 / 1.9.7 (or later) first, then disable it. On **1.12.x** the fallback is disabled
+unless you enable it. From **1.13** the fallback is removed and the exposure no longer exists.
 
 New accounts and already-linked accounts are not exposed. The risk is the window in which a
 privileged-but-unlinked account can still be claimed by a matching display name.
@@ -59,7 +64,7 @@ Administrators of Infrahub instances that:
 - still have local accounts that need to be linked to their SSO identities.
 
 If you do not use SSO, or every account is already linked, this change does not affect you,
-but you should still disable the fallback so it is off before 1.11.
+but you should still disable the fallback so it is off before 1.13.
 
 ## How linking works
 
@@ -74,14 +79,15 @@ existing ones.
 ## Migration steps
 
 The overall sequence is: **upgrade → link every account → disable the fallback**, completed
-before you reach 1.11.
+before you reach 1.13.
 
 ### Step 1: Upgrade to a supported release
 
-Upgrade Infrahub to a release that supports the flag (**1.8.7, 1.9.7, or any 1.10.x release**,
-before 1.11) if you are not already on one. Do this before the link-up window so every account
-links on the final version. The fallback is enabled by default on these releases, so linking
-continues to work after the upgrade.
+Upgrade Infrahub to a release that supports the flag (**1.8.7, 1.9.7, or any 1.10.x, 1.11.x
+or 1.12.x release**, before 1.13) if you are not already on one. Do this before the link-up
+window so every account links on the final version. The fallback is enabled by default on
+1.8.7, 1.9.7, 1.10.x and 1.11.x, so linking continues to work after the upgrade. On 1.12.x it
+is disabled by default, so you must enable it in Step 2.
 
 ### Step 2: Prepare your accounts
 
@@ -95,7 +101,7 @@ continues to work after the upgrade.
      account.
 2. **Keep a break-glass local admin.** Retain at least one administrator account that logs in
    with a local password (not via SSO), so you can always get back in.
-3. **Confirm the fallback is enabled** (this is the default):
+3. **Confirm the fallback is enabled** (the default before 1.12; on 1.12.x you must set it):
 
    ```toml
    [security]
@@ -194,12 +200,13 @@ Keep this window short and prefer doing all link-ups in the single Step 3 window
 | Release | Status of the fallback |
 |---|---|
 | 1.8.6 | Vulnerability fixed for new setups; old behavior kept for existing setups. |
-| 1.8.7, 1.9.7, and all 1.10.x | Behavior placed behind the `sso_account_name_fallback` flag (default enabled). **Migrate during this window.** |
-| 1.11 | Flag and fallback behavior **removed**. A first SSO login always provisions its own account. |
+| 1.8.7, 1.9.7, all 1.10.x and 1.11.x | Behavior placed behind the `sso_account_name_fallback` flag (default enabled). **Migrate during this window.** |
+| 1.12 | Flag default changed to disabled. Infrahub logs a warning at startup when the flag is enabled. |
+| 1.13 | Flag and fallback behavior **removed**. A first SSO login always provisions its own account. |
 
 :::success
 Once `sso_account_name_fallback` is set to `false` and all your users log in to their correct
-accounts, your instance is ready for 1.11 and no longer exposed to display-name account
+accounts, your instance is ready for 1.13 and no longer exposed to display-name account
 takeover.
 :::
 
