@@ -28,11 +28,6 @@ if TYPE_CHECKING:
     from infrahub.git.models import RepositoryData
 
 
-@task(
-    name="gather-python-transform-attributes",
-    task_run_name="Gather Python transform attributes for {branch_name}",
-    cache_policy=NONE,
-)
 async def gather_python_transform_attributes(
     db: InfrahubDatabase, branch_name: str, repositories: dict[str, RepositoryData] | None = None
 ) -> list[PythonTransformComputedAttribute]:
