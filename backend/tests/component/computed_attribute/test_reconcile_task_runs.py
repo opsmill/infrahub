@@ -21,6 +21,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.events.branch_action import BranchDeletedEvent
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
@@ -109,6 +110,7 @@ class ReconcileRun:
     worker: EventsWorker
     context: EventContext
     label: str
+    transform_id: str
 
 
 @dataclass
@@ -131,8 +133,40 @@ async def count_branch_deleted(run: ReconcileRun) -> int:
     )
 
 
+async def count_schema_updated(run: ReconcileRun) -> int:
+    return await count_task_runs(
+        worker=run.worker,
+        flow_run=computed_attribute_setup_python(
+            context=run.context,
+            branch_name=registry.default_branch,
+            event_name=SchemaUpdatedEvent.event_name,
+            return_state=True,
+        ),
+    )
+
+
+def count_transform_lifecycle(action: MutationAction) -> Callable[[ReconcileRun], Awaitable[int]]:
+    async def count(run: ReconcileRun) -> int:
+        return await count_task_runs(
+            worker=run.worker,
+            flow_run=process_transform_lifecycle(
+                branch_name=registry.default_branch,
+                transform_id=run.transform_id,
+                action=action.value,
+                context=run.context,
+                return_state=True,
+            ),
+        )
+
+    return count
+
+
 RECONCILE_COUNT_CASES = [
     ReconcileCountCase(name="branch_deleted", count_task_runs=count_branch_deleted),
+    ReconcileCountCase(name="schema_updated", count_task_runs=count_schema_updated),
+    ReconcileCountCase(name="transform_created", count_task_runs=count_transform_lifecycle(MutationAction.CREATED)),
+    ReconcileCountCase(name="transform_updated", count_task_runs=count_transform_lifecycle(MutationAction.UPDATED)),
+    ReconcileCountCase(name="transform_deleted", count_task_runs=count_transform_lifecycle(MutationAction.DELETED)),
 ]
 
 
@@ -195,7 +229,11 @@ class TestReconcileTaskRuns(ScopedRecomputeTestBase):
         events_worker: EventsWorker,
     ) -> dict[str, int]:
         run = ReconcileRun(
-            db=db, worker=events_worker, context=self._context(admin_account, default_branch), label="few"
+            db=db,
+            worker=events_worker,
+            context=self._context(admin_account, default_branch),
+            label="few",
+            transform_id=transform_dataset["transform01"],
         )
         return await count_every_case(run=run, extra_branches=EXTRA_BRANCHES_FEW)
 
@@ -205,11 +243,16 @@ class TestReconcileTaskRuns(ScopedRecomputeTestBase):
         db: InfrahubDatabase,
         default_branch: Branch,
         admin_account: CoreAccount,
+        transform_dataset: dict[str, str],
         events_worker: EventsWorker,
         counts_with_2_branches: dict[str, int],
     ) -> dict[str, int]:
         run = ReconcileRun(
-            db=db, worker=events_worker, context=self._context(admin_account, default_branch), label="many"
+            db=db,
+            worker=events_worker,
+            context=self._context(admin_account, default_branch),
+            label="many",
+            transform_id=transform_dataset["transform01"],
         )
         return await count_every_case(run=run, extra_branches=EXTRA_BRANCHES_MANY)
 

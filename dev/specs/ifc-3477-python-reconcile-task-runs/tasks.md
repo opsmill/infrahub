@@ -93,7 +93,7 @@ description: "Task list for a fixed number of task runs per Python computed-attr
 
 ### Tests for User Story 2
 
-- [ ] T015 [US2] In `backend/tests/component/computed_attribute/test_reconcile_task_runs.py`, add these cases to `RECONCILE_COUNT_CASES`:
+- [X] T015 [US2] In `backend/tests/component/computed_attribute/test_reconcile_task_runs.py`, add these cases to `RECONCILE_COUNT_CASES`:
   - `schema_updated` runs `computed_attribute_setup_python(context=..., branch_name=<default branch>, event_name=SchemaUpdatedEvent.event_name)`.
   - `transform_created`, `transform_updated` and `transform_deleted` run `process_transform_lifecycle(branch_name=<default branch>, transform_id=<transform01 id from transform_dataset>, action=MutationAction.<CREATED|UPDATED|DELETED>.value, context=...)`. Follow `test_transform_lifecycle_recompute.py`.
   - The `transform_deleted` case only reconciles. It does not need the transform to be deleted first.
@@ -101,8 +101,8 @@ description: "Task list for a fixed number of task runs per Python computed-attr
 
 ### Verification for User Story 2
 
-- [ ] T016 [US2] Run `uv run pytest backend/tests/component/computed_attribute/test_reconcile_task_runs.py -v`. All cases MUST pass with T012 in place.
-- [ ] T017 [US2] Repeat the T014 check for the new cases: with the decorator put back, `schema_updated`, `transform_created`, `transform_updated` and `transform_deleted` MUST fail. Then remove the decorator again.
+- [X] T016 [US2] Run `uv run pytest backend/tests/component/computed_attribute/test_reconcile_task_runs.py -v`. All cases MUST pass with T012 in place.
+- [X] T017 [US2] Repeat the T014 check for the new cases: with the decorator put back, `schema_updated`, `transform_created`, `transform_updated` and `transform_deleted` MUST fail. Then remove the decorator again.
 
 **Checkpoint**: Every event that runs the reconcile records a fixed number of task runs.
 
