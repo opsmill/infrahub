@@ -106,19 +106,24 @@ class TestInfrahubDocker:
         try:
             infrahub_compose.start()
         except Exception as exc:
-            stdout, stderr = infrahub_compose.get_logs()
+            try:
+                stdout, stderr = infrahub_compose.get_logs()
+            finally:
+                infrahub_compose.stop()
             raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
 
         yield infrahub_compose.get_services_port()
 
-        tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
-        if tests_failed_during_class > 0:
-            stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
-            warnings.warn(
-                f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
-                stacklevel=2,
-            )
-        infrahub_compose.stop()
+        try:
+            tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
+            if tests_failed_during_class > 0:
+                stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
+                warnings.warn(
+                    f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
+                    stacklevel=2,
+                )
+        finally:
+            infrahub_compose.stop()
 
     @pytest.fixture(scope="class")
     def infrahub_port(self, infrahub_app: dict[str, int]) -> int:

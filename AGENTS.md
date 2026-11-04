@@ -83,9 +83,11 @@ unbuffered through the pipe). Inspect with docker/curl from a separate shell,
 then kill the process once done — pdb cannot receive commands over the dummy
 stdin. Match the node id, not the literal shell line (a bare
 `pkill -f <pattern>` kills your own shell if the pattern appears in its
-command line). Killing pytest skips the fixture teardown, so sweep the
-leftover stack afterwards: `docker compose -p $PROJECT down -v
---remove-orphans`.
+command line). Killing pytest skips the fixture teardown. Ryuk, the
+testcontainers cleanup container, then removes the stack about 10 seconds
+later. Each other client that sends data to Ryuk's published port delays that
+removal by about 30 seconds, so when `docker ps --filter name=$PROJECT` still lists the
+stack, remove it with `docker compose -p $PROJECT down -v --remove-orphans`.
 
 See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
