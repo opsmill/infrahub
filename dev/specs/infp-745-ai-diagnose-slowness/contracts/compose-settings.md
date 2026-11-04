@@ -13,15 +13,22 @@ standalone file generated from it.
 | `COMPOSE_PROFILES=grafana-mcp` (or `--profile grafana-mcp`) | Not set | Turns the Grafana MCP server on. Without it, the two services are not created. |
 | `INFRAHUB_GRAFANA_MCP_TOKEN` | None | The token that AI assistants send as `Authorization: Bearer`. Required when the profile is on. |
 | `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` | `localhost:8100,127.0.0.1:8100` | The `Host` values the server accepts. Change it when the server is published on another host name or port. |
-| `INFRAHUB_GRAFANA_ADMIN_USER` | `admin` | The Grafana admin user that the service account step uses. |
-| `INFRAHUB_GRAFANA_ADMIN_PASSWORD` | `admin` | Its password. Set it when the Grafana admin password was changed. |
+| `INFRAHUB_GRAFANA_ADMIN_USER` | `admin` | The Grafana admin user. Read by the Grafana service (`GF_SECURITY_ADMIN_USER`) and by the service account step, so one setting changes both. |
+| `INFRAHUB_GRAFANA_ADMIN_PASSWORD` | `admin` | Its password, read the same way. The docs say to change it when the server is turned on (spec FR-025). Grafana applies it only when its data volume is created; a password changed later in the Grafana UI must be set here too. |
 
 ## Services
 
 | Service | Profile | Image | Port | Restart |
 |---------|---------|-------|------|---------|
 | `infrahub-grafana-mcp-init` | `grafana-mcp` | Image with `curl` (research R5) | None | None: runs once |
-| `infrahub-grafana-mcp` | `grafana-mcp` | `grafana/mcp-grafana:2.0.2` | `8100:8000` | See below |
+| `infrahub-grafana-mcp` | `grafana-mcp` | `grafana/mcp-grafana:2.0.2`, pinned by digest too | `127.0.0.1:8100:8000` | See below |
+
+The port listens only on the host's loopback address (spec FR-006). To reach the server from another
+computer, the operator uses an SSH tunnel (`ssh -L 8100:127.0.0.1:8100 <host>`) or a reverse proxy
+with TLS, and adds the proxy's host name to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`.
+
+The image digest is written next to the tag in the Compose file. The entrypoint check stays valid
+when a later `mcp-grafana` release refuses to start without a token on its own.
 
 `infrahub-grafana-mcp` waits for `infrahub-grafana-mcp-init` with
 `condition: service_completed_successfully`.
@@ -31,8 +38,8 @@ The server runs with:
 - `--transport streamable-http --address 0.0.0.0:8000`
 - `--allowed-hosts ${INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS}`
 - `--usage-stats=disabled`, and `DO_NOT_TRACK=1`
-- `--disable-write --enable-write-tools=<dashboard, folder and annotation tools> --disable-api`
-  (FR-010, research R4)
+- `--disable-write --disable-api` in 1.13 (FR-010, research R4). The release of story 4 adds
+  `--enable-write-tools=<dashboard, folder and annotation tools>`.
 - `GRAFANA_URL=http://infrahub-grafana:3000`
 - `GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE` pointing to the token file in the volume `grafana_mcp_token`,
   mounted read-only
@@ -40,8 +47,9 @@ The server runs with:
 **Restart policy.** When the token is missing, the entrypoint exits with code 1. With
 `unless-stopped`, Docker would restart the container in a loop, and the spec requires that it does not
 start (FR-004). Without a `restart` key, the server does not come back after the Docker host restarts.
-The choice is made at implementation, between no `restart` key and `on-failure:1`, after a check on a
-running stack. The unit test checks the chosen value.
+The choice between no `restart` key and `on-failure:1` is the first task of the Compose phase: check
+both on a running stack, after a missing token and after a restart of Docker, and record the result
+here before the service is written. The unit test checks the chosen value.
 
 ## Messages
 

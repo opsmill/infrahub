@@ -13,10 +13,12 @@ phase 7 of the design document). The work has three parts, in three repositories
 - **The Grafana MCP server in the stack.** Two services in a Compose profile, `grafana-mcp`, off by
   default: the server itself, and a one-time container that creates its Grafana service account and
   token. The same in the `infrahub-observability` Helm chart, with a hook Job. The server refuses to
-  start without the token that AI assistants send, sends no usage statistics, and keeps only the
-  write tools for dashboards, folders and annotations ([research.md](research.md) R1 to R5).
+  start without the token that AI assistants send, sends no usage statistics, and keeps no write tool
+  in 1.13 ([research.md](research.md) R1 to R5). Building dashboards (story 4) comes in a later
+  release.
 - **The skill** `infrahub-diagnosing-performance` in `opsmill/infrahub-skills`: version check, data
-  source check, durations, component, trace, logs, report with evidence, and dashboards. Each rule has
+  source check, durations, component, trace, logs, report with evidence, and a description of the
+  missing panel when the dashboards do not answer (FR-017a). Each rule has
   a grader and four fixtures (R6, R7).
 - **The log audit and its fixes** in this repository: remove URL query strings and the email address
   from the log lines that the first pass found, check the possible findings on a running instance,
@@ -32,6 +34,7 @@ Python 3.14 (backend log fixes, the standalone converter and its unit tests), Ma
 **Primary Dependencies**: `grafana/mcp-grafana:2.0.2` (new image); an image with `curl` for the init
 script (new image or new use of an image, R5); Grafana 11.4.0 (Compose) and 11.1.5 (Helm, chart
 `grafana` 8.5.0), unchanged. The new images need the engineering approval for new dependencies (R10).
+Each new image is pinned by tag and by digest, because a tag can be moved.
 
 **Storage**: A named Compose volume and a Kubernetes Secret for the Grafana service account token. No
 database change.
@@ -41,8 +44,12 @@ database change.
 - `backend/tests/unit/test_observability_compose.py`: the two services, the profile, the variables and
   the standalone file.
 - Backend unit tests for each log fix (`backend/tests/unit/`).
+- A component test with testcontainers that starts Grafana 11.1.5 and 11.4.0, runs the service
+  account script twice, and checks that one token exists and still works (`backend/tests/component/`).
 - `helm template` and `helm lint` tests in `infrahub-helm`, as that repository runs them.
-- `skillgrade` evals with four fixtures per rule in `infrahub-skills`.
+- `skillgrade` evals with four fixtures per rule in `infrahub-skills`. Before the fixtures are
+  committed to that public repository, they are reviewed for host names, account names, tokens and
+  other values from the recording stack.
 - The manual checks in [quickstart.md](quickstart.md) on a Compose stack and a kind cluster.
 
 **Target Platform**: Docker Compose and Kubernetes (Helm). AI assistants on the user's computer that
@@ -55,6 +62,7 @@ speak MCP over Streamable HTTP, such as Claude Code.
 **Constraints**:
 
 - With the profile off, no new container is created (FR-001).
+- The server listens on `127.0.0.1` by default (Compose) or on a `ClusterIP` Service (Helm) (FR-006).
 - No new outbound connection from the operator's network (FR-008).
 - The skill finds data sources by type, never by UID (FR-013).
 
@@ -73,7 +81,7 @@ log fixes, 4 docs pages, 1 `AGENTS.md` rule. In `infrahub-helm`: about 6 templat
 | III. Type Safety & Explicit Contracts | Pass | Log fixes keep type hints. The settings, values and report format are in [contracts/](contracts/) before implementation. |
 | IV. Test Discipline | Pass with one exception | Unit tests for the Compose files and the log fixes; evals for the skill. No pytest-playwright test: the feature has no web interface page. See Complexity Tracking. |
 | V. Query Performance & Efficiency | Pass | No Cypher query. |
-| VI. Security & Input Boundaries | Pass, pending two approvals | The server requires a token with no default (FR-003 to FR-005); only the dashboard, folder and annotation write tools are kept, with an Editor service account (FR-010, R4); no usage statistics. The new images need the dependency approval, and the container needs a security review (R10). Neither is given yet; both are release conditions in the spec. |
+| VI. Security & Input Boundaries | Pass, pending two approvals | The server requires a token with no default (FR-003 to FR-005); in 1.13 no write tool is kept, with a Viewer service account (FR-010, R4); no usage statistics. The new images need the dependency approval, and the container needs a security review (R10). Neither is given yet; both are release conditions in the spec. |
 | VII. Simplicity & Maintainability | Pass | Reuses the Compose profile and one-time container patterns of the stack, and the hook Job pattern of `infrahub-helm`. No new backend abstraction: each log line is fixed where it is written. |
 | Ask First (root `AGENTS.md`) | Pending | New dependencies: `grafana/mcp-grafana` and the init image. The approval is asked before the Compose change is merged. |
 
@@ -109,6 +117,7 @@ development/
 ├── grafana-mcp/
 │   ├── entrypoint.sh                            # New: token check, then exec mcp-grafana (FR-004)
 │   └── create-service-account.sh                # New: init script, shared with the Helm chart (FR-009)
+├── alloy/config.alloy                           # drop rules for third-party log lines, if the audit needs them (FR-022a)
 ├── convert_compose_standalone.py                # Keeps the profiles key of the grafana-mcp services (R1)
 ├── docker-compose-observability-standalone.yml  # Regenerated
 └── grafana/AGENTS.md                            # Rule: a rename updates the skill (FR-020)
@@ -122,6 +131,9 @@ backend/infrahub/
 backend/tests/unit/
 ├── test_observability_compose.py                # Profile, variables, entrypoint, standalone file
 └── ...                                          # One test per log fix, next to the module it tests
+
+backend/tests/component/
+└── test_grafana_mcp_service_account.py          # Init script on Grafana 11.1.5 and 11.4.0, run twice
 
 docs/docs/
 ├── deploy-manage/install-configure/install/observability-stack.mdx   # Connect an AI assistant (FR-025, FR-026)
@@ -162,10 +174,22 @@ docs pull request is merged only when the skill is published.
 
 ## Phases of the work
 
-1. **Log audit and fixes** (this repository). Finish the audit from R8, including the runtime checks,
-   write `log-audit.md`, and fix each confirmed line. Release condition.
-2. **Compose services.** Profile, entrypoint check, init container, converter, tests, standalone file.
-3. **Helm chart** (`infrahub-helm`).
+1. **Audit and fixes** (this repository). Release condition.
+   - Finish the audit of Infrahub's own log lines from R8, including the runtime checks, and fix each
+     confirmed line where it is written.
+   - Audit every other log stream in Loki, by container, the metric labels in Prometheus, the
+     resource attributes of traces and the Grafana MCP server's own logs (FR-022).
+   - For each value found in a stream that Infrahub does not write: an Alloy `drop` rule in
+     `development/alloy/config.alloy` and in the Helm chart's Alloy, or an entry in the docs
+     (FR-022a).
+   - Record everything in `log-audit.md`.
+2. **Compose services.** First task: check on a running stack how the two restart options behave
+   after a missing token and after a Docker restart, and record the choice in
+   [contracts/compose-settings.md](contracts/compose-settings.md). Then: profile, entrypoint check,
+   init container, Grafana admin variables, converter, tests, standalone file.
+3. **Helm chart** (`infrahub-helm`). First task: start the image in kind with the probe settings of
+   [contracts/helm-values.md](contracts/helm-values.md) and confirm that the probes pass. Then the
+   templates.
 4. **Skill** (`infrahub-skills`). Fixtures recorded from phase 2.
 5. **Docs and rules.** `observability-stack.mdx`, Build with AI pages, FAQ, `development/grafana/AGENTS.md`,
    `observability.md`.
@@ -174,9 +198,10 @@ Phases 1 and 2 can run in parallel. Phase 4 needs phase 2.
 
 ## Decisions made during planning
 
-- **Write tools** (R4): only the dashboard, folder and annotation write tools are kept, with an Editor
-  service account, instead of all write tools as D10 says. Decided by Daniel on 2026-11-04; FR-010 of
-  the spec was changed to match.
+- **Write tools** (R4): in 1.13, no write tool, with a Viewer service account, instead of all write
+  tools as D10 says. Story 4 (building dashboards) moves to a later release, which keeps only the
+  dashboard, folder and annotation write tools with an Editor service account. Decided by Daniel on
+  2026-11-04; FR-010, FR-017, FR-017a, FR-018 and SC-006 of the spec were changed to match.
 
 ## Complexity Tracking
 

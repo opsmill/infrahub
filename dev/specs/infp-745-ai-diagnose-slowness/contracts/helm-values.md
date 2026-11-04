@@ -47,6 +47,14 @@ grafanaMcp:
 
 ## What the operator shares with users
 
-The URL that reaches the Service, for example through an Ingress or
-`kubectl port-forward svc/<release>-grafana-mcp 8100:8000`, and the caller token. When the URL uses
-another host name or port, `allowedHosts` must contain it.
+The URL that reaches the Service, and the caller token. The Service is `ClusterIP` by default, so the
+server is not reachable from outside the cluster (spec FR-006). The user reaches it with
+`kubectl port-forward svc/<release>-grafana-mcp 8100:8000`, or through an Ingress that the operator
+adds. The server serves plain HTTP, so an Ingress MUST use TLS. When the URL uses another host name or
+port, `allowedHosts` must contain it.
+
+## Checks before the templates are written
+
+- Start the image in kind with the probe settings above and confirm that the probes pass (research
+  R3, `/healthz` and the `Host` check are not verified).
+- Pin the image by digest next to the tag, as in Compose.

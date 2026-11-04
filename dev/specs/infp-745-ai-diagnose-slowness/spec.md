@@ -29,20 +29,38 @@ personal data in traces and logs must not be there.
   Each user connects their AI assistant to it with one URL and that token.
 - A skill, `infrahub-diagnosing-performance`, runs the checks in a fixed order, finds the slow
   component from the stack's metrics, traces and logs, and writes a report with the evidence.
-- When the shipped dashboards do not answer the question, the skill builds or changes a dashboard and
-  asks whether to contribute it to OpsMill.
+- When the shipped dashboards do not answer the question, the skill describes the query and the panel
+  that would answer it, so the operator can add it in Grafana. Building the dashboard itself and
+  offering it to OpsMill come in a later release (story 4).
 - No token, password, email address or user name that Infrahub writes reaches the AI model provider. A
   log audit lists where Infrahub writes personal data into logs, and each finding is fixed where the
   line is written.
 - Nothing leaves the operator's network without their choice, including the Grafana MCP server's
   usage statistics.
 
+**Customer evidence.** An Enterprise customer, during its proof of concept in September and October
+2026:
+
+- had a slowness case: load shedding and exhausted API workers while about 12,000 computed attributes
+  were updated. OpsMill connected Grafana to watch CPU spikes and the back-offs of the web interface, and an
+  OpsMill engineer helped read the observability data
+  ([POC update in Slack, 2026-09-29](https://opsmillworkspace.slack.com/archives/C0BAHJT7FK5/p1790701544445299?thread_ts=1790701544.445299&cid=C0BAHJT7FK5));
+- built a Grafana dashboard with an AI assistant through a Grafana MCP server
+  ([Slack message, 2026-09-30](https://opsmillworkspace.slack.com/archives/D0C3E146LBE/p1790756990768129),
+  a direct message that only its participants can open);
+- showed in a session with OpsMill how useful the Grafana MCP server was to connect its observability
+  data to its own AI agents (Daniel, 2026-11-04). No written record of that session is known.
+
+The customer is not named here because this repository is public; the Slack links are readable only
+by OpsMill staff.
+
 **Not decided yet.**
 
 - Whether the Solution Engineering and Architecture team, which owns `infrahub-skills`, agrees to host
   the skill. Not asked yet.
 - Whether the installation can create the Grafana service account and its token. Not verified.
-- Whether the Grafana MCP server container passes a security review. Not done.
+- Whether the Grafana MCP server container passes a security review. Not done. Fatih Acar does it
+  (clarification of 2026-11-04); the date is not set.
 - The skill name `infrahub-diagnosing-performance` is a first draft.
 
 ## Clarifications
@@ -56,7 +74,35 @@ personal data in traces and logs must not be there.
   dashboards, folders and annotations, which the skill uses (D8). The tools for data sources, plugins,
   alert rules, silences and the tool that calls any Grafana API route are off, and the Grafana service
   account has the Editor role, which cannot create data sources or install plugins (FR-010,
-  [research.md](research.md) R4).
+  [research.md](research.md) R4). Replaced for 1.13 by the next answer.
+- Q: Does building dashboards (story 4) ship in 1.13? It is the only story that needs write tools. →
+  A: No. 1.13 ships a server that only reads: no write tools, and a Grafana service account with the
+  Viewer role (FR-010). Story 4, FR-017 and FR-018 come in a later release, with the write tools of
+  the previous answer. In 1.13, when the dashboards do not answer the question, the skill describes
+  the query and the panel instead (FR-017a). Reason: a smaller security review for the 1.13 release
+  condition, and the diagnosis, which is the main value, does not need write tools.
+- Q: Who does the security review of the Grafana MCP server container? No source names one. → A:
+  Fatih Acar, from Daniel's team, who reviewed the INFP-742 masking and retention decisions. The date
+  is not set; the card's goals place the four release conditions in the first weeks of 1.13.
+- Q: Which customer cases show the need for an AI-assisted diagnosis? → A: An Enterprise customer's
+  proof of concept: a slowness case read with Grafana, a dashboard built with AI through a Grafana MCP
+  server, and a session where the customer showed the use of the Grafana MCP server with its own
+  agents. See "Customer evidence" in the Summary. The customer is not named because the repository is
+  public (decided by Daniel).
+
+### Critique of 2026-11-04
+
+Source: [critiques/critique-20261104-142632.md](critiques/critique-20261104-142632.md). Daniel chose to
+apply all its suggested edits.
+
+- Loki holds the logs of every container of the Compose project, not only Infrahub's, so the log audit
+  covers every log stream in Loki, the metric labels and the trace resource attributes (FR-022,
+  FR-022a, SC-004).
+- The server listens only on the host's loopback address by default. Access from another computer goes
+  through an SSH tunnel or a reverse proxy with TLS (FR-006, FR-025).
+- Smaller changes: token rotation and the Grafana admin password in the docs (FR-025); the next step
+  when no trace was sampled (story 2, scenario 5); the eval pass criterion (SC-003); a measure after
+  release (SC-008).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -115,6 +161,10 @@ names the slow query and its component (design document, section 6, test for D8)
    runs, **Then** it finds the data sources at run time and runs its checks.
 4. **Given** the operator's own Grafana with Prometheus, Tempo and Loki data sources that hold
    Infrahub's data, **When** the skill runs, **Then** it works as with the shipped stack.
+5. **Given** no trace was sampled for the slow requests, **When** the skill reaches the trace check,
+   **Then** the report says so and gives the next step: a super admin raises the sampling ratio for a
+   limited time without a restart ([INFP-742 spec](../infp-742-find-slow-component/spec.md), FR-026
+   to FR-031), and the operator asks again after the slowness happens.
 
 ---
 
@@ -143,7 +193,11 @@ No response contains these values.
 
 ---
 
-### User Story 4 - Build a missing dashboard and contribute it (Priority: P2)
+### User Story 4 - Build a missing dashboard and contribute it (Priority: P2, later release)
+
+Not in 1.13 (clarification of 2026-11-04). This story ships in a later release, when the server keeps
+the dashboard, folder and annotation write tools. In 1.13, the skill describes the missing query and
+panel instead (FR-017a).
 
 The operator needs a view that the shipped dashboards do not have. They ask the assistant to build it
 instead of editing it by hand in Grafana. When the dashboard helped, the skill asks whether to
@@ -169,7 +223,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 ### Edge Cases
 
 - No slow trace is available, because tracing is off or the sampling ratio missed the slow requests:
-  the report says that no trace was found and why, and lists the findings from metrics alone.
+  the report says that no trace was found and why, lists the findings from metrics alone, and gives
+  the next step (story 2, scenario 5).
 - The instance runs Infrahub 1.12 or earlier: the skill says that the version is not supported and
   that the operator must upgrade to 1.13 or later (FR-021).
 - The slow trace is older than 24 hours: Loki keeps logs 24 hours
@@ -182,7 +237,7 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - A metric, a span or a dashboard UID that the skill reads is renamed: the skill breaks. A rule in
   [`development/grafana/AGENTS.md`](../../../development/grafana/AGENTS.md) requires updating the skill
   in the same change.
-- Anyone with the shared token reads and writes in Grafana, and Grafana cannot tell which person ran
+- Anyone with the shared token reads all telemetry in Grafana, and Grafana cannot tell which person ran
   which query. Each person's own Grafana token is an option for operators who need to know (FR-010).
 - The installation cannot create the Grafana service account and its token: not known yet. The
   operator would then set two tokens by hand, as today.
@@ -205,7 +260,10 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - **FR-005**: The server MUST reject a request that has no token or a wrong token. Clients send the
   token as `Authorization: Bearer` (D10, verified with `mcp-grafana` 2.0.2 on 2026-10-14).
 - **FR-006**: A user MUST connect their AI assistant with one URL and the token, and no other step
-  (D10).
+  (D10). By default, the server MUST listen only on the loopback address of the host (Compose) or on
+  a cluster-internal Service (Helm), because it serves plain HTTP and the token is its only
+  protection. Access from another computer goes through an SSH tunnel, `kubectl port-forward` or a
+  reverse proxy with TLS that the operator sets up (critique of 2026-11-04).
 - **FR-007**: The server MUST accept requests addressed to its published address. The default allowed
   hosts are `localhost:8100` and `127.0.0.1:8100`, and the operator changes them with one setting
   (D10).
@@ -216,12 +274,14 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   container uses to reach Grafana, so that the operator sets only the token that AI assistants send.
   Grafana cannot create a service account from a provisioning file, so a one-time step calls the
   Grafana API: a job in Helm and a one-time container in Compose. Not verified yet (D10, section 6).
-- **FR-010**: The server MUST keep only the write tools for dashboards, folders and annotations, so
-  that the skill can build dashboards and add annotations (D8). It MUST NOT keep the write tools for
-  data sources, plugins, alert rules, silences, contact points, snapshots or incidents, nor the tool
-  that calls any Grafana API route. The Grafana service account MUST have the Editor role
-  (clarification of 2026-11-04; this replaces "write tools enabled" in D10). Each person's own Grafana token, instead of the shared token, is an option
-  for operators who need to know who ran which query (card, "Nice to have").
+- **FR-010**: In 1.13, the server MUST keep no write tool and MUST NOT keep the tool that calls any
+  Grafana API route. The Grafana service account MUST have the Viewer role (clarification of
+  2026-11-04; this replaces "write tools enabled" in D10). In the later release of story 4, the server
+  keeps only the write tools for dashboards, folders and annotations, and the service account gets the
+  Editor role; the write tools for data sources, plugins, alert rules, silences, contact points,
+  snapshots and incidents stay off. Each person's own
+  Grafana token, instead of the shared token, is an option for operators who need to know who ran
+  which query (card, "Nice to have").
 
 #### Diagnostic skill and dashboards (stories 2 and 4)
 
@@ -240,12 +300,15 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   trace ID or the log line, so that the operator can open it in Grafana.
 - **FR-016**: The skill MUST work with the operator's own Grafana when it has Prometheus, Tempo and
   Loki data sources with Infrahub's data (card, solution overview).
-- **FR-017**: When the shipped dashboards do not answer the question, the skill MUST build or change a
-  dashboard in Grafana. The shipped dashboards stay in OpsMill's repositories and are restored at
-  upgrade (D8).
-- **FR-018**: When a dashboard helped, the skill MUST ask the user whether to contribute it. On a yes,
-  it exports the dashboard and proposes it as a GitHub issue or pull request on
-  [`development/grafana`](../../../development/grafana). It MUST send nothing to GitHub without the
+- **FR-017** (later release, story 4): When the shipped dashboards do not answer the question, the
+  skill MUST build or change a dashboard in Grafana. The shipped dashboards stay in OpsMill's
+  repositories and are restored at upgrade (D8).
+- **FR-017a** (1.13): When the shipped dashboards do not answer the question, the skill MUST describe
+  the query and the panel that would answer it, with the data source, so that the operator can add
+  it in Grafana by hand. The skill MUST NOT try to change Grafana.
+- **FR-018** (later release, story 4): When a dashboard helped, the skill MUST ask the user whether to
+  contribute it. On a yes, it exports the dashboard and proposes it as a GitHub issue or pull request
+  on [`development/grafana`](../../../development/grafana). It MUST send nothing to GitHub without the
   user's yes (D8).
 - **FR-019**: The skill and `infrahub-analyzing-diagnostics` MUST each list the other under
   `DO NOT TRIGGER`, so that an AI assistant picks the live diagnosis or the support bundle analysis
@@ -259,11 +322,21 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 
 #### Log audit and personal data in traces and logs (story 3)
 
-- **FR-022**: A log audit MUST list each log line in which Infrahub writes a token, a password, an
-  email address, a user name, a client IP address or a URL query string, with its file and its
-  field. It MUST cover the API server, the task workers, the Prefect and gunicorn logs, and the flow
-  run logs that the task workers send to the Prefect server (card, open questions; D9). The result is
-  recorded in this feature directory.
+- **FR-022**: An audit MUST list each place where a token, a password, an email address, a user name,
+  a client IP address or a URL query string reaches the data that the Grafana MCP server can return,
+  with its source and its field (card, open questions; D9; critique of 2026-11-04). It MUST cover:
+  - the log lines that Infrahub writes: the API server, the task workers, the Prefect and gunicorn
+    logs, and the flow run logs that the task workers send to the Prefect server;
+  - every other log stream that the stack sends to Loki, listed by container. In Compose, Alloy sends
+    the logs of every container of the project (`development/alloy/config.alloy`): Neo4j, RabbitMQ,
+    Redis, the Prefect server and its database, Grafana and the Grafana MCP server itself. For Helm,
+    the pods that the chart's Alloy collects (not checked yet);
+  - the labels of the metrics in Prometheus, and the resource attributes of traces.
+
+  The result is recorded in this feature directory.
+- **FR-022a**: For a value that the audit finds in a log stream that Infrahub does not write and
+  cannot change, the stack MUST either stop sending that stream, or those lines, to Loki, or the docs
+  MUST name it (FR-026). The audit records which of the two applies.
 - **FR-023**: Each log line that the audit lists MUST be fixed where the line is written. Infrahub does
   not mask log lines ([INFP-742 spec](../infp-742-find-slow-component/spec.md), FR-013, clarification
   of 2026-10-19).
@@ -274,11 +347,18 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 #### Docs for connecting an AI assistant
 
 - **FR-025**: [`observability-stack.mdx`](../../../docs/docs/deploy-manage/install-configure/install/observability-stack.mdx)
-  MUST explain how to turn on the Grafana MCP server, set the token, change the allowed hosts and
-  connect an AI assistant (D10).
+  MUST explain:
+  - how to turn on the Grafana MCP server, set the token, change the allowed hosts and connect an AI
+    assistant (D10);
+  - how to reach the server from another computer: SSH tunnel, `kubectl port-forward`, or a reverse
+    proxy with TLS (FR-006);
+  - how to change the token, and that the change needs a restart of the container;
+  - that the default Grafana admin password must be changed when the server is turned on, and which
+    setting the service account step reads it from.
 - **FR-026**: The docs MUST say which data reaches the AI model provider: Infrahub masks tokens, user
   names, email addresses, client IP addresses and URL query strings in spans, and keeps Cypher text,
-  URL paths and query names readable (D9).
+  URL paths and query names readable (D9). They MUST also name each log stream that the audit lists
+  under FR-022a.
 - **FR-027**: The Build with AI pages ([`index.mdx`](../../../docs/docs/overview/build-with-ai/index.mdx):
   "Where to start" table and MCP table; [`setup.mdx`](../../../docs/docs/overview/build-with-ai/setup.mdx):
   prerequisites; [`working-with-ai.mdx`](../../../docs/docs/overview/build-with-ai/working-with-ai.mdx))
@@ -287,7 +367,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 ### Key Entities
 
 - **Grafana MCP server container**: a container in the observability stack that gives an AI assistant
-  tools to read and write in the stack's Grafana. Off by default. Has a published address, a list of
+  tools to read the stack's Grafana (and, from the release of story 4, to write dashboards, folders and
+  annotations). Off by default. Has a published address, a list of
   allowed hosts and one shared token.
 - **Token for AI assistants**: the value that each AI assistant sends to the Grafana MCP server. Set
   by the operator, no default value, shared with the users who diagnose the instance.
@@ -297,7 +378,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   diagnose a slow instance. Depends on Infrahub's metric names, span names and dashboard UIDs.
 - **Diagnosis report**: the findings of one diagnosis. Names the slow component and, for each finding,
   the metric query, trace ID or log line it comes from.
-- **Log audit result**: the list of log lines that write personal data, with file, field and fix.
+- **Audit result**: the list of places where personal data or a secret reaches Loki, Tempo or
+  Prometheus, with source, field and fix, or the docs entry for a stream that cannot be fixed.
 
 ## Success Criteria *(mandatory)*
 
@@ -308,16 +390,25 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - **SC-002**: With the setting off, 0 Grafana MCP server containers run. With the setting on and no
   token, the container does not start. Every request without the token or with a wrong token is
   rejected (D10 test).
-- **SC-003**: For every eval fixture of a known slow query, the skill names the slow query and its
-  component, and gives the evidence for each finding (D8 test).
+- **SC-003**: For the eval fixtures of a known slow query, the skill names the slow query and its
+  component, and gives the evidence for each finding (D8 test). The skill passes the eval threshold
+  of `infrahub-skills` (today 3 trials and a 50 % pass rate); a stricter threshold for this skill is
+  agreed with the repository owners if they accept one.
 - **SC-004**: After a single sign-on login and requests that carry a token, a user name and an email
-  address, 0 of these values appear in the traces and logs that the Grafana MCP server returns for
-  that time window (D9 test).
+  address, 0 of these values appear in the traces, in any log stream in Loki and in the metric labels
+  that the Grafana MCP server returns for that time window, apart from the streams that the docs name
+  under FR-022a (D9 test).
 - **SC-005**: During a diagnosis, the Grafana MCP server container opens 0 connections to hosts outside
   the operator's network.
-- **SC-006**: Asked for a view that the shipped dashboards do not have, the skill builds a dashboard
-  and offers to contribute it. 0 issues or pull requests are created without the user's yes (D8 test).
-- **SC-007**: Every log line that the log audit lists is fixed before the release.
+- **SC-006**: In 1.13, asked for a view that the shipped dashboards do not have, the skill describes
+  the query and the panel, and makes 0 changes in Grafana. In the later release of story 4, it builds
+  a dashboard and offers to contribute it, and 0 issues or pull requests are created without the
+  user's yes (D8 test).
+- **SC-007**: Every log line that the log audit lists is fixed before the release, or, for a stream
+  that Infrahub does not write, stopped or named in the docs (FR-022a).
+- **SC-008**: After release, OpsMill support counts the slowness cases that arrive with a report from
+  the skill, over the first two releases after 1.13. The measure needs no telemetry, because nothing
+  leaves the operator's network (FR-008). No target is set: the first count is the baseline.
 
 ## Assumptions
 
@@ -335,6 +426,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   server (D8).
 - The Grafana MCP server is a new container image in Compose and Helm. It needs the engineering
   approval for new dependencies, which is not given yet.
+- The audit (FR-022) covers the containers of the Compose project and the pods of the Helm chart. An
+  operator's own Grafana can hold other data, which the operator is responsible for.
 
 ### Conditions for the 1.13 release
 
@@ -343,8 +436,9 @@ The card's goals make the release in 1.13 depend on four items, closed in the fi
 - The log audit (FR-022).
 - The agreement of the Solution Engineering and Architecture team to host the skill in
   `infrahub-skills`.
-- The security review of the Grafana MCP server container. Anyone with the token can read all
-  telemetry and change dashboards, folders and annotations (FR-010).
+- The security review of the Grafana MCP server container, by Fatih Acar (date not set). In 1.13,
+  anyone with the token can read all telemetry, and cannot change Grafana (FR-010). The later release
+  of story 4 needs a new review of the write tools.
 - The creation of the Grafana service account and its token at installation (FR-009).
 
 ## Sources

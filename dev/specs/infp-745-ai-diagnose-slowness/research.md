@@ -105,6 +105,13 @@ A web-based client would need it. Not verified with a client.
 Host port 8100 is free in the root Compose file, the observability Compose file and the development
 override.
 
+**Which address the port listens on** (critique of 2026-11-04, E3). A Compose mapping `8100:8000`
+listens on every network interface of the host. The allowed hosts check reads the `Host` header, which
+the client sets, so it does not limit who connects. The server serves plain HTTP, so the token travels
+unencrypted. Decision: publish `127.0.0.1:8100:8000` by default, which matches the default allowed
+hosts. Access from another computer goes through an SSH tunnel or a reverse proxy with TLS that the
+operator sets up. In Helm, the Service stays `ClusterIP`, and an Ingress needs TLS.
+
 ## R4. Which write tools the server keeps
 
 **Facts.** With write tools on, `mcp-grafana` 2.0.2 can:
@@ -123,20 +130,26 @@ tools when `--disable-write` is set), one `--disable-<category>` flag per catego
 In Grafana, a service account with the Editor role can change dashboards, folders, annotations, alert
 rules and silences, but cannot create data sources or install plugins, which need the Admin role.
 
-**Decision** (Daniel, 2026-11-04; spec FR-010). Keep only the write tools that the skill uses:
-`--disable-write --enable-write-tools=<dashboard, folder and annotation tools>`, plus `--disable-api`.
-The Grafana service account has the Editor role.
+**Decision** (Daniel, 2026-11-04; spec FR-010), in two steps:
 
-**Rationale.** D8 needs the skill to build and change dashboards and to add annotations. D10 turns on
-all write tools, and its "Costs us" item names the change of data sources, alert rules and silences,
-and plugin installs as a risk for the security review. The narrower list keeps what D8 needs and
-removes that risk.
+- **1.13:** no write tools. `--disable-write --disable-api`, and the Grafana service account has the
+  Viewer role. Story 4 (building dashboards) is moved to a later release.
+- **Later release of story 4:** keep only the write tools that the skill uses:
+  `--disable-write --enable-write-tools=<dashboard, folder and annotation tools> --disable-api`, and
+  the Editor role.
+
+**Rationale.** D8 needs write tools only so that the skill can build and change dashboards and add
+annotations. The diagnosis itself only reads. D10 turns on all write tools, and its "Costs us" item
+names the change of data sources, alert rules and silences, and plugin installs as a risk for the
+security review. In 1.13 the server only reads, so the security review, which is a release condition,
+judges a smaller risk. The later release adds back only what D8 needs.
 
 **Alternatives considered.**
 
 - All write tools on, as D10 says: the skill does not use the others, and they widen what anyone with
   the token can do in Grafana.
-- Read-only (`--disable-write`): the skill cannot build dashboards (FR-017).
+- The dashboard, folder and annotation write tools already in 1.13: chosen first, then moved to the
+  later release so that the 1.13 security review covers a server that only reads.
 
 The exact tool names for annotations are read from `mcp-grafana` 2.0.2 when the Compose service is
 written.
@@ -165,7 +178,8 @@ written.
 1. Wait until `GET /api/health` answers, for at most 5 minutes.
 2. If the token file (Compose) or Secret (Helm) exists and `GET /api/user` with that token answers
    HTTP 200, stop.
-3. Find the service account `infrahub-grafana-mcp`, or create it with the Editor role.
+3. Find the service account `infrahub-grafana-mcp`, or create it with the Viewer role (Editor from the
+   release of story 4; R4).
 4. Delete its token named `infrahub-grafana-mcp` if it exists, create a new one, and store it.
 
 - Compose: a one-time service `infrahub-grafana-mcp-init` in the `grafana-mcp` profile. It writes the
@@ -221,8 +235,11 @@ image itself. Both are new images or new uses of an image, so they need the depe
 | `check-datasources-first` | Lists the Prometheus, Tempo and Loki data sources by type, not by UID, and names a missing one | FR-013 |
 | `follow-check-order` | Durations, then component, then trace, then logs | FR-014 |
 | `report-evidence-per-finding` | Each finding has a metric query, a trace ID or a log line | FR-015 |
-| `ask-before-contributing` | Sends nothing to GitHub without the user's yes | FR-018 |
+| `describe-missing-panel` | When the dashboards do not answer, describes the query, panel and data source, and changes nothing in Grafana | FR-017a |
 | `no-generic-query-help` | Sends PromQL and TraceQL questions to `grafana/skills` | FR-012 |
+
+The release of story 4 adds a rule `ask-before-contributing` (sends nothing to GitHub without the
+user's yes, FR-018).
 
 The fixtures are recorded `mcp-grafana` responses from a local stack with a known slow query (design
 document, test for D8).
@@ -261,6 +278,13 @@ the user name (commit `5a22997549`). Spans are masked (`backend/infrahub/masking
 
 **How logs reach Loki and the Prefect server.**
 
+- Alloy sends the logs of **every** container of the Compose project to Loki:
+  `development/alloy/config.alloy`, `discovery.docker "containers"`, whose only filter is the label
+  `com.docker.compose.project`. So Loki also holds the logs of Neo4j (`database`), RabbitMQ
+  (`message-queue`), Redis (`cache`), the Prefect server (`task-manager`) and its database
+  (`task-manager-db`), Grafana, and the Grafana MCP server itself. The first pass below covers only the
+  lines that Infrahub writes; the other streams are part of the full audit (spec FR-022, critique of
+  2026-11-04, X1). For Helm, which pods the chart's Alloy collects is not checked yet.
 - `backend/infrahub/log.py::configure_logging` sets the structlog processors. None masks a value.
   `httpx` and `httpcore` log only at ERROR.
 - In production, the API server writes no access log (`serve/worker.py::InfrahubUvicorn` sends
@@ -301,7 +325,10 @@ the user name (commit `5a22997549`). Spans are masked (`backend/infrahub/masking
 GraphQL error formatter; `core/initialization.py::create_account` (built-in accounts only).
 
 **Not checked.** Every path where an exception message that contains a value is logged with
-`exc_info`; the Prefect server's own logs; the flow run parameters that the Prefect server stores.
+`exc_info`; the Prefect server's own logs; the flow run parameters that the Prefect server stores; the
+log streams of the other containers in Loki; the labels of the metrics in Prometheus; the resource
+attributes of traces; whether `mcp-grafana` logs the caller token, the Grafana token or the queries it
+runs. Each is part of the full audit (spec FR-022).
 
 ## R9. Infrahub version that the skill supports
 
@@ -315,7 +342,7 @@ answers with its version and the skill can name it.
 |------|-------------|----------------------|
 | New container images in Compose and Helm: `grafana/mcp-grafana:2.0.2` and the init image (R5) | Engineering approval for new dependencies (root `AGENTS.md`, "Ask First") | Not asked |
 | Hosting the skill in `infrahub-skills` | Solution Engineering and Architecture team | Not asked |
-| Security review of the container | Not named in the sources | Not done |
+| Security review of the container | Fatih Acar (decided by Daniel on 2026-11-04) | Not done, date not set |
 | Whether `infrahub.opsmill.io` keeps `profiles` (R1) | Owner of the service | Not asked |
 
 ## R11. Repositories and pull requests

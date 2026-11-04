@@ -47,6 +47,10 @@ Expected:
 - In Claude Code, the assistant lists the data sources `Prometheus (Local)`, `Tempo (Local)` and
   `Loki (Local)`.
 - A request with a wrong token or without the header gets HTTP 401.
+- From another computer on the same network, `http://<host>:8100/mcp` does not answer: the port
+  listens only on `127.0.0.1` (FR-006). Through `ssh -L 8100:127.0.0.1:8100 <host>`, it answers.
+- Repeat the connection with one other MCP client that speaks Streamable HTTP, and record which
+  clients work in the docs (research R3, `--allowed-origins`).
 
 ## 4. No usage statistics (FR-008, SC-005)
 
@@ -80,21 +84,34 @@ Grafana and ask again: the report says that Tempo is missing and which checks di
 
 On a 1.12 instance: the report says that the version is not supported (FR-021).
 
-## 8. Dashboard and contribution (FR-017, FR-018, SC-006)
+## 8. Missing panel (FR-017a, FR-010, SC-006)
 
 Ask for a view that the shipped dashboards do not have, for example "the connection wait per worker".
 
-Expected: the skill builds a dashboard and asks whether to contribute it. Answer no: no issue or pull
-request is created.
+Expected:
 
-## 9. Personal data (FR-022 to FR-024, SC-004, SC-007)
+- The report describes the query, the panel type and the data source.
+- Grafana has no new or changed dashboard, folder or annotation.
+- Asked directly to create a dashboard, the assistant cannot: the server has no write tool.
+
+The check of FR-017 and FR-018 (build and contribute a dashboard) belongs to the later release of
+story 4.
+
+## 9. Personal data (FR-022 to FR-024, FR-022a, SC-004, SC-007)
 
 - Log in with single sign-on, create a webhook whose URL has `?token=secret-value`, and trigger it with
   an unreachable URL as well.
-- Through the assistant, query Loki and Tempo for that time window.
+- Through the assistant, query Tempo, every container's stream in Loki (`{container=~".+"}`), and the
+  labels of the Infrahub metrics in Prometheus, for that time window.
+- Read the log lines of `infrahub-grafana-mcp` itself for that window.
 
-Expected: no response contains `secret-value`, the user name or the email address. Each row of
-`log-audit.md` marked "confirmed" has a fix and a passing test.
+Expected:
+
+- No response contains `secret-value`, the user name or the email address, apart from the streams that
+  the docs name (FR-022a).
+- The Grafana MCP server's own lines contain neither the caller token nor the Grafana token.
+- Each row of `log-audit.md` marked "confirmed" has a fix and a passing test, or a `drop` rule, or a
+  docs entry.
 
 ## 10. Automated checks
 
