@@ -1,4 +1,5 @@
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.container import ContainerSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_inheritance_handler import NodeInheritanceHandler
 from infrahub.core.schema.node_schema import NodeSchema
@@ -102,3 +103,110 @@ def test_concrete_order_by_not_overridden_by_generic() -> None:
     NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
 
     assert node.order_by == ["name__value__asc"]
+
+
+def _generic_with_containers(name: str, containers: list[ContainerSchema]) -> GenericSchema:
+    return GenericSchema(
+        name=name,
+        namespace="Testing",
+        containers=containers,
+        attributes=[AttributeSchema(name="name", kind="Text", container="lacp")],
+    )
+
+
+def test_node_without_containers_receives_the_generic_containers() -> None:
+    generic = _generic_with_containers(
+        name="Item",
+        containers=[
+            ContainerSchema(name="lacp", label="LACP", order_weight=100),
+            ContainerSchema(name="layer2", label="Layer 2", description="Switching", collapsed=True),
+        ],
+    )
+    node = NodeSchema(name="Note", namespace="Testing")
+
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+
+    assert node.containers == [
+        ContainerSchema(name="lacp", label="LACP", order_weight=100, inherited=True),
+        ContainerSchema(name="layer2", label="Layer 2", description="Switching", collapsed=True, inherited=True),
+    ]
+
+
+def test_node_container_replaces_the_generic_container_of_the_same_name_only() -> None:
+    generic = _generic_with_containers(
+        name="Item",
+        containers=[
+            ContainerSchema(name="lacp", label="LACP", order_weight=100),
+            ContainerSchema(name="layer2", label="Layer 2", order_weight=200),
+        ],
+    )
+    node = NodeSchema(
+        name="Note",
+        namespace="Testing",
+        containers=[ContainerSchema(name="layer2", label="Switching", collapsed=True)],
+    )
+
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+
+    assert node.containers == [
+        ContainerSchema(name="layer2", label="Switching", collapsed=True),
+        ContainerSchema(name="lacp", label="LACP", order_weight=100, inherited=True),
+    ]
+
+
+def test_first_generic_wins_when_two_generics_declare_the_same_container() -> None:
+    first = _generic_with_containers(name="Item", containers=[ContainerSchema(name="lacp", label="LACP")])
+    second = _generic_with_containers(
+        name="Bundle", containers=[ContainerSchema(name="lacp", label="Link aggregation", order_weight=100)]
+    )
+    node = NodeSchema(name="Note", namespace="Testing")
+
+    handler = NodeInheritanceHandler()
+    handler.inherit_from_interface(node=node, interface=first)
+    handler.inherit_from_interface(node=node, interface=second)
+
+    assert node.containers == [ContainerSchema(name="lacp", label="LACP", inherited=True)]
+
+
+def test_inherited_attribute_keeps_the_generic_container() -> None:
+    generic = _generic_with_containers(name="Item", containers=[ContainerSchema(name="lacp", label="LACP")])
+    node = NodeSchema(name="Note", namespace="Testing")
+
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+
+    attribute = node.get_attribute(name="name")
+    assert attribute.inherited is True
+    assert attribute.container == "lacp"
+
+
+def test_locally_redeclared_attribute_keeps_its_own_container() -> None:
+    generic = _generic_with_containers(name="Item", containers=[ContainerSchema(name="lacp", label="LACP")])
+    node = NodeSchema(
+        name="Note",
+        namespace="Testing",
+        containers=[ContainerSchema(name="layer2", label="Layer 2")],
+        attributes=[AttributeSchema(name="name", kind="Text", container="layer2")],
+    )
+
+    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+
+    assert [attribute.name for attribute in node.attributes] == ["name"]
+    attribute = node.get_attribute(name="name")
+    assert attribute.inherited is False
+    assert attribute.container == "layer2"
+
+
+def test_inheriting_twice_yields_the_same_containers() -> None:
+    generic = _generic_with_containers(
+        name="Item",
+        containers=[ContainerSchema(name="lacp", label="LACP"), ContainerSchema(name="layer2", label="Layer 2")],
+    )
+    node = NodeSchema(name="Note", namespace="Testing")
+    handler = NodeInheritanceHandler()
+
+    handler.inherit_from_interface(node=node, interface=generic)
+    first_pass = [container.duplicate() for container in node.containers]
+    handler.inherit_from_interface(node=node, interface=generic)
+
+    assert node.containers == first_pass
+    assert [container.name for container in node.containers] == ["lacp", "layer2"]

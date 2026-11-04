@@ -30,6 +30,28 @@ class LoadContractCase:
     payload: dict[str, Any] = field(default_factory=dict)
     accepted: bool = True
     use_full_dump: bool = False
+    warning_messages: list[str] | None = None
+    """Exact contract warnings an accepted payload must produce; None leaves them unchecked."""
+
+
+def _node_with_containers(containers: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Widget",
+                "containers": containers,
+                "attributes": [
+                    {"name": "field_one", "kind": "Text", "container": "lacp"},
+                    {"name": "field_two", "kind": "Text", "optional": True, "container": "layer2"},
+                ],
+                "relationships": [
+                    {"name": "gadgets", "peer": "TestGadget", "cardinality": "many", "container": "layer2"}
+                ],
+            }
+        ],
+    }
 
 
 LOAD_CONTRACT_CASES = [
@@ -191,6 +213,50 @@ LOAD_CONTRACT_CASES = [
         },
         accepted=False,
     ),
+    LoadContractCase(
+        name="containers-and-container-accepted",
+        payload=_node_with_containers(
+            [
+                {"name": "lacp", "label": "LACP", "order_weight": 100},
+                {"name": "layer2", "label": "Layer 2", "description": "Switching settings", "collapsed": True},
+            ]
+        ),
+        accepted=True,
+        warning_messages=[],
+    ),
+    LoadContractCase(
+        name="unknown-field-inside-container-rejected",
+        payload=_node_with_containers(
+            [{"name": "lacp", "label": "LACP", "not_a_field": 1}, {"name": "layer2", "label": "Layer 2"}]
+        ),
+        accepted=False,
+    ),
+    LoadContractCase(
+        name="container-missing-label-rejected",
+        payload=_node_with_containers([{"name": "lacp"}, {"name": "layer2", "label": "Layer 2"}]),
+        accepted=False,
+    ),
+    LoadContractCase(
+        name="container-name-outside-format-rejected",
+        payload=_node_with_containers([{"name": "lacp", "label": "LACP"}, {"name": "Layer-2", "label": "Layer 2"}]),
+        accepted=False,
+    ),
+    LoadContractCase(
+        name="container-state-absent-accepted-without-warning",
+        payload=_node_with_containers(
+            [{"name": "lacp", "label": "LACP"}, {"name": "layer2", "label": "Layer 2", "state": "absent"}]
+        ),
+        accepted=True,
+        warning_messages=[],
+    ),
+    LoadContractCase(
+        name="inherited-flag-inside-container-is-read-only",
+        payload=_node_with_containers(
+            [{"name": "lacp", "label": "LACP", "inherited": True}, {"name": "layer2", "label": "Layer 2"}]
+        ),
+        accepted=True,
+        warning_messages=["'containers.inherited' is a read-only field, the submitted value is ignored"],
+    ),
 ]
 
 
@@ -200,6 +266,8 @@ def test_schema_load_contract(case: LoadContractCase) -> None:
     if case.accepted:
         loaded = SchemaLoadAPI.model_validate(payload)
         assert loaded.internal_schema is not None
+        if case.warning_messages is not None:
+            assert [warning.message for warning in loaded.contract_warnings] == case.warning_messages
     else:
         with pytest.raises(ValueError, match=r"validation errors? for SchemaLoadAPI"):
             SchemaLoadAPI.model_validate(payload)
@@ -242,6 +310,19 @@ def test_read_only_fields_do_not_reach_the_internal_schema() -> None:
     # ``state`` is settable, so the submitted value must survive where ``inherited`` did not
     assert node.attributes[0].state is HashableModelState.ABSENT
     assert loaded.internal_schema.nodes[0].hierarchy is None
+
+
+def test_inherited_flag_inside_container_does_not_reach_the_internal_schema() -> None:
+    payload = _node_with_containers(
+        [{"name": "lacp", "label": "LACP", "inherited": True}, {"name": "layer2", "label": "Layer 2"}]
+    )
+
+    loaded = SchemaLoadAPI.model_validate(payload)
+
+    assert [(container.name, container.inherited) for container in loaded.internal_schema.nodes[0].containers] == [
+        ("lacp", False),
+        ("layer2", False),
+    ]
 
 
 def test_read_only_fields_are_reported_as_warnings_grouped_by_field() -> None:

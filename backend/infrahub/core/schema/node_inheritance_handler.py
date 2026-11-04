@@ -1,5 +1,6 @@
 from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME
 
+from .container import ContainerSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .order_by import is_metadata_order_by_entry
@@ -27,6 +28,8 @@ class NodeInheritanceHandler:
         for prop_name in properties_to_inherit:
             if getattr(interface, prop_name) and not getattr(node, prop_name):
                 setattr(node, prop_name, getattr(interface, prop_name))
+
+        self._inherit_containers(node=node, interface=interface)
 
         # Build a mapping from source_attribute_id to (index, old_name) for existing inherited attributes
         # This allows us to detect renamed attributes by their source ID
@@ -93,6 +96,14 @@ class NodeInheritanceHandler:
             self._update_order_by_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_default_filters_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_display_labels_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
+
+    def _inherit_containers(self, node: NodeSchema, interface: GenericSchema) -> None:
+        declared_container_names = {container.name for container in node.containers}
+        for container in interface.containers:
+            if container.name in declared_container_names:
+                continue
+            node.containers.append(ContainerSchema(**container.model_dump(exclude={"inherited"}), inherited=True))
+            declared_container_names.add(container.name)
 
     def _update_default_filters_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.default_filter:

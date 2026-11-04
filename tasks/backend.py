@@ -904,7 +904,15 @@ class SdkSchemaGenerator:
     def __init__(self, context: Context) -> None:
         from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-        from infrahub.core.constants import ComputedAttributeKind, HashableModelState, UpdateSupport, Visibility
+        from infrahub.core.constants import (
+            DEFAULT_NAME_MAX_LENGTH,
+            DEFAULT_NAME_MIN_LENGTH,
+            NAME_REGEX,
+            ComputedAttributeKind,
+            HashableModelState,
+            UpdateSupport,
+            Visibility,
+        )
         from infrahub.core.schema.definitions.internal import (
             SchemaAttribute,
             attribute_schema,
@@ -950,7 +958,14 @@ class SdkSchemaGenerator:
             self._field("label", "Text", "Human friendly representation of the choice.", optional=True),
         ]
         self.container_schema_fields = [
-            self._field("name", "Text", "Name of the section, must be unique within the node."),
+            self._field(
+                "name",
+                "Text",
+                "Name of the section, must be unique within the node.",
+                regex=str(NAME_REGEX),
+                min_length=DEFAULT_NAME_MIN_LENGTH,
+                max_length=DEFAULT_NAME_MAX_LENGTH,
+            ),
             self._field("label", "Text", "Title of the section."),
             self._field("description", "Text", "Description shown under the title of the section.", optional=True),
             self._field(
@@ -1170,6 +1185,8 @@ class SdkSchemaGenerator:
         *,
         optional: bool = False,
         regex: str | None = None,
+        min_length: int | None = None,
+        max_length: int | None = None,
         enum: list[str] | None = None,
         default_value: int | None = None,
         internal_kind: "type[Any] | GenericAlias | None" = None,
@@ -1183,6 +1200,8 @@ class SdkSchemaGenerator:
             extra=self.write_extra,
             optional=optional,
             regex=regex,
+            min_length=min_length,
+            max_length=max_length,
             enum=enum,
             default_value=default_value,
             internal_kind=internal_kind,

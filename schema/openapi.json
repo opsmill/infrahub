@@ -3106,6 +3106,9 @@
                 "properties": {
                     "name": {
                         "type": "string",
+                        "maxLength": 32,
+                        "minLength": 2,
+                        "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
                         "description": "Name of the section, must be unique within the node."
                     },
@@ -3161,6 +3164,9 @@
                 "properties": {
                     "name": {
                         "type": "string",
+                        "maxLength": 32,
+                        "minLength": 2,
+                        "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
                         "description": "Name of the section, must be unique within the node."
                     },

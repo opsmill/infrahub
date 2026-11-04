@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from infrahub_sdk.utils import duplicates
+
+from infrahub.core.constants import ADVANCED_CONTAINER_NAME
+
+from .interface import SchemaBranchValidator
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
+
+class ContainerValidator(SchemaBranchValidator):
+    """Refuse a schema whose containers collide or whose fields reference a container the kind does not have."""
+
+    def check(self, schema_branch: SchemaBranch) -> None:
+        for name in schema_branch.all_names:
+            node = schema_branch.get(name=name, duplicate=False)
+            self._validate_declarations(node=node)
+            self._validate_references(node=node)
+
+    def _validate_declarations(self, node: MainSchemaTypes) -> None:
+        # An inherited copy was already checked on the generic that declares it.
+        container_names = [container.name for container in node.containers if not container.inherited]
+        if duplicated := duplicates(container_names):
+            raise ValueError(f"{node.kind}.containers: container names must be unique, duplicate '{duplicated[0]}'")
+        if ADVANCED_CONTAINER_NAME in container_names:
+            raise ValueError(
+                f"{node.kind}.containers: '{ADVANCED_CONTAINER_NAME}' is a built-in container and cannot be declared"
+            )
+
+    def _validate_references(self, node: MainSchemaTypes) -> None:
+        valid_names = {container.name for container in node.containers} | {ADVANCED_CONTAINER_NAME}
+        for attribute in node.attributes:
+            if attribute.container is not None and attribute.container not in valid_names:
+                raise ValueError(
+                    f"{node.kind}.attributes.{attribute.name}.container: "
+                    f"container '{attribute.container}' is not declared on {node.kind}"
+                )
+        for relationship in node.relationships:
+            if relationship.container is not None and relationship.container not in valid_names:
+                raise ValueError(
+                    f"{node.kind}.relationships.{relationship.name}.container: "
+                    f"container '{relationship.container}' is not declared on {node.kind}"
+                )
