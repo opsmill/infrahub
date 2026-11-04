@@ -15,6 +15,7 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.exceptions import WorkerTimeoutError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -428,9 +429,11 @@ class RedisMessageBus(InfrahubMessageBus):
                 if correlation_id:
                     span.set_attribute("correlation_id", correlation_id)
                     future = self.futures.pop(correlation_id, None)
-                    if future:
+                    if future and not future.done():
                         future.set_result(data)
-                        return
+                    else:
+                        get_logger().info("Discarding reply to an expired RPC request", correlation_id=correlation_id)
+                    return
 
                 clear_log_context()
                 if routing_key in messages.MESSAGE_MAP:
@@ -686,18 +689,30 @@ class RedisMessageBus(InfrahubMessageBus):
             },
         )
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109 part of the published bus contract
+    ) -> ResponseClass:
         """Make an RPC call and wait for the response.
 
         Args:
             message: The RPC request message.
             response_class: The expected response class type.
+            timeout: Seconds to wait for the reply; the configured RPC timeout when None.
 
         Returns:
             The deserialized response object.
 
+        Raises:
+            WorkerTimeoutError: If no reply arrives within the timeout.
+            TimeoutError: If publishing raises one before the timeout expires.
+
         """
         correlation_id = str(UUIDT())
+        bound = timeout if timeout is not None else self.settings.rpc_timeout
+        routing_key = messages.ROUTING_KEY_MAP.get(type(message), "")
 
         future: asyncio.Future = self.loop.create_future()
         self.futures[correlation_id] = future
@@ -706,9 +721,29 @@ class RedisMessageBus(InfrahubMessageBus):
         request_id = log_data.get("request_id", "")
         message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_stream)
 
-        await self.send(message=message)
+        published = False
+        try:
+            # Built inside the try so every failure after the future was registered reaches cleanup.
+            bounded_call = asyncio.timeout(bound)
+            async with bounded_call:
+                await self.send(message=message)
+                published = True
+                response: dict = await future
+        except TimeoutError as exc:
+            if not bounded_call.expired():
+                # A client error that happens to be a TimeoutError is not our bound elapsing.
+                raise
+            get_logger().warning(
+                "No worker answered within the allowed time",
+                correlation_id=correlation_id,
+                routing_key=routing_key,
+                timeout_seconds=bound,
+                stage="awaiting_reply" if published else "publishing",
+            )
+            raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
+        finally:
+            self.futures.pop(correlation_id, None)
 
-        response: dict = await future
         body = response.get("body", b"")
         if isinstance(body, bytes):
             body = body.decode()
