@@ -34,8 +34,17 @@ describe("getWeightedPrefixKinds", () => {
   });
 
   it("returns nothing when no prefix kind has a weight", () => {
+    // GIVEN
+    const schemas = [
+      generateNodeSchema({
+        kind: "IpamIPPrefixPlain",
+        inherit_from: ["BuiltinIPPrefix"],
+        attributes: [],
+      }),
+    ];
+
     // WHEN
-    const kinds = getWeightedPrefixKinds([]);
+    const kinds = getWeightedPrefixKinds(schemas);
 
     // THEN
     expect(kinds).toEqual([]);

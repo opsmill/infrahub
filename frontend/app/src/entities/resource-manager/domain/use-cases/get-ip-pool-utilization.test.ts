@@ -68,8 +68,8 @@ describe("getIpPoolUtilization", () => {
       data: {
         BuiltinIPPrefix: {
           edges: [
-            { node: { id: "r-a", allocation_weight: { value: 10 } } },
-            { node: { id: "r-b", allocation_weight: { value: 100 } } },
+            { node: { id: "r-a", allocation_weight: { value: 100 } } },
+            { node: { id: "r-b", allocation_weight: { value: 10 } } },
           ],
         },
       },
@@ -83,6 +83,7 @@ describe("getIpPoolUtilization", () => {
     });
 
     // THEN
+    expect(getIpPoolUtilizationFromApi).toHaveBeenCalledWith({ poolId: "pool", ...context });
     expect(getIpPoolResourceWeightsFromApi).toHaveBeenCalledWith({
       resourceIds: ["r-b", "r-a"],
       weightedKinds: ["IpamIPPrefix"],
@@ -90,8 +91,39 @@ describe("getIpPoolUtilization", () => {
     });
     expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
       [
-        ["r-b", 100],
-        ["r-a", 10],
+        ["r-a", 100],
+        ["r-b", 10],
+      ]
+    );
+  });
+
+  it("orders by prefix without asking for weights when one resource prefix kind has no weight", async () => {
+    // GIVEN
+    vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
+      data: {
+        InfrahubResourcePoolUtilization: {
+          ...utilizationData.InfrahubResourcePoolUtilization,
+          edges: [
+            { node: { id: "r-b", display_label: "10.1.0.0/16", kind: "IpamIPPrefix", ...figures } },
+            { node: { id: "r-a", display_label: "10.0.0.0/16", kind: "CustomPrefix", ...figures } },
+          ],
+        },
+      },
+    } as unknown as UtilizationResult);
+
+    // WHEN
+    const utilization = await getIpPoolUtilization({
+      poolId: "pool",
+      weightedKinds: ["IpamIPPrefix"],
+      ...context,
+    });
+
+    // THEN
+    expect(getIpPoolResourceWeightsFromApi).not.toHaveBeenCalled();
+    expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
+      [
+        ["r-a", null],
+        ["r-b", null],
       ]
     );
   });

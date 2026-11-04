@@ -52,7 +52,7 @@ function ResourceSelector({
   resourceId: string;
   resourcePoolId: string;
 }) {
-  // disabled so the breadcrumb reads the list the details page already loaded
+  // disabled so it reads only the cached utilization and never fetches its own
   const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId, { enabled: false });
 
   if (isPending) {

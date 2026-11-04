@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
@@ -20,15 +20,18 @@ const prefixPoolSchema = generateNodeSchema({
   name: "IPPrefixPool",
 });
 
-const pool = generateIpPrefixPoolData({
-  description: { value: "Point-to-point links between PAR1 spines and leaves" },
-});
-
 const renderHeader = (data: IpPoolData) =>
   render(<IpPoolHeader pool={data} schema={prefixPoolSchema} permission={generatePermission()} />);
 
 describe("IpPoolHeader", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("shows the pool name as the page heading", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData({ name: { value: "PAR1 fabric links" } });
+
     // WHEN
     const component = await renderHeader(pool);
 
@@ -39,6 +42,11 @@ describe("IpPoolHeader", () => {
   });
 
   it("shows the description when the pool has one", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData({
+      description: { value: "Point-to-point links between PAR1 spines and leaves" },
+    });
+
     // WHEN
     const component = await renderHeader(pool);
 
@@ -49,6 +57,9 @@ describe("IpPoolHeader", () => {
   });
 
   it("shows the full id with a copy button", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+
     // WHEN
     const component = await renderHeader(pool);
 
@@ -62,17 +73,19 @@ describe("IpPoolHeader", () => {
     const invalidateQueriesSpy = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockResolvedValue(undefined);
-    const component = await renderHeader(pool);
+    const component = await renderHeader(generateIpPrefixPoolData());
 
     // WHEN
     await component.getByRole("button", { name: "Refresh data" }).click();
 
     // THEN
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["resource-manager"] });
-    invalidateQueriesSpy.mockRestore();
   });
 
   it("offers the metadata, refresh and actions controls", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+
     // WHEN
     const component = await renderHeader(pool);
 
@@ -85,6 +98,9 @@ describe("IpPoolHeader", () => {
   });
 
   it("states the namespace and the defaults under the title", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+
     // WHEN
     const component = await renderHeader(pool);
 
@@ -99,8 +115,11 @@ describe("IpPoolHeader", () => {
 
 describe("IpPoolHeaderSkeleton", () => {
   it("shows a loading placeholder instead of the heading", async () => {
+    // GIVEN
+    const skeleton = <IpPoolHeaderSkeleton />;
+
     // WHEN
-    const component = await render(<IpPoolHeaderSkeleton />);
+    const component = await render(skeleton);
 
     // THEN
     await expect.element(component.getByRole("status", { name: "Loading IP pool" })).toBeVisible();

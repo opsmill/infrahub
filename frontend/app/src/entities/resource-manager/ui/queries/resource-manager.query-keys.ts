@@ -53,31 +53,11 @@ export interface NumberPoolsKeysParams {
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
   ipPool: (params: IpPoolKeysParams) =>
-    [
-      ...resourceManagerQueryKeys.all,
-      "ip-pool",
-      params.poolId,
-      params.branchName,
-      params.atDate,
-    ] as const,
+    [...resourceManagerQueryKeys.all, "ip-pool", params] as const,
   ipPoolUtilization: (params: IpPoolUtilizationKeysParams) =>
-    [
-      ...resourceManagerQueryKeys.all,
-      "ip-pool-utilization",
-      params.poolId,
-      params.weightedKinds,
-      params.branchName,
-      params.atDate,
-    ] as const,
+    [...resourceManagerQueryKeys.all, "ip-pool-utilization", params] as const,
   ipPoolAllocations: (params: IpPoolAllocationsKeysParams) =>
-    [
-      ...resourceManagerQueryKeys.all,
-      "ip-pool-allocations",
-      params.poolId,
-      params.resourceId,
-      params.branchName,
-      params.atDate,
-    ] as const,
+    [...resourceManagerQueryKeys.all, "ip-pool-allocations", params] as const,
   numberPool: (params: NumberPoolKeysParams) =>
     [
       ...resourceManagerQueryKeys.all,

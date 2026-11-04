@@ -21,10 +21,14 @@ export function getIpPoolAllocationsInfiniteQueryOptions(params: GetIpPoolAlloca
       getIpPoolAllocations({ ...params, offset: pageParam, limit: IP_POOL_ALLOCATIONS_PAGE_SIZE }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.allocations.length < IP_POOL_ALLOCATIONS_PAGE_SIZE) {
+      const nextPageParam = lastPageParam + IP_POOL_ALLOCATIONS_PAGE_SIZE;
+      if (
+        lastPage.allocations.length < IP_POOL_ALLOCATIONS_PAGE_SIZE ||
+        nextPageParam >= lastPage.count
+      ) {
         return;
       }
-      return lastPageParam + IP_POOL_ALLOCATIONS_PAGE_SIZE;
+      return nextPageParam;
     },
   });
 }

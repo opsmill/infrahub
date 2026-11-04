@@ -41,6 +41,18 @@ describe("IpPoolDefaultsLine", () => {
       );
   });
 
+  it("lists the namespace and each default of a prefix pool as separate items", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+
+    // WHEN
+    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+
+    // THEN
+    await expect.element(component.getByRole("list")).toBeVisible();
+    expect(component.getByRole("listitem").elements()).toHaveLength(4);
+  });
+
   it("reads the namespace and the two defaults of an address pool", async () => {
     // GIVEN
     const pool = generateIpAddressPoolData();

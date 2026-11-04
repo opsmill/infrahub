@@ -26,8 +26,9 @@ vi.mock("@/entities/resource-manager/ui/queries/get-ip-pool-utilization.query", 
 }));
 
 vi.mock("@/entities/resource-manager/ui/ip-pool/details/ip-pool-allocations-card", () => ({
-  IpPoolAllocationsCard: ({ selectedResourceId, resources }: IpPoolAllocationsCardProps) =>
-    resources.length === 0 ? null : <p>Allocations of {selectedResourceId}</p>,
+  IpPoolAllocationsCard: ({ selectedResourceId }: IpPoolAllocationsCardProps) => (
+    <p>Allocations of {selectedResourceId}</p>
+  ),
 }));
 
 const initialNodeSchemas = store.get(nodeSchemasAtom);
@@ -154,7 +155,7 @@ describe("IpPoolDetailsPage", () => {
     await expect.element(component.getByText(`Allocations of ${secondResource?.id}`)).toBeVisible();
   });
 
-  it("says the pool has no resource prefix and lists no allocations", async () => {
+  it("says the pool has no resource prefix", async () => {
     // GIVEN
     mockPool();
     mockUtilization(generateIpPoolUtilization({ resources: [] }));
@@ -164,7 +165,6 @@ describe("IpPoolDetailsPage", () => {
 
     // THEN
     await expect.element(component.getByText("No resource prefixes")).toBeVisible();
-    await expect.element(component.getByText(/Allocations of/)).not.toBeInTheDocument();
   });
 
   it("keeps the header and shows the error when the usage fails to load", async () => {

@@ -1,15 +1,10 @@
-import {
-  IP_POOL_MEMBER_TYPE_ADDRESS,
-  IP_POOL_MEMBER_TYPE_PREFIX,
-  type IpPoolData,
-  type IpPoolDefaultEntry,
+import type {
+  IpPoolData,
+  IpPoolDefaultEntry,
 } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_ADDRESS_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 const NO_DEFAULT = "has no default";
-
-const toMemberType = (value: string | null) =>
-  value === IP_POOL_MEMBER_TYPE_PREFIX || value === IP_POOL_MEMBER_TYPE_ADDRESS ? value : null;
 
 export const getIpPoolDefaultEntries = (pool: IpPoolData): IpPoolDefaultEntry[] => {
   const length = pool.default_prefix_length.value;
@@ -32,7 +27,7 @@ export const getIpPoolDefaultEntries = (pool: IpPoolData): IpPoolDefaultEntry[] 
   }
 
   const kind = pool.default_prefix_type.value;
-  const memberType = toMemberType(pool.default_member_type.value);
+  const memberType = pool.default_member_type.value;
   return [
     {
       label: "Prefix kind",

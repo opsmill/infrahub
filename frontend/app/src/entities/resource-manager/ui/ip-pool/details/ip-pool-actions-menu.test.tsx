@@ -18,8 +18,6 @@ const prefixPoolSchema = generateNodeSchema({ kind: "CoreIPPrefixPool", document
 
 const prefixPool = generateIpPrefixPoolData();
 
-const addressPool = generateIpAddressPoolData();
-
 const MENU_ITEMS = [
   "Copy ID",
   "Copy HFID",
@@ -53,14 +51,14 @@ const openMenu = async ({
 
 describe("IpPoolActionsMenu", () => {
   it("offers every action to a user with full permission", async () => {
-    // WHEN
-    const component = await openMenu({
-      pool: prefixPool,
-      schema: generateNodeSchema({
-        kind: "CoreIPPrefixPool",
-        documentation: "https://docs.example.com/ip-pools",
-      }),
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "CoreIPPrefixPool",
+      documentation: "https://docs.example.com/ip-pools",
     });
+
+    // WHEN
+    const component = await openMenu({ pool: prefixPool, schema });
 
     // THEN
     for (const name of MENU_ITEMS) {
@@ -69,8 +67,11 @@ describe("IpPoolActionsMenu", () => {
   });
 
   it("allows Edit, Groups and Delete with full permission", async () => {
+    // GIVEN
+    const permission = generatePermission();
+
     // WHEN
-    const component = await openMenu({ pool: prefixPool });
+    const component = await openMenu({ pool: prefixPool, permission });
 
     // THEN
     for (const name of ["Edit", "Groups", "Delete"]) {
@@ -81,8 +82,11 @@ describe("IpPoolActionsMenu", () => {
   });
 
   it("hides Documentation when the schema has no documentation link", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({ kind: "CoreIPPrefixPool", documentation: null });
+
     // WHEN
-    const component = await openMenu({ pool: prefixPool });
+    const component = await openMenu({ pool: prefixPool, schema });
 
     // THEN
     await expect
@@ -91,11 +95,11 @@ describe("IpPoolActionsMenu", () => {
   });
 
   it("disables Edit, Groups and Delete when the user lacks permission", async () => {
+    // GIVEN
+    const permission = generatePermission({ update: false, delete: false });
+
     // WHEN
-    const component = await openMenu({
-      pool: prefixPool,
-      permission: generatePermission({ update: false, delete: false }),
-    });
+    const component = await openMenu({ pool: prefixPool, permission });
 
     // THEN
     for (const name of ["Edit", "Groups", "Delete"]) {
@@ -140,8 +144,11 @@ describe("IpPoolActionsMenu", () => {
   });
 
   it("links to the prefix pool schema", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+
     // WHEN
-    const component = await openMenu({ pool: prefixPool });
+    const component = await openMenu({ pool });
 
     // THEN
     await expect
@@ -150,11 +157,12 @@ describe("IpPoolActionsMenu", () => {
   });
 
   it("links to the address pool schema for an address pool", async () => {
+    // GIVEN
+    const pool = generateIpAddressPoolData();
+    const schema = generateNodeSchema({ kind: "CoreIPAddressPool", documentation: null });
+
     // WHEN
-    const component = await openMenu({
-      pool: addressPool,
-      schema: generateNodeSchema({ kind: "CoreIPAddressPool", documentation: null }),
-    });
+    const component = await openMenu({ pool, schema });
 
     // THEN
     await expect

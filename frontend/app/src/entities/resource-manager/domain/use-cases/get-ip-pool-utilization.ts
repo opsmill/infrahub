@@ -15,17 +15,22 @@ const throwErrors = (errors: ReadonlyArray<{ message: string }> | undefined) => 
   if (errors) throw new Error(errors.map((e) => e.message).join("; "));
 };
 
+export type GetIpPoolUtilizationResult = IpPoolUtilization;
+
+type ResourceRef = { id: string; kind: string };
+
 const getWeightsById = async ({
-  resourceIds,
+  resources,
   weightedKinds,
   branchName,
   atDate,
-}: Omit<GetIpPoolUtilizationParams, "poolId"> & { resourceIds: string[] }) => {
-  if (weightedKinds.length === 0 || resourceIds.length === 0)
-    return new Map<string, number | null>();
+}: Omit<GetIpPoolUtilizationParams, "poolId"> & { resources: ResourceRef[] }) => {
+  // the server sorts by weight only when every resource prefix kind has one
+  const everyKindIsWeighted = resources.every(({ kind }) => weightedKinds.includes(kind));
+  if (resources.length === 0 || !everyKindIsWeighted) return new Map<string, number | null>();
 
   const { data, errors } = await getIpPoolResourceWeightsFromApi({
-    resourceIds,
+    resourceIds: resources.map(({ id }) => id),
     weightedKinds,
     branchName,
     atDate,
@@ -45,7 +50,7 @@ export const getIpPoolUtilization = async ({
   weightedKinds,
   branchName,
   atDate,
-}: GetIpPoolUtilizationParams): Promise<IpPoolUtilization> => {
+}: GetIpPoolUtilizationParams): Promise<GetIpPoolUtilizationResult> => {
   const { data, errors } = await getIpPoolUtilizationFromApi({ poolId, branchName, atDate });
   throwErrors(errors);
 
@@ -53,7 +58,7 @@ export const getIpPoolUtilization = async ({
   if (!node) throw new Error("IP pool utilization not found");
 
   const weightsById = await getWeightsById({
-    resourceIds: node.edges.map(({ node: resource }) => resource.id),
+    resources: node.edges.map(({ node: resource }) => resource),
     weightedKinds,
     branchName,
     atDate,

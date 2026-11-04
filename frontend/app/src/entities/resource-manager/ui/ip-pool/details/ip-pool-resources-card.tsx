@@ -4,20 +4,22 @@ import { Text } from "react-aria-components";
 import { Row } from "@/shared/components/container";
 
 import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip-pool";
+import { IP_PREFIX_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import { IpPoolUsageBar } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-usage-bar";
 import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
 
-const getSelectedKeys = (resources: IpPoolResource[], selectedResourceId: string | null) =>
-  resources.some(({ id }) => id === selectedResourceId) && selectedResourceId !== null
-    ? [selectedResourceId]
-    : [];
+interface NoResourcesCardProps {
+  poolKind: IpPoolKind;
+}
 
-function NoResourcesCard() {
+function NoResourcesCard({ poolKind }: NoResourcesCardProps) {
+  const allocatedItems = poolKind === IP_PREFIX_POOL ? "prefixes" : "addresses";
+
   return (
     <Card className="min-w-64 items-start gap-1 px-4 py-3 text-sm">
       <p className="font-medium">No resource prefixes</p>
       <p className="text-pretty text-foreground-muted">
-        This pool can't allocate until it has a resource prefix.
+        This pool can't allocate {allocatedItems} until it has a resource prefix.
       </p>
       <p className="text-foreground-muted">Edit the pool to add one.</p>
     </Card>
@@ -26,16 +28,18 @@ function NoResourcesCard() {
 
 export interface IpPoolResourcesCardProps {
   poolId: string;
+  poolKind: IpPoolKind;
   resources: IpPoolResource[];
   selectedResourceId: string | null;
 }
 
 export function IpPoolResourcesCard({
   poolId,
+  poolKind,
   resources,
   selectedResourceId,
 }: IpPoolResourcesCardProps) {
-  if (resources.length === 0) return <NoResourcesCard />;
+  if (resources.length === 0) return <NoResourcesCard poolKind={poolKind} />;
 
   return (
     <Card>
@@ -46,7 +50,11 @@ export function IpPoolResourcesCard({
         aria-label="Resource prefixes"
         selectionMode="single"
         selectionIndicator="highlight"
-        selectedKeys={getSelectedKeys(resources, selectedResourceId)}
+        selectedKeys={
+          selectedResourceId !== null && resources.some(({ id }) => id === selectedResourceId)
+            ? [selectedResourceId]
+            : []
+        }
         items={resources}
       >
         {(resource) => (
@@ -56,12 +64,12 @@ export function IpPoolResourcesCard({
             textValue={resource.display_label}
             className="flex-col items-stretch gap-1.5 rounded-xl px-2.5 py-2"
           >
-            <Row className="justify-between">
-              <Text slot="label" className="font-medium tabular-nums">
+            <Row className="justify-between gap-3">
+              <Text slot="label" className="min-w-0 truncate font-medium tabular-nums">
                 {resource.display_label}
               </Text>
               {resource.allocationWeight !== null && (
-                <Text slot="description" className="text-foreground-muted text-xs">
+                <Text slot="description" className="shrink-0 text-foreground-muted text-xs">
                   Weight {resource.allocationWeight}
                 </Text>
               )}

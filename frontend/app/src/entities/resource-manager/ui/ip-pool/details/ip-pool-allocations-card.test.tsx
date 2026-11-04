@@ -29,16 +29,22 @@ const renderCard = (props: Partial<IpPoolAllocationsCardProps> = {}) =>
 
 describe("IpPoolAllocationsCard", () => {
   it("lists the prefixes of the selected resource prefix", async () => {
+    // GIVEN
+    const selectedResourceId = firstResource?.id ?? null;
+
     // WHEN
-    const component = await renderCard();
+    const component = await renderCard({ selectedResourceId });
 
     // THEN
     await expect.element(component.getByText(`Prefixes of ${firstResource?.id}`)).toBeVisible();
   });
 
   it("explains that the selected resource prefix is not part of the pool", async () => {
+    // GIVEN
+    const selectedResourceId = "not-in-pool";
+
     // WHEN
-    const component = await renderCard({ selectedResourceId: "not-in-pool" });
+    const component = await renderCard({ selectedResourceId });
 
     // THEN
     await expect.element(component.getByText("Resource prefix not found")).toBeVisible();
@@ -49,8 +55,11 @@ describe("IpPoolAllocationsCard", () => {
   });
 
   it("shows nothing when the pool has no resource prefix", async () => {
+    // GIVEN
+    const props = { resources: [] };
+
     // WHEN
-    const component = await renderCard({ resources: [] });
+    const component = await renderCard(props);
 
     // THEN
     expect(component.container.textContent).toBe("");

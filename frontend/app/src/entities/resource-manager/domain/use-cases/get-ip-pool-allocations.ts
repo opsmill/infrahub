@@ -7,9 +7,11 @@ import type { IpPoolAllocationsPage } from "@/entities/resource-manager/domain/m
 
 export type GetIpPoolAllocationsParams = GetIpPoolAllocationsFromApiParams;
 
+export type GetIpPoolAllocationsResult = IpPoolAllocationsPage;
+
 export const getIpPoolAllocations = async (
   params: GetIpPoolAllocationsParams
-): Promise<IpPoolAllocationsPage> => {
+): Promise<GetIpPoolAllocationsResult> => {
   const { data, errors } = await getIpPoolAllocationsFromApi(params);
 
   if (errors) {

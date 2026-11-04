@@ -3,6 +3,8 @@ import { userEvent } from "vitest/browser";
 
 import { ReactAriaRouterProvider } from "@/app/providers/react-aria-router-provider";
 
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+
 import { render } from "../../../../../../tests/components/render";
 import { generateIpPoolResource } from "../../../../../../tests/fake/ip-pool";
 import { IpPoolResourcesCard, type IpPoolResourcesCardProps } from "./ip-pool-resources-card";
@@ -26,6 +28,7 @@ const renderCard = (props: Partial<IpPoolResourcesCardProps> = {}) =>
     <ReactAriaRouterProvider>
       <IpPoolResourcesCard
         poolId="pool-id"
+        poolKind={IP_PREFIX_POOL}
         resources={resources}
         selectedResourceId={null}
         {...props}
@@ -39,8 +42,11 @@ describe("IpPoolResourcesCard", () => {
   });
 
   it("lists the resource prefixes in the given order with their weight", async () => {
+    // GIVEN
+    const props = { resources };
+
     // WHEN
-    const component = await renderCard();
+    const component = await renderCard(props);
 
     // THEN
     const options = component.getByRole("option").elements();
@@ -65,9 +71,29 @@ describe("IpPoolResourcesCard", () => {
     expect(options.some((option) => option.textContent?.includes("Weight"))).toBe(false);
   });
 
-  it("selects the resource prefix named in the address", async () => {
+  it("keeps the weight of a long IPv6 resource prefix", async () => {
+    // GIVEN
+    const longResource = generateIpPoolResource({
+      display_label: "2001:0db8:85a3:0000:0000:8a2e:0370:0000/112",
+      allocationWeight: 10,
+    });
+
     // WHEN
-    const component = await renderCard({ selectedResourceId: secondResource.id });
+    const component = await renderCard({ resources: [longResource] });
+
+    // THEN
+    await expect
+      .element(component.getByText("2001:0db8:85a3:0000:0000:8a2e:0370:0000/112"))
+      .toBeInTheDocument();
+    await expect.element(component.getByText("Weight 10")).toBeVisible();
+  });
+
+  it("selects the resource prefix named in the address", async () => {
+    // GIVEN
+    const selectedResourceId = secondResource.id;
+
+    // WHEN
+    const component = await renderCard({ selectedResourceId });
 
     // THEN
     await expect
@@ -76,15 +102,18 @@ describe("IpPoolResourcesCard", () => {
   });
 
   it("selects nothing for a resource prefix that is not in the pool", async () => {
+    // GIVEN
+    const selectedResourceId = "not-in-pool";
+
     // WHEN
-    const component = await renderCard({ selectedResourceId: "not-in-pool" });
+    const component = await renderCard({ selectedResourceId });
 
     // THEN
-    const selected = component
-      .getByRole("option")
-      .elements()
-      .filter((option) => option.getAttribute("aria-selected") === "true");
-    expect(selected).toHaveLength(0);
+    const options = component.getByRole("option").elements();
+    expect(options).toHaveLength(2);
+    expect(
+      options.filter((option) => option.getAttribute("aria-selected") === "true")
+    ).toHaveLength(0);
   });
 
   it("opens the next resource prefix with the arrow and Enter keys", async () => {
@@ -101,15 +130,35 @@ describe("IpPoolResourcesCard", () => {
       .toBe(`/resource-manager/pool-id/resources/${secondResource.id}`);
   });
 
-  it("asks to edit the pool when it has no resource prefix", async () => {
+  it("asks to edit the prefix pool when it has no resource prefix", async () => {
+    // GIVEN
+    const props: Partial<IpPoolResourcesCardProps> = { poolKind: IP_PREFIX_POOL, resources: [] };
+
     // WHEN
-    const component = await renderCard({ resources: [] });
+    const component = await renderCard(props);
 
     // THEN
     await expect.element(component.getByText("No resource prefixes")).toBeVisible();
     await expect
-      .element(component.getByText("This pool can't allocate until it has a resource prefix."))
+      .element(
+        component.getByText("This pool can't allocate prefixes until it has a resource prefix.")
+      )
       .toBeVisible();
     await expect.element(component.getByText("Edit the pool to add one.")).toBeVisible();
+  });
+
+  it("names addresses in the empty state of an address pool", async () => {
+    // GIVEN
+    const props: Partial<IpPoolResourcesCardProps> = { poolKind: IP_ADDRESS_POOL, resources: [] };
+
+    // WHEN
+    const component = await renderCard(props);
+
+    // THEN
+    await expect
+      .element(
+        component.getByText("This pool can't allocate addresses until it has a resource prefix.")
+      )
+      .toBeVisible();
   });
 });

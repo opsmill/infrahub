@@ -1,6 +1,3 @@
-import React from "react";
-
-import { Row } from "@/shared/components/container";
 import { Link } from "@/shared/components/ui/link";
 
 import { getIpamNamespaceUrl } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
@@ -29,8 +26,6 @@ interface KindReferenceProps {
 
 function KindReference({ kind }: KindReferenceProps) {
   const { schema } = useSchema(kind);
-
-  if (!schema) return <span className="font-medium">{kind}</span>;
 
   return (
     <SchemaReference schema={schema} className={schemaLinkStyle}>
@@ -86,19 +81,22 @@ export interface IpPoolDefaultsLineProps {
 
 export function IpPoolDefaultsLine({ pool }: IpPoolDefaultsLineProps) {
   return (
-    <Row className="flex-wrap gap-x-2 gap-y-1 text-sm">
-      <span className="text-foreground-muted">
+    <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <li className="text-foreground-muted">
         In namespace{" "}
-        <Link to={getIpamNamespaceUrl(pool.ip_namespace)} className="font-medium text-foreground">
+        <Link
+          to={getIpamNamespaceUrl(pool.ip_namespace)}
+          className="wrap-anywhere rounded-md font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring-halo"
+        >
           {pool.ip_namespace.display_label}
         </Link>
-      </span>
+      </li>
       {getIpPoolDefaultEntries(pool).map((entry) => (
-        <React.Fragment key={entry.label}>
+        <li key={entry.label} className="flex items-center gap-x-2">
           <Dot />
           <DefaultPhrase entry={entry} />
-        </React.Fragment>
+        </li>
       ))}
-    </Row>
+    </ul>
   );
 }

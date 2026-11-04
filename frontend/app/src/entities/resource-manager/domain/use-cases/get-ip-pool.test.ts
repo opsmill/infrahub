@@ -42,6 +42,7 @@ describe("getIpPool", () => {
     const pool = await getIpPool(params);
 
     // THEN
+    expect(getIpPoolFromApi).toHaveBeenCalledWith(params);
     expect(pool).toEqual({
       id: "pool-id",
       hfid: ["Loopbacks"],

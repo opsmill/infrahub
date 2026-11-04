@@ -35,8 +35,11 @@ const node: IpPoolUtilizationNode = {
 
 describe("mapToIpPoolUtilization", () => {
   it("maps the pool usage and each resource prefix with its weight", () => {
+    // GIVEN
+    const weightsById = new Map([["r1", 100]]);
+
     // WHEN
-    const utilization = mapToIpPoolUtilization(node, new Map([["r1", 100]]));
+    const utilization = mapToIpPoolUtilization(node, weightsById);
 
     // THEN
     expect(utilization).toEqual({

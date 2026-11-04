@@ -31,6 +31,9 @@ describe("IP pool URLs", () => {
   });
 
   it("links the pool itself without a resource prefix", () => {
+    // GIVEN
+    openUrl("");
+
     // WHEN
     const url = getIpPoolResourceUrl("pool");
 

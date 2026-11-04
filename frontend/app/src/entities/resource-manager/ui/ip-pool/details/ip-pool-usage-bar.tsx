@@ -4,7 +4,7 @@ import { Row } from "@/shared/components/container";
 import MultipleProgressBar from "@/shared/components/stats/multiple-progress-bar";
 
 import type { IpPoolResourceUsage } from "@/entities/resource-manager/domain/model/ip-pool";
-import { formatUsagePercent } from "@/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar";
+import { formatUsagePercent } from "@/entities/resource-manager/ui/pool/format-usage-percent";
 import { UtilizationTooltipMessage } from "@/entities/resource-manager/ui/pool/utilization-tooltip-message";
 
 export interface IpPoolUsageBarProps {

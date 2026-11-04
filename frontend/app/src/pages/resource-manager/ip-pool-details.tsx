@@ -64,6 +64,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
       <Col className="min-h-0 w-80 shrink-0 gap-2">
         <IpPoolResourcesCard
           poolId={pool.id}
+          poolKind={pool.__typename}
           resources={resources}
           selectedResourceId={selectedResourceId}
         />

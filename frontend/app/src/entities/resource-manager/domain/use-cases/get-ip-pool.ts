@@ -10,7 +10,9 @@ import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-poo
 
 export type GetIpPoolParams = GetIpPoolFromApiParams;
 
-export const getIpPool = async (params: GetIpPoolParams): Promise<IpPoolData> => {
+export type GetIpPoolResult = IpPoolData;
+
+export const getIpPool = async (params: GetIpPoolParams): Promise<GetIpPoolResult> => {
   const { data, errors } = await getIpPoolFromApi(params);
 
   if (errors) {
