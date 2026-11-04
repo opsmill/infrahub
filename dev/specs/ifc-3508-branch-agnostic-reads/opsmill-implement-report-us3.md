@@ -7,10 +7,10 @@
 | Scope of this run | Phase 5 of [tasks.md](tasks.md): T028 to T050 |
 | Code branch | `branch-windows-ip-pools-ifc-3508`, local only, in the worktree `.claude/worktrees/branch-windows-ip-pools-ifc-3508`, with no upstream |
 | Base commit of the code branch | `17e898643` (`origin/release-1.12`, fetched 2026-11-04T00:44Z) |
-| Head commit of the code branch | `1d4399593` |
+| Head commit of the code branch | `4e1b8d2ba` (`1d4399593` at the end of the first run, before the performance follow-up) |
 | Base commit of `branch-agnostic-reads` | `43e6266bc` |
-| Wall-clock time | 2026-11-04T00:44Z to 2026-11-04T02:40Z, about 2 hours |
-| Status | Complete for T028 to T049. T050 is partly done: the pre-push checks pass, but the PR is not opened, because the user asked for a local branch. Nothing is pushed. One decision is still open: whether the higher cost of an allocation is acceptable (T046, see "Cost of an allocation"). |
+| Wall-clock time | 2026-11-04T00:44Z to 2026-11-04T02:40Z, about 2 hours, then the performance follow-up from about 04:15Z to 05:10Z |
+| Status | Complete for T028 to T049. T050 is partly done: the pre-push checks pass, but the PR is not opened, because the user asked for a local branch. Nothing is pushed. One decision is still open: whether the remaining cost of an allocation is acceptable (T046, see "Cost of an allocation"). |
 
 ## Chunk ledger
 
@@ -72,21 +72,51 @@ The orchestrator created the worktree (T028) before the first chunk. After each 
   - Removing the `DELETING` filter in `branch_windows.py` made the 4 tests of the second case fail.
 - The changelog fragment now says that a full prefix pool raises the same error type as an address pool. It no longer says "the same error", because the two messages differ.
 
+### Performance follow-up (after the report, at the user's request)
+
+- Commits: `80919766b` (query) and `4e1b8d2ba` (tests and benchmark).
+- A candidate value whose five edges are all on the default branch and still open is kept as taken without the competing-edge reads or the window test. The query splits the two cases with `UNION ALL` inside a nested `CALL`. The default branch is the window whose `origin_name` is NULL.
+- The query does not decide this from the code alone. It relies on how writes behave: a write closes the open edge it replaces on the same branch, and the `prefix` and `address` attributes and the `ip_namespace` relationship cannot have `-global-` edges. The subagent checked this in the write code, at these places:
+  - attribute value update and delete: `attribute.py:86` and `:348`;
+  - node delete: `node.py:703-711`;
+  - relationship delete: `relationship.py:620-632`, `:1378`, `:1408` and `:1428`;
+  - a peer change creates a new `Relationship` vertex: `relationship/model.py:478` and `:1537`;
+  - merge: `bulk_merge.py`;
+  - the branch support of a field cannot change: `internal.py:412`, `:746` and `:990`.
+
+  Two write paths were not checked: writes with an explicit `at` earlier than an existing edge's `from`, and `rollback.py`.
+- Each of the five edges now has its own filter, which includes a test that some branch can see the edge. `PROFILE` shows each filter runs right after the edge is matched. The plan still starts from the `binary_address` index, so competing edges are read only for values in the pool's range.
+- The benchmark gained a second dataset, `churn`. It has one old branch, 300 allocated values, and 2,000 values per pool that were created and then deleted on the default branch after that branch was created. The data is built through the node API. The test ids of the first dataset changed to `branches-…`.
+- New tests: `TestIPPoolValueChangedOnBranch`, 16 cases for prefix and address pools on IPv4 and IPv6. They cover a value changed on a branch, then deleted or moved on the default branch.
+- Two deliberate breaks were caught by the tests:
+  - removing `to IS NULL` from the shortcut: 8 failed;
+  - removing the default-branch condition: 4 failed.
+
+  `git status` is clean after both.
+
 ## Tasks not completed
 
 - T050: the PR against `release-1.12` is not opened, because the user asked for a local branch only. The pre-push checks of T050 are done.
 
 ## Cost of an allocation
 
-T046 says to change the approach before review if allocation is significantly slower. The run did not change the approach. These are the measurements, with 50 live branches and 1,050 allocations per pool:
+T046 says to change the approach before review if allocation is significantly slower. The first run measured about 2.3 times the base database hits for a lookup and did not change the approach. The performance follow-up reduced the cost.
 
-| Measure | Base `17e898643` | Head | Ratio |
+Database hits of the free-value query, with the whole lookup in brackets. The figures were the same within 100 hits across two rounds run in opposite order:
+
+| Dataset and pool | Base `17e898643` | After the first run `1d4399593` | After the follow-up `4e1b8d2ba` |
 |---|---|---|---|
-| Database hits, whole lookup | 65,600 to 66,300 | 148,000 to 150,500 | about 2.3 |
-| Database hits, free-value query | 50,150 and 50,776 | 132,525 and 134,937 | about 2.65 |
-| Median wall time | 20.5 to 31.2 ms | 68.1 to 84.6 ms | 2.7 to 3.3 |
+| 50 live branches, 1,050 values, prefix pool | 52,016 (67,540) | 134,937 (150,482) | 78,291 (93,736) |
+| 50 live branches, 1,050 values, address pool | 50,150 (65,607) | 132,525 (148,003) | 73,115 (88,497) |
+| One old branch, 2,000 deleted values, prefix pool | 362,626 (416,550) | 829,892 (883,735) | 64,203 (118,048) |
+| One old branch, 2,000 deleted values, address pool | 360,844 (414,701) | 958,047 (1,011,827) | 63,611 (117,393) |
 
-The number of queries per lookup does not change. Full tables are in `branch-agnostic-wip/notes/pr3-description-notes.md` under "Database hits before and after".
+- With 50 live branches, a lookup now costs about 1.4 times the base, down from about 2.3 times.
+- With one old branch and many deleted values, a lookup now costs about 0.28 times the base. On that dataset, the filter on the `HAS_VALUE` edge drops 4,000 of 4,301 rows, so the other four edges are matched for 300 rows only.
+- Why the base costs about 360,000 hits on this dataset was not investigated.
+- The number of queries per lookup does not change.
+
+Median wall time in ms (base / first run / follow-up), lookup on the default branch: 33.6 / 90.9 / 76.2 for the prefix pool with 50 branches, and 72.8 / 215.9 / 33.9 with one old branch. Another session was running component tests on the machine at the same time (load average 2.9 to 7.6), so wall time is approximate. Compare database hits instead. Full tables are in `branch-agnostic-wip/notes/pr3-description-notes.md` under "Database hits after the fast path and the per-edge check".
 
 ## Local-pass evidence
 
@@ -103,6 +133,15 @@ Every run started from `backend/` in the code worktree. Component tests used tes
 | `tests/component/core/resource_manager/test_prefix_pool.py` (20 tests, 7 assertions changed) | component | same run as the row above | 2026-11-04T02:14:21Z | testcontainers Neo4j | `785 passed, 2 xfailed, 85 warnings in 371.95s (0:06:11)` |
 | `tests/benchmark/test_node_list_filter.py` (5 cases) | benchmark | `INFRAHUB_LOG_LEVEL=CRITICAL uv run --no-sync pytest tests/benchmark/test_node_list_filter.py -p no:randomly -q --dist=no --benchmark-group-by=name` | 2026-11-04T00:47:32Z | testcontainers Neo4j | `5 passed, 17 warnings in 66.64s (0:01:06)` |
 | `tests/benchmark/test_ip_pool_allocation.py::test_ip_pool_next_free` (4 cases) | benchmark | `INFRAHUB_LOG_LEVEL=CRITICAL uv run --no-sync pytest tests/benchmark/test_ip_pool_allocation.py -p no:randomly -q --dist=no --benchmark-group-by=name` | 2026-11-04T02:22:07Z | testcontainers Neo4j, AMD EPYC 9R45 | `4 passed, 17 warnings in 48.51s` |
+
+Runs of the performance follow-up, at `4e1b8d2ba`:
+
+| Test id | Type | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
+|---|---|---|---|---|---|
+| `tests/component/core/resource_manager/test_ip_pool_branch_windows.py::TestIPPoolValueChangedOnBranch` (16 cases), with `tests/component/core/resource_manager/`, `tests/component/core/ipam/`, `tests/component/graphql/resource_manager/`, `tests/component/graphql/queries/test_resource_pool.py` and `tests/unit/core/query/test_branch_windows.py` | component and unit | `uv run --no-sync pytest tests/component/core/resource_manager/ tests/component/core/ipam/ tests/component/graphql/resource_manager/ tests/component/graphql/queries/test_resource_pool.py tests/unit/core/query/test_branch_windows.py -p no:randomly -q -n 4 -rA` | 2026-11-04T04:53:19Z | testcontainers Neo4j | `781 passed, 2 xfailed, 85 warnings in 398.18s (0:06:38)` |
+| `tests/benchmark/test_ip_pool_allocation.py::test_ip_pool_next_free` (8 cases, `branches` and `churn`) | benchmark | `INFRAHUB_LOG_LEVEL=CRITICAL uv run --no-sync pytest tests/benchmark/test_ip_pool_allocation.py -p no:randomly -q --dist=no --benchmark-group-by=name` | 2026-11-04T05:00:12Z | testcontainers Neo4j | `8 passed, 17 warnings in 149.55s` |
+
+The run of 781 tests leaves out `agnostic_retirement/` (27 tests) and `m078` (5 tests), which the run of 785 included. Neither directory changed in the follow-up.
 
 Notes on the evidence:
 
@@ -155,13 +194,13 @@ Two reviewers ran on `17e898643..2e7c97273`. One covered code, error handling, t
 - The `speckit-checkpoint-commit` skill is not available in this environment. The subagents committed with `git commit` after running the formatters and linters.
 - The `after_implement` hooks of `speckit-implement` were skipped inside the chunks. The orchestrator ran the review once at the end.
 - The review ran as two reviewers in parallel instead of six in sequence. The reviews only read files, so they cannot conflict.
-- **The query approach was not changed after T046.** An allocation costs about 2.3 times the database hits and about 3 times the wall time of the base. T046 leaves the call to whoever judges "significantly slower". The run left that call to the user.
+- **The query approach was not changed after T046 in the first run.** An allocation cost about 2.3 times the database hits of the base. The user then asked for the shortcut for values held on the default branch and the per-edge filter, which brought the cost to about 1.4 times the base. Reading the competing edges one edge at a time, with a shrinking list of branches, was not done: the orchestrator recommended against it because it saves reads only in a rare case, and the user accepted that recommendation.
 - **The read at a past time for number pools with divisions now gives a different result** (chunk B). FR-012 requires no change in what number pools allocate. Allocation reads at the current time, where results are the same. The change was accepted as it is, because the result now agrees with what the value fragments already report for such a branch.
 - Only the high finding and the factual error in the changelog were fixed. The medium `DELETING` test gap was closed by the same tests. Every other medium and low finding is deferred.
 
 ## Suggested next steps
 
-1. Decide whether an allocation that costs about 2.3 times the database hits and about 3 times the wall time is acceptable (T046). If it is not, the approach changes before review.
+1. Decide whether an allocation that costs about 1.4 times the base database hits with 50 live branches is acceptable (T046). With one old branch and many deleted values it costs less than the base. Two write paths were not checked for the shortcut: writes with an explicit `at` earlier than an existing edge's `from`, and `rollback.py`.
 2. Decide whether to fix the medium finding in `ip_pool_branch.py`: a namespace that exists on no live branch can raise `NodeNotFoundError` instead of `ResourceNotFoundError`.
 3. Decide whether the change to the number pool read at a past time is acceptable under FR-012, and whether to add a test for it.
 4. Run `/pre-ci` in the code worktree, then push `branch-windows-ip-pools-ifc-3508` and open the PR against `release-1.12` (T050). Use the draft in `branch-agnostic-wip/notes/pr3-description-notes.md`. Add the fifth copy of the window logic in migration `m082` and the review fix to that draft.
