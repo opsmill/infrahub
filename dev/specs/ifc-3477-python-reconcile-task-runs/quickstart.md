@@ -46,6 +46,9 @@ Expected: all pass with no change to their assertions.
 3. In the task list of the web interface, open the `Setup computed attributes for Python transforms in task-manager` run that the deletion started.
 4. Expected: 4 task runs, and no task run named `Gather Python transform attributes for <branch>`.
 5. Delete a second branch with 50 branches open. The new run also holds 4 task runs.
+6. Record the observed count in the pull request.
+
+On `stable`, the `branch-purge-tasks` flow that a branch deletion starts deletes the flow runs tagged with the deleted branch. It can remove the setup run before you open it. If the run is gone, delete another branch and open its run as soon as it completes.
 
 ## 5. Lint and the changelog
 

@@ -8,12 +8,13 @@ This change adds no API, GraphQL field, REST endpoint, CLI option or event. It c
 
 | Flow run | Before | After |
 |----------|--------|-------|
-| `computed-attribute-setup-python`, any event | 4 + 2 per branch that is not global | 4 |
+| `computed-attribute-setup-python`, branch deletion | 4 + 2 per branch that is not global | 4 |
+| `computed-attribute-setup-python`, schema update | 4 + 2 per branch, plus one per recompute the run submits | 4, plus one per recompute the run submits |
 | `computed-attribute-process-transform-lifecycle`, delete | 3 + 1 per branch that is not global | 3 |
-| `computed-attribute-process-transform-lifecycle`, create or update | 3 + 1 per branch, plus the recompute submission's tasks | 3, plus the recompute submission's tasks |
+| `computed-attribute-process-transform-lifecycle`, create or update | 3 + 1 per branch, plus one per recompute the run submits | 3, plus one per recompute the run submits |
 | `trigger-configure-all` (`infrahub upgrade`) | the other gathers + 2 + 1 per branch | the other gathers + 2 |
 
-The figures come from reading the code (research R2). The tests check only that the count does not change with the number of branches.
+The figures come from reading the code (research R2). In production, each submitted recompute adds one task run through `run_deployment`, and their number depends on the attributes selected, not on the number of branches. The tests check only that the count does not change with the number of branches.
 
 ## Task-run names that no longer appear
 
@@ -23,10 +24,12 @@ The figures come from reading the code (research R2). The tests check only that 
 
 | Condition | Level | Message after the change |
 |-----------|-------|--------------------------|
-| A Python computed attribute on branch `<branch>` names a transform that the query on `<branch>` does not return | WARNING | `The transform <transform> is assigned to a computed attribute on branch '<branch>' but the transform could not be found on that branch.` |
-| Gathering fails on branch `<branch>` | The run fails. The original exception is unchanged, and its note is printed with the traceback in the run's log | Note: `Gathering the Python computed attributes failed on branch '<branch>'` |
+| A Python computed attribute on branch `<branch>` names a transform that the query on `<branch>`, which filters by name, does not return | WARNING | `No Python transform named '<transform>' was found on branch '<branch>', but a computed attribute is assigned to it.` |
+| Gathering fails on branch `<branch>` | ERROR, and the run fails | The original exception is unchanged. Its note is printed at the end of the traceback in the run's error log line: `Gathering the Python computed attributes failed on branch '<branch>'` |
 
-The missing-transform warning used to read `The transform <transform> is assigned to a computed attribute but the transform could not be found in the database.`, and it appeared under the per-branch task run.
+- The missing-transform warning used to read `The transform <transform> is assigned to a computed attribute but the transform could not be found in the database.`, and it appeared under the per-branch task run.
+- An attribute wired to its transform by UUID still triggers the warning, because the query filters by name. This change does not alter that.
+- The run's state message keeps the original error text, for example `LookupError: Unable to find the peer`. It does not include the note.
 
 ## Unchanged
 

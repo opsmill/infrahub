@@ -10,7 +10,7 @@ This change adds no entity, field, relationship, table or migration. It changes 
 
 - Read from the worker's branch registry.
 - Each gather visits every branch that is not global, in registry order.
-- The deleted branch can still be listed on a worker whose registry has not been refreshed. See the edge case in the spec.
+- The deleted branch can still be listed on a worker whose registry has not been refreshed. See the edge case in the spec. Deleting a branch's data does not remove it from the registry. A test has to call `registry.purge_inactive_branches` (research R6).
 
 ### Python computed attribute (schema)
 
@@ -45,7 +45,7 @@ For a fixed schema and a fixed set of Python transforms, the number of task runs
 | `computed-attribute-setup-python` | `infrahub.schema.updated` | FR-003 |
 | `computed-attribute-process-transform-lifecycle` | Python transform created, updated or deleted | FR-003 |
 
-From the code, the first two hold 4 task runs per run and the third holds 3 for a delete. Tests compare counts across branch numbers instead of pinning these numbers (research R2).
+From the code, a branch deletion holds 4 task runs per run and a transform delete holds 3. A schema update, a transform create and a transform update hold 4 or 3, plus one per recompute the run submits in production. Tests compare counts across branch numbers instead of pinning these numbers (research R2).
 
 ## State of the gather after the change
 
