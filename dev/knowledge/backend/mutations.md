@@ -250,17 +250,24 @@ object locks, because the IPAM reconciliation that follows rewrites parent relat
 
 A change to a number pool's ranges and a write that checks a number against those ranges must not
 overlap: otherwise the write can commit a number from a range the change just removed. Every such path
-goes through `NumberPoolLocker` (`pools/number_pool_locker.py`), which takes two locks:
+goes through the `NumberPoolLocker` protocol, which `NumberPoolLock` in `pools/number_pool_locker.py`
+implements with two locks:
 
 | Lock | Taken by | Mode |
 |------|----------|------|
-| `resource_pool.<pool id>` | range create, update and delete, pool create, update and delete, the schema-pool synchronizer | exclusive (`changing`) |
+| `resource_pool.<pool id>` | range create, update and delete, pool create and delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools | exclusive (`changing`) |
 | `resource_pool.<pool id>` | allocation, attaching a supplied number, editing a tracked number | shared (`holding`) |
 | `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
 
-- **Shared holders run in parallel.** Each one records an entry that expires, under
-  `lock.shared.<lock name>.<holder id>`, and renews it while it holds the lock, so allocations in
-  different divisions never wait for each other.
+Pool create and update, and range create and update, also take `number_pool_target.<kind>.<attribute>`
+before the pool's exclusive lock, so two pools on the same unique attribute cannot gain overlapping ranges
+at the same time. Allocations never take it.
+
+- **Shared holders run in parallel.** Each one records an entry that expires, at
+  `lock.shared.<lock name>.<holder id>`, adds its id to the set `lock.shared.<lock name>`, and renews
+  the entry while it holds the lock, so allocations in different divisions never wait for each other.
+  Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
+  expired.
 - **A shared hold lasts until the commit.** Inside a transaction, `holding` hands its release to
   `InfrahubDatabase.hold_until_transaction_end`, because a number only becomes visible to the range
   check once it is committed. This also covers allocations that run inside a transaction outside the
@@ -268,8 +275,15 @@ goes through `NumberPoolLocker` (`pools/number_pool_locker.py`), which takes two
 - **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
   queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
   it releases the mutex and the range change fails with a retry message.
-- **A dead worker blocks range changes only until its entry expires**, after
+- **The division's lock comes before the pool's shared hold.** A write that holds the pool until its
+  commit and then waits for a division's lock can wait on an allocation that is itself queued behind a
+  range change, so allocations take `picking` first. Template components are the exception: they
+  allocate inside the template's transaction without taking the division's lock first, so the cycle can
+  still form until the waiting range change reaches its wait limit and fails.
+- **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
+- **The schema-pool synchronizer reports a range change it could not apply** and moves on to the other
+  pools; the flow raises the refusals once every pool was processed.
 - **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,
   so a number drawn by the IP node they create is released before its write.
 
