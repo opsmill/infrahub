@@ -116,22 +116,22 @@ description: "Task list for a fixed number of task runs per Python computed-attr
 
 ### Tests for User Story 3 (write first)
 
-- [ ] T018 [P] [US3] In `backend/tests/component/computed_attribute/test_gather.py`, add `test_gather_warns_with_branch_when_transform_is_missing` (FR-004).
+- [X] T018 [P] [US3] In `backend/tests/component/computed_attribute/test_gather.py`, add `test_gather_warns_with_branch_when_transform_is_missing` (FR-004).
   - It requests `db`, `default_branch`, `register_core_models_schema` and `car_person_schema_computed_attr`, and not `transform01`. The core models are needed because the gather reads the repositories first (research R6).
   - Patch `infrahub.computed_attribute.gather.get_run_logger` to return `logging.getLogger(<module logger name>)`, as `dev/knowledge/backend/testing.md` §"Logging: Use `caplog` Instead of Mocking `get_run_logger`" shows. This is the one exception to the mocking rule.
   - Call `await gather_trigger_computed_attribute_python.fn(db=db)` under `caplog.at_level(logging.WARNING, ...)`.
   - Assert that the captured warning messages equal exactly `["No Python transform named 'transform01' was found on branch 'main', but a computed attribute is assigned to it."]`. Use the default branch's actual name.
   - Run it: it MUST fail on today's message.
-- [ ] T019 [US3] In `backend/tests/component/computed_attribute/test_gather.py`, add `test_gather_failure_names_the_branch` (FR-005), with `transform01` loaded.
+- [X] T019 [US3] In `backend/tests/component/computed_attribute/test_gather.py`, add `test_gather_failure_names_the_branch` (FR-005), with `transform01` loaded.
   - Create a branch. Load `query01`, the `CoreGraphQLQuery` that `transform01` reads, on that branch with `NodeManager.get_one(..., branch=<branch>)`, and delete it with `await node.delete(db=db)`. Load it on the branch first, or the delete lands on `main`.
   - Call `await gather_trigger_computed_attribute_python(db=db)` inside `pytest.raises(LookupError, match=r"^Unable to find the peer\nGathering the Python computed attributes failed on branch '<branch>'$")`. Confirm the exception type and message on today's code first (research R6).
   - Run it: it MUST fail on today's code, because the note is missing.
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] In `backend/infrahub/computed_attribute/gather.py::gather_python_transform_attributes`, replace the missing-transform warning with `f"No Python transform named '{transform_name}' was found on branch '{branch_name}', but a computed attribute is assigned to it."` (research R5, contract).
-- [ ] T021 [US3] In `backend/infrahub/computed_attribute/gather.py::gather_trigger_computed_attribute_python`, wrap only the `await gather_python_transform_attributes(...)` call for one branch in `try` / `except Exception as exc:`. Call `exc.add_note(f"Gathering the Python computed attributes failed on branch '{branch.name}'")`, then use a bare `raise` (research R4, `dev/guidelines/backend/exceptions.md` §"Re-raise what you can't handle"). Keep the `try` body to that one call.
-- [ ] T022 [US3] Run `uv run pytest backend/tests/component/computed_attribute/test_gather.py -v`. T018, T019 and the existing gather tests MUST pass.
+- [X] T020 [US3] In `backend/infrahub/computed_attribute/gather.py::gather_python_transform_attributes`, replace the missing-transform warning with `f"No Python transform named '{transform_name}' was found on branch '{branch_name}', but a computed attribute is assigned to it."` (research R5, contract).
+- [X] T021 [US3] In `backend/infrahub/computed_attribute/gather.py::gather_trigger_computed_attribute_python`, wrap only the `await gather_python_transform_attributes(...)` call for one branch in `try` / `except Exception as exc:`. Call `exc.add_note(f"Gathering the Python computed attributes failed on branch '{branch.name}'")`, then use a bare `raise` (research R4, `dev/guidelines/backend/exceptions.md` §"Re-raise what you can't handle"). Keep the `try` body to that one call.
+- [X] T022 [US3] Run `uv run pytest backend/tests/component/computed_attribute/test_gather.py -v`. T018, T019 and the existing gather tests MUST pass.
 
 **Checkpoint**: Operators can find the branch behind a warning or a failure without the per-branch task runs.
 

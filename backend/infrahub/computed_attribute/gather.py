@@ -56,7 +56,7 @@ async def gather_python_transform_attributes(
     for transform_name in transform_names:
         if transform_name not in found_transforms_names:
             log.warning(
-                msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
+                msg=f"No Python transform named '{transform_name}' was found on branch '{branch_name}', but a computed attribute is assigned to it."
             )
     repositories = repositories or await get_repositories_commit_per_branch(db=db)
     graphql_params = await prepare_graphql_params(db=db, branch=branch)
@@ -152,9 +152,13 @@ async def gather_trigger_computed_attribute_python(
         if branch.is_global:
             continue
 
-        computed_attributes = await gather_python_transform_attributes(
-            db=db, branch_name=branch.name, repositories=repositories
-        )
+        try:
+            computed_attributes = await gather_python_transform_attributes(
+                db=db, branch_name=branch.name, repositories=repositories
+            )
+        except Exception as exc:
+            exc.add_note(f"Gathering the Python computed attributes failed on branch '{branch.name}'")
+            raise
         for computed_attribute in computed_attributes:
             all_computed_attributes[computed_attribute.name][branch.name] = computed_attribute
 
