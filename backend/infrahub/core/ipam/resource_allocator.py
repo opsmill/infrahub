@@ -3,6 +3,8 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Iterable
 
+from infrahub.core import registry
+from infrahub.core.ipam.constants import AnyBranch
 from infrahub.core.query.ipam import (
     IPAddressData,
     IPPrefixData,
@@ -22,6 +24,14 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _query_branch(on_branch: Branch | AnyBranch) -> tuple[Branch, bool]:
+    """Return the branch and the branch-agnostic flag that the free-value queries take for `on_branch`."""
+    if isinstance(on_branch, AnyBranch):
+        # The branch-agnostic query reads the window of every live branch, but every query still needs a branch.
+        return registry.get_branch_from_registry(), True
+    return on_branch, False
+
+
 class IPAMResourceAllocator:
     """Allocator for IPAM resources (prefixes and addresses) within pools.
 
@@ -29,33 +39,20 @@ class IPAMResourceAllocator:
     IP prefix or address within a parent prefix. It uses database-side
     Cypher computation for performance, which is especially important
     for IPv6 allocations where the address space is very large.
+
+    Every method takes the namespace to read, given as a node, its ID, or None for the default namespace.
     """
 
-    def __init__(
-        self,
-        db: InfrahubDatabase,
-        namespace: CoreNode | str | None = None,
-        branch: Branch | None = None,
-        branch_agnostic: bool = False,
-    ) -> None:
-        """Initialize the IPAM resource allocator.
-
-        Args:
-            db: Database connection to use for queries.
-            namespace: IP namespace node or its ID. If None, uses the default namespace.
-            branch: Branch to query. If None, uses the default branch.
-            branch_agnostic: If True, queries across all branches.
-
-        """
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
-        self.namespace = namespace
-        self.branch = branch
-        self.branch_agnostic = branch_agnostic
 
     async def _get_next_ipv4_prefix(
         self,
         ip_prefix: IPNetworkType,
         target_prefix_length: int,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch | AnyBranch,
         at: Timestamp | str | None = None,
         parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
@@ -67,6 +64,8 @@ class IPAMResourceAllocator:
         Args:
             ip_prefix: Parent prefix to allocate from.
             target_prefix_length: Desired prefix length for the new prefix (0-32).
+            namespace: IP namespace node or its ID.
+            on_branch: Branch whose values are taken, or `ANY_BRANCH` for the values any live branch holds.
             at: Optional timestamp for point-in-time queries.
 
         Returns:
@@ -79,14 +78,15 @@ class IPAMResourceAllocator:
         if target_prefix_length < ip_prefix.prefixlen:
             return None
 
+        branch, branch_agnostic = _query_branch(on_branch)
         query = await IPPrefixSubnetFetchFree.init(
             db=self.db,
-            branch=self.branch,
+            branch=branch,
             obj=ip_prefix,
             target_prefixlen=target_prefix_length,
-            namespace=self.namespace,
+            namespace=namespace,
             at=at,
-            branch_agnostic=self.branch_agnostic,
+            branch_agnostic=branch_agnostic,
             parent_uuid=parent_uuid,
         )
         await query.execute(db=self.db)
@@ -102,6 +102,9 @@ class IPAMResourceAllocator:
         self,
         ip_prefix: IPNetworkType,
         target_prefix_length: int,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch | AnyBranch,
         at: Timestamp | str | None = None,
         parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
@@ -113,6 +116,8 @@ class IPAMResourceAllocator:
         Args:
             ip_prefix: Parent prefix to allocate from.
             target_prefix_length: Desired prefix length for the new prefix (0-128).
+            namespace: IP namespace node or its ID.
+            on_branch: Branch whose values are taken, or `ANY_BRANCH` for the values any live branch holds.
             at: Optional timestamp for point-in-time queries.
 
         Returns:
@@ -125,14 +130,15 @@ class IPAMResourceAllocator:
         if target_prefix_length < ip_prefix.prefixlen:
             return None
 
+        branch, branch_agnostic = _query_branch(on_branch)
         query = await IPv6PrefixSubnetFetchFree.init(
             db=self.db,
-            branch=self.branch,
+            branch=branch,
             obj=ip_prefix,
             target_prefixlen=target_prefix_length,
-            namespace=self.namespace,
+            namespace=namespace,
             at=at,
-            branch_agnostic=self.branch_agnostic,
+            branch_agnostic=branch_agnostic,
             parent_uuid=parent_uuid,
         )
         await query.execute(db=self.db)
@@ -150,6 +156,9 @@ class IPAMResourceAllocator:
         self,
         ip_prefix: IPNetworkType,
         target_prefix_length: int,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch | AnyBranch,
         at: Timestamp | str | None = None,
         parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
@@ -160,6 +169,8 @@ class IPAMResourceAllocator:
         Args:
             ip_prefix: Parent prefix to allocate from.
             target_prefix_length: Desired prefix length for the new prefix.
+            namespace: IP namespace node or its ID.
+            on_branch: Branch whose values are taken, or `ANY_BRANCH` for the values any live branch holds.
             at: Optional timestamp for point-in-time queries.
             parent_uuid: UUID of the pool-resource prefix node to exclude from occupied ranges.
 
@@ -169,14 +180,30 @@ class IPAMResourceAllocator:
         """
         if ip_prefix.version == 4:
             return await self._get_next_ipv4_prefix(
-                ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at, parent_uuid=parent_uuid
+                ip_prefix=ip_prefix,
+                target_prefix_length=target_prefix_length,
+                namespace=namespace,
+                on_branch=on_branch,
+                at=at,
+                parent_uuid=parent_uuid,
             )
         return await self._get_next_ipv6_prefix(
-            ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at, parent_uuid=parent_uuid
+            ip_prefix=ip_prefix,
+            target_prefix_length=target_prefix_length,
+            namespace=namespace,
+            on_branch=on_branch,
+            at=at,
+            parent_uuid=parent_uuid,
         )
 
     async def get_next_address(
-        self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None, is_pool: bool = False
+        self,
+        ip_prefix: IPNetworkType,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch | AnyBranch,
+        at: Timestamp | str | None = None,
+        is_pool: bool = False,
     ) -> IPAddressType | None:
         """Get the next available free IP address within a prefix.
 
@@ -184,6 +211,8 @@ class IPAMResourceAllocator:
 
         Args:
             ip_prefix: Prefix to allocate an address from.
+            namespace: IP namespace node or its ID.
+            on_branch: Branch whose values are taken, or `ANY_BRANCH` for the values any live branch holds.
             at: Optional timestamp for point-in-time queries.
             is_pool: If True, includes network and broadcast addresses as allocatable.
                 If False (default), reserves the first and last addresses.
@@ -192,25 +221,34 @@ class IPAMResourceAllocator:
             The next available IP address, or None if no addresses are available.
 
         """
+        branch, branch_agnostic = _query_branch(on_branch)
         # Use IPv6-specific query for IPv6 to avoid 64-bit integer overflow
         query_class = IPv6PrefixIPAddressFetchFree if ip_prefix.version == 6 else IPPrefixIPAddressFetchFree
         query = await query_class.init(
             db=self.db,
-            branch=self.branch,
+            branch=branch,
             obj=ip_prefix,
-            namespace=self.namespace,
+            namespace=namespace,
             at=at,
-            branch_agnostic=self.branch_agnostic,
+            branch_agnostic=branch_agnostic,
             is_pool=is_pool,
         )
         await query.execute(db=self.db)
         return query.get_address()
 
-    async def get_subnets(self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None) -> Iterable[IPPrefixData]:
-        """Get all subnets within a parent prefix.
+    async def get_subnets(
+        self,
+        ip_prefix: IPNetworkType,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch,
+        at: Timestamp | str | None = None,
+    ) -> Iterable[IPPrefixData]:
+        """Get all subnets within a parent prefix on `on_branch`.
 
         Args:
             ip_prefix: Parent prefix to query.
+            namespace: IP namespace node or its ID.
             at: Optional timestamp for point-in-time queries.
 
         Returns:
@@ -219,22 +257,27 @@ class IPAMResourceAllocator:
         """
         query = await IPPrefixSubnetFetch.init(
             db=self.db,
-            branch=self.branch,
+            branch=on_branch,
             obj=ip_prefix,
-            namespace=self.namespace,
+            namespace=namespace,
             at=at,
-            branch_agnostic=self.branch_agnostic,
         )
         await query.execute(db=self.db)
         return query.get_subnets()
 
     async def get_ip_addresses(
-        self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None
+        self,
+        ip_prefix: IPNetworkType,
+        *,
+        namespace: CoreNode | str | None,
+        on_branch: Branch,
+        at: Timestamp | str | None = None,
     ) -> Iterable[IPAddressData]:
-        """Get all IP addresses within a prefix.
+        """Get all IP addresses within a prefix on `on_branch`.
 
         Args:
             ip_prefix: Prefix to query.
+            namespace: IP namespace node or its ID.
             at: Optional timestamp for point-in-time queries.
 
         Returns:
@@ -243,11 +286,10 @@ class IPAMResourceAllocator:
         """
         query = await IPPrefixIPAddressFetch.init(
             db=self.db,
-            branch=self.branch,
+            branch=on_branch,
             obj=ip_prefix,
-            namespace=self.namespace,
+            namespace=namespace,
             at=at,
-            branch_agnostic=self.branch_agnostic,
         )
         await query.execute(db=self.db)
         return query.get_addresses()
