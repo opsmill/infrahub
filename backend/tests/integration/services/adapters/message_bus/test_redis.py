@@ -602,4 +602,15 @@ async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
 
     assert exc.value.message == "No worker answered send.echo.request within 1 seconds"
     assert bus.futures == {}
+
+    # An explicit zero must time out immediately instead of selecting the default
+    with pytest.raises(WorkerTimeoutError) as exc:
+        await bus.rpc(
+            message=messages.SendEchoRequest(message="nobody is listening"),
+            response_class=SendEchoRequestResponse,
+            timeout=0,
+        )
+
+    assert exc.value.message == "No worker answered send.echo.request within 0 seconds"
+    assert bus.futures == {}
     await bus.shutdown()
