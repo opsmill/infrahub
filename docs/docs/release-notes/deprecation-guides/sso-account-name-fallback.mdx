@@ -64,8 +64,10 @@ Administrators of Infrahub instances that:
 - still have local accounts that need to be linked to their SSO identities.
 
 If you do not use SSO, or every account is already linked, this change does not affect you,
-but you should still make sure the fallback is not enabled. On releases before 1.12 that means
-setting `sso_account_name_fallback = false`; on 1.12.x it is disabled unless you enabled it.
+but you should still make sure the fallback is not enabled. On 1.8.7+, 1.9.7+, 1.10.x and
+1.11.x that means setting `sso_account_name_fallback = false`; on 1.8.6 and 1.9.0-1.9.6 the
+setting does not exist, so upgrade to one of those releases first; on 1.12.x it is disabled
+unless you enabled it.
 
 ## How linking works
 
@@ -74,7 +76,10 @@ login with the fallback enabled, Infrahub matches by **account name == the SSO `
 if a matching account exists and has never been linked, the fallback adopts it (attaching the
 SSO identity). Otherwise, or whenever the fallback is disabled (the default from 1.12), a new,
 separate account is created and the SSO identity links to *that* account, while the
-pre-existing account is left untouched and unlinked. Get the name match right before the
+pre-existing account is left untouched and unlinked. When an account with the display name
+already exists, the new account is named after the user's email instead, and the login fails
+if the identity provider sends no email or an account with that email name also exists.
+Get the name match right before the
 migration window, and on 1.12.x enable the fallback first, or users will be linked to
 brand-new empty accounts instead of their existing ones.
 
@@ -182,7 +187,8 @@ INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK=false
 ```
 
 After this, any *new* first-time SSO login can no longer claim an existing account by display
-name. It always gets its own fresh account, and existing links are unaffected. This closes the
+name. It gets a separate account instead, or fails as described in
+[How linking works](#how-linking-works), and existing links are unaffected. This closes the
 account-takeover window while keeping every link you already made intact.
 
 ## Re-linking a user who was missed
@@ -204,7 +210,7 @@ Keep this window short and prefer doing all link-ups in the single Step 3 window
 | 1.8.6 | Vulnerability fixed for new setups; old behavior kept for existing setups. |
 | 1.8.7, 1.9.7, all 1.10.x and 1.11.x | Behavior placed behind the `sso_account_name_fallback` flag (default enabled). **Migrate during this window.** |
 | 1.12 | Flag default changed to disabled. Infrahub logs a warning when it loads its configuration with the flag enabled. |
-| 1.13 | Flag and fallback behavior **removed**. A first SSO login always provisions its own account. |
+| 1.13 | Flag and fallback behavior **removed**. A first SSO login never adopts an existing account. |
 
 :::success
 Once `sso_account_name_fallback` is set to `false` and all your users log in to their correct
