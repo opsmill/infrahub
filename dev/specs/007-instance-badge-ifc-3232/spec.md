@@ -14,6 +14,13 @@
 
 Teams run several Infrahub instances: one per stage (development, QA, production) or one per region. Their users open several of them in one browser, and every tab reads "Infrahub" with the same look. Nothing in the web UI says which instance a tab shows, so users check the URL before every change, and a change meant for QA can land in production. Three customers asked for a way to tell instances apart, in particular during a schema upgrade and when they move from one instance to another.
 
+## Clarifications
+
+### Session 2026-11-04
+
+- Q: What does the login page show when a label and a color are set? → A: The thin colored bar at the top and the label badge near the Infrahub logo on the login card.
+- Q: Where does the badge sit in the top header? → A: Not fixed in the spec; the position is settled in a design jam during planning, with mockups of the left-most and right-side placements.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Tell instances apart on every page (Priority: P1)
@@ -27,7 +34,7 @@ A user who works in several Infrahub instances opens one of them. On every page,
 **Acceptance Scenarios**:
 
 1. **Given** the instance label is "us-east-1 PROD" and the color is red, **When** a read-only user opens the branches page, **Then** the top header shows a badge reading "us-east-1 PROD" in the red style and a thin red bar spans the full width at the top of the page.
-2. **Given** the same settings, **When** an anonymous visitor opens the login page, **Then** the login page shows the thin red bar at the top and the badge with the label.
+2. **Given** the same settings, **When** an anonymous visitor opens the login page, **Then** the login page shows the thin red bar at the top and the badge with the label near the Infrahub logo on the login card, before the visitor enters credentials.
 3. **Given** the same settings, **When** the user reloads the page or navigates to another page, **Then** the badge and the bar are still shown.
 4. **Given** no label and no color are stored, **When** any user opens any page, **Then** no badge and no bar are rendered, and the layout is identical to today.
 5. **Given** a color is stored but no label, **When** a user opens a page, **Then** only the bar is shown, in that color.
@@ -120,7 +127,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 - **FR-008**: The instance label and color MUST NOT be settable as personal (per-user) preferences and MUST NOT appear in a user's own preferences; a per-user write of either value MUST be rejected.
 - **FR-009**: Every visitor, including an anonymous visitor on the login page, MUST be able to read the current label and color, without holding any permission, so that the indicator is shown on every page.
 - **FR-010**: A read of the instance settings MUST NOT create a stored record; before the first save, the read returns no label and no color.
-- **FR-011**: When a label is set, the top header of every page inside the application and the login page MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set. When no label is set, no badge is rendered.
+- **FR-011**: When a label is set, the top header of every page inside the application MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set, and the login page MUST show the same badge near the Infrahub logo on the login card. When no label is set, no badge is rendered. The badge's position inside the header (left-most or on the right next to the status indicators) is settled in a design jam during planning and recorded in the plan.
 - **FR-012**: When a color is set, every page inside the application and the login page MUST show a thin bar in that color across the full width of the top of the page, above the sidebar and the header. When no color is set, no bar is rendered and no space is reserved.
 - **FR-013**: A label that exceeds the badge's maximum width MUST be truncated with an ellipsis, and the full label MUST be available in a tooltip.
 - **FR-014**: When a label is set, the browser tab title of every page MUST be "`<label>` · `<page title>`", where the page title is the page's own title or "Infrahub" for pages without one. When no label is set, the tab title MUST be the page title alone, as today.
@@ -148,7 +155,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 
 - The existing "manage global preferences" permission is the right gate; no new permission is created (decision of 2026-11-04).
 - The preset list is fixed at red, amber, green, blue, indigo, purple and gray (decision of 2026-11-04). Semantic meanings such as "red means production" are documented suggestions, not enforced.
-- The badge sits in the top header and the bar spans the top of the page above the sidebar and the header (decision of 2026-11-04: badge plus thin bar).
+- The badge sits in the top header (exact position decided in a design jam) and the bar spans the top of the page above the sidebar and the header (decision of 2026-11-04: badge plus thin bar). On the login page the bar spans the top and the badge sits near the logo on the login card.
 - Label and color are independent; a color without a label shows the bar only, and a label without a color shows the gray badge only (decision of 2026-11-04).
 - The maximum label length is 32 characters, chosen so that a label fits in the header next to the branch selector and leaves room for the page title in a browser tab.
 - The separator in the tab title is " · " (space, middle dot, space).
