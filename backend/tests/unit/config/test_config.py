@@ -417,6 +417,7 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
         "INFRAHUB_CACHE_USERNAME": "",
         "INFRAHUB_CACHE_TLS_ENABLED": "false",
         "INFRAHUB_CACHE_TLS_INSECURE": "false",
+        "INFRAHUB_CACHE_MAX_CONNECTIONS": "1000",
     }
     for name, value in compose_env.items():
         monkeypatch.setenv(name, value)
@@ -429,6 +430,30 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
     assert records == [
         {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
     ]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_pool_size_parameter_supersedes_the_setting() -> None:
+    """A max_connections parameter on the URL wins over the setting, and the override is reported."""
+    with capture_logs() as records:
+        CacheSettings(url=SecretStr("redis://cache:6379/0?max_connections=7"), max_connections=250)
+
+    assert records == [
+        {
+            "event": SUPERSEDED_WARNING,
+            "log_level": "warning",
+            "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
+        }
+    ]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_without_pool_size_parameter_reports_nothing() -> None:
+    """The setting sizes the pool of a URL that carries no max_connections parameter, so nothing is superseded."""
+    with capture_logs() as records:
+        CacheSettings(url=SecretStr("redis://cache:6379/0?socket_timeout=3"), max_connections=250)
+
+    assert records == []
 
 
 @pytest.mark.usefixtures("without_cache_environment")

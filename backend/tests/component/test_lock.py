@@ -30,6 +30,8 @@ PAUSE_MILLISECONDS = 500
 NO_ANSWER_MILLISECONDS = 1500
 TIMEOUT_WARNING = "Redis did not answer a lock command in time"
 CLEAN_UP_WARNING = "Could not delete the key of a lock whose acquire timed out"
+# More locks than the 100 connections redis-py 8 gives a pool that is not sized explicitly.
+CONCURRENT_LOCKS = 150
 
 
 class ReplyDelayingProxy:
@@ -106,6 +108,15 @@ async def redis_client(proxy: ReplyDelayingProxy) -> AsyncGenerator[redis.Redis,
 @pytest.fixture
 async def direct_client(proxy: ReplyDelayingProxy) -> AsyncGenerator[redis.Redis, None]:
     client = build_redis_connection(config.SETTINGS.cache)
+    yield client
+    await aclose_redis_client(client)
+
+
+@pytest.fixture
+async def named_client(redis: dict[int, int] | None) -> AsyncGenerator[redis.Redis, None]:
+    """A client built from the settings whose connections carry a name, so Redis can count the ones it opened."""
+    url = f"{build_cache_connection_string(config.SETTINGS.cache)}?client_name=lock-burst-{uuid4().hex}"
+    client = build_redis_connection(CacheSettings(url=SecretStr(url)))
     yield client
     await aclose_redis_client(client)
 
@@ -244,3 +255,28 @@ async def test_release_after_another_holder_took_the_key_keeps_that_holder_lock(
     assert held_by_next[0] is not None
     assert after_first_release == held_by_next
     assert await redis_client.get(key) is None
+
+
+async def test_locks_acquired_at_once_each_get_a_connection(named_client: redis.Redis) -> None:
+    """Every lock of a burst larger than redis-py's default pool is acquired and released."""
+    prefix = f"burst-{uuid4()}"
+    locks = [
+        InfrahubLock(name=f"{prefix}-{index}", connection=named_client, metrics=False)
+        for index in range(CONCURRENT_LOCKS)
+    ]
+
+    async def hold(lock: InfrahubLock) -> bool:
+        await lock.acquire()
+        try:
+            return await lock.locked()
+        finally:
+            await lock.release()
+
+    # While Redis is paused, every acquisition keeps its connection until Redis answers.
+    await named_client.client_pause(timeout=PAUSE_MILLISECONDS)
+    held = await asyncio.gather(*(hold(lock) for lock in locks), return_exceptions=True)
+
+    assert held == [True] * CONCURRENT_LOCKS
+    name = named_client.connection_pool.connection_kwargs["client_name"]
+    assert len([client for client in await named_client.client_list() if client["name"] == name]) >= CONCURRENT_LOCKS
+    assert [key async for key in named_client.scan_iter(match=f"{LOCK_PREFIX}.{prefix}-*")] == []

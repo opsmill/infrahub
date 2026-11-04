@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
+from urllib.parse import parse_qs
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -597,6 +598,8 @@ class BrokerSettings(BaseSettings):
 CACHE_URL_SUPERSEDED_FIELDS = frozenset(
     {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure"}
 )
+# A URL supersedes these only when it carries a query parameter of the same name.
+CACHE_URL_OPTION_FIELDS = frozenset({"max_connections"})
 
 
 class CacheSettings(BaseSettings):
@@ -641,10 +644,9 @@ class CacheSettings(BaseSettings):
         default=1000,
         ge=1,
         description=(
-            "Maximum number of connections in each Redis connection pool of an Infrahub process; every process "
-            "has one pool for the cache and one for the locks. A command that finds every connection of its pool "
-            "in use fails with MaxConnectionsError. A max_connections query parameter in the cache URL takes "
-            "precedence."
+            "Maximum number of connections in each Redis connection pool that an Infrahub process opens for the "
+            "cache and the locks. A command that finds every connection of its pool in use fails with "
+            "MaxConnectionsError. A max_connections query parameter in the cache URL takes precedence."
         ),
     )
     clean_up_deadlocks_interval_mins: int = Field(
@@ -680,9 +682,10 @@ class CacheSettings(BaseSettings):
 
         # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
         fields = type(self).model_fields
+        url_options = parse_qs(url.get_secret_value().partition("?")[2], keep_blank_values=True).keys()
         superseded = sorted(
             name
-            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
+            for name in self.model_fields_set & (CACHE_URL_SUPERSEDED_FIELDS | (CACHE_URL_OPTION_FIELDS & url_options))
             if getattr(self, name) != fields[name].get_default()
         )
         if superseded:
