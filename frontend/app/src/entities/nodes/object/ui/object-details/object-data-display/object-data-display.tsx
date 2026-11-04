@@ -166,7 +166,7 @@ export function ObjectDataDisplay({
   );
 }
 
-function getRelationshipsVisibleInDataDisplay(
+export function getRelationshipsVisibleInDataDisplay(
   relationships: RelationshipSchema[],
   excludeRelationships?: string[]
 ): RelationshipSchema[] {

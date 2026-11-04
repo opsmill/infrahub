@@ -142,4 +142,118 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
     expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
   });
+
+  it("starts collapsed when defaultCollapsed is true", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        defaultCollapsed
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByRole("region", { name: "LACP" })).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "LACP" }))
+      .toHaveAttribute("aria-expanded", "false");
+    await expect.element(component.getByText("Commit", { exact: true })).not.toBeVisible();
+  });
+
+  it("expands when the header button is pressed", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        defaultCollapsed
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "LACP" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "LACP" }))
+      .toHaveAttribute("aria-expanded", "true");
+    await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
+  });
+
+  it("has no button in its title when defaultCollapsed is undefined", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByRole("region", { name: "LACP" })).toBeVisible();
+    expect(component.getByRole("button", { name: "LACP" }).elements()).toHaveLength(0);
+    await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
+  });
+
+  it("shows the description under the title outside the button and points aria-describedby at it", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        description="Link aggregation settings"
+        defaultCollapsed={false}
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    const description = component.getByText("Link aggregation settings");
+    await expect.element(description).toBeVisible();
+    await expect.element(component.getByRole("region", { name: "LACP" })).toBeVisible();
+    await expect.element(component.getByRole("heading", { level: 2, name: "LACP" })).toBeVisible();
+
+    const trigger = component.getByRole("button", { name: "LACP" });
+    await expect.element(trigger).toHaveAccessibleDescription("Link aggregation settings");
+    expect(trigger.element().contains(description.element())).toBe(false);
+    expect(
+      component.getByRole("heading", { level: 2 }).element().contains(description.element())
+    ).toBe(false);
+  });
+
+  it("shows the Extra button only when the schema it receives has an extra field", async () => {
+    const component = await render(
+      <>
+        <ObjectDetailsCard
+          title="LACP"
+          defaultCollapsed={false}
+          objectSchema={schemaWithExtraField}
+          objectData={objectDataWithExtraField}
+          permission={permission}
+        />
+        <ObjectDetailsCard
+          title="Advanced"
+          defaultCollapsed={false}
+          objectSchema={schemaWithCommit}
+          objectData={objectData}
+          permission={permission}
+        />
+      </>
+    );
+
+    const lacp = component.getByRole("region", { name: "LACP" });
+    const advanced = component.getByRole("region", { name: "Advanced" });
+    await expect.element(lacp.getByRole("button", { name: "Extra" })).toBeVisible();
+    expect(advanced.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
+
+    // WHEN
+    await lacp.getByRole("button", { name: "Extra" }).click();
+
+    // THEN
+    await expect.element(lacp.getByText("Internal status", { exact: true })).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "LACP" }))
+      .toHaveAttribute("aria-expanded", "true");
+  });
 });
