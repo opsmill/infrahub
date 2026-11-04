@@ -157,9 +157,9 @@ description: "Task list for a fixed number of task runs per Python computed-attr
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T025 Confirm that `dev/knowledge/backend/computed-attributes.md` §"Node-Input Automations" still describes the reconcile correctly, and leave it unchanged if so (research R8). Do not edit `dev/guides/backend/creating-async-tasks.md`. The rule about tasks called in a loop is left for `speckit-opsmill-extract`.
-- [ ] T026 Run the full computed-attribute suites again, as in T002, and compare with the baseline: `uv run pytest backend/tests/component/computed_attribute/ -v` and `uv run pytest backend/tests/functional/computed_attributes/ -v`.
-- [ ] T027 Run the formatters and linters: `uv run invoke format`, `uv run invoke lint`, `uv run ruff check . --exclude python_sdk`, `uv run ruff format --check --exclude python_sdk .` and `uv run invoke docs.validate`. Fix every finding in the changed files without adding a suppression (`.agents/rules/python-typing.md`).
+- [X] T025 Confirm that `dev/knowledge/backend/computed-attributes.md` §"Node-Input Automations" still describes the reconcile correctly, and leave it unchanged if so (research R8). Do not edit `dev/guides/backend/creating-async-tasks.md`. The rule about tasks called in a loop is left for `speckit-opsmill-extract`.
+- [X] T026 Run the full computed-attribute suites again, as in T002, and compare with the baseline: `uv run pytest backend/tests/component/computed_attribute/ -v` and `uv run pytest backend/tests/functional/computed_attributes/ -v`.
+- [X] T027 Run the formatters and linters: `uv run invoke format`, `uv run invoke lint`, `uv run ruff check . --exclude python_sdk`, `uv run ruff format --check --exclude python_sdk .` and `uv run invoke docs.validate`. Fix every finding in the changed files without adding a suppression (`.agents/rules/python-typing.md`).
 - [ ] T028 Optionally, run quickstart.md step 4 on a development instance to record the absolute task-run count of one deletion run (spec Assumptions). Add it to `pr-notes.md`.
 - [ ] T029 Remind the user to run `/pre-ci` before pushing. The pull request targets `stable` and references #11165 and IFC-3477. Its description includes `pr-notes.md` and the guard results from T014 and T017.
 
