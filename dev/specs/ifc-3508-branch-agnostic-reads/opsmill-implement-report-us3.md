@@ -84,7 +84,18 @@ The orchestrator created the worktree (T028) before the first chunk. After each 
   - merge: `bulk_merge.py`;
   - the branch support of a field cannot change: `internal.py:412`, `:746` and `:990`.
 
-  Two write paths were not checked: writes with an explicit `at` earlier than an existing edge's `from`, and `rollback.py`.
+  After the follow-up, the orchestrator checked the two remaining write paths:
+
+  - **Writes with an earlier `at`.** A GraphQL request that contains a mutation always writes at the current time (`graphql/app.py:222-224`). An earlier `at` comes only from internal code.
+    - An attribute value update closes every open active edge on its branch, whatever the `at` (`core/query/attribute.py:84-86`).
+    - A relationship delete closes every open edge on its branch, whatever the `at` (`core/query/relationship.py:620-632`).
+    - A node delete closes only the edge it reads at `at` (`core/query/node.py:690-711`). With an earlier `at`, a newer open edge on the same branch stays open, and the new `deleted` edge starts before it. A normal read and the full check both treat that node as existing, and so does the shortcut.
+  - **Rollback (`core/rollback.py`, `core/query/rollback.py`).** A rollback first reopens the edges closed in its window, then deletes the edges created in it, in two separate queries. In two cases one branch can hold two open edges for the same field:
+    - **Between the two queries.** For that time, the reopened edge and the edge not yet deleted are both open. Merge rollback uses `SINCE_TIMESTAMP` while writes to the branch are blocked (`core/diff/merger/merger.py:249`).
+    - **After a schema update rollback that uses `AT_TIMESTAMP`** (`core/schema/update_coordinator.py:384-394`). Suppose another writer changed the same field after the rolled-back write. The rollback reopens the edge from before that write, and the other writer's newer edge also stays open.
+
+    In both cases, a normal read keeps the newest edge, while the shortcut counts both values as taken.
+  - **Effect on allocation.** The shortcut only adds rows to the set of taken values, and every other row still goes through the full check. When two edges are open on one branch, the pool can skip a value that is free. In the worst case, it reports a pool with one value left as exhausted. It never hands out a value that a live branch holds. The free-value query on the base read each edge on its own, with no ranking, so it already counted both values as taken in this state.
 - Each of the five edges now has its own filter, which includes a test that some branch can see the edge. `PROFILE` shows each filter runs right after the edge is matched. The plan still starts from the `binary_address` index, so competing edges are read only for values in the pool's range.
 - The benchmark gained a second dataset, `churn`. It has one old branch, 300 allocated values, and 2,000 values per pool that were created and then deleted on the default branch after that branch was created. The data is built through the node API. The test ids of the first dataset changed to `branches-…`.
 - New tests: `TestIPPoolValueChangedOnBranch`, 16 cases for prefix and address pools on IPv4 and IPv6. They cover a value changed on a branch, then deleted or moved on the default branch.
@@ -200,8 +211,9 @@ Two reviewers ran on `17e898643..2e7c97273`. One covered code, error handling, t
 
 ## Suggested next steps
 
-1. Decide whether an allocation that costs about 1.4 times the base database hits with 50 live branches is acceptable (T046). With one old branch and many deleted values it costs less than the base. Two write paths were not checked for the shortcut: writes with an explicit `at` earlier than an existing edge's `from`, and `rollback.py`.
-2. Decide whether to fix the medium finding in `ip_pool_branch.py`: a namespace that exists on no live branch can raise `NodeNotFoundError` instead of `ResourceNotFoundError`.
-3. Decide whether the change to the number pool read at a past time is acceptable under FR-012, and whether to add a test for it.
-4. Run `/pre-ci` in the code worktree, then push `branch-windows-ip-pools-ifc-3508` and open the PR against `release-1.12` (T050). Use the draft in `branch-agnostic-wip/notes/pr3-description-notes.md`. Add the fifth copy of the window logic in migration `m082` and the review fix to that draft.
-5. Consider the deferred test gaps: IPv6 for scenarios 3 to 6, the GraphQL next-available query on a branch, and an IP pool read at a past time.
+1. Review the free-value query for cost during code review. The user considers about 1.4 times the base database hits with 50 live branches probably acceptable (T046). With one old branch and many deleted values, the query costs less than the base.
+2. Decide whether the shortcut may skip a free value after a rollback, as described under "Performance follow-up". It never hands out a value that a live branch holds.
+3. Decide whether to fix the medium finding in `ip_pool_branch.py`: a namespace that exists on no live branch can raise `NodeNotFoundError` instead of `ResourceNotFoundError`.
+4. Decide whether the change to the number pool read at a past time is acceptable under FR-012, and whether to add a test for it.
+5. Run `/pre-ci` in the code worktree, then push `branch-windows-ip-pools-ifc-3508` and open the PR against `release-1.12` (T050). Use the draft in `branch-agnostic-wip/notes/pr3-description-notes.md`. Add the fifth copy of the window logic in migration `m082` and the review fix to that draft.
+6. Consider the deferred test gaps: IPv6 for scenarios 3 to 6, the GraphQL next-available query on a branch, and an IP pool read at a past time.
