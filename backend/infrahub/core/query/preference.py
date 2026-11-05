@@ -8,15 +8,34 @@ from infrahub.core.preferences.constants import DateFormat, InstanceColor
 from infrahub.core.preferences.models import Preference
 from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.query.standard_node import StandardNodeQuery
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+
+log = get_logger()
 
 
 def _nullable_str(result: QueryResult, label: str) -> str | None:
     """Read an optional property column, mapping the stored NULL sentinel to None."""
     value = result.get_as_str(label)
     return None if value is None or value == NULL_VALUE else value
+
+
+def _instance_color(result: QueryResult) -> InstanceColor | None:
+    """Read the stored instance color; a value outside the enum is reported and read as unset.
+
+    Every page load reads this row before it renders, so a preset a later version stored must not
+    turn into an error for every visitor.
+    """
+    value = _nullable_str(result, "instance_color")
+    if value is None:
+        return None
+    try:
+        return InstanceColor(value)
+    except ValueError:
+        log.warning("Stored instance_color is not a known preset and is read as unset", instance_color=value)
+        return None
 
 
 # The Preference columns to return: `elementId`/`uuid` and the audit fields must round-trip so a
@@ -53,7 +72,6 @@ class PreferenceReadQuery(StandardNodeQuery):
         preferences: list[Preference] = []
         for result in self.get_results():
             date_format = _nullable_str(result, "date_format")
-            instance_color = _nullable_str(result, "instance_color")
             preferences.append(
                 Preference(
                     id=result.get_as_type("id", str),
@@ -62,7 +80,7 @@ class PreferenceReadQuery(StandardNodeQuery):
                     date_format=DateFormat(date_format) if date_format is not None else None,
                     timezone=_nullable_str(result, "timezone"),
                     instance_label=_nullable_str(result, "instance_label"),
-                    instance_color=InstanceColor(instance_color) if instance_color is not None else None,
+                    instance_color=_instance_color(result),
                     created_at=_nullable_str(result, "created_at"),
                     created_by=result.get_as_type("created_by", str),
                     updated_at=_nullable_str(result, "updated_at"),

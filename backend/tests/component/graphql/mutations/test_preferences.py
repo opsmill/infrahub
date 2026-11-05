@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+
+import pytest
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
@@ -39,6 +42,18 @@ mutation (
   }
 }
 """
+
+
+@dataclass
+class UserScopeInstanceFieldCase:
+    name: str
+    variables: dict[str, Any]
+
+
+USER_SCOPE_INSTANCE_FIELD_CASES: list[UserScopeInstanceFieldCase] = [
+    UserScopeInstanceFieldCase(name="label_alone", variables={"instance_label": "QA"}),
+    UserScopeInstanceFieldCase(name="color_with_timezone", variables={"timezone": "UTC", "instance_color": "RED"}),
+]
 
 
 async def run_mutation(
@@ -504,9 +519,9 @@ async def test_global_rejects_unknown_instance_color(
         variables={"scope": "GLOBAL", "instance_color": "pink"},
     )
     assert result.errors is not None
-    assert [error.message for error in result.errors] == [
-        "Variable '$instance_color' got invalid value 'pink'; Value 'pink' does not exist in 'InstanceColor' enum."
-    ]
+    assert len(result.errors) == 1
+    # The coercion message is graphql-core's wording; only the enum it names is ours to pin.
+    assert "InstanceColor" in result.errors[0].message
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 
@@ -537,30 +552,23 @@ async def test_global_instance_fields_denied_for_normal_account(
     assert global_pref.instance_color == InstanceColor.RED
 
 
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in USER_SCOPE_INSTANCE_FIELD_CASES],
+)
 async def test_user_scope_rejects_instance_fields(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
+    case: UserScopeInstanceFieldCase,
 ) -> None:
     result = await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        variables={"scope": "USER", "instance_label": "QA"},
-    )
-    assert result.errors is not None
-    assert [error.message for error in result.errors] == [
-        "instance_label and instance_color can only be set with scope GLOBAL"
-    ]
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
-
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_first_account,
-        variables={"scope": "USER", "timezone": "UTC", "instance_color": "RED"},
+        variables={"scope": "USER", **case.variables},
     )
     assert result.errors is not None
     assert [error.message for error in result.errors] == [

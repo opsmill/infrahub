@@ -14,7 +14,8 @@ class Preference(StandardNode):
     account id for a user's preferences, or a fixed sentinel for the organisation-wide (global)
     preferences (accounts are UUID-keyed, so the sentinel can never collide with one). Reads NEVER
     create a row: a missing row means "nothing set" and the caller falls back (user → global → the
-    client's built-in default).
+    client's built-in default). `instance_label` and `instance_color` are meaningful on the global
+    row only; the write path refuses them for a per-user owner.
 
     `owner_id` is a plain string, not a graph relationship: a StandardNode cannot declare a schema
     relationship with `on_delete: cascade` (that is a schema-Node feature), so account deletion
@@ -30,7 +31,6 @@ class Preference(StandardNode):
     # the db); it round-trips as a plain string because the enum subclasses str.
     date_format: Optional[DateFormat] = None
     timezone: Optional[str] = None
-    # Meaningful on the global row only; the write path refuses them for a per-user owner.
     instance_label: Optional[str] = None
     instance_color: Optional[InstanceColor] = None
 
