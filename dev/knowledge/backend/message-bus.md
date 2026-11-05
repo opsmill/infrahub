@@ -34,6 +34,8 @@ Sender ──► Message Bus ──► Worker 1
 
 Workers ignore messages they originated (via `initiator_id` check) to prevent loops.
 
+A broadcast message is never delivered with a delay, so a failed broadcast is not retried. Both drivers drop it: RabbitMQ's dead-letter exchange routes only work-queue keys, and the Redis driver logs a warning instead of scheduling it. A delayed broadcast would reach every worker again, and each worker that failed it would publish another retry.
+
 **Examples**: `RefreshRegistryBranches`, `RefreshGitFetch`
 
 ### Request/Reply (RPC)
@@ -169,7 +171,7 @@ Declare a durable queue with the arguments from `infrahub/services/adapters/mess
 
 Build the Redis driver's client with `build_broker_redis_connection` from `infrahub/redis_connection.py`, never with `redis.Redis(...)`: it shares the cache's URL handling, so the client accepts Sentinel URLs, retries connection errors and follows a failover.
 
-- **Settings**: `broker.url` (`INFRAHUB_BROKER_URL`) supersedes `address`, `port`, `username`, `password`, `tls_enabled` and `tls_insecure`. Without it, these settings build a single-node URL on database 0. The settings fail to load when the URL is set with a driver other than `redis`.
+- **Settings**: `broker.url` (`INFRAHUB_BROKER_URL`) supersedes `address`, `port`, `username`, `password`, `tls_enabled` and `tls_insecure`. Without it, these settings build a single-node URL on database 0. A `username` or `password` left at its default is not sent, because that default is the RabbitMQ default user (`infrahub`/`infrahub`), which a Redis server does not have. The settings fail to load when the URL is set with a driver other than `redis`.
 - **Closing**: close the client with `prefect_redis.connection.aclose_redis_client`, which also closes a Sentinel client's connections to the Sentinel nodes.
 - **After a failover**: a connection that only reads (the `XREAD` of the events and callback streams) stays on the demoted master, now a replica, until it fails, and still receives new entries through replication. A connection that sends a write command, `XREADGROUP` included, gets `READONLY` from the replica and reconnects to the promoted master.
 

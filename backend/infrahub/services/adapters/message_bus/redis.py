@@ -290,12 +290,13 @@ class RedisMessageBus(InfrahubMessageBus):
         while not self._shutdown_event.is_set():
             try:
                 if self._maintenance_due(last_maintenance) and (subscription.group or subscription.owns_stream):
+                    # Recorded first, so a maintenance failure waits for the next interval instead of blocking reads.
+                    last_maintenance = time.monotonic()
                     if subscription.group:
                         await self._claim_pending_messages(subscription)
                         await self._trim_worked_stream(subscription)
                     else:
                         await self._maintain_owned_stream(subscription, last_id)
-                    last_maintenance = time.monotonic()
 
                 entries, last_id = await self._read_stream_entries(subscription, last_id)
                 if not entries:
@@ -720,19 +721,27 @@ class RedisMessageBus(InfrahubMessageBus):
         message: InfrahubMessage,
         routing_key: str,
         delay: MessageTTL | None = None,
-        is_retry: bool = False,  # noqa: ARG002
+        is_retry: bool = False,
     ) -> None:
         """Publish a message to the appropriate stream.
 
         Args:
             message: The message to publish.
             routing_key: The routing key for the message.
-            delay: Optional delay before message delivery.
+            delay: Optional delay before message delivery; a delayed broadcast event is dropped.
             is_retry: Whether this is a retry of a previously failed message.
 
         """
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)
+
+            stream = self._get_stream_for_routing_key(routing_key)
+            if delay and stream == self.events_stream:
+                # Every worker reads the events stream, so each worker that fails a delayed event would multiply it.
+                get_logger().warning(
+                    "Dropping the delayed delivery of a broadcast event", routing_key=routing_key, is_retry=is_retry
+                )
+                return
 
             for enricher in self.message_enrichers:
                 await enricher(message)
@@ -754,8 +763,6 @@ class RedisMessageBus(InfrahubMessageBus):
             if is_instrumentation_enabled():
                 propagate.inject(headers)
 
-            # Determine which stream to publish to based on routing key
-            stream = self._get_stream_for_routing_key(routing_key)
             maxlen = self.EVENTS_STREAM_MAXLEN if stream == self.events_stream else None
 
             fields: dict[FieldT, EncodableT] = {

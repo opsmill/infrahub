@@ -120,7 +120,7 @@ def build_broker_connection_string(broker: BrokerSettings) -> str:
 
     A configured ``broker.url`` is returned as written, verifying against ``broker.tls_ca_file`` unless it
     names CA certificates itself; otherwise the scalar settings are assembled into a single-node URL on
-    database 0.
+    database 0, leaving out a username or password still at its RabbitMQ default.
     """
     url = broker.url
     if url is not None:
@@ -130,8 +130,8 @@ def build_broker_connection_string(broker: BrokerSettings) -> str:
         address=broker.address,
         port=broker.service_port,
         database=0,
-        username=broker.username,
-        password=broker.password,
+        username=broker.redis_username,
+        password=broker.redis_password,
         tls_enabled=broker.tls_enabled,
         tls_insecure=broker.tls_insecure,
         tls_ca_file=broker.tls_ca_file,

@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import redis.asyncio as redis
@@ -669,3 +669,90 @@ async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
     assert exc.value.message == "No worker answered send.echo.request within 0 seconds"
     assert bus.futures == {}
     await bus.shutdown()
+
+
+@dataclass
+class DelayedPublishCase:
+    name: str
+    routing_key: str
+    scheduled_entries: int
+    dropped: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DelayedPublishCase(
+            name="broadcast_event_is_dropped",
+            routing_key="refresh.registry.branches",
+            scheduled_entries=0,
+            dropped=True,
+        ),
+        DelayedPublishCase(
+            name="work_item_is_scheduled", routing_key="send.echo.request", scheduled_entries=1, dropped=False
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_redis_delayed_publish(case: DelayedPublishCase, redis_api: RedisManager, fake_log: FakeLogger) -> None:
+    """A delayed broadcast event is dropped, since every worker would deliver it again, while a delayed work item waits."""
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        try:
+            await bus.publish(
+                message=messages.SendEchoRequest(message="retry"),
+                routing_key=case.routing_key,
+                delay=MessageTTL.FIVE,
+                is_retry=True,
+            )
+        finally:
+            await bus.shutdown()
+
+    conn = await redis_api.get_connection()
+    assert await conn.zcard(f"{redis_api.namespace}:delayed") == case.scheduled_entries
+    assert ("Dropping the delayed delivery of a broadcast event" in fake_log.warning_logs) is case.dropped
+
+
+async def test_redis_refused_maintenance_does_not_stop_the_work_queue(
+    redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """A maintenance command the server keeps refusing still lets the worker consume its work queue."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    await api_bus.shutdown()
+    refused = AsyncMock(side_effect=redis.ResponseError("NOPERM this user has no permissions to run 'xautoclaim'"))
+
+    with (
+        patch.object(RedisMessageBus, "_claim_pending_messages", refused),
+        patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log),
+    ):
+        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+        try:
+            await bus.send(message=messages.SendEchoRequest(message="Hello there"))
+            await wait_until(lambda: len(fake_log.info_logs) == 1)
+        finally:
+            await bus.shutdown()
+
+    assert refused.await_count >= 1
+    assert fake_log.info_logs == ["Received message: Hello there"]
+
+
+async def test_redis_refused_maintenance_does_not_stop_the_callback_stream(
+    redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """A maintenance command the server keeps refusing still lets the API server read its callback stream."""
+    refused = AsyncMock(side_effect=redis.ResponseError("NOPERM this user has no permissions to run 'xtrim'"))
+
+    with (
+        patch.object(RedisMessageBus, "_maintain_owned_stream", refused),
+        patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log),
+    ):
+        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        try:
+            await redis_api.publish_message(
+                stream=bus.callback_stream, routing_key="event.branch.invalid", body="Completely invalid"
+            )
+            await wait_until(lambda: "Invalid message received" in fake_log.error_logs)
+        finally:
+            await bus.shutdown()
+
+    assert refused.await_count >= 1
