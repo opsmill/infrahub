@@ -6,7 +6,7 @@
 
 ## Summary
 
-An administrator who holds `manage_global_preferences` sets an instance label (text, at most 32 characters after trimming) and an instance color (one of seven presets) on the Global preferences page. Both values are two new nullable fields on the existing global `Preference` row (`owner_id = "__global__"`), written through the existing `InfrahubSetPreferences(scope: GLOBAL)` mutation and read by the administrator through `InfrahubGlobalPreferences`. The public `/api/config` response gains an `instance` block read from that row, so every visitor, including the login page, renders a tinted badge first in the app header, a 3 px colored bar above the sidebar and header, and a tab title of the form `<label> · <page title>`.
+An administrator who holds `manage_global_preferences` sets an instance label (text, at most 32 characters after trimming) and an instance color (one of seven presets) on the Global preferences page. Both values are two new nullable fields on the existing global `Preference` row (`owner_id = "__global__"`), written through the existing `InfrahubSetPreferences(scope: GLOBAL)` mutation and read by the administrator through `InfrahubGlobalPreferences`. The public `/api/config` response gains an `instance` block read from that row, so every visitor, including the login page, renders a tinted badge at the right of the app header next to the status indicators, a 3 px colored bar above the sidebar and header, and a tab title of the form `<label> · <page title>`.
 
 ## Technical Context
 
