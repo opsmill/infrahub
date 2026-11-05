@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -39,6 +39,24 @@ query {
   InfrahubGlobalPreferences {
     date_format
     timezone
+    instance_label
+    instance_color
+  }
+}
+"""
+
+USER_QUERY_WITH_INSTANCE_LABEL = """
+query {
+  InfrahubUserPreferences {
+    instance_label
+  }
+}
+"""
+
+EFFECTIVE_QUERY_WITH_INSTANCE_LABEL = """
+query {
+  InfrahubEffectivePreferences {
+    instance_label
   }
 }
 """
@@ -320,10 +338,67 @@ async def test_global_allowed_for_manager(
     )
     assert result.errors is None
     assert result.data is not None
-    prefs = result.data["InfrahubGlobalPreferences"]
     # Raw org values (no source — the scope IS the source).
-    assert prefs["date_format"] == "ISO_DATETIME"
-    assert prefs["timezone"] == "UTC"
+    assert result.data["InfrahubGlobalPreferences"] == {
+        "date_format": "ISO_DATETIME",
+        "timezone": "UTC",
+        "instance_label": None,
+        "instance_color": None,
+    }
+
+
+async def test_global_returns_instance_label_and_color(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    session_global_prefs_manager: AccountSession,
+) -> None:
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED)
+    )
+
+    result = await run_query(
+        db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_global_prefs_manager
+    )
+    assert result.errors is None
+    assert result.data is not None
+    assert result.data["InfrahubGlobalPreferences"] == {
+        "date_format": None,
+        "timezone": None,
+        "instance_label": "us-east-1 PROD",
+        "instance_color": "RED",
+    }
+
+
+async def test_user_query_does_not_expose_instance_label(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    session_first_account: AccountSession,
+) -> None:
+    result = await run_query(
+        db=db, branch=default_branch, query=USER_QUERY_WITH_INSTANCE_LABEL, account_session=session_first_account
+    )
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        "Cannot query field 'instance_label' on type 'RawPreferencesType'."
+    ]
+
+
+async def test_effective_query_does_not_expose_instance_label(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    session_first_account: AccountSession,
+) -> None:
+    result = await run_query(
+        db=db, branch=default_branch, query=EFFECTIVE_QUERY_WITH_INSTANCE_LABEL, account_session=session_first_account
+    )
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        "Cannot query field 'instance_label' on type 'EffectivePreferencesType'."
+    ]
 
 
 async def test_global_allowed_for_super_admin(
