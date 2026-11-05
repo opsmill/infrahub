@@ -83,9 +83,14 @@ unbuffered through the pipe). Inspect with docker/curl from a separate shell,
 then kill the process once done — pdb cannot receive commands over the dummy
 stdin. Match the node id, not the literal shell line (a bare
 `pkill -f <pattern>` kills your own shell if the pattern appears in its
-command line). Killing pytest skips the fixture teardown, so sweep the
-leftover stack afterwards: `docker compose -p $PROJECT down -v
---remove-orphans`.
+command line). Killing pytest skips the fixture teardown. Ryuk, the
+testcontainers cleanup container, then removes the stack once every client has
+disconnected from it and its reconnection timeout (10 seconds by default) has
+passed. Any other client connected to Ryuk's published port delays the removal
+until it disconnects, and Ryuk stores each line that client sends as a filter;
+each filter Docker rejects adds about 30 seconds of retries. So when
+`docker ps --filter name=$PROJECT` still lists the stack, remove it with
+`docker compose -p $PROJECT down -v --remove-orphans`.
 
 See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
@@ -135,6 +140,7 @@ checkout.
 
 ## Coding Standards
 
+- Constants and literals: `dev/guidelines/constants.md` — avoid magic numbers; load before writing or reviewing code that introduces or uses domain limits, defaults, thresholds, or other policy values; create named constants and reuse existing owners
 - Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does), `dev/guidelines/backend/prefect-payloads.md` (load when adding, changing or reviewing a `@flow`/`@task`, or passing data across one) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
@@ -167,6 +173,7 @@ CI validates that all generated files are committed — the `validate-generated-
 ### Always Do
 
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none

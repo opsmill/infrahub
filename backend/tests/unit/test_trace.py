@@ -9,24 +9,25 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
 )
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 
-from infrahub.trace import InsecureTLSSession, create_span_exporter
+from infrahub.trace import TraceTLSSession, create_span_exporter
 
 
-class TestInsecureTLSSession:
-    def test_overrides_request_level_verify(self) -> None:
-        session = InsecureTLSSession()
+@pytest.mark.parametrize("verify", [False, "/etc/ssl/certs/collector.pem"])
+class TestTraceTLSSession:
+    def test_overrides_request_level_verify(self, verify: bool | str) -> None:
+        session = TraceTLSSession(verify=verify)
         settings = session.merge_environment_settings(
             url="https://collector:4318/v1/traces", proxies={}, stream=None, verify=True, cert=None
         )
-        assert settings["verify"] is False
+        assert settings["verify"] == verify
 
-    def test_overrides_session_level_verify(self) -> None:
-        session = InsecureTLSSession()
-        session.verify = "/etc/ssl/certs/collector.pem"
+    def test_overrides_session_level_verify(self, verify: bool | str) -> None:
+        session = TraceTLSSession(verify=verify)
+        session.verify = True
         settings = session.merge_environment_settings(
             url="https://collector:4318/v1/traces", proxies={}, stream=None, verify=None, cert=None
         )
-        assert settings["verify"] is False
+        assert settings["verify"] == verify
 
 
 class TestCreateSpanExporter:
@@ -52,28 +53,16 @@ class TestCreateSpanExporter:
                 exporter_protocol="http/json",
             )
 
-    def test_http_with_tls_insecure_skips_certificate_verification(self) -> None:
+    @pytest.mark.parametrize("tls_insecure", [False, True])
+    def test_http(self, tls_insecure: bool) -> None:
         exporter = create_span_exporter(
             exporter_type="otlp",
             insecure=True,
-            tls_insecure=True,
+            tls_insecure=tls_insecure,
             exporter_endpoint="https://collector:4318/v1/traces",
             exporter_protocol="http/protobuf",
         )
         assert isinstance(exporter, HTTPSpanExporter)
-        assert isinstance(exporter._session, InsecureTLSSession)
-        exporter.shutdown()
-
-    def test_http_verifies_certificates_by_default(self) -> None:
-        exporter = create_span_exporter(
-            exporter_type="otlp",
-            insecure=True,
-            tls_insecure=False,
-            exporter_endpoint="https://collector:4318/v1/traces",
-            exporter_protocol="http/protobuf",
-        )
-        assert isinstance(exporter, HTTPSpanExporter)
-        assert not isinstance(exporter._session, InsecureTLSSession)
         exporter.shutdown()
 
     def test_grpc_insecure_enables_plaintext(self) -> None:

@@ -1,4 +1,4 @@
-from infrahub.git.graphql_queries import GitRepositoryNodeQuery
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery, StoredUserCheckQuery
 from infrahub.git.models import GitRepoNode
 
 
@@ -72,3 +72,19 @@ class TestGitRepositoryNodeQuery:
         }
         result = q.parse_response(response=response)
         assert result == [GitRepoNode(id="abc-123", name="repo-a", location="git@github.com:a/a.git")]
+
+
+class TestStoredUserCheckQuery:
+    def test_name_starting_with_dollar_is_sent_as_a_variable(self) -> None:
+        q = StoredUserCheckQuery(validator_id="validator-1", name="$critical")
+        assert "$critical" not in q.render_query()
+        assert q.variables() == {"validator_id": "validator-1", "name": "$critical"}
+
+    def test_parse_response_returns_stored_check_id(self) -> None:
+        q = StoredUserCheckQuery(validator_id="validator-1", name="device-1")
+        response = {"CoreStandardCheck": {"edges": [{"node": {"id": "check-1"}}]}}
+        assert q.parse_response(response=response) == "check-1"
+
+    def test_parse_response_without_stored_check(self) -> None:
+        q = StoredUserCheckQuery(validator_id="validator-1", name="device-1")
+        assert q.parse_response(response={"CoreStandardCheck": {"edges": []}}) is None

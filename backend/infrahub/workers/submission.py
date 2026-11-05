@@ -8,6 +8,11 @@ if TYPE_CHECKING:
 
     from prefect.client.schemas.responses import WorkerFlowRunResponse
 
+# Half of the Prefect client's connection pool, so that polls and state proposals never queue behind submissions.
+# Prefect 3.8.6 fixes that pool at 16 connections, with no setting to change it:
+# https://github.com/PrefectHQ/prefect/blob/3.8.6/src/prefect/client/orchestration/__init__.py#L388-L399
+SUBMISSION_WINDOW_CAPACITY = 8
+
 
 class FlowRunReservations(Protocol):
     """Keeps concurrent workers from claiming the same scheduled flow run."""
