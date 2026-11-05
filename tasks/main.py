@@ -5,8 +5,8 @@ from .utils import ESCAPED_REPO_PATH
 
 NAMESPACE = "MAIN"
 
-# The python_sdk submodule is linted in its own repository; CI uses the same scope.
-RUFF_TARGET = "--exclude python_sdk ."
+# The python_sdk submodule is linted in its own repository and the .specify scripts come from spec-kit; CI uses the same scope.
+RUFF_TARGET = "--exclude python_sdk,.specify ."
 
 # ----------------------------------------------------------------------------
 # Formatting tasks
@@ -24,7 +24,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format", default=True)
 def format_all(context: Context) -> None:
-    """Format every Python file in the repository, except the python_sdk submodule, with ruff."""
+    """Format every Python file in the repository, except the python_sdk submodule and the spec-kit scripts, with ruff."""
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -42,7 +42,7 @@ def _lint_ruff(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """Run ruff linter and format check against every Python file, except the python_sdk submodule."""
+    """Run ruff linter and format check against every Python file, except the python_sdk submodule and the spec-kit scripts."""
     _lint_ruff(context)
 
     print(f" - [{NAMESPACE}] All linters have been executed!")
