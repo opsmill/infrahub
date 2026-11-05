@@ -8756,6 +8756,19 @@ String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
 
+"""
+The organisation-wide raw preferences, plus the instance identity that exists at that scope only.
+
+`instance_label` and `instance_color` are shown to every visitor and have no per-user layer, so
+they are absent from the user and effective views.
+"""
+type GlobalPreferencesType {
+  date_format: DateFormat
+  instance_color: InstanceColor
+  instance_label: String
+  timezone: String
+}
+
 type GraphQLQueryReport {
   """
   True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
@@ -9297,9 +9310,14 @@ scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated 
 The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
 is lazily created on first write under a per-owner lock — the only path that ever creates a
 Preference row.
+
+`instance_label` and `instance_color` describe the instance itself, so they are accepted with
+scope=GLOBAL only; providing either with scope=USER is a validation error.
 """
 type InfrahubSetPreferences {
   date_format: DateFormat
+  instance_color: InstanceColor
+  instance_label: String
   ok: Boolean
   timezone: String
 }
@@ -9318,6 +9336,19 @@ Retry a settled delivery by replaying its frozen payload as a new, independent d
 type InfrahubTaskRetry {
   ok: Boolean
   task: TaskInfo
+}
+
+"""
+Preset colors for the instance badge and bar. The stored instance_color is one of these keys; each client maps the key to its own theme.
+"""
+enum InstanceColor {
+  AMBER
+  BLUE
+  GRAY
+  GREEN
+  INDIGO
+  PURPLE
+  RED
 }
 
 """Token for User Account"""
@@ -10268,8 +10299,11 @@ type Mutation {
   The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
   is lazily created on first write under a per-owner lock — the only path that ever creates a
   Preference row.
+  
+  `instance_label` and `instance_color` describe the instance itself, so they are accepted with
+  scope=GLOBAL only; providing either with scope=USER is a validation error.
   """
-  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
+  InfrahubSetPreferences(date_format: DateFormat, instance_color: InstanceColor, instance_label: String, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   """
   Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request.
   """
@@ -26791,7 +26825,7 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
-  InfrahubGlobalPreferences: RawPreferencesType!
+  InfrahubGlobalPreferences: GlobalPreferencesType!
   """
   Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
   """
