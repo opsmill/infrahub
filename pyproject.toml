@@ -770,6 +770,13 @@ allow-dunder-method-names = [
     "SLF001",   # Private member accessed
 ]
 
+"tests/unit/tasks/**.py" = [
+    "INP001",  # Standalone task tests do not need a package
+    "S101",  # Test assertions
+    "S404",  # Render Compose configuration without starting services
+    "S603",  # Command arguments come from repository task helpers
+]
+
 "backend/tests/**.py" = [
     "ARG001",   # Unused function argument
     "ARG002",   # Unused method argument
