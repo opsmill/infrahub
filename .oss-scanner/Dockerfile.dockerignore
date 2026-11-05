@@ -1,0 +1,10 @@
+# Used instead of the root .dockerignore when building .oss-scanner/Dockerfile: the scanner image needs
+# .gitmodules and .git to fetch the submodules, which the root file leaves out.
+**/node_modules
+**/.venv
+**/__pycache__
+**/.ruff_cache
+**/.mypy_cache
+**/.pytest_cache
+docs/build
+docs/.docusaurus
