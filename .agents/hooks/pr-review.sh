@@ -1,11 +1,13 @@
 #!/bin/sh
 # Starts a code review of a pull request that Claude Code or Codex has just opened, or that a push changed a lot.
 # Usage: pr-review.sh claude|push|codex, with the hook payload on standard input.
-# The review is opt-in: set PR_REVIEW=on to turn it on, and PR_REVIEW_MIN_LINES to change the size of push that
-# starts another review (300 changed lines by default).
+# The review is opt-in: set PR_REVIEW=on to turn it on, or PR_REVIEW_CLOUD=on in a cloud environment's variables to
+# turn it on for that environment's sessions only, and PR_REVIEW_MIN_LINES to change the size of push that starts
+# another review (300 changed lines by default).
 
 [ -z "$PR_REVIEW_CHILD" ] || exit 0
-[ "$PR_REVIEW" = on ] || exit 0
+# The project settings set PR_REVIEW=off, so a cloud environment opts in with a variable those settings do not set.
+[ "$PR_REVIEW" = on ] || { [ "$CLAUDE_CODE_REMOTE" = true ] && [ "$PR_REVIEW_CLOUD" = on ]; } || exit 0
 
 if ! command -v jq >/dev/null 2>&1; then
     message="The automatic PR review needs jq, which is not installed, so no review was started."
@@ -19,9 +21,15 @@ fi
 
 payload=$(cat)
 
-# Claude Code records a pull request only when the command created one.
+# Claude Code records a pull request only when the command created one. Cloud sessions open pull requests with the
+# GitHub MCP tool instead, whose response holds the pull request URL.
 claude_pr_url() {
-    printf '%s' "$payload" | jq -r 'select(.tool_response.gitOperation.pr.action == "created") | .tool_response.gitOperation.pr.url // empty'
+    printf '%s' "$payload" | jq -r '
+        if .tool_name == "mcp__github__create_pull_request" then
+            .tool_response | tostring | [match("https://github[.]com/[^/\"\\\\ ]+/[^/\"\\\\ ]+/pull/[0-9]+").string] | first // empty
+        else
+            select(.tool_response.gitOperation.pr.action == "created") | .tool_response.gitOperation.pr.url // empty
+        end'
 }
 
 codex_pr_url() {

@@ -30,6 +30,15 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh push"
           }
         ]
+      },
+      {
+        "matcher": "mcp__github__create_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh claude"
+          }
+        ]
       }
     ]
   }
