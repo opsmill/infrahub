@@ -9,7 +9,7 @@ from lunr.index import Index
 from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.api.dependencies import get_current_user, get_permission_manager
+from infrahub.api.dependencies import get_current_user, get_db, get_permission_manager
 from infrahub.config import (  # noqa: TC001
     AnalyticsSettings,
     ExperimentalFeaturesSettings,
@@ -17,6 +17,9 @@ from infrahub.config import (  # noqa: TC001
     MainSettings,
 )
 from infrahub.core import registry
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.repository import PreferenceRepository
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
@@ -30,6 +33,13 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
+class InstanceIdentityAPI(BaseModel):
+    """The label and color an administrator gave this instance, shown to every visitor."""
+
+    label: str | None = Field(default=None, description="Instance label shown in the header badge and the tab title")
+    color: InstanceColor | None = Field(default=None, description="Preset color of the instance badge and bar")
+
+
 class ConfigAPI(BaseModel):
     main: MainSettings
     logging: LoggingSettings
@@ -39,6 +49,7 @@ class ConfigAPI(BaseModel):
     ldap: config.LDAPInfo
     installation_type: str
     policy: config.PolicySettings
+    instance: InstanceIdentityAPI = Field(description="Instance identity read from the global preferences")
 
 
 class InfoAPI(BaseModel):
@@ -47,7 +58,12 @@ class InfoAPI(BaseModel):
 
 
 @router.get("/config")
-async def get_config() -> ConfigAPI:
+async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
+    global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    instance = InstanceIdentityAPI(
+        label=global_preference.instance_label if global_preference else None,
+        color=global_preference.instance_color if global_preference else None,
+    )
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
@@ -61,6 +77,7 @@ async def get_config() -> ConfigAPI:
         ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
+        instance=instance,
     )
 
 

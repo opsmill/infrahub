@@ -7,6 +7,9 @@ from infrahub import config
 from infrahub.api import internal
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
@@ -33,6 +36,7 @@ async def test_config_endpoint(
         "analytics",
         "experimental_features",
         "installation_type",
+        "instance",
         "ldap",
         "logging",
         "main",
@@ -55,6 +59,44 @@ async def test_config_endpoint_anonymous_account(
         response = client.get("/api/config")
 
     assert response.status_code == 200
+    assert response.json()["instance"] == {"label": None, "color": None}
+    # The anonymous read reports "nothing set" without creating the global preference row.
+    assert await PreferenceRepository(db=db).get_all() == []
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_config_endpoint_returns_stored_instance_label_and_color(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    allow_anonymous_access: bool,
+) -> None:
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED)
+    )
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == {"label": "us-east-1 PROD", "color": "RED"}
+
+
+async def test_config_endpoint_returns_label_without_color(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+) -> None:
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA"))
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == {"label": "QA", "color": None}
 
 
 async def test_info_endpoint(
