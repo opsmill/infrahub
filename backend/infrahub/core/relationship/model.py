@@ -898,7 +898,7 @@ class RelationshipValidatorList:
         self._relationship_ids.discard(id(value))
         self._relationships_count -= 1
 
-    def as_list(self) -> list[Relationship]:
+    def as_list(self) -> Sequence[Relationship]:
         return self._relationships
 
     def _raise_too_few(self) -> None:
@@ -1316,7 +1316,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove_locally(peer_id=peer_id, db=db)
 
-    async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
+    async def get(self, db: InfrahubDatabase) -> Relationship | Sequence[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
         if self.schema.cardinality == RelationshipCardinality.ONE and rels:
@@ -1341,7 +1341,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
-    ) -> list[Relationship]:
+    ) -> Sequence[Relationship]:
         # Use lock to avoid concurrent mutations on this object. This may typically happen while querying two nodes
         # having the same parent, with the parent having another extra relationship. Concurrent coroutines will try to
         # add this relationship to this object, and the second one will fail. See https://github.com/opsmill/infrahub/issues/5474.
