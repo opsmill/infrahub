@@ -7,9 +7,7 @@ import copy
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-import pytest
-
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreNumberPool
@@ -27,26 +25,16 @@ from tests.component.pools.schema_number_pool_synchronizer.helpers import (
     run_synchronizer,
     stored_scope_of,
 )
+from tests.helpers.constants import LOCK_WAIT_TIMEOUT_SECONDS
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA
 from tests.helpers.schema import save_schema
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-WAIT_TIMEOUT_SECONDS = 30
-
-
-@pytest.fixture
-def short_exclusive_lock_wait() -> Generator[None, None, None]:
-    """Refuse a change to a pool after one second of waiting for the writes holding it."""
-    original = config.SETTINGS.cache.exclusive_lock_wait_secs
-    config.SETTINGS.cache.exclusive_lock_wait_secs = 1
-    yield
-    config.SETTINGS.cache.exclusive_lock_wait_secs = original
 
 
 @asynccontextmanager
@@ -58,15 +46,15 @@ async def held_by_a_write(pool_id: str) -> AsyncGenerator[None]:
     async def hold() -> None:
         async with lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE).shared():
             held.set()
-            await asyncio.wait_for(release.wait(), timeout=WAIT_TIMEOUT_SECONDS)
+            await asyncio.wait_for(release.wait(), timeout=LOCK_WAIT_TIMEOUT_SECONDS)
 
     holder = asyncio.create_task(hold())
-    await asyncio.wait_for(held.wait(), timeout=WAIT_TIMEOUT_SECONDS)
+    await asyncio.wait_for(held.wait(), timeout=LOCK_WAIT_TIMEOUT_SECONDS)
     try:
         yield
     finally:
         release.set()
-        await asyncio.wait_for(holder, timeout=WAIT_TIMEOUT_SECONDS)
+        await asyncio.wait_for(holder, timeout=LOCK_WAIT_TIMEOUT_SECONDS)
 
 
 async def pool_name_of(db: InfrahubDatabase, pool_id: str) -> str:
