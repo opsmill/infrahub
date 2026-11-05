@@ -26,6 +26,8 @@ describe("groupFieldsBySection", () => {
     // THEN
     expect(sectionNames(sections)).toEqual(["details", "lacp"]);
     expect(sections[0]).toEqual({
+      key: expect.any(String),
+      kind: "details",
       container: { name: "details", label: "Details", collapsed: false },
       items: [items[1]],
     });
@@ -73,6 +75,8 @@ describe("groupFieldsBySection", () => {
     // THEN
     expect(sectionNames(sections)).toEqual(["details", "lacp", "advanced"]);
     expect(sections.at(-1)).toEqual({
+      key: expect.any(String),
+      kind: "advanced",
       container: { name: "advanced", label: "Advanced", collapsed: true },
       items: [items[0]],
     });
@@ -119,7 +123,12 @@ describe("groupFieldsBySection", () => {
 
     // THEN
     expect(sections).toEqual([
-      { container: { name: "details", label: "Details", collapsed: false }, items },
+      {
+        key: expect.any(String),
+        kind: "details",
+        container: { name: "details", label: "Details", collapsed: false },
+        items,
+      },
     ]);
   });
 
@@ -149,5 +158,53 @@ describe("groupFieldsBySection", () => {
 
     // THEN
     expect(sectionNames(sections)).toEqual(["lacp"]);
+  });
+
+  it("ignores a declared container that takes the name of a built-in section", () => {
+    // GIVEN containers named like the built-in sections, which the schema API refuses
+    const containers = [
+      generateContainerSchema({ name: "details", label: "General", collapsed: true }),
+      generateContainerSchema({ name: "advanced", label: "Other", collapsed: false }),
+      generateContainerSchema({ name: "lacp", label: "LACP" }),
+    ];
+    const items: Item[] = [
+      { name: "name", container: null },
+      { name: "description", container: "details" },
+      { name: "lag_mode", container: "lacp" },
+      { name: "internal_id", container: "advanced" },
+    ];
+
+    // WHEN
+    const sections = groupFieldsBySection(containers, items, getContainer);
+
+    // THEN
+    expect(sections.map((section) => section.container.label)).toEqual([
+      "Details",
+      "LACP",
+      "Advanced",
+    ]);
+    expect(sections.map((section) => section.kind)).toEqual(["details", "declared", "advanced"]);
+    expect(sections[0]?.items).toEqual([items[0], items[1]]);
+    expect(sections[2]?.container.collapsed).toBe(true);
+    expect(new Set(sections.map((section) => section.key)).size).toBe(sections.length);
+  });
+
+  it("gives the built-in sections keys that differ from any declared container name", () => {
+    // GIVEN
+    const containers = [generateContainerSchema({ name: "lacp" })];
+    const items: Item[] = [
+      { name: "name", container: null },
+      { name: "lag_mode", container: "lacp" },
+      { name: "internal_id", container: "advanced" },
+    ];
+
+    // WHEN
+    const sections = groupFieldsBySection(containers, items, getContainer);
+
+    // THEN
+    const [details, lacp, advanced] = sections;
+    expect(details?.key).not.toBe("details");
+    expect(advanced?.key).not.toBe("advanced");
+    expect(lacp?.key).not.toBe(details?.key);
   });
 });

@@ -1,5 +1,6 @@
 import {
   ADVANCED_SECTION,
+  BUILT_IN_SECTION_NAMES,
   DETAILS_SECTION,
   type FieldSection,
 } from "@/entities/nodes/object/domain/model/field-section";
@@ -19,7 +20,9 @@ export function groupFieldsBySection<T>(
   items: T[],
   getContainer: (item: T) => string | null | undefined
 ): FieldSection<T>[] {
-  const declaredContainers = orderContainers(containers ?? []);
+  const declaredContainers = orderContainers(
+    (containers ?? []).filter((container) => !BUILT_IN_SECTION_NAMES.includes(container.name))
+  );
   const itemsByContainer = new Map<string, T[]>();
   const declaredNames = new Set(declaredContainers.map((container) => container.name));
   const detailsItems: T[] = [];
@@ -40,12 +43,24 @@ export function groupFieldsBySection<T>(
   }
 
   const sections: FieldSection<T>[] = [
-    { container: { ...DETAILS_SECTION }, items: detailsItems },
+    {
+      key: "built-in:details",
+      kind: "details",
+      container: { ...DETAILS_SECTION },
+      items: detailsItems,
+    },
     ...declaredContainers.map((container) => ({
+      key: `declared:${container.name}`,
+      kind: "declared" as const,
       container,
       items: itemsByContainer.get(container.name) ?? [],
     })),
-    { container: { ...ADVANCED_SECTION }, items: advancedItems },
+    {
+      key: "built-in:advanced",
+      kind: "advanced",
+      container: { ...ADVANCED_SECTION },
+      items: advancedItems,
+    },
   ];
 
   return sections.filter((section) => section.items.length > 0);

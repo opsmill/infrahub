@@ -2,7 +2,6 @@ import { DetailsLayout } from "@/shared/components/layout/details-layout";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import { DETAILS_SECTION } from "@/entities/nodes/object/domain/model/field-section";
 import type {
   NodeFileObject,
   NodeObjectWithMetadata,
@@ -93,14 +92,14 @@ function ObjectDetailsSections({ objectSchema, objectData, permission }: ObjectD
     );
   }
 
-  return sections.map(({ container, items }) => {
+  return sections.map(({ key, kind, container, items }) => {
     const attributes = items.filter((item): item is AttributeSchema => !isRelationshipSchema(item));
     const relationships = [...items.filter(isRelationshipSchema), ...poolRelationships];
-    const isDetails = container.name === DETAILS_SECTION.name;
+    const isDetails = kind === "details";
 
     return (
       <ObjectDetailsCard
-        key={container.name}
+        key={key}
         title={container.label}
         description={isDetails ? undefined : container.description}
         defaultCollapsed={isDetails ? undefined : container.collapsed}
