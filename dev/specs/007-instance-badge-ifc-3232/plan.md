@@ -2,7 +2,7 @@
 
 **Branch**: `ple-instance-badge-ifc-3232` | **Date**: 2026-11-05 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/007-instance-badge-ifc-3232/spec.md`, the design record in `.design/instance-badge/` (direction `header-left` chosen, see `03-decisions.md` and `05-implement.md`), and three planning framings (minimal change, clean boundaries, test-first) merged on 2026-11-05.
+**Input**: Feature specification from `/specs/007-instance-badge-ifc-3232/spec.md`, a design jam of four prototyped header directions (prototype removed before the PR, not kept in the repository), and three planning framings (minimal change, clean boundaries, test-first) merged on 2026-11-05.
 
 ## Summary
 
@@ -39,7 +39,7 @@ An administrator who holds `manage_global_preferences` sets an instance label (t
 | Tab title | The single `useTitle` hook composes `formatDocumentTitle(useConfig().instance.label, title)`; `app-layout.tsx` and `login.tsx` call `useTitle("Infrahub")` | Every route then has a titled ancestor, so the unmount restore always lands on a composed title (US2-4) |
 | Frontend location | `entities/preferences/` for the badge, bar, color rules and form; the one cross-entity import is `useConfig` | The setting is a global preference and the form lives there |
 | Color choice input | Existing `Combobox`, with an additive optional `icon` on `ComboboxItem` for the swatch | Keeps the E2E helper `select_combobox_option` and role queries working |
-| Badge and bar | Lifted from the prototype: tinted `Badge` variant per color (new `indigo` variant on `--active`), `max-w-48 truncate` with a tooltip; bar `h-0.75 w-full shrink-0 aria-hidden` | Recorded in `.design/instance-badge/03-decisions.md` |
+| Badge and bar | Lifted from the prototype: tinted `Badge` variant per color (new `indigo` variant on `--active`), `max-w-48 truncate` with a tooltip; bar `h-0.75 w-full shrink-0 aria-hidden` | Decided in the design jam; the tech owner placed the badge on the right |
 
 ## Constitution Check
 
@@ -65,7 +65,6 @@ specs/007-instance-badge-ifc-3232/
 ├── contracts/           # GraphQL and REST contract deltas
 ├── checklists/requirements.md
 └── tasks.md
-.design/instance-badge/  # Design record and screenshots (kept)
 ```
 
 ### Source Code (repository root)
