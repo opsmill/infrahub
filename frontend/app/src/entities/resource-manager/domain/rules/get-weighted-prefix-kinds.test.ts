@@ -1,28 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { getWeightedPrefixKinds } from "./get-weighted-prefix-kinds";
 
-const weight = generateAttributeSchema({ name: "allocation_weight", kind: "Number" });
-
 describe("getWeightedPrefixKinds", () => {
-  it("keeps the prefix kinds that carry an allocation weight", () => {
+  it("keeps the prefix kinds that inherit the weighted pool resource generic", () => {
     // GIVEN
     const schemas = [
       generateNodeSchema({
-        kind: "IpamIPPrefix",
-        inherit_from: ["BuiltinIPPrefix"],
-        attributes: [weight],
+        kind: "InfraWeightedPrefix",
+        inherit_from: ["BuiltinIPPrefix", "CoreWeightedPoolResource"],
       }),
-      generateNodeSchema({
-        kind: "IpamIPPrefixPlain",
-        inherit_from: ["BuiltinIPPrefix"],
-        attributes: [],
-      }),
+      generateNodeSchema({ kind: "IpamIPPrefix", inherit_from: ["BuiltinIPPrefix"] }),
       generateNodeSchema({
         kind: "CoreNumberPoolRange",
         inherit_from: ["CoreWeightedPoolResource"],
-        attributes: [weight],
       }),
     ];
 
@@ -30,17 +22,13 @@ describe("getWeightedPrefixKinds", () => {
     const kinds = getWeightedPrefixKinds(schemas);
 
     // THEN
-    expect(kinds).toEqual(["IpamIPPrefix"]);
+    expect(kinds).toEqual(["InfraWeightedPrefix"]);
   });
 
   it("returns nothing when no prefix kind has a weight", () => {
     // GIVEN
     const schemas = [
-      generateNodeSchema({
-        kind: "IpamIPPrefixPlain",
-        inherit_from: ["BuiltinIPPrefix"],
-        attributes: [],
-      }),
+      generateNodeSchema({ kind: "IpamIPPrefix", inherit_from: ["BuiltinIPPrefix"] }),
     ];
 
     // WHEN

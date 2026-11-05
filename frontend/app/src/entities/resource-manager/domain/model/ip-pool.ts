@@ -10,7 +10,7 @@ export type IpPoolMemberType =
   | typeof IP_POOL_MEMBER_TYPE_PREFIX
   | typeof IP_POOL_MEMBER_TYPE_ADDRESS;
 
-export const ALLOCATION_WEIGHT_ATTRIBUTE = "allocation_weight";
+export const WEIGHTED_POOL_RESOURCE_GENERIC = "CoreWeightedPoolResource";
 
 export interface IpPoolNamespace {
   id: string;
