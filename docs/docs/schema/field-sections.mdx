@@ -45,8 +45,8 @@ Changing `containers` or `container` requires no data migration: load the new sc
 
 Two sections exist without being declared:
 
-- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before. Do not declare it in `containers`, and do not set `container: details` on a field: leave `container` unset instead.
-- **Advanced**: holds every field with `container: advanced`. It is always the last section, and its card starts collapsed. Do not declare it in `containers`; Infrahub accepts `container: advanced` on any node.
+- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before. Infrahub refuses a section named `details` in `containers` and a field with `container: details`: leave `container` unset instead.
+- **Advanced**: holds every field with `container: advanced`. It is always the last section, and its card starts collapsed. Infrahub refuses a section named `advanced` in `containers`, and accepts `container: advanced` on any node.
 
 A section that holds no field is not shown, including Details and Advanced.
 
@@ -69,7 +69,7 @@ On the detail page of an object:
 
 - Each section is a card with the section `label` as its title and the `description` under it. The **Details** card has no description.
 - You can collapse and expand every card except **Details**, which is always expanded. A section with `collapsed: true` starts collapsed, and **Advanced** always starts collapsed.
-- Each card has its own **Extra** toggle when the section contains a field with `display: extra`. Selecting **Extra** in one card shows the extra fields of that card only. See [field visibility](./field-visibility).
+- Each card has its own **Extra** toggle when the section contains a field with `display: extra`. Selecting **Extra** in one card shows the extra fields of that card only. A collapsed card does not show its **Extra** toggle. See [field visibility](./field-visibility).
 - A relationship that has its own tab, such as a `Component` relationship with `cardinality: many`, stays in its tab. Its `container` has no effect on the detail page.
 
 In the create and edit forms:
@@ -212,6 +212,7 @@ When you load a schema again, Infrahub merges the `containers` of each node and 
 - A section with a new name is added in that order.
 - A section with an existing name takes the properties of the new file. A `description` or `order_weight` that the new file leaves out keeps its previous value.
 - A section that the new file leaves out is kept, after the sections of the file.
+- A field that has a `container` in the stored schema but none in the new file moves back to **Details**.
 
 A load that changes only the order of the sections is a schema change. When two branches order the sections of the same node differently, merging one branch into the other reports a conflict on `containers`.
 
@@ -230,7 +231,7 @@ Move the fields of that section to another section, or remove their `container`,
 
 Infrahub rejects a schema with a section error and returns one of these messages:
 
-- A field references a section that the node neither declares nor inherits:
+- A field references a section that the node neither declares nor inherits, or references `details`:
 
   ```text
   InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2
