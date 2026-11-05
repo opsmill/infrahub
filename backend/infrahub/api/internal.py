@@ -20,7 +20,7 @@ from infrahub.core import registry
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import DatabaseError, NodeNotFoundError
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
@@ -60,8 +60,22 @@ class InfoAPI(BaseModel):
     version: str
 
 
+async def get_instance_identity(db: InfrahubDatabase = Depends(get_db)) -> InstanceIdentityAPI:
+    """Read the instance label and color, served as unset when the read fails for any reason."""
+    # The config response bootstraps every page, including login, so a failed read of the identity
+    # degrades it to unset instead of taking the whole UI down.
+    try:
+        global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    except Exception:
+        log.exception("Instance identity unavailable, serving it as unset")
+        return InstanceIdentityAPI(label=None, color=None)
+    if global_preference is None:
+        return InstanceIdentityAPI(label=None, color=None)
+    return InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
+
+
 @router.get("/config")
-async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
+async def get_config(instance: InstanceIdentityAPI = Depends(get_instance_identity)) -> ConfigAPI:
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
@@ -75,21 +89,8 @@ async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
         ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
-        instance=await _read_instance_identity(db=db),
+        instance=instance,
     )
-
-
-async def _read_instance_identity(db: InfrahubDatabase) -> InstanceIdentityAPI:
-    # The config response bootstraps every page, including login, so a database outage degrades
-    # the identity to unset instead of taking the whole UI down.
-    try:
-        global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    except DatabaseError as exc:
-        log.warning("Instance identity unavailable, serving it as unset", error=str(exc))
-        return InstanceIdentityAPI(label=None, color=None)
-    if global_preference is None:
-        return InstanceIdentityAPI(label=None, color=None)
-    return InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
 
 
 @router.get("/info")

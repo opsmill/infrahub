@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
+# Every page load reads the global row, so an unknown stored color is reported once per value, not per read.
+_WARNED_INSTANCE_COLORS: set[str] = set()
+
 
 def _nullable_str(result: QueryResult, label: str) -> str | None:
     """Read an optional property column, mapping the stored NULL sentinel to None."""
@@ -23,7 +26,7 @@ def _nullable_str(result: QueryResult, label: str) -> str | None:
 
 
 def _instance_color(result: QueryResult) -> InstanceColor | None:
-    """Read the stored instance color; a value outside the enum is reported and read as unset.
+    """Read the stored instance color; a value outside the enum is reported once and read as unset.
 
     Every page load reads this row before it renders, so a preset a later version stored must not
     turn into an error for every visitor.
@@ -34,7 +37,9 @@ def _instance_color(result: QueryResult) -> InstanceColor | None:
     try:
         return InstanceColor(value)
     except ValueError:
-        log.warning("Stored instance_color is not a known preset and is read as unset", instance_color=value)
+        if value not in _WARNED_INSTANCE_COLORS:
+            _WARNED_INSTANCE_COLORS.add(value)
+            log.warning("Stored instance_color is not a known preset and is read as unset", instance_color=value)
         return None
 
 

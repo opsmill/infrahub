@@ -189,4 +189,50 @@ describe("InstanceIdentityForm", () => {
     // THEN
     await expect.element(component.getByText("Not allowed")).toBeVisible();
   });
+
+  test("keeps the typed label and the save button enabled when the save fails", async () => {
+    // GIVEN
+    vi.mocked(updateGlobalPreference).mockRejectedValue(new Error("Not allowed"));
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByLabelText("Instance label").fill("QA");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Not allowed")).toBeVisible();
+    await expect.element(component.getByLabelText("Instance label")).toHaveValue("QA");
+    await expect
+      .element(component.getByRole("button", { name: "Save instance identity" }))
+      .toBeEnabled();
+  });
+
+  test("disables the save button again once the save succeeds", async () => {
+    // GIVEN
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByLabelText("Instance label").fill("QA");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Instance identity updated")).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Save instance identity" }))
+      .toBeDisabled();
+  });
+
+  test("sends nothing for a label retyped with the saved text", async () => {
+    // GIVEN
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByLabelText("Instance label").fill("  us-east-1  ");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await vi.waitFor(() => {
+      expect(vi.mocked(updateGlobalPreference).mock.calls).toStrictEqual([[{}]]);
+    });
+  });
 });

@@ -120,6 +120,24 @@ async def test_config_endpoint_serves_unset_identity_when_the_database_is_unavai
     assert response.json()["instance"] == {"label": None, "color": None}
 
 
+async def test_config_endpoint_serves_unset_identity_when_the_read_fails_unexpectedly(
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def failing(self: PreferenceRepository, owner_id: str) -> Preference | None:
+        raise RuntimeError("read() called while another coroutine is already waiting for incoming data")
+
+    monkeypatch.setattr(PreferenceRepository, "get_for_owner", failing)
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == {"label": None, "color": None}
+
+
 async def test_info_endpoint(
     db: InfrahubDatabase,
     client: TestClient,

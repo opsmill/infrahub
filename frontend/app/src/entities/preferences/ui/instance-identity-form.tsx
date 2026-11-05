@@ -1,5 +1,5 @@
 import React from "react";
-import { type FieldNamesMarkedBoolean, useForm, useFormState, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { Row } from "@/shared/components/container";
@@ -10,7 +10,7 @@ import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { classNames } from "@/shared/utils/common";
 
@@ -20,6 +20,7 @@ import {
   type InstanceColor,
   isInstanceColor,
 } from "@/entities/preferences/domain/model/instance-identity";
+import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import {
   instanceBarClassName,
   instanceColorLabel,
@@ -30,7 +31,7 @@ import {
   normalizeInstanceLabel,
 } from "@/entities/preferences/domain/rules/validate-instance-label";
 import type { UpdateGlobalPreferenceParams } from "@/entities/preferences/domain/use-cases/update-global-preference";
-import { toFieldValue } from "@/entities/preferences/ui/preference-fields";
+import { SaveButton, toFieldValue } from "@/entities/preferences/ui/preference-fields";
 import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-global-preferences.query";
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
@@ -58,17 +59,19 @@ function colorValue(fieldValue: FormAttributeValue): InstanceColor | null {
   return isInstanceColor(fieldValue.value) ? fieldValue.value : null;
 }
 
-/** Only the fields the admin changed are sent, so a save does not overwrite another admin's save of the other field. */
+/** Only the fields that differ from the saved identity are sent, so a save does not overwrite another admin's save of the other field. */
 function changedFields(
   values: InstanceIdentityFormValues,
-  dirtyFields: Partial<FieldNamesMarkedBoolean<InstanceIdentityFormValues>>
+  saved: GlobalPreferences
 ): UpdateGlobalPreferenceParams {
   const params: UpdateGlobalPreferenceParams = {};
-  if (dirtyFields.instance_label) {
-    params.instanceLabel = normalizeInstanceLabel(labelText(values.instance_label));
+  const label = normalizeInstanceLabel(labelText(values.instance_label));
+  if (label !== saved.instanceLabel) {
+    params.instanceLabel = label;
   }
-  if (dirtyFields.instance_color) {
-    params.instanceColor = colorValue(values.instance_color);
+  const color = colorValue(values.instance_color);
+  if (color !== saved.instanceColor) {
+    params.instanceColor = color;
   }
   return params;
 }
@@ -141,16 +144,6 @@ function InstanceColorField() {
   );
 }
 
-function SaveButton({ isPending }: { isPending?: boolean }) {
-  const { isDirty } = useFormState();
-
-  return (
-    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
-      Save instance identity
-    </FormSubmit>
-  );
-}
-
 export function InstanceIdentityForm() {
   const { isPending, error, data: global } = useGlobalPreferences();
   const updatePreferences = useUpdateGlobalPreferences();
@@ -164,50 +157,38 @@ export function InstanceIdentityForm() {
   }
 
   return (
-    <InstanceIdentityFormContent
+    <Form<InstanceIdentityFormValues>
+      mode="onChange"
       defaultValues={{
         instance_label: toFieldValue(global.instanceLabel),
         instance_color: toFieldValue(global.instanceColor),
       }}
-      isPending={updatePreferences.isPending}
-      onSave={(params) => {
-        updatePreferences.mutate(params, {
-          onSuccess: () => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
-          },
-          onError: (mutationError) => {
-            toast(<Alert type={ALERT_TYPES.ERROR} message={mutationError.message} />);
-          },
-        });
+      onSubmit={async (values) => {
+        try {
+          await updatePreferences.mutateAsync(changedFields(values, global));
+        } catch (mutationError) {
+          toast(
+            <Alert
+              type={ALERT_TYPES.ERROR}
+              message={
+                mutationError instanceof Error
+                  ? mutationError.message
+                  : "Failed to update the instance identity"
+              }
+            />
+          );
+          // A rejected submit keeps the typed values dirty, so the admin can retry the save.
+          throw mutationError;
+        }
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
       }}
-    />
-  );
-}
-
-function InstanceIdentityFormContent({
-  defaultValues,
-  isPending,
-  onSave,
-}: {
-  defaultValues: InstanceIdentityFormValues;
-  isPending: boolean;
-  onSave: (params: UpdateGlobalPreferenceParams) => void;
-}) {
-  // Validate on change so the length rule shows while the admin types.
-  const form = useForm<InstanceIdentityFormValues>({ defaultValues, mode: "onChange" });
-  const { dirtyFields } = useFormState({ control: form.control });
-
-  return (
-    <Form
-      form={form}
-      onSubmit={(values) => onSave(changedFields(values, dirtyFields))}
       className="space-y-0 divide-y"
     >
       <InstanceLabelField />
       <InstanceColorField />
 
       <Row className="justify-end p-2">
-        <SaveButton isPending={isPending} />
+        <SaveButton isPending={updatePreferences.isPending}>Save instance identity</SaveButton>
       </Row>
     </Form>
   );
