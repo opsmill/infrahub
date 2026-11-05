@@ -169,12 +169,12 @@ In both cases the driver tries the members in turn until one answers, so the ini
 
 Upgrade the Neo4j members one at a time, and upgrade the writer last. While one member restarts, the other two members keep the database available. When the writer restarts, the other members elect a new writer, and requests that are running at that moment can fail. Infrahub connects to the new writer when it uses the `neo4j` protocol, as described in [Connecting Infrahub to a Neo4j cluster](#connecting-infrahub-to-a-neo4j-cluster). When a new Infrahub release requires a newer Neo4j version, upgrade Neo4j first, then Infrahub.
 
-The Neo4j chart version is the Neo4j version without the leading zero of the month: chart `2026.9.0` runs Neo4j `2026.09.0`. The commands below use the release names of the Helm example above. Replace `<password>` with the password of the `neo4j` user and `<new-chart-version>` with the chart version to upgrade to.
+The Neo4j chart version is the Neo4j version without the leading zero of the month: chart `2026.5.0` runs Neo4j `2026.05.0`. The commands below use the release names of the Helm example above. Replace `<password>` with the password of the `neo4j` user and `<new-chart-version>` with the chart version to upgrade to.
 
 Before you start:
 
 - Back up the database. [Cluster backup and restore](../../maintain-upgrade/database-backup/cluster-backup-and-restore.mdx) describes the `neo4j-admin` commands with Docker Compose. On Kubernetes, run the same commands in a shell inside a member pod, for example `kubectl exec -it database-1-0 --namespace infrahub -- bash`.
-- Do not run Cypher administration commands, such as `CREATE USER` or `CREATE DATABASE`, until all members run the new version.
+- Do not run Cypher administration commands, such as `CREATE USER` or `CREATE DATABASE`, until all members run the new version. Neo4j states this requirement in [Database administration](https://neo4j.com/docs/operations-manual/current/database-administration/) in its Operations Manual.
 
 1. Find the member that is the writer of the `neo4j` database:
 
@@ -192,7 +192,7 @@ Before you start:
    kubectl rollout status statefulset/<member> --namespace infrahub
    ```
 
-3. Run the command of step 1 again. Continue only when the 3 members show `currentStatus` as `online` and one member is the writer.
+3. Run the command from step 1 again. Continue only when the 3 members show `currentStatus` as `online` and one member is the writer.
 
 4. Repeat steps 2 and 3 until you have upgraded the 3 members. The writer can change when a member restarts, so in step 2, use the writer that the last run of step 3 shows.
 
