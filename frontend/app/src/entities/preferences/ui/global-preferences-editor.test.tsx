@@ -15,7 +15,12 @@ vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 // that ignored the timezone being edited cannot match by accident.
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 
-const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Asia/Tokyo" };
+const baseGlobal: GlobalPreferences = {
+  dateFormat: null,
+  timezone: "Asia/Tokyo",
+  instanceLabel: null,
+  instanceColor: null,
+};
 
 describe("GlobalPreferencesEditor", () => {
   beforeEach(() => {
@@ -71,7 +76,7 @@ describe("GlobalPreferencesEditor", () => {
   });
 
   test("renders the example in the browser zone when the global timezone is unset", async () => {
-    vi.mocked(getGlobalPreferences).mockResolvedValue({ dateFormat: null, timezone: null });
+    vi.mocked(getGlobalPreferences).mockResolvedValue({ ...baseGlobal, timezone: null });
 
     const component = await render(<GlobalPreferencesEditor />);
 
@@ -116,6 +121,7 @@ describe("GlobalPreferencesEditor", () => {
 
   test("prefills the form from the raw GLOBAL scope values", async () => {
     vi.mocked(getGlobalPreferences).mockResolvedValue({
+      ...baseGlobal,
       dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",
     });
