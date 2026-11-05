@@ -73,6 +73,8 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
+`DynamicForm` (`shared/components/form/dynamic-form.tsx`) takes an optional `sections` prop, the schema's `containers`. With it, the form groups its fields with `groupFieldsBySection` and renders one `FormSectionPanel` per section, Details first and Advanced last; when every field lands in Details it renders the flat field list. `NodeForm` passes `schema.containers`; omit the prop for a form that is not built from a node schema.
+
 ### Tab bars
 
 | Need | Use | Location |
@@ -120,6 +122,7 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
+| Titled form panel for one field section (label, optional description, always expanded) | `FormSectionPanel` | `shared/components/form/form-section-panel.tsx` |
 | Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
 | Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table) and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
 | Card with a server-paged table | `PagedTableCard` — region labelled by its title, count badge, fixed-height body, `TablePagination`, and the loading, denied (`UnauthorizedScreen`), failed (`ErrorScreen` with "Go to first page" or "Try again"), empty (`NoDataFound`) and page-past-the-end states. Pair with `keepPreviousDataWithin(listKey, hasRows)` (`shared/api/keep-previous-data-within.ts`) as the query's `placeholderData` | `shared/components/table/paged-table-card.tsx` |
