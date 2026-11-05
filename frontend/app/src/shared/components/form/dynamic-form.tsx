@@ -23,7 +23,6 @@ import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import { DETAILS_SECTION } from "@/entities/nodes/object/domain/model/field-section";
 import { groupFieldsBySection } from "@/entities/nodes/object/domain/rules/group-fields-by-section";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
@@ -82,15 +81,13 @@ function DynamicFields({ fields, sections }: Pick<DynamicFormProps, "fields" | "
   if (!sections) return <DynamicFieldList fields={fields} />;
 
   const fieldSections = groupFieldsBySection(sections, fields, getFieldContainer);
-  const hasOnlyDetails = fieldSections.every(
-    (section) => section.container.name === DETAILS_SECTION.name
-  );
+  const hasOnlyDetails = fieldSections.every((section) => section.kind === "details");
 
   if (hasOnlyDetails) return <DynamicFieldList fields={fields} />;
 
   return fieldSections.map((section) => (
     <FormSectionPanel
-      key={section.container.name}
+      key={section.key}
       label={section.container.label}
       description={section.container.description}
     >
