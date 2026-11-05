@@ -296,16 +296,16 @@ LOCAL attribute, not on a related node.
 ## Staging repositories
 
 A repository added on an Infrahub branch other than the default branch carries `internal_status` of
-`staging` on that branch (`InfrahubRepository.internal_status`, a required field read from the node). Any merge
-of that branch into the default branch sets it to `active` there, whatever the branch's `sync_with_git`
+`staging` on that branch (`InfrahubRepository.internal_status`, a required field read from the node). For a
+read-write repository, any merge of that branch into the default branch sets it to `active` there, whatever the
+branch's `sync_with_git`
 (`core/merge/repository_merge_dispatcher.py`). After the graph merge commits, the merge submits a Git merge
 workflow, and that workflow writes the status (`git/tasks.py::_merge_into_destination`). The repository can
 stay `staging` on the default branch when either step fails: a failed submission is logged as "Repository
 merge failed after branch merge committed" (`core/merge/post_merge.py`), while a failure inside the workflow
-fails that workflow's run and writes no such line. That holds
-for a read-write repository only: a read-only repository added on such a branch is also `staging`, but its
-merge copies only `ref` and `commit` (`git/tasks.py::_merge_into_destination`) and leaves its status
-unchanged. The staging branch is resolved per sync
+fails that workflow's run and writes no such line. A read-only repository added on such a branch is also
+`staging`, but its merge copies only `ref` and `commit` (`git/tasks.py::_merge_into_destination`) and leaves
+its status unchanged. The staging branch is resolved per sync
 from `RepositoryData.get_staging_branch` (`git/models.py`), which scans `branch_info` for the entry
 whose `internal_status` is `staging`. `InfrahubRepository.collect_pending_imports` pairs that branch
 with the repository's trunk: it advances the trunk worktree and imports its commit into the staging branch.
