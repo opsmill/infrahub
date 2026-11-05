@@ -390,8 +390,10 @@ class InfrahubLockRegistry:
     ) -> None:
         self.service = service
         self.connection_url: str | None = None
+        self.max_connections: int | None = None
         if not local_only:
             self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
+            self.max_connections = config.SETTINGS.cache.max_connections
             self.connection = build_redis_connection(config.SETTINGS.cache)
         else:
             self.connection = None
@@ -472,6 +474,7 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
         and registry.service is service
         and registry.connection_url is not None
         and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)
+        and registry.max_connections == config.SETTINGS.cache.max_connections
     ):
         return
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
