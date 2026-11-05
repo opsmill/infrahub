@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 from dataclasses import dataclass
 from itertools import islice
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -68,7 +68,8 @@ class IPPoolCase:
     ) -> Node:
         """A prefix or address of the kind the pool allocates, holding `value` in `namespace`."""
         node = await Node.init(db=db, schema=self.allocated_kind, branch=branch)
-        await node.new(db=db, ip_namespace=namespace, **{self.attribute_name: value})
+        fields: dict[str, Any] = {"ip_namespace": namespace, self.attribute_name: value}
+        await node.new(db=db, **fields)
         await node.save(db=db)
         return node
 
