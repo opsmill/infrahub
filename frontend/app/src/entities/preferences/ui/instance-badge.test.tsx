@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 
@@ -12,8 +13,10 @@ vi.mock("@/entities/config/ui/config-provider");
 const LONG_LABEL = "Production Europe West cluster 2";
 
 describe("InstanceBadge", () => {
-  afterEach(() => {
+  afterEach(async () => {
     vi.resetAllMocks();
+    // The pointer position persists across tests, so a tooltip left open by a hover would cover the next render.
+    await initPointerTracking(page.elementLocator(document.body));
   });
 
   test("shows the label in the red variant when the color is RED", async () => {
@@ -69,6 +72,5 @@ describe("InstanceBadge", () => {
 
     // THEN
     await expect.element(component.getByRole("tooltip", { name: LONG_LABEL })).toBeVisible();
-    await initPointerTracking(component.locator);
   });
 });

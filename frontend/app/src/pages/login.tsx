@@ -2,7 +2,6 @@ import { Navigate, useLocation, useSearchParams } from "react-router";
 
 import type { RestErrorItem } from "@/shared/api/rest/fetch";
 import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
-import { useTitle } from "@/shared/hooks/useTitle";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
@@ -14,7 +13,6 @@ function LoginPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
-  useTitle("Infrahub");
 
   if (isAuthenticated) {
     return <Navigate to={resolveLoginRedirect(location, searchParams)} replace />;

@@ -1,6 +1,11 @@
+import type { ReactNode } from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { useTitle } from "@/shared/hooks/useTitle";
+
 import { useConfig } from "@/entities/config/ui/config-provider";
+import { DocumentTitle } from "@/entities/config/ui/document-title";
 
 import { render } from "../../tests/components/render";
 import { generateConfig } from "../../tests/fake/config";
@@ -14,12 +19,17 @@ vi.mock("@/entities/navigation/ui/app-header", () => ({
   AppHeader: () => <header data-testid="header-stub">header</header>,
 }));
 
+function BranchesPage() {
+  useTitle("Branches");
+  return <h1>Branches</h1>;
+}
+
 describe("AppLayout", () => {
   afterEach(() => {
     vi.resetAllMocks();
   });
 
-  test("renders the instance color bar above the sidebar and header row", async () => {
+  test("renders the instance color bar edge to edge above the padded sidebar and header row", async () => {
     // GIVEN
     vi.mocked(useConfig).mockReturnValue(
       generateConfig({ instance: { label: "QA", color: "RED" } })
@@ -31,9 +41,11 @@ describe("AppLayout", () => {
     // THEN
     const bar = component.getByTestId("instance-color-bar").element();
     const page = bar.parentElement;
+    const paddedContent = bar.nextElementSibling;
     expect(page?.firstElementChild).toBe(bar);
-    expect(page?.contains(component.getByTestId("sidebar-stub").element())).toBe(true);
-    expect(page?.contains(component.getByTestId("header-stub").element())).toBe(true);
+    expect(paddedContent?.classList.contains("p-0.5")).toBe(true);
+    expect(paddedContent?.contains(component.getByTestId("sidebar-stub").element())).toBe(true);
+    expect(paddedContent?.contains(component.getByTestId("header-stub").element())).toBe(true);
   });
 
   test("renders no color bar when no instance color is set", async () => {
@@ -50,16 +62,28 @@ describe("AppLayout", () => {
     expect(component.getByTestId("instance-color-bar").query()).toBeNull();
   });
 
-  test("sets the tab title to the instance label and the application name", async () => {
+  test("keeps the page title set by a child route when the layout and the page mount together", async () => {
     // GIVEN
     vi.mocked(useConfig).mockReturnValue(
       generateConfig({ instance: { label: "QA", color: null } })
     );
 
     // WHEN
-    await render(<AppLayout />);
+    const component = await render(<DocumentTitle />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <MemoryRouter initialEntries={["/branches"]}>
+          {children}
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/branches" element={<BranchesPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      ),
+    });
 
     // THEN
-    expect(document.title).toBe("QA · Infrahub");
+    await expect.element(component.getByRole("heading", { name: "Branches" })).toBeVisible();
+    expect(document.title).toBe("QA · Branches");
   });
 });

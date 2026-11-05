@@ -1,21 +1,22 @@
-import { useEffect } from "react";
+import { useSetAtom } from "jotai";
+import { useEffect, useId } from "react";
 
-import { useConfig } from "@/entities/config/ui/config-provider";
-import { formatDocumentTitle } from "@/entities/preferences/domain/rules/format-document-title";
-
-const APPLICATION_TITLE = "Infrahub";
+import { pageTitleRegistrationsAtom } from "@/shared/stores/page-title.atom";
 
 export const useTitle = (title: string) => {
-  const { label } = useConfig().instance;
-  const documentTitle = formatDocumentTitle(label, title);
-  const fallbackTitle = formatDocumentTitle(label, APPLICATION_TITLE);
+  const id = useId();
+  const setRegistrations = useSetAtom(pageTitleRegistrationsAtom);
 
   useEffect(() => {
-    document.title = documentTitle;
+    setRegistrations((registrations) => [
+      ...registrations.filter((registration) => registration.id !== id),
+      { id, title },
+    ]);
 
-    // The fallback is recomputed per effect run so a label changed while the page was open never resurfaces stale.
     return () => {
-      document.title = fallbackTitle;
+      setRegistrations((registrations) =>
+        registrations.filter((registration) => registration.id !== id)
+      );
     };
-  }, [documentTitle, fallbackTitle]);
+  }, [id, title, setRegistrations]);
 };
