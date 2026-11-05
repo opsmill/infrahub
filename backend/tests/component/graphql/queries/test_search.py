@@ -714,6 +714,84 @@ async def test_search_anywhere_exact_match_finds_boolean_values(
     ) == [urgent.id]
 
 
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_ranks_a_renamed_node_by_its_current_name(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A node whose best-matching name was replaced ranks by its current name, on a branch and after the rename date."""
+    renamed = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await renamed.new(db=db, name="Kestrel")
+    await renamed.save(db=db)
+    other = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await other.new(db=db, name="Kestrel Bay")
+    await other.save(db=db)
+    before_rename = Timestamp()
+
+    branch = await create_branch(db=db, branch_name=f"search-rank-{int(case_sensitive)}")
+    renamed_on_branch = await NodeManager.get_one(db=db, branch=branch, id=renamed.id)
+    renamed_on_branch.name.value = "Old Kestrel Inn"
+    await renamed_on_branch.save(db=db)
+
+    branch.update_schema_hash()
+    default_branch.update_schema_hash()
+    gql_params_branch = await prepare_graphql_params(db=db, branch=branch)
+    gql_params_default = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params_branch, query="Kestrel", case_sensitive=case_sensitive) == [
+        other.id,
+        renamed.id,
+    ]
+    assert await _search_ids(gql_params=gql_params_branch, query="Kestrel", limit=1, case_sensitive=case_sensitive) == [
+        other.id
+    ]
+    assert await _search_ids(gql_params=gql_params_default, query="Kestrel", case_sensitive=case_sensitive) == [
+        renamed.id,
+        other.id,
+    ]
+
+    renamed_on_default = await NodeManager.get_one(db=db, branch=default_branch, id=renamed.id)
+    renamed_on_default.name.value = "Old Kestrel Inn"
+    await renamed_on_default.save(db=db)
+    gql_params_now = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params_past = await prepare_graphql_params(db=db, branch=default_branch, at=before_rename)
+
+    assert await _search_ids(gql_params=gql_params_now, query="Kestrel", case_sensitive=case_sensitive) == [
+        other.id,
+        renamed.id,
+    ]
+    assert await _search_ids(gql_params=gql_params_past, query="Kestrel", case_sensitive=case_sensitive) == [
+        renamed.id,
+        other.id,
+    ]
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_fills_the_limit_after_skipping_a_deleted_best_match(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """When the best match belongs to a deleted node, the next best node still fills the limit."""
+    deleted = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await deleted.new(db=db, name="Ospreya")
+    await deleted.save(db=db)
+    kept = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await kept.new(db=db, name="Ospreya Point")
+    await kept.save(db=db)
+    await deleted.delete(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="Ospreya", limit=1, case_sensitive=case_sensitive) == [
+        kept.id
+    ]
+
+
 async def _search_ids(
     gql_params: GraphqlParams,
     query: str,

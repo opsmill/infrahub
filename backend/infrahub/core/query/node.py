@@ -2547,6 +2547,7 @@ class NodeGetListByAttributeValueQuery(Query):
 
     name = "node_get_list_by_attribute_value"
     type = QueryType.READ
+    insert_return = False
 
     def __init__(
         self,
@@ -2564,7 +2565,6 @@ class NodeGetListByAttributeValueQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.order_by = ["score DESC", "uuid"]
         self.return_labels = ["uuid", "kind"]
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -2607,6 +2607,21 @@ class NodeGetListByAttributeValueQuery(Query):
         %(kind_filter)s
         WITH DISTINCT n, attr, av
         // --------------------------
+        // rank each match, best first
+        // --------------------------
+        WITH n, attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
+        // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
+        WITH n, attr, av, CASE
+            WHEN is_label AND value = search THEN 6
+            WHEN is_label AND value STARTS WITH search THEN 5
+            WHEN is_label THEN 4
+            WHEN value = search THEN 3
+            WHEN value STARTS WITH search THEN 2
+            ELSE 1
+        END * 1000000000 - size(value) AS score
+        // Checking matches best first makes a node's first valid match its best one, so the checks stop once the limit is reached.
+        ORDER BY score DESC, n.uuid
+        // --------------------------
         // filter HAS_VALUE edges
         // --------------------------
         // The attribute's latest value edge decides, as a value changed on a branch leaves the old value's edge active on its parent.
@@ -2629,22 +2644,8 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, av, r
+        WITH n
         WHERE r.status = "active"
-        // --------------------------
-        // rank each match, then keep the best one per node
-        // --------------------------
-        WITH n, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
-        WITH n, value, CASE
-            WHEN is_label AND value = search THEN 6
-            WHEN is_label AND value STARTS WITH search THEN 5
-            WHEN is_label THEN 4
-            WHEN value = search THEN 3
-            WHEN value STARTS WITH search THEN 2
-            ELSE 1
-        END AS tier
-        // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
-        WITH n, max(tier * 1000000000 - size(value)) AS score
         // --------------------------
         // keep the nodes that exist at the searched time
         // --------------------------
@@ -2655,9 +2656,9 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, score, r
+        WITH n
         WHERE r.status = "active"
-        WITH n.uuid AS uuid, n.kind AS kind, score
+        RETURN DISTINCT n.uuid AS uuid, n.kind AS kind
         """ % {
             "match_predicate": match_predicate,
             "value": value,
