@@ -3087,6 +3087,10 @@
                     },
                     "policy": {
                         "$ref": "#/components/schemas/PolicySettings"
+                    },
+                    "instance": {
+                        "$ref": "#/components/schemas/InstanceIdentityAPI",
+                        "description": "Instance identity read from the global preferences"
                     }
                 },
                 "type": "object",
@@ -3098,7 +3102,8 @@
                     "sso",
                     "ldap",
                     "installation_type",
-                    "policy"
+                    "policy",
+                    "instance"
                 ],
                 "title": "ConfigAPI"
             },
@@ -4508,6 +4513,50 @@
                     "version"
                 ],
                 "title": "InfoAPI"
+            },
+            "InstanceColor": {
+                "type": "string",
+                "enum": [
+                    "RED",
+                    "AMBER",
+                    "GREEN",
+                    "BLUE",
+                    "INDIGO",
+                    "PURPLE",
+                    "GRAY"
+                ],
+                "title": "InstanceColor",
+                "description": "Preset colors an administrator can assign to the instance; clients map each to their own theme."
+            },
+            "InstanceIdentityAPI": {
+                "properties": {
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Instance label shown in the header badge and the tab title"
+                    },
+                    "color": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InstanceColor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Preset color of the instance badge and bar"
+                    }
+                },
+                "type": "object",
+                "title": "InstanceIdentityAPI",
+                "description": "The label and color an administrator gave this instance, shown to every visitor."
             },
             "JSONSchema": {
                 "properties": {
