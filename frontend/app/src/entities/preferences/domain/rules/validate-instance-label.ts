@@ -2,7 +2,7 @@ import { INSTANCE_LABEL_MAX_LENGTH } from "@/entities/preferences/domain/model/i
 
 // Line breaks and tabs are in the Cc category; U+202A to U+202E and U+2066 to U+2069 are the
 // bidirectional text controls, which can reorder how the label reads.
-const CONTROL_CHARACTER = /[\p{Cc}‪-‮⁦-⁩]/u;
+const CONTROL_CHARACTER = /[\p{Cc}\u202A-\u202E\u2066-\u2069]/u;
 
 export function normalizeInstanceLabel(value: string): string | null {
   const trimmed = value.trim();
