@@ -412,6 +412,45 @@ def test_pool_size(case: PoolSizeCase) -> None:
     assert pool.max_connections == case.expected_max_connections
 
 
+@dataclass
+class DaemonPoolSizeCase:
+    name: str
+    cache_kwargs: dict[str, Any]
+    expected_daemon_pool_sizes: list[int]
+
+
+SENTINEL_URL = "redis+sentinel://s1:26379,s2:26379/mymaster"
+
+DAEMON_POOL_SIZE_CASES = [
+    DaemonPoolSizeCase(
+        name="default",
+        cache_kwargs={"url": SecretStr(SENTINEL_URL)},
+        expected_daemon_pool_sizes=[DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE],
+    ),
+    DaemonPoolSizeCase(
+        name="configured",
+        cache_kwargs={"url": SecretStr(SENTINEL_URL), "max_connections": CONFIGURED_POOL_SIZE},
+        expected_daemon_pool_sizes=[CONFIGURED_POOL_SIZE, CONFIGURED_POOL_SIZE],
+    ),
+    DaemonPoolSizeCase(
+        name="url_option_over_the_setting",
+        cache_kwargs={"url": SecretStr(f"{SENTINEL_URL}?max_connections=7"), "max_connections": CONFIGURED_POOL_SIZE},
+        expected_daemon_pool_sizes=[7, 7],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", DAEMON_POOL_SIZE_CASES, ids=lambda case: case.name)
+def test_sentinel_daemon_pools_take_the_pool_size(case: DaemonPoolSizeCase) -> None:
+    """Every new data connection asks a Sentinel daemon for the master, so each daemon pool gets the same size."""
+    pool = build_redis_connection(CacheSettings(**case.cache_kwargs)).connection_pool
+
+    assert isinstance(pool, SentinelConnectionPool)
+    assert [
+        daemon.connection_pool.max_connections for daemon in pool.sentinel_manager.sentinels
+    ] == case.expected_daemon_pool_sizes
+
+
 VALID_URLS = [
     "redis://cache:6379/0",
     "rediss://user:pass@cache:6380/2",
@@ -424,7 +463,7 @@ VALID_URLS = [
 
 @pytest.mark.parametrize("url", VALID_URLS)
 def test_validate_redis_url_accepts(url: str) -> None:
-    validate_redis_url(url, max_connections=CONFIGURED_POOL_SIZE)
+    validate_redis_url(url)
 
 
 @dataclass
@@ -530,7 +569,7 @@ INVALID_URL_CASES = [
 @pytest.mark.parametrize("case", INVALID_URL_CASES, ids=lambda case: case.name)
 def test_validate_redis_url_rejects_without_echoing_the_url(case: InvalidUrlCase) -> None:
     with pytest.raises(ValueError, match=case.match) as exc_info:
-        validate_redis_url(case.url, max_connections=CONFIGURED_POOL_SIZE)
+        validate_redis_url(case.url)
 
     for fragment in case.secret_fragments:
         assert fragment not in str(exc_info.value)

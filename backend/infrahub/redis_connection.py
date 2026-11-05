@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, quote, urlencode
 
 from prefect_redis.connection import redis_from_url
 from redis.asyncio.retry import Retry
+from redis.asyncio.sentinel import SentinelConnectionPool
 from redis.backoff import ExponentialWithJitterBackoff
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
@@ -91,7 +92,7 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     return f"{scheme}://{userinfo}{host}:{cache.service_port}/{cache.database}{qs}"
 
 
-def _connection_defaults(max_connections: int) -> dict[str, Any]:
+def _connection_defaults() -> dict[str, Any]:
     """Connection options that the URL's own query options override."""
     backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
     return {
@@ -99,16 +100,33 @@ def _connection_defaults(max_connections: int) -> dict[str, Any]:
         # are retried.
         "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES, supported_errors=(RedisConnectionError,)),
         "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
-        # Each flow waiting on a lock polls it with its own command, and redis-py 8 otherwise caps a pool at 100.
-        "max_connections": max_connections,
     }
 
 
-def _redis_from_url(url: str, max_connections: int) -> redis.Redis:
-    return redis_from_url(url, asynchronous=True, **_connection_defaults(max_connections=max_connections))
+def _redis_from_url(url: str, max_connections: int | None = None) -> redis.Redis:
+    options = _connection_defaults()
+    if max_connections is not None:
+        # Each flow waiting on a lock polls it with its own command, and redis-py 8 otherwise caps a pool at 100.
+        options["max_connections"] = max_connections
+    client = redis_from_url(url, asynchronous=True, **options)
+    pool = client.connection_pool
+    if isinstance(pool, SentinelConnectionPool):
+        # prefect-redis 0.3.0 passes only the socket_* and ssl_* options to the Sentinel daemon clients, so their
+        # pools would keep redis-py 8's 100 connections while every new data connection asks a daemon for the master.
+        for daemon in pool.sentinel_manager.sentinels:
+            daemon.connection_pool.max_connections = pool.max_connections
+    return client
 
 
-def validate_redis_url(url: str, max_connections: int) -> None:
+def pool_size_from_url(url: str, max_connections: int) -> int:
+    """Return the size of the pool built from ``url`` for a ``max_connections`` setting.
+
+    A ``max_connections`` query option of the URL takes precedence, read the way redis-py reads it.
+    """
+    return _redis_from_url(url, max_connections=max_connections).connection_pool.max_connections
+
+
+def validate_redis_url(url: str) -> None:
     """Check that a client and its connections can be built from ``url``, without opening a connection.
 
     Raises:
@@ -124,7 +142,7 @@ def validate_redis_url(url: str, max_connections: int) -> None:
         )
     try:
         # Building a connection object, not only the client, is what rejects an unknown query option.
-        _redis_from_url(url, max_connections=max_connections).connection_pool.make_connection()
+        _redis_from_url(url).connection_pool.make_connection()
     except (TypeError, RedisError) as exc:
         raise ValueError(f"Redis URL is not valid: {exc}") from exc
 

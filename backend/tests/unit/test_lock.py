@@ -217,3 +217,19 @@ def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_chang
 
     assert lock.registry is not first
     assert lock.registry.connection_url != first.connection_url
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_rebuilds_a_redis_registry_when_the_pool_size_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The cache URL stays the same, so only the pool size tells that the settings changed."""
+    initialize_lock()
+    first = lock.registry
+
+    monkeypatch.setattr(config.SETTINGS.cache, "max_connections", 250)
+    initialize_lock()
+
+    assert lock.registry is not first
+    assert lock.registry.connection is not None
+    assert lock.registry.connection.connection_pool.max_connections == 250

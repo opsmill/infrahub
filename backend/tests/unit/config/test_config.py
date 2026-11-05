@@ -432,28 +432,40 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
     ]
 
 
+@dataclass
+class PoolSizeOverrideCase:
+    name: str
+    url: str
+    superseded: bool
+
+
+POOL_SIZE_SUPERSEDED = {
+    "event": SUPERSEDED_WARNING,
+    "log_level": "warning",
+    "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
+}
+
+POOL_SIZE_OVERRIDE_CASES = [
+    PoolSizeOverrideCase(name="url_size", url="redis://cache:6379/0?max_connections=7", superseded=True),
+    PoolSizeOverrideCase(
+        name="sentinel_url_size", url="redis+sentinel://s1:26379/mymaster?max_connections=7", superseded=True
+    ),
+    # redis-py reads 0 as its own default of 100 connections, so the setting is not applied either.
+    PoolSizeOverrideCase(name="zero", url="redis://cache:6379/0?max_connections=0", superseded=True),
+    # redis-py drops a blank option, so the setting still sizes the pool.
+    PoolSizeOverrideCase(name="blank", url="redis://cache:6379/0?max_connections=", superseded=False),
+    PoolSizeOverrideCase(name="no_size", url="redis://cache:6379/0?socket_timeout=3", superseded=False),
+]
+
+
 @pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_pool_size_parameter_supersedes_the_setting() -> None:
-    """A max_connections parameter on the URL wins over the setting, and the override is reported."""
+@pytest.mark.parametrize("case", POOL_SIZE_OVERRIDE_CASES, ids=lambda case: case.name)
+def test_cache_url_pool_size_supersedes_the_setting_only_when_it_applies(case: PoolSizeOverrideCase) -> None:
+    """The override is reported when the pool that the URL builds does not get the configured size."""
     with capture_logs() as records:
-        CacheSettings(url=SecretStr("redis://cache:6379/0?max_connections=7"), max_connections=250)
+        CacheSettings(url=SecretStr(case.url), max_connections=250)
 
-    assert records == [
-        {
-            "event": SUPERSEDED_WARNING,
-            "log_level": "warning",
-            "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
-        }
-    ]
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_without_pool_size_parameter_reports_nothing() -> None:
-    """The setting sizes the pool of a URL that carries no max_connections parameter, so nothing is superseded."""
-    with capture_logs() as records:
-        CacheSettings(url=SecretStr("redis://cache:6379/0?socket_timeout=3"), max_connections=250)
-
-    assert records == []
+    assert records == ([POOL_SIZE_SUPERSEDED] if case.superseded else [])
 
 
 @pytest.mark.usefixtures("without_cache_environment")
