@@ -28,18 +28,6 @@ _DOCS_MEDIA_DIR = Path(__file__).resolve().parents[2] / "docs" / "docs" / "media
 _RESPONSE_DELAY = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
 
 
-def prepare_git_remote(remote: Path, *, writable: bool = True) -> None:
-    """Let container users read and optionally push to a disposable host-owned remote."""
-    git_directory = remote / ".git"
-    for path in (remote, *remote.rglob("*")):
-        if path.is_symlink():
-            continue
-        permissions = 0o055 if path.is_dir() else 0o044
-        if writable and (path == git_directory or git_directory in path.parents):
-            permissions |= 0o022
-        path.chmod(path.stat().st_mode | permissions)
-
-
 class Deadline:
     """Bound a reload-until-condition poll loop.
 

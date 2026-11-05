@@ -61,7 +61,7 @@ class ScopedNumberPoolReader:
 
         """
         # An `isnull` filter on a List attribute matches no node, so the unscoped pools are dropped after the read.
-        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, branch_agnostic=True)
+        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool)
         return self._scoped(pools=pools)
 
     async def get_schema_pool_ids(self, attributes: Iterable[tuple[str, str]]) -> dict[tuple[str, str], str]:
@@ -74,7 +74,6 @@ class ScopedNumberPoolReader:
                 "node__values": sorted({kind for kind, _ in requested}),
                 "pool_type__value": NumberPoolType.SCHEMA.value,
             },
-            branch_agnostic=True,
         )
         return {
             (pool.node.value, pool.node_attribute.value): pool.get_id()

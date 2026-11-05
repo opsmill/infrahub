@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import Deadline, generate_random_branch_name, prepare_git_remote
+from helpers import Deadline, generate_random_branch_name
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
@@ -119,7 +119,10 @@ class TestRepositoryDelivery:
         branch_name = generate_random_branch_name("delivery-")
         view_branch = generate_random_branch_name("delivery-view-")
         remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-        git_repo = GitRepo(name=repository_name, src_directory=REPOSITORY_FIXTURE, dst_directory=remote_dir)
+        # The containers can run as another user than pytest, and must be able to push to the remote.
+        git_repo = GitRepo(
+            name=repository_name, src_directory=REPOSITORY_FIXTURE, dst_directory=remote_dir, shared=True
+        )
         remote = remote_dir / repository_name
 
         # The remote has main checked out, and Git refuses a push to a checked-out branch by default.
@@ -135,8 +138,6 @@ class TestRepositoryDelivery:
         hook.parent.mkdir(exist_ok=True)
         hook.write_text(REJECT_MAIN_HOOK, encoding="utf-8")
         hook.chmod(0o755)
-
-        prepare_git_remote(remote)
 
         await git_repo.add_to_infrahub(infrahub_client)
         repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)

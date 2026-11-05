@@ -78,6 +78,22 @@ class NodeNumberPoolDivisionReader:
             node=node, scope=scope, pool_name=str(pool.get_attribute("name").value), attribute_name=attribute_name
         )
 
+    def scope_field_names(self, pool: Node, kind: str, attribute_name: str) -> list[str]:
+        """Return the names of the attributes and relationships of `kind` that hold the number pool's scope elements.
+
+        Raises:
+            ValidationError: When the stored scope is malformed or the schema does not define one of its elements on
+                `kind`.
+
+        """
+        scope = AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id())
+        if scope.is_empty:
+            return []
+        element_fields = self.scope_resolver.element_fields(
+            kind=kind, scope=scope, pool=str(pool.get_attribute("name").value), attribute=attribute_name
+        )
+        return [field.name for _, field in element_fields]
+
     async def _resolve_peers(self, relationship: RelationshipManager) -> None:
         """Resolve the relationship's peers to node ids, reading the peers when the node has not read them.
 

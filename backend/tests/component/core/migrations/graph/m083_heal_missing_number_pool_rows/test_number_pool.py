@@ -1,10 +1,11 @@
+from collections.abc import Generator
 from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions, RelationshipCardinality
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
@@ -13,7 +14,16 @@ from infrahub.core.migrations.graph.m083_heal_missing_number_pool_rows import Mi
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -26,12 +36,20 @@ from tests.helpers.attribute_rows import (
     build_rack_unit_attribute,
     create_damaged_node,
     create_schema_number_pool,
+    delete_attribute_rows,
     get_active_attribute_edge_details,
     get_pool_attribute_row_shape,
     get_schema_pools,
     load_server_schema,
     recording_console,
     simulate_rebase,
+)
+from tests.helpers.number_pool import (
+    SCOPED_ATTRIBUTE_NAME,
+    SCOPED_SITE,
+    provision_schema_number_pools,
+    save_schema_kinds,
+    scoped_site,
 )
 
 
@@ -40,6 +58,8 @@ class PoolSeed:
     pool_uuid: str
     runtime_server_uuid: str
     damaged_uuids: tuple[str, str, str]
+    switch_pool_uuid: str
+    switch_uuids: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -50,10 +70,26 @@ class PoolHealRun:
 
 
 class TestNumberPoolHeal:
-    """One pre-provisioned pool, one runtime-written server, three damaged ones, healed once."""
+    """Two kinds healed in one run, each from its own schema pool.
+
+    An unscoped pool serves one runtime-written server and three damaged ones; a pool scoped by site serves four
+    switches over two sites, one damaged in each site.
+    """
 
     @pytest.fixture(scope="class")
-    async def seeded(self, db: InfrahubDatabase, default_branch_scope_class: Branch) -> PoolSeed:
+    def number_pool_node_class(self, default_branch_scope_class: Branch) -> Generator[None]:
+        previous = registry.node.get(InfrahubKind.NUMBERPOOL)
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        yield
+        if previous is None:
+            registry.node.pop(InfrahubKind.NUMBERPOOL, None)
+        else:
+            registry.node[InfrahubKind.NUMBERPOOL] = previous
+
+    @pytest.fixture(scope="class")
+    async def seeded(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool_node_class: None
+    ) -> PoolSeed:
         default = default_branch_scope_class
         registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default.name)
         registry.schema.register_schema(schema=SchemaRoot(**core_models), branch=default.name)
@@ -77,10 +113,22 @@ class TestNumberPoolHeal:
                     created_at=Timestamp().subtract(seconds=240),
                 )
             )
+
+        switch_uuids = await _seed_switches_and_damage(
+            db=db, branch=default, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]
+        )
+        switch_pools = [
+            schema_pool
+            for schema_pool in await get_schema_pools(db=db)
+            if schema_pool.get_attribute(name="node").value == "ScopeEquipment"
+        ]
+        assert len(switch_pools) == 1
         return PoolSeed(
             pool_uuid=pool.get_id(),
             runtime_server_uuid=runtime_server.get_id(),
             damaged_uuids=(damaged[0], damaged[1], damaged[2]),
+            switch_pool_uuid=switch_pools[0].get_id(),
+            switch_uuids=switch_uuids,
         )
 
     @pytest.fixture(scope="class")
@@ -95,22 +143,38 @@ class TestNumberPoolHeal:
 
     async def test_result_counts_and_console(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
         assert healed.errors == []
-        # 3 damaged nodes x 1 pool-backed inherited attribute
-        assert healed.nbr_migrations_executed == 3
+        # 3 damaged servers and 2 damaged switches x 1 pool-backed inherited attribute
+        assert healed.nbr_migrations_executed == 5
         assert "TestServer: 3 missing attribute row(s) across 3 node(s); repairing" in healed.console_output
         assert "TestServer.rack_unit: allocated 3 pool value(s)" in healed.console_output
+        assert "ScopeSwitch: 2 missing attribute row(s) across 2 node(s); repairing" in healed.console_output
+        assert "ScopeSwitch.vlan_id: allocated 2 pool value(s)" in healed.console_output
 
         validation_result = await Migration083.init().validate_migration(db=db)
         assert validation_result.errors == []
 
-    async def test_single_pool_served_all_allocations(
+    async def test_each_kind_was_served_by_its_existing_pool(
         self, db: InfrahubDatabase, seeded: PoolSeed, healed: PoolHealRun
     ) -> None:
         pools = await get_schema_pools(db=db)
-        assert len(pools) == 1
-        assert pools[0].get_id() == seeded.pool_uuid
-        assert pools[0].get_attribute(name="node").value == "TestAsset"
-        assert pools[0].get_attribute(name="node_attribute").value == "rack_unit"
+        assert {
+            (pool.get_attribute(name="node").value, pool.get_attribute(name="node_attribute").value): pool.get_id()
+            for pool in pools
+        } == {
+            ("TestAsset", "rack_unit"): seeded.pool_uuid,
+            ("ScopeEquipment", SCOPED_ATTRIBUTE_NAME): seeded.switch_pool_uuid,
+        }
+        assert len(pools) == 2
+
+    async def test_scoped_pool_repair_gives_each_node_the_lowest_free_number_of_its_site(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
 
     async def test_distinct_values_sourced_from_the_pool(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
@@ -187,12 +251,18 @@ class TestNumberPoolHeal:
         assert second_result.errors == []
         assert second_result.nbr_migrations_executed == 0
 
-        assert len(await get_schema_pools(db=db)) == 1
+        assert len(await get_schema_pools(db=db)) == 2
         nodes_after = await NodeManager.get_many(
             db=db, branch=default_branch_scope_class, ids=list(seeded.damaged_uuids)
         )
         values_after = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_after.items()}
         assert values_after == values_before
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
 
     async def test_graph_left_valid(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
         await verify_graph(db=db)
@@ -396,3 +466,64 @@ async def test_pool_rows_are_left_to_this_migration_by_the_default_value_heal(
     assert (await migration.validate_migration(db=db)).errors == []
 
     await verify_graph(db=db)
+
+
+def _equipment_schema(allocation_scope: list[str] | None) -> SchemaRoot:
+    """Switches inheriting a pooled `vlan_id` and a mandatory site from a generic, with the pool scoped as given."""
+    equipment = GenericSchema(
+        name="Equipment",
+        namespace="Scope",
+        label="Equipment",
+        attributes=[
+            AttributeSchema(
+                name=SCOPED_ATTRIBUTE_NAME,
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=allocation_scope),
+            )
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="site",
+                peer=SCOPED_SITE.kind,
+                identifier="scope_equipment__site",
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+    switch = NodeSchema(
+        name="Switch",
+        namespace="Scope",
+        label="Switch",
+        inherit_from=["ScopeEquipment"],
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    return SchemaRoot(generics=[equipment], nodes=[SCOPED_SITE, switch])
+
+
+async def _seed_switches_and_damage(
+    db: InfrahubDatabase, branch: Branch, allocation_scope: list[str] | None, damaged_names: list[str]
+) -> dict[str, str]:
+    """Create switches through the write path, then remove the `vlan_id` rows of the named ones; return {name: uuid}."""
+    await save_schema_kinds(db=db, schema=_equipment_schema(allocation_scope=allocation_scope))
+    await provision_schema_number_pools(db=db)
+
+    sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-1", "site-2")}
+    placement = {"s1-a": "site-1", "s1-b": "site-1", "s1-c": "site-1", "s2-a": "site-2"}
+    switches: dict[str, str] = {}
+    for name, site_name in placement.items():
+        switch = await Node.init(db=db, schema="ScopeSwitch", branch=branch)
+        await switch.new(db=db, name=name, site=sites[site_name])
+        await switch.save(db=db)
+        switches[name] = switch.get_id()
+
+    for name in damaged_names:
+        await delete_attribute_rows(db=db, node_uuid=switches[name], attribute_names=[SCOPED_ATTRIBUTE_NAME])
+    return switches
+
+
+async def _vlan_ids_by_name(db: InfrahubDatabase, branch: Branch, switches: dict[str, str]) -> dict[str, int | None]:
+    nodes = await NodeManager.get_many(db=db, branch=branch, ids=list(switches.values()))
+    return {name: nodes[uuid].get_attribute(name=SCOPED_ATTRIBUTE_NAME).value for name, uuid in switches.items()}
