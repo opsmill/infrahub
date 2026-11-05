@@ -104,7 +104,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 ### Edge Cases
 
 - The color value is not in the preset list (for example, a hand-written API call sends "pink"): the write is rejected with a validation error naming the allowed values, and nothing is stored.
-- The label contains a line break: the write is rejected.
+- The label contains a line break, another control character (tab, NUL) or a bidirectional text control: the write is rejected.
 - The label contains non-ASCII characters (for example "Zürich PROD"): accepted and shown as entered.
 - The settings are read before an administrator ever saved anything: the read returns "no label, no color" without creating a stored record.
 - Two administrators save at the same time: the last save wins per field, and no duplicate instance record is created.
@@ -122,7 +122,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 - **FR-003**: An account MUST be able to change both values only when it holds the "manage global preferences" global permission or is a super administrator. A write by any other account MUST be rejected with the permission error already used for global preferences, and MUST leave the stored values unchanged.
 - **FR-004**: The two values MUST be editable on the existing Global preferences page, in a section of their own next to the date and time settings, with the same save and confirmation behaviour as the existing settings.
 - **FR-005**: A save MUST allow changing one value without touching the other, and MUST allow resetting each value independently.
-- **FR-006**: The label MUST be trimmed of leading and trailing whitespace before validation. An empty or whitespace-only label MUST be treated as a reset. A label longer than 32 characters or containing a line break MUST be rejected with a message that states the rule. Any other character, including non-ASCII, MUST be accepted.
+- **FR-006**: The label MUST be trimmed of leading and trailing whitespace before validation. An empty or whitespace-only label MUST be treated as a reset. A label longer than 32 characters (counted in code points, as the server counts), or containing a line break, another control character or a bidirectional text control, MUST be rejected with a message that states the rule. Any other character, including non-ASCII, MUST be accepted.
 - **FR-007**: A color outside the preset list MUST be rejected with a validation error that lists the allowed values.
 - **FR-008**: The instance label and color MUST NOT be settable as personal (per-user) preferences and MUST NOT appear in a user's own preferences; a per-user write of either value MUST be rejected.
 - **FR-009**: Every visitor, including an anonymous visitor on the login page, MUST be able to read the current label and color, without holding any permission, so that the indicator is shown on every page.
