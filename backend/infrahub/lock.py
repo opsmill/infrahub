@@ -110,7 +110,12 @@ class InfrahubMultiLock:
         except BaseException:
             # The context exit never runs when entering fails, so a partial acquisition is undone here.
             for lock in reversed(acquired):
-                await lock.release()
+                try:
+                    await lock.release()
+                except (RedisError, RuntimeError):
+                    # The remaining locks still have to be released, and the caller has to receive the error that
+                    # stopped the acquisition rather than this one.
+                    log.exception("Could not release a lock after a multi-lock failed to acquire", lock=lock.name)
             raise
 
     async def release(self) -> None:
