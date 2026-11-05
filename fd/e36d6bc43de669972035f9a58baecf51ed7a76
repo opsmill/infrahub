@@ -1,0 +1,21 @@
+dev/specs/ifc-9998-format-duration/spec.md
+  s_6e33ff32df746e::t_d3e57443004d51 1-80
+dev/specs/ifc-9998-format-duration/checklists/requirements.md
+  s_6e33ff32df746e::t_c6e6ad946d4632 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fde36d6bc43de669972035f9a58baecf51ed7a76",
+  "prompts": {},
+  "sessions": {
+    "s_6e33ff32df746e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbb33180-6eac-42e8-8809-e455c9241637",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
