@@ -1,0 +1,19 @@
+dev/specs/005-hz-frequency-formatter/tasks.md
+  s_7f89a04bbbc0ac::t_d43b997d417eaf 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0aaad77fb09663ac2d66d9de04aeed6554cb8e4c",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
