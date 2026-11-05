@@ -9,6 +9,7 @@ import pytest
 
 from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.definitions.internal import base_node_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
 
@@ -109,6 +110,19 @@ REFUSED_CONTAINER_CASES = [
         name="declaring_the_advanced_container",
         schema=_lag_schema_with_generic_containers([{"name": "advanced", "label": "Advanced"}]),
         message=f"{GENERIC_KIND}.containers: 'advanced' is a built-in container and cannot be declared",
+    ),
+    RefusedContainerCase(
+        name="declaring_the_details_container",
+        schema=_lag_schema_with_generic_containers([{"name": "details", "label": "General"}]),
+        message=f"{GENERIC_KIND}.containers: 'details' is a built-in container and cannot be declared",
+    ),
+    RefusedContainerCase(
+        name="attribute_referencing_the_details_container",
+        schema=_lag_schema_with_l2_field(
+            field_list="attributes",
+            field={"name": "mtu", "kind": "Number", "optional": True, "container": "details"},
+        ),
+        message=f"{L2_KIND}.attributes.mtu.container: container 'details' is not declared on {L2_KIND}",
     ),
 ]
 
@@ -276,3 +290,29 @@ def test_emptying_inherit_from_drops_the_inherited_containers() -> None:
 
     containers = schema_branch.get(name="TestThing", duplicate=False).containers
     assert [(container.name, container.inherited) for container in containers] == [("extra", False)]
+
+
+def test_reload_changing_only_the_container_order_changes_the_hash_and_the_diff() -> None:
+    reordered = copy.deepcopy(LAG_SCHEMA)
+    reordered["generics"][0]["containers"] = [
+        {**container, "order_weight": None} for container in reversed(reordered["generics"][0]["containers"])
+    ]
+    original = copy.deepcopy(LAG_SCHEMA)
+    original["generics"][0]["containers"] = [
+        {**container, "order_weight": None} for container in original["generics"][0]["containers"]
+    ]
+    schema_branch = _processed_branch(schema=original)
+    before = schema_branch.get_generic(name=GENERIC_KIND, duplicate=True)
+    schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=reordered["generics"]))
+    schema_branch.process()
+    after = schema_branch.get_generic(name=GENERIC_KIND, duplicate=False)
+
+    assert [container.name for container in after.containers] == ["layer3", "layer2", "lacp"]
+    assert after.get_hash() != before.get_hash()
+    assert "containers" in before.diff(other=after).changed
+
+
+def test_branches_compare_containers_in_order() -> None:
+    containers = next(attribute for attribute in base_node_schema.attributes if attribute.name == "containers")
+
+    assert containers.ordered is True
