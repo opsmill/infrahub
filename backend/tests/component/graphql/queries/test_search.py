@@ -496,14 +496,36 @@ async def test_search_anywhere_case_sensitive_enabled(
     person_luffy_main: Node,
     branch: Branch,
 ) -> None:
-    """With case_sensitive=True, a value matches the query as typed, lowercase, UPPERCASE or Title case only."""
+    """With case_sensitive=True, a value matches only when it contains the query with the same case."""
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 
-    assert await _search_ids(gql_params=gql_params, query="john", case_sensitive=True) == [person_john_main.id]
-    assert await _search_ids(gql_params=gql_params, query="luffy", case_sensitive=True) == []
     assert await _search_ids(gql_params=gql_params, query="John", case_sensitive=True) == [person_john_main.id]
+    assert await _search_ids(gql_params=gql_params, query="Joh", case_sensitive=True) == [person_john_main.id]
+    assert await _search_ids(gql_params=gql_params, query="john", case_sensitive=True) == []
+    assert await _search_ids(gql_params=gql_params, query="JOHN", case_sensitive=True) == []
     assert await _search_ids(gql_params=gql_params, query="lUffy", case_sensitive=True) == [person_luffy_main.id]
+    assert await _search_ids(gql_params=gql_params, query="luffy", case_sensitive=True) == []
+
+
+async def test_search_anywhere_case_sensitive_ranks_only_same_case_labels(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    """A case-sensitive search ranks the label with the same case first and leaves out labels in another case."""
+    persons: dict[str, Node] = {}
+    for name in ["edge1", "Edge10", "Edge1"]:
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, name=name)
+        await person.save(db=db)
+        persons[name] = person
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="Edge1", case_sensitive=True) == [
+        persons["Edge1"].id,
+        persons["Edge10"].id,
+    ]
 
 
 async def test_search_anywhere_returns_exact_label_first(
@@ -655,7 +677,7 @@ async def test_search_anywhere_does_not_match_an_unset_display_label(
     register_core_models_schema: SchemaBranch,
     case_sensitive: bool,
 ) -> None:
-    """A node of a kind without a display label template is not found by searching for "null"."""
+    """A node of a kind without a display label template is not found by searching for "NULL"."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET_WITH_URGENCY]))
     ticket = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
     await ticket.new(db=db, title="Optics", ticket_id=7)
@@ -664,7 +686,7 @@ async def test_search_anywhere_does_not_match_an_unset_display_label(
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
-    assert await _search_ids(gql_params=gql_params, query="null", case_sensitive=case_sensitive) == []
+    assert await _search_ids(gql_params=gql_params, query="NULL", case_sensitive=case_sensitive) == []
     assert await _search_ids(gql_params=gql_params, query="Optics", case_sensitive=case_sensitive) == [ticket.id]
 
 

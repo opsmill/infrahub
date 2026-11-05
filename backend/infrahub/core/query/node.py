@@ -2576,17 +2576,10 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params["label_attribute_names"] = ["display_label", "name"]
 
         if self.case_sensitive and self.partial_match:
-            # Matching four spellings keeps the TEXT index usable.
-            match_predicate = (
-                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
-                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
-            )
-            self.params["search_original"] = self.search_value
-            self.params["search_lower"] = self.search_value.lower()
-            self.params["search_upper"] = self.search_value.upper()
-            self.params["search_title"] = self.search_value.capitalize()
-            value = "toLower(toString(av.value))"
-            search = "toLower($search_value)"
+            # CONTAINS on the raw value lets the TEXT index find the matches directly.
+            match_predicate = "av.value CONTAINS $search_value"
+            value = "toString(av.value)"
+            search = "$search_value"
         elif self.case_sensitive:
             # Equality on the raw value lets the RANGE index find the matches directly.
             match_predicate = "av.value IN $exact_values"
