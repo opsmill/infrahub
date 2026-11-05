@@ -1,0 +1,163 @@
+.agents/skills/speckit-agent-context-update/SKILL.md
+  s_f4cacb2487b1df::t_b1177af8091dfe 6,23,32
+.agents/skills/speckit-analyze/SKILL.md
+  s_f4cacb2487b1df::t_6879f09d42bfe7 27,32,72,214,219
+.agents/skills/speckit-checklist/SKILL.md
+  s_f4cacb2487b1df::t_3757872f114784 35-43,57,62,90,145,154,264,359,364
+.agents/skills/speckit-checkpoint-commit/SKILL.md
+  s_f4cacb2487b1df::t_3b90c617ccff6a 2-3,6-7,10,12,14,16-17,19,21,23,25-30,32,34,36-38,40,42,44-46,48,50-52,54,56-58
+.agents/skills/speckit-clarify/SKILL.md
+  s_f4cacb2487b1df::t_eaea6010733b48 27,32,129,144-149,250,255,285
+.agents/skills/speckit-constitution/SKILL.md
+  s_f4cacb2487b1df::t_63e6ae6e523ddc 3,22-40,46,51,79-81,85-94,108,114-116,123,129,131,133,135,148,155,160
+.agents/skills/speckit-converge/SKILL.md
+  s_f4cacb2487b1df::t_f8f33813de28f6 27,32,99,152-157,252,259
+.agents/skills/speckit-critique-run/SKILL.md
+  s_f4cacb2487b1df::t_78e94dddd39ef8 3,7,177
+.agents/skills/speckit-git-commit/SKILL.md
+  s_f4cacb2487b1df::t_1fa40820bb9072 6
+.agents/skills/speckit-git-feature/SKILL.md
+  s_f4cacb2487b1df::t_b83d24ebbed926 7,10,12,51,53,56,59,61,65,67-68
+.agents/skills/speckit-git-initialize/SKILL.md
+  s_f4cacb2487b1df::t_d93a1f6b462948 6
+.agents/skills/speckit-git-remote/SKILL.md
+  s_f4cacb2487b1df::t_a1c7d2eadedad8 6
+.agents/skills/speckit-git-validate/SKILL.md
+  s_f4cacb2487b1df::t_2311d5b7991dfe 6
+.agents/skills/speckit-implement/SKILL.md
+  s_f4cacb2487b1df::t_9bece0cae0612c 27,32,52,63-65,69-70,74-78,82-83,85-87,92,157,192,197
+.agents/skills/speckit-opsmill-auto/SKILL.md
+  s_f4cacb2487b1df::t_fb6fecb133ccfa 3,6,41,47,59,62,64,76
+.agents/skills/speckit-opsmill-extract/SKILL.md
+  s_f4cacb2487b1df::t_e16a54f75bdafa 3,6,108,149,223,227-238,246,356
+.agents/skills/speckit-opsmill-implement/SKILL.md
+  s_f4cacb2487b1df::t_5f1b7b8e099679 3,6,42-53,93-119,147-157,162-165,174,177,179
+.agents/skills/speckit-opsmill-prep/SKILL.md
+  s_f4cacb2487b1df::t_5c46e963bcb730 3,6,48-74,100,166,172,177-179
+.agents/skills/speckit-opsmill-qa/SKILL.md
+  s_f4cacb2487b1df::t_08b5b83146f74b 2-7,18-21,25-65,69-106,108,110-113,115-138,142-144,147-148,151-214,216-266,268,270,272-275,277-279,281,283,285,287-289,291-295,297,299-301,303-305,307,309-312,314,316-320,322-324,326,328-371
+.agents/skills/speckit-opsmill-retrospect/SKILL.md
+  s_f4cacb2487b1df::t_0c9488268f19a6 3,6,29,79,120,164
+.agents/skills/speckit-opsmill-summary/SKILL.md
+  s_f4cacb2487b1df::t_1278281f9c54cd 3,6
+.agents/skills/speckit-specify/SKILL.md
+  s_f4cacb2487b1df::t_53662ffa81cb1f 27,32,144,146,152,156,158,163,165,174,176,181,183,208,210,212,214,221,245,250
+.agents/skills/speckit-taskstoissues/SKILL.md
+  s_f4cacb2487b1df::t_736bb57ca15dfc 3,14-21,35,40,80,93,98
+.specify/.gitignore
+  s_f4cacb2487b1df::t_7f8ba8ec3a3bfa 1-14
+.specify/extensions.yml
+  s_f4cacb2487b1df::t_3199889a00a591 3,129-136
+.specify/extensions/.registry
+  s_f4cacb2487b1df::t_8bdd27ffe13870 22,25,30,33,36,39,42,45,49,52,54,62,69,71,74,79,83,85-91,96,100
+.specify/extensions/agent-context/README.md
+  s_f4cacb2487b1df::t_89cc7f9874f585 5-7,11,13-14,16,18,20,22-24,26,28-29,31-32,35-47,53,61,63
+.specify/extensions/agent-context/agent-context-defaults.json
+  s_f4cacb2487b1df::t_9949351f993d2c 1-44
+.specify/extensions/agent-context/commands/speckit.agent-context.update.md
+  s_f4cacb2487b1df::t_e80d8607050844 18,27
+.specify/extensions/agent-context/extension.yml
+  s_f4cacb2487b1df::t_131e6d7332ad72 6
+.specify/extensions/agent-context/scripts/bash/update-agent-context.sh
+  s_f4cacb2487b1df::t_4e0d56c6982c26 15,62-69,105-115,119-121,123-165,179-180,183-187,189-190,315-320,322-336,365-368,373-416,446-447
+.specify/extensions/agent-context/scripts/powershell/update-agent-context.ps1
+  s_f4cacb2487b1df::t_7df8b8d31d64e8 15,23-72,303-339,429-433,503-505
+.specify/extensions/agent-context/scripts/python/update_agent_context.py
+  s_f4cacb2487b1df::t_189ab227914f97 1-368
+.specify/extensions/checkpoint/LICENSE
+  s_f4cacb2487b1df::t_54c7c96ba9867b 3
+.specify/extensions/checkpoint/README.md
+  s_f4cacb2487b1df::t_7503e59a7c5203 1,3,5,7,9-11,13,15,17,19,21,23-28,30,32,34,36,38,40,42,45-48,50,52-53,56,58,60-64,66,68
+.specify/extensions/checkpoint/commands/commit.md
+  s_f4cacb2487b1df::t_1554be7d38e968 1-55
+.specify/extensions/checkpoint/extension.yml
+  s_f4cacb2487b1df::t_92afb8a1d5a446 3-5,7-9,13,16-19,22-23
+.specify/extensions/opsmill/CHANGELOG.md
+  s_f4cacb2487b1df::t_127637e1667e35 8-132,160-163,203
+.specify/extensions/opsmill/README.md
+  s_f4cacb2487b1df::t_c26fee5af24f7b 6,25-27,29-31,36-50,54-55,59-65,69-70,74,77-80,83,86-99,102-111,114-141,172-183,190-191,197-221,231-234,237-240,251-255,258-266
+.specify/extensions/opsmill/commands/auto.md
+  s_f4cacb2487b1df::t_df606e840adf59 36,42,54,57,59,71
+.specify/extensions/opsmill/commands/extract.md
+  s_f4cacb2487b1df::t_6f9724d1f9946d 218,222-233,241
+.specify/extensions/opsmill/commands/implement.md
+  s_f4cacb2487b1df::t_a38db540ba0c3f 37-48,88-114,142-152,157-160,169,172,174
+.specify/extensions/opsmill/commands/prep.md
+  s_f4cacb2487b1df::t_4eaf456f767f81 43-69,95,161,167,172-174
+.specify/extensions/opsmill/commands/qa.md
+  s_f4cacb2487b1df::t_21ee2708e9a09d 2,4-5,16-19,23-63,67-104,106,108-111,113-136,140-142,145-146,149-212,214-264,266,268,270-273,275-277,279,281,283,285-287,289-293,295,297-299,301-303,305,307-310,312,314-318,320-322,324,326-369
+.specify/extensions/opsmill/commands/retrospect.md
+  s_f4cacb2487b1df::t_46114a08b5a968 24,74,159
+.specify/extensions/opsmill/commands/summary.md
+  s_f4cacb2487b1df::t_3dae844c6e3b15 4-5
+.specify/extensions/opsmill/extension.yml
+  s_f4cacb2487b1df::t_39222090a1c407 6-7,29-31,54
+.specify/init-options.json
+  s_f4cacb2487b1df::t_1e5410256ff025 8-9
+.specify/integration.json
+  s_f4cacb2487b1df::t_a049c66cda088d 2
+.specify/integrations/claude.manifest.json
+  s_f4cacb2487b1df::t_31316e570c8367 3-4,6-15
+.specify/integrations/speckit.manifest.json
+  s_f4cacb2487b1df::t_5960f9b19322cb 3,6-9,11,14-17
+.specify/presets/.registry
+  s_f4cacb2487b1df::t_8fe1036a0c9634 4,7,15-30
+.specify/presets/critique-opsmill/LICENSE
+  s_f4cacb2487b1df::t_f909bccbe0edb6 1-21
+.specify/presets/critique-opsmill/README.md
+  s_f4cacb2487b1df::t_50477c835312df 1-20
+.specify/presets/critique-opsmill/commands/speckit.critique.run.md
+  s_f4cacb2487b1df::t_08986cf22303cd 2,4-5,60,64,69,175,238
+.specify/presets/critique-opsmill/preset.yml
+  s_f4cacb2487b1df::t_7100310332b539 4-5,7,10,18-21,24-26
+.specify/presets/jira-branch/README.md
+  s_f4cacb2487b1df::t_7b240ab5e38071 1-17
+.specify/presets/jira-branch/commands/speckit.git.feature.md
+  s_f4cacb2487b1df::t_597712a8dfb2cc 5,7,46,48,51,54,56,60,62-63
+.specify/presets/jira-branch/preset.yml
+  s_f4cacb2487b1df::t_594437912a1999 4-5,7,9-10,13,19,26-27
+.specify/scripts/bash/check-prerequisites.sh
+  s_f4cacb2487b1df::t_ddf3711afaa586 12,16,28,32,34-35,39-41,51-58,67,71,77,80,83,88,92,99-106,151-163,190-199,209-220,228-233,239,245
+.specify/scripts/bash/common.sh
+  s_f4cacb2487b1df::t_e5eafb0c6274ca 100-106,112-113,115,118-119,164-179,196-200,217-225,254,257-264,269,274-276,292,295-296,300-349,408-511,522-523,532-537,542-543,545,548-557,567-568,578-579,588-589,597-603,605,607,631-632,640-644,647-648,654-662,664,667-676,681-709,715,717,719-753,755-757,759-772,774-783,785-801,803-804,806-810,812,818-825,827,831-832,834,839,856-859,864-867,883-884,889-892,900-903,908-915,919,921-932,934,936
+.specify/scripts/bash/create-new-feature.sh
+  s_f4cacb2487b1df::t_940a4c20942786 11,52-54,67,97-110,115,123-127,132,136-146,148-215,218-268,287,290-295,301-304,306-309,314,319,345-348,360-370,374-377,383-410,415-417,419-420,436-451,454-456,463-467,470-471,501-502
+.specify/scripts/bash/resolve-template.sh
+  s_f4cacb2487b1df::t_5c02ba9dbb0b60 5-7,9,15,18-28,32-34,37-42,45-50,52-53,56
+.specify/scripts/bash/setup-plan.sh
+  s_f4cacb2487b1df::t_a7f260173a211c 10-11,13,17,19-21,46-54,61-63,65-67,77,79,81,86-87
+.specify/scripts/bash/setup-tasks.sh
+  s_f4cacb2487b1df::t_c7d8ea685df33f 54-56,74-75,83-84
+.specify/templates/checklist-template.md
+  s_f4cacb2487b1df::t_5f2a050329aaf6 7-9,11,14,20,39-42
+.specify/templates/plan-template.md
+  s_f4cacb2487b1df::t_898cacb9f3ef9f 7
+.agents/skills/speckit-plan/SKILL.md
+  s_f4cacb2487b1df::t_1d2bdb6237d1ca 27,32,60,79,84,109,158,162
+.agents/skills/speckit-tasks/SKILL.md
+  s_f4cacb2487b1df::t_7f5e399c991f6f 27,32,60,79,99,104,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fa51e68a8c2687cf8114c5f52bc5bf0c0468c70",
+  "prompts": {},
+  "sessions": {
+    "s_49a51a4d0c7bfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7d51f1-c81d-40a7-9a00-6ff7ac07a921",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_f4cacb2487b1df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f50c116b-c0bb-4072-83f6-57001ebd8bb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
