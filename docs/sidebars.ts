@@ -141,6 +141,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'schema/field-visibility', label: 'Field visibility' },
+            { type: 'doc', id: 'schema/field-sections', label: 'Field sections' },
             { type: 'doc', id: 'schema/display_label', label: 'Display labels' },
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
             { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },

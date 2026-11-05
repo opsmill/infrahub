@@ -1,0 +1,264 @@
+---
+title: Field sections
+---
+
+import ReferenceLink from "../../src/components/Card";
+
+# Field sections
+
+Group the attributes and relationships of a node into named sections. The detail page of an object shows one card per section, and the create and edit forms show one panel per section. Use sections when a node has many fields that belong to separate concerns, such as the link aggregation, switching and addressing settings of a LAG interface.
+
+Sections change only how the web interface arranges fields. They do not change the data, the GraphQL API or what users can read and write.
+
+## Declare sections with `containers`
+
+Add a `containers` list to a node or a generic. Each item declares one section:
+
+| Property | Required | Default | Description |
+| --- | --- | --- | --- |
+| `name` | Yes | | Identifier that fields reference through `container`. Lowercase letters, digits and underscores, 2 to 32 characters. |
+| `label` | Yes | | Title of the section card and of the form panel. |
+| `description` | No | none | Text shown under the section title, in the detail page and in the form. |
+| `order_weight` | No | none | Position of the section; the lowest weight comes first. |
+| `collapsed` | No | `false` | When `true`, the section card starts collapsed on the detail page. The forms ignore it. |
+| `state` | No | `present` | Set `absent` to remove the section when you load the schema again. |
+
+<ReferenceLink title="Node reference" url="../reference/schema/node#containers" openInNewTab />
+<ReferenceLink title="Generic reference" url="../reference/schema/generic#containers" openInNewTab />
+
+A section name and an attribute name are separate: a node can have both a section named `mtu` and an attribute named `mtu`.
+
+## Assign a field to a section with `container`
+
+Set `container` on an attribute or a relationship to the name of a section of the node. The value is one of:
+
+- The name of a section that the node declares or inherits from a generic.
+- `advanced`, for the built-in Advanced section.
+- Nothing, to keep the field in the Details section.
+
+<ReferenceLink title="Attribute reference" url="../reference/schema/attribute#container" openInNewTab />
+<ReferenceLink title="Relationship reference" url="../reference/schema/relationship#container" openInNewTab />
+
+Changing `containers` or `container` requires no data migration: load the new schema and the web interface arranges the fields again.
+
+## The built-in Details and Advanced sections
+
+Two sections exist without being declared:
+
+- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before.
+- **Advanced**: holds every field with `container: advanced`. It is always the last section, and its card starts collapsed. Do not declare it in `containers`; Infrahub accepts `container: advanced` on any node.
+
+A section that holds no field is not shown, including Details and Advanced.
+
+## Section order
+
+The detail page and the forms order the sections as follows:
+
+1. **Details**.
+2. The sections with an `order_weight`, lowest weight first.
+3. The sections without an `order_weight`, in declaration order.
+4. **Advanced**.
+
+Sections with the same `order_weight` keep their declaration order. On a node that inherits from generics, the declaration order lists the sections of the generics first, in `inherit_from` order, then the sections of the node itself.
+
+Within a section, fields keep their [order weight](./order-weight) order.
+
+## How sections appear on the detail page and in the forms
+
+On the detail page of an object:
+
+- Each section is a card with the section `label` as its title and the `description` under it. The **Details** card has no description.
+- You can collapse and expand every card except **Details**, which is always expanded. A section with `collapsed: true` starts collapsed, and **Advanced** always starts collapsed.
+- Each card has its own **Extra** toggle when the section contains a field with `display: extra`. Selecting **Extra** in one card shows the extra fields of that card only. See [field visibility](./field-visibility).
+- A relationship that has its own tab, such as a `Component` relationship with `cardinality: many`, stays in its tab. Its `container` has no effect on the detail page.
+
+In the create and edit forms:
+
+- Each section is a panel with the section `label` and `description`, and every panel is expanded, including **Advanced** and sections with `collapsed: true`.
+- **Details** comes first, with the same section order as the detail page.
+- When every field of the form is in **Details**, the form shows the fields without a panel.
+
+## Example: a LAG interface
+
+The demo schema in `models/base/dcim.yml` groups the fields of LAG interfaces. The generic `InfraLagInterface` declares three sections and assigns its own fields. The nodes `InfraLagInterfaceL2` and `InfraLagInterfaceL3` inherit the sections and assign their own fields to them. The example shows only the keys that sections use; the other attributes and relationships of these schemas stay unchanged.
+
+```yaml
+---
+version: "1.0"
+generics:
+  - name: LagInterface
+    namespace: Infra
+    description: "Generic Lag Interface"
+    include_in_menu: false
+    containers:
+      - name: lacp
+        label: LACP
+        description: Link aggregation settings
+        order_weight: 100
+      - name: layer2
+        label: Layer 2
+        description: Switching settings of the bundle
+        order_weight: 200
+      - name: layer3
+        label: Layer 3
+        description: Addressing and MTU
+        order_weight: 300
+        collapsed: true
+    attributes:
+      - name: lacp
+        label: LACP
+        kind: Text
+        enum: ["Active", "Passive", "Disabled"]
+        container: lacp
+      - name: minimum_links
+        label: Minimum links
+        kind: Number
+        default_value: 1
+        optional: false
+        container: lacp
+      - name: max_bundle
+        label: MaxBundle
+        kind: Number
+        optional: true
+        container: advanced
+    relationships:
+      - name: mlag
+        peer: InfraMlagInterface
+        cardinality: one
+        optional: true
+        kind: Attribute
+        identifier: mlag_member_lag_interface
+        container: lacp
+nodes:
+  - name: LagInterfaceL2
+    namespace: Infra
+    inherit_from:
+      - "InfraInterface"
+      - "InfraLagInterface"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Trunk", "Trunk (ALL)"]
+        container: layer2
+    relationships:
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+        container: layer2
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: InfraVLAN
+        optional: true
+        cardinality: many
+        kind: Attribute
+        identifier: interface_l2__tagged_vlan
+        container: layer2
+  - name: LagInterfaceL3
+    namespace: Infra
+    inherit_from:
+      - "InfraInterface"
+      - "InfraLagInterface"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: mtu
+        label: MTU
+        kind: Number
+        default_value: 1500
+        container: layer3
+    relationships:
+      - name: ip_addresses
+        peer: IpamIPAddress
+        optional: true
+        cardinality: many
+        kind: Component
+        container: layer3
+```
+
+With this schema, the detail page of an `InfraLagInterfaceL2` object shows these cards in this order:
+
+1. **Details**, with the fields that have no `container`, such as the name and the description of the interface.
+2. **LACP**, with **LACP**, **Minimum links** and **Mlag**.
+3. **Layer 2**, with **Layer2 Mode**, **Untagged VLAN** and **Tagged VLANs**.
+4. **Advanced**, collapsed, with **MaxBundle**.
+
+The **Layer 3** section holds no field of `InfraLagInterfaceL2`, so the page does not show it.
+
+On an `InfraLagInterfaceL3` object, the **Layer 3** card starts collapsed and shows **MTU**. The node declares `mtu` again only to place the inherited `InfraInterface` attribute in **Layer 3**; the attribute keeps `kind: Number`. The `ip_addresses` relationship is a `Component` relationship with `cardinality: many`, so it stays in its own tab of the detail page. The **Layer 2** section holds no field of this node and is not shown.
+
+## Inheritance from generics
+
+A node inherits the sections of its generics:
+
+- Sections merge by name. A node section with the same name as an inherited section replaces it entirely, in the position of the inherited section. Infrahub copies no property of the generic's section into it.
+- When two generics declare the same name, the section of the first generic in `inherit_from` applies, and the other is ignored.
+- The node's own sections follow the inherited ones in declaration order.
+- An inherited attribute or relationship keeps the `container` of the generic. To place it in another section, declare the field again on the node with a different `container`, as `mtu` in the example.
+
+When you remove a section from a generic, it disappears from every node that does not declare it. A field that still references it makes the schema load fail.
+
+Profiles and object templates generated from a node get the sections of that node.
+
+## Change sections when you load the schema again
+
+When you load a schema again, Infrahub merges the `containers` of each node and generic by name:
+
+- The sections of the new file come first, in the order of the file.
+- A section with a new name is added in that order.
+- A section with an existing name takes the properties of the new file. A `description` or `order_weight` that the new file leaves out keeps its previous value.
+- A section that the new file leaves out is kept, after the sections of the file.
+
+To remove a section, set `state: absent` on it:
+
+```yaml
+containers:
+  - name: layer3
+    label: Layer 3
+    state: absent
+```
+
+Move the fields of that section to another section, or remove their `container`, in the same load: a field that still references a removed section makes the schema load fail.
+
+## Errors when you load a schema
+
+Infrahub rejects a schema with a section error and returns one of these messages:
+
+- A field references a section that the node neither declares nor inherits:
+
+  ```text
+  InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2
+  ```
+
+  A relationship gives the same message with `relationships.<name>.container`. For a field inherited from a generic, the message names the node that inherits it.
+
+- A node or a generic declares the same section name twice in its own `containers`:
+
+  ```text
+  InfraLagInterface.containers: container names must be unique, duplicate 'lacp'
+  ```
+
+- A section is named `advanced`:
+
+  ```text
+  InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared
+  ```
+
+A section without `label`, or with a `name` that breaks the naming rules, fails the schema validation before these checks.
+
+## Data access and the API
+
+- The GraphQL schema and GraphQL queries do not change. Sections do not affect how you read or write data.
+- The schema REST API returns `containers` on nodes, generics, profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field.
+- Sections do not restrict access. To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview).
+
+## Related concepts
+
+- [Field visibility](./field-visibility): Hide secondary fields behind the **Extra** toggle
+- [Order weight](./order-weight): Order fields within a section
+- [Generics and inheritance](./generics-and-inheritance): Share attributes, relationships and sections across nodes
+- [Schema reference](../reference/schema/node): Full node property reference

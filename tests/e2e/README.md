@@ -95,7 +95,7 @@ tests/e2e/
                       # (one module per slice + parity dump tool, see below)
   test_login.py       # ported login.spec.ts
   branches/           # ported branches/*.spec.ts
-  objects/            # ported objects/**/*.spec.ts
+  objects/            # ported objects/**/*.spec.ts, plus test_object_containers.py
 ```
 
 The suite lives at the repo root (`tests/e2e/`) and **not** under
@@ -122,7 +122,7 @@ slices in `tests/e2e/data/`.
 | `infrahub_client` | session | — | Admin async `InfrahubClient` (all SDK calls are awaited). |
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
 | `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | Loads `models/base_menu.yml` via the SDK `MenuFile` (what `infrahubctl menu load` calls). |
-| `infrastructure_data` | session | `invoke dev.load-infra-data` | The full demo dataset (medium profile: 5 sites, 6 devices/site, BGP mesh, 3 scenario branches) via the `tests/e2e/data/` SDK slices — parity with `models/infrastructure_edge.py` proven by a structural dump diff (`data/parity.py`). |
+| `infrastructure_data` | session | `invoke dev.load-infra-data` | The full demo dataset (medium profile: 5 sites, 6 devices/site, BGP mesh, 3 scenario branches) via the `tests/e2e/data/` SDK slices — parity with `models/infrastructure_edge.py` proven by a structural dump diff (`data/parity.py`). The sites slice also creates one `InfraLagInterfaceL3` (`port-channel3` on `atl1-leaf1`) that the script does not create. |
 | `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests can depend on just the slice they need. |
 | `infrastructure_data_monolith` | session | — | The legacy `infrahubctl run models/infrastructure_edge.py` loader, kept ONLY as the reference for the parity dump (`INFRAHUB_E2E_PARITY=monolith`). |
 | `demo_edge_repo` | session | `invoke dev.infra-git-import dev.infra-git-create` | Registers + syncs the `demo-edge` repo via the SDK `GitRepo` helper. |
@@ -149,7 +149,10 @@ Known, deliberate deviations from the script (all parity-diff verified):
   replayed on main so deterministic allocations (e.g. `203.111.0.248/29`)
   hold — the two ballast prefixes are visible on main,
 - circuit ids are deterministic (md5 of the script's seed string) instead of
-  `PYTHONHASHSEED`-salted `hash()`.
+  `PYTHONHASHSEED`-salted `hash()`,
+- the sites slice creates one `InfraLagInterfaceL3` (`port-channel3` on
+  `atl1-leaf1`, for the field sections test); the script creates none, so the
+  parity diff shows one more node of that kind and of its generics.
 
 To re-check parity after changing a slice (or the script), dump both modes
 and diff (see `data/parity.py` for the exact commands):
