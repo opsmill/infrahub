@@ -2616,15 +2616,16 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         // filter HAS_VALUE edges
         // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
+        // The attribute's latest value edge decides, as a value changed on a branch leaves the old value's edge active on its parent.
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(current_value)
             WHERE %(branch_filter)s
-            RETURN r
+            RETURN r, current_value
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
         WITH n, attr, av
-        WHERE r.status = "active"
+        WHERE r.status = "active" AND current_value = av
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------
@@ -2650,8 +2651,20 @@ class NodeGetListByAttributeValueQuery(Query):
             ELSE 1
         END AS tier
         // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
-        // Reading uuid and kind before grouping keeps that work on every database worker, as only the top results follow.
-        WITH n.uuid AS uuid, n.kind AS kind, max(tier * 1000000000 - size(value)) AS score
+        WITH n, max(tier * 1000000000 - size(value)) AS score
+        // --------------------------
+        // keep the nodes that exist at the searched time
+        // --------------------------
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, score, r
+        WHERE r.status = "active"
+        WITH n.uuid AS uuid, n.kind AS kind, score
         """ % {
             "match_predicate": match_predicate,
             "value": value,

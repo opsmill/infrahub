@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 import pytest
@@ -8,12 +9,14 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
 from tests.helpers.graphql import graphql
+from tests.helpers.schema import TICKET, load_schema
 
 SEARCH_QUERY = """
 query ($search: String!) {
@@ -584,6 +587,108 @@ async def test_search_anywhere_at_past_date(
         created_later.id
     ]
     assert await _search_ids(gql_params=gql_params_now, query="Marlon", case_sensitive=case_sensitive) == [person.id]
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_reads_values_of_the_searched_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A value renamed on a branch is found by its new text there, and by its old text on the default branch."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Orlando")
+    await person.save(db=db)
+
+    branch = await create_branch(db=db, branch_name=f"search-rename-{int(case_sensitive)}")
+    person_on_branch = await NodeManager.get_one(db=db, branch=branch, id=person.id)
+    person_on_branch.name.value = "Petronella"
+    await person_on_branch.save(db=db)
+
+    branch.update_schema_hash()
+    default_branch.update_schema_hash()
+    gql_params_branch = await prepare_graphql_params(db=db, branch=branch)
+    gql_params_default = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params_branch, query="Petronella", case_sensitive=case_sensitive) == [
+        person.id
+    ]
+    assert await _search_ids(gql_params=gql_params_branch, query="Orlando", case_sensitive=case_sensitive) == []
+    assert await _search_ids(gql_params=gql_params_default, query="Orlando", case_sensitive=case_sensitive) == [
+        person.id
+    ]
+    assert await _search_ids(gql_params=gql_params_default, query="Petronella", case_sensitive=case_sensitive) == []
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_skips_deleted_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A deleted node no longer appears in the results."""
+    kept = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await kept.new(db=db, name="Quentin Kept")
+    await kept.save(db=db)
+    deleted = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await deleted.new(db=db, name="Quentin Gone")
+    await deleted.save(db=db)
+    await deleted.delete(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="Quentin", case_sensitive=case_sensitive) == [kept.id]
+
+
+TICKET_WITH_URGENCY = deepcopy(TICKET)
+TICKET_WITH_URGENCY.attributes.append(AttributeSchema(name="urgent", kind="Boolean", optional=True))
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_does_not_match_an_unset_display_label(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A node of a kind without a display label template is not found by searching for "null"."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET_WITH_URGENCY]))
+    ticket = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
+    await ticket.new(db=db, title="Optics", ticket_id=7)
+    await ticket.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="null", case_sensitive=case_sensitive) == []
+    assert await _search_ids(gql_params=gql_params, query="Optics", case_sensitive=case_sensitive) == [ticket.id]
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_exact_match_finds_boolean_values(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """An exact search for "true" finds the nodes whose boolean attribute is true."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET_WITH_URGENCY]))
+    urgent = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
+    await urgent.new(db=db, title="Outage", ticket_id=1, urgent=True)
+    await urgent.save(db=db)
+    routine = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
+    await routine.new(db=db, title="Cleanup", ticket_id=2, urgent=False)
+    await routine.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(
+        gql_params=gql_params, query="true", partial_match=False, case_sensitive=case_sensitive
+    ) == [urgent.id]
 
 
 async def _search_ids(
