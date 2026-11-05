@@ -7,12 +7,13 @@ feature does not touch are left out of the JSON.
 ## What GET /api/schema and GET /api/schema/{kind} return
 
 - Nodes, generics, profiles and templates carry `containers`: a list of
-  `{name, label, description, order_weight, collapsed, state}` items, `[]` when the kind declares
-  none. `state` is `present` on every item a read returns, as on attributes and relationships.
+  `{name, label, description, order_weight, collapsed, state, inherited}` items, `[]` when the
+  kind declares none. `state` is `present` on every item a read returns, as on attributes and relationships.
   The list is the kind's view after inheritance: a node returns the containers it declares plus
   those of its generics, merged by name. A profile or template returns the containers of the node
-  it was generated from. `advanced` is never listed. The internal `inherited` flag is never
-  present.
+  it was generated from. `details` and `advanced` are never listed. `inherited` is `true` on a
+  copy taken from a generic and `false` on a container the kind declares itself; on a profile or
+  template every item has `inherited: false`.
 - Attributes and relationships carry `container`: the container name as a string, or `null` when
   the field belongs to the Details section. `"advanced"` is returned as written.
 - The list order of `containers` is the stored order. On a node, the inherited containers come
@@ -31,9 +32,9 @@ Example `GET /api/schema/InfraLagInterface` (abridged):
   "namespace": "Infra",
   "kind": "InfraLagInterface",
   "containers": [
-    {"name": "lacp", "label": "LACP", "description": null, "order_weight": 100, "collapsed": false, "state": "present"},
-    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsed": false, "state": "present"},
-    {"name": "layer3", "label": "Layer 3", "description": null, "order_weight": 300, "collapsed": true, "state": "present"}
+    {"name": "lacp", "label": "LACP", "description": null, "order_weight": 100, "collapsed": false, "state": "present", "inherited": false},
+    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsed": false, "state": "present", "inherited": false},
+    {"name": "layer3", "label": "Layer 3", "description": null, "order_weight": 300, "collapsed": true, "state": "present", "inherited": false}
   ],
   "attributes": [
     {"name": "name", "kind": "Text", "container": null, "display": "default", "order_weight": 1000},
@@ -66,14 +67,17 @@ A kind without sections returns `"containers": []` and `"container": null` on ev
 - `containers` on a node or generic: a list of items with a required `name` and `label`, an
   optional `description`, `order_weight`, `collapsed` and `state`. `state` is a writable field of
   the item (`present` by default, `absent` removes the item), as on attributes and relationships;
-  `inherited` is the only field of the backend model that the write contract hides, so a load that
-  sends it gets a read-only warning and the value is dropped. An unknown key inside an item fails
+  `inherited` is read-only, as on attributes and relationships, so a load that sends it gets a
+  read-only warning and the value is dropped. An unknown key inside an item fails
   the write contract with a 422, as for any other schema key.
 - `container` on an attribute or relationship: a string or `null`.
 - A load that only changes containers or container assignments needs no migration and no
   constraint check; the response reports none.
 - A load that leaves a container out of the list keeps it; `"state": "absent"` on the item
   removes it.
+- A load that only changes the order of the containers is a schema change: the new order is
+  stored. A branch merge where both branches reorder the same kind's containers differently reports
+  a conflict on `containers`.
 
 Example request body (abridged):
 
@@ -127,11 +131,14 @@ with the placeholders filled from the request:
 {"data": null, "errors": [{"message": "InfraLagInterface.containers: container names must be unique, duplicate 'lacp'", "extensions": {"code": 422}}]}
 ```
 
-- A container named `advanced` in the list:
+- A container named `details` or `advanced` in the list:
 
 ```json
 {"data": null, "errors": [{"message": "InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared", "extensions": {"code": 422}}]}
 ```
+
+  The message names `'details'` for that name. A field with `"container": "details"` gets the
+  not-declared message above, because fields without a container already belong to Details.
 
 - A container item without `label`, or with a `name` outside the attribute name rules: rejected by
   the write contract's Pydantic validation with the standard FastAPI `detail` body, before the
@@ -139,9 +146,13 @@ with the placeholders filled from the request:
 
 ## SDK and formatter
 
-- `infrahub_sdk.schema.generated.read` gains `ContainerSchemaRead`; `BaseNodeSchemaRead` gains
-  `containers`; the attribute and relationship read models gain `container`. The write and
-  contract models gain the matching fields, so the SDK's offline validation accepts both.
+- `infrahub_sdk.schema.generated.read` gains `ContainerSchemaRead`, which carries `inherited`;
+  `BaseNodeSchemaRead` gains `containers`; the attribute and relationship read models gain
+  `container`. The write and contract models gain the matching fields, so the SDK's offline
+  validation accepts both.
+- `infrahubctl schema export` writes only the containers whose `inherited` is `false`, without
+  `inherited` and `state`, as it does for attributes and relationships. A node that declares no
+  container of its own has no `containers` key in the export.
 - `infrahubctl schema format` places `containers` after `uniqueness_constraints` in the node key
   order and `container` as the last key before the trailing `order_weight` of an attribute or a
   relationship. Inside a container item the key order is `name`, `label`, `description`,

@@ -492,7 +492,7 @@ base_node_schema = SchemaNode(
                 "a field joins one through 'container'."
             ),
             optional=True,
-            ordered=False,
+            ordered=True,
             default_factory="list",
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),

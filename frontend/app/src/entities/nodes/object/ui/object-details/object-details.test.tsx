@@ -222,7 +222,13 @@ async function expectSectionsInOrder(component: Awaited<ReturnType<typeof render
       Node.DOCUMENT_POSITION_FOLLOWING
     );
   }
-  expect(component.getByTestId("object-details").elements()).toHaveLength(SECTION_ORDER.length);
+  expect(component.getByTestId("object-details").elements()).toEqual([regions[0]]);
+  expect(
+    component
+      .getByTestId("object-details-section")
+      .elements()
+      .map((card) => card.getAttribute("data-section"))
+  ).toEqual(["addressing", "lacp", "advanced"]);
 }
 
 describe("ObjectDetails sections", () => {

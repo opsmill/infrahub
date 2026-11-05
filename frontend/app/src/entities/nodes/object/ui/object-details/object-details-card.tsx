@@ -21,6 +21,7 @@ interface ObjectDetailsCardProps {
   title?: React.ReactNode;
   description?: string | null;
   defaultCollapsed?: boolean;
+  sectionName?: string;
 }
 
 export function ObjectDetailsCard({
@@ -32,6 +33,7 @@ export function ObjectDetailsCard({
   title = "Details",
   description,
   defaultCollapsed,
+  sectionName,
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
@@ -61,68 +63,68 @@ export function ObjectDetailsCard({
     />
   );
 
-  if (defaultCollapsed === undefined) {
-    return (
-      <Card
-        className={className}
-        role="region"
-        aria-labelledby={titleId}
-        data-testid="object-details"
-      >
-        <CardHeader className="flex items-center justify-between gap-2">
-          <SectionTitle
-            label={title}
-            description={description}
-            titleId={titleId}
-            descriptionId={descriptionId}
-          />
-          {extraButton}
-        </CardHeader>
-
-        {dataDisplay}
-      </Card>
-    );
-  }
+  const header = (isExpanded: boolean) => (
+    <CardHeader
+      className={classNames(
+        "flex items-center justify-between gap-2",
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
+        !isExpanded && "rounded-[inherit] border-b-0"
+      )}
+    >
+      <SectionTitle
+        label={
+          defaultCollapsed === undefined ? (
+            title
+          ) : (
+            <DisclosureTrigger
+              slot="trigger"
+              aria-describedby={description ? descriptionId : undefined}
+              className="-ml-1 flex min-w-0 items-center gap-1 rounded-sm px-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <ChevronRightIcon
+                aria-hidden
+                className={classNames(
+                  "size-3.5 shrink-0 transition-transform duration-150 ease-out motion-reduce:transition-none",
+                  isExpanded && "rotate-90"
+                )}
+              />
+              {title}
+            </DisclosureTrigger>
+          )
+        }
+        description={description}
+        titleId={titleId}
+        descriptionId={descriptionId}
+      />
+      {isExpanded && extraButton}
+    </CardHeader>
+  );
 
   return (
     <Card
       className={className}
       role="region"
       aria-labelledby={titleId}
-      data-testid="object-details"
+      {...(sectionName === undefined
+        ? { "data-testid": "object-details" }
+        : { "data-testid": "object-details-section", "data-section": sectionName })}
     >
-      <Disclosure defaultExpanded={!defaultCollapsed}>
-        {({ isExpanded }) => (
-          <>
-            <CardHeader className="flex items-center justify-between gap-2">
-              <SectionTitle
-                label={
-                  <DisclosureTrigger
-                    slot="trigger"
-                    aria-describedby={description ? descriptionId : undefined}
-                    className="-ml-1 flex min-w-0 items-center gap-1 rounded-sm px-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    <ChevronRightIcon
-                      aria-hidden
-                      className={classNames(
-                        "size-3.5 shrink-0 transition-transform duration-150 ease-out motion-reduce:transition-none",
-                        isExpanded && "rotate-90"
-                      )}
-                    />
-                    {title}
-                  </DisclosureTrigger>
-                }
-                description={description}
-                titleId={titleId}
-                descriptionId={descriptionId}
-              />
-              {extraButton}
-            </CardHeader>
-
-            <DisclosurePanel>{dataDisplay}</DisclosurePanel>
-          </>
-        )}
-      </Disclosure>
+      {defaultCollapsed === undefined ? (
+        <>
+          {header(true)}
+          {dataDisplay}
+        </>
+      ) : (
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
+        <Disclosure defaultExpanded={!defaultCollapsed} className="rounded-[inherit]">
+          {({ isExpanded }) => (
+            <>
+              {header(isExpanded)}
+              <DisclosurePanel>{dataDisplay}</DisclosurePanel>
+            </>
+          )}
+        </Disclosure>
+      )}
     </Card>
   );
 }
