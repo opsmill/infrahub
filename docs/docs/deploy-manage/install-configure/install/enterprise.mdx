@@ -18,6 +18,26 @@ Infrahub Enterprise is based on the Community version, with several enhancements
 
 Infrahub Enterprise can be deployed using the same methods as Infrahub Community.
 
+## Before you start
+
+Infrahub Enterprise is under a commercial license from OpsMill, so request access and review the license terms before you deploy it.
+
+- **Request access from OpsMill.** Contact OpsMill on [Discord](https://discord.gg/opsmill), by email at [contact@opsmill.com](mailto:contact@opsmill.com), or [schedule a meeting](https://cal.com/team/opsmill/meet).
+- **Review the OpsMill agreements.** OpsMill publishes its End User License Agreement on the [legal page](https://opsmill.com/legal/).
+- **Review the Neo4j license terms.** Infrahub Enterprise runs on Neo4j Enterprise Edition, which has its own license agreement. Read the terms in the [Neo4j Docker documentation](https://neo4j.com/docs/operations-manual/current/docker/introduction/) first.
+- **Check the hardware requirements.** Size the host or cluster against the [hardware requirements](../hardware-requirements.mdx) for your sizing plan.
+
+:::info Accept the license terms
+
+Neo4j Enterprise Edition starts only when the license agreement is accepted. Accepting it is your decision, so review the terms in the list above first. The setting depends on the install method:
+
+- **Docker Compose:** set the `NEO4J_ACCEPT_LICENSE_AGREEMENT` environment variable to `yes`, for example in a `.env` file.
+- **Helm:** set `acceptLicenseAgreement` to `"yes"` under `infrahub.neo4j.neo4j` in `values.yml`. The Enterprise chart uses `"yes"` in its default values. See [Accept the Neo4j license agreement](#accept-the-neo4j-license-agreement).
+- **Bare metal:** the setting depends on your environment, so agree on it with OpsMill.
+
+To move an existing Community deployment to Enterprise, follow [Migrate from Community to Enterprise](./migrate-to-enterprise.mdx) instead of installing a new instance.
+:::
+
 <Tabs groupId="install-method" queryString>
 <TabItem value="Docker compose via curl" default>
 
@@ -55,6 +75,7 @@ You can also specify a sizing preset in the URL. This will automatically configu
 
 ```bash
 curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 docker compose -p infrahub up -d
 ```
 
@@ -63,6 +84,7 @@ docker compose -p infrahub up -d
 
 ```bash
 curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 sudo docker compose -p infrahub up -d
 ```
 
@@ -232,6 +254,9 @@ infrahub:
             topologyKey: topology.kubernetes.io/zone
 
   neo4j:
+    neo4j:
+      edition: "enterprise"
+      acceptLicenseAgreement: "yes"
     services:
       admin:
         enabled: true
@@ -255,6 +280,20 @@ infrahub:
 :::warning
 Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 :::
+
+#### Accept the Neo4j license agreement
+
+With Helm, you accept the Neo4j license agreement in the values file, not with the `NEO4J_ACCEPT_LICENSE_AGREEMENT` environment variable. Set `acceptLicenseAgreement` to `"yes"` under `infrahub.neo4j.neo4j`, after you review the terms in [Before you start](#before-you-start):
+
+```yaml
+infrahub:
+  neo4j:
+    neo4j:
+      edition: "enterprise"
+      acceptLicenseAgreement: "yes"
+```
+
+Write the value as a quoted string (`"yes"`), because YAML reads an unquoted `yes` as a boolean. The Infrahub Community chart sets `acceptLicenseAgreement` to `"no"`. The Infrahub Enterprise chart sets `edition` to `"enterprise"` and `acceptLicenseAgreement` to `"yes"` in its default values. Keep both keys in your `values.yml` so that the license acceptance is explicit and recorded in your own configuration.
 
 Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
 
