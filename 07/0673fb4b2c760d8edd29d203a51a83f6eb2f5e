@@ -1,0 +1,27 @@
+dev/specs/ifc-9998-format-duration/tasks.md
+  s_6e33ff32df746e::t_47a46e688fe2e9 46
+  s_6e33ff32df746e::t_b8cb2aef9827ba 54
+backend/tests/unit/test_utils.py
+  s_6e33ff32df746e::t_7361cf16c78593 2
+  s_6e33ff32df746e::t_28d48947a3f31d 189-215
+backend/infrahub/utils.py
+  s_6e33ff32df746e::t_69a4110cffe4b5 4
+  s_6e33ff32df746e::t_9a752038063a7c 134
+  s_6e33ff32df746e::t_4114f213ef1f15 130-133,135-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "070673fb4b2c760d8edd29d203a51a83f6eb2f5e",
+  "prompts": {},
+  "sessions": {
+    "s_6e33ff32df746e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbb33180-6eac-42e8-8809-e455c9241637",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
