@@ -1,0 +1,21 @@
+docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx
+  s_a9a7c1474d9aa7::t_91e431db91b695 195
+  s_a9a7c1474d9aa7::t_c26ad2c2cb043c 172
+  s_a9a7c1474d9aa7::t_3d07cf769de3d4 177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4881bd1c7d6ea00f25d2035a4a7ab048b38e6d0",
+  "prompts": {},
+  "sessions": {
+    "s_a9a7c1474d9aa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f829bd2b-a87d-4f64-9a2d-8caf62de56b1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
