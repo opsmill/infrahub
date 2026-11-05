@@ -647,6 +647,16 @@ class CacheSettings(BaseSettings):
             "max_connections query parameter in the cache URL takes precedence."
         ),
     )
+    idle_connection_timeout: int = Field(
+        default=300,
+        ge=0,
+        description=(
+            "Seconds after which the API servers and task workers close a connection of their cache and lock pools "
+            "that has not been used; the connection reopens when a command needs it again. 0 keeps idle connections "
+            "open. A connection's idle time is known only while the health check is enabled, which it is unless the "
+            "cache URL sets health_check_interval=0."
+        ),
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,

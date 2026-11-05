@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.services import InfrahubServices
 from infrahub.services.heartbeat import WorkerHeartbeat, build_heartbeat_cache
@@ -10,6 +12,9 @@ from infrahub.services.scheduler import InfrahubScheduler, Schedule
 from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.log import FakeLogger
+
+if TYPE_CHECKING:
+    import pytest
 
 
 async def nothing_to_see(service: InfrahubServices) -> None:
@@ -59,13 +64,26 @@ async def test_scheduler_task_with_error(fake_log: FakeLogger) -> None:
     assert fake_log.error_logs[0] == "This function has not been implemented"
 
 
-async def test_scheduler_registers_the_branch_refresh_schedule_only_for_worker_processes() -> None:
+async def test_scheduler_registers_the_recurring_schedules_only_for_worker_processes() -> None:
     for component_type in (ComponentType.API_SERVER, ComponentType.GIT_AGENT):
         scheduler = InfrahubScheduler(component_type=component_type, heartbeat=None)
         # The heartbeat no longer runs as an asyncio schedule on the main loop.
-        assert [schedule.name for schedule in scheduler.schedules] == ["branch_refresh"]
+        assert [schedule.name for schedule in scheduler.schedules] == [
+            "branch_refresh",
+            "close_idle_cache_connections",
+        ]
 
     assert InfrahubScheduler(component_type=ComponentType.NONE, heartbeat=None).schedules == []
+
+
+async def test_scheduler_keeps_idle_cache_connections_open_when_the_timeout_is_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.cache, "idle_connection_timeout", 0)
+
+    scheduler = InfrahubScheduler(component_type=ComponentType.GIT_AGENT, heartbeat=None)
+
+    assert [schedule.name for schedule in scheduler.schedules] == ["branch_refresh"]
 
 
 async def test_services_builds_a_heartbeat_only_for_worker_processes() -> None:

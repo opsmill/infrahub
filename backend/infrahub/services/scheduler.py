@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import get_logger
-from infrahub.tasks.recurring import trigger_branch_refresh
+from infrahub.tasks.recurring import close_idle_cache_connections, trigger_branch_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -20,6 +20,9 @@ background_tasks: set[asyncio.Task[None]] = set()
 
 HEARTBEAT_COMPONENT_TYPES = (ComponentType.API_SERVER, ComponentType.GIT_AGENT)
 """Process types that report liveness; a CLI or test process (``NONE``) does not."""
+
+IDLE_CONNECTION_CHECK_INTERVAL = 60
+"""Seconds between two passes over the cache and lock pools for connections idle past the configured timeout."""
 
 
 @dataclass
@@ -55,6 +58,15 @@ class InfrahubScheduler:
                     name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
                 )
             )
+            if config.SETTINGS.cache.idle_connection_timeout:
+                self.schedules.append(
+                    Schedule(
+                        name="close_idle_cache_connections",
+                        interval=IDLE_CONNECTION_CHECK_INTERVAL,
+                        function=close_idle_cache_connections,
+                        start_delay=IDLE_CONNECTION_CHECK_INTERVAL,
+                    )
+                )
 
     async def start_schedule(self) -> None:
         if self.running and self.heartbeat is not None:

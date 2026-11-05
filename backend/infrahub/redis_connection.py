@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, quote, urlencode
 
@@ -12,6 +13,7 @@ from redis.exceptions import RedisError
 
 if TYPE_CHECKING:
     import redis.asyncio as redis
+    from redis.asyncio.connection import AbstractConnection, ConnectionPool
 
     from infrahub.config import CacheSettings
 
@@ -111,10 +113,13 @@ def _redis_from_url(url: str, max_connections: int | None = None) -> redis.Redis
     client = redis_from_url(url, asynchronous=True, **options)
     pool = client.connection_pool
     if isinstance(pool, SentinelConnectionPool):
-        # prefect-redis 0.3.0 passes only the socket_* and ssl_* options to the Sentinel daemon clients, so their
-        # pools would keep redis-py 8's 100 connections while every new data connection asks a daemon for the master.
+        # prefect-redis 0.3.0 passes only the socket_* and ssl_* options to the Sentinel daemon clients, so their pools
+        # would keep redis-py 8's 100 connections and no health check, the only record of a connection's last reply.
         for daemon in pool.sentinel_manager.sentinels:
             daemon.connection_pool.max_connections = pool.max_connections
+            daemon.connection_pool.connection_kwargs["health_check_interval"] = pool.connection_kwargs.get(
+                "health_check_interval", 0
+            )
     return client
 
 
@@ -154,3 +159,44 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     client's daemon connections.
     """
     return _redis_from_url(build_cache_connection_string(settings), max_connections=settings.max_connections)
+
+
+async def close_idle_connections(client: redis.Redis, idle_seconds: float) -> int:
+    """Close the free connections of ``client`` whose last reply is older than ``idle_seconds``.
+
+    A closed connection stays in its pool and reconnects when a command takes it again. On a Sentinel client,
+    the pools to the Sentinel daemons are cleaned too.
+
+    Returns:
+        The number of connections closed.
+
+    """
+    pool = client.connection_pool
+    pools: list[ConnectionPool] = [pool]
+    if isinstance(pool, SentinelConnectionPool):
+        pools.extend(daemon.connection_pool for daemon in pool.sentinel_manager.sentinels)
+
+    closed = 0
+    for each_pool in pools:
+        closed += await _close_idle_pool_connections(pool=each_pool, idle_seconds=idle_seconds)
+    return closed
+
+
+async def _close_idle_pool_connections(pool: ConnectionPool, idle_seconds: float) -> int:
+    now = asyncio.get_running_loop().time()
+    closed = 0
+    # redis-py 8.1.0 hands out and takes back free connections under this lock, so no command takes one while it closes.
+    async with pool._lock:
+        for connection in pool._available_connections:
+            if connection.is_connected and _idle_for(connection, now=now) >= idle_seconds:
+                await connection.disconnect()
+                closed += 1
+    return closed
+
+
+def _idle_for(connection: AbstractConnection, now: float) -> float:
+    """Return the seconds since the connection's last reply, or 0 when it is not known."""
+    # redis-py 8.1.0 records a reply only as the time of the next health check, and only while the check is enabled.
+    if not connection.health_check_interval or connection.next_health_check < 0:
+        return 0
+    return now - (connection.next_health_check - connection.health_check_interval)

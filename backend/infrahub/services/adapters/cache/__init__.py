@@ -57,3 +57,8 @@ class InfrahubCache(ABC):
     @abstractmethod
     async def close_connection(self) -> None:
         raise NotImplementedError()
+
+    @abstractmethod
+    async def close_idle_connections(self, idle_seconds: int) -> None:
+        """Close the connections that no command has used for ``idle_seconds``."""
+        raise NotImplementedError()

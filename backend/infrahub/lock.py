@@ -16,7 +16,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
 from infrahub.log import get_logger
-from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
+from infrahub.redis_connection import build_cache_connection_string, build_redis_connection, close_idle_connections
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -387,6 +387,11 @@ class InfrahubLockRegistry:
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
+
+    async def close_idle_connections(self, idle_seconds: int) -> None:
+        """Close the Redis connections that no lock command has used for ``idle_seconds``."""
+        if self.connection is not None:
+            await close_idle_connections(self.connection, idle_seconds=idle_seconds)
 
     def get_existing(
         self,
