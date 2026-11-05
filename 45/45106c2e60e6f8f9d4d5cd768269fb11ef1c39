@@ -1,0 +1,23 @@
+dev/specs/ifc-999999-format-smoke-greeting/tasks.md
+  s_7d4e8346d5abcf::t_e1955ee23fbbeb 16-18
+backend/infrahub/core/format_smoke_greeting.py
+  s_7d4e8346d5abcf::t_dd82975156382b 1-2
+backend/tests/unit/core/test_format_smoke_greeting.py
+  s_7d4e8346d5abcf::t_29835e43ecbac0 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4545106c2e60e6f8f9d4d5cd768269fb11ef1c39",
+  "prompts": {},
+  "sessions": {
+    "s_7d4e8346d5abcf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ac85-a8f2-7ae0-af05-05d46532f327",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
