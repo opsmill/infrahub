@@ -91,10 +91,15 @@ export function ObjectDetailsCard({
       aria-labelledby={titleId}
       data-testid="object-details"
     >
-      <Disclosure defaultExpanded={!defaultCollapsed}>
+      <Disclosure defaultExpanded={!defaultCollapsed} className="rounded-[inherit]">
         {({ isExpanded }) => (
           <>
-            <CardHeader className="flex items-center justify-between gap-2">
+            <CardHeader
+              className={classNames(
+                "flex items-center justify-between gap-2",
+                !isExpanded && "rounded-[inherit] border-b-0"
+              )}
+            >
               <SectionTitle
                 label={
                   <DisclosureTrigger
