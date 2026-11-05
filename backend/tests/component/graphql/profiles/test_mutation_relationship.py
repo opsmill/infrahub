@@ -22,7 +22,7 @@ from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.event import MemoryInfrahubEvent
-from tests.adapters.workflow import WorkflowRecorder
+from tests.adapters.workflow import ContextRecordingWorkflow, WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
 from tests.helpers.permissions import define_permissions
@@ -33,11 +33,8 @@ if TYPE_CHECKING:
 
     from graphql import ExecutionResult
 
-    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.workflows.constants import WorkflowPriority
-    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 DEVICE = NodeSchema(
     name="Device",
@@ -184,10 +181,11 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
         description="from-profile",
         **{test_case.rel_name: [peers[0]]},
     )
+    await _apply_profile_values(db=db, branch=default_branch, node_id=peers[0].id)
     if test_case.mutation == "RelationshipAdd":
-        requested, changed = [peers[0], peers[1], peers[2]], [peers[1], peers[2]]
+        requested, changed, description = [peers[0], peers[1], peers[2]], [peers[1], peers[2]], (None, False)
     else:
-        requested, changed = [peers[0], peers[1]], [peers[0]]
+        requested, changed, description = [peers[0], peers[1]], [peers[0]], ("from-profile", True)
 
     result, workflow = await _run_relationship_mutation(
         db=db,
@@ -209,7 +207,7 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
             PROFILE_REFRESH_MULTIPLE,
             {
                 "branch_name": default_branch.name,
-                "node_ids": [peer.id for peer in changed],
+                "node_ids": sorted(peer.id for peer in changed),
                 "context": expected_context,
             },
             [
@@ -218,11 +216,16 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
             ],
         )
     ]
-    for peer in changed:
-        reloaded = await NodeManager.get_one(
-            db=db, id=peer.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    reloaded = await NodeManager.get_many(
+        db=db, ids=[peer.id for peer in changed], branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
+    assert [
+        (
+            reloaded[peer.id].get_attribute(name="description").value,
+            reloaded[peer.id].get_attribute(name="description").is_from_profile,
         )
-        assert reloaded.get_attribute(name="description").is_from_profile is False
+        for peer in changed
+    ] == [description] * len(changed)
 
 
 async def _count_relationship_add(
@@ -266,23 +269,6 @@ async def test_relationship_add_to_a_profile_runs_no_profile_query_per_added_nod
     assert few["profile_get_data"] == 0
 
 
-class FailingWorkflow(WorkflowRecorder):
-    """Records each submission, then refuses it."""
-
-    async def submit_workflow(
-        self,
-        workflow: WorkflowDefinition,
-        context: InfrahubContext | EventContext | None = None,
-        parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
-        priority: WorkflowPriority | None = None,
-    ) -> WorkflowInfo:
-        await super().submit_workflow(
-            workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
-        )
-        raise RuntimeError(f"{workflow.name} submission rejected")
-
-
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_CHANGE_TEST_CASES])
 async def test_profile_peer_change_succeeds_when_the_refresh_submission_fails(
     db: InfrahubDatabase,
@@ -303,11 +289,13 @@ async def test_profile_peer_change_succeeds_when_the_refresh_submission_fails(
         **{test_case.rel_name: linked},
     )
     events = MemoryInfrahubEvent()
+    workflow = ContextRecordingWorkflow()
+    workflow.failures.append(RuntimeError(f"{PROFILE_REFRESH_MULTIPLE.name} submission rejected"))
     gql_params = await prepare_graphql_params(
         db=db,
         branch=default_branch,
         account_session=editor_session,
-        service=await InfrahubServices.new(workflow=FailingWorkflow(), event=events),
+        service=await InfrahubServices.new(workflow=workflow, event=events),
     )
 
     with capture_logs() as records:
