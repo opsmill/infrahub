@@ -15,7 +15,10 @@ feature does not touch are left out of the JSON.
   present.
 - Attributes and relationships carry `container`: the container name as a string, or `null` when
   the field belongs to the Details section. `"advanced"` is returned as written.
-- The list order of `containers` is the stored order (declared containers, then inherited ones).
+- The list order of `containers` is the stored order. On a node, the inherited containers come
+  first, in the order of the generics in `inherit_from` and of each generic's list, then the
+  containers the node declares itself. A node container with the same name as an inherited one
+  takes the position of the inherited one.
   Clients order sections by `order_weight`, then declaration order for items without a weight.
 - Both fields are present whatever the `branch` query parameter, with the values stored on that
   branch.

@@ -236,7 +236,7 @@ Infrahub rejects a schema with a section error and returns one of these messages
 
   A relationship gives the same message with `relationships.<name>.container`. For a field inherited from a generic, the message names the node that inherits it.
 
-- A generic, or a node that inherits from no generic, declares the same section name twice:
+- A node or a generic declares the same section name twice in its own `containers`:
 
   ```text
   InfraLagInterface.containers: container names must be unique, duplicate 'lacp'

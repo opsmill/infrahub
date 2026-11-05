@@ -40,6 +40,12 @@ def _lag_schema_with_l2_field(field_list: str, field: dict[str, Any]) -> dict[st
     return schema
 
 
+def _lag_schema_with_l2_containers(containers: list[dict[str, Any]]) -> dict[str, Any]:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["nodes"][L2_INDEX]["containers"] = containers
+    return schema
+
+
 def _lag_schema_with_unweighted_container(container: dict[str, Any]) -> dict[str, Any]:
     schema = _lag_schema_with_generic_containers([container])
     for attribute in schema["generics"][0]["attributes"]:
@@ -91,6 +97,13 @@ REFUSED_CONTAINER_CASES = [
         name="duplicate_container_names",
         schema=_lag_schema_with_generic_containers([{"name": "lacp", "label": "Link aggregation"}]),
         message=f"{GENERIC_KIND}.containers: container names must be unique, duplicate 'lacp'",
+    ),
+    RefusedContainerCase(
+        name="duplicate_container_names_on_a_node_with_a_generic",
+        schema=_lag_schema_with_l2_containers(
+            [{"name": "extra", "label": "Extra"}, {"name": "extra", "label": "Extra again"}]
+        ),
+        message=f"{L2_KIND}.containers: container names must be unique, duplicate 'extra'",
     ),
     RefusedContainerCase(
         name="declaring_the_advanced_container",

@@ -102,19 +102,28 @@ class NodeInheritanceHandler:
 
         A node container named like a generic container replaces it in place; the first generic declaring a name wins.
         """
-        own_containers = {container.name: container for container in node.containers if not container.inherited}
+        own_containers = [container for container in node.containers if not container.inherited]
+        first_own_by_name: dict[str, ContainerSchema] = {}
+        for container in own_containers:
+            first_own_by_name.setdefault(container.name, container)
         inherited_containers: dict[str, ContainerSchema] = {}
         for interface in interfaces:
             for container in interface.containers:
                 if container.name in inherited_containers:
                     continue
-                if container.name in own_containers:
-                    inherited_containers[container.name] = own_containers.pop(container.name)
+                if own_container := first_own_by_name.get(container.name):
+                    inherited_containers[container.name] = own_container
                 else:
                     inherited_containers[container.name] = ContainerSchema(
                         **container.model_dump(exclude={"inherited"}), inherited=True
                     )
-        node.containers = [*inherited_containers.values(), *own_containers.values()]
+        # Duplicate own declarations stay in the list so the container validator refuses them.
+        remaining_own_containers = [
+            container
+            for container in own_containers
+            if not any(container is placed for placed in inherited_containers.values())
+        ]
+        node.containers = [*inherited_containers.values(), *remaining_own_containers]
 
     def _update_default_filters_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.default_filter:
