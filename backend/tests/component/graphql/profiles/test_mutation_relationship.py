@@ -16,6 +16,8 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from infrahub.workflows.constants import WorkflowTag
@@ -28,6 +30,8 @@ from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
     from collections import Counter
+
+    from graphql import ExecutionResult
 
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
@@ -45,6 +49,15 @@ DEVICE = NodeSchema(
     ],
 )
 
+SERVER = NodeSchema(
+    name="Server",
+    namespace="Test",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="role", kind="Text"),
+    ],
+)
+
 RELATIONSHIP_MUTATION = """
 mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!) {
     %(mutation)s(data: {id: $id, name: $name, nodes: $nodes}) { ok }
@@ -55,6 +68,11 @@ mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!)
 @pytest.fixture
 async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[DEVICE]), branch_name=default_branch.name)
+
+
+@pytest.fixture
+async def server_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[SERVER]), branch_name=default_branch.name)
 
 
 @pytest.fixture
@@ -83,6 +101,12 @@ async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: 
     return node
 
 
+async def _apply_profile_values(db: InfrahubDatabase, branch: Branch, node_id: str) -> None:
+    node = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
+    applier = NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
+    await node.save(db=db, fields=await applier.apply_profiles(node=node))
+
+
 async def _run_relationship_mutation(
     db: InfrahubDatabase,
     branch: Branch,
@@ -91,7 +115,7 @@ async def _run_relationship_mutation(
     profile_id: str,
     rel_name: str,
     peer_ids: list[str],
-) -> WorkflowRecorder:
+) -> tuple[ExecutionResult, WorkflowRecorder]:
     workflow = WorkflowRecorder()
     gql_params = await prepare_graphql_params(
         db=db, branch=branch, account_session=account_session, service=await InfrahubServices.new(workflow=workflow)
@@ -103,8 +127,7 @@ async def _run_relationship_mutation(
         root_value=None,
         variable_values={"id": profile_id, "name": rel_name, "nodes": [{"id": peer_id} for peer_id in peer_ids]},
     )
-    assert result.errors is None
-    return workflow
+    return result, workflow
 
 
 @dataclass
@@ -166,7 +189,7 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
     else:
         requested, changed = [peers[0], peers[1]], [peers[0]]
 
-    workflow = await _run_relationship_mutation(
+    result, workflow = await _run_relationship_mutation(
         db=db,
         branch=default_branch,
         account_session=editor_session,
@@ -176,6 +199,7 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
         peer_ids=[peer.id for peer in requested],
     )
 
+    assert result.errors is None
     expected_context = EventContext(
         branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
         account_id=editor_session.account_id,
@@ -217,7 +241,7 @@ async def _count_relationship_add(
         description="from-profile",
     )
     counting_db = CountingInfrahubDatabase.from_db(db=db)
-    await _run_relationship_mutation(
+    result, _ = await _run_relationship_mutation(
         db=counting_db,
         branch=branch,
         account_session=account_session,
@@ -226,6 +250,7 @@ async def _count_relationship_add(
         rel_name="related_nodes",
         peer_ids=[peer.id for peer in peers],
     )
+    assert result.errors is None
     return counting_db.query_counts
 
 
@@ -308,3 +333,40 @@ async def test_profile_peer_change_succeeds_when_the_refresh_submission_fails(
         (NodeUpdatedEvent, profile.id),
         (NodeUpdatedEvent, peer.id),
     ]
+
+
+async def test_relationship_remove_refuses_a_node_that_inherits_a_required_value_from_the_profile(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None, editor_session: AccountSession
+) -> None:
+    """The refresh flow could not clear the value, so the request refuses the removal before it commits."""
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestServer",
+        profile_name="profile-1",
+        profile_priority=10,
+        role="from-profile",
+    )
+    server = await _create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
+    await _apply_profile_values(db=db, branch=default_branch, node_id=server.id)
+
+    result, workflow = await _run_relationship_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        mutation="RelationshipRemove",
+        profile_id=profile.id,
+        rel_name="related_nodes",
+        peer_ids=[server.id],
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove profile '{profile.id}' because node 'TestServer(ID: {server.id})' (ID: {server.id}) "
+        "inherits required attribute 'role' from this profile."
+    ]
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="related_nodes").get_relationships(db=db)] == [
+        server.id
+    ]
+    assert workflow.submit_calls == []

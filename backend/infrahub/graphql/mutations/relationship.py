@@ -25,7 +25,10 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
+from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
+from infrahub.core.schema import ProfileSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -359,6 +362,15 @@ class RelationshipRemove(Mutation):
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
         _validate_peer_mandatory_remove(data=data, rel_schema=rel_schema, peers=nodes, existing_peers=existing_peers)
+        removed_peer_ids = {
+            str(node_data.get("id")) for node_data in data.get("nodes") if node_data.get("id") in existing_peers
+        }
+        await _validate_profile_related_nodes_removal(
+            graphql_context=graphql_context,
+            source=source,
+            relationship_name=relationship_name,
+            removed_peer_ids=removed_peer_ids,
+        )
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
         )
@@ -366,7 +378,6 @@ class RelationshipRemove(Mutation):
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
             relationship_modified = False
-            removed_peer_ids: set[str] = set()
 
             for node_data in data.get("nodes"):
                 if node_data.get("id") in existing_peers.keys():
@@ -381,7 +392,6 @@ class RelationshipRemove(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
                     await rel.delete(db=db, user_id=graphql_context.assigned_user_id)
-                    removed_peer_ids.add(str(node_data.get("id")))
                     relationship_modified = True
 
             # remaining peers that need to have their profile source cleared
@@ -744,6 +754,20 @@ async def _detach_relationship_from_profiles(
         rel.load(db=db, data=peer_data)
         rel.clear_source()
         await rel.update(db=db, properties_to_update=["source"], data=peer_data, user_id=user_id)
+
+
+async def _validate_profile_related_nodes_removal(
+    graphql_context: GraphqlContext, source: Node, relationship_name: str, removed_peer_ids: set[str]
+) -> None:
+    source_schema = source.get_schema()
+    if not removed_peer_ids or relationship_name != "related_nodes" or not isinstance(source_schema, ProfileSchema):
+        return
+    constraint = await get_component_registry().get_component(
+        RelationshipProfileRemovalConstraint, db=graphql_context.db, branch=graphql_context.branch
+    )
+    await constraint.validate_related_nodes_removal(
+        profile=source, profile_schema=source_schema, node_ids=sorted(removed_peer_ids)
+    )
 
 
 async def _submit_profile_peers_refresh(
