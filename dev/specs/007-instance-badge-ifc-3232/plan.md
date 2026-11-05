@@ -77,8 +77,8 @@ backend/infrahub/
 ├── graphql/{types,queries,mutations}/preferences.py
 └── api/internal.py
 backend/tests/
-├── unit/core/preferences/test_validation.py
-├── component/core/preferences/test_repository.py
+├── unit/core/test_preference_validation.py
+├── component/core/test_preference_repository.py
 ├── component/graphql/{mutations,queries}/test_preferences.py
 └── component/api/test_50_internals.py
 
