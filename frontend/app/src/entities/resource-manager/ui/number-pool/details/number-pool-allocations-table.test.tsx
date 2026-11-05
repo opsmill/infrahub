@@ -233,8 +233,12 @@ describe("NumberPoolAllocationsTable", () => {
     // GIVEN
     mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
     vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
-      ...vi.mocked(useGetNumberPoolAllocations)(),
+      data: { pages: [[generateNumberPoolAllocation({ value: 7 })]], pageParams: [0] },
       error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
 
     // WHEN
