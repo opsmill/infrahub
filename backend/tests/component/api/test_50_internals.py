@@ -11,6 +11,7 @@ from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import DatabaseError
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
 from tests.adapters.message_bus import BusRecorder
@@ -99,6 +100,24 @@ async def test_config_endpoint_returns_label_without_color(
 
     assert response.status_code == 200
     assert response.json()["instance"] == {"label": "QA", "color": None}
+
+
+async def test_config_endpoint_serves_unset_identity_when_the_database_is_unavailable(
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def unavailable(self: PreferenceRepository, owner_id: str) -> Preference | None:
+        raise DatabaseError(message="Unable to connect to the database")
+
+    monkeypatch.setattr(PreferenceRepository, "get_for_owner", unavailable)
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == {"label": None, "color": None}
 
 
 async def test_info_endpoint(

@@ -152,7 +152,9 @@ Every client, the login page included, loads `GET /api/config` before it renders
 is the only way an anonymous visitor reads the instance label and color. `ConfigAPI.instance` is an
 `InstanceIdentityAPI(label, color)` filled from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)`; a
 missing row yields `null` for both. The read goes through the repository, so it never creates the
-global row. Only these two fields are exposed; `date_format` and `timezone` stay behind the
+global row. A `DatabaseError` on that read is logged and served as `null` for both, because the
+config response bootstraps every page and the login page must not fail with the identity. Only
+these two fields are exposed; `date_format` and `timezone` stay behind the
 authenticated GraphQL queries.
 
 ## Caveats
