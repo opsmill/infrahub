@@ -10,6 +10,8 @@ Infrahub stores per-user preferences that control aspects of the web interface a
 
 Today that covers **date format** and **timezone**, controlling how Infrahub renders dates and times throughout the interface. Both use the same per-user and organisation-wide model, designed so Infrahub can add more personal settings later without changing how preferences resolve.
 
+The organisation-wide settings also hold an [instance label and color](#instance-label-and-color), which mark the instance on every page so that users who work in several Infrahub instances can tell them apart. These two settings have no per-user value.
+
 ## Set your preferences
 
 <Tabs groupId="method" queryString>
@@ -106,6 +108,92 @@ query {
 
   </TabItem>
 </Tabs>
+
+## Instance label and color
+
+Teams that run several Infrahub instances, one per stage or one per region, open them in several tabs of the same browser. The instance label and the instance color mark each instance, so that a user can tell which instance a page belongs to before they change data.
+
+Both settings are organisation-wide only. There is no per-user value, and a write with `scope: USER` is rejected. Changing them requires the `manage_global_preferences` permission (super administrators have it implicitly).
+
+### What every visitor views
+
+When a label is set:
+
+- A badge with the label is shown at the left of the top header on every page, and above the Infrahub logo on the login page. A label that is wider than the badge is truncated with an ellipsis, and hovering the badge shows the full label.
+- The browser tab title becomes `<label> · <page title>`, for example `us-east-1 PROD · Schema`. On a page without a title of its own, the tab title is `<label> · Infrahub`.
+
+When a color is set, a thin bar in that color spans the top of every page, including the login page.
+
+The two settings are independent:
+
+- A label without a color shows a gray badge and no bar.
+- A color without a label shows the bar only.
+- With neither set, the interface is the same as before these settings existed: no badge, no bar, and the tab title is the page title alone.
+
+### Allowed values
+
+- Instance label: free text of at most 32 characters. Infrahub removes leading and trailing spaces before it checks the length, so a label made of spaces only resets the label. A label with a line break is rejected.
+- Instance color: one of `red`, `amber`, `green`, `blue`, `indigo`, `purple`, or `gray`. Selecting **No color** resets the color.
+
+Infrahub does not attach a meaning to any color. A convention that teams can adopt is red for production, amber for staging, and green for development; choose the one that fits your instances.
+
+### Set the instance label and color
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the web interface" default>
+
+1. Open **Global preferences** from the user menu in the left sidebar. The menu item is visible only to users with the `manage_global_preferences` permission.
+2. In the **Instance identity** card, enter an **Instance label** and select an **Instance color**.
+3. Click **Save instance identity**.
+
+The badge, the bar, and the tab title update in your own session as soon as the save completes. Tabs that other users already have open pick the change up the next time the tab regains focus. No restart of Infrahub is needed.
+
+To reset the label, clear the field and save. To reset the color, select **No color** and save. Each value can be changed or reset on its own; saving one leaves the other, and the date and time defaults, unchanged.
+
+  </TabItem>
+  <TabItem value="graphql" label="Via the GraphQL interface">
+
+Write both values with `InfrahubSetPreferences` using `scope: GLOBAL`. The color is a GraphQL enum with the values `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, and `GRAY`.
+
+```graphql
+mutation {
+  InfrahubSetPreferences(scope: GLOBAL, instance_label: "us-east-1 PROD", instance_color: RED) {
+    ok
+    instance_label
+    instance_color
+  }
+}
+```
+
+An omitted argument leaves that value unchanged. An explicit `null` resets it. A label longer than 32 characters after trimming, a label with a line break, or a color outside the list is rejected and nothing is stored. The mutation rejects `instance_label` and `instance_color` with `scope: USER`.
+
+Read the stored values with `InfrahubGlobalPreferences`, which also requires the `manage_global_preferences` permission:
+
+```graphql
+query {
+  InfrahubGlobalPreferences {
+    instance_label
+    instance_color
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+The values are stored with the other organisation-wide preferences, so they are kept across restarts and upgrades of Infrahub and are included in a backup of the database.
+
+### Read the current values without authentication
+
+Every client loads the public `GET /api/config` endpoint before it renders a page. Its response includes the current label and color under `instance`, with `null` for a value that is not set:
+
+```json
+{
+  "instance": { "label": "us-east-1 PROD", "color": "RED" }
+}
+```
+
+This endpoint requires no authentication, which is how the login page shows the badge and the bar before a visitor signs in. Reading it never creates a stored preference.
 
 ## Preference precedence
 
