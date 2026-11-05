@@ -20,7 +20,8 @@ from infrahub.core import registry
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import DatabaseError, NodeNotFoundError
+from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
 from infrahub.workers.dependencies import get_installation_type
@@ -29,6 +30,8 @@ if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
+
+log = get_logger()
 
 router = APIRouter()
 
@@ -59,12 +62,6 @@ class InfoAPI(BaseModel):
 
 @router.get("/config")
 async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
-    global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    instance = (
-        InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
-        if global_preference
-        else InstanceIdentityAPI(label=None, color=None)
-    )
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
@@ -78,8 +75,21 @@ async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
         ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
-        instance=instance,
+        instance=await _read_instance_identity(db=db),
     )
+
+
+async def _read_instance_identity(db: InfrahubDatabase) -> InstanceIdentityAPI:
+    # The config response bootstraps every page, including login, so a database outage degrades
+    # the identity to unset instead of taking the whole UI down.
+    try:
+        global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    except DatabaseError as exc:
+        log.warning("Instance identity unavailable, serving it as unset", error=str(exc))
+        return InstanceIdentityAPI(label=None, color=None)
+    if global_preference is None:
+        return InstanceIdentityAPI(label=None, color=None)
+    return InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
 
 
 @router.get("/info")
