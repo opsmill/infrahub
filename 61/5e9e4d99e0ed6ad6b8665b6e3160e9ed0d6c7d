@@ -1,0 +1,28 @@
+dev/specs/005-hz-frequency-formatter/quickstart.md
+  s_7f89a04bbbc0ac::t_7843c44c60da45 1-43
+dev/specs/005-hz-frequency-formatter/plan.md
+  s_7f89a04bbbc0ac::t_33ee5c67504a30 1,3,5,9,13,15,17,19,21,23,25,27,29,35-45,52-59,66-67,69-70,73-95,101
+  s_7f89a04bbbc0ac::t_1de5fb0a750f92 2,4,6-8,10-12,14,16,18,20,22,24,26,28,30-34,46-51,60-65,68,71-72,96-100
+dev/specs/005-hz-frequency-formatter/data-model.md
+  s_7f89a04bbbc0ac::t_34bbe8063d9ba1 1-21
+dev/specs/005-hz-frequency-formatter/contracts/format_frequency.md
+  s_7f89a04bbbc0ac::t_dd9a87e853a54e 1-30
+dev/specs/005-hz-frequency-formatter/research.md
+  s_7f89a04bbbc0ac::t_d9ad557e17bb4f 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "615e9e4d99e0ed6ad6b8665b6e3160e9ed0d6c7d",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
