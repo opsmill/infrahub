@@ -33,13 +33,15 @@ when `RecordedImport.covers` answers yes: the graph records the cloned commit an
   its import outside the lock, and the build sets `syncing` only once its subflow starts. Without the
   mark, a clone that takes the lock in between reads the new commit next to the status of the earlier
   one, `unknown` for a new repository, and imports the commit too.
-  `InfrahubRepository.record_commit_for_import` writes both in one mutation.
+  `InfrahubRepository.record_commit_for_import` writes both in one mutation, on the Infrahub branch as
+  named, which is the branch whose status the import sets when it ends.
 - **Import when the status is `unknown` or `error-import`.** `error-import` means the import of the
   recorded commit failed, so a fresh clone still retries it. `unknown` with a recorded commit means no
   flow marked an import, as for a commit written through the API.
-- **A flow that stops between the mark and the end of its import leaves the branch `syncing`.** A
-  fresh clone then skips the import as well, so the branch stays `syncing` until a new commit or a
-  manual re-import.
+- **An import that stops before it ends does not leave the branch `syncing` for good.** A failure
+  before the apply sets `error-import`, which a fresh clone imports again. A run that stops without
+  raising leaves `syncing`, which a fresh clone skips, and the periodic sync imports the branch again
+  once no run works on the repository. See [Imports That Stop Partway](git-stopped-import.md).
 - **The add flow records the commit after the check.** It clones without recording, then records the
   commit when it goes on to import. Recording during the clone would make the check read the add
   flow's own write.
