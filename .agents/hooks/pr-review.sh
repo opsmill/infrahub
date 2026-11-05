@@ -21,8 +21,7 @@ fi
 
 payload=$(cat)
 
-# Claude Code records a pull request only when the command created one. Cloud sessions open pull requests with the
-# GitHub MCP tool instead, whose response holds the pull request URL.
+# A Bash command records a pull request only when it created one, and the GitHub MCP tool's response holds its URL.
 claude_pr_url() {
     printf '%s' "$payload" | jq -r '
         if .tool_name == "mcp__github__create_pull_request" then
@@ -82,6 +81,8 @@ start_review_skill() {
 }
 
 review_large_push() {
+    # Cloud sessions block GitHub's GraphQL API, which `gh pr view` needs.
+    [ "$CLAUDE_CODE_REMOTE" = true ] && exit 0
     enter_session_dir
     head=$(git rev-parse HEAD 2>/dev/null) || exit 0
     pr=$(gh pr view --json url,state,headRefOid -q 'select(.state == "OPEN") | [.url, .headRefOid] | @tsv' 2>/dev/null)

@@ -149,7 +149,8 @@ checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` 
 
 Cloud sessions start from a fresh clone, so they have no `.claude/settings.local.json`. To turn the
 review on for your cloud sessions only, add the environment variable `PR_REVIEW_CLOUD=on` to your
-cloud environment (the cloud environment menu in the session's title bar, then Edit). The hook reads
-it only when `CLAUDE_CODE_REMOTE` is `true`. Cloud sessions open pull requests with the GitHub MCP
-tool, and the hook runs the review after that tool too. The review after large pushes needs an
-authenticated `gh`, which a cloud session may not have.
+cloud environment (the cloud environment menu in the session's title bar, then Edit). Sessions
+started after that pick it up. The hook reads it only when `CLAUDE_CODE_REMOTE` is `true`. Cloud
+sessions open pull requests with the GitHub MCP tool, and the hook runs the review after that tool
+too. The review after large pushes does not run in cloud sessions, because they block GitHub's
+GraphQL API, which `gh pr view` uses.
