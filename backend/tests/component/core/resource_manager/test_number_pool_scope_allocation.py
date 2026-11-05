@@ -335,7 +335,10 @@ async def test_a_full_division_is_refused_while_another_division_allocates(
 
     with pytest.raises(
         ValidationError,
-        match=rf"^Pool vlan-two-per-site \({pool.id}\) has no free number left in its ranges\. at vlan_id\.from_pool$",
+        match=(
+            rf"^Pool vlan-two-per-site \({pool.id}\) has no free number left in its ranges for site '{site_a.id}'\."
+            r" at vlan_id\.from_pool$"
+        ),
     ):
         await scoped_device(db=db, branch=default_branch, pool=pool, name="device-a3", site=site_a)
     device_b1 = await scoped_device(db=db, branch=default_branch, pool=pool, name="device-b1", site=site_b)

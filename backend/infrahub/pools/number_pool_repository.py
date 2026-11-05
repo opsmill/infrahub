@@ -297,7 +297,7 @@ class NumberPoolRepository(NumberPoolRangeStore):
         """
         delete_at = Timestamp(at)
         async with within_transaction(db=self.db) as dbt:
-            pool = await NodeManager.get_one(db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True)
+            pool = await NodeManager.get_one(db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL)
             if pool is None:
                 return []
             release = await NumberPoolReleaseAllReserved.init(db=dbt, pool_id=pool_id, at=delete_at, user_id=user_id)

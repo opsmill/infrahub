@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.model.diff import SchemaConflict
     from infrahub.core.validators.model import SchemaViolation
     from infrahub.git.models import PushRejectionReason
+    from infrahub.pools.scope import Division
 
 
 def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: Any) -> Error:
@@ -370,6 +371,15 @@ class PoolExhaustedError(Error):
     def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
         super().__init__(self.message)
+
+
+class DivisionExhaustedError(PoolExhaustedError):
+    """Raised when one division of a scoped pool has no free number left; `space_size` is None for unbounded ranges."""
+
+    def __init__(self, message: str, division: Division, space_size: int | None) -> None:
+        self.division = division
+        self.space_size = space_size
+        super().__init__(message)
 
 
 class SchemaNotFoundError(Error):

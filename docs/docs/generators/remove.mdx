@@ -4,15 +4,15 @@ title: Remove a generator
 
 # Remove a generator
 
-Removing a Generator involves two separate things: the **Generator definition** registered from `.infrahub.yml`, and the **objects the Generator created** in Infrahub. Removing the definition stops the Generator from running, but it does not delete the objects it already created — those stay in Infrahub until you remove them.
+Removing a Generator involves three separate things: the **Generator definition** registered from `.infrahub.yml`, the **objects the Generator created** in Infrahub, and the **groups** that track those objects and the Generator's query. Removing the definition stops the Generator from running and deletes its Generator instances on the branch where you remove it. When that branch is merged, the instances on the default branch remain. For what stays in Infrahub, see [What Infrahub deletes when a target or definition is removed](./overview#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
-Handle the objects first, then the definition.
+Handle the objects first, then the definition and its query, then the Generator groups.
 
 ## Delete the objects the Generator created
 
 A Generator removes its own obsolete objects only when it runs, through the [SDK tracking feature]($(base_url)python-sdk/topics/tracking). Once the definition is gone the Generator never runs again, so it can no longer remove the objects it created. Delete or reassign those objects — through the UI, GraphQL, or the SDK — while the definition still exists.
 
-To identify what a Generator created, see [Generator instances](./overview#generator-instances).
+To identify what a Generator created, list the members of its Generator groups. See [Delete the groups the Generator leaves behind](#delete-the-groups-the-generator-leaves-behind) to find the groups. A Generator instance records a run for one target object and does not link to the objects the run created.
 
 ## Remove the definition from `.infrahub.yml`
 
@@ -28,7 +28,32 @@ generator_definitions:
     class_name: YourGenerator
 ```
 
-Remove the Generator's Python file, and any query used only by this Generator. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). Infrahub removes the `CoreGeneratorDefinition` registration on the next repository sync.
+Remove the Generator's Python file, and any query used only by this Generator. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). On the next repository sync, Infrahub removes the `CoreGeneratorDefinition` registration and the queries you removed.
+
+## Delete the groups the Generator leaves behind
+
+Two kinds of group remain after you remove the definition, as [What Infrahub deletes when a target or definition is removed](./overview#what-infrahub-deletes-when-a-target-or-definition-is-removed) shows:
+
+- **Generator groups** (`CoreGeneratorGroup`, or `CoreGeneratorAwareGroup` when the definition set `execute_after_merge: false`) — named `<generator definition name>-<parameters hash>`, one for each set of parameters the Generator ran with. Their members are the objects the Generator created.
+- **GraphQL query groups** (`CoreGraphQLQueryGroup`) — named `<query name>__<parameters hash>`, with the label `Query <query name> Hash(<first 8 characters of the hash>)`. Infrahub deletes them with their query only on the branch where the query is deleted. Query groups are branch-local, so when you merge the branch, the query groups on the default branch remain. The name comes from the query, not from the Generator, so another definition that runs the same query with the same parameters uses the same group. If you keep the query because another definition uses it, keep its query groups too.
+
+`CoreGeneratorGroup` and `CoreGraphQLQueryGroup` are branch-local. Delete them on the branch that holds them, usually the default branch. A delete on a Proposed Change branch does not reach the default branch. `CoreGeneratorAwareGroup` is branch-aware, so you can delete it on a branch: the delete reaches the default branch when the branch is merged.
+
+Find the Generator groups by kind and name, then delete them as described in [Delete a group](../groups/delete). If you removed the query, find its query groups in the same way, with the kind `CoreGraphQLQueryGroup` and the query name. Generator groups appear in the list of groups in the web interface. With the Python SDK, `partial_match=True` matches every group whose name contains the value, ignoring case, so check the list before you delete:
+
+```python
+groups = []
+for kind in ("CoreGeneratorGroup", "CoreGeneratorAwareGroup"):
+    groups += await client.filters(kind=kind, name__value="<your_generator>", partial_match=True)
+for group in groups:
+    print(group.name.value)
+
+# After checking the list:
+for group in groups:
+    await group.delete()
+```
+
+Deleting a group does not delete its members.
 
 ## Verify the removal
 

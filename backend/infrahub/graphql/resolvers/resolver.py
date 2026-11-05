@@ -68,7 +68,6 @@ async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo)
             db=db,
             at=graphql_context.at,
             branch=graphql_context.branch,
-            branch_agnostic=True,
             limit=1,
         )
     return bool(identities)
