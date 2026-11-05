@@ -288,6 +288,16 @@ BROKER_CONNECTION_STRING_CASES = [
         expected_url="redis://redis.internal:6379/0",
     ),
     BrokerConnectionStringCase(
+        name="rabbitmq_default_credentials_are_not_sent",
+        broker_kwargs={"address": "redis.internal", "username": "infrahub", "password": "infrahub"},
+        expected_url="redis://redis.internal:6379/0",
+    ),
+    BrokerConnectionStringCase(
+        name="password_alone_authenticates_the_default_user",
+        broker_kwargs={"address": "redis.internal", "password": "s3cret"},
+        expected_url="redis://:s3cret@redis.internal:6379/0",
+    ),
+    BrokerConnectionStringCase(
         name="scalar_custom_port_and_credentials",
         broker_kwargs={"address": "redis.internal", "port": 6400, "username": "user", "password": "s3cr/et"},
         expected_url="redis://user:s3cr%2Fet@redis.internal:6400/0",

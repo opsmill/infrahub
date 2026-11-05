@@ -155,8 +155,8 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_BROKER_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_BROKER_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
-| `INFRAHUB_BROKER_USERNAME` | None | string | infrahub |
-| `INFRAHUB_BROKER_PASSWORD` | None | string | infrahub |
+| `INFRAHUB_BROKER_USERNAME` | Username to authenticate with. The default is the RabbitMQ default user, so the redis driver sends no username while it is left at the default. | string | infrahub |
+| `INFRAHUB_BROKER_PASSWORD` | Password to authenticate with. The default is the RabbitMQ default password, so the redis driver sends no password while it is left at the default. | string | infrahub |
 | `INFRAHUB_BROKER_ADDRESS` | None | string | localhost |
 | `INFRAHUB_BROKER_PORT` | Specified if running on a non default port. | integer | None |
 | `INFRAHUB_BROKER_RABBITMQ_HTTP_PORT` | None | integer | None |

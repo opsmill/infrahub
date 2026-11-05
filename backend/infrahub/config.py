@@ -585,8 +585,20 @@ class BrokerSettings(BaseSettings):
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
-    username: str = "infrahub"
-    password: str = "infrahub"
+    username: str = Field(
+        default="infrahub",
+        description=(
+            "Username to authenticate with. The default is the RabbitMQ default user, so the redis driver sends no "
+            "username while it is left at the default."
+        ),
+    )
+    password: str = Field(
+        default="infrahub",
+        description=(
+            "Password to authenticate with. The default is the RabbitMQ default password, so the redis driver sends "
+            "no password while it is left at the default."
+        ),
+    )
     address: str = "localhost"
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     rabbitmq_http_port: int | None = Field(default=None, ge=1, le=65535)
@@ -641,6 +653,16 @@ class BrokerSettings(BaseSettings):
 
         validate_redis_url(url.get_secret_value())
         return self
+
+    @property
+    def redis_username(self) -> str:
+        """The username the redis driver authenticates with, empty while the RabbitMQ default is left in place."""
+        return "" if self.username == type(self).model_fields["username"].get_default() else self.username
+
+    @property
+    def redis_password(self) -> str:
+        """The password the redis driver authenticates with, empty while the RabbitMQ default is left in place."""
+        return "" if self.password == type(self).model_fields["password"].get_default() else self.password
 
     @property
     def service_port(self) -> int:
