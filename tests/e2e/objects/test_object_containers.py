@@ -42,7 +42,6 @@ class TestObjectContainers:
     async def test_should_show_sections_on_the_detail_page_and_save_a_value_from_a_section_panel(
         self, admin_page: Page, branch: str
     ) -> None:
-        # open the L2 LAG interface
         await admin_page.goto(
             f'/objects/InfraLagInterfaceL2?branch={branch}&filters=[{{"name":"name__value","value":"port-channel1"}}]'
         )
@@ -53,7 +52,6 @@ class TestObjectContainers:
             .click()
         )
 
-        # sections of the L2 LAG interface
         await expect(admin_page.get_by_role("region", name="Details", exact=True)).to_be_visible()
         lacp_card = admin_page.get_by_role("region", name="LACP", exact=True)
         await expect(lacp_card).to_be_visible()
@@ -62,7 +60,6 @@ class TestObjectContainers:
         await expect(admin_page.get_by_role("button", name="Advanced", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("region", name="Layer 3", exact=True)).to_have_count(0)
 
-        # edit a field of the LACP panel
         await admin_page.get_by_test_id("edit-button").click()
         await (
             admin_page.get_by_label("sheet")
@@ -76,11 +73,9 @@ class TestObjectContainers:
         await expect(admin_page.get_by_label("sheet")).to_be_hidden()
         await expect(lacp_card.get_by_text("Minimum links4")).to_be_visible()
 
-        # open the L3 LAG interface
         await admin_page.goto(f"/objects/InfraLagInterfaceL3?branch={branch}")
         await admin_page.get_by_role("link", name="port-channel3", exact=True).click()
 
-        # sections of the L3 LAG interface
         await expect(admin_page.get_by_role("region", name="Details", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("region", name="LACP", exact=True)).to_be_visible()
         layer3_card = admin_page.get_by_role("region", name="Layer 3", exact=True)
