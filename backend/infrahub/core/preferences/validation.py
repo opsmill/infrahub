@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from infrahub.core.preferences.constants import INSTANCE_LABEL_MAX_LENGTH
 from infrahub.exceptions import ValidationError
 
 # Implementation-defined entries a full zone tree resolves but browsers reject; listed explicitly
@@ -34,3 +35,24 @@ def validate_timezone(value: str | None) -> str | None:
     except (ZoneInfoNotFoundError, ValueError, OSError) as exc:
         raise ValidationError(input_value=f"'{value}' is not a valid IANA timezone") from exc
     return value
+
+
+def validate_instance_label(value: str | None) -> str | None:
+    """Validate an instance label for storage; it is stripped, and an empty result becomes None.
+
+    Raises:
+        ValidationError: the stripped value contains a line break or exceeds the length limit.
+
+    """
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped:
+        return None
+    if "\n" in stripped or "\r" in stripped:
+        raise ValidationError(input_value="instance_label cannot contain a line break")
+    if len(stripped) > INSTANCE_LABEL_MAX_LENGTH:
+        raise ValidationError(
+            input_value=f"instance_label cannot be longer than {INSTANCE_LABEL_MAX_LENGTH} characters"
+        )
+    return stripped
