@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, nullcontext
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub import lock
@@ -27,6 +27,8 @@ def picking_lock_name(pool_id: str, division_key: str | None) -> str:
 class NumberPoolLocker(Protocol):
     def changing(self, pool_id: str, pool_name: str) -> AbstractAsyncContextManager[None]:
         """Hold the pool alone while its ranges change, once every write reading them has committed.
+
+        Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
 
         Raises:
             ValidationError: When writes still read the ranges once the wait limit passes.
@@ -57,7 +59,7 @@ class NumberPoolLock:
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
-        """Keep the writes' shares of a pool on `db` until the transaction open on it ends, when there is one."""
+        """Keep the locks taken on a pool until the transaction open on `db` ends, when there is one."""
         self.db = db
 
     def _pool_lock(self, pool_id: str) -> lock.InfrahubSharedLock:
@@ -67,6 +69,24 @@ class NumberPoolLock:
     @asynccontextmanager
     async def changing(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
         """Hold the pool alone while its ranges change, once every write reading them has committed.
+
+        Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
+
+        Raises:
+            ValidationError: When writes still read the ranges once the wait limit passes.
+
+        """
+        exclusive = self._held_alone(pool_id=pool_id, pool_name=pool_name)
+        if self.db.can_hold_until_transaction_end:
+            await self.db.hold_until_transaction_end(exclusive)
+            yield
+            return
+        async with exclusive:
+            yield
+
+    @asynccontextmanager
+    async def _held_alone(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
+        """Take the pool's lock exclusively until the block ends.
 
         Raises:
             ValidationError: When writes still read the ranges once the wait limit passes.
@@ -101,6 +121,8 @@ class NumberPoolLock:
     def picking(self, pool: Node | CoreNumberPool, division: Division | None) -> AbstractAsyncContextManager[None]:
         """Keep a second allocation in the same division, or in the whole pool without a scope, from picking at once.
 
+        A task that holds the pool exclusively picks without taking the division's lock.
+
         Raises:
             ValidationError: When a division is given to a pool that has no allocation scope.
 
@@ -111,4 +133,7 @@ class NumberPoolLock:
             if scope.is_empty:
                 raise ValidationError(f"The pool {pool.get_id()} has no allocation scope; a division cannot be applied")
             division_key = division.key
+        if self._pool_lock(pool_id=pool.get_id()).held_exclusively_by_current_task():
+            # Every other allocation picks inside its shared hold, so none can pick while this task holds the pool alone.
+            return nullcontext()
         return lock.registry.get(name=picking_lock_name(pool_id=pool.get_id(), division_key=division_key))
