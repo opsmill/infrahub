@@ -1,0 +1,1 @@
+Fixed a task worker occasionally using the previous status of a branch until its next registry refresh, after the worker rolled back, flagged or recovered a failed merge of that branch, or migrated the branch to a new graph version.
