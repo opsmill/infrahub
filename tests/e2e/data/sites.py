@@ -51,6 +51,9 @@ Deviations:
   ``generate_site_mlag_domain``).
 * the script's ``cable_batch`` (created and executed but never filled, lines
   1542/1700) is not transcribed; log-only code is dropped.
+* one ``InfraLagInterfaceL3`` (``port-channel3`` on ``atl1-leaf1``, see
+  ``LAG_INTERFACE_L3``) is added for the field sections test; the script
+  creates none.
 """
 
 from __future__ import annotations
@@ -196,6 +199,8 @@ LAG_INTERFACE_L2 = {
         },
     ],
 }
+
+LAG_INTERFACE_L3 = {"atl1-leaf1": [{"name": "port-channel3", "lacp": "Active"}]}
 
 # (lines 628-650)
 INTERFACE_L3_ROLES_MAPPING = {
@@ -693,6 +698,19 @@ async def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, de
 
         members = [state.l2_interfaces[f"{device_name}-l2-{member}"].id for member in lag_intf["members"]]
         await lag.add_relationships(relation_to_update="members", related_nodes=members)
+
+    for lag_intf in LAG_INTERFACE_L3.get(device_name, []):
+        lag = await ctx.client.create(
+            branch=BRANCH,
+            kind="InfraLagInterfaceL3",
+            device={"id": obj.id, "is_protected": True},
+            name=lag_intf["name"],
+            speed=10000,
+            enabled=True,
+            status={"value": ACTIVE_STATUS, "owner": ctx.group_ops_id},
+            lacp=lag_intf["lacp"],
+        )
+        await lag.save()
 
 
 async def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
