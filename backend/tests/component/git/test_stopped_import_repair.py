@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.protocols import CoreRepository
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import lock
 from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus, RepositorySyncStatus
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
 from infrahub.git.activity.models import RepositoryActivityOperation
@@ -27,12 +30,12 @@ from tests.helpers.git import LocalRemote
 from tests.helpers.repository_activity import activity_run, run_record_writes
 from tests.helpers.repository_sync import create_repository_node, run_add_flow
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.test_client import rejected_async_request
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from fast_depends import Provider
-    from infrahub_sdk import InfrahubClient
 
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
@@ -61,7 +64,7 @@ async def recorded_state(client: InfrahubClient, node: Node) -> tuple[str | None
 
 async def add_and_stop_an_import(
     db: InfrahubDatabase, client: InfrahubClient, tmp_path: Path, name: str
-) -> tuple[Node, str]:
+) -> tuple[Node, str, LocalRemote]:
     """Add a repository, then leave its default branch as an import that stopped partway leaves it: syncing."""
     remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
     head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
@@ -73,7 +76,7 @@ async def add_and_stop_an_import(
     )
     await repo.record_commit_for_import(branch_name=registry.default_branch, commit=head)
     assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
-    return node, head
+    return node, head, remote
 
 
 def add_model(node: Node, name: str, remote: LocalRemote) -> GitRepositoryAdd:
@@ -107,7 +110,7 @@ class TestRepairOfAStoppedImport(TestInfrahubApp):
         git_repos_dir: Path,
     ) -> None:
         """The run of the cycle itself does not count as a run that works on the repository."""
-        node, head = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name="stopped-import")
+        node, head, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name="stopped-import")
         cache = RecordingCache()
 
         with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
@@ -125,7 +128,7 @@ class TestRepairOfAStoppedImport(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        node, head = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name="import-under-way")
+        node, head, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name="import-under-way")
         cache = RecordingCache()
 
         with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
@@ -134,6 +137,60 @@ class TestRepairOfAStoppedImport(TestInfrahubApp):
 
         assert trunk_imports(cache=cache, node=node) == []
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
+
+    async def test_the_repair_records_a_rewrite_of_the_remote_since_the_stopped_import(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A recorded commit that is not the remote head is kept, so the remote head is classified against it."""
+        node, imported, remote = await add_and_stop_an_import(
+            db=db, client=client, tmp_path=tmp_path, name="rewritten-before-repair"
+        )
+        rewritten = remote.commit(branch_name=TRUNK, files={"data.txt": "rewritten\n"}, amend=True)
+
+        await sync_remote_repositories()
+
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert (
+            recorded.commit.value,
+            recorded.sync_status.value,
+            recorded.last_rewrite_previous_commit.value,
+            recorded.last_rewrite_commit.value,
+            recorded.rewrite_count.value,
+        ) == (rewritten, RepositorySyncStatus.IN_SYNC.value, imported, rewritten, 1)
+
+    async def test_a_status_that_cannot_be_read_skips_the_repair(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The synchronization of the repository goes on without the repair."""
+        node, _, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name="status-unreadable")
+        repo = await InfrahubRepository.init(
+            id=node.id, name="status-unreadable", client=client, infrahub_branch_name=registry.default_branch
+        )
+        repo.client = InfrahubClient(config=Config(requester=rejected_async_request))
+
+        async with activity_run(repository_id=node.id) as run:
+            stopped = await call_in_flow(
+                lambda: import_stopped_partway(
+                    repo=repo,
+                    branch_name=registry.default_branch,
+                    cycle_status=RepositorySyncStatus.SYNCING.value,
+                    run=run,
+                )
+            )
+
+        assert stopped is False
 
     async def test_a_default_branch_the_cycle_read_as_syncing_is_read_again(
         self,
@@ -247,7 +304,7 @@ class TestStatusOfAnImportThatStops(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """A failure the import's own error handling does not cover, such as taking the lock, must not leave syncing."""
+        """A failure outside the import's own error handling, raised here by the importer, must not leave syncing."""
         name = "added-and-stopped"
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
         head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)

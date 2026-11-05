@@ -187,6 +187,7 @@ async def import_branch(
         raise
     except Exception:
         # Raised by the flow run itself, for example when it cannot be created, so the import may never have started.
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
         if not apply_started:
             await repo.mark_import_failed(branch_name=branch_name)
         raise
@@ -298,6 +299,7 @@ class RepositorySyncer:
         activity: ActivityRun,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
+        reimport_default_branch: bool = False,
     ) -> SyncOutcome:
         """Synchronize the repository and return what the run did, including the branches that failed.
 
@@ -318,6 +320,7 @@ class RepositorySyncer:
                 recorder=self._recorder,
                 retarget_markers=self._retarget_markers,
                 state=self._state,
+                reimport_default_branch=reimport_default_branch,
             )
 
         failed_imports = list(collected.failed_imports)

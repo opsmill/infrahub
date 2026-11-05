@@ -453,6 +453,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
         retarget_markers: RetargetMarkers | None = None,
+        reimport_default_branch: bool = False,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -479,6 +480,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 the trunk. A marker that applied to this cycle is cleared when the collection ends with
                 the trunk on the remote head of the default branch. Without them, every lineage break of
                 the trunk is a rewrite.
+            reimport_default_branch: Import the default branch even when the graph records its remote head,
+                for a default branch whose import stopped partway.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -498,6 +501,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             recorder=recorder,
             trunk_retargeted=trunk_retargeted,
             state=state,
+            reimport_default_branch=reimport_default_branch,
         )
 
         # A marker written after the read is left alone here, and the next cycle reads it.
@@ -535,6 +539,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         recorder: HistoryRewriteRecorder | None,
         trunk_retargeted: bool,
         state: DeliveryStatePort,
+        reimport_default_branch: bool = False,
     ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
@@ -556,6 +561,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         new_branches, updated_branches = await self.compare_local_remote()
         if graph_commits is not None:
             graph_commits = self._read_graph_commits(graph_commits=graph_commits)
+            trunk_commit = graph_commits.get(registry.default_branch)
+            # Dropped only when it is the remote head, so a trunk the remote rewrote since is still classified against it.
+            if reimport_default_branch and trunk_commit == self._get_remote_tracking_commit(self.default_branch):
+                graph_commits[registry.default_branch] = None
             behind_in_graph = await self._find_branches_behind_in_graph(graph_commits=graph_commits)
             updated_branches = sorted({*updated_branches, *behind_in_graph})
 
