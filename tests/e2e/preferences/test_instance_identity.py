@@ -83,11 +83,12 @@ class TestInstanceIdentity:
     async def test_label_over_the_limit_is_refused_and_nothing_is_stored(self, admin_page: Page) -> None:
         await admin_page.goto("/global-preferences")
         await admin_page.get_by_label("Instance label").fill("x" * (INSTANCE_LABEL_MAX_LENGTH + 1))
+        await admin_page.get_by_role("button", name="Save instance identity").click()
 
         await expect(
             admin_page.get_by_text(f"cannot be longer than {INSTANCE_LABEL_MAX_LENGTH} characters")
         ).to_be_visible()
-        await expect(admin_page.get_by_role("button", name="Save instance identity")).to_be_disabled()
+        await expect(admin_page.get_by_text("Instance identity updated")).to_have_count(0)
 
         stored = await _stored_instance_identity(admin_page)
         assert stored["label"] is None
