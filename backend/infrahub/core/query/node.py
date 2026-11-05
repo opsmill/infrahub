@@ -2676,10 +2676,12 @@ class NodeGetListByAttributeValueQuery(Query):
         self.add_to_query(query)
 
     def _exact_values(self) -> list[str | int | bool]:
-        """Return the search text and the number or boolean it spells, as stored values keep their type."""
+        """Return the search text and the number or boolean it spells exactly, as stored values keep their type."""
         values: list[str | int | bool] = [self.search_value]
         with contextlib.suppress(ValueError):
-            values.append(int(self.search_value))
+            number = int(self.search_value)
+            if str(number) == self.search_value:
+                values.append(number)
         if self.search_value in {"true", "false"}:
             values.append(self.search_value == "true")
         return values

@@ -556,6 +556,7 @@ async def test_search_anywhere_exact_match(
     assert await _search_ids(gql_params=gql_params, query="1234", partial_match=False, case_sensitive=True) == [
         person_tall.id
     ]
+    assert await _search_ids(gql_params=gql_params, query="1_234", partial_match=False, case_sensitive=True) == []
 
 
 @pytest.mark.parametrize("case_sensitive", [False, True])
