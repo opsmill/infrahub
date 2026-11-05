@@ -1,0 +1,1 @@
+`uv run invoke demo.start` and the other `invoke` tasks now start Neo4j Community by default, matching the Docker Compose install. To run Neo4j Enterprise with online backup and the Prometheus metrics endpoint, set `NEO4J_DOCKER_IMAGE` to an Enterprise image, for example `neo4j:2026.05.0-enterprise`.
