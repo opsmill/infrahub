@@ -38,7 +38,7 @@ type InfrahubSetPreferences {
 
 Errors:
 - `scope: USER` with `instance_label` or `instance_color` provided → `ValidationError` "instance_label and instance_color can only be set with scope GLOBAL" before any read.
-- `instance_label` longer than 32 characters after trimming, or containing a line break → `ValidationError` naming the rule; nothing stored.
+- `instance_label` longer than 32 characters after trimming, or containing a control character (line break, tab, NUL, bidirectional text control) → `ValidationError` naming the rule; nothing stored.
 - A color outside the enum → the GraphQL enum coercion error listing the members; nothing stored.
 - Missing `manage_global_preferences` on `scope: GLOBAL` → the existing permission error; nothing stored.
 
