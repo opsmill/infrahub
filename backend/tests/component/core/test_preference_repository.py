@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
+from infrahub.core.query import preference as preference_query
 
 if TYPE_CHECKING:
     import pytest
@@ -58,10 +59,11 @@ async def test_instance_fields_read_back_as_none_when_unset(db: InfrahubDatabase
     assert fetched.instance_color is None
 
 
-async def test_unknown_stored_instance_color_reads_back_as_none(
-    db: InfrahubDatabase, default_branch: Branch, caplog: pytest.LogCaptureFixture
+async def test_unknown_stored_instance_color_reads_back_as_none_and_warns_once(
+    db: InfrahubDatabase, default_branch: Branch, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A stored color outside the enum, written by a later version, must not break the read."""
+    monkeypatch.setattr(preference_query, "_WARNED_INSTANCE_COLORS", set())
     repository = PreferenceRepository(db=db)
     await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA", instance_color=InstanceColor.RED))
     await db.execute_query(
@@ -71,11 +73,16 @@ async def test_unknown_stored_instance_color_reads_back_as_none(
 
     with caplog.at_level("WARNING", logger="infrahub"):
         fetched = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
+        fetched_again = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
 
     assert fetched is not None
     assert fetched.instance_color is None
     assert fetched.instance_label == "QA"
-    assert "PINK" in caplog.text
+    assert fetched_again is not None
+    assert fetched_again.instance_color is None
+    assert [record.getMessage() for record in caplog.records if "PINK" in record.getMessage()] == [
+        "Stored instance_color is not a known preset and is read as unset"
+    ]
 
 
 async def test_save_updates_in_place_without_creating_a_second_row(

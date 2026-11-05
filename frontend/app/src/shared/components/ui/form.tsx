@@ -7,6 +7,7 @@ import {
   type DefaultValues,
   type FieldValues,
   FormProvider,
+  type UseFormProps,
   type UseFormReturn,
   useForm,
   useFormContext,
@@ -22,9 +23,12 @@ export type FormRef<TValues extends FieldValues = FieldValues> = UseFormReturn<T
 
 export interface FormProps<TValues extends FieldValues = FieldValues>
   extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: TValues) => void;
+  /** A rejected promise keeps the form dirty, so the user can retry; the handler reports the failure itself. */
+  onSubmit?: (v: TValues) => void | Promise<void>;
   onCancel?: () => void;
   defaultValues?: DefaultValues<TValues>;
+  /** When the fields validate; ignored when `form` is given, since that form already has one. */
+  mode?: UseFormProps<TValues>["mode"];
   form?: UseFormReturn<TValues>;
   ref?: React.Ref<FormRef<TValues>>;
 }
@@ -32,6 +36,7 @@ export interface FormProps<TValues extends FieldValues = FieldValues>
 export const Form = <TValues extends FieldValues = FieldValues>({
   form,
   defaultValues,
+  mode,
   className,
   children,
   onSubmit,
@@ -39,7 +44,7 @@ export const Form = <TValues extends FieldValues = FieldValues>({
   ref,
   ...props
 }: FormProps<TValues>) => {
-  const currentForm = form ?? useForm<TValues>({ defaultValues });
+  const currentForm = form ?? useForm<TValues>({ defaultValues, mode });
 
   const dismissGuard = React.use(DismissGuardContext);
   const [showConfirm, setShowConfirm] = React.useState(false);
@@ -64,11 +69,15 @@ export const Form = <TValues extends FieldValues = FieldValues>({
           }
 
           if (onSubmit) {
-            currentForm.handleSubmit(async (data) => {
-              await onSubmit(data);
-              // Keeps errors the submit handler set, such as a refusal from the backend.
-              currentForm.reset(data, { keepErrors: true });
-            })(event);
+            currentForm
+              .handleSubmit(async (data) => {
+                await onSubmit(data);
+                // Keeps errors the submit handler set, such as a refusal from the backend.
+                currentForm.reset(data, { keepErrors: true });
+              })(event)
+              .catch(() => {
+                // The handler already reported its failure; the fields stay dirty for a retry.
+              });
           }
         }}
         className={classNames("space-y-6", className)}

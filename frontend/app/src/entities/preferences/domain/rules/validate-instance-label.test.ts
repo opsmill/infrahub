@@ -60,6 +60,8 @@ describe("instanceLabelError", () => {
     { name: "a label with a non-ASCII letter", value: "Zürich PROD" },
     { name: "a label with an emoji", value: "PROD 🚀" },
     { name: "a label of 32 astral characters", value: "😀".repeat(32) },
+    { name: "a label with a trailing tab, which the server removes", value: "QA\t" },
+    { name: "a label with a leading line break, which the server removes", value: "\nQA" },
   ])("accepts $name", ({ value }) => {
     // GIVEN a valid label
     const input = value;
@@ -85,10 +87,10 @@ describe("instanceLabelError", () => {
   test.each([
     { name: "a line feed", value: "QA\nstaging" },
     { name: "a carriage return", value: "QA\rstaging" },
-    { name: "a tab", value: "QA\tstaging" },
+    { name: "a tab", value: "Q\tA" },
     { name: "a NUL character", value: "QA\u0000staging" },
-    { name: "a right-to-left override", value: "QA‮staging" },
-    { name: "an isolate terminator", value: "QA⁩staging" },
+    { name: "a right-to-left override", value: "QA\u202Estaging" },
+    { name: "an isolate terminator", value: "QA\u2069staging" },
   ])("rejects a label containing $name", ({ value }) => {
     // GIVEN a label with a control character
     const input = value;

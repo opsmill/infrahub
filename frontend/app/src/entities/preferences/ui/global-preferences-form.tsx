@@ -1,15 +1,15 @@
-import { useFormState } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form } from "@/shared/components/ui/form";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
 import {
   DateFormatField,
+  SaveButton,
   TimezoneField,
   toFieldValue,
 } from "@/entities/preferences/ui/preference-fields";
@@ -17,16 +17,6 @@ import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-glob
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
 const GLOBAL_EMPTY_VALUE_LABEL = "Automatic (browser default)";
-
-function SaveButton({ isPending }: { isPending?: boolean }) {
-  const { isDirty } = useFormState();
-
-  return (
-    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
-      Save
-    </FormSubmit>
-  );
-}
 
 export function GlobalPreferencesForm() {
   const { isPending, error, data: global } = useGlobalPreferences();
@@ -77,7 +67,7 @@ export function GlobalPreferencesForm() {
       <TimezoneField emptyValueLabel={GLOBAL_EMPTY_VALUE_LABEL} />
 
       <Row className="justify-end p-2">
-        <SaveButton isPending={updatePreferences.isPending} />
+        <SaveButton isPending={updatePreferences.isPending}>Save</SaveButton>
       </Row>
     </Form>
   );
