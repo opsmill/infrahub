@@ -302,14 +302,13 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                     log=log,
                 )
 
-            # A registry refresh in flight holds this lock, so publishing under it keeps that refresh from
-            # overwriting the rebased branch with the one it read before the commit.
-            async with lock.registry.local_schema_lock():
-                # Only update registry after txn commit. Otherwise, branch status and branched_from
-                # could diverge between registry and database during a failed txn commit.
-                registry.branch[user_branch.name] = user_branch
+            # Only update registry after txn commit. Otherwise, branch status and branched_from
+            # could diverge between registry and database during a failed txn commit.
+            registry.branch[user_branch.name] = user_branch
 
-                if migration_baseline_schema is not None and pre_rebase_schema is not None:
+            if migration_baseline_schema is not None and pre_rebase_schema is not None:
+                # A registry refresh also writes this process's schema registry, so it must not run alongside.
+                async with lock.registry.local_schema_lock():
                     # Update the registry and run migrations after the rebase, with rollback on failure.
                     # Schema nodes were already written by the rebase, so load that schema and apply only
                     # the migrations it implies.
