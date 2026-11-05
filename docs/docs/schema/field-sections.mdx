@@ -45,7 +45,7 @@ Changing `containers` or `container` requires no data migration: load the new sc
 
 Two sections exist without being declared:
 
-- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before.
+- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before. Do not declare it in `containers`, and do not set `container: details` on a field: leave `container` unset instead.
 - **Advanced**: holds every field with `container: advanced`. It is always the last section, and its card starts collapsed. Do not declare it in `containers`; Infrahub accepts `container: advanced` on any node.
 
 A section that holds no field is not shown, including Details and Advanced.
@@ -213,6 +213,8 @@ When you load a schema again, Infrahub merges the `containers` of each node and 
 - A section with an existing name takes the properties of the new file. A `description` or `order_weight` that the new file leaves out keeps its previous value.
 - A section that the new file leaves out is kept, after the sections of the file.
 
+A load that changes only the order of the sections is a schema change. When two branches order the sections of the same node differently, merging one branch into the other reports a conflict on `containers`.
+
 To remove a section, set `state: absent` on it:
 
 ```yaml
@@ -242,7 +244,7 @@ Infrahub rejects a schema with a section error and returns one of these messages
   InfraLagInterface.containers: container names must be unique, duplicate 'lacp'
   ```
 
-- A section is named `advanced`:
+- A section is named `details` or `advanced`:
 
   ```text
   InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared
@@ -253,7 +255,7 @@ A section without `label`, or with a `name` that breaks the naming rules, fails 
 ## Data access and the API
 
 - The GraphQL schema and GraphQL queries do not change. Sections do not affect how you read or write data.
-- The schema REST API returns `containers` on nodes, generics, profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field.
+- The schema REST API returns `containers` on nodes, generics, profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
 - Sections do not restrict access. To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview).
 
 ## Related concepts
