@@ -113,7 +113,7 @@ query {
 
 Teams that run several Infrahub instances, one per stage or one per region, open them in several tabs of the same browser. The instance label and the instance color mark each instance, so that a user can tell which instance a page belongs to before they change data.
 
-Both settings are organisation-wide only. There is no per-user value, and a write with `scope: USER` is rejected. Changing them requires the `manage_global_preferences` permission (super administrators have it implicitly).
+Both settings are organisation-wide only. There is no per-user value, and a write with `scope: USER` is rejected. Changing them requires the `manage_global_preferences` permission (super administrators have it implicitly). Anyone who can reach the instance can read the label and the color, including visitors who are not logged in, so the label must not contain internal information.
 
 ### What every visitor views
 
@@ -132,7 +132,7 @@ The two settings are independent:
 
 ### Allowed values
 
-- Instance label: free text of at most 32 characters. Infrahub removes leading and trailing spaces before it checks the length, so a label made of spaces only resets the label. A label with a line break is rejected.
+- Instance label: free text of at most 32 characters. Infrahub removes leading and trailing spaces before it checks the length, so a label made of spaces only resets the label. A label with a line break, a tab or another control character is rejected.
 - Instance color: one of `red`, `amber`, `green`, `blue`, `indigo`, `purple`, or `gray`. Selecting **No color** resets the color.
 
 Infrahub does not attach a meaning to any color. A convention that teams can adopt is red for production, amber for staging, and green for development; choose the one that fits your instances.

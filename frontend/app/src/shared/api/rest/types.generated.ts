@@ -1409,9 +1409,9 @@ export interface components {
              * Label
              * @description Instance label shown in the header badge and the tab title
              */
-            label?: string | null;
+            label: string | null;
             /** @description Preset color of the instance badge and bar */
-            color?: components["schemas"]["InstanceColor"] | null;
+            color: components["schemas"]["InstanceColor"] | null;
         };
         /** JSONSchema */
         JSONSchema: {

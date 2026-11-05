@@ -36,8 +36,8 @@ router = APIRouter()
 class InstanceIdentityAPI(BaseModel):
     """The label and color an administrator gave this instance, shown to every visitor."""
 
-    label: str | None = Field(default=None, description="Instance label shown in the header badge and the tab title")
-    color: InstanceColor | None = Field(default=None, description="Preset color of the instance badge and bar")
+    label: str | None = Field(description="Instance label shown in the header badge and the tab title")
+    color: InstanceColor | None = Field(description="Preset color of the instance badge and bar")
 
 
 class ConfigAPI(BaseModel):
@@ -60,9 +60,10 @@ class InfoAPI(BaseModel):
 @router.get("/config")
 async def get_config(db: InfrahubDatabase = Depends(get_db)) -> ConfigAPI:
     global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    instance = InstanceIdentityAPI(
-        label=global_preference.instance_label if global_preference else None,
-        color=global_preference.instance_color if global_preference else None,
+    instance = (
+        InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
+        if global_preference
+        else InstanceIdentityAPI(label=None, color=None)
     )
     return ConfigAPI(
         main=config.SETTINGS.main,

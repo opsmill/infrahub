@@ -69,6 +69,7 @@ LABEL_NORMALIZE_CASES: list[LabelNormalizeCase] = [
     LabelNormalizeCase(name="whitespace_only_is_unset", value="   ", expected=None),
     LabelNormalizeCase(name="none_is_unset", value=None, expected=None),
     LabelNormalizeCase(name="non_ascii_is_kept", value="Zürich PROD", expected="Zürich PROD"),
+    LabelNormalizeCase(name="emoji_is_kept", value="PROD 🚀", expected="PROD 🚀"),
     LabelNormalizeCase(name="inner_spaces_are_kept", value="us-east-1 PROD", expected="us-east-1 PROD"),
     LabelNormalizeCase(name="max_length_is_kept", value="a" * 32, expected="a" * 32),
     LabelNormalizeCase(name="whitespace_beyond_max_length_is_stripped", value=" " + "a" * 32 + " ", expected="a" * 32),
@@ -96,12 +97,32 @@ LABEL_REJECT_CASES: list[LabelRejectCase] = [
     LabelRejectCase(
         name="line_feed",
         value="a\nb",
-        expected_message="instance_label cannot contain a line break",
+        expected_message="instance_label cannot contain control characters",
     ),
     LabelRejectCase(
         name="carriage_return",
         value="a\rb",
-        expected_message="instance_label cannot contain a line break",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="tab",
+        value="a\tb",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="nul",
+        value="a\x00b",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="bidi_override",
+        value="a\u202eb",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="bidi_isolate",
+        value="a\u2066b",
+        expected_message="instance_label cannot contain control characters",
     ),
 ]
 

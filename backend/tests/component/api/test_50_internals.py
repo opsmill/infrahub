@@ -52,8 +52,9 @@ async def test_config_endpoint_anonymous_account(
     default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", allow_anonymous_access)
 
     with client:
         response = client.get("/api/config")
@@ -71,8 +72,9 @@ async def test_config_endpoint_returns_stored_instance_label_and_color(
     default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", allow_anonymous_access)
     await PreferenceRepository(db=db).save(
         Preference(owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED)
     )
@@ -124,8 +126,9 @@ async def test_info_endpoint_anonymous_account(
     default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", allow_anonymous_access)
 
     with client:
         response = client.get("/api/info")
