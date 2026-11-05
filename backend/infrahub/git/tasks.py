@@ -761,6 +761,20 @@ async def report_failed_branches(
         log.info(failure.message)
 
 
+async def import_stopped_partway(
+    repo: InfrahubRepository, branch_name: str, cycle_status: str | None, run: ActivityRun
+) -> bool:
+    """Whether the branch reads syncing while no other run works on the repository, so its import stopped partway.
+
+    `cycle_status` is the status the cycle read before the bootstrap. The bootstrap can import the branch, so a branch
+    the cycle read as syncing is read again.
+    """
+    if cycle_status != RepositorySyncStatus.SYNCING.value:
+        return False
+    recorded = await repo.read_recorded_import(branch_name=branch_name)
+    return recorded.sync_status == RepositorySyncStatus.SYNCING.value and not await run.another_run_is_active()
+
+
 async def sync_remote_repository(
     repo_name: str,
     repository_data: RepositoryData,
@@ -792,6 +806,25 @@ async def sync_remote_repository(
         if repo is None:
             return
 
+        graph_commits = select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches)
+        # Read as holding no commit, the trunk is imported again, and its remote head counts as a fast-forward, so a
+        # rewrite of the remote since the stopped import is not recorded.
+        if (
+            infrahub_branch == registry.default_branch
+            and infrahub_branch in graph_commits
+            and await import_stopped_partway(
+                repo=repo,
+                branch_name=infrahub_branch,
+                cycle_status=repository_data.branch_info[infrahub_branch].sync_status,
+                run=run,
+            )
+        ):
+            get_run_logger().info(
+                f"Importing the default branch of repository {repo_name} again: it reads syncing, "
+                "and no other run works on the repository"
+            )
+            graph_commits[infrahub_branch] = None
+
         await sync_repository_from_origin(
             repository=repository,
             repo=repo,
@@ -800,7 +833,7 @@ async def sync_remote_repository(
             default_branch_id=branches[registry.default_branch].id,
             client=client,
             activity=run,
-            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
+            graph_commits=graph_commits,
         )
 
 

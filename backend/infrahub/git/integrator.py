@@ -677,15 +677,15 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             yield progress
         except (RepositoryConnectionError, RepositoryCredentialsError):
-            await self._mark_import_failed(branch_name=branch_name)
+            await self.mark_import_failed(branch_name=branch_name)
             raise
         except Exception as exc:
             import_error = log_import_failure(identifier=self.name, branch_name=branch_name, exc=exc)
             get_run_logger().warning(progress.summary(branch_name=branch_name))
-            await self._mark_import_failed(branch_name=branch_name)
+            await self.mark_import_failed(branch_name=branch_name)
             raise import_error from exc
 
-    async def _mark_import_failed(self, branch_name: str) -> None:
+    async def mark_import_failed(self, branch_name: str) -> None:
         """Set the branch to `ERROR_IMPORT`, logging the failure of the write instead of raising it."""
         try:
             await self._update_sync_status(branch_name=branch_name, status=RepositorySyncStatus.ERROR_IMPORT)

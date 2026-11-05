@@ -473,7 +473,8 @@ A branch import is built by `build_import_plan` and applied by `apply_import_pla
 the same boundary, `_import_failure_boundary` on the integrator; the apply step does not run when the
 build step fails, so a failure is handled once. Every import goes through these two
 methods: the add and sync flows, the scheduled sync of a new clone, the import-objects flow, and the
-read-only flows through `import_objects_from_files`.
+read-only flows through `import_objects_from_files`. A failure around the boundary, and an import that
+stops without raising, are covered in [Imports That Stop Partway](git-stopped-import.md).
 
 - **What the boundary does.** On any failure it sets the branch to `ERROR_IMPORT`, logs the failure
   once to the flow run's log, and raises `RepositoryImportError`

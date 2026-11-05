@@ -11,7 +11,7 @@ from cachetools_async import cached
 from git import PushInfo, RemoteProgress
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreReadOnlyRepository
+from infrahub_sdk.protocols import CoreReadOnlyRepository, CoreRepository
 from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
@@ -37,6 +37,7 @@ from infrahub.git.base import stalled_transfer_limit
 from infrahub.git.branch_mapping import get_mapped_remote_branch, infrahub_branch_receives_imports
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
+from infrahub.git.constants import RECORD_COMMIT_FOR_IMPORT_MUTATION
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
@@ -128,6 +129,14 @@ class PendingObjectImport:
 
     on_default_branch: bool = False
     """Whether the import comes from the repository's configured default branch."""
+
+
+@dataclass(frozen=True)
+class RecordedImport:
+    """The commit the graph records for a branch of a repository, and the synchronization status of that branch."""
+
+    commit: str | None
+    sync_status: str | None
 
 
 class ImportStep(StrEnum):
@@ -371,6 +380,31 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def record_import_failure(self, infrahub_branch_name: str) -> None:
         """Mark the synchronization status of the repository as failed to import on an Infrahub branch."""
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
+
+    async def record_commit_for_import(self, branch_name: str, commit: str) -> None:
+        """Record `commit` for the branch and mark the branch syncing in one write, ahead of importing the commit.
+
+        Run under the repository lock, so a flow that checks the branch under the same lock afterwards
+        finds the import under way rather than a recorded commit next to the status of an earlier one.
+        The write goes on `branch_name` as named, the branch whose status the import sets when it ends.
+        """
+        await self.sdk.execute_graphql(
+            branch_name=branch_name,
+            query=RECORD_COMMIT_FOR_IMPORT_MUTATION,
+            variables={"repo_id": str(self.id), "commit": commit, "status": RepositorySyncStatus.SYNCING.value},
+            tracker="mutation-repository-record-commit-for-import",
+        )
+
+    async def read_recorded_import(self, branch_name: str) -> RecordedImport:
+        """Read the commit the graph records for the branch, and the synchronization status of the branch."""
+        repository = await self.sdk.get(
+            kind=CoreRepository,
+            id=str(self.id),
+            branch=branch_name,
+            exclude=["tags", "credential"],
+            raise_when_missing=True,
+        )
+        return RecordedImport(commit=readable_commit(repository.commit.value), sync_status=repository.sync_status.value)
 
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.
@@ -786,8 +820,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             graph_commits=graph_commits,
             trunk_retargeted=trunk_retargeted,
         )
-        commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
+        # Recorded with its syncing mark, a trunk whose sync stops before the import reads syncing, which a later cycle
+        # imports again, rather than in-sync next to the objects of the earlier commit.
+        marks_import = branch_name == self.default_branch and import_branch == advanced_branch
+        commit = await self._advance_branch(
+            branch_name=branch_name, remote_head=remote_head, divergence=divergence, record_commit=not marks_import
+        )
         if commit is not None:
+            if marks_import:
+                await self.record_commit_for_import(branch_name=advanced_branch, commit=commit)
             await self._queue_import(
                 collected=collected,
                 pending_import=PendingObjectImport(
@@ -1005,12 +1046,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return graph_branches[infrahub_branch].id
 
     async def _advance_branch(
-        self, branch_name: str, remote_head: str | None, divergence: RefDivergence | None
+        self, branch_name: str, remote_head: str | None, divergence: RefDivergence | None, record_commit: bool = True
     ) -> str | None:
         """Hard-reset this worker's worktree of a branch onto the remote head and return the commit to import.
 
         The classification decides one case only: a worktree already on the remote head is left alone
         unless the graph records another commit. Returns None when there is nothing to import.
+
+        Args:
+            record_commit: Whether the reset records the new commit in the graph.
 
         Raises:
             ValueError: When the branch has no worktree on this worker.
@@ -1036,7 +1080,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         ):
             discarded_commit = discarded_commit or worktree_head
 
-        await self.reset_to_commit(branch_name=branch_name, commit=remote_head)
+        await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=record_commit)
         if discarded_commit is not None:
             self._log_reconciliation(branch_name=branch_name, discarded_commit=discarded_commit, commit=remote_head)
         return remote_head
