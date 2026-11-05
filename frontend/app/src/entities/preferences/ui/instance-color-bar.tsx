@@ -5,14 +5,15 @@ import { instanceBarClassName } from "@/entities/preferences/domain/rules/instan
 
 export function InstanceColorBar() {
   const { color } = useConfig().instance;
+  const barClassName = instanceBarClassName(color);
 
-  if (!color) return null;
+  if (!barClassName) return null;
 
   return (
     <div
       aria-hidden
       data-testid="instance-color-bar"
-      className={classNames("h-0.75 w-full shrink-0", instanceBarClassName(color))}
+      className={classNames("h-0.75 w-full shrink-0", barClassName)}
     />
   );
 }

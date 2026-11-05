@@ -44,7 +44,8 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
 
-  const currentLabel = items.find((item) => item.value === value)?.label ?? value;
+  const currentItem = items.find((item) => item.value === value);
+  const currentLabel = currentItem?.label ?? value;
 
   const handleSelectionChange = (keys: Selection) => {
     // Re-selecting the current value yields an empty set → null clears the selection.
@@ -62,8 +63,14 @@ export function Combobox({
         aria-describedby={ariaDescribedBy}
         className={classNames("w-full justify-between font-normal", className)}
       >
-        <span className={classNames("truncate", currentLabel ? "" : "text-subtle-muted")}>
-          {currentLabel ?? placeholder}
+        <span
+          className={classNames(
+            "flex min-w-0 items-center gap-2",
+            currentLabel ? "" : "text-subtle-muted"
+          )}
+        >
+          {currentItem?.icon}
+          <span className="truncate">{currentLabel ?? placeholder}</span>
         </span>
         <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 text-subtle-muted" />
       </Button>

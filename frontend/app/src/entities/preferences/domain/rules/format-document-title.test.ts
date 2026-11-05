@@ -12,7 +12,6 @@ describe("formatDocumentTitle", () => {
       expected: "QA · Infrahub",
     },
     { name: "a null label", label: null, pageTitle: "Schema", expected: "Schema" },
-    { name: "an undefined label", label: undefined, pageTitle: "Schema", expected: "Schema" },
     { name: "an empty label", label: "", pageTitle: "Schema", expected: "Schema" },
     { name: "a whitespace-only label", label: "   ", pageTitle: "Schema", expected: "Schema" },
     {

@@ -19,6 +19,7 @@ const baseGlobal: GlobalPreferences = {
 };
 
 const TOO_LONG_LABEL = "a".repeat(33);
+const LENGTH_RULE = "The instance label cannot be longer than 32 characters.";
 
 describe("InstanceIdentityForm", () => {
   beforeEach(() => {
@@ -47,7 +48,7 @@ describe("InstanceIdentityForm", () => {
       .toHaveTextContent("Red");
   });
 
-  test("saves only the instance label and color, leaving the date fields untouched", async () => {
+  test("sends only the label when only the label changed", async () => {
     // GIVEN
     const component = await render(<InstanceIdentityForm />);
     await component.getByLabelText("Instance label").fill("us-east-1 PROD");
@@ -56,11 +57,11 @@ describe("InstanceIdentityForm", () => {
     await component.getByRole("button", { name: "Save instance identity" }).click();
 
     // THEN
+    // toStrictEqual fails on an `instanceColor: undefined` key, which the API would still send.
     await vi.waitFor(() => {
-      expect(updateGlobalPreference).toHaveBeenCalledWith({
-        instanceLabel: "us-east-1 PROD",
-        instanceColor: "RED",
-      });
+      expect(vi.mocked(updateGlobalPreference).mock.calls).toStrictEqual([
+        [{ instanceLabel: "us-east-1 PROD" }],
+      ]);
     });
     await expect.element(component.getByText("Instance identity updated")).toBeVisible();
   });
@@ -75,10 +76,39 @@ describe("InstanceIdentityForm", () => {
 
     // THEN
     await vi.waitFor(() => {
-      expect(updateGlobalPreference).toHaveBeenCalledWith({
-        instanceLabel: null,
-        instanceColor: "RED",
-      });
+      expect(updateGlobalPreference).toHaveBeenCalledWith({ instanceLabel: null });
+    });
+  });
+
+  test("sends only the color when only the color changed", async () => {
+    // GIVEN
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByRole("button", { name: "Instance color" }).click();
+    await component.getByRole("option", { name: "Green", exact: true }).click();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await vi.waitFor(() => {
+      expect(vi.mocked(updateGlobalPreference).mock.calls).toStrictEqual([
+        [{ instanceColor: "GREEN" }],
+      ]);
+    });
+  });
+
+  test("clears the color by sending null when the current color is picked again", async () => {
+    // GIVEN
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByRole("button", { name: "Instance color" }).click();
+    await component.getByRole("option", { name: "Red", exact: true }).click();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await vi.waitFor(() => {
+      expect(updateGlobalPreference).toHaveBeenCalledWith({ instanceColor: null });
     });
   });
 
@@ -93,6 +123,17 @@ describe("InstanceIdentityForm", () => {
     await expect.element(component.getByText("2/32")).toBeVisible();
   });
 
+  test("counts the label in code points, not UTF-16 units", async () => {
+    // GIVEN
+    const component = await render(<InstanceIdentityForm />);
+
+    // WHEN
+    await component.getByLabelText("Instance label").fill("😀😀");
+
+    // THEN
+    await expect.element(component.getByText("2/32")).toBeVisible();
+  });
+
   test("names the 32-character limit as soon as the label exceeds it", async () => {
     // GIVEN
     const component = await render(<InstanceIdentityForm />);
@@ -101,9 +142,7 @@ describe("InstanceIdentityForm", () => {
     await component.getByLabelText("Instance label").fill(TOO_LONG_LABEL);
 
     // THEN
-    await expect
-      .element(component.getByText("The instance label cannot be longer than 32 characters."))
-      .toBeVisible();
+    await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
   });
 
   test("does not save a label that exceeds the limit", async () => {
@@ -116,9 +155,25 @@ describe("InstanceIdentityForm", () => {
     await userEvent.keyboard("{Enter}");
 
     // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Save instance identity" }))
-      .toBeDisabled();
+    await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
+    expect(updateGlobalPreference).not.toHaveBeenCalled();
+  });
+
+  test("names the rule on save when the stored label already exceeds the limit", async () => {
+    // GIVEN
+    vi.mocked(getGlobalPreferences).mockResolvedValue({
+      ...baseGlobal,
+      instanceLabel: TOO_LONG_LABEL,
+    });
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByRole("button", { name: "Instance color" }).click();
+    await component.getByRole("option", { name: "Green", exact: true }).click();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
     expect(updateGlobalPreference).not.toHaveBeenCalled();
   });
 
