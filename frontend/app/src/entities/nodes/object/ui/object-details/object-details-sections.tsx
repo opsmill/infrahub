@@ -60,6 +60,7 @@ export function ObjectDetailsSections({
         title={container.label}
         description={isDetails ? undefined : container.description}
         defaultCollapsed={isDetails ? undefined : container.collapsed}
+        sectionName={isDetails ? undefined : container.name}
         objectSchema={{ ...objectSchema, attributes, relationships }}
         objectData={objectData}
         permission={permission}
