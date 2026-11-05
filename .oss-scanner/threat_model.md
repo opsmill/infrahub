@@ -16,13 +16,14 @@ and a React frontend. The documentation for the intended behavior is in `dev/kno
 
 - The GraphQL API (`/graphql` and `/graphql/<branch>`) and the REST API (`/api/...`), from anonymous users and from
   signed-in accounts with any role.
-- Sign-in: passwords, JWT access and refresh tokens, API tokens (`X-INFRAHUB-KEY` header), and OAuth2 / OIDC
-  single sign-on, including the redirect and callback flow.
+- Sign-in: passwords for local accounts and native LDAP, JWT access and refresh tokens, API tokens
+  (`X-INFRAHUB-KEY` header), and OAuth2 / OIDC single sign-on, including the redirect and callback flow.
 - Files that accounts upload (file objects) and artifacts that Infrahub stores and serves back.
 - Data that accounts write and that other users later view in the frontend.
 - Jinja2 templates in the schema (computed attributes and display labels). Accounts that can change the schema
   write these templates, and Infrahub renders them in a sandboxed Jinja2 environment.
 - Webhook definitions, which make Infrahub send HTTP requests to a URL that the account managing the webhook sets.
+  Infrahub records each response in the task's artifacts.
 
 ## Who is trusted
 
@@ -32,6 +33,8 @@ and a React frontend. The documentation for the intended behavior is in `dev/kno
   `EDIT_DEFAULT_BRANCH`, `MERGE_PROPOSED_CHANGE` or `MANAGE_SCHEMA`, and object permissions per kind and branch).
   Any way to go beyond those permissions is in scope.
 - Accounts with `SUPER_ADMIN` are fully trusted.
+- Accounts allowed to manage webhooks choose where Infrahub sends requests. Creating or changing a webhook without
+  that permission is a permission bypass.
 - Git repositories connected to Infrahub are trusted like code. The task workers run the Python transforms, checks
   and generators from these repositories, and render their Jinja2 template files without a sandbox. This is by
   design. Connecting a repository requires permission to do so.
@@ -40,11 +43,14 @@ and a React frontend. The documentation for the intended behavior is in `dev/kno
 
 - `backend/infrahub/`: API, GraphQL, authentication, permissions, branches, merges, proposed changes, schema,
   storage, webhooks, task workers and the Git integration.
-- `frontend/app/`: the web interface.
+- `frontend/app/`, `frontend/packages/ui/`, `frontend/packages/graph/` and `frontend/packages/plugins/`: the web
+  interface.
 
 ## Out of scope
 
-- `python_sdk/` and `frontend/packages/schema-visualizer/`: separate projects pulled in as Git submodules.
+- `python_sdk/` and `frontend/packages/schema-visualizer/`: separate projects pulled in as Git submodules. The SDK
+  is scanned as its own project, but a flaw in it that Infrahub exposes, such as a Jinja2 sandbox escape through a
+  schema template, is in scope here.
 - `docs/`, `models/`, `utilities/`, `tasks/`, `development/`, `tests/`, `backend/tests/`, `frontend/app/tests/`
   and `python_testcontainers/`: documentation, example data, developer tooling and tests.
 - The default passwords, tokens and secret key in `docker-compose.yml` and in this image's start script. They are
@@ -52,32 +58,36 @@ and a React frontend. The documentation for the intended behavior is in `dev/kno
   and demo environments, not for production.
 - Vulnerabilities in third-party dependencies, unless Infrahub uses the dependency in an unsafe way.
 - Denial of service that requires `SUPER_ADMIN`.
+- Findings that depend on the task manager storing its data in SQLite. This image uses SQLite; deployments use
+  PostgreSQL.
 
 ## How we rate severity
 
 - **Critical:** code execution on the server or task workers without an account or with a low-privilege account,
-  signing in as another account without its credentials, or reading or changing any data without an account.
+  signing in as another account without its credentials, changing data without an account, or reading data that
+  the "Anonymous User" role does not allow.
 - **High:** a signed-in account going beyond its permissions (for example changing the default branch without
   `EDIT_DEFAULT_BRANCH`, merging without merge permission, or managing accounts or permissions without the matching
   permission), reading data its roles do not allow, reading stored secrets or credentials, escaping the Jinja2
   sandbox for schema templates, and stored XSS that runs in another account's session.
 - **Medium:** denial of service that a low-privilege or anonymous user can trigger, leaks of data that is not
-  sensitive on its own, reflected XSS or CSRF that needs the victim to take an action, and open redirects in the
-  sign-in flow.
+  sensitive on its own, reflected XSS or CSRF that needs the victim to take an action, open redirects in the
+  sign-in flow, and webhooks that reach internal services or cloud metadata addresses.
 - **Low:** missing hardening (security headers, cookie flags) and verbose error messages without sensitive data.
 
 ## How to exercise Infrahub
 
-The image has every service installed. They listen on localhost only.
+The image has every service installed, and clients reach them on localhost.
 
 - `.oss-scanner/start-services.sh all` starts Neo4j, RabbitMQ, Redis, the Prefect task manager, the API server on
   `http://localhost:8000` and one task worker. Sign in as `admin` / `infrahub`, or send the header
   `X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec`. Logs are in `/var/log/infrahub-scanner`.
 - To test permissions, create an account with a limited role through the GraphQL API as admin, then send requests
   as that account.
-- `.oss-scanner/start-services.sh deps` starts only the services the backend tests need. Run tests with
-  `uv run pytest backend/tests/unit/<path>`. The tests reset the database, so stop the API server first
-  (`.oss-scanner/start-services.sh stop`).
+- To run the backend tests, stop everything first if the API server is running (`.oss-scanner/start-services.sh
+  stop`), then start only what the tests need (`.oss-scanner/start-services.sh deps`), then run
+  `uv run pytest backend/tests/unit/<path>`. The tests empty the database, which removes the admin account; the
+  next `.oss-scanner/start-services.sh all` resets the database so the admin account and token work again.
 - Frontend unit tests: `cd frontend/app && pnpm vitest run <path>`. They run in a headless Chromium that the image
   build tries to install; if the build log shows a warning about it, these tests cannot run.
 
