@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from prefect_redis.connection import aclose_redis_client
 
 from infrahub import config
-from infrahub.redis_connection import build_redis_connection
+from infrahub.redis_connection import build_redis_connection, close_idle_connections
 from infrahub.services.adapters.cache import InfrahubCache
 
 if TYPE_CHECKING:
@@ -59,3 +59,6 @@ class RedisCache(InfrahubCache):
 
     async def close_connection(self) -> None:
         await aclose_redis_client(self.connection)
+
+    async def close_idle_connections(self, idle_seconds: int) -> None:
+        await close_idle_connections(self.connection, idle_seconds=idle_seconds)

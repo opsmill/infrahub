@@ -454,6 +454,17 @@ such a call. A blip between one worker and the cache while the cleanup's worker 
 remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
 the deadlock cleanup has no equivalent.
 
+### Idle Redis connections are closed by a recurring schedule
+
+redis-py never closes a free pooled connection, so every connection a burst of lock polls opens would
+hold a file descriptor and a Redis client slot until the process exits. On API servers and task
+workers, a schedule (`close_idle_cache_connections` in `tasks/recurring.py`) closes, every minute,
+the free connections of the cache and lock pools whose last reply is older than
+`cache.idle_connection_timeout`; a closed connection stays in its pool and reconnects when a command
+takes it. It closes them under the pool's own lock, so no command takes one while it closes, and it
+reads redis-py 8.1 internals (`_lock`, `_available_connections`, `next_health_check`) that
+`tests/unit/test_redis_connection.py` exercises: re-check them when bumping redis-py.
+
 ## Key Locations
 
 | Component | Location |

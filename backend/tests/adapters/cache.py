@@ -27,6 +27,8 @@ class MemoryCache(InfrahubCache):
 
     async def close_connection(self) -> None: ...
 
+    async def close_idle_connections(self, idle_seconds: int) -> None: ...
+
 
 class UnreachableCache(InfrahubCache):
     """Simulates an unreachable cache backend by raising on every operation."""
@@ -47,3 +49,5 @@ class UnreachableCache(InfrahubCache):
         raise ConnectionError("cache unreachable")
 
     async def close_connection(self) -> None: ...
+
+    async def close_idle_connections(self, idle_seconds: int) -> None: ...

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import ssl
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +10,7 @@ from urllib.parse import quote_plus
 import pytest
 from pydantic import SecretStr
 from redis.asyncio import Redis
-from redis.asyncio.connection import Connection, SSLConnection
+from redis.asyncio.connection import Connection, ConnectionPool, SSLConnection
 from redis.asyncio.sentinel import SentinelConnectionPool
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
@@ -20,6 +21,7 @@ from infrahub.redis_connection import (
     REDIS_HEALTH_CHECK_INTERVAL,
     build_cache_connection_string,
     build_redis_connection,
+    close_idle_connections,
     validate_redis_url,
 )
 
@@ -573,3 +575,73 @@ def test_validate_redis_url_rejects_without_echoing_the_url(case: InvalidUrlCase
 
     for fragment in case.secret_fragments:
         assert fragment not in str(exc_info.value)
+
+
+IDLE_SECONDS = 300
+
+
+class RecordingConnection(Connection):
+    """A connection that never opens a socket, and records whether the pool closed it."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.open = True
+
+    @property
+    def is_connected(self) -> bool:
+        return self.open
+
+    async def disconnect(self, *args: Any, **kwargs: Any) -> None:
+        self.open = False
+
+
+def _replied(connection: Connection, seconds_ago: float) -> None:
+    """Make the connection look as if its last reply came ``seconds_ago``."""
+    now = asyncio.get_running_loop().time()
+    connection.next_health_check = now - seconds_ago + connection.health_check_interval
+
+
+async def test_close_idle_connections_closes_only_free_connections_idle_past_the_timeout() -> None:
+    pool = ConnectionPool(connection_class=RecordingConnection, health_check_interval=REDIS_HEALTH_CHECK_INTERVAL)
+    idle, recent, busy = (pool.get_available_connection() for _ in range(3))
+    _replied(idle, seconds_ago=IDLE_SECONDS + 1)
+    _replied(recent, seconds_ago=1)
+    _replied(busy, seconds_ago=IDLE_SECONDS + 1)
+    await pool.release(idle)
+    await pool.release(recent)
+
+    closed = await close_idle_connections(Redis(connection_pool=pool), idle_seconds=IDLE_SECONDS)
+
+    assert closed == 1
+    assert [idle.is_connected, recent.is_connected, busy.is_connected] == [False, True, True]
+    # A closed connection stays in the pool, so it is reconnected rather than replaced when a command takes it.
+    assert {pool.get_available_connection(), pool.get_available_connection()} == {idle, recent}
+
+
+async def test_close_idle_connections_keeps_connections_whose_last_reply_is_not_known() -> None:
+    """Without the health check, a connection records no reply, so nothing tells that it is idle."""
+    pool = ConnectionPool(connection_class=RecordingConnection, health_check_interval=0)
+    connection = pool.get_available_connection()
+    await pool.release(connection)
+
+    assert await close_idle_connections(Redis(connection_pool=pool), idle_seconds=IDLE_SECONDS) == 0
+    assert connection.is_connected
+
+
+async def test_close_idle_connections_cleans_the_sentinel_daemon_pools() -> None:
+    client = _build("redis+sentinel://s1:26379,s2:26379/mymaster")
+    pool = client.connection_pool
+    assert isinstance(pool, SentinelConnectionPool)
+    daemon_pools = [daemon.connection_pool for daemon in pool.sentinel_manager.sentinels]
+    for daemon_pool in daemon_pools:
+        daemon_pool.connection_class = RecordingConnection
+    connections = [daemon_pool.get_available_connection() for daemon_pool in daemon_pools]
+    for connection, daemon_pool in zip(connections, daemon_pools, strict=True):
+        assert connection.health_check_interval == REDIS_HEALTH_CHECK_INTERVAL
+        _replied(connection, seconds_ago=IDLE_SECONDS + 1)
+        await daemon_pool.release(connection)
+
+    closed = await close_idle_connections(client, idle_seconds=IDLE_SECONDS)
+
+    assert closed == len(connections)
+    assert [connection.is_connected for connection in connections] == [False] * len(connections)
