@@ -7,6 +7,7 @@ import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IpPoolActionsMenu } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-actions-menu";
 import { IpPoolDefaultsLine } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-defaults-line";
+import { IpPoolExtraFieldsLine } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-extra-fields";
 import { PoolId } from "@/entities/resource-manager/ui/pool/pool-id";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -41,6 +42,7 @@ export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
       </Row>
 
       <IpPoolDefaultsLine pool={pool} />
+      <IpPoolExtraFieldsLine poolId={pool.id} schema={schema} />
     </header>
   );
 }

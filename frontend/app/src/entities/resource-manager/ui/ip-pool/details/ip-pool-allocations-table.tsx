@@ -23,6 +23,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_ADDRESS_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import { KindLabel } from "@/entities/resource-manager/ui/pool/kind-label";
+import { PoolLoadMoreError } from "@/entities/resource-manager/ui/pool/pool-load-more-error";
 import { useGetIpPoolAllocations } from "@/entities/resource-manager/ui/queries/get-ip-pool-allocations.query";
 
 const ROW_HEIGHT = 36;
@@ -67,10 +68,20 @@ export function IpPoolAllocationsTable({
   poolKind,
   resource,
 }: IpPoolAllocationsTableProps) {
-  const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetIpPoolAllocations({ poolId, resourceId: resource.id });
+  const {
+    data,
+    error,
+    isPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = useGetIpPoolAllocations({ poolId, resourceId: resource.id });
 
   if (error && !data) return <ErrorScreen message={error.message} />;
+
+  // a failed page must not be cancelled and restarted by the next scroll or retry
+  const loadNextPage = () => fetchNextPage({ cancelRefetch: false });
 
   const allocations = data?.pages.flatMap((page) => page.allocations) ?? [];
   const count = data?.pages[0]?.count;
@@ -177,9 +188,9 @@ export function IpPoolAllocationsTable({
                 </AriaRow>
               )}
             </Collection>
-            {hasNextPage && (
+            {hasNextPage && !isFetchNextPageError && (
               <TableLoadMoreItem
-                onLoadMore={fetchNextPage}
+                onLoadMore={loadNextPage}
                 isLoading={isFetchingNextPage}
                 className="flex items-center justify-center gap-2 text-foreground-muted text-xs"
               >
@@ -189,6 +200,13 @@ export function IpPoolAllocationsTable({
           </TableBody>
         </Table>
       </Virtualizer>
+      {isFetchNextPageError && (
+        <PoolLoadMoreError
+          itemsLabel={noun}
+          isRetrying={isFetchingNextPage}
+          onRetry={loadNextPage}
+        />
+      )}
     </Col>
   );
 }

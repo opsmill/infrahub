@@ -42,7 +42,7 @@ The pool page shows you:
 
 Select a resource prefix in the list to see what it holds. This gives you visibility into resource utilization across your entire infrastructure.
 
-**Key insight**: Notice how you can see all allocations in one place, regardless of which branch they were created in.
+**Key insight**: Each usage bar separates the share used on the default branch from the share added on the branch you are viewing.
 
 ## Step 2: Experience automatic resource allocation
 
@@ -91,23 +91,23 @@ In the device view, notice the **Primary IP Address** field now contains an IP a
 
 ## Step 4: Verify branch-agnostic allocation
 
-This step demonstrates the most powerful feature of Infrahub's Resource Manager: allocations are visible and reserved across all branches, even before merging.
+This step demonstrates the most powerful feature of Infrahub's Resource Manager: an allocation made in one branch is reserved across all branches, even before merging.
 
-Switch back to the **main** branch using the branch selector in the UI.
-
-Navigate to **Object Management** → **Resource Managers** and click on the `Loopbacks pool`.
+Stay on the `add-device` branch, navigate to **Object Management** → **Resource Managers** and click on the `Loopbacks pool`.
 
 Select the resource prefix `10.0.0.0/16` in the list to see all allocated addresses.
 
-Scroll through the Allocated addresses table until you reach the address allocated to your device: its identifier names the device.
+Scroll through the Allocated addresses table until you reach the address allocated to your device: its identifier names the device. The usage bar of `10.0.0.0/16` shows the share this branch adds as a lighter segment.
 
-**Important observation**: You'll find the IP address allocated to `atl1-leaf99` in this list, even though:
+Now switch back to the **main** branch using the branch selector and open the `Loopbacks pool` again.
+
+**Important observation**: the address allocated to `atl1-leaf99` is not in this list, because the table lists the allocations of the branch you are viewing. The address is still reserved, even though:
 
 - You're viewing from the main branch
 - The device was created in the `add-device` branch
 - The branches haven't been merged yet
 
-This proves that resource allocation is branch-agnostic. The IP address is reserved across all branches, preventing conflicts when teams work in parallel.
+The pool will not hand this address out to a request made on main or on any other branch. This prevents conflicts when teams work in parallel.
 
 ## What you've learned
 
@@ -116,7 +116,7 @@ Through this hands-on exploration, you've discovered:
 - **Automated allocation**: Resource Manager eliminates manual IP address tracking by automatically assigning the next available resource
 - **Branch-agnostic reservations**: Resources allocated in any branch are immediately reserved across all branches, preventing conflicts
 - **Atomic operations**: Resources are allocated during object creation, ensuring consistency
-- **Centralized visibility**: All allocations are visible in one place, regardless of which branch created them
+- **Per-branch visibility**: The pool page lists the allocations of the branch you are viewing, and its usage bars separate that branch's share from the default branch's
 - **Conflict prevention**: Multiple teams can work in parallel without worrying about duplicate resource assignments
 
 ## Real-world impact

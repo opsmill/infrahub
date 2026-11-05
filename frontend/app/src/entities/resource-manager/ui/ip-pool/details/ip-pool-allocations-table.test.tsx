@@ -233,13 +233,13 @@ describe("IpPoolAllocationsTable", () => {
     await expect.element(component.getByText("Allocations unavailable")).toBeVisible();
   });
 
-  it("keeps the loaded rows when loading the next page fails", async () => {
+  it("keeps the loaded rows and offers a retry when loading the next page fails", async () => {
     // GIVEN
-    mockAllocations({ allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] });
+    const fetchNextPage = vi.fn();
     vi.mocked(useGetIpPoolAllocations).mockReturnValue({
       data: {
         pages: [
-          { count: 1, allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] },
+          { count: 2, allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] },
         ],
         pageParams: [0],
       },
@@ -247,14 +247,20 @@ describe("IpPoolAllocationsTable", () => {
       isPending: false,
       hasNextPage: true,
       isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
+      isFetchNextPageError: true,
+      fetchNextPage,
     } as unknown as ReturnType<typeof useGetIpPoolAllocations>);
 
     // WHEN
     const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
 
     // THEN
     await expect.element(component.getByRole("row", { name: /^10\.10\.0\.0\/31/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("More prefixes could not be loaded.Retry");
+    expect(fetchNextPage).toHaveBeenCalledExactlyOnceWith({ cancelRefetch: false });
   });
 
   it("loads the next rows when the user scrolls to the end", async () => {
