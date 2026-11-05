@@ -78,6 +78,7 @@ export const RelationshipDisplay = ({
         <PropertyRow title="Max count" value={relationship.max_count} />
         <PropertyRow title="Min count" value={relationship.min_count} />
         <PropertyRow title="Display" value={relationship.display} />
+        <PropertyRow title="Container" value={relationship.container ?? "-"} />
         <PropertyRow title="Order weight" value={relationship.order_weight} />
       </div>
     </AccordionStyled>

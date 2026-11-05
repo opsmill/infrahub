@@ -1,0 +1,1 @@
+Added one card per field section on the detail page of an object: each card shows the section description under its title and its own Extra toggle when it holds extra fields, and every card except Details can be collapsed.

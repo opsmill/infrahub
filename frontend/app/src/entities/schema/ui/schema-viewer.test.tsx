@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { render } from "../../../../tests/components/render";
 import {
   generateAttributeSchema,
+  generateContainerSchema,
   generateNodeSchema,
   generateRelationshipSchema,
 } from "../../../../tests/fake/schema";
@@ -340,5 +341,115 @@ describe("SchemaViewer Component", () => {
     // THEN
     await expect.element(component.getByText("Display", { exact: true })).toBeVisible();
     await expect.element(component.getByText("extra", { exact: true }).first()).toBeVisible();
+  });
+
+  test("lists the containers of a node", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      containers: [
+        generateContainerSchema({
+          name: "lacp",
+          label: "LACP settings",
+          order_weight: 2000,
+          collapsed: true,
+          description: "Link aggregation",
+        }),
+        generateContainerSchema({ name: "vlan", label: "VLAN settings" }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // THEN
+    await expect.element(component.getByText("Containers", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("lacp", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("LACP settings", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Order weight2000")).toBeVisible();
+    await expect.element(component.getByText("Collapsedtrue")).toBeVisible();
+    await expect.element(component.getByText("Link aggregation", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("vlan", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("VLAN settings", { exact: true })).toBeVisible();
+  });
+
+  test("shows no Containers block for a node without containers", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({ name: "Node", namespace: "Test", containers: [] });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // THEN
+    await expect.element(component.getByText("Kind", { exact: true })).toBeVisible();
+    expect(component.getByText("Containers", { exact: true }).query()).toBeNull();
+  });
+
+  test("shows the container of an attribute and of a relationship", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      containers: [generateContainerSchema({ name: "lacp", label: "LACP settings" })],
+      attributes: [
+        generateAttributeSchema({ name: "attribute", label: "Attribute", container: "lacp" }),
+      ],
+      relationships: [
+        generateRelationshipSchema({
+          name: "relationship",
+          label: "Grouped Relationship",
+          container: "lacp",
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute Text").click();
+
+    // THEN
+    await expect.element(component.getByText("Containerlacp", { exact: true })).toBeVisible();
+
+    // WHEN
+    await component.getByText("Relationships").click();
+    await component.getByText("Grouped Relationship").click();
+
+    // THEN
+    await expect.element(component.getByText("Containerlacp", { exact: true })).toBeVisible();
+  });
+
+  test("shows a dash for a field without container", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({ name: "attribute", label: "Attribute", container: null }),
+      ],
+      relationships: [
+        generateRelationshipSchema({
+          name: "relationship",
+          label: "Main Relationship",
+          container: null,
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute Text").click();
+
+    // THEN
+    await expect.element(component.getByText("Container-", { exact: true })).toBeVisible();
+
+    // WHEN
+    await component.getByText("Relationships").click();
+    await component.getByText("Main Relationship").click();
+
+    // THEN
+    await expect.element(component.getByText("Container-", { exact: true })).toBeVisible();
   });
 });
