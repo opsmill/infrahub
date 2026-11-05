@@ -229,8 +229,9 @@ describe("NumberPoolAllocationsTable", () => {
       .toBeVisible();
   });
 
-  it("keeps the loaded rows when loading the next page fails", async () => {
+  it("keeps the loaded rows and offers a retry when loading the next page fails", async () => {
     // GIVEN
+    const fetchNextPage = vi.fn();
     mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
     vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
       data: { pages: [[generateNumberPoolAllocation({ value: 7 })]], pageParams: [0] },
@@ -238,14 +239,20 @@ describe("NumberPoolAllocationsTable", () => {
       isPending: false,
       hasNextPage: true,
       isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
+      isFetchNextPageError: true,
+      fetchNextPage,
     } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
 
     // WHEN
     const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
 
     // THEN
     await expect.element(component.getByRole("row", { name: /^7/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("More allocations could not be loaded.Retry");
+    expect(fetchNextPage).toHaveBeenCalledExactlyOnceWith({ cancelRefetch: false });
   });
 
   it("marks a number a user provided", async () => {
