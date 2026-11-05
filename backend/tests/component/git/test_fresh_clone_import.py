@@ -11,6 +11,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
 from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus, RepositorySyncStatus
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
@@ -115,13 +116,13 @@ async def create_node(db: InfrahubDatabase, remote: LocalRemote, name: str) -> N
         db=db,
         name=name,
         location=str(remote.directory),
-        default_branch=TRUNK,
+        default_branch=remote.trunk,
         operational_status=RepositoryOperationalStatus.ONLINE.value,
     )
 
 
-async def recorded_state(client: InfrahubClient, node: Node) -> tuple[str | None, str | None]:
-    repository = await client.get(kind=CoreRepository, id=node.id, branch=TRUNK)
+async def recorded_state(client: InfrahubClient, node: Node, branch: str = TRUNK) -> tuple[str | None, str | None]:
+    repository = await client.get(kind=CoreRepository, id=node.id, branch=branch)
     return repository.commit.value, repository.sync_status.value
 
 
@@ -136,12 +137,12 @@ def use_another_worker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, worker: 
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(directory))
 
 
-def add_model(node: Node, name: str, remote: LocalRemote) -> GitRepositoryAdd:
+def add_model(node: Node, name: str, remote: LocalRemote, infrahub_branch_name: str | None = None) -> GitRepositoryAdd:
     return GitRepositoryAdd(
         location=str(remote.directory),
         repository_id=node.id,
         repository_name=name,
-        infrahub_branch_name=registry.default_branch,
+        infrahub_branch_name=infrahub_branch_name or registry.default_branch,
         infrahub_branch_id=str(UUIDT()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
     )
@@ -277,6 +278,35 @@ class TestFreshCloneImport(TestInfrahubApp):
         assert added.import_error is None
         assert importer.states_at_build == [(head, RepositorySyncStatus.SYNCING.value)]
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
+
+    async def test_the_add_flow_sets_the_status_only_of_the_branch_it_imports_into(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """Holds when the Infrahub branch is named like the repository's default branch, which maps to another branch."""
+        name = "added-on-develop"
+        develop = "develop"
+        await create_branch(branch_name=develop, db=db)
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=develop, branches=[])
+        remote.commit(branch_name=develop, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
+        model = add_model(node=node, name=name, remote=remote, infrahub_branch_name=develop)
+
+        async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD) as run:
+            added = await adder.add(model, activity=run)
+
+        assert added.import_error is None
+        _, develop_status = await recorded_state(client=client, node=node, branch=develop)
+        _, default_status = await recorded_state(client=client, node=node, branch=TRUNK)
+        assert (develop_status, default_status) == (
+            RepositorySyncStatus.IN_SYNC.value,
+            RepositorySyncStatus.UNKNOWN.value,
+        )
 
 
 class TestSynchronisationCycleOnAFreshWorker(TestInfrahubApp):
