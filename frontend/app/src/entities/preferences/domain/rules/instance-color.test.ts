@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { INSTANCE_COLORS } from "@/entities/preferences/domain/model/instance-identity";
 import {
-  INSTANCE_COLOR_LABELS,
   instanceBadgeVariant,
   instanceBarClassName,
+  instanceColorLabel,
 } from "@/entities/preferences/domain/rules/instance-color";
 
 import { generateConfig } from "../../../../../tests/fake/config";
@@ -31,7 +30,7 @@ describe("instance color presets", () => {
     const resolved = {
       badgeVariant: instanceBadgeVariant(color),
       barClassName: instanceBarClassName(color),
-      label: INSTANCE_COLOR_LABELS[color],
+      label: instanceColorLabel(color),
     };
 
     // THEN each matches the preset table
@@ -40,17 +39,6 @@ describe("instance color presets", () => {
       barClassName: preset.barClassName,
       label: preset.label,
     });
-  });
-
-  test("lists the seven presets in display order", () => {
-    // GIVEN the preset list
-    const colors = INSTANCE_COLORS;
-
-    // WHEN read
-    const order = [...colors];
-
-    // THEN it holds every preset in the order the form shows them
-    expect(order).toEqual(["RED", "AMBER", "GREEN", "BLUE", "INDIGO", "PURPLE", "GRAY"]);
   });
 
   test("falls back to the gray badge variant when the instance has no color", () => {
@@ -64,14 +52,25 @@ describe("instance color presets", () => {
     expect(variant).toBe("gray");
   });
 
-  test("falls back to the gray badge variant when the color is undefined", () => {
-    // GIVEN no color
-    const color = undefined;
+  test("falls back to the gray badge variant for a color this bundle does not know", () => {
+    // GIVEN a color key served by a newer server
+    const color = "TEAL";
 
     // WHEN the badge variant is resolved
     const variant = instanceBadgeVariant(color);
 
     // THEN it is gray
     expect(variant).toBe("gray");
+  });
+
+  test("resolves no bar class for a color this bundle does not know", () => {
+    // GIVEN a color key served by a newer server
+    const color = "TEAL";
+
+    // WHEN the bar class is resolved
+    const barClassName = instanceBarClassName(color);
+
+    // THEN there is none
+    expect(barClassName).toBeNull();
   });
 });

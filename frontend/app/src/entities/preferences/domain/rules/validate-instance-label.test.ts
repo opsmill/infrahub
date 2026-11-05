@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   instanceLabelError,
+  instanceLabelLength,
   normalizeInstanceLabel,
 } from "@/entities/preferences/domain/rules/validate-instance-label";
 
@@ -32,12 +33,33 @@ describe("normalizeInstanceLabel", () => {
   });
 });
 
+describe("instanceLabelLength", () => {
+  test.each([
+    { name: "an ASCII label", value: "QA", expected: 2 },
+    { name: "a padded label", value: "  QA  ", expected: 2 },
+    { name: "an accented label", value: "Zürich", expected: 6 },
+    { name: "an emoji, which is two UTF-16 units", value: "😀", expected: 1 },
+  ])("counts $name in code points", ({ value, expected }) => {
+    // GIVEN a label
+    const input = value;
+
+    // WHEN its length is counted
+    const length = instanceLabelLength(input);
+
+    // THEN each code point counts once
+    expect(length).toBe(expected);
+  });
+});
+
 describe("instanceLabelError", () => {
   test.each([
     { name: "a short label", value: "QA" },
     { name: "an empty label", value: "" },
     { name: "a label of exactly 32 characters", value: "a".repeat(32) },
     { name: "a label whose padding pushes it past 32 characters", value: ` ${"a".repeat(32)} ` },
+    { name: "a label with a non-ASCII letter", value: "Zürich PROD" },
+    { name: "a label with an emoji", value: "PROD 🚀" },
+    { name: "a label of 32 astral characters", value: "😀".repeat(32) },
   ])("accepts $name", ({ value }) => {
     // GIVEN a valid label
     const input = value;
@@ -63,14 +85,18 @@ describe("instanceLabelError", () => {
   test.each([
     { name: "a line feed", value: "QA\nstaging" },
     { name: "a carriage return", value: "QA\rstaging" },
+    { name: "a tab", value: "QA\tstaging" },
+    { name: "a NUL character", value: "QA\u0000staging" },
+    { name: "a right-to-left override", value: "QA‮staging" },
+    { name: "an isolate terminator", value: "QA⁩staging" },
   ])("rejects a label containing $name", ({ value }) => {
-    // GIVEN a label with a line break
+    // GIVEN a label with a control character
     const input = value;
 
     // WHEN validated
     const error = instanceLabelError(input);
 
     // THEN the message names the rule
-    expect(error).toBe("The instance label cannot contain a line break.");
+    expect(error).toBe("The instance label cannot contain control characters.");
   });
 });

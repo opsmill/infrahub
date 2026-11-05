@@ -1,5 +1,5 @@
 import React from "react";
-import { useForm, useFormState, useWatch } from "react-hook-form";
+import { type FieldNamesMarkedBoolean, useForm, useFormState, useWatch } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { Row } from "@/shared/components/container";
@@ -12,38 +12,73 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
+import { classNames } from "@/shared/utils/common";
 
 import {
   INSTANCE_COLORS,
   INSTANCE_LABEL_MAX_LENGTH,
   type InstanceColor,
+  isInstanceColor,
 } from "@/entities/preferences/domain/model/instance-identity";
 import {
-  INSTANCE_COLOR_LABELS,
   instanceBarClassName,
+  instanceColorLabel,
 } from "@/entities/preferences/domain/rules/instance-color";
 import {
   instanceLabelError,
+  instanceLabelLength,
   normalizeInstanceLabel,
 } from "@/entities/preferences/domain/rules/validate-instance-label";
+import type { UpdateGlobalPreferenceParams } from "@/entities/preferences/domain/use-cases/update-global-preference";
 import { toFieldValue } from "@/entities/preferences/ui/preference-fields";
 import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-global-preferences.query";
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
+interface InstanceIdentityFormValues {
+  instance_label: FormAttributeValue;
+  instance_color: FormAttributeValue;
+}
+
 const INSTANCE_COLOR_ITEMS: Array<ComboboxItem> = INSTANCE_COLORS.map((color) => ({
   value: color,
-  label: INSTANCE_COLOR_LABELS[color],
-  icon: <span aria-hidden className={`size-3 rounded-full ${instanceBarClassName(color)}`} />,
+  label: instanceColorLabel(color),
+  icon: (
+    <span
+      aria-hidden
+      className={classNames("size-3 shrink-0 rounded-full", instanceBarClassName(color))}
+    />
+  ),
 }));
 
-function labelText(fieldValue: FormAttributeValue | undefined): string {
-  return typeof fieldValue?.value === "string" ? fieldValue.value : "";
+function labelText(fieldValue: FormAttributeValue): string {
+  return typeof fieldValue.value === "string" ? fieldValue.value : "";
+}
+
+function colorValue(fieldValue: FormAttributeValue): InstanceColor | null {
+  return isInstanceColor(fieldValue.value) ? fieldValue.value : null;
+}
+
+/** Only the fields the admin changed are sent, so a save does not overwrite another admin's save of the other field. */
+function changedFields(
+  values: InstanceIdentityFormValues,
+  dirtyFields: Partial<FieldNamesMarkedBoolean<InstanceIdentityFormValues>>
+): UpdateGlobalPreferenceParams {
+  const params: UpdateGlobalPreferenceParams = {};
+  if (dirtyFields.instance_label) {
+    params.instanceLabel = normalizeInstanceLabel(labelText(values.instance_label));
+  }
+  if (dirtyFields.instance_color) {
+    params.instanceColor = colorValue(values.instance_color);
+  }
+  return params;
 }
 
 function InstanceLabelField() {
   const countId = React.useId();
-  const fieldValue = useWatch({ name: "instance_label" }) as FormAttributeValue | undefined;
-  const count = labelText(fieldValue).length;
+  const fieldValue = useWatch<InstanceIdentityFormValues, "instance_label">({
+    name: "instance_label",
+  });
+  const count = instanceLabelLength(labelText(fieldValue));
 
   return (
     <DetailRow icon="mdi:tag-text-outline" label="Instance label">
@@ -53,23 +88,27 @@ function InstanceLabelField() {
         rules={{
           validate: (value: FormAttributeValue) => instanceLabelError(labelText(value)) ?? true,
         }}
-        render={({ field }) => (
-          <div className="w-64 shrink-0">
-            <FormInput>
-              <Input
-                {...field}
-                aria-label="Instance label"
-                aria-describedby={countId}
-                value={labelText(field.value)}
-                onChange={(event) => field.onChange(toFieldValue(event.target.value))}
-              />
-            </FormInput>
-            <p id={countId} className="mt-1 text-foreground-muted text-xs">
-              {count}/{INSTANCE_LABEL_MAX_LENGTH}
-            </p>
-            <FormMessage className="mt-1" />
-          </div>
-        )}
+        render={({ field }) => {
+          const fieldData: FormAttributeValue = field.value;
+
+          return (
+            <div className="w-64 shrink-0">
+              <FormInput>
+                <Input
+                  {...field}
+                  aria-label="Instance label"
+                  aria-describedby={countId}
+                  value={labelText(fieldData)}
+                  onChange={(event) => field.onChange(toFieldValue(event.target.value))}
+                />
+              </FormInput>
+              <p id={countId} className="mt-1 text-foreground-muted text-xs tabular-nums">
+                {count}/{INSTANCE_LABEL_MAX_LENGTH}
+              </p>
+              <FormMessage className="mt-1" />
+            </div>
+          );
+        }}
       />
     </DetailRow>
   );
@@ -82,16 +121,20 @@ function InstanceColorField() {
         <FormField
           name="instance_color"
           defaultValue={DEFAULT_FORM_FIELD_VALUE}
-          render={({ field }) => (
-            <Combobox
-              value={(field.value?.value as string | null) ?? null}
-              onChange={(newValue) => field.onChange(toFieldValue(newValue))}
-              items={INSTANCE_COLOR_ITEMS}
-              label="Instance color"
-              placeholder="No color"
-              emptyMessage="No color found."
-            />
-          )}
+          render={({ field }) => {
+            const fieldData: FormAttributeValue = field.value;
+
+            return (
+              <Combobox
+                value={colorValue(fieldData)}
+                onChange={(newValue) => field.onChange(toFieldValue(newValue))}
+                items={INSTANCE_COLOR_ITEMS}
+                label="Instance color"
+                placeholder="No color"
+                emptyMessage="No color found."
+              />
+            );
+          }}
         />
       </div>
     </DetailRow>
@@ -99,10 +142,10 @@ function InstanceColorField() {
 }
 
 function SaveButton({ isPending }: { isPending?: boolean }) {
-  const { isDirty, isValid } = useFormState();
+  const { isDirty } = useFormState();
 
   return (
-    <FormSubmit isPending={isPending} isDisabled={!isDirty || !isValid}>
+    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
       Save instance identity
     </FormSubmit>
   );
@@ -127,54 +170,39 @@ export function InstanceIdentityForm() {
         instance_color: toFieldValue(global.instanceColor),
       }}
       isPending={updatePreferences.isPending}
-      onSubmit={(formData) => {
-        updatePreferences.mutate(
-          {
-            instanceLabel: normalizeInstanceLabel(labelText(formData.instance_label)),
-            instanceColor: (formData.instance_color?.value as InstanceColor | null) ?? null,
+      onSave={(params) => {
+        updatePreferences.mutate(params, {
+          onSuccess: () => {
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
           },
-          {
-            onSuccess: () => {
-              toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
-            },
-            onError: (mutationError) => {
-              toast(
-                <Alert
-                  type={ALERT_TYPES.ERROR}
-                  message={
-                    mutationError instanceof Error
-                      ? mutationError.message
-                      : "Failed to update the instance identity"
-                  }
-                />
-              );
-            },
-          }
-        );
+          onError: (mutationError) => {
+            toast(<Alert type={ALERT_TYPES.ERROR} message={mutationError.message} />);
+          },
+        });
       }}
     />
   );
 }
 
-interface InstanceIdentityFormValues {
-  instance_label: FormAttributeValue;
-  instance_color: FormAttributeValue;
-}
-
 function InstanceIdentityFormContent({
   defaultValues,
   isPending,
-  onSubmit,
+  onSave,
 }: {
   defaultValues: InstanceIdentityFormValues;
   isPending: boolean;
-  onSubmit: (values: InstanceIdentityFormValues) => void;
+  onSave: (params: UpdateGlobalPreferenceParams) => void;
 }) {
-  // Validating on change surfaces the length rule while the admin types instead of after a submit.
+  // Validate on change so the length rule shows while the admin types.
   const form = useForm<InstanceIdentityFormValues>({ defaultValues, mode: "onChange" });
+  const { dirtyFields } = useFormState({ control: form.control });
 
   return (
-    <Form form={form} onSubmit={onSubmit} className="space-y-0 divide-y">
+    <Form
+      form={form}
+      onSubmit={(values) => onSave(changedFields(values, dirtyFields))}
+      className="space-y-0 divide-y"
+    >
       <InstanceLabelField />
       <InstanceColorField />
 

@@ -1,10 +1,11 @@
 import type { Config } from "@/entities/config/domain/model/config";
 
-export type InstanceIdentity = Config["instance"];
+type InstanceIdentity = Config["instance"];
 
 export type InstanceColor = NonNullable<InstanceIdentity["color"]>;
 
-export const INSTANCE_COLORS: ReadonlyArray<InstanceColor> = [
+// The order is the one the color picker lists the presets in.
+export const INSTANCE_COLORS = [
   "RED",
   "AMBER",
   "GREEN",
@@ -12,8 +13,10 @@ export const INSTANCE_COLORS: ReadonlyArray<InstanceColor> = [
   "INDIGO",
   "PURPLE",
   "GRAY",
-];
+] as const satisfies ReadonlyArray<InstanceColor>;
+
+export function isInstanceColor(value: unknown): value is InstanceColor {
+  return typeof value === "string" && INSTANCE_COLORS.some((color) => color === value);
+}
 
 export const INSTANCE_LABEL_MAX_LENGTH = 32;
-
-export const DOCUMENT_TITLE_SEPARATOR = " · ";
