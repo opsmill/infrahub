@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.preferences.constants import DateFormat, PreferenceSource
+from infrahub.core.preferences.constants import DateFormat, InstanceColor, PreferenceSource
 
 
 class Preference(StandardNode):
@@ -30,6 +30,9 @@ class Preference(StandardNode):
     # the db); it round-trips as a plain string because the enum subclasses str.
     date_format: Optional[DateFormat] = None
     timezone: Optional[str] = None
+    # Meaningful on the global row only; the write path refuses them for a per-user owner.
+    instance_label: Optional[str] = None
+    instance_color: Optional[InstanceColor] = None
 
 
 @dataclass(frozen=True)

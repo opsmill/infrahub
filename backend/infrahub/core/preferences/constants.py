@@ -13,6 +13,18 @@ class DateFormat(InfrahubStringEnum):
     US_12H = "US_12H"  # 07/01/2026 02:30 PM
 
 
+class InstanceColor(InfrahubStringEnum):
+    """Preset colors an administrator can assign to the instance; clients map each to their own theme."""
+
+    RED = "RED"
+    AMBER = "AMBER"
+    GREEN = "GREEN"
+    BLUE = "BLUE"
+    INDIGO = "INDIGO"
+    PURPLE = "PURPLE"
+    GRAY = "GRAY"
+
+
 class PreferenceSource(InfrahubStringEnum):
     """Which layer an effective preference value was resolved from."""
 
@@ -20,6 +32,10 @@ class PreferenceSource(InfrahubStringEnum):
     GLOBAL = "global"
     DEFAULT = "default"
 
+
+# Upper bound on the trimmed instance label, so it fits in the header and leaves room for the page
+# title in a browser tab.
+INSTANCE_LABEL_MAX_LENGTH = 32
 
 # `owner_id` of the organisation-wide (global) Preference row. A fixed sentinel rather than a real
 # node id: accounts are UUID-keyed, so this value can never collide with a user's owner id, and the
