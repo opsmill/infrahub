@@ -11,6 +11,10 @@ import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
+vi.mock("@/entities/config/ui/config-provider", async () => {
+  const { generateConfig } = await import("../../../../../../tests/fake/config");
+  return { useConfig: () => generateConfig() };
+});
 vi.mock("@/entities/repository/ui/repository-push-to-remote-card", () => ({
   RepositoryPushToRemoteCard: () => <p>Push to remote</p>,
 }));

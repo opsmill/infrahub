@@ -1,16 +1,21 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+
+import { useConfig } from "@/entities/config/ui/config-provider";
+import { formatDocumentTitle } from "@/entities/preferences/domain/rules/format-document-title";
+
+const APPLICATION_TITLE = "Infrahub";
 
 export const useTitle = (title: string) => {
-  const documentDefined = typeof document !== "undefined";
-  const originalTitle = useRef(documentDefined ? document.title : "");
+  const { label } = useConfig().instance;
+  const documentTitle = formatDocumentTitle(label, title);
+  const fallbackTitle = formatDocumentTitle(label, APPLICATION_TITLE);
 
   useEffect(() => {
-    if (!documentDefined) return;
+    document.title = documentTitle;
 
-    if (document.title !== title) document.title = title;
-
+    // The fallback is recomputed per effect run so a label changed while the page was open never resurfaces stale.
     return () => {
-      document.title = originalTitle.current;
+      document.title = fallbackTitle;
     };
-  }, [title]);
+  }, [documentTitle, fallbackTitle]);
 };
