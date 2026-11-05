@@ -591,6 +591,9 @@ allow-dunder-method-names = [
 
 [tool.ruff.lint.per-file-ignores]
 
+# Agent hooks are standalone scripts run by Claude Code and Codex, outside the project's code.
+".agents/hooks/*.py" = ["ALL"]
+
 "backend/infrahub/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
