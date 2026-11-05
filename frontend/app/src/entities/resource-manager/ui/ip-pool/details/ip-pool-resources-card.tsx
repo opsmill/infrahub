@@ -2,8 +2,12 @@ import { Card, ListBox, ListBoxItem } from "@infrahub/ui";
 import { Text } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { pluralize } from "@/shared/utils/string";
 
-import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip-pool";
+import type {
+  IpPoolResource,
+  IpPoolResourceUsage,
+} from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_PREFIX_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import { IpPoolUsageBar } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-usage-bar";
 import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
@@ -29,6 +33,7 @@ function NoResourcesCard({ poolKind }: NoResourcesCardProps) {
 export interface IpPoolResourcesCardProps {
   poolId: string;
   poolKind: IpPoolKind;
+  usage: IpPoolResourceUsage;
   resources: IpPoolResource[];
   selectedResourceId: string | null;
 }
@@ -36,6 +41,7 @@ export interface IpPoolResourcesCardProps {
 export function IpPoolResourcesCard({
   poolId,
   poolKind,
+  usage,
   resources,
   selectedResourceId,
 }: IpPoolResourcesCardProps) {
@@ -46,6 +52,18 @@ export function IpPoolResourcesCard({
       <div className="px-3 pt-2 pb-1 font-medium text-foreground-muted text-sm">
         Resource prefixes
       </div>
+      <section
+        aria-label="All resource prefixes"
+        className="mx-1 flex flex-col gap-1.5 px-2.5 py-2"
+      >
+        <Row className="justify-between gap-3">
+          <span className="font-medium">All resource prefixes</span>
+          <span className="shrink-0 text-foreground-muted text-xs">
+            {pluralize(resources.length, "resource prefix", "es")}
+          </span>
+        </Row>
+        <IpPoolUsageBar usage={usage} />
+      </section>
       <ListBox
         aria-label="Resource prefixes"
         selectionMode="single"

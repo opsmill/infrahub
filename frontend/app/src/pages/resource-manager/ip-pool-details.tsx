@@ -25,6 +25,8 @@ export interface IpPoolDetailsPageProps {
 
 export function IpPoolDetailsPage({ poolId, schema, permission }: IpPoolDetailsPageProps) {
   const { data: pool, error, isPending } = useGetIpPool(poolId);
+  // requested here so it loads alongside the pool instead of after it
+  const utilizationQuery = useGetIpPoolUtilization(poolId);
 
   if (error) return <ErrorScreen message={error.message} />;
 
@@ -39,24 +41,25 @@ export function IpPoolDetailsPage({ poolId, schema, permission }: IpPoolDetailsP
   return (
     <Content.Card className="grow">
       <IpPoolHeader pool={pool} schema={schema} permission={permission} />
-      <IpPoolBody pool={pool} />
+      <IpPoolBody pool={pool} utilizationQuery={utilizationQuery} />
     </Content.Card>
   );
 }
 
 interface IpPoolBodyProps {
   pool: IpPoolData;
+  utilizationQuery: ReturnType<typeof useGetIpPoolUtilization>;
 }
 
-function IpPoolBody({ pool }: IpPoolBodyProps) {
+function IpPoolBody({ pool, utilizationQuery }: IpPoolBodyProps) {
   const { resourceId } = useParams<{ resourceId?: string }>();
-  const { data: utilization, error, isPending } = useGetIpPoolUtilization(pool.id);
+  const { data: utilization, error, isPending } = utilizationQuery;
 
   if (isPending) return <LoadingIndicator className="flex-1" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  const { resources } = utilization;
+  const { usage, resources } = utilization;
   const selectedResourceId = resourceId ?? resources[0]?.id ?? null;
 
   return (
@@ -65,6 +68,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
         <IpPoolResourcesCard
           poolId={pool.id}
           poolKind={pool.__typename}
+          usage={usage}
           resources={resources}
           selectedResourceId={selectedResourceId}
         />

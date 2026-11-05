@@ -101,6 +101,20 @@ describe("IpPoolAllocationsTable", () => {
       .toHaveTextContent("Allocated prefixes130in 10.10.0.0/22");
   });
 
+  it("links the resource prefix to its IPAM page", async () => {
+    // GIVEN
+    setIpPrefixSchema();
+    mockAllocations({ allocations: [] });
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "10.10.0.0/22" }))
+      .toHaveAttribute("href", `/ipam/IpamIPPrefix/${resource.id}`);
+  });
+
   it("names the first column Address on an IP address pool", async () => {
     // GIVEN
     mockAllocations({ allocations: [] });
@@ -217,6 +231,30 @@ describe("IpPoolAllocationsTable", () => {
 
     // THEN
     await expect.element(component.getByText("Allocations unavailable")).toBeVisible();
+  });
+
+  it("keeps the loaded rows when loading the next page fails", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] });
+    vi.mocked(useGetIpPoolAllocations).mockReturnValue({
+      data: {
+        pages: [
+          { count: 1, allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] },
+        ],
+        pageParams: [0],
+      },
+      error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useGetIpPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^10\.10\.0\.0\/31/ })).toBeVisible();
   });
 
   it("loads the next rows when the user scrolls to the end", async () => {

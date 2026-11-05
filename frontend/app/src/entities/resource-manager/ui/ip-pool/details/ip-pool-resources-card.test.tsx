@@ -6,7 +6,10 @@ import { ReactAriaRouterProvider } from "@/app/providers/react-aria-router-provi
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 import { render } from "../../../../../../tests/components/render";
-import { generateIpPoolResource } from "../../../../../../tests/fake/ip-pool";
+import {
+  generateIpPoolResource,
+  generateIpPoolResourceUsage,
+} from "../../../../../../tests/fake/ip-pool";
 import { IpPoolResourcesCard, type IpPoolResourcesCardProps } from "./ip-pool-resources-card";
 
 const initialPath = window.location.pathname;
@@ -29,6 +32,7 @@ const renderCard = (props: Partial<IpPoolResourcesCardProps> = {}) =>
       <IpPoolResourcesCard
         poolId="pool-id"
         poolKind={IP_PREFIX_POOL}
+        usage={generateIpPoolResourceUsage({ utilization: 30 })}
         resources={resources}
         selectedResourceId={null}
         {...props}
@@ -54,6 +58,20 @@ describe("IpPoolResourcesCard", () => {
       expect.stringContaining("10.10.0.0/22Weight 100"),
       expect.stringContaining("10.10.4.0/22Weight 50"),
     ]);
+  });
+
+  it("shows how full the whole pool is above the resource prefixes", async () => {
+    // GIVEN
+    const props = { usage: generateIpPoolResourceUsage({ utilization: 30 }), resources };
+
+    // WHEN
+    const component = await renderCard(props);
+
+    // THEN
+    const wholePool = component.getByRole("region", { name: "All resource prefixes" });
+    await expect
+      .element(wholePool)
+      .toHaveTextContent("All resource prefixes2 resource prefixes30%");
   });
 
   it("shows no weight when the resource prefixes have none", async () => {

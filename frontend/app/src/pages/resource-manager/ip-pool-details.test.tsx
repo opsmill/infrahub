@@ -105,6 +105,22 @@ describe("IpPoolDetailsPage", () => {
     await expect.element(component.getByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
+  it("requests the usage while the pool is still loading", async () => {
+    // GIVEN
+    vi.mocked(useGetIpPool).mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+    } as unknown as ReturnType<typeof useGetIpPool>);
+    mockUtilization(undefined);
+
+    // WHEN
+    await renderPage();
+
+    // THEN
+    expect(useGetIpPoolUtilization).toHaveBeenCalledWith(pool.id);
+  });
+
   it("shows the error when the pool fails to load", async () => {
     // GIVEN
     vi.mocked(useGetIpPool).mockReturnValue({

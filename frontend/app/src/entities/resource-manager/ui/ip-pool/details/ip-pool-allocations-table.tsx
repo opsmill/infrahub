@@ -70,7 +70,7 @@ export function IpPoolAllocationsTable({
   const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useGetIpPoolAllocations({ poolId, resourceId: resource.id });
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !data) return <ErrorScreen message={error.message} />;
 
   const allocations = data?.pages.flatMap((page) => page.allocations) ?? [];
   const count = data?.pages[0]?.count;
@@ -88,7 +88,14 @@ export function IpPoolAllocationsTable({
           </span>
         )}
         <span className="min-w-0 truncate text-foreground-muted text-sm">
-          in {resource.display_label}
+          in{" "}
+          <Link
+            to={getObjectDetailsUrl(resource.__typename, resource.id)}
+            className={classNames("text-foreground tabular-nums", plainLinkStyle)}
+            title={`Open ${resource.display_label}`}
+          >
+            {resource.display_label}
+          </Link>
         </span>
       </Row>
 

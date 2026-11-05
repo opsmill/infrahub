@@ -37,8 +37,8 @@ You'll see an overview of available resource pools. Each pool has a specific pur
 The pool page shows you:
 
 - **Header**: the pool's name and description, and one line that names its IP namespace and its defaults, such as the address kind and the prefix length a new allocation gets when the request sets none.
-- **Resource prefixes**: the IP prefixes this pool allocates from, in the order the pool fills them, each with its usage on the default branch and on the branch you are viewing.
-- **Allocated addresses**: the addresses the selected resource prefix already holds, with the identifier that reserved each one and its kind. More rows load as you scroll.
+- **Resource prefixes**: how full the whole pool is, then the IP prefixes this pool allocates from, each with its usage on the default branch and on the branch you are viewing. When every resource prefix has an allocation weight, the list starts with the heaviest one, which the pool fills first.
+- **Allocated addresses**: the addresses the selected resource prefix already holds, with the identifier that reserved each one and its kind. More rows load as you scroll. The resource prefix's name above the table opens its IPAM page.
 
 Select a resource prefix in the list to see what it holds. This gives you visibility into resource utilization across your entire infrastructure.
 
