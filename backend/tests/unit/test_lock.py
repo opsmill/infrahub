@@ -4,6 +4,7 @@ from asyncio import Event, create_task, gather, sleep, wait, wait_for
 from dataclasses import dataclass
 
 import pytest
+from redis.exceptions import RedisError
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
@@ -11,10 +12,13 @@ from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    InfrahubLock,
     InfrahubLockRegistry,
+    InfrahubMultiLock,
     get_worker_id_from_lock_token,
     initialize_lock,
 )
+from tests.helpers.log import find_logged_events
 
 
 @dataclass
@@ -143,6 +147,67 @@ async def test_multi_lock_releases_what_it_acquired_when_cancelled_while_acquiri
         assert not await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
     finally:
         release_local_lock.set()
+        await wait_for(holder, timeout=10)
+
+
+class ReleaseFailingLock(InfrahubLock):
+    """A local lock whose release fails the way it does when Redis does not answer."""
+
+    async def release(self) -> None:
+        raise RedisError("Redis did not answer")
+
+
+class ReleaseFailingLockRegistry(InfrahubLockRegistry):
+    """Local lock registry whose lock of the given name fails to release."""
+
+    def __init__(self, failing_lock_name: str) -> None:
+        super().__init__(local_only=True)
+        self.failing_lock_name = failing_lock_name
+
+    def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        if name == self.failing_lock_name:
+            return ReleaseFailingLock(name=name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        return super()._create_lock(name=name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+
+
+async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    lock_registry = ReleaseFailingLockRegistry(failing_lock_name="second")
+    third_lock_held = Event()
+    release_third_lock = Event()
+
+    async def hold_third_lock() -> None:
+        async with lock_registry.get(name="third"):
+            third_lock_held.set()
+            await release_third_lock.wait()
+
+    async def take_all_locks() -> None:
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["first", "second", "third"]):
+            pass
+
+    holder = create_task(hold_third_lock())
+    try:
+        await wait_for(third_lock_held.wait(), timeout=10)
+        waiter = create_task(take_all_locks())
+        # Yields once so the multi-lock takes the first two locks and queues on the third.
+        await sleep(0)
+        assert await lock_registry.get(name="first").locked()
+
+        with caplog.at_level("ERROR", logger="infrahub"):
+            waiter.cancel()
+            done, _ = await wait([waiter], timeout=10)
+
+        assert waiter in done
+        assert waiter.cancelled()
+        assert not await lock_registry.get(name="first").locked()
+        failures = find_logged_events(
+            caplog, event="Could not release a lock after a multi-lock failed to acquire", lock="second"
+        )
+        assert len(failures) == 1
+        assert failures[0]["exc_info"]
+    finally:
+        release_third_lock.set()
         await wait_for(holder, timeout=10)
 
 
