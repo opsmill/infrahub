@@ -1,6 +1,6 @@
 import { Autocomplete, Button, ListBox, ListBoxItem, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { Selection } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
@@ -8,6 +8,8 @@ import { classNames } from "@/shared/utils/common";
 export interface ComboboxItem {
   value: string;
   label: string;
+  /** Rendered before the label in the option list; the label alone stays the option's accessible name. */
+  icon?: ReactNode;
 }
 
 export interface ComboboxProps {
@@ -81,6 +83,7 @@ export function Combobox({
           >
             {items.map((item) => (
               <ListBoxItem key={item.value} id={item.value} textValue={item.label}>
+                {item.icon}
                 {item.label}
               </ListBoxItem>
             ))}

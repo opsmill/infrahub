@@ -40,6 +40,38 @@ describe("GlobalPreferencesEditor", () => {
     await expect.element(component.getByText("Global date and time")).toBeVisible();
   });
 
+  test("renders the instance identity card below the date and time card", async () => {
+    // GIVEN
+    vi.mocked(getGlobalPreferences).mockResolvedValue({ ...baseGlobal, instanceLabel: "QA" });
+
+    // WHEN
+    const component = await render(<GlobalPreferencesEditor />);
+
+    // THEN
+    await expect.element(component.getByText("Instance identity", { exact: true })).toBeVisible();
+    await expect.element(component.getByLabelText("Instance label")).toHaveValue("QA");
+    const pageText = component.baseElement.textContent ?? "";
+    expect(pageText.indexOf("Global date and time")).toBeLessThan(
+      pageText.indexOf("Instance identity")
+    );
+  });
+
+  test("keeps the date and time save button distinct from the instance identity one", async () => {
+    // GIVEN
+    vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
+
+    // WHEN
+    const component = await render(<GlobalPreferencesEditor />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Save", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Save instance identity", exact: true }))
+      .toBeVisible();
+  });
+
   test("renders the card wide enough (max-w-3xl) for the inline date-format example", async () => {
     const component = await render(<GlobalPreferencesEditor />);
 
@@ -109,7 +141,7 @@ describe("GlobalPreferencesEditor", () => {
     await component.getByRole("button", { name: /date format/i }).click();
 
     await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    await component.getByRole("button", { name: "Save" }).click();
+    await component.getByRole("button", { name: "Save", exact: true }).click();
 
     await vi.waitFor(() => {
       expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
