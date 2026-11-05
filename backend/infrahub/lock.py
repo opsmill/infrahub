@@ -442,16 +442,19 @@ class InfrahubLockRegistry:
     def global_schema_lock(self) -> InfrahubMultiLock:
         """Return the lock for a schema update.
 
-        Global locks are always taken before this process's schema lock, so no caller holds the local lock while
-        it waits on another worker and a global lock holder can take the local one without deadlock.
+        The global lock is taken before this process's schema lock, so an update queued behind another worker does
+        not hold up branch creation or registry refreshes in this process, and a holder of a global lock can take the
+        local lock without deadlock. Once it holds the global lock, the update waits for a registry refresh already
+        running in this process.
         """
         return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
         """Return the lock for a whole-graph change such as a merge or a rebase.
 
-        This process's schema lock stays free during the graph change; a holder that updates this process's
-        schema registry takes it on its own.
+        This process's schema lock is not part of it, so branch creation and registry refreshes in this process go
+        ahead during the graph change. A holder that changes this process's schema registry takes the local lock after
+        the global ones, and waits there for a registry refresh already running in this process.
         """
         return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
