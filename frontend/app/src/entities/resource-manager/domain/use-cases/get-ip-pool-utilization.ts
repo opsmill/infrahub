@@ -31,7 +31,8 @@ const getWeightsById = async ({
 
   const { data, errors } = await getIpPoolResourceWeightsFromApi({
     resourceIds: resources.map(({ id }) => id),
-    weightedKinds,
+    // a weighted kind the pool does not use may be missing from the branch's GraphQL schema
+    weightedKinds: [...new Set(resources.map(({ kind }) => kind))].sort(),
     branchName,
     atDate,
   });

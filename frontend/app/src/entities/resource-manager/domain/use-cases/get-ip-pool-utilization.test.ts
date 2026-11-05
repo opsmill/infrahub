@@ -59,7 +59,7 @@ describe("getIpPoolUtilization", () => {
     );
   });
 
-  it("reads the weights of the resource prefixes and orders by them", async () => {
+  it("reads the weights of the resource prefixes for their own kinds only and orders by them", async () => {
     // GIVEN
     vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
       data: utilizationData,
@@ -78,7 +78,7 @@ describe("getIpPoolUtilization", () => {
     // WHEN
     const utilization = await getIpPoolUtilization({
       poolId: "pool",
-      weightedKinds: ["IpamIPPrefix"],
+      weightedKinds: ["CustomWeightedPrefix", "IpamIPPrefix"],
       ...context,
     });
 
