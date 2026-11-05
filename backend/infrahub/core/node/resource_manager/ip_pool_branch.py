@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import PoolExhaustedError, ResourceNotFoundError
+from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ResourceNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -31,18 +31,26 @@ async def get_namespace_on_branch(db: InfrahubDatabase, pool: Node, branch: Bran
         if namespace is not None:
             return namespace
 
-    # The namespace is missing on this branch, so its label is read from a branch that holds it.
-    namespace_on_other_branch = await relationship.get_peer(db=db)
-    if namespace_on_other_branch is not None:
-        namespace_label = await namespace_on_other_branch.get_display_label(db=db)
-    else:
-        namespace_label = namespace_id or ""
+    namespace_name = ""
+    if namespace_id:
+        namespace_name = f" '{await _namespace_label(db=db, pool=pool, namespace_id=namespace_id)}'"
     raise ResourceNotFoundError(
         message=(
             f"Pool '{await pool.get_display_label(db=db)}' cannot allocate on branch '{branch.name}': "
-            f"its namespace '{namespace_label}' does not exist on this branch."
+            f"its namespace{namespace_name} does not exist on this branch."
         )
     )
+
+
+async def _namespace_label(db: InfrahubDatabase, pool: Node, namespace_id: str) -> str:
+    # The pool's link reads the namespace from a branch that holds it, when any branch still does.
+    try:
+        namespace = await pool.get_relationship("ip_namespace").get_peer(db=db)
+    except NodeNotFoundError:
+        return namespace_id
+    if namespace is None:
+        return namespace_id
+    return await namespace.get_display_label(db=db)
 
 
 async def get_resources_on_branch(db: InfrahubDatabase, pool: Node, branch: Branch) -> list[Node]:
@@ -67,7 +75,6 @@ async def get_resources_on_branch(db: InfrahubDatabase, pool: Node, branch: Bran
 
 
 def _allocation_weight(resource: Node) -> int:
-    # A resource kind without the attribute, or a resource without a weight, ranks as weight zero.
     try:
         weight = resource.get_attribute("allocation_weight").value
     except ValueError:
