@@ -5,6 +5,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
+from infrahub.exceptions import ValidationError
 from tests.helpers.schema.person import PERSON
 
 
@@ -55,6 +56,11 @@ VALIDATOR_LIST_CHANGE_CASES = [
         change=lambda result, rels: result.replace(rel_to_insert=rels[1], rel_to_remove=rels[0]),
         expected=[1],
     ),
+    ValidatorListChangeCase(
+        name="replace_with_itself",
+        change=lambda result, rels: result.replace(rel_to_insert=rels[0], rel_to_remove=rels[0]),
+        expected=[1, 0],
+    ),
     ValidatorListChangeCase(name="remove", change=lambda result, rels: result.remove(rels[1]), expected=[0]),
     ValidatorListChangeCase(name="clear", change=lambda result, _: result.clear(), expected=[]),
 ]
@@ -78,6 +84,19 @@ def test_relationship_validate_change_keeps_ids_in_sync(test_case: ValidatorList
     assert [rels.index(rel) for rel in result] == test_case.expected + [
         position for position in range(3) if position not in test_case.expected
     ]
+
+
+def test_relationship_validate_replace_with_held_relationship_less_than_min_raise() -> None:
+    """A replace that only removes a relationship keeps the minimum count, as a remove does."""
+    rels = _relationships(count=2)
+    result = RelationshipValidatorList(rels[0], rels[1], name="cars", min_count=2, max_count=2)
+
+    with pytest.raises(ValidationError, match=r"^Too few relationships, min 2 at cars$"):
+        result.replace(rel_to_insert=rels[1], rel_to_remove=rels[0])
+
+    assert result.as_list() == rels
+    assert result._relationships_count == 2
+    assert result._relationship_ids == {id(rel) for rel in rels}
 
 
 def test_relationship_validate_init_duplicate() -> None:

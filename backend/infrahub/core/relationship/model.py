@@ -883,11 +883,12 @@ class RelationshipValidatorList:
         return result
 
     def replace(self, rel_to_insert: Relationship, rel_to_remove: Relationship) -> None:
+        # A replace of a relationship by itself must not lower the count.
+        if rel_to_insert is not rel_to_remove and rel_to_insert in self:
+            self.remove(rel_to_remove)
+            return
         self._relationships.remove(rel_to_remove)
         self._relationship_ids.discard(id(rel_to_remove))
-        if rel_to_insert in self:
-            self._relationships_count -= 1
-            return
         self._relationships.append(rel_to_insert)
         self._relationship_ids.add(id(rel_to_insert))
 
