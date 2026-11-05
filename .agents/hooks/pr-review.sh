@@ -1,13 +1,11 @@
 #!/bin/sh
 # Starts a code review of a pull request that Claude Code or Codex has just opened, or that a push changed a lot.
 # Usage: pr-review.sh claude|push|codex, with the hook payload on standard input.
-# The review is opt-in: set PR_REVIEW=on to turn it on, or PR_REVIEW_CLOUD=on in a cloud environment's variables to
-# turn it on for that environment's sessions only, and PR_REVIEW_MIN_LINES to change the size of push that starts
-# another review (300 changed lines by default).
+# The review is opt-in: set PR_REVIEW=on to turn it on, and PR_REVIEW_MIN_LINES to change the size of push that
+# starts another review (300 changed lines by default).
 
 [ -z "$PR_REVIEW_CHILD" ] || exit 0
-# The project settings set PR_REVIEW=off, so a cloud environment opts in with a variable those settings do not set.
-[ "$PR_REVIEW" = on ] || { [ "$CLAUDE_CODE_REMOTE" = true ] && [ "$PR_REVIEW_CLOUD" = on ]; } || exit 0
+[ "$PR_REVIEW" = on ] || exit 0
 
 if ! command -v jq >/dev/null 2>&1; then
     message="The automatic PR review needs jq, which is not installed, so no review was started."
@@ -81,8 +79,6 @@ start_review_skill() {
 }
 
 review_large_push() {
-    # Cloud sessions block GitHub's GraphQL API, which `gh pr view` needs.
-    [ "$CLAUDE_CODE_REMOTE" = true ] && exit 0
     enter_session_dir
     head=$(git rev-parse HEAD 2>/dev/null) || exit 0
     pr=$(gh pr view --json url,state,headRefOid -q 'select(.state == "OPEN") | [.url, .headRefOid] | @tsv' 2>/dev/null)

@@ -128,12 +128,10 @@ request in a subagent that has not seen the conversation, with the rules in
 [REVIEW.md](../REVIEW.md). Claude Code also runs it on its own after opening a pull request, though
 not every time.
 
-A hook makes it run after every `gh pr create` or pull request opened with the GitHub MCP tool, and
-again when pushes add 300 or more changed lines to an open pull request since its last automatic
-review. The hook is off by default:
-`.claude/settings.json` sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to
-`.claude/settings.local.json` in your main checkout, which Git ignores. Sessions in its worktrees
-read that file too.
+A hook makes it run after every `gh pr create`, and again when pushes add 300 or more changed lines
+to an open pull request since its last automatic review. The hook is off by default and runs only
+when `PR_REVIEW` is `on`. To turn it on, add this `env` block to `.claude/settings.local.json` in
+your main checkout, which Git ignores. Sessions in its worktrees read that file too.
 
 ```json
 {
@@ -147,10 +145,6 @@ Set `PR_REVIEW_MIN_LINES` in the same block to change the 300. The hook needs `j
 checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` instead, only after
 `gh pr create`.
 
-Cloud sessions start from a fresh clone, so they have no `.claude/settings.local.json`. To turn the
-review on for your cloud sessions only, add the environment variable `PR_REVIEW_CLOUD=on` to your
-cloud environment (the cloud environment menu in the session's title bar, then Edit). Sessions
-started after that pick it up. The hook reads it only when `CLAUDE_CODE_REMOTE` is `true`. Cloud
-sessions open pull requests with the GitHub MCP tool, and the hook runs the review after that tool
-too. The review after large pushes does not run in cloud sessions, because they block GitHub's
-GraphQL API, which `gh pr view` uses.
+Cloud sessions have no `.claude/settings.local.json` and open pull requests with the GitHub MCP
+tool, which the hook also covers, so to turn the review on there, add `PR_REVIEW=on` to your cloud
+environment's variables.
