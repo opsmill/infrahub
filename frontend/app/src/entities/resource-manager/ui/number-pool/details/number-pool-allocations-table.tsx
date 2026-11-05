@@ -122,7 +122,7 @@ export function NumberPoolAllocationsTable({
   const defaultBranch = useDefaultBranch();
   const { schema: nodeSchema } = useSchema(nodeKind);
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !data) return <ErrorScreen message={error.message} />;
 
   const defaultBranchName = defaultBranch?.name;
   const allocations = data?.pages.flat() ?? [];

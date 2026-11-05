@@ -229,6 +229,21 @@ describe("NumberPoolAllocationsTable", () => {
       .toBeVisible();
   });
 
+  it("keeps the loaded rows when loading the next page fails", async () => {
+    // GIVEN
+    mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
+    vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
+      ...vi.mocked(useGetNumberPoolAllocations)(),
+      error: new Error("Network error"),
+    } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^7/ })).toBeVisible();
+  });
+
   it("marks a number a user provided", async () => {
     // GIVEN
     mockAllocations({ allocations: [generateNumberPoolAllocation({ provenance: "PROVIDED" })] });
