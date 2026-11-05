@@ -116,17 +116,17 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 ### Functional Requirements
 
 - **FR-001**: The IP prefix pool page and the IP address pool page MUST use the number pool page's layout: a header, a resource prefix list on the left and the allocated table in the main area.
-- **FR-002**: The header MUST show the pool's name, description, metadata popover, ID with a copy button, a refresh button and an Actions menu.
+- **FR-002**: The header MUST show the pool's name, description, metadata popover, ID with a copy button, a refresh button and an Actions menu. Below the defaults line, it MUST show each attribute and each single relationship that a schema extension adds to the pool, and MUST show nothing more when the pool schema has none.
 - **FR-003**: The header MUST show one line with the namespace and the defaults, separated by dots, in this order: namespace, then for a prefix pool the prefix kind, the prefix length and the member type, and for an address pool the address kind and the prefix length.
 - **FR-004**: Each default MUST be worded as "<Label> defaults to <value>" when set. When not set, a prefix pool's prefix kind and prefix length MUST read "has no default", an address pool's prefix length MUST read "follows the resource prefix", and a prefix pool's member type MUST read "has no default".
 - **FR-005**: The kind in the defaults line MUST open the schema viewer when its schema is loaded, and MUST be plain text otherwise.
 - **FR-006**: The namespace in the defaults line MUST link to the IPAM page filtered on that namespace.
 - **FR-007**: The resource prefix list MUST show, for each resource prefix, its prefix, a usage bar with the default-branch share and the viewing-branch share, and the usage percentage. Above the list, it MUST show the whole pool's usage the same way, under "All resource prefixes" with the number of resource prefixes.
-- **FR-008**: When every resource prefix kind in the pool has an allocation weight attribute, the resource prefix list MUST show "Weight N" for each resource prefix whose weight is set. When one kind has none, the list MUST show no weight, because the backend then ignores weights.
+- **FR-008**: When every resource prefix kind in the pool inherits the weighted pool resource generic, the resource prefix list MUST show "Weight N" for each resource prefix whose weight is set. When one kind has none, the list MUST show no weight, because the backend then ignores weights.
 - **FR-009**: The resource prefix list MUST be ordered by allocation weight, highest first, with a missing weight counting as 0, and then by prefix.
 - **FR-010**: Selecting a resource prefix MUST change the page link so that it names the resource prefix, and opening such a link MUST select that resource prefix.
 - **FR-011**: When the link names no resource prefix, the first resource prefix in list order MUST be selected.
-- **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier and Kind, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded.
+- **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier and Kind, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button.
 - **FR-013**: The allocated table header MUST show the number of allocations and the selected resource prefix, which MUST link to the resource prefix's IPAM details page.
 - **FR-014**: Each prefix or address in the table MUST link to its IPAM details page on the branch the engineer is viewing.
 - **FR-015**: The Kind column MUST show the schema label of the kind when the schema is loaded, and the kind name otherwise.
@@ -135,7 +135,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-018**: Edit MUST open the existing IP prefix pool form or IP address pool form, and saving MUST refresh the page.
 - **FR-019**: The page MUST read the pool, the utilization and the allocations on the branch and at the date the engineer is viewing.
 - **FR-020**: The breadcrumb's resource selector MUST keep working with the new page.
-- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded when loading more rows fails.
+- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button when loading more rows fails.
 
 ### Key Entities
 
@@ -156,7 +156,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 ## Assumptions
 
 - The backend does not change. The resource prefix order and the allocation weight are computed in the frontend from data the backend already returns.
-- The allocation weight is read from the resource prefix node when its kind has an allocation weight attribute. The utilization query's `weight` field is the size of the prefix and is not shown.
+- The allocation weight is read through the weighted pool resource generic when every resource prefix kind inherits it. When that read fails, the list shows no weight instead of an error. The utilization query's `weight` field is the size of the prefix and is not shown.
 - The usage split on the bar is the default-branch share and the extra share on the viewing branch, which is what the utilization query returns. On the default branch, the second segment is empty.
 - The allocated table has no Branch column, because the backend returns the viewing branch for every row.
 - The table lists every prefix or address inside the resource prefix that is visible on the viewing branch, including ones created by hand, because that is what the allocations query returns. An entry the pool did not reserve has no identifier.

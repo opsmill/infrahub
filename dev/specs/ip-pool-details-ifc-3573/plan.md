@@ -13,7 +13,7 @@ Three plans were compared (minimal change, refactor-friendly, test-first). The s
 - **Language**: TypeScript, React 19, TanStack Query, react-aria-components, gql.tada, `json-to-graphql-query` for the one dynamic query.
 - **Backend**: unchanged. Queries used: `CoreIPPrefixPool` / `CoreIPAddressPool` node, `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated`, and `BuiltinIPPrefix(ids)` with inline fragments for the allocation weight.
 - **Testing**: Vitest browser mode (component tests next to each component), unit tests for rules and mappers, pytest-playwright e2e under `tests/e2e/resource-manager/`.
-- **Constraints**: the number pool page's behaviour must not change (FR-021), apart from keeping loaded allocations when loading more rows fails; every other number pool change is a verbatim move of JSX into `ui/pool/`.
+- **Constraints**: the number pool page's behaviour must not change (FR-021), apart from keeping loaded allocations and offering a Retry button when loading more rows fails; every other number pool change is a verbatim move of JSX into `ui/pool/`.
 
 ## Decisions
 
