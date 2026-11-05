@@ -67,7 +67,7 @@ doc_files: &doc_files
 release_files: &release_files
   - "changelog/*.md"
   - CHANGELOG.md
-  - "docs/docs/release_notes/infrahub/*.mdx"
+  - "docs/docs/release-notes/infrahub/*.mdx"
 
 python_all: &python_all
   - "**/*.py"
