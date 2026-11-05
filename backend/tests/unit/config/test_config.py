@@ -11,7 +11,6 @@ from structlog.testing import capture_logs
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
-    CacheDriver,
     CacheSettings,
     DatabaseSettings,
     GitSettings,
@@ -21,6 +20,7 @@ from infrahub.config import (
     SecurityOIDCProvider1,
     SecurityOIDCProvider2,
     SecurityOIDCSettings,
+    SecuritySettings,
     Settings,
     StorageSettings,
     UserInfoMethod,
@@ -228,6 +228,42 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
 
     assert provider.id_token_verify_signature is True
     assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
+
+
+SSO_ACCOUNT_NAME_FALLBACK_WARNING = (
+    "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+    "a first SSO login can claim an existing "
+    "unlinked account whose name matches the display name sent by the identity provider. "
+    "This setting is deprecated and will be removed in Infrahub 1.13."
+)
+
+
+def test_sso_account_name_fallback_enabled_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
+    with capture_logs() as records:
+        SecuritySettings(sso_account_name_fallback=True)
+
+    assert records == [{"event": SSO_ACCOUNT_NAME_FALLBACK_WARNING, "log_level": "warning"}]
+
+
+def test_sso_account_name_fallback_default_is_silent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
+    with capture_logs() as records:
+        SecuritySettings()
+
+    assert records == []
+
+
+def test_sso_account_name_fallback_enabled_in_env_warns_when_settings_load(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", "true")
+    with capture_logs() as records:
+        settings = load(config_data={"main": {}})
+
+    assert settings.security.sso_account_name_fallback is True
+    # pydantic-settings validates the factory-built default again, which reruns the after-validator.
+    assert {(record["event"], record["log_level"]) for record in records} == {
+        (SSO_ACCOUNT_NAME_FALLBACK_WARNING, "warning")
+    }
 
 
 def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:
@@ -452,21 +488,6 @@ def test_blank_cache_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -
     monkeypatch.setenv("INFRAHUB_CACHE_URL", blank)
 
     assert CacheSettings().url is None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_coexists_with_redis_driver() -> None:
-    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
-    assert settings.driver is CacheDriver.Redis
-    assert settings.url is not None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_ignored_for_non_redis_driver() -> None:
-    # A URL whose scheme is not a Redis scheme must not fail the load, since only the Redis driver reads it.
-    settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
-    assert settings.driver is CacheDriver.NATS
-    assert settings.url is not None
 
 
 @pytest.mark.usefixtures("without_cache_environment")

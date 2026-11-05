@@ -103,7 +103,7 @@ Application Code
        ▼
 InfrahubEventService.send(event)
        │
-       ├──► _send_bus() ──► Message Bus (RabbitMQ/NATS)
+       ├──► _send_bus() ──► Message Bus (RabbitMQ)
        │         │
        │         └──► event.get_messages() → Internal handlers
        │

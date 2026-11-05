@@ -99,7 +99,9 @@ Run the tests with:
 pytest tests/
 ```
 
-The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed automatically.
+The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed and the stack is stopped.
+
+If pytest exits before the fixture stops the stack, for example because the process is killed or a CI job is cancelled, Ryuk removes the stack's containers, networks, and volumes about 10 seconds after the process exits. Ryuk is the cleanup container of the Testcontainers library. It needs access to the Docker socket, and Docker pulls its `testcontainers/ryuk` image on first use. If Ryuk cannot start, the stack does not start either. Set `TESTCONTAINERS_RYUK_DISABLED=true` to turn Ryuk off.
 
 ## Conftest setup
 
@@ -163,6 +165,7 @@ The following environment variables control the test stack:
 | `INFRAHUB_TESTING_WEB_CONCURRENCY` | `4` | Number of Gunicorn worker processes for the API server |
 | `INFRAHUB_TESTING_API_SERVER_COUNT` | `2` | Number of API server replicas |
 | `INFRAHUB_TESTING_TASK_WORKER_COUNT` | `2` | Number of task worker replicas |
+| `TESTCONTAINERS_RYUK_DISABLED` | `false` | Set to `true` to keep a stack running after pytest exits without stopping it |
 
 The full set of variables and their defaults is defined in `infrahub_testcontainers.container.PROJECT_ENV_VARIABLES`.
 
@@ -216,7 +219,7 @@ Type `c` (continue) in the pdb prompt to resume the test and let the containers 
 
 :::tip Keeping containers up after a test failure
 
-If the test fails before reaching a breakpoint, the `infrahub_app` fixture still tears down the containers. To keep them running after a failure for post-mortem inspection, override the fixture in your test class:
+If the test fails before reaching a breakpoint, the `infrahub_app` fixture still tears down the containers. To keep them running after a failure for post-mortem inspection, set `TESTCONTAINERS_RYUK_DISABLED=true` so that Ryuk does not remove the stack when pytest exits, and override the fixture in your test class:
 
 ```python
 @pytest.fixture(scope="class")

@@ -15,6 +15,7 @@ from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
 from .node.inherit_from import NodeInheritFromChecker
 from .node.relationship import NodeRelationshipAddChecker
+from .pool.rename import NumberPoolRenameChecker
 from .pool.scope import NumberPoolScopeChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
@@ -46,6 +47,8 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "relationship.max_count.update": RelationshipCountChecker,
     "relationship.common_parent.update": RelationshipPeerParentChecker,
     "node.inherit_from.update": NodeInheritFromChecker,
+    "node.name.update": NumberPoolRenameChecker,
+    "node.namespace.update": NumberPoolRenameChecker,
     ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,

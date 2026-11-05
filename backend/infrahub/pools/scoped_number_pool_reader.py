@@ -41,6 +41,18 @@ class ScopedNumberPoolReader:
         pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, filters={"node__values": sorted(set(kinds))})
         return self._scoped(pools=pools)
 
+    async def get_attached_to_kinds(self, kinds: Iterable[str]) -> list[ScopedNumberPool]:
+        """Return the pools attached to any of the kinds, unscoped ones included.
+
+        Raises:
+            ValidationError: When a pool stores an allocation scope that is not a list of elements.
+
+        """
+        pools = await NodeManager.query(
+            db=self.db, schema=CoreNumberPool, filters={"node__values": sorted(set(kinds))}, branch_agnostic=True
+        )
+        return self._read(pools=pools)
+
     async def get_with_scope(self) -> list[ScopedNumberPool]:
         """Return every pool that stores a scope.
 
@@ -49,7 +61,7 @@ class ScopedNumberPoolReader:
 
         """
         # An `isnull` filter on a List attribute matches no node, so the unscoped pools are dropped after the read.
-        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool, branch_agnostic=True)
+        pools = await NodeManager.query(db=self.db, schema=CoreNumberPool)
         return self._scoped(pools=pools)
 
     async def get_schema_pool_ids(self, attributes: Iterable[tuple[str, str]]) -> dict[tuple[str, str], str]:
@@ -62,7 +74,6 @@ class ScopedNumberPoolReader:
                 "node__values": sorted({kind for kind, _ in requested}),
                 "pool_type__value": NumberPoolType.SCHEMA.value,
             },
-            branch_agnostic=True,
         )
         return {
             (pool.node.value, pool.node_attribute.value): pool.get_id()

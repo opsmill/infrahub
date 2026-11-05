@@ -213,13 +213,16 @@ On a scoped pool, `InfrahubNumberPoolUtilization` requires a `division` with a v
 
 A pool's scope depends on the attributes and relationships it names. While the pool exists, Infrahub refuses a schema change that would:
 
-- remove an element, including in a schema load that also renames the kind
+- remove an element
 - make an element optional
 - change a relationship element to cardinality `many`
 - change an attribute element to kind `List`, `JSON` or `Any`
 - make the attribute the pool allocates `unique`
+- rename the pool's kind, by its `name` or its `namespace`
+- rename the attribute the pool allocates
+- make the pool's kind inherit from another generic
 
-The error names the pool and the element, for example `pool VLAN IDs per site divides its numbers by IpamVLAN.site; a scope element cannot be removed while the pool exists`. Renaming an element is allowed. Once the rename is in the schema of the default branch, Infrahub updates the name the pool shows for that element.
+The error names the pool and the element, for example `pool VLAN IDs per site divides its numbers by IpamVLAN.site; a scope element cannot be removed while the pool exists`. The last three changes are described in [Schema migration](../schema/migration.mdx#number-pool). Renaming an element is allowed. Once the rename is in the schema of the default branch, Infrahub updates the name the pool shows for that element.
 
 When the schema of the branch you work on does not have a scope element, allocation from the pool fails with `the scope element "<name>" of pool <pool> does not exist on <kind> on branch <branch>`.
 

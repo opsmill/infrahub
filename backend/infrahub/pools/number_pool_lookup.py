@@ -60,7 +60,7 @@ class NumberPoolLookup:
 
 
 class NumberPoolRangeNodeReader(Protocol):
-    """Reads the range nodes of number pools, on every branch at once."""
+    """Reads the range nodes of number pools."""
 
     async def query(
         self,
@@ -69,7 +69,6 @@ class NumberPoolRangeNodeReader(Protocol):
         filters: dict | None,
         *,
         at: Timestamp | str | None,
-        branch_agnostic: bool,
     ) -> Sequence[CoreNumberPoolRange]: ...
 
 
@@ -83,7 +82,7 @@ class NumberPoolRangeLookup:
     async def get_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[CoreNumberPoolRange]:
         """Return the ranges a pool allocates from, lowest start first."""
         pool_ranges = await self.node_manager.query(
-            db=self.db, schema=CoreNumberPoolRange, filters={"pool__ids": [pool_id]}, at=at, branch_agnostic=True
+            db=self.db, schema=CoreNumberPoolRange, filters={"pool__ids": [pool_id]}, at=at
         )
         return sorted(
             pool_ranges,

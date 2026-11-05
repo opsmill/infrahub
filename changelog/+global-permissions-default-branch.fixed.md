@@ -1,0 +1,1 @@
+Fixed an account's global permissions changing before a branch is merged, when the members of an account group, the roles of a group or the global permissions of a role were changed on that branch. Global permissions and the roles listed at login now come from the default branch, whatever branch the request is sent to.

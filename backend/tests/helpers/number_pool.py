@@ -379,7 +379,12 @@ def stored_scope(names: list[str] | None, kind: str = SCOPED_DEVICE.kind) -> lis
 
 
 async def scoped_pool(
-    db: InfrahubDatabase, name: str, allocation_scope: list[str] | None, kind: str = SCOPED_DEVICE.kind
+    db: InfrahubDatabase,
+    name: str,
+    allocation_scope: list[str] | None,
+    kind: str = SCOPED_DEVICE.kind,
+    start: int = SCOPED_POOL_START,
+    end: int = SCOPED_POOL_END,
 ) -> CoreNumberPool:
     """A pool over the `vlan_id` of `kind` with the scope naming the given fields, allocating from one range."""
     pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
@@ -388,12 +393,12 @@ async def scoped_pool(
         name=name,
         node=kind,
         node_attribute=SCOPED_ATTRIBUTE_NAME,
-        start_range=SCOPED_POOL_START,
-        end_range=SCOPED_POOL_END,
+        start_range=start,
+        end_range=end,
         allocation_scope=stored_scope(names=allocation_scope, kind=kind),
     )
     await pool.save(db=db)
-    await add_pool_range(db=db, pool=pool, start=SCOPED_POOL_START, end=SCOPED_POOL_END)
+    await add_pool_range(db=db, pool=pool, start=start, end=end)
     return pool
 
 
