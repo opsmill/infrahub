@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.constants import UpdateValidationErrorType
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import ContainerSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberPoolParameters,
     NumberPoolRangeParameters,
@@ -409,3 +409,62 @@ async def test_reloaded_number_pool_declaration_in_a_load_of_several_files(case:
         saved_declaration=case.expected_declaration,
         changed_parameters=case.expected_changed_parameters,
     )
+
+
+SECTIONED_WIDGET_SCHEMA: dict[str, Any] = {
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "Widget",
+            "namespace": "Test",
+            "containers": [
+                {"name": "lacp", "label": "LACP", "order_weight": 100},
+                {"name": "layer2", "label": "Layer 2", "order_weight": 200},
+            ],
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "lacp_rate", "kind": "Text", "optional": True, "container": "lacp"},
+            ],
+        },
+    ],
+}
+
+
+def _build_sectioned_schema() -> SchemaBranch:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SECTIONED_WIDGET_SCHEMA))
+    schema.process()
+    return schema
+
+
+async def test_changing_containers_emits_no_migration_and_no_constraint() -> None:
+    schema = _build_sectioned_schema()
+
+    candidate = schema.duplicate()
+    widget = candidate.get_node(name="TestWidget", duplicate=True)
+    widget.containers[0].label = "Link aggregation"
+    widget.containers.append(ContainerSchema(name="layer3", label="Layer 3", order_weight=300))
+    candidate.set(name="TestWidget", schema=widget)
+
+    diff = schema.diff(other=candidate)
+    result = schema.validate_update(other=candidate, diff=diff)
+
+    assert result.errors == []
+    assert result.migrations == []
+    assert result.constraints == []
+
+
+async def test_moving_an_attribute_to_another_container_emits_no_migration_and_no_constraint() -> None:
+    schema = _build_sectioned_schema()
+
+    candidate = schema.duplicate()
+    widget = candidate.get_node(name="TestWidget", duplicate=True)
+    widget.get_attribute(name="lacp_rate").container = "layer2"
+    candidate.set(name="TestWidget", schema=widget)
+
+    diff = schema.diff(other=candidate)
+    result = schema.validate_update(other=candidate, diff=diff)
+
+    assert result.errors == []
+    assert result.migrations == []
+    assert result.constraints == []

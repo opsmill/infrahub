@@ -808,6 +808,74 @@ export interface components {
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
         };
+        /** ContainerSchemaRead */
+        ContainerSchemaRead: {
+            /**
+             * Name
+             * @description Name of the section, must be unique within the node.
+             */
+            name: string;
+            /**
+             * Label
+             * @description Title of the section.
+             */
+            label: string;
+            /**
+             * Description
+             * @description Description shown under the title of the section.
+             */
+            description?: string | null;
+            /**
+             * Order Weight
+             * @description Position of the section among the sections of the node, lowest first.
+             */
+            order_weight?: number | null;
+            /**
+             * Collapsed
+             * @description Whether the section starts collapsed on the detail page.
+             * @default false
+             */
+            collapsed: boolean;
+            /**
+             * @description Expected state of the container after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+        };
+        /** ContainerSchemaWrite */
+        ContainerSchemaWrite: {
+            /**
+             * Name
+             * @description Name of the section, must be unique within the node.
+             */
+            name: string;
+            /**
+             * Label
+             * @description Title of the section.
+             */
+            label: string;
+            /**
+             * Description
+             * @description Description shown under the title of the section.
+             */
+            description?: string | null;
+            /**
+             * Order Weight
+             * @description Position of the section among the sections of the node, lowest first.
+             */
+            order_weight?: number | null;
+            /**
+             * Collapsed
+             * @description Whether the section starts collapsed on the detail page.
+             * @default false
+             */
+            collapsed: boolean;
+            /**
+             * @description Expected state of the container after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
+        };
         /**
          * DiffAction
          * @enum {string}
@@ -1004,6 +1072,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["AttributeParametersRead"] | null;
         };
@@ -1120,6 +1193,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["AttributeParametersWrite"] | null;
         };
@@ -1195,6 +1273,11 @@ export interface components {
              * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
+            /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaRead"][];
             /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
@@ -1322,6 +1405,11 @@ export interface components {
              * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
+            /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaWrite"][];
             /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
@@ -1625,6 +1713,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["ListAttributeParametersRead"] | null;
         };
@@ -1741,6 +1834,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["ListAttributeParametersWrite"] | null;
         };
@@ -2000,6 +2098,11 @@ export interface components {
              */
             order_by?: string[] | null;
             /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaRead"][];
+            /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
              */
@@ -2136,6 +2239,11 @@ export interface components {
              * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
+            /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaWrite"][];
             /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
@@ -2344,6 +2452,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberAttributeParametersRead"] | null;
         };
@@ -2460,6 +2573,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberAttributeParametersWrite"] | null;
         };
@@ -2582,6 +2700,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberPoolParametersRead"] | null;
         };
@@ -2698,6 +2821,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberPoolParametersWrite"] | null;
         };
@@ -2889,6 +3017,11 @@ export interface components {
              */
             order_by?: string[] | null;
             /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaRead"][];
+            /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
              */
@@ -3074,6 +3207,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
         };
         /** RelationshipSchemaWrite */
         RelationshipSchemaWrite: {
@@ -3185,6 +3323,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -3477,6 +3620,11 @@ export interface components {
              */
             order_by?: string[] | null;
             /**
+             * Containers
+             * @description Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.
+             */
+            containers?: components["schemas"]["ContainerSchemaRead"][];
+            /**
              * Uniqueness Constraints
              * @description List of multi-element uniqueness constraints that can combine relationships and attributes
              */
@@ -3669,6 +3817,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersRead"] | null;
         };
@@ -3785,6 +3938,11 @@ export interface components {
              * @default default
              */
             display: components["schemas"]["SchemaAttributeDisplay"];
+            /**
+             * Container
+             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             */
+            container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersWrite"] | null;
         };

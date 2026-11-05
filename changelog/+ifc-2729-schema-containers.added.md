@@ -1,0 +1,1 @@
+Added field sections to the schema: a node or generic can declare a `containers` list, and an attribute or relationship can set `container` to place itself in one of these sections or in the built-in `advanced` section. The schema API returns both properties.

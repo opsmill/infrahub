@@ -47,6 +47,7 @@ from infrahub.core.schema import (
     AttributePathParsingError,
     AttributeSchema,
     BaseNodeSchema,
+    ContainerSchema,
     GenericSchema,
     MainSchemaTypes,
     NodeSchema,
@@ -65,6 +66,7 @@ from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.core.validators.schema_branch.container_validator import ContainerValidator
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
@@ -144,7 +146,7 @@ class SchemaBranch:
             self.profiles = data.get("profiles", {})
             self.templates = data.get("templates", {})
 
-        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords()]
+        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords(), ContainerValidator()]
 
     @classmethod
     def validate(cls, data: Any) -> Self:
@@ -2061,6 +2063,11 @@ class SchemaBranch:
                     generics_used_by[generic_kind].append(node.kind)
                 node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
+            node_inheritance_handler.inherit_containers(
+                node=node,
+                interfaces=[self.get_generic(name=generic_kind, duplicate=False) for generic_kind in node.inherit_from],
+            )
+
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
                     f"{node.kind} Only one generic with hierarchical support is allowed per node {generic_with_hierarchical_support}"
@@ -2759,6 +2766,7 @@ class SchemaBranch:
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             human_friendly_id=["profile_name__value"],
             default_filter="profile_name__value",
+            containers=self._copy_containers(node=node),
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
                 RelationshipSchema(
@@ -2795,6 +2803,9 @@ class SchemaBranch:
             profile.attributes.append(attr)
 
         return profile
+
+    def _copy_containers(self, node: NodeSchema | GenericSchema) -> list[ContainerSchema]:
+        return [ContainerSchema(**container.model_dump(exclude={"inherited"})) for container in node.containers]
 
     def _get_object_template_kind(self, node_kind: str) -> str:
         return get_object_template_kind(node_kind=node_kind)
@@ -3054,6 +3065,7 @@ class SchemaBranch:
                 include_in_menu=False,
                 display_label="template_name__value",
                 human_friendly_id=["template_name__value"],
+                containers=self._copy_containers(node=node),
                 attributes=[template_name_attr],
             )
 
@@ -3072,6 +3084,7 @@ class SchemaBranch:
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
                 inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
+                containers=self._copy_containers(node=node),
                 attributes=[template_name_attr],
                 relationships=[
                     RelationshipSchema(

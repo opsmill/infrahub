@@ -511,6 +511,8 @@ NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_NAME_MIN_LENGTH = 2
 NAME_REGEX = r"^[a-z0-9\_]+$"
 NAME_REGEX_OR_EMPTY = r"^[a-z0-9\_]*$"
+# Reserved for the built-in Advanced section: accepted as a `container` reference but never declared in `containers`.
+ADVANCED_CONTAINER_NAME = "advanced"
 DEFAULT_DESCRIPTION_LENGTH = 128
 
 DEFAULT_NAME_MAX_LENGTH = 32

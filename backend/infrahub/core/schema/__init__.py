@@ -15,6 +15,7 @@ from infrahub.exceptions import SchemaNotFoundError
 from .attribute_parameters import NumberPoolParameters
 from .attribute_schema import AttributeSchema
 from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
+from .container import ContainerSchema
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
@@ -213,6 +214,7 @@ __all__ = [
     "AttributePathParsingError",
     "AttributeSchema",
     "BaseNodeSchema",
+    "ContainerSchema",
     "DropdownChoice",
     "GenericSchema",
     "MainSchemaTypes",

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema.container import ContainerSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -215,6 +216,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         for rel_name in sorted(self.relationship_names):
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
+        # The base hash sorts list items, but the order of containers is part of the schema.
+        md5hash.update(",".join(self.container_names).encode())
+
         return md5hash.hexdigest()
 
     def diff(self, other: Self) -> HashableModelDiff:
@@ -236,6 +240,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             obj_type=RelationshipSchema,
         )
 
+        if "containers" not in node_diff.changed and self.container_names != other.container_names:
+            node_diff.changed["containers"] = None
         if attrs_diff.has_diff:
             node_diff.changed["attributes"] = attrs_diff
         if rels_diff.has_diff:
@@ -750,6 +756,27 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 deleted_field_names=deleted_field_names,
             )
             self.default_filter = updated[0] if updated else None
+
+    @property
+    def container_names(self) -> list[str]:
+        return [container.name for container in self.containers]
+
+    def _get_updated_list_value(self, field_name: str, attr_local: list[Any], attr_other: list[Any]) -> list[Any]:
+        if field_name == "containers":
+            return self._merge_containers(local=attr_local, incoming=attr_other)
+        return super()._get_updated_list_value(field_name=field_name, attr_local=attr_local, attr_other=attr_other)
+
+    @staticmethod
+    def _merge_containers(local: list[ContainerSchema], incoming: list[ContainerSchema]) -> list[ContainerSchema]:
+        """Merge the containers of a reload: the incoming order first, then the kept containers in their previous order."""
+        kept = {container.name: container for container in local}
+        merged: list[ContainerSchema] = []
+        for container in incoming:
+            existing = kept.pop(container.name, None)
+            if container.state == HashableModelState.ABSENT:
+                continue
+            merged.append(existing.update(container) if existing else container)
+        return [*merged, *kept.values()]
 
     def update(self, other: HashableModel) -> Self:
         # handle renamed/deleted field updates for schema properties here
