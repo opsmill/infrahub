@@ -841,6 +841,12 @@ export interface components {
              * @default present
              */
             state: components["schemas"]["SchemaState"];
+            /**
+             * Inherited
+             * @description Internal value to indicate if the container was inherited from a Generic node.
+             * @default false
+             */
+            inherited: boolean;
         };
         /** ContainerSchemaWrite */
         ContainerSchemaWrite: {

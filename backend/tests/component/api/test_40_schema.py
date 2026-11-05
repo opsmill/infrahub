@@ -25,8 +25,16 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.conftest import BusRPCMock, TestHelper
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
 
-LAG_L2_CONTAINERS = [
-    {"name": "lacp", "label": "LACP", "description": None, "order_weight": 100, "collapsed": False, "state": "present"},
+LAG_GENERIC_CONTAINERS: list[dict[str, Any]] = [
+    {
+        "name": "lacp",
+        "label": "LACP",
+        "description": None,
+        "order_weight": 100,
+        "collapsed": False,
+        "state": "present",
+        "inherited": False,
+    },
     {
         "name": "layer2",
         "label": "Layer 2",
@@ -34,6 +42,7 @@ LAG_L2_CONTAINERS = [
         "order_weight": 200,
         "collapsed": False,
         "state": "present",
+        "inherited": False,
     },
     {
         "name": "layer3",
@@ -42,8 +51,10 @@ LAG_L2_CONTAINERS = [
         "order_weight": 300,
         "collapsed": True,
         "state": "present",
+        "inherited": False,
     },
 ]
+LAG_L2_CONTAINERS = [{**container, "inherited": True} for container in LAG_GENERIC_CONTAINERS]
 LAG_ATTRIBUTE_CONTAINERS = {
     "name": None,
     "description": None,
@@ -146,7 +157,7 @@ async def test_schema_read_endpoint_visibility(
             assert "container" in relationship
         assert isinstance(node["containers"], list)
         for container in node["containers"]:
-            assert set(container) == {"name", "label", "description", "order_weight", "collapsed", "state"}
+            assert set(container) == {"name", "label", "description", "order_weight", "collapsed", "state", "inherited"}
         return saw_inherited
 
     saw_inherited_attribute = False
@@ -614,6 +625,22 @@ async def test_schema_kind_endpoint_returns_containers_and_field_containers(
         relationship["name"]: relationship["container"] for relationship in schema["relationships"]
     }
     assert relationship_containers == dict.fromkeys(relationship_containers) | {"sub_interfaces": "advanced"}
+
+
+async def test_schema_kind_endpoint_returns_the_containers_a_generic_declares_as_not_inherited(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    _register_lag_schema(default_branch=default_branch)
+
+    with client:
+        response = client.get("/api/schema/InfraLagInterface", headers=client_headers)
+
+    assert response.status_code == 200
+    assert response.json()["containers"] == LAG_GENERIC_CONTAINERS
 
 
 async def test_schema_kind_endpoint_returns_empty_containers_for_a_node_without_sections(

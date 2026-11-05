@@ -3151,6 +3151,12 @@
                         "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the container after loading the schema",
                         "default": "present"
+                    },
+                    "inherited": {
+                        "type": "boolean",
+                        "title": "Inherited",
+                        "description": "Internal value to indicate if the container was inherited from a Generic node.",
+                        "default": false
                     }
                 },
                 "type": "object",
