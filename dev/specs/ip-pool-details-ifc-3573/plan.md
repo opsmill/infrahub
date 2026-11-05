@@ -58,7 +58,6 @@ frontend/app/src/app/router.tsx
 frontend/app/tests/fake/ip-pool.ts
 tests/e2e/resource-manager/test_ip_pool_details.py, test_resource_pool.py; tests/e2e/test_breadcrumb.py
 docs/docs/tutorials/getting-started/resource-manager.mdx; changelog/+ifc-3573-ip-pool-details.changed.md
-.design/ip-pool-details/ (design-jam record)
 ```
 
 ## Complexity Tracking

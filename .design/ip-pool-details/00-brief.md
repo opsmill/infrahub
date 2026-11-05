@@ -1,9 +1,0 @@
-# Brief: IP prefix pool and IP address pool details page
-
-Source: [INFP-759](https://opsmill.atlassian.net/browse/INFP-759), written by Bilal Abbad, and the prototype commit `8827d389b5` on `bab-proto-ip-pool-design`. Product framing (`emil-product-thinking`) skipped: the ticket already states the problem, the user and the outcome. Grilling (`grilling-ideas`) skipped: the ticket and the prototype settle the questions below, and Paul Leménager chose the Dots variant of the prototype on 2026-11-04.
-
-- **Done looks like**: a network engineer opens an IP prefix pool or an IP address pool and sees the same page as for a number pool: a header that reads "In namespace default · Prefix kind defaults to IpamIPPrefix · Prefix length defaults to /31 · Member type defaults to Address", a list of resource prefixes with their usage and weight on the left, and a table of what the selected resource prefix holds in the main area, which loads more rows as they scroll.
-- **Who**: a network engineer who manages pools in the Resource Manager. They come from the Resource Manager list, from a Generator's output or from a link a colleague shared, to check how full a pool is, which resource prefix is close to full, what a resource prefix holds, and what a new allocation gets when the request sets no value.
-- **Riskiest assumption**: that the backend already returns everything the page needs. Checked on 2026-11-04: the utilization query returns per-resource usage but no allocation weight and no order, so the page reads the weight from the resource prefix node and sorts the list itself. See `03-decisions.md`.
-- **Out of scope**: any backend change; the number pool page; the IP pool create and edit forms; a Branch column in the allocated table, because the backend returns the viewing branch for every row.
-- **Where it's used**: desk. Phone and tablet are not a target, so `emil-mobile-native` is skipped in phases 3 and 4.

@@ -47,7 +47,7 @@ Paths are under `frontend/app/` unless they start with `tests/`, `docs/` or `cha
 
 ## Phase 5: Design-jam review (phases 3-4 of the design-jam skill)
 
-- [ ] T022 `.design/ip-pool-details/03-decisions.md`; run the review passes (`emil-ui-polish`, `emil-surfaces`, `emil-ui-review`, `emil-prep-for-prod`) on the built page and fix or accept each finding in `04-review.md`; `05-handoff.md`, `05-implement.md`, `STATE.md`.
+- [ ] T022 Run the review passes (`emil-ui-polish`, `emil-surfaces`, `emil-ui-review`, `emil-prep-for-prod`) on the built page and fix or accept each finding.
 
 ## Phase 6: E2E, docs, changelog
 
