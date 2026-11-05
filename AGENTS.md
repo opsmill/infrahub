@@ -95,7 +95,7 @@ See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
 ```bash
 uv run invoke format                  # ruff format + fix on all Python code except python_sdk (same scope as CI)
-uv run invoke lint                    # yamllint, ruff check + format check (same scope as CI), ty, mypy on backend
+uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk (same scope as CI); mypy on backend
 cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
