@@ -87,7 +87,8 @@ async def broken_repository(
     # Without an .infrahub.yml the first import of the repository always fails.
     (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-    GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
+    # The containers can run as another user than pytest, and must be able to push to the remote.
+    GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir, shared=True)
 
     # A branch without Git sync lists only read-only repositories, so it would hide this one.
     await branch_api.create(branch, sync_with_git=True)
