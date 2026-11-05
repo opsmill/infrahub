@@ -703,7 +703,7 @@ async def test_schema_load_endpoint_removes_a_container_marked_absent(
 
     assert load_response.status_code == 200, load_response.text
     assert not [warning for warning in load_response.json()["warnings"] if "read-only field" in warning["message"]]
-    assert {container["name"] for container in read_response.json()["containers"]} == {"lacp", "layer2", "layer3"}
+    assert [container["name"] for container in read_response.json()["containers"]] == ["lacp", "layer2", "layer3"]
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

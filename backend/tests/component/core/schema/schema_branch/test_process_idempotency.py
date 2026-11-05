@@ -295,9 +295,9 @@ def test_generic_dropping_a_container_removes_it_from_the_node_on_reprocess(
 
     device = schema_branch.get_node(name="TestDevice", duplicate=False)
     assert [(container.name, container.inherited) for container in device.containers] == [
+        ("documentation", True),
         ("hardware", False),
         ("placement", False),
-        ("documentation", True),
     ]
     interface = schema_branch.get_node(name="TestInterface", duplicate=False)
     assert [container.name for container in interface.containers] == ["documentation"]

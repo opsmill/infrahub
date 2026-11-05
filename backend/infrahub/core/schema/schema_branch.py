@@ -2039,9 +2039,6 @@ class SchemaBranch:
                 continue
 
             node = node.duplicate()
-            # Inherited copies are rebuilt from the generics on every process, so a dropped generic container
-            # leaves the node and a second process yields the same list.
-            node.containers = [container for container in node.containers if not container.inherited]
 
             if InfrahubKind.IPPREFIX in node.inherit_from and InfrahubKind.IPADDRESS in node.inherit_from:
                 raise ValueError(
@@ -2065,6 +2062,11 @@ class SchemaBranch:
                 if node.namespace != "Internal":
                     generics_used_by[generic_kind].append(node.kind)
                 node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
+
+            node_inheritance_handler.inherit_containers(
+                node=node,
+                interfaces=[self.get_generic(name=generic_kind, duplicate=False) for generic_kind in node.inherit_from],
+            )
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(

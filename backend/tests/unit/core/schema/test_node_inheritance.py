@@ -124,7 +124,7 @@ def test_node_without_containers_receives_the_generic_containers() -> None:
     )
     node = NodeSchema(name="Note", namespace="Testing")
 
-    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+    NodeInheritanceHandler().inherit_containers(node=node, interfaces=[generic])
 
     assert node.containers == [
         ContainerSchema(name="lacp", label="LACP", order_weight=100, inherited=True),
@@ -146,11 +146,11 @@ def test_node_container_replaces_the_generic_container_of_the_same_name_only() -
         containers=[ContainerSchema(name="layer2", label="Switching", collapsed=True)],
     )
 
-    NodeInheritanceHandler().inherit_from_interface(node=node, interface=generic)
+    NodeInheritanceHandler().inherit_containers(node=node, interfaces=[generic])
 
     assert node.containers == [
-        ContainerSchema(name="layer2", label="Switching", collapsed=True),
         ContainerSchema(name="lacp", label="LACP", order_weight=100, inherited=True),
+        ContainerSchema(name="layer2", label="Switching", collapsed=True),
     ]
 
 
@@ -161,11 +161,42 @@ def test_first_generic_wins_when_two_generics_declare_the_same_container() -> No
     )
     node = NodeSchema(name="Note", namespace="Testing")
 
-    handler = NodeInheritanceHandler()
-    handler.inherit_from_interface(node=node, interface=first)
-    handler.inherit_from_interface(node=node, interface=second)
+    NodeInheritanceHandler().inherit_containers(node=node, interfaces=[first, second])
 
     assert node.containers == [ContainerSchema(name="lacp", label="LACP", inherited=True)]
+
+
+def test_inherited_containers_come_first_in_generic_order_followed_by_node_containers() -> None:
+    first = _generic_with_containers(
+        name="Item",
+        containers=[ContainerSchema(name="layer2", label="Layer 2"), ContainerSchema(name="lacp", label="LACP")],
+    )
+    second = _generic_with_containers(
+        name="Bundle",
+        containers=[
+            ContainerSchema(name="layer3", label="Layer 3"),
+            ContainerSchema(name="lacp", label="Link aggregation"),
+        ],
+    )
+    node = NodeSchema(
+        name="Note",
+        namespace="Testing",
+        containers=[
+            ContainerSchema(name="monitoring", label="Monitoring"),
+            ContainerSchema(name="lacp", label="Bundle settings"),
+            ContainerSchema(name="cabling", label="Cabling"),
+        ],
+    )
+
+    NodeInheritanceHandler().inherit_containers(node=node, interfaces=[first, second])
+
+    assert node.containers == [
+        ContainerSchema(name="layer2", label="Layer 2", inherited=True),
+        ContainerSchema(name="lacp", label="Bundle settings"),
+        ContainerSchema(name="layer3", label="Layer 3", inherited=True),
+        ContainerSchema(name="monitoring", label="Monitoring"),
+        ContainerSchema(name="cabling", label="Cabling"),
+    ]
 
 
 def test_inherited_attribute_keeps_the_generic_container() -> None:
@@ -204,9 +235,9 @@ def test_inheriting_twice_yields_the_same_containers() -> None:
     node = NodeSchema(name="Note", namespace="Testing")
     handler = NodeInheritanceHandler()
 
-    handler.inherit_from_interface(node=node, interface=generic)
+    handler.inherit_containers(node=node, interfaces=[generic])
     first_pass = [container.duplicate() for container in node.containers]
-    handler.inherit_from_interface(node=node, interface=generic)
+    handler.inherit_containers(node=node, interfaces=[generic])
 
     assert node.containers == first_pass
     assert [container.name for container in node.containers] == ["lacp", "layer2"]

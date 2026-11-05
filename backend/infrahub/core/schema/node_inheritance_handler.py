@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME
 
 from .container import ContainerSchema
@@ -28,8 +30,6 @@ class NodeInheritanceHandler:
         for prop_name in properties_to_inherit:
             if getattr(interface, prop_name) and not getattr(node, prop_name):
                 setattr(node, prop_name, getattr(interface, prop_name))
-
-        self._inherit_containers(node=node, interface=interface)
 
         # Build a mapping from source_attribute_id to (index, old_name) for existing inherited attributes
         # This allows us to detect renamed attributes by their source ID
@@ -97,13 +97,24 @@ class NodeInheritanceHandler:
             self._update_default_filters_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_display_labels_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
 
-    def _inherit_containers(self, node: NodeSchema, interface: GenericSchema) -> None:
-        declared_container_names = {container.name for container in node.containers}
-        for container in interface.containers:
-            if container.name in declared_container_names:
-                continue
-            node.containers.append(ContainerSchema(**container.model_dump(exclude={"inherited"}), inherited=True))
-            declared_container_names.add(container.name)
+    def inherit_containers(self, node: NodeSchema, interfaces: Sequence[GenericSchema]) -> None:
+        """Rebuild the node's containers: the generics' containers in `inherit_from` order, then the node's own.
+
+        A node container named like a generic container replaces it in place; the first generic declaring a name wins.
+        """
+        own_containers = {container.name: container for container in node.containers if not container.inherited}
+        inherited_containers: dict[str, ContainerSchema] = {}
+        for interface in interfaces:
+            for container in interface.containers:
+                if container.name in inherited_containers:
+                    continue
+                if container.name in own_containers:
+                    inherited_containers[container.name] = own_containers.pop(container.name)
+                else:
+                    inherited_containers[container.name] = ContainerSchema(
+                        **container.model_dump(exclude={"inherited"}), inherited=True
+                    )
+        node.containers = [*inherited_containers.values(), *own_containers.values()]
 
     def _update_default_filters_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.default_filter:

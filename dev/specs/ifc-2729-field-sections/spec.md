@@ -236,6 +236,13 @@ section render with the new properties.
 - A container name follows the same format and length rules as an attribute name.
 - A container with no `order_weight` is ordered after the weighted ones, in declaration order.
   Infrahub does not fill container order weights, unlike attribute order weights.
+- A schema's containers keep the order in which its schema file lists them, across every load
+  and reload. On a reload, the order of the incoming list wins; containers left out of the
+  incoming list are kept after the incoming ones, in their previous relative order; containers
+  marked `state: absent` are removed.
+- On a node, the inherited containers come first, in the order the generic lists them, the first
+  generic in `inherit_from` first; the node's own containers follow in declaration order. A node
+  container with the same name as an inherited one replaces it in the inherited one's position.
 - A field marked `display: extra` inside a container stays hidden behind that section's Extra
   control in the detail view, and is shown in the form as today.
 - A field whose attribute is allocated from a resource pool follows its attribute's section.

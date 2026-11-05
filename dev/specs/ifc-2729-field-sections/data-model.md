@@ -76,18 +76,23 @@ the internal counterpart mapping, so `infrahub_sdk.schema.generated` gets `Conta
 
 ## Inheritance merge
 
-`backend/infrahub/core/schema/node_inheritance_handler.py::NodeInheritanceHandler.inherit_from_interface`
-runs once per generic, in `inherit_from` order. It gains a step before the attribute loop:
+`backend/infrahub/core/schema/node_inheritance_handler.py::NodeInheritanceHandler.inherit_containers`
+runs once per node in `SchemaBranch.process_inheritance`, after the per-generic loop, with the
+node's generics in `inherit_from` order. It rebuilds `node.containers` from the node's own
+containers (those with `inherited=False`) and the generics' containers:
 
-- For each container of the generic whose `name` is not already in the node's containers, append
+- The inherited containers come first, in the order each generic lists them, the first generic in
+  `inherit_from` first. Each is a copy
   `ContainerSchema(**container.model_dump(exclude={"inherited"}), inherited=True)`.
-- A container the node declares is kept whole; nothing from the generic's container of the same
-  name is merged into it (FR-008).
-- When two generics declare the same name, the first generic in `inherit_from` appends it and the
-  second finds the name present (FR-008).
+- The node's own containers follow, in the order the node declares them.
+- A node container with the same name as an inherited one replaces it in the inherited one's
+  position. It is kept whole; nothing from the generic's container of the same name is merged into
+  it (FR-008).
+- When two generics declare the same name, the first generic in `inherit_from` provides it and
+  the second generic's container of that name is ignored (FR-008).
 
-`SchemaBranch.process_inheritance` drops the node's containers with `inherited=True` right after
-`node = node.duplicate()`, before the generic loop. So:
+Because the method ignores the node's existing `inherited=True` copies and rebuilds them from the
+generics:
 
 - A generic that drops a container removes it from every node that did not redeclare it on the
   next process; a field still pointing at it then fails validation.
@@ -141,14 +146,24 @@ Profile relationships are built field by field and carry no `container`.
 ## Reload merge
 
 `SchemaBranch.load_schema` merges a node loaded again onto the existing node with
-`HashableModel.update`, which merges item lists by `_sorting_id`:
+`HashableModel.update`. For `containers`, `BaseNodeSchema` replaces the generic list merge by
+`_sorting_id` with a merge that keeps the order of the schema file:
 
-- A container with a new name is appended.
+- The containers of the incoming list come first, in the order the incoming list gives them.
+- A container with a new name takes its place in that order.
 - A container with an existing name has its fields overwritten by the payload, including
   `inherited`, which the write payload does not carry and therefore resets to `False`: a node
   that redeclares an inherited container on reload owns it from then on.
-- A container left out of the list stays (FR-007).
+- A container left out of the incoming list stays, after the incoming containers, in its previous
+  order relative to the other containers left out (FR-007).
 - A container with `state: absent` is removed; a field still referencing it fails validation.
+
+Other item lists, such as attributes, relationships and dropdown choices, keep the generic merge
+by `_sorting_id`.
+
+The schema hash and the schema diff of a node or generic include the order of its container names,
+because the generic list hash ignores item order. A reload that only reorders containers is
+therefore a schema change: Infrahub writes the new order to the database and other workers load it.
 
 Containers and container assignments are stored with the schema and returned unchanged after a
 reload, on the default branch and on any other branch (FR-006).

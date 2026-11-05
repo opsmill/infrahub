@@ -103,12 +103,15 @@ remove a container. Details: [data-model.md](data-model.md).
 
 ### D2. Inheritance merge with an internal `inherited` flag
 
-`backend/infrahub/core/schema/node_inheritance_handler.py::NodeInheritanceHandler.inherit_from_interface`
-gets a step that appends an `inherited=True` copy of each generic container whose name the node does
-not already have. `SchemaBranch.process_inheritance` drops the `inherited` containers of a node
-right after duplicating it, before the generic loop, so a generic that drops a container removes it
-from the node on the next process, and a second process yields the same list (FR-010). Field-level
-`container` needs no code: `update_from_generic` already copies it.
+`backend/infrahub/core/schema/node_inheritance_handler.py::NodeInheritanceHandler.inherit_containers`
+runs once per node in `SchemaBranch.process_inheritance`, after the per-generic loop. It rebuilds
+the node's containers: an `inherited=True` copy of each generic container, in the order the
+generics list them (first generic in `inherit_from` first), then the node's own containers in
+declaration order. A node container with the same name as a generic container replaces it in the
+generic container's position. Existing `inherited` copies are ignored and rebuilt, so a generic
+that drops a container removes it from the node on the next process, and a second process yields
+the same list (FR-010). Field-level `container` needs no code: `update_from_generic` already
+copies it.
 
 ### D3. Validator plug-in
 
