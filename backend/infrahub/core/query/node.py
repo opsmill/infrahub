@@ -2599,19 +2599,17 @@ class NodeGetListByAttributeValueQuery(Query):
 
         query = """
         // --------------------------
-        // start with all possible Node-Attribute-AttributeValue combinations
+        // start with every attribute holding a matching value
         // --------------------------
-        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr)
         WHERE av.value <> $null_value
         AND %(match_predicate)s
-        %(kind_filter)s
-        WITH DISTINCT n, attr, av
         // --------------------------
         // rank each match, best first
         // --------------------------
-        WITH n, attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
+        WITH attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
         // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
-        WITH n, attr, av, CASE
+        WITH attr, av, CASE
             WHEN is_label AND value = search THEN 6
             WHEN is_label AND value STARTS WITH search THEN 5
             WHEN is_label THEN 4
@@ -2620,7 +2618,8 @@ class NodeGetListByAttributeValueQuery(Query):
             ELSE 1
         END * 1000000000 - size(value) AS score
         // Checking matches best first makes a node's first valid match its best one, so the checks stop once the limit is reached.
-        ORDER BY score DESC, n.uuid
+        // Ties break on the attribute's uuid, so that the node is read only for the rows checked.
+        ORDER BY score DESC, attr.uuid
         // --------------------------
         // filter HAS_VALUE edges
         // --------------------------
@@ -2632,20 +2631,21 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, av
+        WITH attr, av
         WHERE r.status = "active" AND current_value = av
         // --------------------------
-        // filter HAS_ATTRIBUTE edges
+        // find the node through its HAS_ATTRIBUTE edge
         // --------------------------
-        CALL (n, attr) {
+        CALL (attr) {
             MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
             WHERE %(branch_filter)s
-            RETURN r
+            RETURN r, n
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
         WITH n
         WHERE r.status = "active"
+        %(kind_filter)s
         // --------------------------
         // keep the nodes that exist at the searched time
         // --------------------------
