@@ -1,1 +1,1 @@
-Fixed GraphQL subscriptions bypassing authentication and saved-query permissions.
+Fixed GraphQL subscriptions bypassing authentication and saved-query permissions. WebSocket connections now require a bearer token, API key or session cookie when `allow_anonymous_access` is disabled, and each run of a subscribed saved query is checked against the permissions of the connected account, or of the anonymous role when no credentials are sent. A subscription ends when its credentials expire or are revoked.
