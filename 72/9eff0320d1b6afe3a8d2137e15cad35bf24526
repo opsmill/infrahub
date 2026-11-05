@@ -1,0 +1,21 @@
+backend/tests/unit/test_utils.py
+  s_6e33ff32df746e::t_defd696918e989 179-181
+backend/infrahub/utils.py
+  s_6e33ff32df746e::t_8487ab24fc1775 136-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "729eff0320d1b6afe3a8d2137e15cad35bf24526",
+  "prompts": {},
+  "sessions": {
+    "s_6e33ff32df746e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbb33180-6eac-42e8-8809-e455c9241637",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
