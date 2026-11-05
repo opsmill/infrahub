@@ -263,6 +263,7 @@ The allocation fails with one of these errors when the branch does not have what
 
 - `Pool '<pool>' cannot allocate on branch '<branch>': its namespace '<namespace>' does not exist on this branch.`
   - The pool's IP namespace does not exist on the branch, for example because it was created on another branch that is not merged yet, or deleted on this branch.
+  - When the pool no longer links to a namespace, for example because the branch that held the namespace was deleted, the message does not include the name of the namespace: `Pool '<pool>' cannot allocate on branch '<branch>': its namespace does not exist on this branch.`
   - Allocate on a branch where the namespace exists. If the namespace was created on another branch, merge that branch and rebase this one first.
 - `Pool '<pool>' cannot allocate on branch '<branch>': none of its resources exist on this branch.`
   - None of the pool's source prefixes exist on the branch.
