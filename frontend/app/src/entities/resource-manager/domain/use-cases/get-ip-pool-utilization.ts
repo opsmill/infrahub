@@ -4,16 +4,13 @@ import {
   getIpPoolUtilizationFromApi,
 } from "@/entities/resource-manager/api/get-ip-pool-utilization-from-api";
 import { mapToIpPoolUtilization } from "@/entities/resource-manager/api/ip-pool-utilization.mappers";
+import { throwGraphQLErrors } from "@/entities/resource-manager/api/throw-graphql-errors";
 import type { IpPoolUtilization } from "@/entities/resource-manager/domain/model/ip-pool";
 import { sortIpPoolResourcesByFillOrder } from "@/entities/resource-manager/domain/rules/sort-ip-pool-resources-by-fill-order";
 
 export interface GetIpPoolUtilizationParams extends GetIpPoolUtilizationFromApiParams {
   weightedKinds: string[];
 }
-
-const throwErrors = (errors: ReadonlyArray<{ message: string }> | undefined) => {
-  if (errors) throw new Error(errors.map((e) => e.message).join("; "));
-};
 
 export type GetIpPoolUtilizationResult = IpPoolUtilization;
 
@@ -31,18 +28,16 @@ const getWeightsById = async ({
 
   const { data, errors } = await getIpPoolResourceWeightsFromApi({
     resourceIds: resources.map(({ id }) => id),
-    // a weighted kind the pool does not use may be missing from the branch's GraphQL schema
-    weightedKinds: [...new Set(resources.map(({ kind }) => kind))].sort(),
     branchName,
     atDate,
   });
-  throwErrors(errors);
+  // weights only order and label the list, so a failure must not hide the usage that loaded
+  if (errors?.length) return new Map<string, number | null>();
 
   return new Map(
-    (data?.BuiltinIPPrefix.edges ?? []).map(({ node }) => [
-      node.id,
-      node.allocation_weight?.value ?? null,
-    ])
+    (data?.CoreWeightedPoolResource.edges ?? []).flatMap((edge) =>
+      edge?.node?.id ? [[edge.node.id, edge.node.allocation_weight?.value ?? null] as const] : []
+    )
   );
 };
 
@@ -53,7 +48,7 @@ export const getIpPoolUtilization = async ({
   atDate,
 }: GetIpPoolUtilizationParams): Promise<GetIpPoolUtilizationResult> => {
   const { data, errors } = await getIpPoolUtilizationFromApi({ poolId, branchName, atDate });
-  throwErrors(errors);
+  throwGraphQLErrors(errors);
 
   const node = data?.InfrahubResourcePoolUtilization;
   if (!node) throw new Error("IP pool utilization not found");

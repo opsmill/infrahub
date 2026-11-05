@@ -59,14 +59,14 @@ describe("getIpPoolUtilization", () => {
     );
   });
 
-  it("reads the weights of the resource prefixes for their own kinds only and orders by them", async () => {
+  it("reads the weights of the resource prefixes and orders by them", async () => {
     // GIVEN
     vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
       data: utilizationData,
     } as unknown as UtilizationResult);
     vi.mocked(getIpPoolResourceWeightsFromApi).mockResolvedValue({
       data: {
-        BuiltinIPPrefix: {
+        CoreWeightedPoolResource: {
           edges: [
             { node: { id: "r-a", allocation_weight: { value: 100 } } },
             { node: { id: "r-b", allocation_weight: { value: 10 } } },
@@ -78,7 +78,7 @@ describe("getIpPoolUtilization", () => {
     // WHEN
     const utilization = await getIpPoolUtilization({
       poolId: "pool",
-      weightedKinds: ["CustomWeightedPrefix", "IpamIPPrefix"],
+      weightedKinds: ["IpamIPPrefix"],
       ...context,
     });
 
@@ -86,7 +86,6 @@ describe("getIpPoolUtilization", () => {
     expect(getIpPoolUtilizationFromApi).toHaveBeenCalledWith({ poolId: "pool", ...context });
     expect(getIpPoolResourceWeightsFromApi).toHaveBeenCalledWith({
       resourceIds: ["r-b", "r-a"],
-      weightedKinds: ["IpamIPPrefix"],
       ...context,
     });
     expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
@@ -120,6 +119,32 @@ describe("getIpPoolUtilization", () => {
 
     // THEN
     expect(getIpPoolResourceWeightsFromApi).not.toHaveBeenCalled();
+    expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
+      [
+        ["r-a", null],
+        ["r-b", null],
+      ]
+    );
+  });
+
+  it("shows the resource prefixes without weights when the weights cannot be read", async () => {
+    // GIVEN
+    vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
+      data: utilizationData,
+    } as unknown as UtilizationResult);
+    vi.mocked(getIpPoolResourceWeightsFromApi).mockResolvedValue({
+      data: undefined,
+      errors: [{ message: "Unknown type" }],
+    } as unknown as WeightsResult);
+
+    // WHEN
+    const utilization = await getIpPoolUtilization({
+      poolId: "pool",
+      weightedKinds: ["IpamIPPrefix"],
+      ...context,
+    });
+
+    // THEN
     expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
       [
         ["r-a", null],
