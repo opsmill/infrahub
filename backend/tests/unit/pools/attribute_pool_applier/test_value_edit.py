@@ -17,6 +17,7 @@ from tests.unit.pools.attribute_pool_applier.helpers import (
     InMemoryNumberPoolFinder,
     InMemoryPoolRangeReader,
     PoolCall,
+    PoolLockLog,
     RecordingNumberAllocator,
     make_ticket_id,
 )
@@ -53,7 +54,7 @@ async def test_editing_a_tracked_number_to_one_outside_the_ranges_is_refused(
 
 
 async def test_editing_a_tracked_number_to_one_inside_the_ranges_is_allowed(
-    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, range_reader: InMemoryPoolRangeReader
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, pool_lock_log: PoolLockLog
 ) -> None:
     ticket_id = _edited_ticket_id(value=60, tracking_pool_id=POOL_ID)
 
@@ -61,7 +62,7 @@ async def test_editing_a_tracked_number_to_one_inside_the_ranges_is_allowed(
 
     assert ticket_id.value == 60
     assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
-    assert range_reader.reads == [POOL_ID]
+    assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
     assert finder.tracking_pool_lookups == []
 
 

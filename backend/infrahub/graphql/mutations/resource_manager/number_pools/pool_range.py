@@ -8,6 +8,7 @@ from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_range_validation import validate_number_pool_range
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_space import attribute_domain
@@ -15,7 +16,6 @@ from infrahub.pools.number_pool_space import attribute_domain
 from ...main import InfrahubMutation
 from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
-    pool_lock,
     pool_target_attribute,
     pool_target_lock,
     range_bounds,
@@ -74,7 +74,9 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 kind=str(pool.get_attribute("node").value),
                 attribute_name=str(pool.get_attribute("node_attribute").value),
             ),
-            pool_lock(pool_id=pool_id),
+            NumberPoolLock(db=graphql_context.db).changing(
+                pool_id=pool_id, pool_name=str(pool.get_attribute("name").value)
+            ),
             graphql_context.db.start_transaction() as dbt,
         ):
             range_node, result = await super().mutate_create(
@@ -109,7 +111,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
                 kind=str(pool.get_attribute("node").value),
                 attribute_name=str(pool.get_attribute("node_attribute").value),
             ),
-            pool_lock(pool_id=pool_id),
+            NumberPoolLock(db=db).changing(pool_id=pool_id, pool_name=str(pool.get_attribute("name").value)),
             within_transaction(db=db) as dbt,
         ):
             # Re-read under the lock so the bounds compared below are the ones a concurrent range write stored.
@@ -139,7 +141,12 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         pool = await cls._get_editable_pool(db=graphql_context.db, range_node=obj)
         pool_id = pool.get_id()
 
-        async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
+        async with (
+            NumberPoolLock(db=graphql_context.db).changing(
+                pool_id=pool_id, pool_name=str(pool.get_attribute("name").value)
+            ),
+            graphql_context.db.start_transaction() as dbt,
+        ):
             deleted = await NodeManager.delete(
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
