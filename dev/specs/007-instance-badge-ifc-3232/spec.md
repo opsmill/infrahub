@@ -127,7 +127,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 - **FR-008**: The instance label and color MUST NOT be settable as personal (per-user) preferences and MUST NOT appear in a user's own preferences; a per-user write of either value MUST be rejected.
 - **FR-009**: Every visitor, including an anonymous visitor on the login page, MUST be able to read the current label and color, without holding any permission, so that the indicator is shown on every page.
 - **FR-010**: A read of the instance settings MUST NOT create a stored record; before the first save, the read returns no label and no color.
-- **FR-011**: When a label is set, the top header of every page inside the application MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set, and the login page MUST show the same badge near the Infrahub logo on the login card. When no label is set, no badge is rendered. The badge's position inside the header (left-most or on the right next to the status indicators) is settled in a design jam during planning and recorded in the plan.
+- **FR-011**: When a label is set, the top header of every page inside the application MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set, and the login page MUST show the same badge near the Infrahub logo on the login card. When no label is set, no badge is rendered. Decision from the design jam of 2026-11-05: the badge is the first item of the header, left of the time selector and the breadcrumb (`.design/instance-badge/03-decisions.md`).
 - **FR-012**: When a color is set, every page inside the application and the login page MUST show a thin bar in that color across the full width of the top of the page, above the sidebar and the header. When no color is set, no bar is rendered and no space is reserved.
 - **FR-013**: A label that exceeds the badge's maximum width MUST be truncated with an ellipsis, and the full label MUST be available in a tooltip.
 - **FR-014**: When a label is set, the browser tab title of every page MUST be "`<label>` · `<page title>`", where the page title is the page's own title or "Infrahub" for pages without one. When no label is set, the tab title MUST be the page title alone, as today.
@@ -149,7 +149,7 @@ A user who does not hold the "manage global preferences" permission cannot chang
 - **SC-003**: An administrator can set or change the label and color in under one minute from the Global preferences page, with no restart and no help from an operator.
 - **SC-004**: After a restart or an upgrade of Infrahub, the label and color are unchanged in 100% of cases.
 - **SC-005**: No account without the permission can change the label or color, through the UI or the API, in 100% of attempts.
-- **SC-006**: Instances with no label and no color look and behave exactly as before the feature; no existing automated test changes its expectation except where it enumerates the fields of the global settings or the instance configuration.
+- **SC-006**: Instances with no label and no color look and behave exactly as before the feature; no existing automated test changes its expectation except where it enumerates the fields of the global settings or the instance configuration. The new form's save button is named "Save instance identity", so tests that locate the "Save" button of the date and time form keep working.
 
 ## Assumptions
 
