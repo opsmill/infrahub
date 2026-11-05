@@ -144,7 +144,8 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         if obj.status != BranchStatus.NEED_UPGRADE_REBASE:
             obj.status = BranchStatus.NEED_UPGRADE_REBASE
             await obj.save(db=db)
-            registry.refresh_cached_branch(obj)
+            # The migration goes on changing this object, so the cache gets a copy.
+            registry.refresh_cached_branch(obj.model_copy(deep=True))
 
         try:
             log.info(f"Running migrations for branch '{obj.name}'")
@@ -304,7 +305,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
             # Only update registry after txn commit. Otherwise, branch status and branched_from
             # could diverge between registry and database during a failed txn commit.
-            registry.branch[user_branch.name] = user_branch
+            # The cache holds this object itself, since the schema update below changes its hash with the cached schema.
+            registry.refresh_cached_branch(user_branch)
 
             if migration_baseline_schema is not None and pre_rebase_schema is not None:
                 # A registry refresh also writes this process's schema registry, so it must not run alongside.
