@@ -134,4 +134,23 @@ describe("DynamicForm", () => {
       .toBeVisible();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  test("puts the fields of a container named details in the Details panel", async () => {
+    // GIVEN a declared container that takes the name of the built-in Details section
+    const details = generateContainerSchema({ name: "details", label: "General" });
+    const component = await render(
+      <DynamicForm
+        fields={[
+          buildAttributeField("mode", { container: "details" }),
+          buildAttributeField("internal_id", { container: "advanced" }),
+        ]}
+        sections={[details]}
+      />
+    );
+
+    await expect
+      .element(component.getByRole("region", { name: "Details" }).getByLabelText("mode"))
+      .toBeVisible();
+    expect(component.getByRole("region", { name: "General" }).elements()).toHaveLength(0);
+  });
 });

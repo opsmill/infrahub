@@ -992,6 +992,14 @@ class SdkSchemaGenerator:
                 optional=True,
                 extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
             ),
+            SchemaAttribute(
+                name="inherited",
+                kind="Boolean",
+                description="Internal value to indicate if the container was inherited from a Generic node.",
+                default_value=False,
+                optional=True,
+                extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.READ},
+            ),
         ]
 
         self.list_parameters_fields = [
@@ -1295,7 +1303,9 @@ class SdkSchemaGenerator:
             {
                 "class_name": f"ContainerSchema{suffix}",
                 "parent": "BaseModel",
-                "attributes": self.container_schema_fields,
+                "attributes": [
+                    attribute for attribute in self.container_schema_fields if attribute.visibility >= minimum
+                ],
             },
             {
                 "class_name": f"ComputedAttributeUser{suffix}",
