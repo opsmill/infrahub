@@ -1,7 +1,7 @@
 import type { PreferenceSource } from "@/shared/api/graphql/generated/types";
 
-import type { Config } from "@/entities/config/domain/model/config";
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
+import type { InstanceColor } from "@/entities/preferences/domain/model/instance-identity";
 
 export type { PreferenceSource };
 
@@ -29,8 +29,6 @@ export interface EffectivePreferences {
   dateFormat: EffectivePreference<DateFormatKey>;
   timezone: EffectivePreference;
 }
-
-type InstanceColor = NonNullable<Config["instance"]["color"]>;
 
 // Org's own stored values, never merged with personal overrides.
 export type GlobalPreferences = PreferenceValues & {
