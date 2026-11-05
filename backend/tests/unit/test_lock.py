@@ -61,6 +61,7 @@ async def do_nothing_global_graph(id: str, wait_sec: float) -> tuple[str, int, i
     return id, start_time, end_time
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_simple_infrahub_lock() -> None:
     lock.initialize_lock(local_only=True)
 
@@ -75,6 +76,7 @@ async def test_simple_infrahub_lock() -> None:
     assert results[0][2] <= results[1][1]
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_multi_global_graph_lock() -> None:
     lock.initialize_lock(local_only=True)
 
@@ -86,6 +88,7 @@ async def test_multi_global_graph_lock() -> None:
     assert results[0][2] <= results[1][1]
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_global_lock_holder_takes_local_schema_lock_while_a_schema_update_waits() -> None:
     lock.initialize_lock(local_only=True)
     events: list[str] = []
@@ -109,6 +112,7 @@ async def test_global_lock_holder_takes_local_schema_lock_while_a_schema_update_
     assert events == ["registry updated", "schema updated"]
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_multi_lock_releases_what_it_acquired_when_cancelled_while_acquiring() -> None:
     lock.initialize_lock(local_only=True)
     local_lock_held = Event()
@@ -132,13 +136,14 @@ async def test_multi_lock_releases_what_it_acquired_when_cancelled_while_acquiri
         assert await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
 
         waiter.cancel()
-        await wait([waiter])
+        done, _ = await wait([waiter], timeout=10)
 
+        assert waiter in done
         assert waiter.cancelled()
         assert not await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
     finally:
         release_local_lock.set()
-        await holder
+        await wait_for(holder, timeout=10)
 
 
 def test_generate_name() -> None:
@@ -191,6 +196,7 @@ async def test_regular_locks_have_no_ttl() -> None:
     assert regular_lock.remote.ttl is None
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
     lock.initialize_lock(local_only=True)
 
