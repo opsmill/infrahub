@@ -15,6 +15,7 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
+import { DocumentTitle } from "@/entities/config/ui/document-title";
 import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 
@@ -33,6 +34,7 @@ export function App() {
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <ConfigProvider>
+                  <DocumentTitle />
                   <DatePreferencesProvider>
                     <RouterProvider router={router} />
                   </DatePreferencesProvider>

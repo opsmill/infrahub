@@ -62,18 +62,4 @@ describe("LoginPage", () => {
     expect(component.getByTestId("instance-color-bar").query()).toBeNull();
     expect(component.getByTestId("instance-badge").query()).toBeNull();
   });
-
-  test("sets the tab title to the instance label and the application name", async () => {
-    // GIVEN
-    vi.mocked(useAuth).mockReturnValue(unauthenticated);
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: null } })
-    );
-
-    // WHEN
-    await render(<LoginPage />);
-
-    // THEN
-    expect(document.title).toBe("QA · Infrahub");
-  });
 });

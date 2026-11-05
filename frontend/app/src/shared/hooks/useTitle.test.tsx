@@ -1,79 +1,62 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { useAtomValue } from "jotai";
+import { describe, expect, test } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
 import { useTitle } from "@/shared/hooks/useTitle";
+import { pageTitleAtom } from "@/shared/stores/page-title.atom";
 
-import { useConfig } from "@/entities/config/ui/config-provider";
-
-import { generateConfig } from "../../../tests/fake/config";
-
-vi.mock("@/entities/config/ui/config-provider");
-
-const withLabel = (label: string | null) => generateConfig({ instance: { label, color: null } });
+const useTitleWithRegistered = (title: string) => {
+  useTitle(title);
+  return useAtomValue(pageTitleAtom);
+};
 
 describe("useTitle", () => {
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
-  test("prefixes the page title with the instance label", async () => {
+  test("registers the page title", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel("QA"));
+    const title = "Schema";
 
     // WHEN
-    await renderHook(() => useTitle("Schema"));
+    const { result } = await renderHook(() => useTitleWithRegistered(title));
 
     // THEN
-    expect(document.title).toBe("QA · Schema");
+    expect(result.current).toBe("Schema");
   });
 
-  test("uses the page title alone when no instance label is set", async () => {
+  test("replaces the registered title when the page title changes", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel(null));
+    const { result, rerender } = await renderHook(
+      (title: string = "Loading") => useTitleWithRegistered(title),
+      { initialProps: "Loading" }
+    );
 
     // WHEN
-    await renderHook(() => useTitle("Schema"));
+    await rerender("Device details");
 
     // THEN
-    expect(document.title).toBe("Schema");
+    expect(result.current).toBe("Device details");
   });
 
-  test("updates the title when the instance label changes while mounted", async () => {
+  test("clears the registered title on unmount", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel("QA"));
-    const { rerender } = await renderHook(() => useTitle("Schema"));
-    vi.mocked(useConfig).mockReturnValue(withLabel("Staging"));
-
-    // WHEN
-    await rerender();
-
-    // THEN
-    expect(document.title).toBe("Staging · Schema");
-  });
-
-  test("restores a composed default title on unmount", async () => {
-    // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel("QA"));
     const { unmount } = await renderHook(() => useTitle("Schema"));
 
     // WHEN
     await unmount();
 
     // THEN
-    expect(document.title).toBe("QA · Infrahub");
+    const { result } = await renderHook(() => useAtomValue(pageTitleAtom));
+    expect(result.current).toBeNull();
   });
 
-  test("restores a title carrying the label current at unmount, not the one at mount", async () => {
+  test("falls back to the earlier registration when the latest one unmounts", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel("QA"));
-    const { rerender, unmount } = await renderHook(() => useTitle("Schema"));
-    vi.mocked(useConfig).mockReturnValue(withLabel("Staging"));
-    await rerender();
+    const parent = await renderHook(() => useTitleWithRegistered("Profile"));
+    const child = await renderHook(() => useTitle("Tokens"));
 
     // WHEN
-    await unmount();
+    await child.unmount();
 
     // THEN
-    expect(document.title).toBe("Staging · Infrahub");
+    expect(parent.result.current).toBe("Profile");
   });
 });
