@@ -1,0 +1,35 @@
+backend/infrahub/cli/tasks.py
+  s_fead087f95fb36::t_7993545f55e0f8 25
+  s_fead087f95fb36::t_86b6b75866ddb7 150-152,154-174,178,180-196,198,200-217,222-227,229-230
+  s_fead087f95fb36::t_a5fe8f8fd13be5 218-221
+  s_fead087f95fb36::t_76b1cdaceb3c9d 62,64-68
+  s_fead087f95fb36::t_6eb2ebf664979d 242-246,261
+  s_fead087f95fb36::t_5101236cff970e 5
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_fead087f95fb36::t_097dea2aa94151 11,15,18-27,29,33-34,37,39-40,44-46,49-53,70-83,88-89,93-98,102-140,142,145,148-149,152,154,157,159,162,164,167,169,174,179,182,184,187-192,194,197,199,202,208-210,214,216,220-221,235-411
+  s_fead087f95fb36::t_4b3bbcfe59b745 5,412-427,429
+backend/infrahub/prefect_server/task_history_models.py
+  s_fead087f95fb36::t_c28c3132460fba 7-9
+backend/infrahub/cli/upgrade.py
+  s_fead087f95fb36::t_dd3f01a02a52e1 47-54,109-118,168,180,183,196,200,207,211,217,219-220,222,244-245,249-255
+backend/infrahub/prefect_server/task_history.py
+  s_fead087f95fb36::t_bba9cbf0621c84 26-33,836,843-844
+docs/docs/reference/infrahub-cli/infrahub-upgrade.mdx
+  s_fead087f95fb36::t_1602c4148ffe83 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01421770943bf074a17adbaf1b6f2f86711e14f1",
+  "prompts": {},
+  "sessions": {
+    "s_fead087f95fb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76c6b40a-0c51-4467-aa31-a8d34687261e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,198 @@
+docs/docs/snippets/upgrade-task-history-cleanup.mdx
+  s_fead087f95fb36::t_8dca48cf0d3565 3
+dev/specs/infp-507-task-history-retention/contracts/configuration.md
+  s_fead087f95fb36::t_721b47bbbf1894 34
+  s_fead087f95fb36::t_7dd10494841d12 20-21
+  s_fead087f95fb36::t_340520193f4a6a 15
+  s_fead087f95fb36::t_b0ee7a474b4cc6 22
+dev/knowledge/backend/task-manager-retention.md
+  s_fead087f95fb36::t_8b521c56edf20c 220
+  s_fead087f95fb36::t_34a5c8caffa618 203-219
+  s_fead087f95fb36::t_35de477aaf4e91 25-26
+  s_fead087f95fb36::t_191e6087a6e6ab 93-94
+  s_fead087f95fb36::t_c4e866819a7e8b 177-178
+  s_fead087f95fb36::t_f4febe2356f01b 184-202,221-227
+  s_fead087f95fb36::t_26cd87ff789a35 70-80
+  s_fead087f95fb36::t_8fa5396f3173d3 179-183,228,304
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_fead087f95fb36::t_12eb63b0c52368 165
+  s_fead087f95fb36::t_41e2c60b911b1b 159
+  s_fead087f95fb36::t_87f1cf9e95e483 205,209-210
+  s_fead087f95fb36::t_15aacbdbf757b3 243
+  s_fead087f95fb36::t_112269b5751121 157-158
+  s_fead087f95fb36::t_35aac755f04ee7 21,25-31,33,37
+  s_fead087f95fb36::t_1d6e40439ce173 236
+  s_fead087f95fb36::t_1f76ae08d18d29 66,69,72,76,78,80,85-87,91,95,97,101,104,107,109,115,118,130-147,149-156,160-163,166-167,169,171,173,175
+  s_fead087f95fb36::t_1c68b17d420ec2 198,200
+  s_fead087f95fb36::t_509ee6712156b7 148
+  s_fead087f95fb36::t_14500abcb2981b 40,164
+dev/specs/infp-507-task-history-retention/research.md
+  s_fead087f95fb36::t_de8d73eda59bd4 25
+  s_fead087f95fb36::t_b55d83cff09092 61
+  s_fead087f95fb36::t_59d4e5f8ceba6f 57,59-60,62-63
+  s_fead087f95fb36::t_f0f6297c50abc8 29
+  s_fead087f95fb36::t_8c648e32221ce2 88
+  s_fead087f95fb36::t_95074d40a0d3cb 96
+  s_fead087f95fb36::t_5717cca89beecb 49
+  s_fead087f95fb36::t_512d095e5965e9 83-87
+docs/docs/deploy-manage/run-observe/activity-log.mdx
+  s_fead087f95fb36::t_ee5d34f5ec4a7c 131
+  s_fead087f95fb36::t_251ae425bf6fe3 127,130,133
+  s_fead087f95fb36::t_64265f441137a3 129
+  s_fead087f95fb36::t_28a684f2493767 132
+docs/docs/snippets/upgrade-task-history-warning.mdx
+  s_fead087f95fb36::t_37e451ea735110 10
+  s_fead087f95fb36::t_d004de05d8720d 8
+  s_fead087f95fb36::t_3799f1133bc3e2 5
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_fead087f95fb36::t_623f4762c7e7d4 37,39-40
+  s_fead087f95fb36::t_f429f1015ef2be 36,38,41-55
+  s_fead087f95fb36::t_b5cd206b9fb437 10
+dev/specs/infp-507-task-history-retention/plan.md
+  s_fead087f95fb36::t_580bb2dd3c619e 107
+  s_fead087f95fb36::t_d03eab16ff61d5 200
+  s_fead087f95fb36::t_32166e965e07e0 203
+  s_fead087f95fb36::t_d5024df34e6090 209-212
+  s_fead087f95fb36::t_98d917b2d57a19 147-148
+  s_fead087f95fb36::t_ff9fda29987cbd 47-53
+  s_fead087f95fb36::t_ba1e230bd44771 198
+  s_fead087f95fb36::t_7376c3a520cdf2 58-59
+  s_fead087f95fb36::t_e4afc1e83e9f76 171
+  s_fead087f95fb36::t_a8c318ec137711 11
+  s_fead087f95fb36::t_86482fdc07f461 13
+  s_fead087f95fb36::t_22e66f1cca1268 87
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_fead087f95fb36::t_20cd15ea7d94e9 49
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_fead087f95fb36::t_d2807bbea7c4fc 77
+  s_fead087f95fb36::t_00300545ca4836 65
+  s_fead087f95fb36::t_496fb66078144b 14
+  s_fead087f95fb36::t_d154acdce667a7 76
+  s_fead087f95fb36::t_dab2100111c808 10
+docs/docs/deploy-manage/maintain-upgrade/upgrade/enterprise.mdx
+  s_fead087f95fb36::t_117ea428852fa1 31-42
+  s_fead087f95fb36::t_78f8c1563f6884 63
+  s_fead087f95fb36::t_ee0dd42039adf3 72
+  s_fead087f95fb36::t_d59f4ed7ec3002 134-135,145
+  s_fead087f95fb36::t_ff4ee52e08e5dc 144
+  s_fead087f95fb36::t_5f54d2d4795d6c 30,73,133,146-147
+backend/infrahub/prefect_server/retention_settings.py
+  s_fead087f95fb36::t_32694f8ddf9061 78
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_fead087f95fb36::t_b0076e513736dd 16-17,19
+  s_fead087f95fb36::t_927e5678cfceaa 21
+  s_fead087f95fb36::t_3adf4690db5c75 18
+  s_fead087f95fb36::t_705199dd6fec9d 45
+docs/docs/deploy-manage/maintain-upgrade/upgrade/community.mdx
+  s_fead087f95fb36::t_011c3ce5306eeb 39
+  s_fead087f95fb36::t_20e7357734d7bf 38
+  s_fead087f95fb36::t_d0262231db6c59 86
+  s_fead087f95fb36::t_a0b795e8e856f4 75-76,87-88
+  s_fead087f95fb36::t_f0808476cd5a1d 77,89
+docs/docs/deploy-manage/run-observe/tasks.mdx
+  s_fead087f95fb36::t_54a9756669afdb 40,50
+  s_fead087f95fb36::t_3bea38ecd42340 63-66
+  s_fead087f95fb36::t_f6ffbb8076678f 119
+  s_fead087f95fb36::t_7895f2cbcada70 54
+  s_fead087f95fb36::t_5ed96212da20e8 51
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_fead087f95fb36::t_4044cf5d31f312 184
+  s_fead087f95fb36::t_27e3613dfc8522 85
+  s_fead087f95fb36::t_e020a67263e496 185-186
+  s_fead087f95fb36::t_e3f09304795118 70-77
+  s_fead087f95fb36::t_a2f1623bb62dfa 182
+  s_fead087f95fb36::t_85530d40cb9c6c 63
+  s_fead087f95fb36::t_804b73f8d2530f 175
+  s_fead087f95fb36::t_59f7f9f7054b77 53
+  s_fead087f95fb36::t_7b3d48365c8800 66
+  s_fead087f95fb36::t_96e572f53d528f 43,45
+  s_fead087f95fb36::t_ea9ab47b1e39c8 168
+  s_fead087f95fb36::t_479b4626f3a4fc 84
+  s_fead087f95fb36::t_f7c21b2846930f 64
+  s_fead087f95fb36::t_e1d1f825eab57d 149
+  s_fead087f95fb36::t_3db51812ce5cc6 183
+  s_fead087f95fb36::t_dc7b84db93b54c 180
+  s_fead087f95fb36::t_d19eccf21eb478 146-148
+  s_fead087f95fb36::t_cf7f0af0613575 65
+  s_fead087f95fb36::t_ae2f8e3a47c514 181
+  s_fead087f95fb36::t_26f45f8ece1892 197
+  s_fead087f95fb36::t_eafab7cfcb45e0 199
+  s_fead087f95fb36::t_0dce7142aa867c 201
+dev/specs/infp-507-task-history-retention/spec.md
+  s_fead087f95fb36::t_c0e83e66786a2c 32
+  s_fead087f95fb36::t_9e47fa6415f08e 247
+  s_fead087f95fb36::t_08995e718dec17 199
+  s_fead087f95fb36::t_5af38960b252c3 140
+  s_fead087f95fb36::t_e03292b526c11f 121
+  s_fead087f95fb36::t_fa6bdce58f2889 81-82
+  s_fead087f95fb36::t_e39eaa55bff4ed 238-239
+  s_fead087f95fb36::t_f6e85f1a3d597d 253-254,257,262-263
+  s_fead087f95fb36::t_5d518ca40e6a2a 28
+  s_fead087f95fb36::t_231e85f3599044 277-278
+  s_fead087f95fb36::t_6429a1431c43a2 229
+  s_fead087f95fb36::t_673678cf5bd684 250
+  s_fead087f95fb36::t_be188c2386c5cb 193
+  s_fead087f95fb36::t_83e89f9939eaec 153-159
+  s_fead087f95fb36::t_040867b99a23c4 222
+  s_fead087f95fb36::t_5a61ce67b2e4d9 120
+  s_fead087f95fb36::t_8073e1d19018d8 287
+  s_fead087f95fb36::t_447ae7f0119c7f 216
+  s_fead087f95fb36::t_764ebce872992a 206-207
+  s_fead087f95fb36::t_160da05baea0ea 196
+  s_fead087f95fb36::t_764d4c67a5dd45 255
+  s_fead087f95fb36::t_61f6c42d6470ad 69,71
+  s_fead087f95fb36::t_8a17c387f45b35 106-108,110
+  s_fead087f95fb36::t_2874cdd4772b0f 78
+  s_fead087f95fb36::t_d082adf21ff986 161
+  s_fead087f95fb36::t_8d608004ff0460 20
+  s_fead087f95fb36::t_7c028c07e1a454 256
+  s_fead087f95fb36::t_747d4a29808d61 275
+  s_fead087f95fb36::t_430a78e6b2899f 269
+  s_fead087f95fb36::t_37e77191f7a319 36-43
+  s_fead087f95fb36::t_b64de8ea048ffe 191-192,194-195,197-198
+  s_fead087f95fb36::t_fa67f7b8e6a7ad 258-261
+  s_fead087f95fb36::t_bbde17cc223807 144
+  s_fead087f95fb36::t_456138a08bfeff 109
+dev/specs/infp-507-task-history-retention/opsmill-implement-report.md
+  s_fead087f95fb36::t_46ea9d3d4d3039 258
+  s_fead087f95fb36::t_d707cebf0f6a74 280
+  s_fead087f95fb36::t_3b3fb33d0a5f3f 304-305
+  s_fead087f95fb36::t_afa3c948ab22e7 313
+  s_fead087f95fb36::t_f3280f69aadc9c 318
+  s_fead087f95fb36::t_743e9414d7ca44 251-257,259-279,281-303,306-312,314-317
+dev/adr/0002-events-system.md
+  s_fead087f95fb36::t_4d9ca77ab34bdd 100,102
+  s_fead087f95fb36::t_d4dd782cfcd64d 101
+changelog/+flush-flow-runs.changed.md
+  s_fead087f95fb36::t_e6266d0e8208a1 1
+changelog/+task-manager-retention.added.md
+  s_fead087f95fb36::t_2246ea2d29de22 1
+dev/knowledge/backend/events.md
+  s_fead087f95fb36::t_f4d3a5d856b74b 220
+dev/knowledge/backend/telemetry.md
+  s_fead087f95fb36::t_279424e7fb3dc6 154-156,177-179
+dev/specs/infp-507-task-history-retention/alignment-check.md
+  s_fead087f95fb36::t_ed5c1576a52ad5 29-32
+dev/specs/telemetry-collection-infp-589/research.md
+  s_fead087f95fb36::t_af704e74c479d0 127-130
+dev/specs/telemetry-collection-infp-589/spec.md
+  s_fead087f95fb36::t_cc248e0aff2319 194-197,367-369
+docs/docs/reference/configuration.mdx
+  s_fead087f95fb36::t_c2649a80fb52c5 450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "395e7a473ba35faf410951571149204a9c3a4ac5",
+  "prompts": {},
+  "sessions": {
+    "s_fead087f95fb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76c6b40a-0c51-4467-aa31-a8d34687261e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
