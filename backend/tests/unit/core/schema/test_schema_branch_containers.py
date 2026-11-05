@@ -176,3 +176,103 @@ def test_removing_a_container_from_the_generic_refuses_the_inherited_field_on_th
         match=exact_message(f"{L2_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {L2_KIND}"),
     ):
         schema_branch.process()
+
+
+def _reload_generic(schema_branch: SchemaBranch, generic: dict[str, Any]) -> None:
+    schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=[generic]))
+    schema_branch.process()
+
+
+def _generic_without_field_container(field_list: str, field_name: str) -> dict[str, Any]:
+    generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
+    field = next(field for field in generic[field_list] if field["name"] == field_name)
+    del field["container"]
+    return generic
+
+
+def test_reload_without_container_moves_an_attribute_back_to_details() -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+
+    _reload_generic(schema_branch, _generic_without_field_container(field_list="attributes", field_name="lacp_rate"))
+
+    assert schema_branch.get(name=GENERIC_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
+    assert schema_branch.get(name=L2_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
+
+
+def test_reload_without_container_moves_a_relationship_back_to_details() -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+
+    _reload_generic(
+        schema_branch, _generic_without_field_container(field_list="relationships", field_name="sub_interfaces")
+    )
+
+    generic = schema_branch.get(name=GENERIC_KIND, duplicate=False)
+    node = schema_branch.get(name=L2_KIND, duplicate=False)
+    assert generic.get_relationship(name="sub_interfaces").container is None
+    assert node.get_relationship(name="sub_interfaces").container is None
+
+
+def test_reload_removing_a_container_and_its_references_together_is_accepted() -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+    generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
+    generic["containers"] = [{"name": "lacp", "label": "LACP", "state": HashableModelState.ABSENT.value}]
+    for attribute in generic["attributes"]:
+        if attribute.get("container") == "lacp":
+            del attribute["container"]
+
+    _reload_generic(schema_branch, generic)
+
+    node = schema_branch.get(name=L2_KIND, duplicate=False)
+    assert [container.name for container in node.containers] == ["layer2", "layer3"]
+    assert node.get_attribute(name="lacp_rate").container is None
+    assert node.get_attribute(name="lacp_mode").container is None
+
+
+def test_container_marked_absent_on_a_first_load_is_dropped() -> None:
+    schema = _lag_schema_with_generic_containers(
+        [{"name": "legacy", "label": "Legacy", "state": HashableModelState.ABSENT.value}]
+    )
+
+    schema_branch = _processed_branch(schema=schema)
+
+    for kind in (GENERIC_KIND, L2_KIND, "InfraLagInterfaceL3"):
+        node = schema_branch.get(name=kind, duplicate=False)
+        assert [container.name for container in node.containers] == ["lacp", "layer2", "layer3"]
+
+
+def test_reference_to_a_container_marked_absent_on_a_first_load_is_refused() -> None:
+    schema = _lag_schema_with_generic_containers(
+        [{"name": "legacy", "label": "Legacy", "state": HashableModelState.ABSENT.value}]
+    )
+    lacp_rate = next(attribute for attribute in schema["generics"][0]["attributes"] if attribute["name"] == "lacp_rate")
+    lacp_rate["container"] = "legacy"
+
+    with pytest.raises(
+        ValueError,
+        match=exact_message(
+            f"{L2_KIND}.attributes.lacp_rate.container: container 'legacy' is not declared on {L2_KIND}"
+        ),
+    ):
+        _processed_branch(schema=schema)
+
+
+def test_emptying_inherit_from_drops_the_inherited_containers() -> None:
+    generic = {
+        "name": "Item",
+        "namespace": "Test",
+        "containers": [{"name": "spare", "label": "Spare"}],
+        "attributes": [{"name": "name", "kind": "Text"}],
+    }
+    node = {
+        "name": "Thing",
+        "namespace": "Test",
+        "inherit_from": ["TestItem"],
+        "containers": [{"name": "extra", "label": "Extra"}],
+    }
+    schema_branch = _processed_branch(schema={"version": "1.0", "generics": [generic], "nodes": [node]})
+
+    schema_branch.load_schema(schema=SchemaRoot(version="1.0", nodes=[{**node, "inherit_from": []}]))
+    schema_branch.process()
+
+    containers = schema_branch.get(name="TestThing", duplicate=False).containers
+    assert [(container.name, container.inherited) for container in containers] == [("extra", False)]

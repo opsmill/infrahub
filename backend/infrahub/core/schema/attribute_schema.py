@@ -37,6 +37,7 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
 
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
+    _cleared_when_omitted: list[str] = ["container"]
     _enum_class: type[Enum] | None = None
     # Stores the source generic's attribute ID for inherited attributes
     # Used for rename detection in diffs while keeping id=None for inherited attrs

@@ -40,8 +40,10 @@ with `extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE}` a
 
 - `containers` on `base_node_schema` (so on nodes, generics, profiles and templates), next to
   `order_by`: kind `List`, `internal_kind=ContainerSchema`, optional, unordered, default an empty
-  list. `ContainerSchema` is added to the `fixed_types` map of
-  `SchemaAttribute._external_internal_kind` and imported in
+  list. A node or generic stored before this change has no `containers` value in the database;
+  `BaseNodeSchema` turns a missing value into an empty list when the schema is loaded, so an
+  upgraded instance loads its stored schema without a migration. `ContainerSchema` is added to
+  the `fixed_types` map of `SchemaAttribute._external_internal_kind` and imported in
   `backend/templates/basenodeschema_imports.j2`, so the generated `base_node_schema.py` types the
   field as `list[ContainerSchema]`.
 - `container` on `attribute_schema`, next to `display`: kind `Text`, optional, default `None`.
@@ -49,7 +51,8 @@ with `extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE}` a
 
 Valid `container` values: a `name` declared in the node's `containers` after inheritance, or the
 literal `advanced` (`backend/infrahub/core/constants/__init__.py::ADVANCED_CONTAINER_NAME`).
-`None` means the field belongs to the Details section.
+`None` means the field belongs to the Details section. A field stored before this change has no
+`container` value and loads as `None`.
 
 The SDK generator in `tasks/backend.py` gains `container_schema_fields`: `name`, `label`,
 `description`, `order_weight` and `collapsed` built with `_field`, and `state` as an explicit
@@ -98,6 +101,8 @@ generics:
   next process; a field still pointing at it then fails validation.
 - Processing twice yields the same list (FR-010).
 - A node loaded from the database with `inherited=True` copies is rebuilt from its generics.
+- A node whose `inherit_from` is emptied on a reload loses its `inherited=True` copies on the next
+  process and keeps only its own containers.
 - The `inherited` flag is stored and hashed with the node; a change on a generic updates every
   implementing node's stored `containers`.
 
@@ -151,12 +156,22 @@ Profile relationships are built field by field and carry no `container`.
 
 - The containers of the incoming list come first, in the order the incoming list gives them.
 - A container with a new name takes its place in that order.
-- A container with an existing name has its fields overwritten by the payload, including
-  `inherited`, which the write payload does not carry and therefore resets to `False`: a node
-  that redeclares an inherited container on reload owns it from then on.
+- A container with an existing name has its fields overwritten by the payload; a `description`
+  or `order_weight` the payload leaves out keeps its previous value.
+- A container that replaces an inherited copy (`inherited=True`) is taken whole from the payload:
+  a field the payload leaves out is `None` or its default, exactly as on a first load, and the
+  node owns the container from then on.
 - A container left out of the incoming list stays, after the incoming containers, in its previous
   order relative to the other containers left out (FR-007).
 - A container with `state: absent` is removed; a field still referencing it fails validation.
+  On a first load, `SchemaBranch.process_containers_state` drops containers with `state: absent`
+  before inheritance and validation, so they are not stored, inherited or accepted as a reference.
+
+The `container` of an attribute or relationship is the exception to the rule that a property left
+out of a reload keeps its stored value: a reload that leaves out `container`, or sets it to `null`,
+moves the field back to the Details section (`_cleared_when_omitted` on `AttributeSchema` and
+`RelationshipSchema`). A container can therefore be removed with `state: absent` in the same load
+that removes the `container` of its fields.
 
 Other item lists, such as attributes, relationships and dropdown choices, keep the generic merge
 by `_sorting_id`.
