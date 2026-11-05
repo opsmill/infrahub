@@ -1342,14 +1342,25 @@ class SecuritySettings(BaseSettings):
         return len(self._auto_create_groups_filter_patterns) > 0
 
     sso_account_name_fallback: bool = Field(
-        default=True,
+        default=False,
         description=(
             "When enabled, an SSO login that has no linked identity and matches an existing account by "
             "display name claims that account, as long as it has not already been linked to another "
             "identity. When disabled, such a login always provisions a separate account instead of "
-            "reusing an existing one."
+            "reusing an existing one. Deprecated: this setting will be removed in Infrahub 1.13."
         ),
     )
+
+    @model_validator(mode="after")
+    def warn_when_sso_account_name_fallback_enabled(self) -> Self:
+        if self.sso_account_name_fallback:
+            log.warning(
+                "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+                "a first SSO login can claim an existing "
+                "unlinked account whose name matches the display name sent by the identity provider. "
+                "This setting is deprecated and will be removed in Infrahub 1.13."
+            )
+        return self
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -2175,7 +2186,8 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
-    security: SecuritySettings = SecuritySettings()
+    # A factory so the account-name fallback warning reflects the loaded settings rather than the environment at import.
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
     ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()

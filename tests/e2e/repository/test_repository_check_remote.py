@@ -69,7 +69,14 @@ async def read_only_repo_id(
     source = tmp_path_factory.mktemp(READ_ONLY_REPO_NAME)
     (source / ".infrahub.yml").write_text("---\nqueries: []\n", encoding="utf-8")
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-    repo = GitRepo(type=GitRepoType.READ_ONLY, name=READ_ONLY_REPO_NAME, src_directory=source, dst_directory=remote_dir)
+    # The containers can run as another user than pytest, and the source directory is private.
+    repo = GitRepo(
+        type=GitRepoType.READ_ONLY,
+        name=READ_ONLY_REPO_NAME,
+        src_directory=source,
+        dst_directory=remote_dir,
+        shared=True,
+    )
     await repo.add_to_infrahub(client=infrahub_client)
     if not await repo.wait_for_sync_to_complete(client=infrahub_client, retries=30):
         raise RuntimeError(f"The {READ_ONLY_REPO_NAME} repository did not reach the in-sync state")
