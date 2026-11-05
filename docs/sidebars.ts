@@ -391,6 +391,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/migrate-to-enterprise', label: 'Migrate to Enterprise' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/observability-stack', label: 'Observability stack' },
               ],
             },

@@ -1,0 +1,222 @@
+---
+title: Migrate from Community to Enterprise
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Migrate from Community to Enterprise
+
+In the migration from Community to Enterprise, you replace the services of an existing Community deployment with their Enterprise equivalents, and then check your data and integrations.
+
+Plan a maintenance window. During it you back up the deployment, replace the services, and verify the data before you resume automation.
+
+Choose the procedure for your current deployment method. If you are also moving to another host, Kubernetes cluster, or bare-metal installation, plan the data transfer with OpsMill before you change editions.
+
+{/*TODO: The Docker Compose and Helm procedures reuse the existing Neo4j volume or persistent volume claim. The Neo4j upgrade guide for Community to Enterprise documents a dump and load of the neo4j and system databases instead. Test the in-place switch, then keep these procedures or replace their Neo4j steps with dump and load.*/}
+
+## Before you begin
+
+- Request Enterprise access from [OpsMill](https://cal.com/team/opsmill/meet), confirm the target version and deployment requirements, and review the license agreements in [Before you start](./enterprise.mdx#before-you-start).
+- Keep the Infrahub version unchanged for the edition switch where a matching Enterprise release is available. If you also need a version upgrade, follow the [Enterprise upgrade instructions](../../maintain-upgrade/upgrade/enterprise.mdx) for the required database migrations and service restarts.
+- Record the current Infrahub, Neo4j, and PostgreSQL versions. Compare them with the target deployment; a database version change needs its own upgrade plan.
+- Check the [hardware requirements](../hardware-requirements.mdx) for your Enterprise deployment.
+- Save your deployment files, environment variables, secrets, and storage configuration. Preserve credentials, the security secret key, public URLs, and integration settings.
+- Record representative object counts, branches, schema definitions, users, and artifacts so you can compare them after migration.
+
+## 1. Back up the deployment
+
+Pause external automation and user writes, and let running tasks finish before taking the final backup. Keep writes paused until you have verified Enterprise.
+
+Back up all of the following and store the backups outside the deployment's volumes:
+
+- The Neo4j database, including the information needed to restore database access.
+- The task manager's PostgreSQL database, which stores task history and workflow state.
+- File and artifact storage, whether on a local filesystem or in an S3-compatible bucket.
+- Configuration files and secrets needed to restore the current deployment.
+
+For Neo4j Community, stop the database and use an [offline database dump](https://neo4j.com/docs/operations-manual/current/backup-restore/offline-backup/). The `neo4j-admin database backup` online command requires Neo4j Enterprise; do not use it to back up a Community database.
+
+See [Backup and restore](../../maintain-upgrade/database-backup/backup-and-restore.mdx) for PostgreSQL and file storage backup procedures. Confirm that you can restore the backups to an isolated environment before replacing the deployment.
+
+## 2. Replace the deployment
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker Compose" default>
+
+Keep the existing Compose project name and persistent-volume mappings. Compose normally prefixes volume names with the project name, so a different project name can start an empty instance instead of using your existing data. See Docker's [project name rules](https://docs.docker.com/compose/how-tos/project-name/) if you did not originally specify `-p`.
+
+### Identify the current project
+
+Run these commands from the directory containing your current `docker-compose.yml` and `.env` files:
+
+```bash
+docker compose ls --all
+```
+
+Set `INFRAHUB_PROJECT` to the existing project name. The following example uses `infrahub`; replace it if your deployment uses another name:
+
+```bash
+export INFRAHUB_PROJECT=infrahub
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.yml ps --all
+cp docker-compose.yml docker-compose.community.yml
+```
+
+If you use override files, profiles, or a separate environment file, include the same options when inspecting and stopping Community, and prepare their Enterprise equivalents before starting it.
+
+### Prepare the Enterprise Compose file
+
+Set `INFRAHUB_VERSION` to the matching release you confirmed with OpsMill, then download its Compose file to a separate file:
+
+```bash
+export INFRAHUB_VERSION='<matching-release>'
+curl --fail --location "https://infrahub.opsmill.io/enterprise/${INFRAHUB_VERSION}" \
+  --output docker-compose.enterprise.yml
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.enterprise.yml config --quiet
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.enterprise.yml config --images
+```
+
+Review the file before using it:
+
+- Preserve your volume names, bind-mount paths, and external storage connections. Check the mappings for Neo4j, PostgreSQL, and file storage; keeping the project name alone does not preserve a renamed volume.
+- Reapply your ports, credentials, certificates, and other deployment customizations.
+- Check `.env` and shell overrides, especially `INFRAHUB_DOCKER_IMAGE`, `NEO4J_DOCKER_IMAGE`, and `VERSION`. An old override can keep Community images or select a different release even with the Enterprise Compose file.
+- Keep the Enterprise service commands and worker configuration from the downloaded file. Replacing only the server image is not sufficient.
+- Set `NEO4J_ACCEPT_LICENSE_AGREEMENT` to `yes` in `.env` or in your shell after you review the OpsMill and Neo4j terms in [Before you start](./enterprise.mdx#before-you-start).
+Validate the edited file and download the images before stopping the remaining Community services:
+
+```bash
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.enterprise.yml config --quiet
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.enterprise.yml pull
+```
+
+### Stop Community and start Enterprise
+
+After completing the backups, stop Community using its saved Compose file, replace the active file, and start Enterprise with the same project name:
+
+```bash
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.community.yml down
+cp docker-compose.enterprise.yml docker-compose.yml
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.yml up -d
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.yml ps --all
+docker compose -p "$INFRAHUB_PROJECT" -f docker-compose.yml logs --tail 100
+```
+
+:::warning Preserve persistent storage
+
+Do not add `-v` or `--volumes` to `docker compose down`, and do not delete or prune the existing volumes. Those volumes contain the data Enterprise must reuse.
+
+:::
+
+Wait for services to become healthy. If Infrahub opens with an empty schema or missing objects, keep writes paused and check the project name and volume mappings before loading any data.
+
+</TabItem>
+<TabItem value="helm" label="Kubernetes with Helm">
+
+Upgrade the existing Helm release in its current namespace. The Enterprise chart includes the Community chart as a dependency, so most existing values must move under the top-level `infrahub` key. See [Enterprise Helm configuration](./enterprise.mdx#using-helm-and-kubernetes) for examples.
+
+### Save the release configuration
+
+Set these variables to your existing release and namespace, then save the values and manifests:
+
+```bash
+export INFRAHUB_RELEASE='<existing-release>'
+export INFRAHUB_NAMESPACE='<existing-namespace>'
+helm get values "$INFRAHUB_RELEASE" -n "$INFRAHUB_NAMESPACE" -o yaml > community-values.yml
+helm get manifest "$INFRAHUB_RELEASE" -n "$INFRAHUB_NAMESPACE" > community-manifest.yml
+kubectl get pvc -n "$INFRAHUB_NAMESPACE"
+```
+
+Store these files securely because they can contain secrets. Confirm that database persistence is enabled and that you have backed up the existing persistent volume claims (PVCs) and external file storage.
+
+### Prepare and review the Enterprise release
+
+Create `enterprise-values.yml` using your saved values and the Enterprise chart defaults. Move the applicable Community settings under `infrahub`, preserving database connections, storage, credentials, ingress, and certificates. Remove Community-specific image and command overrides so they do not replace the Enterprise defaults.
+
+Set `INFRAHUB_CHART_VERSION` to the Enterprise chart version selected for your target Infrahub release. Chart versions and Infrahub versions are different:
+
+```bash
+export INFRAHUB_CHART_VERSION='<enterprise-chart-version>'
+helm template "$INFRAHUB_RELEASE" oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
+  --namespace "$INFRAHUB_NAMESPACE" \
+  --version "$INFRAHUB_CHART_VERSION" \
+  -f enterprise-values.yml > enterprise-manifest.yml
+```
+
+Compare the rendered manifests with `community-manifest.yml`. Verify the database StatefulSet names, PVC references, storage classes, service names, and image versions. The same release name does not guarantee the same storage references when switching charts. If the chart would replace a database or attach an empty volume, resolve the storage mapping with OpsMill before applying it.
+
+### Apply the Enterprise chart
+
+Your Community values set `acceptLicenseAgreement` to `"no"` under `neo4j.neo4j`. After you move those settings under `infrahub`, set the Neo4j edition and license acceptance in `enterprise-values.yml`, once you have reviewed the terms in [Before you start](./enterprise.mdx#before-you-start):
+
+```yaml
+infrahub:
+  neo4j:
+    neo4j:
+      edition: "enterprise"
+      acceptLicenseAgreement: "yes"
+```
+
+Quote the value, because YAML reads an unquoted `yes` as a boolean. See [Accept the Neo4j license agreement](./enterprise.mdx?install-method=Kubernetes+with+Helm#accept-the-neo4j-license-agreement).
+
+Once the backups and manifest review are complete, apply the chart during the maintenance window:
+
+```bash
+helm upgrade "$INFRAHUB_RELEASE" oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
+  --namespace "$INFRAHUB_NAMESPACE" \
+  --version "$INFRAHUB_CHART_VERSION" \
+  -f enterprise-values.yml --wait
+helm status "$INFRAHUB_RELEASE" -n "$INFRAHUB_NAMESPACE"
+kubectl get pods,pvc -n "$INFRAHUB_NAMESPACE"
+```
+
+Keep the existing release and PVCs; do not uninstall Community as a preparation step. Review pod logs and readiness before checking the data. Helm reports success when the Kubernetes resources are ready, which does not show that your data is intact.
+
+</TabItem>
+<TabItem value="bare-metal" label="Bare metal">
+
+Arrange a migration plan with [OpsMill](https://cal.com/team/opsmill/meet) for a bare-metal deployment. Enterprise installation packages, service definitions, and startup commands depend on your target environment; see [Bare metal deployment](./enterprise.mdx#bare-metal-deployment).
+
+Provide your current versions, database locations, file storage configuration, service accounts, and operating system details. Agree on the following before the maintenance window:
+
+1. Back up the databases, file storage, configuration, and secrets, and verify restoration.
+2. Stop the Community application services and workers.
+3. Install the agreed Enterprise packages and service definitions, preserving database connections and storage paths. Transfer data from the verified backups if changing hosts or storage.
+4. Apply any required version upgrades, then start the Enterprise services using the agreed service accounts and file permissions.
+5. Check the data and integrations before resuming automation.
+
+</TabItem>
+</Tabs>
+
+## 3. Check the data and Enterprise features
+
+Before reopening access or resuming automation:
+
+1. Confirm that all application services and workers are running the intended Enterprise release and that their logs show no database, storage, authentication, or task errors.
+2. Sign in with an existing account. Compare schemas, object counts, relationships, branches, and Proposed Changes with the records you took before migration.
+3. Open existing file objects and download artifacts to verify that file storage is accessible.
+4. Test an existing API token and your configured sign-in methods. Check that integration URLs and credentials still work.
+5. Run a representative task, such as generating an artifact, and verify its result and task history.
+6. Enable, configure, and test each optional Enterprise feature you intend to use, following its guide.
+
+Resume automation after these checks pass, and monitor the first scheduled runs.
+
+## If verification fails
+
+Keep writes paused and preserve logs for troubleshooting. Check storage mappings and configuration before attempting a rollback. If data is missing, do not initialize a new schema or import replacement data into the instance.
+
+For recovery, use the saved Community deployment configuration and the verified pre-migration backups of the databases and file storage. Confirm the restore procedure with OpsMill if you changed database versions or store formats during the migration. Restore the backups to recover the data. If you only switch the images back or roll back the Helm release, you do not restore the database contents.
+
+## Move from Docker Compose to Kubernetes
+
+The procedures in step 2 reuse the storage of the existing deployment. A Docker Compose deployment and a Kubernetes cluster do not share storage, so they do not apply when you run Community with Docker Compose and Enterprise on Kubernetes. Choose one of these options:
+
+- **Start a new Enterprise deployment and load your data from files.** Install Enterprise on Kubernetes by following [Using Helm and Kubernetes](./enterprise.mdx#using-helm-and-kubernetes). Then load your schema and objects with `infrahubctl schema load` and `infrahubctl object load` from the files or Git repository where you keep them. Data that exists only in the Community database is not transferred.
+- **Restore your backups into the new Enterprise deployment.** Back up the Community deployment as described in [step 1](#1-back-up-the-deployment), install Enterprise on Kubernetes, and restore the Neo4j, PostgreSQL, and file storage backups into it. The Infrahub and Neo4j versions must match on both sides. This page does not document the restore on Kubernetes and it has not been tested. Confirm the procedure with [OpsMill](https://cal.com/team/opsmill/meet) before you start.
+
+After either option, follow [step 3](#3-check-the-data-and-enterprise-features) to check the data.
+
+## Next
+
+- [Configure Infrahub](../configure-infrahub.mdx) — Review the settings for your Enterprise deployment.
+- [Production deployment](../production-deployment/overview.mdx) — Plan resilience and capacity after the edition migration.
