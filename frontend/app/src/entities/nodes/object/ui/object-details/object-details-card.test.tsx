@@ -256,4 +256,45 @@ describe("ObjectDetailsCard", () => {
       .element(component.getByRole("button", { name: "LACP" }))
       .toHaveAttribute("aria-expanded", "true");
   });
+
+  it("hides the Extra button while the card is collapsed", async () => {
+    // GIVEN a collapsed card whose schema has an extra field
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        defaultCollapsed
+        objectSchema={schemaWithExtraField}
+        objectData={objectDataWithExtraField}
+        permission={permission}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "LACP" })).toBeVisible();
+    expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
+
+    // WHEN
+    await component.getByRole("button", { name: "LACP" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Extra" })).toBeVisible();
+  });
+
+  it("carries the section test id and the section name when given a section name", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        title="LACP"
+        sectionName="lacp"
+        defaultCollapsed={false}
+        objectSchema={schemaWithCommit}
+        objectData={objectData}
+        permission={permission}
+      />
+    );
+
+    const card = component.getByTestId("object-details-section");
+    await expect.element(card).toHaveAttribute("data-section", "lacp");
+    expect(card.element()).toBe(component.getByRole("region", { name: "LACP" }).element());
+    expect(component.getByTestId("object-details").elements()).toHaveLength(0);
+  });
 });
