@@ -473,11 +473,6 @@ export const router = createBrowserRouter([
         lazy: () => import("@/pages/login"),
       },
       {
-        // PROTOTYPE design-jam instance-badge
-        path: "/_proto/instance-badge",
-        lazy: () => import("@/_proto/instance-badge/route"),
-      },
-      {
         path: "auth/:protocol/:provider/callback",
         lazy: () => import("@/pages/auth-callback"),
       },
