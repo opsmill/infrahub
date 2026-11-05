@@ -1,8 +1,9 @@
 # Decisions: instance badge and bar
 
-Chosen direction: `header-left` (`dj.variant=header-left&dj.rev=1`), decided 2026-11-05 by the tech
-owner's delegate after viewing the 16 screenshots in `shots/`. The owner asked to run the jam
-unattended, so the pick is recorded here with its reasons and can be overturned at review.
+Chosen direction: the tinted pill of `header-left` placed at the position of `header-right`, on the
+right of the header before the task status and repository sync status. The delegate first picked
+`header-left` unattended (reasons below); on 2026-11-05 the tech owner overturned the position: the
+badge belongs with the other instance-level status indicators on the right. The tinted style stays.
 
 - **Header-left over header-right**: the left edge of the content column is where the eye lands
   first; the solid badge on the right competes with "Add child prefix" and every primary action,

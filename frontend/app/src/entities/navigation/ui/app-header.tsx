@@ -10,8 +10,6 @@ import { TaskStatus } from "@/entities/tasks/ui/task-status";
 export function AppHeader() {
   return (
     <Card variant="secondary" className="h-12.5 shrink-0 flex-row items-center gap-2 p-2">
-      <InstanceBadge />
-
       <TimeFrameSelector />
 
       <BranchSelector />
@@ -24,6 +22,8 @@ export function AppHeader() {
       >
         <BreadcrumbNavigation />
       </ScrollArea>
+
+      <InstanceBadge />
 
       <TaskStatus />
 

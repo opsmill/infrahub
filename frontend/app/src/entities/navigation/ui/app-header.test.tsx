@@ -52,7 +52,7 @@ describe("AppHeader", () => {
     ]);
   });
 
-  test("puts the instance badge first in the bar", async () => {
+  test("puts the instance badge right before the task status", async () => {
     // GIVEN
     vi.mocked(InstanceBadge).mockReturnValue(
       <div data-testid="instance-badge-stub">instance badge</div>
@@ -64,8 +64,6 @@ describe("AppHeader", () => {
 
     // THEN
     const badge = component.getByTestId("instance-badge-stub").element();
-    const bar = badge.parentElement;
-    expect(bar?.firstElementChild).toBe(badge);
-    expect(bar?.contains(component.getByTestId("task-status-stub").element())).toBe(true);
+    expect(badge.nextElementSibling).toBe(component.getByTestId("task-status-stub").element());
   });
 });

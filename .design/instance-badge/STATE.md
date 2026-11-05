@@ -10,6 +10,6 @@ preview: http://localhost:8081/_proto/instance-badge?dj.variant=header-left&dj.r
 status: handed off
 notes: 0 open · 0 addressed · 0 declined · 0 deferred
 gathered: —
-last: direction header-left chosen, review gate clean, lift sheet written
+last: tinted pill chosen, placed on the right next to the status indicators by the owner, review gate clean, lift sheet written
 next: implement from 05-implement.md on this branch, then delete the prototype before the PR.
 blocked on: —

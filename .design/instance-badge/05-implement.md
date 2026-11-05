@@ -13,7 +13,7 @@ Approved revision: `frontend/app/src/_proto/instance-badge/directions/header-lef
   `frontend/app/src/entities/preferences/ui/instance-color-bar.tsx`.
 - The preset → classes map from `fixtures.ts` (badge variant, bar class). Destination:
   `frontend/app/src/entities/preferences/domain/rules/instance-color.ts`, the single owner.
-- Placement: badge as the first child of the `Card` in `entities/navigation/ui/app-header.tsx`;
+- Placement: badge right before `TaskStatus` in `entities/navigation/ui/app-header.tsx` (owner's decision, right side);
   bar as the first child of the outer column in `pages/app-layout.tsx`, the row becoming
   `flex-1 min-h-0`; on `pages/login.tsx`, bar as the first child of the full-screen container and
   the badge as the first child of the centered column.
