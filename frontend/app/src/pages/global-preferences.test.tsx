@@ -7,6 +7,10 @@ import { render } from "../../tests/components/render";
 import { Component } from "./global-preferences";
 
 vi.mock("@/entities/permission/domain/use-cases/has-global-permission");
+vi.mock("@/entities/config/ui/config-provider", async () => {
+  const { generateConfig } = await import("../../tests/fake/config");
+  return { useConfig: () => generateConfig() };
+});
 vi.mock("@/entities/preferences/ui/global-preferences-editor", () => ({
   GlobalPreferencesEditor: () => <div data-testid="global-preferences-editor">editor</div>,
 }));

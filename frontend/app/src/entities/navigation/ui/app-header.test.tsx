@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { AppHeader } from "@/entities/navigation/ui/app-header";
+import { InstanceBadge } from "@/entities/preferences/ui/instance-badge";
 import { RepositorySyncStatus } from "@/entities/repository/ui/repository-sync-status";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";
 
@@ -11,6 +12,7 @@ vi.mock("@/entities/tasks/ui/task-status");
 vi.mock("@/entities/branches/ui/branch-selector");
 vi.mock("@/entities/navigation/ui/time-selector");
 vi.mock("@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation");
+vi.mock("@/entities/preferences/ui/instance-badge");
 
 describe("AppHeader", () => {
   afterEach(() => {
@@ -48,5 +50,22 @@ describe("AppHeader", () => {
       "task-status-stub",
       "sync-status-stub",
     ]);
+  });
+
+  test("puts the instance badge first in the bar", async () => {
+    // GIVEN
+    vi.mocked(InstanceBadge).mockReturnValue(
+      <div data-testid="instance-badge-stub">instance badge</div>
+    );
+    vi.mocked(TaskStatus).mockReturnValue(<div data-testid="task-status-stub">task status</div>);
+
+    // WHEN
+    const component = await render(<AppHeader />);
+
+    // THEN
+    const badge = component.getByTestId("instance-badge-stub").element();
+    const bar = badge.parentElement;
+    expect(bar?.firstElementChild).toBe(badge);
+    expect(bar?.contains(component.getByTestId("task-status-stub").element())).toBe(true);
   });
 });
