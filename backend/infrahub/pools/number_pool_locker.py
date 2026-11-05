@@ -31,6 +31,8 @@ class NumberPoolLocker(Protocol):
     def changing(self, pool_id: str, pool_name: str) -> AbstractAsyncContextManager[None]:
         """Hold the pool alone while its ranges change, once every write reading them has committed.
 
+        Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
+
         Raises:
             ValidationError: When writes still read the ranges once the wait limit passes.
 
@@ -60,7 +62,7 @@ class NumberPoolLock:
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
-        """Keep the writes' shares of a pool on `db` until the transaction open on it ends, when there is one."""
+        """Keep the locks taken on a pool until the transaction open on `db` ends, when there is one."""
         self.db = db
 
     def _pool_lock(self, pool_id: str) -> lock.InfrahubSharedLock:
@@ -70,6 +72,24 @@ class NumberPoolLock:
     @asynccontextmanager
     async def changing(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
         """Hold the pool alone while its ranges change, once every write reading them has committed.
+
+        Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
+
+        Raises:
+            ValidationError: When writes still read the ranges once the wait limit passes.
+
+        """
+        exclusive = self._held_alone(pool_id=pool_id, pool_name=pool_name)
+        if self.db.can_hold_until_transaction_end:
+            await self.db.hold_until_transaction_end(exclusive)
+            yield
+            return
+        async with exclusive:
+            yield
+
+    @asynccontextmanager
+    async def _held_alone(self, pool_id: str, pool_name: str) -> AsyncGenerator[None]:
+        """Take the pool's lock exclusively until the block ends.
 
         Raises:
             ValidationError: When writes still read the ranges once the wait limit passes.

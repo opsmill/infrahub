@@ -269,10 +269,10 @@ the new pool before its transaction commits, so no write can hold it.
   the entry while it holds the lock, so allocations in different divisions never wait for each other.
   Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
   expired.
-- **A shared hold lasts until the commit.** Inside a transaction, `holding` hands its release to
-  `InfrahubDatabase.hold_until_transaction_end`, because a number only becomes visible to the range
-  check once it is committed. This also covers allocations that run inside a transaction outside the
-  mutation lock, such as template components and migrations.
+- **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
+  to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
+  other writes once it is committed. This also covers allocations that run inside a transaction outside
+  the mutation lock, such as template components and migrations.
 - **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
   queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
   it releases the mutex and the range change fails with a retry message. The lock error, which names
