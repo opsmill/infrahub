@@ -902,6 +902,8 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any]) -> None:
     schema_all_in_one = _schema_with_grading_container(schema_all_in_one)
+    criticality = _get_schema_by_kind(schema_all_in_one, kind="TestingCriticality")
+    criticality["relationships"][0]["container"] = "grading"
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -916,6 +918,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any
     assert node_profile.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     assert node_profile.containers[0].inherited is False
     assert node_profile.get_attribute("level").container == "grading"
+    assert node_profile.get_relationship("tags").container == "grading"
     assert set(node_profile.attribute_names) == {
         "profile_name",
         "profile_priority",
@@ -4842,6 +4845,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
     THING_WITH_TEMPLATE.containers = [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     THING_WITH_TEMPLATE.get_attribute(name="color").container = "grading"
+    THING_WITH_TEMPLATE.relationships[0].container = "grading"
     schema_branch.load_schema(
         schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
     )
@@ -4861,6 +4865,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     assert test_object_template_thing.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     assert test_object_template_thing.containers[0].inherited is False
     assert test_object_template_thing.get_attribute("color").container == "grading"
+    assert test_object_template_thing.get_relationship(THING_WITH_TEMPLATE.relationships[0].name).container == "grading"
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
     ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])
