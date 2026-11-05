@@ -35,7 +35,7 @@ An administrator who holds `manage_global_preferences` sets an instance label (t
 | Mutation arguments | Two flat arguments `instance_label: String`, `instance_color: InstanceColor` with the existing `_UNSET` sentinel | Follows the `date_format` / `timezone` pattern; an input object pays off only for fields that are out of scope |
 | Keeping the fields off per-user preferences | `GlobalPreferencesType(RawPreferencesType)` subclass used only by `InfrahubGlobalPreferences`; the mutation raises `ValidationError` when `scope != GLOBAL` and either argument is provided, before any read | FR-008; the only way to make the fields unselectable on the user and effective queries |
 | Color wire format | `InstanceColor(InfrahubStringEnum)` with name == value, uppercase (`RED = "RED"`, …) | graphene puts member names on the GraphQL wire and Pydantic serialises values on REST; equality keeps `schema.graphql`, `openapi.json` and both generated TypeScript types consistent. Docs write the names in lowercase |
-| Public read path | `ConfigAPI.instance: InstanceAPI` read from `PreferenceRepository(db).get_for_owner(GLOBAL_OWNER_ID)`; missing row → both `None` | Every client loads `/api/config` before first render, including the login page (FR-009, FR-010) |
+| Public read path | `ConfigAPI.instance: InstanceIdentityAPI` read from `PreferenceRepository(db).get_for_owner(GLOBAL_OWNER_ID)`; missing row → both `None` | Every client loads `/api/config` before first render, including the login page (FR-009, FR-010) |
 | Tab title | The single `useTitle` hook composes `formatDocumentTitle(useConfig().instance.label, title)`; `app-layout.tsx` and `login.tsx` call `useTitle("Infrahub")` | Every route then has a titled ancestor, so the unmount restore always lands on a composed title (US2-4) |
 | Frontend location | `entities/preferences/` for the badge, bar, color rules and form; the one cross-entity import is `useConfig` | The setting is a global preference and the form lives there |
 | Color choice input | Existing `Combobox`, with an additive optional `icon` on `ComboboxItem` for the swatch | Keeps the E2E helper `select_combobox_option` and role queries working |
@@ -45,7 +45,7 @@ An administrator who holds `manage_global_preferences` sets an instance label (t
 
 - **I. Schema-driven integrity**: no core schema change; `Preference` is a StandardNode. Generated files (`schema/schema.graphql`, `schema/openapi.json`, `frontend/app/src/shared/api/**`) are regenerated in T4 and T7, never edited. PASS.
 - **II. Branch-safe**: the row is read and written without branch filters, like the existing date and timezone fields; the setting belongs to the instance, not to a branch (FR-002), and `dev/knowledge/backend/preferences.md` states it (T11). PASS.
-- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceAPI`, generated TypeScript); `Optional[X]` on the model follows the documented StandardNode constraint; no `cast`, `any` or `type: ignore`. PASS.
+- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceAPI`, generated TypeScript); `Optional[X]` on the two new model fields matches the two adjacent fields of `Preference` for consistency; no `cast`, `any` or `type: ignore`. PASS.
 - **IV. Test discipline**: validation in `tests/unit/`; repository, mutation, query and REST in `tests/component/`; Vitest for rules, hooks and components; `tests/e2e/preferences/test_instance_identity.py` last. PASS.
 - **V. Query performance**: the only Cypher change adds two return columns to `_RETURN_LABELS`; user input reaches the database only through `StandardNode.save`, which binds parameters. PASS.
 - **VI. Security**: the write is gated by `raise_for_permission` before any read; the public read exposes only the label and color, which are meant for every visitor. PASS.
@@ -116,8 +116,9 @@ changelog/+ifc-3232-instance-badge.added.md
 
 ## Surviving risks
 
-- Stale title on pages without `useTitle`: mitigated by `useTitle("Infrahub")` in `app-layout.tsx` and `login.tsx`, guarded by the unmount test.
-- Two Save buttons on the Global preferences page: accepted; each form submits only its own keys, asserted by the form tests.
-- Database read on `/api/config`: one read-only call, no row created, asserted by the REST test.
+- Stale title on pages without `useTitle`: mitigated by `useTitle("Infrahub")` in `app-layout.tsx` and `login.tsx`, and by restoring a fallback computed from the label current at unmount time instead of the title captured at mount; guarded by the unmount tests, including "label changed while mounted".
+- Two Save buttons on the Global preferences page: the new form's button is named "Save instance identity" so the existing `name="Save", exact=True` locators in the E2E and component tests stay unique; each form submits only its own keys, asserted by the form tests.
+- Database read on `/api/config`: one read-only call, no row created, asserted by the REST test. No caching is added on purpose: the row is tiny and a cache would delay propagation to other sessions.
+- The return type of `InfrahubGlobalPreferences` changes from `RawPreferencesType` to `GlobalPreferencesType` (a superset); the frontend query uses no fragment, so no client breaks. This GraphQL schema change and the `/api/config` contract change were approved by the tech owner on 2026-11-04 as part of the "new global setting" decision.
 - Hand-written USER-scope guard: runs before any read; the mutation and query tests pin the error and the absence of the fields on user types.
 - Two generated `InstanceColor` types agree only because name == value; the form passes the REST-derived type into the gql.tada variable, so drift fails type checking.
