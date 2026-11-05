@@ -35,6 +35,7 @@ import {
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
 import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar";
 import { KindLabel } from "@/entities/resource-manager/ui/pool/kind-label";
+import { PoolLoadMoreError } from "@/entities/resource-manager/ui/pool/pool-load-more-error";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -111,8 +112,15 @@ export function NumberPoolAllocationsTable({
   division,
 }: NumberPoolAllocationsTableProps) {
   const [filters] = useNumberPoolAllocationFilters();
-  const { data, error, isPending, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, division, filters });
+  const {
+    data,
+    error,
+    isPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, division, filters });
   const { data: count } = useGetNumberPoolAllocationCount({
     poolId,
     rangeId: selectedRange?.id,
@@ -123,6 +131,9 @@ export function NumberPoolAllocationsTable({
   const { schema: nodeSchema } = useSchema(nodeKind);
 
   if (error && !data) return <ErrorScreen message={error.message} />;
+
+  // a failed page must not be cancelled and restarted by the next scroll or retry
+  const loadNextPage = () => fetchNextPage({ cancelRefetch: false });
 
   const defaultBranchName = defaultBranch?.name;
   const allocations = data?.pages.flat() ?? [];
@@ -263,9 +274,9 @@ export function NumberPoolAllocationsTable({
                 );
               }}
             </Collection>
-            {hasNextPage && (
+            {hasNextPage && !isFetchNextPageError && (
               <TableLoadMoreItem
-                onLoadMore={fetchNextPage}
+                onLoadMore={loadNextPage}
                 isLoading={isFetchingNextPage}
                 className="flex items-center justify-center gap-2 text-foreground-muted text-xs"
               >
@@ -275,6 +286,13 @@ export function NumberPoolAllocationsTable({
           </TableBody>
         </Table>
       </Virtualizer>
+      {isFetchNextPageError && (
+        <PoolLoadMoreError
+          itemsLabel="allocations"
+          isRetrying={isFetchingNextPage}
+          onRetry={loadNextPage}
+        />
+      )}
     </Col>
   );
 }
