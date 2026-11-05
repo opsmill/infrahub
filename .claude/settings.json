@@ -13,6 +13,15 @@
             "command": "dev/setup-environment.sh"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/speckit-python.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
