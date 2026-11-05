@@ -95,6 +95,11 @@ by OpsMill staff.
   key, which `mcp-grafana` 2.0.2 serves itself (`--server.tls-cert-file` and
   `--server.tls-key-file`). The docs say to use TLS whenever the port is open to a network (FR-006,
   FR-006a, [research.md](research.md) R3). Asked by Daniel on 2026-11-04.
+- Q: Does the server refuse to start when the port is open to a network without TLS? → A: Yes, in
+  Compose. Compose passes the listen address into the container, and the entrypoint refuses a
+  non-loopback address without the two TLS settings (FR-006a, [research.md](research.md) R3).
+  Plain HTTP stays possible on the loopback address, behind an SSH tunnel or a reverse proxy on the
+  same host. Decided by Daniel on 2026-11-05, after the critique of the same day (E2).
 
 ### Critique of 2026-11-04
 
@@ -105,10 +110,24 @@ apply all its suggested edits.
   covers every log stream in Loki, the metric labels and the trace resource attributes (FR-022,
   FR-022a, SC-004).
 - The server listens only on the host's loopback address by default. Access from another computer goes
-  through an SSH tunnel or a reverse proxy with TLS (FR-006, FR-025).
+  through an SSH tunnel or a reverse proxy with TLS (FR-006, FR-025). Changed by the clarifications of
+  2026-11-04 and 2026-11-05: the operator can also open the port to a network, and in Compose only
+  with TLS (FR-006, FR-006a).
 - Smaller changes: token rotation and the Grafana admin password in the docs (FR-025); the next step
   when no trace was sampled (story 2, scenario 5); the eval pass criterion (SC-003); a measure after
   release (SC-008).
+
+### Critique of 2026-11-05
+
+Source: [critiques/critique-20261105-124156.md](critiques/critique-20261105-124156.md). Daniel chose to
+apply all its suggested edits.
+
+- A safe network setup needs four settings, not one: the listen address, the two TLS files and the
+  allowed hosts (FR-006, FR-025).
+- A renewed certificate needs a restart of the container (Edge Cases, FR-025).
+- SC-001 covers the default setup; with TLS, each computer must also trust the certificate's CA.
+- The Helm chart refuses a `LoadBalancer` or `NodePort` Service without TLS
+  ([contracts/helm-values.md](contracts/helm-values.md)).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -247,6 +266,10 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   which query. Each person's own Grafana token is an option for operators who need to know (FR-010).
 - The installation cannot create the Grafana service account and its token: not known yet. The
   operator would then set two tokens by hand, as today.
+- The TLS certificate is renewed, for example a Secret rotated by cert-manager: the server reads the
+  files when it starts, so it keeps the old certificate until the container restarts. Not verified
+  for `mcp-grafana` ([research.md](research.md) R3). The docs say to restart the container after a
+  renewal (FR-025).
 
 ## Requirements *(mandatory)*
 
@@ -270,12 +293,18 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   a cluster-internal Service (Helm), because without TLS it serves plain HTTP and the token is its
   only protection (critique of 2026-11-04). The operator MUST be able to open the port to a network
   with one setting: the listen address in Compose, the Service type or an Ingress in Helm
-  (clarification of 2026-11-04). Access through an SSH tunnel, `kubectl port-forward` or a reverse
+  (clarification of 2026-11-04). A safe network setup also needs TLS (FR-006a) and the host name that
+  users connect to in the allowed hosts (FR-007), so it takes four settings in Compose (critique of
+  2026-11-05, P1). Access through an SSH tunnel, `kubectl port-forward` or a reverse
   proxy with TLS stays possible.
 - **FR-006a**: The operator MUST be able to give the server a TLS certificate and its private key, so
   that the server serves HTTPS and the token is encrypted between the AI assistant and the server.
   TLS is off by default. When only one of the two is set, the container MUST NOT start, and MUST log
-  an error that names both settings (clarification of 2026-11-04).
+  an error that names both settings (clarification of 2026-11-04). In Compose, when the listen
+  address is not a loopback address (`127.0.0.0/8` or `::1`) and the two TLS settings are not set,
+  the container MUST NOT start, and MUST log an error that names the listen address and the two TLS
+  settings, so that the token is never sent unencrypted over a network (clarification of
+  2026-11-05).
 - **FR-007**: The server MUST accept requests addressed to its published address. The default allowed
   hosts are `localhost:8100` and `127.0.0.1:8100`, and the operator changes them with one setting
   (D10).
@@ -364,8 +393,14 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
     assistant (D10);
   - how to reach the server from another computer: open the port to a network, SSH tunnel,
     `kubectl port-forward`, or a reverse proxy with TLS (FR-006);
-  - how to turn on TLS with a certificate and a key, that TLS must be on whenever the port is open to
-    a network, and that each AI assistant must trust the certificate (FR-006a);
+  - how to turn on TLS with a certificate and a key, that in Compose the server does not start on a
+    non-loopback address without TLS, and that each AI assistant must trust the certificate
+    (FR-006a);
+  - the four Compose settings of a network setup as one block: the listen address, the two TLS files
+    and the allowed hosts (FR-006, FR-006a, FR-007);
+  - that each user's computer must trust the CA that signed the certificate, when the operator's own
+    CA signed it;
+  - that a renewed certificate is used only after a restart of the container (Edge Cases);
   - how to change the token, and that the change needs a restart of the container;
   - that the default Grafana admin password must be changed when the server is turned on, and which
     setting the service account step reads it from.
@@ -399,8 +434,10 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 
 ### Measurable Outcomes
 
-- **SC-001**: In Compose and in Helm, with the setting on and a token set, a person connects Claude
-  Code to the stack's Grafana with one URL and one token, and no other step (D10 test).
+- **SC-001**: In Compose and in Helm, in the default setup (loopback address or `ClusterIP`, no TLS),
+  with the setting on and a token set, a person connects Claude Code to the stack's Grafana with one
+  URL and one token, and no other step (D10 test). With TLS and a certificate signed by the
+  operator's own CA, the person's computer must also trust that CA (FR-025).
 - **SC-002**: With the setting off, 0 Grafana MCP server containers run. With the setting on and no
   token, the container does not start. Every request without the token or with a wrong token is
   rejected (D10 test).
@@ -422,7 +459,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   that Infrahub does not write, stopped or named in the docs (FR-022a).
 - **SC-008**: After release, OpsMill support counts the slowness cases that arrive with a report from
   the skill, over the first two releases after 1.13. The measure needs no telemetry, because nothing
-  leaves the operator's network (FR-008). No target is set: the first count is the baseline.
+  leaves the operator's network (FR-008). No target is set: the first count is the baseline. Who
+  records the count, and where (for example a label on the support tickets), is not decided yet.
 
 ## Assumptions
 

@@ -129,7 +129,9 @@ Not verified:
 
 - the server running with a certificate;
 - whether `/healthz` on the side listener also uses TLS, which changes the Helm probe scheme;
-- how Claude Code and other MCP clients handle a self-signed certificate.
+- how Claude Code and other MCP clients handle a self-signed certificate;
+- whether the server reads a renewed certificate without a restart. Go's `ListenAndServeTLS` reads
+  the files once at start, so a restart is probably needed (spec Edge Cases).
 
 The certificate stays the operator's job.
 
@@ -137,9 +139,17 @@ Alternatives considered:
 
 - A reverse proxy container in the stack (for example Caddy or nginx). Not chosen: it adds an image
   to pin and review, and the server serves TLS itself.
-- Refusing to start when the port is open to a network without TLS. Not chosen: the entrypoint runs
-  inside the container and does not see the host address of the published port. The docs say to use
-  TLS instead.
+- Allowing plain HTTP on a network address, with only a warning in the docs. Not chosen (decided by
+  Daniel on 2026-11-05, critique E2). The first reason given here, that the entrypoint does not see
+  the host address, was wrong: Compose can pass the same variable into the container.
+
+**Refusing a network address without TLS** (clarification of 2026-11-05). Compose passes
+`INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` into the environment of `infrahub-grafana-mcp`, with the same
+default `127.0.0.1` as the port mapping, so both read one value. The entrypoint exits with code 1
+when the address is not in `127.0.0.0/8` and is not `::1`, and the two TLS settings are not set.
+Consequence: an operator whose reverse proxy runs on another host cannot reach the server over plain
+HTTP; that proxy must connect with HTTPS, or the proxy must run on the Docker host. In Helm, the chart
+applies the same rule with `fail` to a `LoadBalancer` or `NodePort` Service (critique E3).
 
 ## R4. Which write tools the server keeps
 

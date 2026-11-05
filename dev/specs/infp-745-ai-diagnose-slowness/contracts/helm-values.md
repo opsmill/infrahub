@@ -40,6 +40,9 @@ grafanaMcp:
 - When `grafanaMcp.enabled` is true and both `serverToken.value` and `serverToken.existingSecret` are
   empty, `helm install` and `helm upgrade` fail with `grafanaMcp.serverToken.value or
   grafanaMcp.serverToken.existingSecret is required` (FR-004).
+- When `grafanaMcp.enabled` is true, `service.type` is not `ClusterIP` and `tls.existingSecret` is
+  empty, `helm install` and `helm upgrade` fail with `grafanaMcp.service.type is <type>, which is open
+  to a network: set grafanaMcp.tls.existingSecret` (FR-006a, the Helm form of the Compose rule).
 - The Deployment runs the same options as Compose (see
   [compose-settings.md](compose-settings.md)). It reads the caller token through `secretKeyRef` and
   the Grafana token as a file mounted from the Secret written by the Job.
@@ -57,7 +60,9 @@ The URL that reaches the Service, and the caller token. The Service is `ClusterI
 server is not reachable from outside the cluster (spec FR-006). The user reaches it with
 `kubectl port-forward svc/<release>-grafana-mcp 8100:8000`, or through an Ingress that the operator
 adds. Without `tls.existingSecret`, the server serves plain HTTP, so an Ingress MUST use TLS, and a
-`LoadBalancer` or `NodePort` Service MUST NOT be used without `tls.existingSecret`; the docs say so.
+`LoadBalancer` or `NodePort` Service without `tls.existingSecret` makes the install fail (see Rules).
+An Ingress is not checked by the chart, because the operator adds it; the docs say that it MUST use
+TLS.
 When the URL uses another host name or port, `allowedHosts` must contain it.
 
 ## Checks before the templates are written

@@ -20,9 +20,11 @@ phase 7 of the design document). The work has three parts, in three repositories
   source check, durations, component, trace, logs, report with evidence, and a description of the
   missing panel when the dashboards do not answer (FR-017a). Each rule has
   a grader and four fixtures (R6, R7).
-- **The log audit and its fixes** in this repository: remove URL query strings and the email address
-  from the log lines that the first pass found, check the possible findings on a running instance,
-  and record the result in `log-audit.md` (R8).
+- **The audit and its fixes** in this repository (phase 1, FR-022, FR-022a): finish the audit of
+  Infrahub's own log lines that the first pass started (R8), and fix each confirmed line where it is
+  written; audit every other log stream in Loki, the metric labels in Prometheus, the resource
+  attributes of traces and the server's own logs; drop or document the values found in streams that
+  Infrahub does not write; record the result in `log-audit.md`.
 
 Docs: a section in `observability-stack.mdx`, the Build with AI pages and the FAQ.
 
@@ -42,7 +44,11 @@ database change.
 **Testing**:
 
 - `backend/tests/unit/test_observability_compose.py`: the two services, the profile, the variables and
-  the standalone file.
+  the standalone file. Also:
+  - the standalone file loads with the profile on and no TLS setting (the optional TLS mount does not
+    break the start);
+  - the entrypoint with no TLS setting, with both, and with one only;
+  - the entrypoint with a non-loopback listen address and no TLS setting, which exits with code 1.
 - Backend unit tests for each log fix (`backend/tests/unit/`).
 - A component test with testcontainers that starts Grafana 11.1.5 and 11.4.0, runs the service
   account script twice, and checks that one token exists and still works (`backend/tests/component/`).
@@ -64,7 +70,8 @@ speak MCP over Streamable HTTP, such as Claude Code.
 - With the profile off, no new container is created (FR-001).
 - The server listens on `127.0.0.1` by default (Compose) or on a `ClusterIP` Service (Helm). One
   setting opens it to a network (FR-006), and the server serves HTTPS when it gets a certificate and a
-  key (FR-006a).
+  key (FR-006a). In Compose, the server does not start on a non-loopback address without TLS; in
+  Helm, the chart refuses a `LoadBalancer` or `NodePort` Service without TLS.
 - No new outbound connection from the operator's network (FR-008).
 - The skill finds data sources by type, never by UID (FR-013).
 
@@ -185,9 +192,13 @@ docs pull request is merged only when the skill is published.
      `development/alloy/config.alloy` and in the Helm chart's Alloy, or an entry in the docs
      (FR-022a).
    - Record everything in `log-audit.md`.
-2. **Compose services.** First task: check on a running stack how the two restart options behave
-   after a missing token and after a Docker restart, and record the choice in
-   [contracts/compose-settings.md](contracts/compose-settings.md). Then: profile, entrypoint check,
+2. **Compose services.** First task, on a running stack, recorded in
+   [contracts/compose-settings.md](contracts/compose-settings.md):
+   - check how the two restart options behave after a missing token and after a Docker restart;
+   - choose how to mount the TLS files only when they are set, and check that the stack starts with
+     the profile on and no TLS setting.
+
+   Then: profile, entrypoint check,
    init container, Grafana admin variables, converter, tests, standalone file.
 3. **Helm chart** (`infrahub-helm`). First task: start the image in kind with the probe settings of
    [contracts/helm-values.md](contracts/helm-values.md) and confirm that the probes pass. Then the

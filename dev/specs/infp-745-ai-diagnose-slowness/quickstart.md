@@ -65,6 +65,8 @@ Expected:
 - `http://<host name>:8100/mcp` does not answer with MCP data.
 - With only `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` set, `infrahub-grafana-mcp` exits with code 1 and its
   log names both TLS settings.
+- With `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS=0.0.0.0` and no TLS setting, `infrahub-grafana-mcp` exits
+  with code 1 and its log names the listen address and both TLS settings.
 - Record in the docs how Claude Code handles a self-signed certificate (research R3, not verified).
 
 ## 4. No usage statistics (FR-008, SC-005)

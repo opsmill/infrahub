@@ -13,7 +13,7 @@ standalone file generated from it.
 | `COMPOSE_PROFILES=grafana-mcp` (or `--profile grafana-mcp`) | Not set | Turns the Grafana MCP server on. Without it, the two services are not created. |
 | `INFRAHUB_GRAFANA_MCP_TOKEN` | None | The token that AI assistants send as `Authorization: Bearer`. Required when the profile is on. |
 | `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` | `localhost:8100,127.0.0.1:8100` | The `Host` values the server accepts. Change it when the server is published on another host name or port. |
-| `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` | `127.0.0.1` | The host address that port 8100 listens on. `0.0.0.0` opens it on every interface. When it is not a loopback address, turn on TLS and add the host name that users connect to to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` (spec FR-006). |
+| `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` | `127.0.0.1` | The host address that port 8100 listens on. `0.0.0.0` opens it on every interface. Compose also passes it into the container. When it is not a loopback address (`127.0.0.0/8` or `::1`), the two TLS settings are required, or the container does not start; also add the host name that users connect to to `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS` (spec FR-006, FR-006a). |
 | `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` | Not set | Path on the Docker host of the certificate (PEM), with its chain. Set with the key file, or neither. When both are set, the server serves HTTPS (spec FR-006a). |
 | `INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE` | Not set | Path on the Docker host of the private key (PEM) of that certificate. |
 | `INFRAHUB_GRAFANA_ADMIN_USER` | `admin` | The Grafana admin user. Read by the Grafana service (`GF_SECURITY_ADMIN_USER`) and by the service account step, so one setting changes both. |
@@ -57,6 +57,8 @@ The server runs with:
 - `--disable-write --disable-api` in 1.13 (FR-010, research R4). The release of story 4 adds
   `--enable-write-tools=<dashboard, folder and annotation tools>`.
 - `GRAFANA_URL=http://infrahub-grafana:3000`
+- `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS=${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}`, read only
+  by the entrypoint check (spec FR-006a)
 - `GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE` pointing to the token file in the volume `grafana_mcp_token`,
   mounted read-only
 
@@ -73,6 +75,7 @@ here before the service is written. The unit test checks the chosen value.
 |------|-------|------|
 | Profile on, no token | `infrahub-grafana-mcp` log, exit code 1 | `INFRAHUB_GRAFANA_MCP_TOKEN is not set: set it to the token that AI assistants send` |
 | Only one TLS setting is set | `infrahub-grafana-mcp` log, exit code 1 | `Set both INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE, or neither` |
+| Listen address is not a loopback address, and TLS is not set | `infrahub-grafana-mcp` log, exit code 1 | `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS is <address>, which is open to a network: set INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE` |
 | Grafana not reachable after 5 minutes | `infrahub-grafana-mcp-init` log, exit code 1 | `Grafana did not answer at <url> within 5 minutes` |
 | Admin login refused | `infrahub-grafana-mcp-init` log, exit code 1 | `Grafana refused the admin login: set INFRAHUB_GRAFANA_ADMIN_USER and INFRAHUB_GRAFANA_ADMIN_PASSWORD` |
 
