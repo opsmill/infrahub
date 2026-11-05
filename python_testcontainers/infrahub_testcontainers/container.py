@@ -91,6 +91,12 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_STOP_TIMEOUT": "",
 }
 
+# TEMPORARY (Redis message bus evaluation): the stack starts RabbitMQ only for the rabbitmq broker driver. Revert before merge.
+RABBITMQ_STACK_ENV_VARIABLES: dict[str, str] = {
+    "COMPOSE_PROFILES": "rabbitmq",
+    "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue",
+}
+
 
 def connect_to_ryuk() -> socket.socket:
     """Open a connection to the Ryuk container of this process, starting Ryuk when it is not running yet."""
@@ -215,8 +221,12 @@ class InfrahubDockerCompose(DockerCompose):
                 }
             )
 
+        variables = dict(PROJECT_ENV_VARIABLES)
+        if os.environ.get("INFRAHUB_BROKER_DRIVER") == "rabbitmq":
+            variables.update(RABBITMQ_STACK_ENV_VARIABLES)
+
         with env_file.open(mode="w", encoding="utf-8") as file:
-            for key, value in PROJECT_ENV_VARIABLES.items():
+            for key, value in variables.items():
                 env_var_value = os.environ.get(key, value)
                 file.write(f"{key}={env_var_value}\n")
                 self.env_vars[key] = env_var_value
