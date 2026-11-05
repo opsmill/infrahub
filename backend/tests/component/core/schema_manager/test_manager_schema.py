@@ -902,6 +902,8 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any]) -> None:
     schema_all_in_one = _schema_with_grading_container(schema_all_in_one)
+    criticality = _get_schema_by_kind(schema_all_in_one, kind="TestingCriticality")
+    criticality["relationships"][0]["container"] = "grading"
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -916,6 +918,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any
     assert node_profile.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     assert node_profile.containers[0].inherited is False
     assert node_profile.get_attribute("level").container == "grading"
+    assert node_profile.get_relationship("tags").container == "grading"
     assert set(node_profile.attribute_names) == {
         "profile_name",
         "profile_priority",
@@ -3336,10 +3339,11 @@ def _load_criticality_twice(
     schema_all_in_one: dict[str, Any], containers_on_reload: list[dict[str, Any]]
 ) -> NodeSchema:
     """Load the schema with the grading container, load TestingCriticality again with the given containers and return it."""
+    schema_with_grading = _schema_with_grading_container(schema_all_in_one)
     schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**_schema_with_grading_container(schema_all_in_one)))
+    schema.load_schema(schema=SchemaRoot(**schema_with_grading))
 
-    reloaded = copy.deepcopy(_get_schema_by_kind(schema_all_in_one, kind="TestingCriticality"))
+    reloaded = copy.deepcopy(_get_schema_by_kind(schema_with_grading, kind="TestingCriticality"))
     reloaded["containers"] = containers_on_reload
     schema.load_schema(schema=SchemaRoot(nodes=[reloaded]))
 
@@ -3399,6 +3403,28 @@ async def test_reload_node_redeclaring_an_inherited_container_wins_on_reload() -
     layer2 = next(container for container in node.containers if container.name == "layer2")
     assert layer2.label == "Switching"
     assert layer2.inherited is False
+
+
+async def test_reload_node_redeclaring_an_inherited_container_matches_a_fresh_load() -> None:
+    override = {"name": "layer2", "label": "Switching"}
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)))
+    schema.process()
+    reloaded = copy.deepcopy(LAG_INTERFACE_L2)
+    reloaded["containers"] = [copy.deepcopy(override)]
+    schema.load_schema(schema=SchemaRoot(version="1.0", nodes=[reloaded]))
+    schema.process()
+    fresh_schema = copy.deepcopy(LAG_SCHEMA)
+    fresh_schema["nodes"][0]["containers"] = [copy.deepcopy(override)]
+    fresh = SchemaBranch(cache={}, name="fresh")
+    fresh.load_schema(schema=SchemaRoot(**fresh_schema))
+    fresh.process()
+
+    node = schema.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    fresh_node = fresh.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    assert node.containers == fresh_node.containers
+    layer2 = next(container for container in node.containers if container.name == "layer2")
+    assert layer2 == ContainerSchema(name="layer2", label="Switching")
 
 
 def _lag_schema_with_containers(container_names: list[str]) -> dict[str, Any]:
@@ -3464,6 +3490,31 @@ async def test_database_round_trip_keeps_the_declaration_order_of_containers(
         "layer3",
         "lacp",
     ]
+
+
+async def test_load_schema_from_db_accepts_a_schema_stored_without_containers(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)), branch=default_branch.name)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch)
+    # A schema stored by an earlier version has neither the containers nor the container property.
+    await db.execute_query(
+        query="""
+        MATCH (:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+        WHERE attr.name IN ["containers", "container"]
+        DETACH DELETE attr
+        """
+    )
+
+    loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+
+    generic = loaded.get_generic(name="InfraLagInterface", duplicate=False)
+    node = loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    assert generic.containers == []
+    assert node.containers == []
+    assert generic.get_attribute(name="lacp_rate").container is None
+    assert generic.get_relationship(name="sub_interfaces").container is None
 
 
 async def test_load_schema_to_db_simple_01(
@@ -4794,6 +4845,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
     THING_WITH_TEMPLATE.containers = [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     THING_WITH_TEMPLATE.get_attribute(name="color").container = "grading"
+    THING_WITH_TEMPLATE.relationships[0].container = "grading"
     schema_branch.load_schema(
         schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
     )
@@ -4813,6 +4865,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     assert test_object_template_thing.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
     assert test_object_template_thing.containers[0].inherited is False
     assert test_object_template_thing.get_attribute("color").container == "grading"
+    assert test_object_template_thing.get_relationship(THING_WITH_TEMPLATE.relationships[0].name).container == "grading"
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
     ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])

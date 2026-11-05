@@ -162,6 +162,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         """
         return hash(self.get_hash())
 
+    @field_validator("containers", mode="before")
+    @classmethod
+    def set_missing_containers_to_empty(cls, raw_containers: Any) -> Any:
+        """Accept a node stored before containers existed, which has no value for them."""
+        return [] if raw_containers is None else raw_containers
+
     @field_validator("attributes", mode="before")
     @classmethod
     def set_attribute_type(cls, raw_attributes: Any) -> Any:
@@ -775,7 +781,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             existing = kept.pop(container.name, None)
             if container.state == HashableModelState.ABSENT:
                 continue
-            merged.append(existing.update(container) if existing else container)
+            merged.append(existing.update(container) if existing and not existing.inherited else container)
         return [*merged, *kept.values()]
 
     def update(self, other: HashableModel) -> Self:

@@ -417,6 +417,8 @@ class HashableModel(BaseModel):
 
     _exclude_from_hash: list[str] = []
     _sort_by: list[str] = []
+    _cleared_when_omitted: list[str] = []
+    """Fields that `update` sets to None when the incoming value is None, instead of keeping the local value."""
 
     def __hash__(self) -> int:
         return hash(self.get_hash())
@@ -597,6 +599,9 @@ class HashableModel(BaseModel):
 
             attr_other = getattr(other, field_name)
             attr_local = getattr(self, field_name)
+            if attr_other is None and field_name in self._cleared_when_omitted:
+                setattr(self, field_name, None)
+                continue
             if attr_other is None or attr_local == attr_other:
                 continue
 

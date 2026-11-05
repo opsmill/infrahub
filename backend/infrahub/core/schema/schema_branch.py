@@ -754,6 +754,7 @@ class SchemaBranch:
         self.process_nodes_state()
         self.process_attributes_state()
         self.process_relationships_state()
+        self.process_containers_state()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
@@ -2036,6 +2037,10 @@ class SchemaBranch:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
+                if any(container.inherited for container in node.containers):
+                    node = node.duplicate()
+                    node_inheritance_handler.inherit_containers(node=node, interfaces=[])
+                    self.set(name=name, schema=node)
                 continue
 
             node = node.duplicate()
@@ -2260,6 +2265,17 @@ class SchemaBranch:
                 continue
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
+            self.set(name=name, schema=updated_node)
+
+    def process_containers_state(self) -> None:
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if not any(container.state == HashableModelState.ABSENT for container in node.containers):
+                continue
+            updated_node = node.duplicate()
+            updated_node.containers = [
+                container for container in node.containers if container.state != HashableModelState.ABSENT
+            ]
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
@@ -2643,6 +2659,7 @@ class SchemaBranch:
                     max_count=relationship.max_count,
                     label=relationship.label,
                     order_weight=relationship.order_weight,
+                    container=relationship.container,
                     inherited=False,
                 )
             )
@@ -2997,6 +3014,7 @@ class SchemaBranch:
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=label,
+                    container=relationship.container,
                     inherited=relationship.inherited,
                 )
             )

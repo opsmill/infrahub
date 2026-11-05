@@ -166,18 +166,18 @@ def test_read_only_table_matches_the_read_write_delta(case: ReadOnlyDeltaCase) -
     assert READ_ONLY_FIELDS[case.write_model.__name__] == read_names - set(case.write_model.model_fields)
 
 
-def test_container_read_model_adds_nothing_over_write_model() -> None:
-    """A container reads back exactly as it is written: `state` on both, `inherited` on neither.
+def test_container_read_model_adds_only_inherited_over_write_model() -> None:
+    """A container reads back as it is written, plus the read-only `inherited` flag.
 
-    `state` must stay settable so a reload can remove a container with `state: absent`, and the
-    internal `inherited` flag must never reach a client, on read or as a tolerated write.
+    `state` must stay settable so a reload can remove a container with `state: absent`, and
+    `inherited` lets a client such as the schema export leave out the containers a generic provides.
     """
     write_names = set(sdk_write.ContainerSchemaWrite.model_fields)
     read_names = set(sdk_read.ContainerSchemaRead.model_fields)
 
-    assert read_names == write_names
+    assert read_names == write_names | {"inherited"}
     assert "state" in write_names
-    assert "inherited" not in read_names
+    assert "inherited" in READ_ONLY_FIELDS["ContainerSchemaWrite"]
     assert "state" not in READ_ONLY_FIELDS["ContainerSchemaWrite"]
     assert "inherited" in READ_ONLY_FIELDS["ContainerSchemaWrite"]
 

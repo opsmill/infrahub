@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import duplicates
 
-from infrahub.core.constants import ADVANCED_CONTAINER_NAME
+from infrahub.core.constants import ADVANCED_CONTAINER_NAME, BUILT_IN_CONTAINER_NAMES
 
 from .interface import SchemaBranchValidator
 
@@ -27,10 +27,11 @@ class ContainerValidator(SchemaBranchValidator):
         container_names = [container.name for container in node.containers if not container.inherited]
         if duplicated := duplicates(container_names):
             raise ValueError(f"{node.kind}.containers: container names must be unique, duplicate '{duplicated[0]}'")
-        if ADVANCED_CONTAINER_NAME in container_names:
-            raise ValueError(
-                f"{node.kind}.containers: '{ADVANCED_CONTAINER_NAME}' is a built-in container and cannot be declared"
-            )
+        for built_in_name in BUILT_IN_CONTAINER_NAMES:
+            if built_in_name in container_names:
+                raise ValueError(
+                    f"{node.kind}.containers: '{built_in_name}' is a built-in container and cannot be declared"
+                )
 
     def _validate_references(self, node: MainSchemaTypes) -> None:
         valid_names = {container.name for container in node.containers} | {ADVANCED_CONTAINER_NAME}
