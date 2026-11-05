@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
@@ -65,6 +66,24 @@ class TestIPPoolAllocationOnBranch:
 
         pool_on_main = await pool_on(db=db, pool=pool, branch=default_branch)
         with pytest.raises(ResourceNotFoundError, match=rf"^{re.escape(_namespace_missing_message(default_branch))}$"):
+            await case.allocate(db=db, pool=pool_on_main, branch=default_branch)
+
+    async def test_namespace_deleted_with_its_branch_is_refused(
+        self, db: InfrahubDatabase, default_branch: Branch, case: IPPoolCase
+    ) -> None:
+        """Deleting the branch that held the namespace also removes the pool's link to it, so there is no name to give."""
+        branch = await create_branch(db=db, branch_name="held-the-namespace")
+        namespace = await create_namespace(db=db, branch=branch)
+        resource = await create_prefix(db=db, branch=branch, namespace=namespace, value=case.resource)
+        pool = await create_pool(db=db, branch=branch, case=case, namespace=namespace, resources=[resource])
+        await BranchDataDeleter(db=db, batch_size=100).delete(branch=branch)
+
+        pool_on_main = await pool_on(db=db, pool=pool, branch=default_branch)
+        expected = (
+            f"Pool '{POOL_NAME}' cannot allocate on branch '{default_branch.name}': "
+            "its namespace does not exist on this branch."
+        )
+        with pytest.raises(ResourceNotFoundError, match=rf"^{re.escape(expected)}$"):
             await case.allocate(db=db, pool=pool_on_main, branch=default_branch)
 
     async def test_no_resource_on_the_allocating_branch_exhausts_the_pool(

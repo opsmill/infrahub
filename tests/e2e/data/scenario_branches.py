@@ -42,7 +42,7 @@ add_upstream takes the next /29 from the "External prefixes pool"
 (identifier ``ord1-edge1``) and replace_ip_addresses takes the next /31 from
 the "Interconnections pool" (identifier ``jfk1-edge1__jfk1-edge2``). Pool
 next-free computation is branch-AGNOSTIC (``CoreIPPrefixPool.get_next`` uses
-``IPAMResourceAllocator(..., branch_agnostic=True)``, see
+``IPAMResourceAllocator`` with ``on_branch=ANY_BRANCH``, see
 backend/infrahub/core/node/resource_manager/ip_prefix_pool.py), so those
 branch-scoped allocations consume pool space visible from every branch:
 after the monolith load the next free external /29 is 203.111.0.248/29 —
