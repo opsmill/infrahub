@@ -20,7 +20,7 @@ from infrahub.message_bus.messages.send_echo_request import SendEchoRequestRespo
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.redis import RedisMessageBus
+from infrahub.services.adapters.message_bus.redis import RedisMessageBus, StreamSubscription
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 
@@ -217,16 +217,18 @@ async def redis_api(redis: dict[int, int] | None) -> AsyncGenerator[RedisManager
 async def test_redis_initial_setup(redis_api: RedisManager) -> None:
     """Validates creation of streams and consumer groups."""
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
-
-    api_streams = await redis_api.get_streams()
-    await bus.shutdown()
+    try:
+        _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
+        api_streams = await redis_api.get_streams()
+    finally:
+        await bus.shutdown()
 
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
-    _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.GIT_AGENT)
-
-    agent_rpcs_groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
-    await bus.shutdown()
+    try:
+        _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.GIT_AGENT)
+        agent_rpcs_groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
+    finally:
+        await bus.shutdown()
 
     # The API server creates the work queue with its single consumer group so
     # work published before the first git worker boots is not lost
@@ -244,15 +246,14 @@ async def test_redis_initial_setup(redis_api: RedisManager) -> None:
 async def test_redis_publish(redis_api: RedisManager) -> None:
     """Validate that the adapter publishes messages to the correct stream."""
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
-
     normal_message = messages.SendEchoRequest(message="normal")
-
-    await bus.send(message=normal_message)
-
-    await wait_until(lambda: redis_api.get_stream_messages(f"{redis_api.namespace}:rpcs"))
-    rpcs_messages = await redis_api.get_stream_messages(f"{redis_api.namespace}:rpcs")
-    await bus.shutdown()
+    try:
+        _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
+        await bus.send(message=normal_message)
+        await wait_until(lambda: redis_api.get_stream_messages(f"{redis_api.namespace}:rpcs"))
+        rpcs_messages = await redis_api.get_stream_messages(f"{redis_api.namespace}:rpcs")
+    finally:
+        await bus.shutdown()
 
     assert len(rpcs_messages) >= 1
     message_data = rpcs_messages[0]["data"]
@@ -271,15 +272,17 @@ async def test_redis_callback(redis_api: RedisManager, fake_log: FakeLogger) -> 
 
     echo_message = messages.SendEchoRequest(message="Hello there")
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
-        # Publish before the consumer's first read to ensure no message published
-        # right after stream creation is dropped.
-        await redis_api.publish_message(
-            stream=bus.callback_stream,
-            routing_key="send.echo.request",
-            body=echo_message.body.decode(),
-        )
-        await wait_until(lambda: len(fake_log.info_logs) == 1)
-        await service.shutdown()
+        try:
+            # Publish before the consumer's first read to ensure no message published
+            # right after stream creation is dropped.
+            await redis_api.publish_message(
+                stream=bus.callback_stream,
+                routing_key="send.echo.request",
+                body=echo_message.body.decode(),
+            )
+            await wait_until(lambda: len(fake_log.info_logs) == 1)
+        finally:
+            await service.shutdown()
 
     assert fake_log.info_logs == ["Received message: Hello there"]
     assert fake_log.error_logs == []
@@ -290,15 +293,16 @@ async def test_redis_callback_with_invalid_routing_key(redis_api: RedisManager, 
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
-    # Publish an invalid message directly to the callback stream
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        await redis_api.publish_message(
-            stream=bus.callback_stream,
-            routing_key="event.branch.invalid",
-            body="Completely invalid",
-        )
-        await wait_until(lambda: "Invalid message received" in fake_log.error_logs)
-        await service.shutdown()
+        try:
+            await redis_api.publish_message(
+                stream=bus.callback_stream,
+                routing_key="event.branch.invalid",
+                body="Completely invalid",
+            )
+            await wait_until(lambda: "Invalid message received" in fake_log.error_logs)
+        finally:
+            await service.shutdown()
 
     assert "Invalid message received" in fake_log.error_logs
 
@@ -376,9 +380,11 @@ async def test_redis_on_message(redis_api: RedisManager, fake_log: FakeLogger) -
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
 
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
-        await bus.send(message=messages.SendEchoRequest(message="Hello there"))
-        await wait_until(lambda: len(fake_log.info_logs) == 1)
-        await bus.shutdown()
+        try:
+            await bus.send(message=messages.SendEchoRequest(message="Hello there"))
+            await wait_until(lambda: len(fake_log.info_logs) == 1)
+        finally:
+            await bus.shutdown()
 
     assert fake_log.info_logs == ["Received message: Hello there"]
     assert fake_log.error_logs == []
@@ -394,11 +400,13 @@ async def test_redis_on_message_invalid_routing_key(redis_api: RedisManager, fak
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        await bus.publish(
-            routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there")
-        )
-        await wait_until(lambda: len(fake_log.error_logs) == 1)
-        await bus.shutdown()
+        try:
+            await bus.publish(
+                routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there")
+            )
+            await wait_until(lambda: len(fake_log.error_logs) == 1)
+        finally:
+            await bus.shutdown()
 
     assert fake_log.info_logs == []
     assert fake_log.error_logs == ["Invalid message received"]
@@ -410,12 +418,14 @@ async def test_redis_event_broadcast(redis_api: RedisManager, fake_log: FakeLogg
     git_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        await api_bus.publish(
-            message=messages.SendEchoRequest(message="broadcast"), routing_key="refresh.registry.invalid"
-        )
-        await wait_until(lambda: len(fake_log.error_logs) == 2)
-        await api_bus.shutdown()
-        await git_bus.shutdown()
+        try:
+            await api_bus.publish(
+                message=messages.SendEchoRequest(message="broadcast"), routing_key="refresh.registry.invalid"
+            )
+            await wait_until(lambda: len(fake_log.error_logs) == 2)
+        finally:
+            await api_bus.shutdown()
+            await git_bus.shutdown()
 
     assert fake_log.error_logs == ["Invalid message received", "Invalid message received"]
 
@@ -425,13 +435,16 @@ async def test_redis_event_binding_filter(redis_api: RedisManager, fake_log: Fak
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        # refresh.git.* events are only bound by git workers, the API server must skip them
-        await bus.publish(message=messages.SendEchoRequest(message="git only"), routing_key="refresh.git.invalid")
-        await bus.publish(message=messages.SendEchoRequest(message="for api"), routing_key="refresh.registry.invalid")
-        # Entries are consumed in order, so an error for the second event alone
-        # proves the first was skipped rather than still pending
-        await wait_until(lambda: len(fake_log.error_logs) == 1)
-        await bus.shutdown()
+        try:
+            # refresh.git.* events are only bound by git workers, the API server must skip them
+            await bus.publish(message=messages.SendEchoRequest(message="git only"), routing_key="refresh.git.invalid")
+            await bus.publish(
+                message=messages.SendEchoRequest(message="for api"), routing_key="refresh.registry.invalid"
+            )
+            # Entries are consumed in order, so an error for the second event alone proves the first was skipped.
+            await wait_until(lambda: len(fake_log.error_logs) == 1)
+        finally:
+            await bus.shutdown()
 
     assert fake_log.error_logs == ["Invalid message received"]
 
@@ -443,17 +456,19 @@ async def test_redis_delayed_retry_republished(redis_api: RedisManager) -> None:
     rpcs_stream = f"{redis_api.namespace}:rpcs"
     delayed_queue = f"{redis_api.namespace}:delayed"
 
-    await bus.send(message=messages.SendEchoRequest(message="try again"), delay=MessageTTL.FIVE, is_retry=True)
+    try:
+        await bus.send(message=messages.SendEchoRequest(message="try again"), delay=MessageTTL.FIVE, is_retry=True)
 
-    # The pending retry is durably recorded before the publish call returns
-    assert await conn.zcard(delayed_queue) == 1
-    assert await conn.xlen(rpcs_stream) == 0
+        # The pending retry is durably recorded before the publish call returns
+        assert await conn.zcard(delayed_queue) == 1
+        assert await conn.xlen(rpcs_stream) == 0
 
-    await wait_until(lambda: conn.xlen(rpcs_stream))
+        await wait_until(lambda: conn.xlen(rpcs_stream))
+    finally:
+        await bus.shutdown()
+
     assert await conn.xlen(rpcs_stream) == 1
     assert await conn.zcard(delayed_queue) == 0
-
-    await bus.shutdown()
 
 
 async def test_redis_delayed_retry_survives_publisher_shutdown(redis_api: RedisManager) -> None:
@@ -462,14 +477,18 @@ async def test_redis_delayed_retry_survives_publisher_shutdown(redis_api: RedisM
     conn = await redis_api.get_connection()
     rpcs_stream = f"{redis_api.namespace}:rpcs"
 
-    await publisher.send(message=messages.SendEchoRequest(message="survivor"), delay=MessageTTL.FIVE, is_retry=True)
-    await publisher.shutdown()
+    try:
+        await publisher.send(message=messages.SendEchoRequest(message="survivor"), delay=MessageTTL.FIVE, is_retry=True)
+    finally:
+        await publisher.shutdown()
 
     assert await conn.zcard(f"{redis_api.namespace}:delayed") == 1
 
     other_worker = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    await wait_until(lambda: conn.xlen(rpcs_stream))
-    await other_worker.shutdown()
+    try:
+        await wait_until(lambda: conn.xlen(rpcs_stream))
+    finally:
+        await other_worker.shutdown()
 
     stream_messages = await redis_api.get_stream_messages(rpcs_stream)
     assert len(stream_messages) == 1
@@ -508,9 +527,11 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
         return await conn.llen(f"{redis_api.namespace}:delayed:dead") == 2
 
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        await bus._initialize()
-        await wait_until(all_bad_entries_parked)
-        await bus.shutdown()
+        try:
+            await bus._initialize()
+            await wait_until(all_bad_entries_parked)
+        finally:
+            await bus.shutdown()
 
     assert await conn.xlen(good_stream) == 1
     assert await conn.zcard(delayed_queue) == 0
@@ -524,8 +545,10 @@ async def test_redis_delayed_delivery_dead_letters_bad_entries(redis_api: RedisM
 async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_log: FakeLogger) -> None:
     """Validates that unacknowledged messages of dead consumers are re-processed."""
     api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    await api_bus.send(message=messages.SendEchoRequest(message="orphaned"))
-    await api_bus.shutdown()
+    try:
+        await api_bus.send(message=messages.SendEchoRequest(message="orphaned"))
+    finally:
+        await api_bus.shutdown()
 
     # Simulate a worker that died mid-processing: deliver without acknowledging
     conn = await redis_api.get_connection()
@@ -540,9 +563,11 @@ async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_lo
     git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
     git_bus.CLAIM_IDLE_MS = 0  # claim at once instead of after a minute of idleness
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
-        await git_bus._initialize()
-        await wait_until(lambda: len(fake_log.info_logs) == 1)
-        await git_bus.shutdown()
+        try:
+            await git_bus._initialize()
+            await wait_until(lambda: len(fake_log.info_logs) == 1)
+        finally:
+            await git_bus.shutdown()
 
     assert fake_log.info_logs == ["Received message: orphaned"]
     assert fake_log.error_logs == []
@@ -561,14 +586,16 @@ async def test_redis_worked_stream_trimmed(redis_api: RedisManager, fake_log: Fa
         return await conn.xlen(rpcs_stream) <= 1
 
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
-        await git_bus._initialize()
-        for index in range(3):
-            await api_bus.send(message=messages.SendEchoRequest(message=f"echo {index}"))
-        await wait_until(lambda: len(fake_log.info_logs) == 3)
-        # Everything before the last delivered entry is trimmed away
-        await wait_until(worked_entries_trimmed)
-        await git_bus.shutdown()
-        await api_bus.shutdown()
+        try:
+            await git_bus._initialize()
+            for index in range(3):
+                await api_bus.send(message=messages.SendEchoRequest(message=f"echo {index}"))
+            await wait_until(lambda: len(fake_log.info_logs) == 3)
+            # Everything before the last delivered entry is trimmed away
+            await wait_until(worked_entries_trimmed)
+        finally:
+            await git_bus.shutdown()
+            await api_bus.shutdown()
 
     assert len(fake_log.info_logs) == 3
     assert fake_log.error_logs == []
@@ -584,12 +611,14 @@ async def test_redis_consumer_deregistered_on_shutdown(redis_api: RedisManager) 
         rpcs_group = next((g for g in groups if g.name == RedisMessageBus.RPCS_GROUP), None)
         return bool(rpcs_group and rpcs_group.consumers)
 
-    await wait_until(consumer_registered)
-    groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
+    try:
+        await wait_until(consumer_registered)
+        groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
+    finally:
+        await bus.shutdown()
+
     rpcs_group = next(g for g in groups if g.name == RedisMessageBus.RPCS_GROUP)
     assert rpcs_group.consumers == [f"git-worker-{WORKER_IDENTITY}"]
-
-    await bus.shutdown()
 
     groups = await redis_api.get_consumer_groups(f"{redis_api.namespace}:rpcs")
     rpcs_group = next(g for g in groups if g.name == RedisMessageBus.RPCS_GROUP)
@@ -603,15 +632,16 @@ async def test_redis_orphaned_callback_stream_expires(redis_api: RedisManager) -
     # Nothing reads or refreshes this stream, as when its worker died without cleaning up
     requester_callback_stream = f"{redis_api.namespace}:callback:other-worker"
 
-    for index in range(3):
-        await bus.reply(
-            message=messages.SendEchoRequest(message=f"reply {index}"), routing_key=requester_callback_stream
-        )
+    try:
+        for index in range(3):
+            await bus.reply(
+                message=messages.SendEchoRequest(message=f"reply {index}"), routing_key=requester_callback_stream
+            )
+    finally:
+        await bus.shutdown()
 
     assert await conn.xlen(requester_callback_stream) == 3
     assert 0 < await conn.ttl(requester_callback_stream) <= RedisMessageBus.CALLBACK_STREAM_TTL
-
-    await bus.shutdown()
 
 
 async def test_redis_callback_stream_trimmed_after_read(redis_api: RedisManager, fake_log: FakeLogger) -> None:
@@ -620,21 +650,22 @@ async def test_redis_callback_stream_trimmed_after_read(redis_api: RedisManager,
     bus.MAINTENANCE_INTERVAL = 0.5
     conn = await redis_api.get_connection()
 
+    async def read_entries_trimmed() -> bool:
+        return await conn.xlen(bus.callback_stream) <= 1
+
     with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
-        await bus._initialize()
-        for index in range(20):
-            reply = messages.SendEchoRequest(message=f"reply {index}")
-            reply.meta.correlation_id = f"expired-{index}"
-            await bus.reply(message=reply, routing_key=bus.callback_stream)
-        await wait_until(lambda: len(fake_log.info_logs) == 20)
-
-        async def read_entries_trimmed() -> bool:
-            return await conn.xlen(bus.callback_stream) <= 1
-
-        await wait_until(read_entries_trimmed)
-        length = await conn.xlen(bus.callback_stream)
-        ttl = await conn.ttl(bus.callback_stream)
-        await bus.shutdown()
+        try:
+            await bus._initialize()
+            for index in range(20):
+                reply = messages.SendEchoRequest(message=f"reply {index}")
+                reply.meta.correlation_id = f"expired-{index}"
+                await bus.reply(message=reply, routing_key=bus.callback_stream)
+            await wait_until(lambda: len(fake_log.info_logs) == 20)
+            await wait_until(read_entries_trimmed)
+            length = await conn.xlen(bus.callback_stream)
+            ttl = await conn.ttl(bus.callback_stream)
+        finally:
+            await bus.shutdown()
 
     # Every reply was read (and discarded as expired), then trimmed away; only
     # the newest read entry may remain below the trim threshold. The owner
@@ -648,27 +679,29 @@ async def test_redis_rpc_timeout(redis_api: RedisManager) -> None:
     """Validates that an RPC call fails cleanly when no worker replies."""
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
 
-    with pytest.raises(WorkerTimeoutError) as exc:
-        await bus.rpc(
-            message=messages.SendEchoRequest(message="nobody is listening"),
-            response_class=SendEchoRequestResponse,
-            timeout=1,
-        )
+    try:
+        with pytest.raises(WorkerTimeoutError) as exc:
+            await bus.rpc(
+                message=messages.SendEchoRequest(message="nobody is listening"),
+                response_class=SendEchoRequestResponse,
+                timeout=1,
+            )
 
-    assert exc.value.message == "No worker answered send.echo.request within 1 seconds"
-    assert bus.futures == {}
+        assert exc.value.message == "No worker answered send.echo.request within 1 seconds"
+        assert bus.futures == {}
 
-    # An explicit zero must time out immediately instead of selecting the default
-    with pytest.raises(WorkerTimeoutError) as exc:
-        await bus.rpc(
-            message=messages.SendEchoRequest(message="nobody is listening"),
-            response_class=SendEchoRequestResponse,
-            timeout=0,
-        )
+        # An explicit zero must time out immediately instead of selecting the default
+        with pytest.raises(WorkerTimeoutError) as exc:
+            await bus.rpc(
+                message=messages.SendEchoRequest(message="nobody is listening"),
+                response_class=SendEchoRequestResponse,
+                timeout=0,
+            )
 
-    assert exc.value.message == "No worker answered send.echo.request within 0 seconds"
-    assert bus.futures == {}
-    await bus.shutdown()
+        assert exc.value.message == "No worker answered send.echo.request within 0 seconds"
+        assert bus.futures == {}
+    finally:
+        await bus.shutdown()
 
 
 @dataclass
@@ -815,8 +848,10 @@ async def test_redis_events_run_concurrently(redis_api: RedisManager) -> None:
 async def test_redis_stale_consumers_are_removed(redis_api: RedisManager) -> None:
     """Maintenance deletes a consumer that holds nothing and has stopped reading, and keeps one holding an entry."""
     api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    await api_bus.send(message=messages.SendEchoRequest(message="held"))
-    await api_bus.shutdown()
+    try:
+        await api_bus.send(message=messages.SendEchoRequest(message="held"))
+    finally:
+        await api_bus.shutdown()
 
     conn = await redis_api.get_connection()
     rpcs_stream = f"{redis_api.namespace}:rpcs"
@@ -989,8 +1024,10 @@ async def test_redis_work_item_delivered_too_often_is_parked(
 ) -> None:
     """A claimed work item already delivered the maximum number of times goes to the dead-letter list instead."""
     api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
-    await api_bus.send(message=messages.SendEchoRequest(message="crashes its worker"))
-    await api_bus.shutdown()
+    try:
+        await api_bus.send(message=messages.SendEchoRequest(message="crashes its worker"))
+    finally:
+        await api_bus.shutdown()
 
     conn = await redis_api.get_connection()
     rpcs_stream = f"{redis_api.namespace}:rpcs"
@@ -1036,3 +1073,136 @@ async def test_redis_work_item_delivered_too_often_is_parked(
         assert dead_entries[0]["fields"]["routing_key"] == "send.echo.request"
     else:
         assert dead_entries == []
+
+
+async def test_redis_busy_worker_claims_an_abandoned_work_item_only_once_a_handler_slot_is_free(
+    redis_api: RedisManager,
+) -> None:
+    """A worker whose handler slots are all taken leaves the other abandoned work items with their owner."""
+    settings = redis_api.settings.model_copy(update={"maximum_concurrent_messages": 1})
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    handler = BlockingHandler()
+
+    api_bus = await RedisMessageBus.new(settings=settings, component_type=ComponentType.API_SERVER)
+    try:
+        for index in range(2):
+            await api_bus.send(message=messages.SendEchoRequest(message=f"abandoned {index}"))
+    finally:
+        await api_bus.shutdown()
+    await conn.xreadgroup(
+        groupname=RedisMessageBus.RPCS_GROUP, consumername="dead-worker", streams={rpcs_stream: ">"}, count=2
+    )
+
+    async def owners() -> list[str]:
+        pending = await conn.xpending_range(rpcs_stream, RedisMessageBus.RPCS_GROUP, min="-", max="+", count=10)
+        return sorted(str(entry["consumer"]) for entry in pending)
+
+    with patch("infrahub.services.adapters.message_bus.redis.execute_message", handler):
+        git_bus = RedisMessageBus(settings=settings, component_type=ComponentType.GIT_AGENT)
+        git_bus.CLAIM_IDLE_MS = 0
+        try:
+            await git_bus._initialize()
+            await wait_until(lambda: len(handler.started) == 1)
+            owners_while_busy = await owners()
+            handler.release.set()
+            await wait_until(lambda: len(handler.started) == 2)
+        finally:
+            handler.release.set()
+            await git_bus.shutdown()
+
+    assert owners_while_busy == ["dead-worker", f"git-worker-{WORKER_IDENTITY}"]
+
+
+async def test_redis_work_item_whose_handling_raised_is_run_again(
+    redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """A work item whose handling raised, as when its retry cannot be scheduled, stays pending and runs again."""
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    attempts: list[str] = []
+
+    async def fails_once(routing_key: str, message_body: bytes, message_bus: RedisMessageBus) -> None:
+        attempts.append(routing_key)
+        if len(attempts) == 1:
+            raise redis.ResponseError("OOM command not allowed when used memory > 'maxmemory'.")
+
+    async def acknowledged() -> bool:
+        summary = await conn.xpending(rpcs_stream, RedisMessageBus.RPCS_GROUP)
+        return summary["pending"] == 0
+
+    with (
+        patch("infrahub.services.adapters.message_bus.redis.execute_message", fails_once),
+        patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log),
+    ):
+        api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+        git_bus.CLAIM_IDLE_MS = 500
+        git_bus.MAINTENANCE_INTERVAL = 0.2
+        try:
+            await git_bus._initialize()
+            await api_bus.send(message=messages.SendEchoRequest(message="fails once"))
+            await wait_until(lambda: len(attempts) == 2)
+            await wait_until(acknowledged)
+        finally:
+            await git_bus.shutdown()
+            await api_bus.shutdown()
+
+    assert attempts == ["send.echo.request", "send.echo.request"]
+    assert "Error processing message" in fake_log.exception_logs
+
+
+async def test_redis_missing_group_that_cannot_be_recreated_is_tried_again_after_a_pause(
+    redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """A worker whose consumer group is gone and cannot be created again waits before its next attempt."""
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    refused = AsyncMock(side_effect=redis.ResponseError("NOPERM this user has no permissions to run 'xgroup|create'"))
+
+    git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    git_bus.ERROR_BACKOFF_SECONDS = 60.0
+    with patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log):
+        try:
+            await git_bus._initialize()
+            with patch.object(git_bus, "_create_stream_and_group", refused):
+                await conn.xgroup_destroy(rpcs_stream, RedisMessageBus.RPCS_GROUP)
+                await wait_until(lambda: refused.await_count >= 1)
+                # Several reads would pass in this time without the pause.
+                await asyncio.sleep(RedisMessageBus.READ_BLOCK_MS / 1000)
+                attempts = refused.await_count
+        finally:
+            await git_bus.shutdown()
+
+    assert attempts == 1
+    assert "Failed to recreate the stream or consumer group" in fake_log.exception_logs
+
+
+async def test_redis_shutdown_cancels_a_handler_started_while_the_consumers_stop(redis_api: RedisManager) -> None:
+    """A handler that a consumer starts while the shutdown stops that consumer is cancelled with the other handlers."""
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.NONE)
+    started_handlers: list[asyncio.Task] = []
+
+    async def runs_until_cancelled(message_data: dict) -> None:
+        await asyncio.Event().wait()
+
+    subscription = StreamSubscription(
+        stream=f"{redis_api.namespace}:unused", consumer="test", callback=runs_until_cancelled
+    )
+
+    async def starts_a_handler_when_stopped() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            bus._start_handler(b"1-0", {}, subscription, slots=None)
+            started_handlers.extend(bus._handler_tasks)
+
+    try:
+        bus._consumer_tasks.append(asyncio.create_task(starts_a_handler_when_stopped()))
+        # Lets the consumer start, so that its cancellation runs the block that starts the handler.
+        await asyncio.sleep(0)
+    finally:
+        await bus.shutdown()
+
+    assert len(started_handlers) == 1
+    assert started_handlers[0].cancelled()
