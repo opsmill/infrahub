@@ -159,12 +159,26 @@ UNFIT_SECRET_CASES = [
     UnfitSecretCase(
         name="published_example_with_trailing_quote",
         secret='327f747f-efac-42be-9e73-999f08f86b92"',
-        message=r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files",
+        message=(
+            r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
+            r"set a unique random secret before using storage encryption$"
+        ),
     ),
     UnfitSecretCase(
         name="published_example_with_single_quotes",
         secret="'327f747f-efac-42be-9e73-999f08f86b92'",
-        message=r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files",
+        message=(
+            r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
+            r"set a unique random secret before using storage encryption$"
+        ),
+    ),
+    UnfitSecretCase(
+        name="published_example_in_upper_case",
+        secret="327F747F-EFAC-42BE-9E73-999F08F86B92",
+        message=(
+            r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
+            r"set a unique random secret before using storage encryption$"
+        ),
     ),
     UnfitSecretCase(
         name="too_short",
@@ -186,11 +200,31 @@ def test_key_for_reading_comes_from_a_secret_that_encryption_would_accept() -> N
     assert storage_key_if_set(settings=SecuritySettings(secret_key=SECRET)) == StorageKey.derive(SECRET)
 
 
-@pytest.mark.parametrize(
-    "secret", ["short", "327f747f-efac-42be-9e73-999f08f86b92", "'327f747f-efac-42be-9e73-999f08f86b92'"]
-)
-def test_no_key_for_reading_comes_from_a_secret_that_encryption_would_refuse(secret: str) -> None:
-    assert storage_key_if_set(settings=SecuritySettings(secret_key=secret)) is None
+@dataclass
+class ReadingKeyCase:
+    name: str
+    secret: str
+    has_key: bool
+
+
+READING_KEY_CASES = [
+    ReadingKeyCase(name="exactly_the_minimum_length", secret="0123456789abcdef0123456789abcdef", has_key=True),
+    ReadingKeyCase(name="one_character_too_short", secret="0123456789abcdef0123456789abcde", has_key=False),
+    ReadingKeyCase(name="published_example", secret="327f747f-efac-42be-9e73-999f08f86b92", has_key=False),
+    ReadingKeyCase(
+        name="published_example_in_single_quotes", secret="'327f747f-efac-42be-9e73-999f08f86b92'", has_key=False
+    ),
+    ReadingKeyCase(
+        name="published_example_in_upper_case", secret="327F747F-EFAC-42BE-9E73-999F08F86B92", has_key=False
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in READING_KEY_CASES])
+def test_key_for_reading_comes_only_from_a_secret_that_encryption_would_accept(case: ReadingKeyCase) -> None:
+    key = storage_key_if_set(settings=SecuritySettings(secret_key=case.secret))
+
+    assert key == (StorageKey.derive(case.secret) if case.has_key else None)
 
 
 def test_no_key_for_reading_comes_from_a_generated_secret(monkeypatch: pytest.MonkeyPatch) -> None:
