@@ -62,7 +62,7 @@ class TestResourceManager:
         header = admin_page.locator("header").filter(has=admin_page.get_by_role("heading", level=1))
         await expect(header.get_by_role("heading", level=1, name="test prefix pool")).to_be_visible()
         # the create form pre-fills the prefix type; the member type comes from the schema default
-        await expect(header).to_contain_text("In namespace default")
+        await expect(header).to_contain_text("in namespace default")
         await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
         await expect(header).to_contain_text("Prefix length has no default")
         await expect(header).to_contain_text("Member type defaults to Prefix")

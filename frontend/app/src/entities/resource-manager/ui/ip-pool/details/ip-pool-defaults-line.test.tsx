@@ -31,13 +31,13 @@ describe("IpPoolDefaultsLine", () => {
     const pool = generateIpPrefixPoolData();
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect
       .element(component.baseElement)
       .toMatchTextContent(
-        /^In namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address$/
+        /^IP Prefix Pool in namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address$/
       );
   });
 
@@ -46,7 +46,7 @@ describe("IpPoolDefaultsLine", () => {
     const pool = generateIpPrefixPoolData();
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect.element(component.getByRole("list")).toBeVisible();
@@ -58,13 +58,13 @@ describe("IpPoolDefaultsLine", () => {
     const pool = generateIpAddressPoolData();
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Address Pool" />);
 
     // THEN
     await expect
       .element(component.baseElement)
       .toMatchTextContent(
-        /^In namespace default\s*·\s*Address kind defaults to IpamIPAddress\s*·\s*Prefix length defaults to \/32$/
+        /^IP Address Pool in namespace default\s*·\s*Address kind defaults to IpamIPAddress\s*·\s*Prefix length defaults to \/32$/
       );
   });
 
@@ -77,7 +77,7 @@ describe("IpPoolDefaultsLine", () => {
     });
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect
@@ -95,7 +95,7 @@ describe("IpPoolDefaultsLine", () => {
     });
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect
@@ -136,7 +136,7 @@ describe("IpPoolDefaultsLine", () => {
     const pool = generateIpPrefixPoolData();
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect
@@ -151,7 +151,7 @@ describe("IpPoolDefaultsLine", () => {
     });
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} />);
+    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
 
     // THEN
     await expect

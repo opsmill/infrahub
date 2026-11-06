@@ -18,6 +18,7 @@ const prefixPoolSchema = generateNodeSchema({
   kind: "CoreIPPrefixPool",
   namespace: "Core",
   name: "IPPrefixPool",
+  label: "IP Prefix Pool",
 });
 
 const renderHeader = (data: IpPoolData) =>
@@ -108,7 +109,7 @@ describe("IpPoolHeader", () => {
     await expect
       .element(component.getByRole("banner"))
       .toMatchTextContent(
-        /In namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address/
+        /IP Prefix Pool in namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address/
       );
   });
 });

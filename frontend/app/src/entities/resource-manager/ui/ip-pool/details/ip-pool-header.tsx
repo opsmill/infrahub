@@ -41,7 +41,7 @@ export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
         <IpPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>
 
-      <IpPoolDefaultsLine pool={pool} />
+      <IpPoolDefaultsLine pool={pool} poolLabel={schema.label ?? schema.kind!} />
       <IpPoolExtraFieldsLine poolId={pool.id} schema={schema} />
     </header>
   );

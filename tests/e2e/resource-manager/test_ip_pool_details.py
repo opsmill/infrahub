@@ -105,7 +105,7 @@ class TestIpPoolDetails:
 
         header = pool_header(admin_page)
         await expect(header.get_by_role("heading", level=1, name=EXTERNAL_POOL)).to_be_visible()
-        await expect(header).to_contain_text("In namespace default")
+        await expect(header).to_contain_text("in namespace default")
         await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
         await expect(header).to_contain_text("Prefix length defaults to /29")
         await expect(header).to_contain_text("Member type defaults to Address")
@@ -123,6 +123,7 @@ class TestIpPoolDetails:
         await expect(grid.get_by_role("columnheader", name="Prefix")).to_be_visible()
         await expect(grid.get_by_role("columnheader", name="Identifier")).to_be_visible()
         await expect(grid.get_by_role("columnheader", name="Kind")).to_be_visible()
+        await expect(grid.get_by_role("columnheader", name="ID")).to_be_visible()
 
         edge_row = grid.get_by_role("row").filter(has_text=re.compile(rf"\.{EDGE_DEVICE}")).first
         await expect(edge_row.get_by_role("link", name=EXTERNAL_SLASH_29)).to_be_visible()
@@ -135,7 +136,7 @@ class TestIpPoolDetails:
 
         header = pool_header(admin_page)
         await expect(header.get_by_role("heading", level=1, name=LOOPBACKS_POOL)).to_be_visible()
-        await expect(header).to_contain_text("In namespace default")
+        await expect(header).to_contain_text("in namespace default")
         await expect(header).to_contain_text("Address kind defaults to IpamIPAddress")
         await expect(header).to_contain_text("Prefix length defaults to /32")
 

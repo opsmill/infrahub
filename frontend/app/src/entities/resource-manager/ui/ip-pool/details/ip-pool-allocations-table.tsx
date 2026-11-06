@@ -138,6 +138,9 @@ export function IpPoolAllocationsTable({
             <Column width="1fr" minWidth={120} className={columnStyle}>
               Kind
             </Column>
+            <Column width="2fr" minWidth={160} className={columnStyle}>
+              ID
+            </Column>
           </TableHeader>
 
           <TableBody
@@ -184,6 +187,11 @@ export function IpPoolAllocationsTable({
                   </Cell>
                   <Cell className={classNames(cellStyle, "text-foreground-muted")}>
                     <KindLabel kind={allocation.__typename} />
+                  </Cell>
+                  <Cell className={classNames(cellStyle, "text-foreground-muted")}>
+                    <span className="truncate font-mono text-xs" title={allocation.id}>
+                      {allocation.id}
+                    </span>
                   </Cell>
                 </AriaRow>
               )}

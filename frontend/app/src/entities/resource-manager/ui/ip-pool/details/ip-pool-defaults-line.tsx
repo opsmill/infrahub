@@ -77,13 +77,14 @@ function Dot() {
 
 export interface IpPoolDefaultsLineProps {
   pool: IpPoolData;
+  poolLabel: string;
 }
 
-export function IpPoolDefaultsLine({ pool }: IpPoolDefaultsLineProps) {
+export function IpPoolDefaultsLine({ pool, poolLabel }: IpPoolDefaultsLineProps) {
   return (
     <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
       <li className="text-foreground-muted">
-        In namespace{" "}
+        <span className="font-medium text-foreground">{poolLabel}</span> in namespace{" "}
         <Link
           to={getIpamNamespaceUrl(pool.ip_namespace)}
           className="wrap-anywhere rounded-md font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring-halo"

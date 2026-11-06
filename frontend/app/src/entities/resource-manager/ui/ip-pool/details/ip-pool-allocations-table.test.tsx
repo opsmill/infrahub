@@ -126,7 +126,7 @@ describe("IpPoolAllocationsTable", () => {
     await expect.element(component.getByRole("columnheader", { name: "Address" })).toBeVisible();
   });
 
-  it("links a prefix to its IPAM page and shows its identifier and kind", async () => {
+  it("links a prefix to its IPAM page and shows its identifier, kind and ID", async () => {
     // GIVEN
     setIpPrefixSchema();
     mockAllocations({
@@ -148,7 +148,7 @@ describe("IpPoolAllocationsTable", () => {
       .toHaveAttribute("href", "/ipam/IpamIPPrefix/prefix-id");
     await expect
       .element(component.getByRole("row", { name: /^10\.10\.0\.0\/31/ }))
-      .toHaveTextContent("10.10.0.0/31par1-spine-01__par1-leaf-001__underlayIP Prefix");
+      .toHaveTextContent("10.10.0.0/31par1-spine-01__par1-leaf-001__underlayIP Prefixprefix-id");
   });
 
   it("shows the kind name when the schema is not loaded", async () => {
