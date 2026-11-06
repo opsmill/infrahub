@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { getListElements } from "./get-list-elements";
+
+vi.mock("@/entities/schema/domain/use-cases/get-schema", () => ({
+  getSchema: vi.fn((kind: string) => ({ schema: generateNodeSchema({ kind }) })),
+}));
 
 describe("getListElements", () => {
   it("should give each element its 1-based position, type and text", () => {
@@ -21,7 +26,7 @@ describe("getListElements", () => {
     ]);
   });
 
-  it("should type a node reference as Node", () => {
+  it("should type a node reference as Node and label it with its display label", () => {
     // GIVEN
     const values = [{ id: "18e5-1", __typename: "BuiltinTag", display_label: "blue" }];
 
@@ -29,6 +34,8 @@ describe("getListElements", () => {
     const result = getListElements(values);
 
     // THEN
-    expect(result[0]?.type).toBe("Node");
+    expect(result.map(({ type, text }) => ({ type, text }))).toEqual([
+      { type: "Node", text: "blue" },
+    ]);
   });
 });

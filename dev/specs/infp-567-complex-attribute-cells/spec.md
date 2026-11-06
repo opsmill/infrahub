@@ -2,7 +2,7 @@
 
 **Feature Branch**: `ple-complex-attribute-cells-ifc-2498`
 **Created**: 2026-11-06
-**Status**: Draft
+**Status**: Implemented
 **Input**: [INFP-567](https://opsmill.atlassian.net/browse/INFP-567), implemented by [IFC-2498](https://opsmill.atlassian.net/browse/IFC-2498)
 
 ## User Scenarios & Testing *(mandatory)*
@@ -41,7 +41,7 @@ values of each shape, and check each cell.
 **Acceptance Scenarios**:
 
 1. **Given** a List value, **When** the cell renders, **Then** it shows the list elements on one
-   line and says how many elements it does not show.
+   line, clipped at the cell edge, and the total element count.
 2. **Given** a JSON value, **When** the user activates the cell's trigger with the mouse or the
    keyboard, **Then** a dialog shows the full value, formatted and indented.
 3. **Given** an Any value, **When** the cell renders, **Then** an array renders like a List, an
@@ -70,7 +70,9 @@ The user checks which nodes have a password or a hashed password set.
 - A list with one very long element, or many elements, stays on one line and does not widen the row.
 - A JSON value that is a string, a number or `false` renders its preview like any other JSON value.
 - A JSON value with thousands of lines opens in the dialog, which scrolls.
-- A list element that is not a string (a number, an object) renders as text.
+- A list element that is a number, a boolean or null renders as monospace text with its type. An
+  object or an array opens its own JSON. An object with a string `id` and the `__typename` of a
+  kind in the schema renders as a link to that object.
 
 ## Requirements *(mandatory)*
 
@@ -81,8 +83,8 @@ The user checks which nodes have a password or a hashed password set.
 - **FR-002**: The default columns of every table MUST stay the same as before this feature.
 - **FR-003**: When the user turns such a column on, the table MUST fetch the attribute's value and
   render it.
-- **FR-004**: A List cell MUST show the list elements on one line and the number of elements it
-  does not show.
+- **FR-004**: A List cell MUST show the list elements on one line and the total element count. The
+  cell clips elements at its edge, so the count of hidden elements depends on the column width.
 - **FR-004a**: In the table and in the detail view, the user MUST be able to view every element of
   a List value from the place where it is shown, without opening the edit form.
 - **FR-005**: A JSON cell MUST show a trigger that opens a dialog with the full, formatted value,
@@ -94,7 +96,7 @@ The user checks which nodes have a password or a hashed password set.
 - **FR-008**: An empty or null value MUST render `-`, as for the other kinds.
 - **FR-009**: Every cell MUST stay on one line, so the row height does not change.
 - **FR-010**: Filters, relationship tabs and the other views that use the default column list MUST
-  keep their current behavior.
+  keep their current behavior. A column of these kinds MUST NOT offer a filter or a sort.
 - **FR-011**: The user documentation that describes how each attribute kind displays in the web
   interface MUST describe the new behavior.
 
@@ -119,10 +121,13 @@ The user checks which nodes have a password or a hashed password set.
 
 ## Assumptions
 
-- The List presentation (badges or comma-separated text) and the JSON trigger (a truncated preview
-  or a View button) are decided in the design step that follows this spec.
+- The design step chose badges for List values, the start of the value as the JSON trigger, and one
+  dialog for List and JSON values. In that dialog, List elements show as a table with their
+  position, value, type and a copy button.
 - Sorting and filtering on these kinds stay out of scope; [INFP-567](https://opsmill.atlassian.net/browse/INFP-567)
   lists them as an open question.
-- The detail view, except the way to view every element of a List value (FR-004a), and the TextArea, ID, NodeKind and Checkbox kinds, are out of scope.
+- The detail view is out of scope, except for List values: they show up to 10 elements as badges
+  and "View all" (FR-004a), decided in the design step. The TextArea, ID, NodeKind and Checkbox
+  kinds are out of scope.
 - No change to the backend or to the GraphQL schema: the values are already available.
 - The people who use these tables work on a desktop screen.

@@ -5,7 +5,6 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
-import { isEmptyAttributeValue } from "@/entities/nodes/object/domain/rules/is-empty-attribute-value";
 import { JsonValueButton } from "@/entities/nodes/object/ui/attribute-values/json-value-button";
 import { ListValueCell } from "@/entities/nodes/object/ui/attribute-values/list-value";
 import { MaskedValue } from "@/entities/nodes/object/ui/attribute-values/masked-value";
@@ -23,7 +22,7 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (!attributeData || isEmptyAttributeValue(attributeData.value)) return "-";
+  if (!attributeData || R.isEmptyish(attributeData.value)) return "-";
 
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
 
@@ -71,21 +70,22 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.PASSWORD: {
       return <MaskedValue />;
     }
-    case ATTRIBUTE_KIND.LIST: {
-      return (
-        <ListValueCell values={attributeData.value as unknown[]} attributeLabel={attributeLabel} />
-      );
-    }
-    case ATTRIBUTE_KIND.JSON: {
-      return <JsonValueCell value={attributeData.value} attributeLabel={attributeLabel} />;
-    }
+    case ATTRIBUTE_KIND.LIST:
+    case ATTRIBUTE_KIND.JSON:
     case ATTRIBUTE_KIND.ANY: {
       const value: unknown = attributeData.value;
-      if (Array.isArray(value)) {
+
+      if (attributeKind !== ATTRIBUTE_KIND.JSON && Array.isArray(value)) {
         return <ListValueCell values={value} attributeLabel={attributeLabel} />;
       }
-      if (R.isPlainObject(value)) {
-        return <JsonValueCell value={value} attributeLabel={attributeLabel} />;
+      if (attributeKind === ATTRIBUTE_KIND.JSON || R.isPlainObject(value)) {
+        return (
+          <JsonValueButton
+            value={value}
+            attributeLabel={attributeLabel}
+            className="text-foreground-muted hover:text-foreground"
+          />
+        );
       }
       return <span className="truncate">{String(value)}</span>;
     }
@@ -94,14 +94,4 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
       return null;
     }
   }
-}
-
-function JsonValueCell({ value, attributeLabel }: { value: unknown; attributeLabel: string }) {
-  return (
-    <JsonValueButton
-      value={value}
-      title={attributeLabel}
-      className="h-full w-full text-foreground-muted leading-6 hover:text-foreground"
-    />
-  );
 }

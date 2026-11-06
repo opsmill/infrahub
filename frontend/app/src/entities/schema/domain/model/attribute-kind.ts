@@ -44,7 +44,7 @@ export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.DATETIME,
 ];
 
-/** Kinds the column picker can turn on, though they are not shown by default. */
+/** The default kinds, plus kinds whose values are too large or too sensitive to show unasked. */
 export const ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW: readonly AttributeKind[] = [
   ...ATTRIBUTE_KINDS_FOR_LIST_VIEW,
   ATTRIBUTE_KIND.LIST,

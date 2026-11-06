@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { Button } from "@infrahub/ui";
+import React from "react";
 
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
-import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { getJsonPreview } from "@/shared/utils/json-preview";
 
@@ -9,52 +9,56 @@ import { ValueDialog } from "@/entities/nodes/object/ui/attribute-values/value-d
 
 const toJsonText = (value: unknown) => JSON.stringify(value, null, 2);
 
+function JsonCode({ value }: { value: unknown }) {
+  return (
+    <div className="max-h-128 min-h-0 overflow-auto rounded-lg">
+      <CodeViewer language="json" customStyle={{ margin: 0 }}>
+        {toJsonText(value)}
+      </CodeViewer>
+    </div>
+  );
+}
+
 export interface JsonValueButtonProps {
   value: unknown;
-  title: string;
+  attributeLabel: string;
   subtitle?: string;
   className?: string;
 }
 
-/** The start of a JSON value, which opens the whole value in a dialog. */
 export function JsonValueButton({
   value,
-  title,
+  attributeLabel,
   subtitle = "JSON",
   className,
 }: JsonValueButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-label={`View ${title} ${subtitle}`}
+      <Button
+        variant="ghost"
+        size="xxs"
+        onPress={() => setIsOpen(true)}
+        aria-label={`View ${attributeLabel} ${subtitle}`}
         className={classNames(
-          "min-w-0 cursor-pointer truncate rounded text-left font-mono text-xs underline-offset-2 hover:underline",
-          focusVisibleStyle,
+          "min-w-0 max-w-full justify-start font-mono font-normal hover:underline",
           className
         )}
       >
-        {getJsonPreview(value)}
-      </button>
+        <span className="truncate">{getJsonPreview(value)}</span>
+      </Button>
 
-      {isOpen && (
-        <ValueDialog
-          title={title}
-          subtitle={subtitle}
-          copyLabel="Copy JSON"
-          copyData={() => toJsonText(value)}
-          onClose={() => setIsOpen(false)}
-        >
-          <div className="max-h-128 min-h-0 overflow-auto rounded-lg">
-            <CodeViewer language="json" customStyle={{ margin: 0 }}>
-              {toJsonText(value)}
-            </CodeViewer>
-          </div>
-        </ValueDialog>
-      )}
+      <ValueDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={attributeLabel}
+        subtitle={subtitle}
+        copyLabel="Copy JSON"
+        copyData={() => toJsonText(value)}
+      >
+        <JsonCode value={value} />
+      </ValueDialog>
     </>
   );
 }

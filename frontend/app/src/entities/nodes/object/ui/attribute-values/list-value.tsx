@@ -1,54 +1,57 @@
 import { Button } from "@infrahub/ui";
 import { ListIcon } from "lucide-react";
-import { useState } from "react";
+import React from "react";
 
+import { useIsOverflowing } from "@/shared/hooks/use-is-overflowing";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { ListElement } from "@/entities/nodes/object/domain/model/list-element";
 import { getListElements } from "@/entities/nodes/object/domain/rules/get-list-elements";
-import { ListElementChip } from "@/entities/nodes/object/ui/attribute-values/list-element-chip";
+import { ListElementBadge } from "@/entities/nodes/object/ui/attribute-values/list-element-badge";
 import { ListElementsTable } from "@/entities/nodes/object/ui/attribute-values/list-elements-table";
-import { useIsOverflowing } from "@/entities/nodes/object/ui/attribute-values/use-is-overflowing";
 import { ValueDialog } from "@/entities/nodes/object/ui/attribute-values/value-dialog";
 
-/** More chips than fit in the widest table column, which the cell clips at its edge. */
-const LIST_CELL_MAX_CHIPS = 8;
-/** Chips the detail view shows before "View all", so a long list stays a few lines tall. */
-const LIST_DETAIL_MAX_CHIPS = 10;
+/** More badges than fit in the widest table column, which the cell clips at its edge. */
+const LIST_CELL_MAX_BADGES = 8;
+/** The detail view shows this many badges before "View all", so a long list stays a few lines tall. */
+const LIST_DETAIL_MAX_BADGES = 10;
 
 export interface ListValueProps {
   values: unknown[];
   attributeLabel: string;
 }
 
-function ListDialog({
-  elements,
+function ListElementsDialogBody({ values, attributeLabel }: ListValueProps) {
+  return <ListElementsTable elements={getListElements(values)} attributeLabel={attributeLabel} />;
+}
+
+function ListElementsDialog({
+  values,
   attributeLabel,
-  onClose,
-}: {
-  elements: ListElement[];
-  attributeLabel: string;
-  onClose: () => void;
-}) {
+  isOpen,
+  onOpenChange,
+}: ListValueProps & { isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
   return (
     <ValueDialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       title={attributeLabel}
-      subtitle={pluralize(elements.length, "element")}
-      copyLabel={`Copy all ${elements.length}`}
-      copyData={() => elements.map((element) => element.text).join("\n")}
-      onClose={onClose}
+      subtitle={pluralize(values.length, "element")}
+      copyLabel={`Copy all ${values.length}`}
+      copyData={() =>
+        getListElements(values)
+          .map((element) => element.text)
+          .join("\n")
+      }
     >
-      <ListElementsTable elements={elements} attributeLabel={attributeLabel} />
+      <ListElementsDialogBody values={values} attributeLabel={attributeLabel} />
     </ValueDialog>
   );
 }
 
-/** A list in a table cell: chips clipped at the cell edge, and a count that opens every element. */
 export function ListValueCell({ values, attributeLabel }: ListValueProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   const { ref, isOverflowing } = useIsOverflowing<HTMLSpanElement>();
-  const elements = getListElements(values);
 
   return (
     <span className="flex min-w-0 items-center gap-1">
@@ -59,59 +62,58 @@ export function ListValueCell({ values, attributeLabel }: ListValueProps) {
           isOverflowing && "mask-r-from-85%"
         )}
       >
-        {elements.slice(0, LIST_CELL_MAX_CHIPS).map((element) => (
-          <ListElementChip key={element.position} element={element} isLink={false} />
+        {getListElements(values.slice(0, LIST_CELL_MAX_BADGES)).map((element) => (
+          <ListElementBadge
+            key={element.position}
+            element={element}
+            isLink={false}
+            className="max-w-40 shrink-0"
+          />
         ))}
       </span>
 
-      {elements.length > 1 && (
-        <Button
-          variant="ghost"
-          size="xxs"
-          className="shrink-0 text-foreground-muted tabular-nums"
-          onPress={() => setIsOpen(true)}
-          aria-label={`View all ${elements.length} elements of ${attributeLabel}`}
-        >
-          <ListIcon />
-          {elements.length}
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="xxs"
+        className="shrink-0 text-foreground-muted tabular-nums"
+        onPress={() => setIsOpen(true)}
+        aria-label={`View all ${values.length} elements of ${attributeLabel}`}
+      >
+        <ListIcon />
+        {values.length}
+      </Button>
 
-      {isOpen && (
-        <ListDialog
-          elements={elements}
-          attributeLabel={attributeLabel}
-          onClose={() => setIsOpen(false)}
-        />
-      )}
+      <ListElementsDialog
+        values={values}
+        attributeLabel={attributeLabel}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+      />
     </span>
   );
 }
 
-/** A list in the detail view: the first chips, and "View all" when some do not show. */
 export function ListValueDetail({ values, attributeLabel }: ListValueProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const elements = getListElements(values);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {elements.slice(0, LIST_DETAIL_MAX_CHIPS).map((element) => (
-        <ListElementChip key={element.position} element={element} />
+      {getListElements(values.slice(0, LIST_DETAIL_MAX_BADGES)).map((element) => (
+        <ListElementBadge key={element.position} element={element} className="max-w-full" />
       ))}
 
-      {elements.length > LIST_DETAIL_MAX_CHIPS && (
+      {values.length > LIST_DETAIL_MAX_BADGES && (
         <Button variant="ghost" size="xxs" onPress={() => setIsOpen(true)}>
-          View all {elements.length}
+          View all {values.length}
         </Button>
       )}
 
-      {isOpen && (
-        <ListDialog
-          elements={elements}
-          attributeLabel={attributeLabel}
-          onClose={() => setIsOpen(false)}
-        />
-      )}
+      <ListElementsDialog
+        values={values}
+        attributeLabel={attributeLabel}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+      />
     </span>
   );
 }

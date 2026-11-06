@@ -11,19 +11,39 @@ const attribute = (value: unknown) => ({ value }) as NodeAttribute;
 const uplinks = Array.from({ length: 30 }, (_, index) => `Ethernet1/${index + 1}`);
 
 describe("TableAttributeCell", () => {
-  test("shows the count of a List value", async () => {
+  test("offers every element of a one-element List", async () => {
     // GIVEN
     const schema = generateAttributeSchema({ name: "uplinks", kind: "List", label: "Uplinks" });
 
     // WHEN
     const component = await render(
-      <TableAttributeCell attributeSchema={schema} attributeData={attribute(uplinks)} />
+      <TableAttributeCell attributeSchema={schema} attributeData={attribute(["mgmt0"])} />
     );
 
     // THEN
     await expect
-      .element(component.getByRole("button", { name: "View all 30 elements of Uplinks" }))
+      .element(component.getByRole("button", { name: "View all 1 elements of Uplinks" }))
       .toBeVisible();
+  });
+
+  test("shows no filter in the dialog of a 12-element List", async () => {
+    // GIVEN
+    const schema = generateAttributeSchema({ name: "uplinks", kind: "List", label: "Uplinks" });
+    const component = await render(
+      <TableAttributeCell
+        attributeSchema={schema}
+        attributeData={attribute(uplinks.slice(0, 12))}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "View all 12 elements of Uplinks" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("dialog").getByText("Ethernet1/12", { exact: true }))
+      .toBeInTheDocument();
+    expect(component.getByRole("textbox", { name: "Filter elements" }).query()).toBeNull();
   });
 
   test("opens every element of a List value in a dialog", async () => {

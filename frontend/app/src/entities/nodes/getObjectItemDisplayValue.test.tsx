@@ -65,3 +65,39 @@ describe("ObjectAttributeValue", () => {
     await expect.element(component.getByText("2026-06-09 23:30:00")).toBeVisible();
   });
 });
+
+describe("ObjectAttributeValue for a List", () => {
+  const listSchema = { name: "uplinks", kind: "List", label: "Uplinks" } as FieldSchema;
+  const uplinks = Array.from({ length: 12 }, (_, index) => `Ethernet1/${index + 1}`);
+
+  test("opens every element of a long List from View all", async () => {
+    // GIVEN
+    const component = await render(
+      <ObjectAttributeValue
+        attributeSchema={listSchema}
+        attributeData={{ value: uplinks } as unknown as NodeAttributeWithMetadata}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "View all 12" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("dialog").getByText("Ethernet1/12", { exact: true }))
+      .toBeInTheDocument();
+  });
+
+  test("renders an empty List as a dash", async () => {
+    // WHEN
+    const component = await render(
+      <ObjectAttributeValue
+        attributeSchema={listSchema}
+        attributeData={{ value: [] } as unknown as NodeAttributeWithMetadata}
+      />
+    );
+
+    // THEN
+    expect(component.container.textContent).toBe("-");
+  });
+});

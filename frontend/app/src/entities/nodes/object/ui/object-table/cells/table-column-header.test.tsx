@@ -309,7 +309,7 @@ describe("TableColumnHeader", () => {
     await expect.element(component.getByRole("button", { name: "sorted" })).not.toBeInTheDocument();
   });
 
-  test("offers only the filter entry for a non-sortable attribute kind", async () => {
+  test("offers neither filter nor sort for a JSON attribute", async () => {
     // GIVEN
     const component = await render(
       <TableColumnHeader schema={schema} columnSchema={jsonAttribute} />
@@ -319,13 +319,9 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Config" }).click();
 
     // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
-    await expect
-      .element(component.getByRole("menuitem", { name: "Sort ascending" }))
-      .not.toBeInTheDocument();
-    await expect
-      .element(component.getByRole("menuitem", { name: "Sort descending" }))
-      .not.toBeInTheDocument();
+    await expect.element(component.getByRole("menu")).toBeVisible();
+    expect(component.getByRole("menuitem", { name: "Filter" }).query()).toBeNull();
+    expect(component.getByRole("menuitem", { name: "Sort ascending" }).query()).toBeNull();
   });
 
   test("opens the filter form pre-filled when a filter is active on the column", async () => {

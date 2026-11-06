@@ -1,11 +1,10 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import React from "react";
 
-/** Whether an element's content is wider than the element, kept up to date as either resizes. */
 export function useIsOverflowing<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
+  const ref = React.useRef<T>(null);
+  const [isOverflowing, setIsOverflowing] = React.useState(false);
 
-  useLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
 

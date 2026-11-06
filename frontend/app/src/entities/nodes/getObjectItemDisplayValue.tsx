@@ -1,5 +1,6 @@
 import { Meter } from "@infrahub/ui";
 import { CheckIcon, XIcon } from "lucide-react";
+import * as R from "remeda";
 
 import type {
   AnyAttribute,
@@ -186,7 +187,7 @@ export const ObjectAttributeValue = ({
   attributeSchema: FieldSchema;
   attributeData: NodeAttributeWithMetadata;
 }) => {
-  if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
+  if (R.isEmptyish(attributeData.value)) {
     return "-";
   }
 
@@ -237,13 +238,17 @@ export const ObjectAttributeValue = ({
     }
     case ATTRIBUTE_KIND.COLOR:
       return <ColorDisplay color={attributeData.value as string | null} />;
-    case ATTRIBUTE_KIND.LIST:
+    case ATTRIBUTE_KIND.LIST: {
+      const value: unknown = attributeData.value;
+      if (!Array.isArray(value)) return <TextDisplay>{String(value)}</TextDisplay>;
+
       return (
         <ListValueDetail
-          values={attributeData.value as unknown[]}
+          values={value}
           attributeLabel={attributeSchema.label ?? attributeSchema.name}
         />
       );
+    }
     case ATTRIBUTE_KIND.JSON:
       return <CodeViewer>{JSON.stringify(attributeData.value ?? "", null, 2)}</CodeViewer>;
     default:

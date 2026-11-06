@@ -29,7 +29,7 @@ export interface PillProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: LinkPillProps["size"];
 }
 
-/** A `LinkPill` that does not link, for a place where the link has to stay out of the Tab order. */
+/** For a pill that must stay out of the Tab order, where a link cannot. */
 export function Pill({ size = "sm", className, ...props }: PillProps) {
   return (
     <span
