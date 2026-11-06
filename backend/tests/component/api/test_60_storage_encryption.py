@@ -51,6 +51,21 @@ def refusal(identifier: str) -> dict:
     }
 
 
+def checksum_refusal(identifier: str) -> dict:
+    return {
+        "data": None,
+        "errors": [
+            {
+                "message": (
+                    f"The stored file of this artifact ({identifier}) does not match its checksum, so it was not "
+                    "served. It may have been modified outside of Infrahub. Regenerate the artifact to restore it."
+                ),
+                "extensions": {"code": 409},
+            }
+        ],
+    }
+
+
 async def test_uploaded_content_is_encrypted_at_rest_and_served_decrypted(
     db: InfrahubDatabase,
     client: TestClient,
@@ -109,20 +124,15 @@ async def test_artifact_is_served_only_while_it_is_unchanged(
     assert [(response.status_code, response.content) for response in stored_before_encryption + stored_encrypted] == [
         (200, ARTIFACT)
     ] * 4
-    assert [
-        (response.status_code, response.json()) for response in modified_before_encryption + modified_encrypted
-    ] == [(409, refusal(ARTIFACT_ID))] * 4
+    assert [(response.status_code, response.json()) for response in modified_before_encryption] == [
+        (409, checksum_refusal(ARTIFACT_ID))
+    ] * 2
+    assert [(response.status_code, response.json()) for response in modified_encrypted] == [
+        (409, refusal(ARTIFACT_ID))
+    ] * 2
 
 
-async def test_file_object_stored_before_encryption_is_checked_against_its_checksum(
-    db: InfrahubDatabase,
-    client: TestClient,
-    local_storage_dir: Path,
-    admin_headers: dict[str, str],
-    default_branch: Branch,
-    authentication_base: Node,
-    encryption_enabled: StorageKey,
-) -> None:
+async def create_file_contract(db: InfrahubDatabase, default_branch: Branch) -> Node:
     registry.schema.register_schema(schema=SchemaRoot(nodes=[FILE_CONTRACT]), branch=default_branch.name)
     contract = await Node.init(db=db, schema="TestingFileContract")
     await contract.new(
@@ -134,6 +144,19 @@ async def test_file_object_stored_before_encryption_is_checked_against_its_check
         storage_id=FILE_ID,
     )
     await contract.save(db=db)
+    return contract
+
+
+async def test_file_object_stored_before_encryption_is_checked_against_its_checksum(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+) -> None:
+    contract = await create_file_contract(db=db, default_branch=default_branch)
     (local_storage_dir / FILE_ID).write_bytes(FILE)
 
     with client:
@@ -143,6 +166,100 @@ async def test_file_object_stored_before_encryption_is_checked_against_its_check
 
     assert (served.status_code, served.content) == (200, FILE)
     assert (refused.status_code, refused.json()) == (409, refusal(FILE_ID))
+
+
+async def test_encrypted_file_object_is_served_by_every_download_endpoint_only_while_it_is_unchanged(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+) -> None:
+    contract = await create_file_contract(db=db, default_branch=default_branch)
+    urls = [
+        f"/api/storage/files/{contract.id}",
+        f"/api/storage/files/by-storage-id/{FILE_ID}",
+        "/api/storage/files/by-hfid/TestingFileContract?hfid=contract.pdf",
+    ]
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+        identifier=FILE_ID, content=io.BytesIO(FILE)
+    )
+    stored = (local_storage_dir / FILE_ID).read_bytes()
+
+    with client:
+        served = [client.get(url=url, headers=admin_headers) for url in urls]
+        tampered = bytearray(stored)
+        tampered[-1] ^= 0x01
+        (local_storage_dir / FILE_ID).write_bytes(bytes(tampered))
+        refused = [client.get(url=url, headers=admin_headers) for url in urls]
+
+    assert stored[:13] == b"IHSE\x01" + bytes.fromhex(encryption_enabled.fingerprint)
+    assert FILE not in stored
+    assert [(response.status_code, response.content) for response in served] == [(200, FILE)] * 3
+    assert [(response.status_code, response.json()) for response in refused] == [(409, refusal(FILE_ID))] * 3
+
+
+async def test_file_stored_before_encryption_is_checked_even_when_the_checksum_check_is_turned_off(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
+    encryption_enabled: StorageKey,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.storage, "verify_artifact_checksum", False)
+    artifact = await create_stored_artifact(
+        db=db,
+        car_person_data_generic=car_person_data_generic,
+        storage_id=ARTIFACT_ID,
+        checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
+    )
+    (local_storage_dir / ARTIFACT_ID).write_bytes(b'{"hostname": "leaf01", "backdoor": true}')
+
+    with client:
+        response = client.get(url=f"/api/artifact/{artifact.id}", headers=admin_headers)
+
+    assert (response.status_code, response.json()) == (409, checksum_refusal(ARTIFACT_ID))
+
+
+async def test_encrypted_object_is_refused_while_encryption_is_turned_off(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+) -> None:
+    key = StorageKey.derive(config.SETTINGS.security.secret_key)
+    InfrahubObjectStorage(
+        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}), key=key
+    ).store(identifier=LOOSE_ID, content=io.BytesIO(ARTIFACT))
+
+    with client:
+        response = client.get(url=f"/api/storage/object/{LOOSE_ID}", headers=admin_headers)
+
+    assert (response.status_code, response.json()) == (
+        500,
+        {
+            "data": None,
+            "errors": [
+                {
+                    "message": (
+                        f"The stored object {LOOSE_ID} is encrypted but storage encryption is disabled; "
+                        "set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it"
+                    ),
+                    "extensions": {"code": 500},
+                }
+            ],
+        },
+    )
 
 
 async def test_object_nothing_records_a_checksum_for_is_served_as_it_is(

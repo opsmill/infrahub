@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.artifacts.queries import ArtifactChecksumsQuery
-from infrahub.exceptions import ArtifactChecksumMismatchError, ArtifactChecksumMissingError
+from infrahub.core import registry
+from infrahub.exceptions import ArtifactChecksumMismatchError, ArtifactChecksumMissingError, StorageIntegrityError
 from infrahub.log import get_logger
 from infrahub.storage_encryption.checksums import matches_recorded_checksum
+from infrahub.storage_encryption.crypto import IntegrityFailure
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -16,6 +18,21 @@ if TYPE_CHECKING:
     from infrahub.storage import InfrahubObjectStorage
 
 log = get_logger()
+
+
+def get_artifact_content_reader(db: InfrahubDatabase) -> ArtifactContentReader:
+    """Build the reader of the configured storage.
+
+    While storage encryption is enabled, content that was stored before it was enabled is always checked
+    against its recorded checksum, whatever `verify_artifact_checksum` says.
+    """
+    settings = config.SETTINGS.storage
+    return ArtifactContentReader(
+        db=db,
+        storage=registry.storage,
+        verify_checksum=settings.verify_artifact_checksum or settings.encryption_enabled,
+        verify_file_objects=settings.encryption_enabled,
+    )
 
 
 class ArtifactContentReader:
@@ -56,7 +73,7 @@ class ArtifactContentReader:
             ArtifactChecksumMismatchError: If the file is not encrypted and does not match the checksum.
 
         """
-        stored = await asyncio.to_thread(self.storage.read, storage_id)
+        stored = self.storage.read(identifier=storage_id)
         if stored.authenticated or not self.verify_checksum:
             return stored.content
         # Generation always records a checksum with the file, so a file without one was set by hand and cannot be checked.
@@ -77,7 +94,7 @@ class ArtifactContentReader:
             ArtifactChecksumMismatchError: If the content is not encrypted and does not match the recorded checksums.
 
         """
-        stored = await asyncio.to_thread(self.storage.read, storage_id)
+        stored = self.storage.read(identifier=storage_id)
         if stored.authenticated or not self.verify_checksum:
             return stored.content
         checksums = await self._get_recorded_checksums(storage_id=storage_id)
@@ -93,16 +110,16 @@ class ArtifactContentReader:
 
         Raises:
             NodeNotFoundError: If nothing is stored under `storage_id`.
-            StorageIntegrityError: If the file is encrypted and fails authentication.
-            ArtifactChecksumMismatchError: If the file is not encrypted and does not match its checksum.
+            StorageIntegrityError: If the file is encrypted and fails authentication, or is not encrypted and
+                does not match its checksum.
 
         """
-        stored = await asyncio.to_thread(self.storage.read, storage_id)
+        stored = self.storage.read(identifier=storage_id)
         if stored.authenticated or not self.verify_file_objects or not checksum:
             return stored.content
         if matches_recorded_checksum(content=stored.content, checksums={checksum}) is False:
             log.warning("Refused to serve a file that does not match its checksum", storage_id=storage_id)
-            raise ArtifactChecksumMismatchError(storage_id=storage_id)
+            raise StorageIntegrityError(identifier=storage_id, reason=IntegrityFailure.CHECKSUM_MISMATCH)
         return stored.content
 
     @staticmethod

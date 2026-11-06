@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
-from infrahub import config
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
@@ -14,7 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
-from infrahub.artifacts.content import ArtifactContentReader
+from infrahub.artifacts.content import get_artifact_content_reader
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -61,12 +60,9 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    content = await ArtifactContentReader(
-        db=db,
-        storage=registry.storage,
-        verify_checksum=config.SETTINGS.storage.verify_artifact_checksum,
-        verify_file_objects=config.SETTINGS.storage.encryption_enabled,
-    ).read_artifact(storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value)
+    content = await get_artifact_content_reader(db=db).read_artifact(
+        storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value
+    )
     return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
 
