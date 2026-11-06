@@ -183,7 +183,6 @@ class TestIpPoolDetails:
         await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_contain_text(f"in {EXTERNAL_PREFIX}")
 
-        # a resource prefix the pool does not have
         await admin_page.goto(f"/resource-manager/{pool_id}/resources/not-a-resource-of-this-pool")
         await expect(admin_page.get_by_text("Resource prefix not found")).to_be_visible()
         await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).not_to_have_attribute(
@@ -222,7 +221,6 @@ class TestIpPoolDetails:
         pool = await infrahub_client.get(kind="CoreIPPrefixPool", id=pool_id)
         await infrahub_client.allocate_next_ip_prefix(resource_pool=pool, identifier=identifier, branch=branch)
 
-        # the branch view counts the main allocations plus its own
         await admin_page.goto(f"/resource-manager/{pool_id}?branch={branch}")
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
             allocation_count(main_count + 1, "Allocated prefixes")
@@ -232,7 +230,6 @@ class TestIpPoolDetails:
         branch_row = grid.get_by_role("row").filter(has_text=identifier)
         await expect(branch_row.get_by_role("link", name=EXTERNAL_SLASH_29)).to_be_visible()
 
-        # the default branch does not have it
         await admin_page.goto(f"/resource-manager/{pool_id}")
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
             allocation_count(main_count, "Allocated prefixes")
