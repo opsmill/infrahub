@@ -8,12 +8,10 @@ import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
 const BUILT_IN_SECTION_NAMES: string[] = [DETAILS_SECTION.name, ADVANCED_SECTION.name];
 
 function orderContainers(containers: ContainerSchema[]): ContainerSchema[] {
-  const weighted = containers
-    .filter((container) => container.order_weight != null)
-    .sort((a, b) => a.order_weight! - b.order_weight!);
-  const unweighted = containers.filter((container) => container.order_weight == null);
+  const weightOf = (container: ContainerSchema) =>
+    container.order_weight ?? Number.MAX_SAFE_INTEGER;
 
-  return [...weighted, ...unweighted];
+  return [...containers].sort((a, b) => weightOf(a) - weightOf(b));
 }
 
 export function groupFieldsBySection<T>(
