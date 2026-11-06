@@ -46,6 +46,9 @@ values of each shape, and check each cell.
    keyboard, **Then** a dialog shows the full value, formatted and indented.
 3. **Given** an Any value, **When** the cell renders, **Then** an array renders like a List, an
    object renders like a JSON value, and any other value renders as text.
+4. **Given** a List value with more elements than the table cell or the detail view shows,
+   **When** the user activates the "more" indicator with the mouse or the keyboard, **Then** every
+   element is shown, without opening the edit form.
 
 ### User Story 3 - Know that a password is set without reading it (Priority: P2)
 
@@ -80,6 +83,8 @@ The user checks which nodes have a password or a hashed password set.
   render it.
 - **FR-004**: A List cell MUST show the list elements on one line and the number of elements it
   does not show.
+- **FR-004a**: In the table and in the detail view, the user MUST be able to view every element of
+  a List value from the place where it is shown, without opening the edit form.
 - **FR-005**: A JSON cell MUST show a trigger that opens a dialog with the full, formatted value,
   reachable with the keyboard.
 - **FR-006**: An Any cell MUST render an array as a List, an object as a JSON value, and any other
@@ -109,6 +114,8 @@ The user checks which nodes have a password or a hashed password set.
   node.
 - **SC-003**: No table shows a new column unless the user turns it on.
 - **SC-004**: No password value appears in a table cell.
+- **SC-005**: A user views all elements of a 300-element list from the table or the detail view
+  without opening the edit form.
 
 ## Assumptions
 
@@ -116,6 +123,6 @@ The user checks which nodes have a password or a hashed password set.
   or a View button) are decided in the design step that follows this spec.
 - Sorting and filtering on these kinds stay out of scope; [INFP-567](https://opsmill.atlassian.net/browse/INFP-567)
   lists them as an open question.
-- The detail view, and the TextArea, ID, NodeKind and Checkbox kinds, are out of scope.
+- The detail view, except the way to view every element of a List value (FR-004a), and the TextArea, ID, NodeKind and Checkbox kinds, are out of scope.
 - No change to the backend or to the GraphQL schema: the values are already available.
 - The people who use these tables work on a desktop screen.
