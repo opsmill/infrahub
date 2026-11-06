@@ -104,11 +104,14 @@ generics:
 - A generic that drops a container removes it from every node that did not redeclare it on the
   next process; a field still pointing at it then fails validation.
 - Processing twice yields the same list (FR-010).
-- A node loaded from the database with `inherited=True` copies is rebuilt from its generics.
+- A node stored before inherited copies were left out of the database, and so loaded with
+  `inherited=True` copies, is rebuilt from its generics.
 - A node whose `inherit_from` is emptied on a reload loses its `inherited=True` copies on the next
   process and keeps only its own containers.
-- The `inherited` flag is stored and hashed with the node; a change on a generic updates every
-  implementing node's stored `containers`.
+- `SchemaManager` stores only the containers whose `inherited` is `False`, as it stores only the
+  node's own attributes and relationships. The processed node, and so its hash and the schema API,
+  carries the inherited copies with their flag. A change on a generic does not rewrite the stored
+  `containers` of the nodes that inherit it, so it causes no merge conflict on those nodes.
 
 Field-level `container` on inherited attributes and relationships needs no new code:
 `AttributeSchema.update_from_generic` and `RelationshipSchema.update_from_generic` copy every
@@ -131,7 +134,8 @@ inheritance. For each node and generic, in this order, it raises `ValueError` wi
    `<Kind>.containers: '<name>' is a built-in container and cannot be declared`
 3. Reference to a container the node does not have:
    `<Kind>.attributes.<name>.container: container '<x>' is not declared on <Kind>`, and
-   `<Kind>.relationships.<name>.container: container '<x>' is not declared on <Kind>`
+   `<Kind>.relationships.<name>.container: container '<x>' is not declared on <Kind>`. Fields a
+   node inherits are skipped, so a wrong reference on a generic's field names the generic.
 
 A field with `container: details` fails rule 3, since `details` can never be declared.
 
@@ -174,11 +178,12 @@ process, before the validator, so the copies are regenerated whenever the node c
   On a first load, `SchemaBranch.process_containers_state` drops containers with `state: absent`
   before inheritance and validation, so they are not stored, inherited or accepted as a reference.
 
-The `container` of an attribute or relationship is the exception to the rule that a property left
-out of a reload keeps its stored value: a reload that leaves out `container`, or sets it to `null`,
-moves the field back to the Details section (`_cleared_when_omitted` on `AttributeSchema` and
-`RelationshipSchema`). A container can therefore be removed with `state: absent` in the same load
-that removes the `container` of its fields.
+The `container` of an attribute or relationship follows the rule for optional text properties: a
+reload that leaves out `container`, or sets it to `null`, keeps the stored value, and a reload that
+sets `container: ""` moves the field back to the Details section.
+`SchemaBranch.process_cleared_container_references` turns `""` into `None` before inheritance and
+validation, on a reload and on a first load. A container can therefore be removed with
+`state: absent` in the same load that sets `container: ""` on its fields.
 
 Other item lists, such as attributes, relationships and dropdown choices, keep the generic merge
 by `_sorting_id`.

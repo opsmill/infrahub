@@ -6,7 +6,7 @@ assert. Paths are under `frontend/app/src/`.
 ## ObjectDetailsCard
 
 `entities/nodes/object/ui/object-details/object-details-card.tsx::ObjectDetailsCard` gains two
-optional props. Every existing caller passes neither and renders exactly as today.
+optional props. Every existing caller passes neither and renders exactly as before.
 
 ```typescript
 interface ObjectDetailsCardProps {
@@ -15,31 +15,33 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
+  fieldNames?: string[];                       // new: show only these fields of objectSchema
   title?: React.ReactNode;
-  description?: string | null;   // new: muted text under the title, rendered when set
-  defaultCollapsed?: boolean;    // new: undefined = not collapsible; true = starts collapsed
+  section?: FieldSection<unknown>["container"]; // new: undefined = plain card; set = collapsible section card
 }
 ```
 
-- `defaultCollapsed` undefined: the header is the current `h2` title plus the Extra button; the
-  rows are always shown.
-- `defaultCollapsed` defined: the card wraps its header and rows in a react-aria `Disclosure`.
+- `section` undefined: the header is the `h2` title plus the Extra button; the rows are always
+  shown; the card carries `data-testid="object-details"`.
+- `section` set: the card wraps its header and rows in a react-aria `Disclosure`, titled with
+  `section.label`, with `section.description` under the title.
   The header DOM is `CardHeader > [h2 > Button(chevron, label)] [p.description, id=descriptionId]
   [Extra button]`: the trigger button holds the chevron and the container label only and carries
   `aria-describedby=descriptionId`; the region's `aria-labelledby` is the `h2` id. The rows sit in
-  a `DisclosurePanel`. `defaultCollapsed: true` starts with the panel closed; `false` starts open.
-- The Extra button is rendered only when `hasExtraFields(objectSchema)` is true for the schema
-  the card receives, so a card that receives a narrowed schema shows it only when that section has
-  an `extra` field. Its state is local to the card.
+  a `DisclosurePanel`. `section.collapsed: true` starts with the panel closed; `false` starts open.
+  The card carries `data-testid="object-details-section"` and `data-section={section.name}`.
+- `fieldNames` set: the card shows only the visible fields of `objectSchema` with these names.
+  The card keeps the full schema, so the data display finds the `<name>_from_resource_pool`
+  relationship of an attribute in a section.
+- The Extra button is rendered only when one of the fields the card shows has `display: extra`, so
+  a section card shows it only when that section has an `extra` field. Its state is local to the
+  card, and the button is hidden while the card is collapsed.
 - Collapsing is not stored; a page reload restores the schema's `collapsed` value.
 
-The detail view (`object-details.tsx::ObjectDetails`) renders one card per section with
-`objectSchema={{ ...objectSchema, attributes, relationships }}`, splitting the section's items with
-`isRelationshipSchema`. Each section card also receives every relationship of the full schema for
-which `isFromResourcePoolRelationship` is true, because the summary filter drops those before the
-partition and the data display looks the `<name>_from_resource_pool` relationship up in the schema
-it receives. The Details card passes no `defaultCollapsed`; the Advanced card passes
-`defaultCollapsed: true`; a declared container passes its `collapsed` value.
+The detail view (`object-details-sections.tsx::ObjectDetailsSections`) renders one card per section
+with the full schema and `fieldNames` set to the names of the section's items. The Details card
+passes no `section`; the Advanced card and each declared container pass their container as
+`section`.
 
 ## SectionTitle
 
@@ -156,5 +158,6 @@ Form:
   card, and is not part of the region's name.
 
 Tests assert through accessible roles and names (`getByRole("region", { name })`,
-`getByRole("button", { name })`), not through class names or test ids, except the existing
-`data-testid="object-details"` on the card, which stays.
+`getByRole("button", { name })`), not through class names or test ids, except
+`data-testid="object-details"` on the plain card and `data-testid="object-details-section"` with
+`data-section` on a section card.

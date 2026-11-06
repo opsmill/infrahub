@@ -153,6 +153,8 @@ Item models nested in a schema list get their own family. `ContainerSchema{suffi
 explicit `SchemaAttribute` because `_field` takes no `enum_class`. Without that `state` entry the
 write contract drops `state: absent` and a reload cannot remove a container. `inherited` is in the
 list with read visibility: the API returns it, and a payload that sends it gets a read-only warning.
+`SchemaManager` stores only the containers whose `inherited` is false, as it stores only a node's own
+attributes and relationships; processing rebuilds the inherited copies from the generics.
 
 ### Reporting the fields a payload sets but the contract drops
 
