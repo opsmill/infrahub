@@ -56,7 +56,9 @@ class MergingBranchWriteGate:
         deadline = self._clock() + self._timeout_seconds
         while True:
             try:
-                branch = await Branch.get_by_name(db=self._db, name=branch_name)
+                # A worker runs concurrent flows through one database object, and a session runs one query at a time.
+                async with self._db.start_session(read_only=True) as db:
+                    branch = await Branch.get_by_name(db=db, name=branch_name)
             except BranchNotFoundError:
                 return False
 

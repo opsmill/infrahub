@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 POLL_INTERVAL_SECONDS = 1.0
 TIMEOUT_SECONDS = 3.0
+CONCURRENT_WRITES = 10
 
 
 async def _branch_with_status(db: InfrahubDatabase, status: BranchStatus) -> Branch:
@@ -53,6 +55,19 @@ async def test_decides_without_waiting_when_the_branch_is_not_being_merged(
 
     assert await _gate(db=db, sleep=sleep).allows_write(branch_name=branch.name) is expected
     assert sleep.waits == []
+
+
+async def test_decides_for_concurrent_writes_through_one_database_object(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A worker runs several recompute flows at once, all through the same database object."""
+    branch = await _branch_with_status(db=db, status=BranchStatus.OPEN)
+    sleep = MergeEndingSleep(clock=FakeClock(), db=db, branch=branch, end_status=None)
+    gate = _gate(db=db, sleep=sleep)
+
+    decisions = await asyncio.gather(*(gate.allows_write(branch_name=branch.name) for _ in range(CONCURRENT_WRITES)))
+
+    assert decisions == [True] * CONCURRENT_WRITES
 
 
 async def test_skips_a_branch_that_is_merged_while_the_write_waits(
