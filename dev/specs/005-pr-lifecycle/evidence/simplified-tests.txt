@@ -1,0 +1,25 @@
+Command: node --test .github/scripts/pr-lifecycle.test.cjs
+Runtime: /Users/Dimitris/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
+Environment: macOS arm64; no token, network or backend services
+Output recorded: 2026-10-11T20:13:41.006658+00:00
+
+✔ preview defaults to zero writes and uses complete paginated PR and review endpoints (6.2685ms)
+✔ comment-only reviews preserve decisive approval and dismissal clears it (0.278833ms)
+✔ routing covers drafts, requested changes, blockers, readiness and review ownership (0.083917ms)
+✔ ready requires same-head clean aggregate and explicit approved or null decision (0.085917ms)
+✔ render escapes full names, titles, teams, mentions and Markdown links without truncating rows (0.457083ms)
+✔ publish synchronizes only owned exemption labels and configured issue; repeat is idempotent (0.210917ms)
+✔ publish rejects missing issue configuration, PR targets, closed or unmarked issues before writes (0.215458ms)
+✔ late collection errors prevent all writes, including exemption synchronization (0.212041ms)
+✔ oversize dashboard and write failures reject without reporting success (0.189667ms)
+✔ requested reviewer pages preserve all users and teams and fail before writes (0.161042ms)
+✔ bots need no review reads and unavailable merge aggregates never establish readiness (0.125ms)
+✔ review-required blocks retain reviewers and author as next actors (0.051333ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.986625
