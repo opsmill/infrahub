@@ -8758,9 +8758,6 @@ scalar GenericScalar
 
 """
 The organisation-wide raw preferences, plus the instance identity that exists at that scope only.
-
-`instance_label` and `instance_color` are shown to every visitor and have no per-user layer, so
-they are absent from the user and effective views.
 """
 type GlobalPreferencesType {
   date_format: DateFormat
@@ -9310,9 +9307,6 @@ scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated 
 The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
 is lazily created on first write under a per-owner lock — the only path that ever creates a
 Preference row.
-
-`instance_label` and `instance_color` describe the instance itself, so they are accepted with
-scope=GLOBAL only; providing either with scope=USER is a validation error.
 """
 type InfrahubSetPreferences {
   date_format: DateFormat
@@ -10299,9 +10293,6 @@ type Mutation {
   The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
   is lazily created on first write under a per-owner lock — the only path that ever creates a
   Preference row.
-  
-  `instance_label` and `instance_color` describe the instance itself, so they are accepted with
-  scope=GLOBAL only; providing either with scope=USER is a validation error.
   """
   InfrahubSetPreferences(date_format: DateFormat, instance_color: InstanceColor, instance_label: String, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   """
