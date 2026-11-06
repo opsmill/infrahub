@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import socket
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,6 +17,7 @@ from infrahub.health import (
 )
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.worker import WORKER_IDENTITY
+from tests.helpers.utils import closed_local_port
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -32,18 +32,12 @@ async def cache(redis: dict[int, int] | None) -> AsyncIterator[RedisCache]:
         await cache.close_connection()
 
 
-def _closed_local_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
 @pytest.fixture
 async def unreachable_cache(redis: dict[int, int] | None) -> AsyncIterator[RedisCache]:
     """A cache client configured with an address where nothing listens."""
     previous = (config.SETTINGS.cache.address, config.SETTINGS.cache.port)
     config.SETTINGS.cache.address = "127.0.0.1"
-    config.SETTINGS.cache.port = _closed_local_port()
+    config.SETTINGS.cache.port = closed_local_port()
     try:
         cache = RedisCache()
         yield cache
@@ -56,13 +50,16 @@ async def unreachable_cache(redis: dict[int, int] | None) -> AsyncIterator[Redis
 async def cache_refusing_writes(cache: RedisCache) -> AsyncIterator[RedisCache]:
     """The cache with a memory limit below its usage and no eviction, so Redis answers every write with an error."""
     previous = await cache.connection.config_get("maxmemory", "maxmemory-policy")
+    previous_maxmemory, previous_policy = previous["maxmemory"], previous["maxmemory-policy"]
+    if previous_maxmemory is None or previous_policy is None:
+        pytest.fail("The cache did not report its memory settings")
     await cache.connection.config_set("maxmemory-policy", "noeviction")
     await cache.connection.config_set("maxmemory", "1")
     try:
         yield cache
     finally:
-        await cache.connection.config_set("maxmemory", previous["maxmemory"])
-        await cache.connection.config_set("maxmemory-policy", previous["maxmemory-policy"])
+        await cache.connection.config_set("maxmemory", previous_maxmemory)
+        await cache.connection.config_set("maxmemory-policy", previous_policy)
 
 
 async def test_check_health_writes_a_key_that_expires(cache: RedisCache) -> None:

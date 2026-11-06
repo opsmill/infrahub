@@ -41,12 +41,12 @@ Each check makes the service do the work that the API server needs from it. A se
 | Service | Check |
 |---|---|
 | `database` | Runs a query on the database server that accepts writes, which is the leader in a cluster. |
-| `message_bus` | Publishes a message that the broker must confirm. The broker refuses to confirm while it has a memory or disk alarm. |
+| `message_bus` | Publishes a message that the broker must confirm. The broker blocks publishers while it has a memory or disk alarm, so the check then reports `timeout`. |
 | `cache` | Writes a key that expires after one minute. The write fails when the cache answers but refuses writes, for example when it reached its memory limit or cannot save its data to disk. |
 | `task_manager` | Requests `/api/health` from the task manager. |
 | `task_manager_db` | Requests `/api/ready` from the task manager, which answers `200` only when it can open a connection to its database. The API server does not connect to this database, so it needs no credentials for it. |
 
-When the task manager is down, both `task_manager` and `task_manager_db` are reported as down.
+When the task manager is down, both `task_manager` and `task_manager_db` are reported as down. With `INFRAHUB_WORKFLOW_DRIVER=local`, the API server runs background tasks in its own process and has no task manager to check, so both are reported as up.
 
 ## Errors
 
@@ -87,7 +87,7 @@ infrahubServer:
       failureThreshold: 3
 ```
 
-All API server pods use the same database, message broker, cache and task manager. When one of these services is down, every pod fails its readiness probe, and the Kubernetes service has no pod to send requests to until the service is back.
+All API server pods use the same database, message broker, cache and task manager. When one of these services is down, every pod fails its readiness probe, and the Kubernetes service has no pod to send requests to until the service is back. This includes an outage of the task manager database alone.
 
 Keep the liveness probe on `/api/config`. A failed liveness probe restarts the container, and restarting every API server does not repair a database or a cache that is down.
 

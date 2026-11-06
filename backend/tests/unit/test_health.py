@@ -116,6 +116,25 @@ CLASSIFY_ERROR_TEST_CASES: list[ClassifyErrorTestCase] = [
         expected=ErrorCategory.CONNECTION_REFUSED,
     ),
     ClassifyErrorTestCase(
+        name="refused_on_every_address_joined_into_one_message",
+        error=_chained(
+            RuntimeError("Error connecting to localhost:6379"),
+            OSError(
+                f"Multiple exceptions: [Errno {errno.ECONNREFUSED}] Connect call failed ('::1', 6379, 0, 0), "
+                f"[Errno {errno.ECONNREFUSED}] Connect call failed ('127.0.0.1', 6379)"
+            ),
+        ),
+        expected=ErrorCategory.CONNECTION_REFUSED,
+    ),
+    ClassifyErrorTestCase(
+        name="different_errors_joined_into_one_message",
+        error=OSError(
+            f"Multiple exceptions: [Errno {errno.ECONNREFUSED}] Connect call failed ('::1', 6379, 0, 0), "
+            f"[Errno {errno.ETIMEDOUT}] Connect call failed ('127.0.0.1', 6379)"
+        ),
+        expected=ErrorCategory.UNKNOWN_ERROR,
+    ),
+    ClassifyErrorTestCase(
         name="connection_reset", error=ConnectionResetError(), expected=ErrorCategory.CONNECTION_CLOSED
     ),
     ClassifyErrorTestCase(name="broken_pipe", error=BrokenPipeError(), expected=ErrorCategory.CONNECTION_CLOSED),

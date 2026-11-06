@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import socket
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -13,6 +12,7 @@ from infrahub.exceptions import DependencyUnhealthyError
 from infrahub.health import ErrorCategory, classify_error
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tls.registry import TlsContextRegistry
+from tests.helpers.utils import closed_local_port
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -45,12 +45,6 @@ async def _task_manager_answering(status_line: bytes) -> AsyncIterator[Recording
     finally:
         server.close()
         await server.wait_closed()
-
-
-def _closed_local_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 @pytest.fixture
@@ -86,7 +80,7 @@ async def test_task_manager_check_requests_the_health_probe(workflow: WorkflowWo
 async def test_checks_raise_when_nothing_listens_at_the_task_manager_address(
     workflow: WorkflowWorkerExecution,
 ) -> None:
-    with temporary_settings(updates={PREFECT_API_URL: f"http://127.0.0.1:{_closed_local_port()}/api"}):
+    with temporary_settings(updates={PREFECT_API_URL: f"http://127.0.0.1:{closed_local_port()}/api"}):
         with pytest.raises(httpx.ConnectError, match=r"^All connection attempts failed$") as exc_info:
             await workflow.check_health()
 

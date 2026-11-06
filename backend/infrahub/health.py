@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import errno
+import re
 import socket
 import time
 from dataclasses import dataclass
@@ -53,6 +55,28 @@ class ErrorCategory(StrEnum):
     UNAVAILABLE = "unavailable"
     """The service answered but reported that it cannot serve requests."""
     UNKNOWN_ERROR = "unknown_error"
+
+
+_CATEGORY_BY_ERROR_TYPE: tuple[tuple[tuple[type[BaseException], ...], ErrorCategory], ...] = (
+    ((TimeoutError,), ErrorCategory.TIMEOUT),
+    ((socket.gaierror,), ErrorCategory.NAME_RESOLUTION_FAILED),
+    ((ConnectionRefusedError,), ErrorCategory.CONNECTION_REFUSED),
+    (
+        (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, DependencyConnectionClosedError),
+        ErrorCategory.CONNECTION_CLOSED,
+    ),
+    ((DependencyUnhealthyError,), ErrorCategory.UNAVAILABLE),
+)
+
+_CATEGORY_BY_ERRNO: dict[int, ErrorCategory] = {
+    errno.ECONNREFUSED: ErrorCategory.CONNECTION_REFUSED,
+    errno.ETIMEDOUT: ErrorCategory.TIMEOUT,
+    errno.ECONNRESET: ErrorCategory.CONNECTION_CLOSED,
+    errno.ECONNABORTED: ErrorCategory.CONNECTION_CLOSED,
+    errno.EPIPE: ErrorCategory.CONNECTION_CLOSED,
+}
+
+_ERRNO_IN_MESSAGE = re.compile(r"\[Errno (\d+)\]")
 
 
 class DependencyHealth(BaseModel):
@@ -109,18 +133,20 @@ def _exception_chain(exc: BaseException) -> Iterator[BaseException]:
 
 
 def _category_of(error: BaseException) -> ErrorCategory | None:
-    match error:
-        case TimeoutError():
-            return ErrorCategory.TIMEOUT
-        case socket.gaierror():
-            return ErrorCategory.NAME_RESOLUTION_FAILED
-        case ConnectionRefusedError():
-            return ErrorCategory.CONNECTION_REFUSED
-        case ConnectionResetError() | ConnectionAbortedError() | BrokenPipeError() | DependencyConnectionClosedError():
-            return ErrorCategory.CONNECTION_CLOSED
-        case DependencyUnhealthyError():
-            return ErrorCategory.UNAVAILABLE
+    for error_types, category in _CATEGORY_BY_ERROR_TYPE:
+        if isinstance(error, error_types):
+            return category
+    if isinstance(error, OSError) and error.errno is None:
+        return _category_of_joined_errors(message=str(error))
     return None
+
+
+def _category_of_joined_errors(message: str) -> ErrorCategory | None:
+    # asyncio joins the errors of every address it tried into the text of one OSError, which has no errno of its own.
+    codes = {int(code) for code in _ERRNO_IN_MESSAGE.findall(message)}
+    if len(codes) != 1:
+        return None
+    return _CATEGORY_BY_ERRNO.get(codes.pop())
 
 
 class HealthChecker:
