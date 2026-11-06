@@ -31,6 +31,7 @@ interface ObjectDataDisplayProps {
   permission: Permission;
   showExtra?: boolean;
   excludeRelationships?: string[];
+  fieldNames?: string[];
 }
 
 export function ObjectDataDisplay({
@@ -39,6 +40,7 @@ export function ObjectDataDisplay({
   permission,
   showExtra = false,
   excludeRelationships,
+  fieldNames,
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
@@ -68,12 +70,7 @@ export function ObjectDataDisplay({
     setShowMetaEditModal(true);
   };
 
-  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInDataDisplay(
-    objectSchema.relationships ?? [],
-    excludeRelationships
-  );
-  const allFields = sortByOrderWeight([...attributes, ...relationships]);
+  const allFields = getDataDisplayFields({ objectSchema, excludeRelationships, fieldNames });
   const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
   return (
@@ -164,6 +161,21 @@ export function ObjectDataDisplay({
       </Sheet>
     </div>
   );
+}
+
+export function getDataDisplayFields({
+  objectSchema,
+  excludeRelationships,
+  fieldNames,
+}: Pick<ObjectDataDisplayProps, "objectSchema" | "excludeRelationships" | "fieldNames">): Array<
+  AttributeSchema | RelationshipSchema
+> {
+  const fields = sortByOrderWeight([
+    ...getAttributesVisibleInDetailedView(objectSchema.attributes ?? []),
+    ...getRelationshipsVisibleInDataDisplay(objectSchema.relationships ?? [], excludeRelationships),
+  ]);
+
+  return fieldNames ? fields.filter((field) => fieldNames.includes(field.name)) : fields;
 }
 
 export function getRelationshipsVisibleInDataDisplay(

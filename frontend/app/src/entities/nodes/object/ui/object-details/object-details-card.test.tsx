@@ -10,6 +10,8 @@ import { generateAttributeSchema, generateNodeSchema } from "../../../../../../t
 
 const permission = generatePermission();
 
+const lacpSection = { name: "lacp", label: "LACP", collapsed: false };
+
 const schemaWithCommit = generateNodeSchema({
   attributes: [generateAttributeSchema({ name: "commit", label: "Commit", order_weight: 1000 })],
   relationships: [],
@@ -143,11 +145,10 @@ describe("ObjectDetailsCard", () => {
     expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
   });
 
-  it("starts collapsed when defaultCollapsed is true and expands when the header button is pressed", async () => {
+  it("starts collapsed when its section is collapsed and expands when the header button is pressed", async () => {
     const component = await render(
       <ObjectDetailsCard
-        title="LACP"
-        defaultCollapsed
+        section={{ ...lacpSection, collapsed: true }}
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -170,7 +171,7 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
   });
 
-  it("has no button in its title when defaultCollapsed is undefined", async () => {
+  it("has no button in its title when given no section", async () => {
     const component = await render(
       <ObjectDetailsCard
         title="LACP"
@@ -188,9 +189,7 @@ describe("ObjectDetailsCard", () => {
   it("shows the description under the title outside the button and points aria-describedby at it", async () => {
     const component = await render(
       <ObjectDetailsCard
-        title="LACP"
-        description="Link aggregation settings"
-        defaultCollapsed={false}
+        section={{ ...lacpSection, description: "Link aggregation settings" }}
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -214,15 +213,13 @@ describe("ObjectDetailsCard", () => {
     const component = await render(
       <>
         <ObjectDetailsCard
-          title="LACP"
-          defaultCollapsed={false}
+          section={lacpSection}
           objectSchema={schemaWithExtraField}
           objectData={objectDataWithExtraField}
           permission={permission}
         />
         <ObjectDetailsCard
-          title="Advanced"
-          defaultCollapsed={false}
+          section={{ name: "advanced", label: "Advanced", collapsed: false }}
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}
@@ -249,8 +246,7 @@ describe("ObjectDetailsCard", () => {
     // GIVEN a collapsed card whose schema has an extra field
     const component = await render(
       <ObjectDetailsCard
-        title="LACP"
-        defaultCollapsed
+        section={{ ...lacpSection, collapsed: true }}
         objectSchema={schemaWithExtraField}
         objectData={objectDataWithExtraField}
         permission={permission}
@@ -268,12 +264,10 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByRole("button", { name: "Extra" })).toBeVisible();
   });
 
-  it("carries the section test id and the section name when given a section name", async () => {
+  it("carries the section test id and the section name when given a section", async () => {
     const component = await render(
       <ObjectDetailsCard
-        title="LACP"
-        sectionName="lacp"
-        defaultCollapsed={false}
+        section={lacpSection}
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -284,5 +278,19 @@ describe("ObjectDetailsCard", () => {
     await expect.element(card).toHaveAttribute("data-section", "lacp");
     expect(card.element()).toBe(component.getByRole("region", { name: "LACP" }).element());
     expect(component.getByTestId("object-details").elements()).toHaveLength(0);
+  });
+
+  it("shows only the fields it is given by name", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        fieldNames={["commit"]}
+        objectSchema={schemaWithExtraField}
+        objectData={objectDataWithExtraField}
+        permission={permission}
+      />
+    );
+
+    await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
+    expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
   });
 });
