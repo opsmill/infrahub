@@ -1,7 +1,4 @@
-import {
-  type InstanceColor,
-  isInstanceColor,
-} from "@/entities/preferences/domain/model/instance-identity";
+import type { InstanceColor } from "@/shared/api/graphql/generated/types";
 
 export type InstanceBadgeVariant =
   | "red"
@@ -18,7 +15,8 @@ interface InstanceColorPreset {
   label: string;
 }
 
-const INSTANCE_COLOR_PRESETS = {
+// The order is the one the color picker lists the presets in.
+const INSTANCE_COLOR_PRESETS: Record<InstanceColor, InstanceColorPreset> = {
   RED: { badgeVariant: "red", barClassName: "bg-danger", label: "Red" },
   AMBER: { badgeVariant: "warning", barClassName: "bg-warning-strong", label: "Amber" },
   GREEN: { badgeVariant: "green", barClassName: "bg-success", label: "Green" },
@@ -30,9 +28,16 @@ const INSTANCE_COLOR_PRESETS = {
     label: "Purple",
   },
   GRAY: { badgeVariant: "gray", barClassName: "bg-foreground-muted", label: "Gray" },
-} satisfies Record<InstanceColor, InstanceColorPreset>;
+};
 
 const UNSET_INSTANCE_BADGE_VARIANT: InstanceBadgeVariant = "gray";
+
+export function isInstanceColor(value: unknown): value is InstanceColor {
+  return typeof value === "string" && Object.hasOwn(INSTANCE_COLOR_PRESETS, value);
+}
+
+export const INSTANCE_COLORS: Array<InstanceColor> =
+  Object.keys(INSTANCE_COLOR_PRESETS).filter(isInstanceColor);
 
 export function instanceColorLabel(color: InstanceColor): string {
   return INSTANCE_COLOR_PRESETS[color].label;
@@ -46,8 +51,6 @@ export function instanceBadgeVariant(color: string | null): InstanceBadgeVariant
     : UNSET_INSTANCE_BADGE_VARIANT;
 }
 
-export function instanceBarClassName(color: InstanceColor): string;
-export function instanceBarClassName(color: string | null): string | null;
 export function instanceBarClassName(color: string | null): string | null {
   return isInstanceColor(color) ? INSTANCE_COLOR_PRESETS[color].barClassName : null;
 }

@@ -1,7 +1,6 @@
-import type { PreferenceSource } from "@/shared/api/graphql/generated/types";
+import type { InstanceColor, PreferenceSource } from "@/shared/api/graphql/generated/types";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
-import type { InstanceColor } from "@/entities/preferences/domain/model/instance-identity";
 
 export type { PreferenceSource };
 

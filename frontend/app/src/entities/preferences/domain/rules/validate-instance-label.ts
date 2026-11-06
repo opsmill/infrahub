@@ -1,4 +1,4 @@
-import { INSTANCE_LABEL_MAX_LENGTH } from "@/entities/preferences/domain/model/instance-identity";
+export const INSTANCE_LABEL_MAX_LENGTH = 32;
 
 // Line breaks and tabs are in the Cc category; U+202A to U+202E and U+2066 to U+2069 are the
 // bidirectional text controls, which can reorder how the label reads.
