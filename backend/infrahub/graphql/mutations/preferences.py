@@ -53,9 +53,6 @@ class InfrahubSetPreferences(Mutation):
     The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
     is lazily created on first write under a per-owner lock — the only path that ever creates a
     Preference row.
-
-    `instance_label` and `instance_color` describe the instance itself, so they are accepted with
-    scope=GLOBAL only; providing either with scope=USER is a validation error.
     """
 
     class Arguments:

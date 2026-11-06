@@ -99,11 +99,7 @@ class RawPreferencesType(ObjectType):
 
 
 class GlobalPreferencesType(RawPreferencesType):
-    """The organisation-wide raw preferences, plus the instance identity that exists at that scope only.
-
-    `instance_label` and `instance_color` are shown to every visitor and have no per-user layer, so
-    they are absent from the user and effective views.
-    """
+    """The organisation-wide raw preferences, plus the instance identity that exists at that scope only."""
 
     instance_label = Field(String, required=False)
     instance_color = Field(InstanceColor, required=False)

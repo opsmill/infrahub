@@ -62,13 +62,11 @@ class InfoAPI(BaseModel):
 
 async def get_instance_identity(db: InfrahubDatabase = Depends(get_db)) -> InstanceIdentityAPI:
     """Read the instance label and color, served as unset when the read fails for any reason."""
-    # The config response bootstraps every page, including login, so a failed read of the identity
-    # degrades it to unset instead of taking the whole UI down.
     try:
         global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     except Exception:
         log.exception("Instance identity unavailable, serving it as unset")
-        return InstanceIdentityAPI(label=None, color=None)
+        global_preference = None
     if global_preference is None:
         return InstanceIdentityAPI(label=None, color=None)
     return InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
