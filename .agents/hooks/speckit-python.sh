@@ -16,7 +16,9 @@ python="$venv/bin/python"
 [ -x "$python" ] || exit 0
 "$python" -c 'import yaml' >/dev/null 2>&1 || exit 0
 
+# The file is sourced as shell code, so the path is single-quoted to keep spaces, quotes and $ literal.
+quoted="'$(printf '%s' "$python" | sed "s/'/'\\\\''/g")'"
 {
-    echo "export SPECKIT_PYTHON_EXECUTABLE=\"$python\""
-    echo "export SPECKIT_PYTHON=\"$python\""
+    echo "export SPECKIT_PYTHON_EXECUTABLE=$quoted"
+    echo "export SPECKIT_PYTHON=$quoted"
 } >> "$CLAUDE_ENV_FILE"
