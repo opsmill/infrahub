@@ -36,30 +36,26 @@ export function GlobalPreferencesForm() {
         date_format: toFieldValue(global.dateFormat),
         timezone: toFieldValue(global.timezone),
       }}
-      onSubmit={(formData) => {
-        updatePreferences.mutate(
-          {
+      onSubmit={async (formData) => {
+        try {
+          await updatePreferences.mutateAsync({
             dateFormat: (formData.date_format?.value as DateFormatKey | null) ?? null,
             timezone: (formData.timezone?.value as string | null) ?? null,
-          },
-          {
-            onSuccess: () => {
-              toast(<Alert type={ALERT_TYPES.SUCCESS} message="Global preferences updated" />);
-            },
-            onError: (mutationError) => {
-              toast(
-                <Alert
-                  type={ALERT_TYPES.ERROR}
-                  message={
-                    mutationError instanceof Error
-                      ? mutationError.message
-                      : "Failed to update global preferences"
-                  }
-                />
-              );
-            },
-          }
-        );
+          });
+        } catch (mutationError) {
+          toast(
+            <Alert
+              type={ALERT_TYPES.ERROR}
+              message={
+                mutationError instanceof Error
+                  ? mutationError.message
+                  : "Failed to update global preferences"
+              }
+            />
+          );
+          throw mutationError;
+        }
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Global preferences updated" />);
       }}
       className="space-y-0 divide-y"
     >

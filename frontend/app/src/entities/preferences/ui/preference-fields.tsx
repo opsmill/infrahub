@@ -33,7 +33,6 @@ export function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
-/** Submit button of a preference form, enabled once a field differs from the saved values. */
 export function SaveButton({
   isPending,
   children,
