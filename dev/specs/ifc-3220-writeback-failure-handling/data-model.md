@@ -395,9 +395,10 @@ Every new field is optional with a default, so a run queued by the previous code
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when one of its enqueue tries returned. Only `False` makes `merge_git_repository` write the entry, with a `widen` marker of scope `all`, as the first step of its delivery task (`research.md` R3). |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
-| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
-| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
-| `GitRepositoryDeliveryRetry` | `git/models.py`, new | `repository_id`, `repository_name` | `str` |
+| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None`. An empty list restricts nothing, as `None` does. |
+| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None`. An empty list restricts nothing, as `None` does. |
+| `merge_git_repository` flow | `git/tasks.py` | `context` | `InfrahubContext`, the context of the release. A run queued by the previous code has none, so the default is an anonymous context on the global branch. |
+| `GitRepositoryDeliveryRetry` | `git/models.py`, new | `repository_id`, `repository_name`, `manual` | `str`, `str`, `bool = True`. The recovery check sends `manual=False`. |
 | `GitRepositoryDeliveryAbandon` | `git/models.py`, new | `repository_id`, `repository_name`, `queue_version` | `str`, `str`, `int` |
 
 The actor of an abandonment comes from the workflow's `InfrahubContext`, not from the payload, so a
