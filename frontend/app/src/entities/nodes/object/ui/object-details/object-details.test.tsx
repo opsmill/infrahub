@@ -229,6 +229,7 @@ async function expectSectionsInOrder(component: Awaited<ReturnType<typeof render
       .elements()
       .map((card) => card.getAttribute("data-section"))
   ).toEqual(["addressing", "lacp", "advanced"]);
+  expect(component.getByRole("region", { name: "Membership" }).elements()).toHaveLength(0);
 }
 
 describe("ObjectDetails sections", () => {
@@ -267,19 +268,6 @@ describe("ObjectDetails sections", () => {
     await expect
       .element(component.getByRole("region", { name: "LACP" }).getByText("LAG mode"))
       .toBeVisible();
-  });
-
-  it("renders no card for a container with no visible field", async () => {
-    const component = await render(
-      <ObjectDetails
-        objectSchema={sectionedSchema}
-        objectData={sectionedData}
-        permission={permission}
-      />
-    );
-
-    await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
-    expect(component.getByRole("region", { name: "Membership" }).elements()).toHaveLength(0);
   });
 
   it("shows the Extra button only on the section with an extra field", async () => {
@@ -391,35 +379,18 @@ describe("ObjectDetails sections", () => {
     expect(component.getByText("VLAN ID from pool").elements()).toHaveLength(0);
   });
 
-  it("renders the same sections for a profile schema", async () => {
-    const profileSchema = generateProfileSchema({
-      containers: sectionContainers,
-      attributes: sectionedAttributes,
-      relationships: sectionedRelationships,
-    });
-
+  it.each([
+    ["a profile", generateProfileSchema, "ProfileInfraInterface"],
+    ["an object template", generateTemplateSchema, "TemplateInfraInterface"],
+  ] as const)("renders the same sections for %s schema", async (_, generateSchema, typename) => {
     const component = await render(
       <ObjectDetails
-        objectSchema={profileSchema}
-        objectData={{ ...sectionedData, __typename: "ProfileInfraInterface" }}
-        permission={permission}
-      />
-    );
-
-    await expectSectionsInOrder(component);
-  });
-
-  it("renders the same sections for an object template schema", async () => {
-    const templateSchema = generateTemplateSchema({
-      containers: sectionContainers,
-      attributes: sectionedAttributes,
-      relationships: sectionedRelationships,
-    });
-
-    const component = await render(
-      <ObjectDetails
-        objectSchema={templateSchema}
-        objectData={{ ...sectionedData, __typename: "TemplateInfraInterface" }}
+        objectSchema={generateSchema({
+          containers: sectionContainers,
+          attributes: sectionedAttributes,
+          relationships: sectionedRelationships,
+        })}
+        objectData={{ ...sectionedData, __typename: typename }}
         permission={permission}
       />
     );

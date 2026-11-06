@@ -143,7 +143,7 @@ describe("ObjectDetailsCard", () => {
     expect(component.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
   });
 
-  it("starts collapsed when defaultCollapsed is true", async () => {
+  it("starts collapsed when defaultCollapsed is true and expands when the header button is pressed", async () => {
     const component = await render(
       <ObjectDetailsCard
         title="LACP"
@@ -159,18 +159,6 @@ describe("ObjectDetailsCard", () => {
       .element(component.getByRole("button", { name: "LACP" }))
       .toHaveAttribute("aria-expanded", "false");
     await expect.element(component.getByText("Commit", { exact: true })).not.toBeVisible();
-  });
-
-  it("expands when the header button is pressed", async () => {
-    const component = await render(
-      <ObjectDetailsCard
-        title="LACP"
-        defaultCollapsed
-        objectSchema={schemaWithCommit}
-        objectData={objectData}
-        permission={permission}
-      />
-    );
 
     // WHEN
     await component.getByRole("button", { name: "LACP" }).click();
