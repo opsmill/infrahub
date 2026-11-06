@@ -1,0 +1,89 @@
+{
+  "total_count": 4,
+  "check_runs": [
+    {
+      "id": 106046617212,
+      "name": "claude",
+      "node_id": "CR_kwDOH4TYMs8AAAAYsN72fA",
+      "head_sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+      "external_id": "1a8b1309-377d-5bff-93ae-efddd3501ed0",
+      "html_url": "https://github.com/opsmill/infrahub/actions/runs/35498771069/job/106046617212",
+      "details_url": "https://github.com/opsmill/infrahub/actions/runs/35498771069/job/106046617212",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-09-20T08:09:13Z",
+      "completed_at": "2026-09-20T08:09:07Z",
+      "app": {
+        "id": 15368,
+        "slug": "github-actions",
+        "name": "GitHub Actions"
+      },
+      "check_suite": {
+        "id": 96121997695
+      }
+    },
+    {
+      "id": 105868699215,
+      "name": "coverall-report",
+      "node_id": "CR_kwDOH4TYMs8AAAAYpkQmTw",
+      "head_sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+      "external_id": "3e39c73a-0d63-563f-8e18-4b079e3d4c62",
+      "html_url": "https://github.com/opsmill/infrahub/actions/runs/35414053569/job/105868699215",
+      "details_url": "https://github.com/opsmill/infrahub/actions/runs/35414053569/job/105868699215",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T08:31:04Z",
+      "completed_at": "2026-09-19T08:31:09Z",
+      "app": {
+        "id": 15368,
+        "slug": "github-actions",
+        "name": "GitHub Actions"
+      },
+      "check_suite": {
+        "id": 95910640985
+      }
+    },
+    {
+      "id": 105867445344,
+      "name": "CodSpeed Performance Analysis",
+      "node_id": "CR_kwDOH4TYMs8AAAAYpjEEYA",
+      "head_sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+      "external_id": "",
+      "html_url": "https://github.com/opsmill/infrahub/runs/105867445344",
+      "details_url": "https://app.codspeed.io/opsmill/infrahub/branches/dependabot%2Fuv%2Fuv-7d634dd58b?utm_source=github&utm_medium=check&utm_content=details",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T08:20:26Z",
+      "completed_at": "2026-09-19T08:20:26Z",
+      "app": {
+        "id": 257293,
+        "slug": "codspeed",
+        "name": "CodSpeed"
+      },
+      "check_suite": {
+        "id": 95910629675
+      }
+    },
+    {
+      "id": 105819441341,
+      "name": "Cloudflare Pages",
+      "node_id": "CR_kwDOH4TYMs8AAAAYo1SIvQ",
+      "head_sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+      "external_id": "d0b9924f-70f5-4296-aa35-6ecaa281e0e1",
+      "html_url": "https://github.com/opsmill/infrahub/runs/105819441341",
+      "details_url": "https://dash.cloudflare.com/?to=/0969a167157a1fe84833ba3769cbbdb0/pages/view/infrahub/d0b9924f-70f5-4296-aa35-6ecaa281e0e1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T01:56:27Z",
+      "completed_at": "2026-09-19T01:56:27Z",
+      "app": {
+        "id": 85455,
+        "slug": "cloudflare-workers-and-pages",
+        "name": "Cloudflare Workers and Pages"
+      },
+      "check_suite": {
+        "id": 95910629557
+      }
+    }
+  ]
+}
