@@ -314,6 +314,21 @@ class TestGlobalCaBundleResolution:
 
         assert settings.cache.tls_ca_file == CA_BUNDLE
 
+    def test_broker_url_takes_the_global_bundle_whatever_tls_insecure_says(self) -> None:
+        # The URL supersedes broker.tls_insecure, so the flag must not keep the bundle from the URL's connections.
+        settings = Settings.model_validate(
+            {
+                "tls": {"ca_bundle": CA_BUNDLE},
+                "broker": {
+                    "driver": "redis",
+                    "tls_insecure": True,
+                    "url": "rediss+sentinel://sentinel-a:26379/mymaster",
+                },
+            }
+        )
+
+        assert settings.broker.tls_ca_file == CA_BUNDLE
+
     def test_plaintext_s3_endpoint_is_left_alone(self) -> None:
         # With use_ssl disabled boto3 talks http:// and ignores verify=, so the plaintext endpoint must not
         # inherit the global bundle while the other components still do.

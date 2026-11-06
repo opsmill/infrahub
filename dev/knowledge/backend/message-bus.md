@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [ADR-0004](../../adr/0004-message-bus.md), [Creating Messages Guide](../../guides/backend/creating-messages.md)
 
-Infrahub uses a message bus (RabbitMQ) for asynchronous inter-component communication, focusing on broadcast notifications and rapid-response RPC operations.
+Infrahub uses a message bus (RabbitMQ or Redis Streams) for asynchronous inter-component communication, focusing on broadcast notifications and rapid-response RPC operations.
 
 ## When to Use Message Bus vs Workflows
 
@@ -33,6 +33,8 @@ Sender ──► Message Bus ──► Worker 1
 ```
 
 Workers ignore messages they originated (via `initiator_id` check) to prevent loops.
+
+A broadcast message is never delivered with a delay, so a failed broadcast is not retried. Both drivers drop it: RabbitMQ's dead-letter exchange routes only work-queue keys, and the Redis driver logs a warning instead of scheduling it. A delayed broadcast would reach every worker again, and each worker that failed it would publish another retry.
 
 **Examples**: `RefreshRegistryBranches`, `RefreshGitFetch`
 
@@ -165,6 +167,26 @@ Declare a durable queue with the arguments from `infrahub/services/adapters/mess
 - **Per-process queues** (`api-*`, `worker-*`) stay classic: they are exclusive to one connection, which quorum queues cannot be, and the process declares them again when it reconnects.
 - **Changing the type** requires deleting the durable queues first: RabbitMQ refuses a redeclaration with other arguments (`PRECONDITION_FAILED`), so the server does not start. The procedure is in the high availability deployment docs.
 
+## Redis Driver Connection
+
+Build the Redis driver's client with `build_broker_redis_connection` from `infrahub/redis_connection.py`, never with `redis.Redis(...)`: it shares the cache's URL handling, so the client accepts Sentinel URLs, retries connection errors and follows a failover.
+
+- **Settings**: `broker.url` (`INFRAHUB_BROKER_URL`) supersedes `address`, `port`, `username`, `password`, `tls_enabled` and `tls_insecure`. Without it, these settings build a single-node URL on database 0. A `username` or `password` left at its default is not sent, because that default is the RabbitMQ default user (`infrahub`/`infrahub`), which a Redis server does not have. The settings fail to load when the URL is set with a driver other than `redis`.
+- **Closing**: close the client with `prefect_redis.connection.aclose_redis_client`, which also closes a Sentinel client's connections to the Sentinel nodes.
+- **After a failover**: a connection that only reads (the `XREAD` of the events and callback streams) stays on the demoted master, now a replica, until it fails, and still receives new entries through replication. A connection that sends a write command, `XREADGROUP` included, gets `READONLY` from the replica and reconnects to the promoted master.
+
+## Redis Driver Message Handling
+
+The Redis driver requires Redis 6.2 or later, for `XAUTOCLAIM` and `XTRIM MINID`.
+
+- **Concurrency**: each entry is handled in a task of its own, as the RabbitMQ client library (aiormq) does for each delivery. A task worker reads or claims a work item only while fewer than `broker.maximum_concurrent_messages` of its work items are running, so the entries it cannot start yet stay with the group for other workers. Events and RPC replies have no limit, as on RabbitMQ, and are read up to 100 at a time.
+- **Routing**: a routing key is matched against the event bindings with the AMQP topic rules (`*` is one word, `#` any number of words), so a routing key reaches the same stream as on RabbitMQ. An event that matches none of the worker's bindings is skipped before a task starts.
+- **Abandoned work items**: a worker marks the work items it is handling as in progress every 15 seconds (`XCLAIM ... JUSTID` to its own consumer, which resets their idle time without counting a delivery). Every 30 seconds, each worker claims the work items nobody has marked for a minute, which belong to a worker that stopped, or whose delivery never reached its worker. It claims one work item at a time, once a handler slot is free, so a claimed work item starts at once and is marked from then on. A worker that shuts down sets the idle time of its unfinished work items to that threshold, so the next claim pass of another worker takes them over. A claimed work item delivered more than 5 times goes to the list `{namespace}:rpcs:dead`, which keeps the newest 1,000 entries, instead of running again, so a work item that keeps stopping its worker cannot stop every worker in turn.
+- **Failed work items**: a worker acknowledges a work item only when its handling returns. When the handling raises, for example because the retry of a failed message could not be scheduled, the work item stays pending, so a claim pass runs it again a minute later, and it goes to `{namespace}:rpcs:dead` after 5 deliveries.
+- **Delayed messages**: a delayed work item waits in the sorted set `{namespace}:delayed`, scored by its due time, so it outlives the process that scheduled it. Every second, each server and task worker runs a Lua script that adds the due entries to their streams, up to 100 per run. The script removes each entry right after adding it to its stream, because a script error does not undo the commands that already ran. An entry that fails to be added is tried again a minute later, and after 5 attempts goes to the list `{namespace}:delayed:dead`, which keeps the newest 1,000 entries. The script names the target streams without declaring them as keys, so the driver does not work on a Redis Cluster.
+- **Maintenance**: the same pass trims the entries the group is done with, and deletes the consumers that hold no pending entry and have read nothing for 30 minutes, which belong to workers that stopped without their shutdown cleanup. A failing maintenance step is retried at the next pass and does not stop the reads.
+- **Listening**: `listen()` reads the events stream and the work queue stream with `XREAD` from their current ends, which leaves the group's deliveries unchanged.
+
 ## Key Locations
 
 | Component | Location |
@@ -174,6 +196,7 @@ Declare a durable queue with the arguments from `infrahub/services/adapters/mess
 | Message registry | `backend/infrahub/message_bus/messages/__init__.py` |
 | Operation handlers | `backend/infrahub/message_bus/operations/` |
 | Types and enums | `backend/infrahub/message_bus/types.py` |
+| Redis client for the Redis driver and the cache | `backend/infrahub/redis_connection.py` |
 
 ## See Also
 

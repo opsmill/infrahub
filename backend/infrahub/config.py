@@ -44,6 +44,7 @@ log = get_logger()
 # Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
 VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
+REDIS_DEFAULT_PORT = 6379
 
 
 def default_cors_allow_methods() -> list[str]:
@@ -158,18 +159,23 @@ class TraceTransportProtocol(StrEnum):
 
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
+    Redis = "redis"
 
     @property
     def driver_module_path(self) -> str:
         match self:
             case BrokerDriver.RabbitMQ:
                 return "infrahub.services.adapters.message_bus.rabbitmq"
+            case BrokerDriver.Redis:
+                return "infrahub.services.adapters.message_bus.redis"
 
     @property
     def driver_class_name(self) -> str:
         match self:
             case BrokerDriver.RabbitMQ:
                 return "RabbitMQMessageBus"
+            case BrokerDriver.Redis:
+                return "RedisMessageBus"
 
 
 class BrokerQueueType(StrEnum):
@@ -546,18 +552,54 @@ class DevelopmentSettings(BaseSettings):
     )
 
 
+def _superseded_scalar_settings(settings: BaseSettings, names: frozenset[str]) -> list[str]:
+    """Return the settings among ``names`` that were set to a value other than their default."""
+    fields = type(settings).model_fields
+    return sorted(
+        name for name in settings.model_fields_set & names if getattr(settings, name) != fields[name].get_default()
+    )
+
+
+# tls_ca_file is absent because a TLS URL that names no CA bundle still verifies against it.
+BROKER_URL_SUPERSEDED_FIELDS = frozenset({"address", "port", "username", "password", "tls_enabled", "tls_insecure"})
+
+
 class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
+    # hide_input_in_errors keeps a connection URL (which may embed credentials) out of any
+    # ValidationError raised for this section.
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_", hide_input_in_errors=True)
+    url: Annotated[SecretStr | None, BeforeValidator(_blank_setting_as_unset)] = Field(
+        default=None,
+        description=(
+            "Full Redis connection URL for the redis driver, authoritative over the scalar connection settings "
+            "when set. Accepts the same redis://, rediss://, redis+sentinel:// and rediss+sentinel:// URLs as "
+            "INFRAHUB_CACHE_URL; with a Sentinel URL the message bus discovers the current master through the "
+            "Sentinel nodes and follows failover. A TLS URL without ?ssl_ca_certs= verifies against "
+            "broker.tls_ca_file, which the global tls.ca_bundle fills. Requires the redis driver."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: CaBundleSetting = Field(
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
-    username: str = "infrahub"
-    password: str = "infrahub"
+    username: str = Field(
+        default="infrahub",
+        description=(
+            "Username to authenticate with. The default is the RabbitMQ default user, so the redis driver sends no "
+            "username while it is left at the default."
+        ),
+    )
+    password: str = Field(
+        default="infrahub",
+        description=(
+            "Password to authenticate with. The default is the RabbitMQ default password, so the redis driver sends "
+            "no password while it is left at the default."
+        ),
+    )
     address: str = "localhost"
     port: int | None = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     rabbitmq_http_port: int | None = Field(default=None, ge=1, le=65535)
@@ -574,7 +616,7 @@ class BrokerSettings(BaseSettings):
     )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
-        description="Message bus implementation. RabbitMQ is the only supported value.",
+        description="Message bus implementation. The redis driver is experimental and requires Redis 6.2 or later.",
     )
     queue_type: BrokerQueueType = Field(
         default=BrokerQueueType.CLASSIC,
@@ -591,9 +633,43 @@ class BrokerSettings(BaseSettings):
             self.tls_ca_file = _resolve_ca_bundle_setting("broker.tls_ca_file", self.tls_ca_file)
         return self
 
+    @model_validator(mode="after")
+    def validate_url(self) -> Self:
+        url = self.url
+        if url is None:
+            return self
+
+        if self.driver != BrokerDriver.Redis:
+            raise ValueError(
+                f"INFRAHUB_BROKER_URL is set but INFRAHUB_BROKER_DRIVER is {self.driver.value}, and only the redis "
+                "driver reads the URL. Set INFRAHUB_BROKER_DRIVER to redis or unset INFRAHUB_BROKER_URL."
+            )
+
+        superseded = _superseded_scalar_settings(self, BROKER_URL_SUPERSEDED_FIELDS)
+        if superseded:
+            log.warning(
+                "INFRAHUB_BROKER_URL is set and supersedes the scalar broker connection settings",
+                superseded_settings=[f"INFRAHUB_BROKER_{name.upper()}" for name in superseded],
+            )
+
+        validate_redis_url(url.get_secret_value())
+        return self
+
+    @property
+    def redis_username(self) -> str:
+        """The username the redis driver authenticates with, empty while the RabbitMQ default is left in place."""
+        return "" if self.username == type(self).model_fields["username"].get_default() else self.username
+
+    @property
+    def redis_password(self) -> str:
+        """The password the redis driver authenticates with, empty while the RabbitMQ default is left in place."""
+        return "" if self.password == type(self).model_fields["password"].get_default() else self.password
+
     @property
     def service_port(self) -> int:
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
+        if self.driver == BrokerDriver.Redis:
+            return self.port or REDIS_DEFAULT_PORT
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -663,8 +739,7 @@ class CacheSettings(BaseSettings):
 
     @property
     def service_port(self) -> int:
-        default_ports: int = 6379
-        return self.port or default_ports
+        return self.port or REDIS_DEFAULT_PORT
 
     @model_validator(mode="after")
     def validate_url(self) -> Self:
@@ -673,12 +748,7 @@ class CacheSettings(BaseSettings):
             return self
 
         # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
-        fields = type(self).model_fields
-        superseded = sorted(
-            name
-            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
-            if getattr(self, name) != fields[name].get_default()
-        )
+        superseded = _superseded_scalar_settings(self, CACHE_URL_SUPERSEDED_FIELDS)
         if superseded:
             log.warning(
                 "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
@@ -2230,8 +2300,10 @@ class Settings(BaseSettings):
         for component, field_name in components:
             if getattr(component, field_name) is not None:
                 continue
-            # A cache URL supersedes cache.tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
-            superseded = component is self.cache and self.cache.url is not None
+            # A cache or broker URL supersedes tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
+            superseded = (component is self.cache and self.cache.url is not None) or (
+                component is self.broker and self.broker.url is not None
+            )
             if getattr(component, "tls_insecure", False) and not superseded:
                 continue
             setattr(component, field_name, ca_bundle)
