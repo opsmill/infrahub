@@ -35,6 +35,15 @@ def _lag_schema_with_generic_containers(containers: list[dict[str, Any]]) -> dic
     return schema
 
 
+def _lag_schema_with_generic_attribute_container(attribute_name: str, container: str) -> dict[str, Any]:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    attribute = next(
+        attribute for attribute in schema["generics"][0]["attributes"] if attribute["name"] == attribute_name
+    )
+    attribute["container"] = container
+    return schema
+
+
 def _lag_schema_with_l2_field(field_list: str, field: dict[str, Any]) -> dict[str, Any]:
     schema = copy.deepcopy(LAG_SCHEMA)
     schema["nodes"][L2_INDEX][field_list] = [field]
@@ -93,6 +102,11 @@ REFUSED_CONTAINER_CASES = [
             },
         ),
         message=f"{L2_KIND}.relationships.sub_interfaces.container: container 'layer4' is not declared on {L2_KIND}",
+    ),
+    RefusedContainerCase(
+        name="generic_attribute_referencing_an_undeclared_container",
+        schema=_lag_schema_with_generic_attribute_container(attribute_name="lacp_rate", container="lacpp"),
+        message=f"{GENERIC_KIND}.attributes.lacp_rate.container: container 'lacpp' is not declared on {GENERIC_KIND}",
     ),
     RefusedContainerCase(
         name="duplicate_container_names",
@@ -179,15 +193,18 @@ def test_reference_resolved_through_an_inherited_container_is_accepted() -> None
     assert node.get_attribute(name="l2_mode").container == "layer2"
 
 
-def test_removing_a_container_from_the_generic_refuses_the_inherited_field_on_the_next_load() -> None:
+def test_removing_a_container_from_the_generic_refuses_its_field_on_the_next_load() -> None:
     schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
     generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
     generic["containers"] = [{"name": "layer2", "label": "Layer 2", "state": HashableModelState.ABSENT.value}]
+    next(attribute for attribute in generic["attributes"] if attribute["name"] == "mac_address")["container"] = ""
     schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=[generic]))
 
     with pytest.raises(
         ValueError,
-        match=exact_message(f"{L2_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {L2_KIND}"),
+        match=exact_message(
+            f"{GENERIC_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {GENERIC_KIND}"
+        ),
     ):
         schema_branch.process()
 
@@ -287,7 +304,7 @@ def test_reference_to_a_container_marked_absent_on_a_first_load_is_refused() -> 
     with pytest.raises(
         ValueError,
         match=exact_message(
-            f"{L2_KIND}.attributes.lacp_rate.container: container 'legacy' is not declared on {L2_KIND}"
+            f"{GENERIC_KIND}.attributes.lacp_rate.container: container 'legacy' is not declared on {GENERIC_KIND}"
         ),
     ):
         _processed_branch(schema=schema)

@@ -37,6 +37,8 @@ class ContainerValidator(SchemaBranchValidator):
         valid_names = {container.name for container in node.containers} | {ADVANCED_CONTAINER_NAME}
         for field_list, fields in (("attributes", node.attributes), ("relationships", node.relationships)):
             for field in fields:
+                if field.inherited:
+                    continue
                 if field.container is not None and field.container not in valid_names:
                     raise ValueError(
                         f"{node.kind}.{field_list}.{field.name}.container: "

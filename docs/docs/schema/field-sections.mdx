@@ -245,7 +245,7 @@ Infrahub rejects a schema with a section error and returns one of these messages
   InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2
   ```
 
-  A relationship gives the same message with `relationships.<name>.container`. For a field inherited from a generic, the message names the node that inherits it.
+  A relationship gives the same message with `relationships.<name>.container`. For a field declared on a generic, the message names the generic, not the nodes that inherit the field.
 
 - A node or a generic declares the same section name twice in its own `containers`:
 
