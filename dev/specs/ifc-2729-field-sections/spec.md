@@ -68,9 +68,9 @@ container reference and check the error message.
    for a relationship.
 3. **Given** two containers with the same name on one node, **When** the schema is loaded, **Then**
    the load is rejected with `<Kind>.containers: container names must be unique, duplicate '<x>'`.
-4. **Given** a container named `advanced` in the node's list, **When** the schema is loaded,
-   **Then** the load is rejected with
-   `<Kind>.containers: 'advanced' is a built-in container and cannot be declared`.
+4. **Given** a container named `advanced` or `details` in the node's list, **When** the schema is
+   loaded, **Then** the load is rejected with
+   `<Kind>.containers: '<name>' is a built-in container and cannot be declared`.
 5. **Given** an attribute with `container: advanced` and no declared container of that name,
    **When** the schema is loaded, **Then** the load succeeds.
 6. **Given** a loaded schema, **When** the schema designer loads it again with a container removed
@@ -265,11 +265,16 @@ Schema contract
 - **FR-001**: A node or generic schema MUST accept an optional `containers` list. Each item has a
   required `name`, a required `label`, an optional `description`, an optional `order_weight`, an
   optional `collapsed` flag that defaults to false and applies to the detail view only, and a
-  `state` that defaults to `present` and accepts `absent` to remove the item on reload.
+  `state` that defaults to `present` and accepts `absent` to remove the item on reload. Each item
+  also carries a read-only `inherited` flag that the API returns; a load that sends it gets a
+  read-only warning and the value is not used.
 - **FR-002**: An attribute or relationship schema MUST accept an optional `container` text value.
-  When unset, the field belongs to the default Details section.
+  When unset, the field belongs to the default Details section. As for other optional text
+  properties, a reload that leaves `container` out keeps the stored value, and a reload that sets
+  `container: ""` moves the field back to the Details section.
 - **FR-003**: A container `name` MUST follow the attribute name format and length rules, MUST be
-  unique within a node after inheritance, and MUST NOT be `advanced`.
+  unique within a node after inheritance, and MUST NOT be `advanced` or `details`. A field MUST NOT
+  reference `details`.
 - **FR-004**: Schema loading MUST reject a field whose `container` is neither a container declared
   on the node after inheritance nor `advanced`, with the messages of User Story 1.
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
@@ -280,7 +285,10 @@ Schema contract
   branch returns the merged containers.
 - **FR-007**: Reloading a schema MUST merge the `containers` list by name, as other item lists are
   merged; removing an item requires `state: absent` on the item, as for attributes and
-  relationships.
+  relationships. `containers` MUST keep the declaration order of the schema file across reloads
+  and is an ordered property: a load or a branch merge that only reorders the containers is a
+  schema change, and a merge where both branches reorder the same kind's containers differently
+  reports a conflict on `containers`.
 
 Inheritance
 
@@ -296,7 +304,8 @@ Schema API and SDK
 
 - **FR-012**: The schema API MUST return `containers` on nodes, generics, profiles and templates
   (empty list when none) and `container` on attributes and relationships (`null` when unset),
-  after inheritance is applied. `advanced` MUST NOT be listed.
+  after inheritance is applied, with `inherited: true` on each container a node takes from a
+  generic. `advanced` and `details` MUST NOT be listed.
 - **FR-013**: The schema load endpoint and the SDK's offline validation MUST accept both
   properties, and the SDK schema formatter MUST place them in a fixed position.
 - **FR-014**: The GraphQL data schema and queries MUST NOT change.
@@ -344,7 +353,7 @@ Schema viewer and documentation
 - **Node and generic schema**: owns a list of containers; a generic's containers are inherited by
   the nodes that implement it.
 - **Attribute and relationship schema**: optionally references one container by name; `advanced`
-  is a reserved reference.
+  is a reserved reference, and `details` cannot be referenced.
 - **Section**: the UI rendering of a container, plus the implicit Details and Advanced sections.
 
 ## Success Criteria *(mandatory)*

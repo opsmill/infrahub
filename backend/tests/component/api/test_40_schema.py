@@ -25,34 +25,17 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.conftest import BusRPCMock, TestHelper
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
 
+CONTAINER_DEFAULTS = {"description": None, "collapsed": False, "state": "present", "inherited": False}
 LAG_GENERIC_CONTAINERS: list[dict[str, Any]] = [
+    {**CONTAINER_DEFAULTS, "name": "lacp", "label": "LACP", "order_weight": 100},
     {
-        "name": "lacp",
-        "label": "LACP",
-        "description": None,
-        "order_weight": 100,
-        "collapsed": False,
-        "state": "present",
-        "inherited": False,
-    },
-    {
+        **CONTAINER_DEFAULTS,
         "name": "layer2",
         "label": "Layer 2",
         "description": "Switching settings of the bundle",
         "order_weight": 200,
-        "collapsed": False,
-        "state": "present",
-        "inherited": False,
     },
-    {
-        "name": "layer3",
-        "label": "Layer 3",
-        "description": None,
-        "order_weight": 300,
-        "collapsed": True,
-        "state": "present",
-        "inherited": False,
-    },
+    {**CONTAINER_DEFAULTS, "name": "layer3", "label": "Layer 3", "order_weight": 300, "collapsed": True},
 ]
 LAG_L2_CONTAINERS = [{**container, "inherited": True} for container in LAG_GENERIC_CONTAINERS]
 LAG_ATTRIBUTE_CONTAINERS = {
@@ -605,42 +588,41 @@ async def test_schema_load_endpoint_constraints_not_valid(
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize(
+    ("kind", "branch_name", "expected_containers"),
+    [
+        pytest.param("InfraLagInterfaceL2", None, LAG_L2_CONTAINERS, id="node_on_the_default_branch"),
+        pytest.param("InfraLagInterface", None, LAG_GENERIC_CONTAINERS, id="generic_declaring_the_containers"),
+        pytest.param("InfraLagInterfaceL2", "branch1", LAG_L2_CONTAINERS, id="node_on_another_branch"),
+    ],
+)
 async def test_schema_kind_endpoint_returns_containers_and_field_containers(
     db: InfrahubDatabase,
     client: TestClient,
     client_headers: dict[str, str],
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    kind: str,
+    branch_name: str | None,
+    expected_containers: list[dict[str, Any]],
 ) -> None:
     _register_lag_schema(default_branch=default_branch)
+    if branch_name:
+        await create_branch(branch_name=branch_name, db=db)
 
     with client:
-        response = client.get("/api/schema/InfraLagInterfaceL2", headers=client_headers)
+        response = client.get(
+            f"/api/schema/{kind}", headers=client_headers, params={"branch": branch_name} if branch_name else None
+        )
 
     assert response.status_code == 200
     schema = response.json()
-    assert schema["containers"] == LAG_L2_CONTAINERS
+    assert schema["containers"] == expected_containers
     assert {attribute["name"]: attribute["container"] for attribute in schema["attributes"]} == LAG_ATTRIBUTE_CONTAINERS
     relationship_containers = {
         relationship["name"]: relationship["container"] for relationship in schema["relationships"]
     }
     assert relationship_containers == dict.fromkeys(relationship_containers) | {"sub_interfaces": "advanced"}
-
-
-async def test_schema_kind_endpoint_returns_the_containers_a_generic_declares_as_not_inherited(
-    db: InfrahubDatabase,
-    client: TestClient,
-    client_headers: dict[str, str],
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-) -> None:
-    _register_lag_schema(default_branch=default_branch)
-
-    with client:
-        response = client.get("/api/schema/InfraLagInterface", headers=client_headers)
-
-    assert response.status_code == 200
-    assert response.json()["containers"] == LAG_GENERIC_CONTAINERS
 
 
 async def test_schema_kind_endpoint_returns_empty_containers_for_a_node_without_sections(
@@ -658,25 +640,6 @@ async def test_schema_kind_endpoint_returns_empty_containers_for_a_node_without_
     assert schema["containers"] == []
     assert {attribute["container"] for attribute in schema["attributes"]} == {None}
     assert {relationship["container"] for relationship in schema["relationships"]} == {None}
-
-
-async def test_schema_kind_endpoint_returns_containers_on_a_non_default_branch(
-    db: InfrahubDatabase,
-    client: TestClient,
-    client_headers: dict[str, str],
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-) -> None:
-    _register_lag_schema(default_branch=default_branch)
-    await create_branch(branch_name="branch1", db=db)
-
-    with client:
-        response = client.get("/api/schema/InfraLagInterfaceL2?branch=branch1", headers=client_headers)
-
-    assert response.status_code == 200
-    schema = response.json()
-    assert schema["containers"] == LAG_L2_CONTAINERS
-    assert {attribute["name"]: attribute["container"] for attribute in schema["attributes"]} == LAG_ATTRIBUTE_CONTAINERS
 
 
 async def test_schema_load_endpoint_undeclared_container(

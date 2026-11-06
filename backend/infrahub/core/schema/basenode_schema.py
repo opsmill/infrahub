@@ -767,6 +767,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def container_names(self) -> list[str]:
         return [container.name for container in self.containers]
 
+    @property
+    def local_containers(self) -> list[ContainerSchema]:
+        return [container for container in self.containers if not container.inherited]
+
     def _get_updated_list_value(self, field_name: str, attr_local: list[Any], attr_other: list[Any]) -> list[Any]:
         if field_name == "containers":
             return self._merge_containers(local=attr_local, incoming=attr_other)

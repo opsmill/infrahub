@@ -28,15 +28,14 @@ Code is cited as `module::Symbol`.
   a generic that removes a container the node never redeclared, and makes a second process
   idempotent (FR-010). A reload that redeclares an inherited container flips the flag to `False`
   because `HashableModel.update` overwrites a bool from the write payload, whose default is
-  `False`. The flag is hidden from the API and the SDK by not listing it in the generator's
-  `container_schema_fields` in `tasks/backend.py`: the SDK read and write models come from that
-  list only, and `backend/infrahub/schema/read_schema.py::build_read_schema` projects onto read
-  models declared with `extra="ignore"`. Profile and template copies use
+  `False`. The generator's `container_schema_fields` in `tasks/backend.py` lists the flag with
+  read visibility (changed after review; the first version left it out): the API and the SDK read
+  model return it, and the write contract treats it as read-only. Profile and template copies use
   `model_dump(exclude={"inherited"})`, as attribute copies exclude their own internal fields. The
-  flag is hashed and persisted with the node: `BaseNodeSchema._exclude_from_hash` holds only
-  `attributes` and `relationships`, and the stored node is a `model_dump()` with no exclusion for
-  `containers`, so a container change on a generic rewrites the stored `containers` of every
-  implementing node, as an inherited `uniqueness_constraints` change does today.
+  flag is hashed with the processed node, but `SchemaManager` stores only the node's own
+  containers (changed after review): a container change on a generic does not rewrite the stored
+  `containers` of the implementing nodes, which are rebuilt from the generics on load, as inherited
+  attributes and relationships are.
 - **Alternatives considered**: A plain merge-by-name dictionary without a marker. It cannot tell a
   stale inherited copy from a local declaration on the next process, so it would need an
   equivalent marker anyway. Adding `containers` to the handler's `properties_to_inherit` list:
