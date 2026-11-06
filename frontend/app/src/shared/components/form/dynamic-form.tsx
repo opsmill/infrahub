@@ -18,17 +18,22 @@ import RelationshipHierarchicalField from "@/shared/components/form/fields/relat
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
+import { FormSectionPanel } from "@/shared/components/form/form-section-panel";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
+import { DETAILS_SECTION } from "@/entities/nodes/object/domain/model/field-section";
+import { groupFieldsBySection } from "@/entities/nodes/object/domain/rules/group-fields-by-section";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
 import { isHierarchicalSchema } from "@/entities/schema/domain/rules/is-hierarchical-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
+  sections?: ContainerSchema[];
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
   ref?: React.Ref<FormRef>;
@@ -36,6 +41,7 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
 
 const DynamicForm = ({
   fields,
+  sections,
   onCancel,
   submitLabel,
   isBulkUpdate,
@@ -49,9 +55,7 @@ const DynamicForm = ({
 
   return (
     <Form ref={ref} {...props} onCancel={onCancel} defaultValues={formDefaultValues}>
-      {fields.map((field) => (
-        <DynamicField key={`${field.type}_${field.name}`} {...field} />
-      ))}
+      <DynamicFields fields={fields} sections={sections} />
 
       <Row className="justify-end">
         {onCancel && (
@@ -65,6 +69,32 @@ const DynamicForm = ({
     </Form>
   );
 };
+
+function getFieldContainer(field: DynamicFieldProps) {
+  return "relationship" in field ? field.relationship.container : field.attribute?.container;
+}
+
+function DynamicFieldList({ fields }: { fields: Array<DynamicFieldProps> }) {
+  return fields.map((field) => <DynamicField key={`${field.type}_${field.name}`} {...field} />);
+}
+
+export function DynamicFields({ fields, sections }: Pick<DynamicFormProps, "fields" | "sections">) {
+  const fieldSections = sections ? groupFieldsBySection(sections, fields, getFieldContainer) : [];
+
+  if (fieldSections.every((section) => section.container.name === DETAILS_SECTION.name)) {
+    return <DynamicFieldList fields={fields} />;
+  }
+
+  return fieldSections.map((section) => (
+    <FormSectionPanel
+      key={section.container.name}
+      label={section.container.label}
+      description={section.container.description}
+    >
+      <DynamicFieldList fields={section.items} />
+    </FormSectionPanel>
+  ));
+}
 
 export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {
