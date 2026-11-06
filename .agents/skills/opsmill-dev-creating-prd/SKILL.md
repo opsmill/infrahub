@@ -1,12 +1,12 @@
 ---
-name: creating-prd
+name: opsmill-dev-creating-prd
 description: >-
   Synthesises the current conversation context into a Product Requirements Document and publishes
   it to GitHub (as a comment on a referenced issue, or a new issue). Synthesises from context;
   does not interview. TRIGGER when: the conversation has produced enough understanding of a
   feature and the user wants it captured as a PRD. DO NOT TRIGGER when: a single small issue is
-  enough → creating-issues; the idea has not been stress-tested yet → grilling-ideas first; bug
-  reports.
+  enough → opsmill-dev-creating-issues; the idea has not been stress-tested yet → opsmill-dev-grilling-ideas first;
+  discovery-stage capture as a product card → opsmill-product-creating-jpd-cards; bug reports.
 argument-hint: Optional — extra instructions, scope hints, or an explicit issue number/URL to target
 compatibility: Requires GitHub access (gh CLI authenticated, or an equivalent GitHub MCP/API tool) and write access to the target repository. Reads project context (AGENTS.md, CONTEXT.md, dev/constitution.md, ADRs, specs) when present and falls back gracefully when absent.
 metadata:
@@ -33,18 +33,18 @@ Take the current conversation context plus codebase understanding and produce a 
 
 Always show the draft to the user and wait for explicit approval before publishing.
 
-**Do NOT interview the user.** This skill synthesises what you already know. If the context is too thin to write a PRD, say so and recommend `/grilling-ideas` first.
+**Do NOT interview the user.** This skill synthesises what you already know. If the context is too thin to write a PRD, say so and recommend `/opsmill-dev-grilling-ideas` first.
 
 ## When to use
 
 - The conversation has produced enough understanding to articulate a feature, and the user now wants it captured as a PRD on GitHub.
 - The user explicitly asks for a PRD, a spec writeup, or an issue body.
-- A previous `/grilling-ideas` session produced a sharpened idea brief and the user wants it turned into a PRD on the tracker.
+- A previous `/opsmill-dev-grilling-ideas` session produced a sharpened idea brief and the user wants it turned into a PRD on the tracker.
 
 Do **not** use this skill for:
 
-- Bug reports → use `/creating-issues` or the bug-pipeline skills.
-- Capturing an idea you have *not* yet stress-tested — run `/grilling-ideas` first.
+- Bug reports → use `/opsmill-dev-creating-issues` or the bug-pipeline skills.
+- Capturing an idea you have *not* yet stress-tested — run `/opsmill-dev-grilling-ideas` first.
 - Writing the actual implementation spec — that is a downstream spec workflow's job (e.g. `/speckit-specify`). The PRD produced here is the **input** to that step.
 
 ## Phase 0 — Discover available context (read what exists, skip what doesn't)
@@ -146,13 +146,16 @@ domain (e.g. developer, operator, admin, end-user) rather than inventing a gener
 priority structure if one exists.>
 
 ### P1 — <title>
+
 - Journey: <one sentence end-to-end>
 - Acceptance: **Given** <state>, **When** <action>, **Then** <outcome>
 
 ### P2 — <title> (optional)
+
 …
 
 ### P3 — <title> (optional)
+
 …
 
 ## Functional Requirements
@@ -236,7 +239,7 @@ instead of the generic one below. A ticked box requires explicit discussion befo
 
 - [NEEDS CLARIFICATION: …]
 
-<Cap at three. If more remain, the PRD is not ready — recommend /grilling-ideas before publishing.>
+<Cap at three. If more remain, the PRD is not ready — recommend /opsmill-dev-grilling-ideas before publishing.>
 
 ## Further Notes
 
@@ -253,7 +256,7 @@ instead of the generic one below. A ticked box requires explicit discussion befo
 - Is anything missing, wrong, or scope-creeping?
 - Approve to publish?
 
-If the draft has more than three `[NEEDS CLARIFICATION]` markers, do not offer to publish — recommend `/grilling-ideas` to resolve them first.
+If the draft has more than three `[NEEDS CLARIFICATION]` markers, do not offer to publish — recommend `/opsmill-dev-grilling-ideas` to resolve them first.
 
 ## Phase 5 — Publish
 
@@ -294,7 +297,7 @@ The PRD's structure (User Journeys, FRs, Key Entities, Edge Cases, Success Crite
 
 ## Anti-patterns
 
-- **Do not interview.** Synthesise from context. If you cannot, stop and recommend `/grilling-ideas`.
+- **Do not interview.** Synthesise from context. If you cannot, stop and recommend `/opsmill-dev-grilling-ideas`.
 - **Do not invent labels.** `gh label list` first.
 - **Do not auto-re-triage someone else's issue.** Commenting must not silently change labels or state.
 - **Do not embed file paths or code snippets** in Implementation Decisions, except the prototype-snippet exception. Those rot. Save them for the planning step.
@@ -316,4 +319,4 @@ A PRD published to GitHub at a known URL (comment on the referenced issue, or a 
 
 ---
 
-*Inspired by [`to-prd`](https://github.com/mattpocock/skills/blob/main/skills/engineering/to-prd/SKILL.md) by Matt Pocock. Adapted from a Styrmin-specific skill into a project-agnostic one for the opsmill-dev plugin; pairs with `/grilling-ideas`.*
+*Inspired by [`to-prd`](https://github.com/mattpocock/skills/blob/main/skills/engineering/to-prd/SKILL.md) by Matt Pocock. Adapted from a Styrmin-specific skill into a project-agnostic one for the opsmill-dev plugin; pairs with `/opsmill-dev-grilling-ideas`.*

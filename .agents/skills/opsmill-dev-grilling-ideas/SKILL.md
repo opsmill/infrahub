@@ -1,11 +1,11 @@
 ---
-name: grilling-ideas
+name: opsmill-dev-grilling-ideas
 description: >-
   Stress-tests a fuzzy or vague feature idea before any PRD, spec, or ticket is written. TRIGGER
   when: the user has a fuzzy feature idea — one or two paragraphs, vague on users / scope /
   success — and wants to harden it, or says "grill / stress-test / pressure-test this idea." DO
   NOT TRIGGER when: the idea is already turned into a spec or PRD; bug fixes or refactors; the
-  idea is hardened and you are ready to write the PRD → creating-prd.
+  idea is hardened and you are ready to write the PRD → opsmill-dev-creating-prd.
 metadata:
   version: 0.1.0
   author: OpsMill
@@ -145,32 +145,43 @@ Maintain the brief **in the conversation** as decisions land, using the structur
 **Seed**: <one-paragraph original idea>
 
 ## Users and Value
+
 <who, what pain, what better looks like>
 
 ## User Journeys
+
 ### P1 — <title>
+
 - Journey: …
 - Given / When / Then: …
+
 ### P2 — <title> (optional)
+
 …
 
 ## Functional Requirements (draft)
+
 - FR-001: System MUST …
 - FR-002: Users MUST be able to …
 
 ## Key Entities
+
 - <Entity>: <role, relationships> — existing | new
 
 ## Edge Cases
+
 - …
 
 ## Success Criteria (draft)
+
 - SC-001: <measurable, tech-agnostic>
 
 ## Constitution Alignment (only if dev/constitution.md exists)
+
 - <principle>: <how the idea fits / where it pushes back>
 
 ## Governance Gates Crossed
+
 - [ ] Database / schema change
 - [ ] API change
 - [ ] New dependency
@@ -179,12 +190,15 @@ Maintain the brief **in the conversation** as decisions land, using the structur
 - (Replace with the list from AGENTS.md if it names different gates.)
 
 ## Assumptions
+
 - …
 
 ## Out of Scope (v1)
+
 - …
 
 ## Open Questions
+
 - [NEEDS CLARIFICATION: …]
 ```
 
