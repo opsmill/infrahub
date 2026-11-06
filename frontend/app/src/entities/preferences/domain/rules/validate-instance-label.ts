@@ -1,8 +1,8 @@
 export const INSTANCE_LABEL_MAX_LENGTH = 32;
 
-// Line breaks and tabs are in the Cc category; U+202A to U+202E and U+2066 to U+2069 are the
-// bidirectional text controls, which can reorder how the label reads.
-const CONTROL_CHARACTER = /[\p{Cc}\u202A-\u202E\u2066-\u2069]/u;
+// Line breaks and tabs are in the Cc category; the other code points are the bidirectional text
+// controls and direction marks, which can reorder how the label reads.
+const CONTROL_CHARACTER = /[\p{Cc}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/u;
 
 export function normalizeInstanceLabel(value: string): string | null {
   const trimmed = value.trim();
