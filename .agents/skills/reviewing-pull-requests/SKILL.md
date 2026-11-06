@@ -26,5 +26,13 @@ request that started this skill, or use the pull request of the current branch.
      `${CODEX_HOME:-$HOME/.codex}/skills/.system/review-agent/SKILL.md`.", and wait for its
      result. Codex does not offer that skill by name, so the subagent reads the file. The pull
      request's branch must be checked out, as it is when this session opened the pull request.
-3. Return the findings with the rules in `REVIEW.md` applied, separating the issues this pull
-   request introduces from older ones. Change no files.
+3. If the pull request changes `docs/` or user-facing behavior, start a separate subagent without
+   this conversation. Give it the diff and relevant docs/source paths, and ask it to apply
+   `opsmill-docs:opsmill-docs-writing-infrahub-docs` and its required rule files to a read-only
+   review: identify missing docs updates, check language, and suggest concrete corrections with
+   file/line evidence. Return findings only; the authoring, approval, and shipping workflow is out
+   of scope. Wait for its result.
+4. Combine and deduplicate the findings with the rules in `REVIEW.md` applied, separating the
+   issues this pull request introduces from older ones. Leave accepted docs findings as inline
+   comments on the relevant changed docs lines, including suggested corrections. Report gaps
+   without a docs diff location in the summary with the target docs path. Change no files.
