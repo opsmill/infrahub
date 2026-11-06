@@ -43,7 +43,7 @@ describe("DynamicForm", () => {
     expect(component.getByRole("region").elements()).toHaveLength(0);
   });
 
-  test("renders one panel per section headed by the container label in order weight order", async () => {
+  test("renders the Details panel first, then one panel per container in order weight order", async () => {
     const component = await render(<DynamicForm fields={fields} sections={[lacp, layer2]} />);
 
     await expect.element(component.getByRole("region", { name: "LACP" })).toBeVisible();
@@ -53,17 +53,11 @@ describe("DynamicForm", () => {
       .map((region) => region.querySelector("h2")?.textContent);
     expect(regionNames).toEqual(["Details", "Layer 2", "LACP"]);
     await expect
+      .element(component.getByRole("region", { name: "Details" }).getByLabelText("name"))
+      .toBeVisible();
+    await expect
       .element(component.getByRole("region", { name: "Layer 2" }).getByLabelText("vlan"))
       .toBeVisible();
-  });
-
-  test("renders the Details panel first", async () => {
-    const component = await render(<DynamicForm fields={fields} sections={[lacp, layer2]} />);
-
-    const details = component.getByRole("region", { name: "Details" });
-    await expect.element(details).toBeVisible();
-    expect(component.getByRole("region").elements()[0]).toBe(details.element());
-    await expect.element(details.getByLabelText("name")).toBeVisible();
   });
 
   test("renders no panel when all its fields are filtered out", async () => {
