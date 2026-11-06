@@ -53,7 +53,7 @@ const authenticationExchange = authExchange(async (authUtilities) => {
       return hasCatalogueCode(error, ERROR_CODES.TOKEN_EXPIRED);
     },
     refreshAuth: async () => {
-      await queryClient.fetchQuery(refreshAccessTokenQueryOptions()).catch((error) => {
+      await queryClient.query(refreshAccessTokenQueryOptions()).catch((error) => {
         redirectToLogin();
         throw error;
       });

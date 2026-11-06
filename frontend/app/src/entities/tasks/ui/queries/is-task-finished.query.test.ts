@@ -14,7 +14,7 @@ const checkTask = async (isFinished: boolean) => {
   vi.mocked(isTaskFinished).mockResolvedValue(isFinished);
   const queryClient = new QueryClient();
   const options = isTaskFinishedQueryOptions({ taskId: "task-1" });
-  await queryClient.fetchQuery(options);
+  await queryClient.query(options);
 
   return new QueryObserver(queryClient, options).getCurrentResult();
 };

@@ -280,16 +280,16 @@ describe("getRepositoryCommitsQueryOptions", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const client = new QueryClient();
     getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.IN_SYNC));
-    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+    await client.infiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
 
     // WHEN
     vi.advanceTimersByTime(REPOSITORY_COMMITS_STALE_TIME_MS - 1);
-    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+    await client.infiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
 
     // THEN
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(1);
-    await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
+    await client.infiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(2);
   });
 });

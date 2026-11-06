@@ -70,7 +70,7 @@ export const authMiddleware: Middleware = {
     }
 
     try {
-      const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
+      const newToken = await queryClient.query(refreshAccessTokenQueryOptions());
 
       clonedRequest.headers.set("Authorization", `Bearer ${newToken.access_token}`);
       return retryingFetch(clonedRequest);
