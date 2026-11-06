@@ -1,1 +1,1 @@
-Objects and object templates added to a Profile with the Profile update or upsert mutation now get the values of the Profile. This includes `related_nodes.add()` followed by `save()` in the Python SDK. Before, they were linked to the Profile but kept their own values.
+Objects and object templates added to a Profile with the Profile update or upsert mutation, or with `related_nodes.add()` and `save()` in the Python SDK, now get the values of the Profile.
