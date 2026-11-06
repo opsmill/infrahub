@@ -16,6 +16,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | ---- | ----------- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
 | [**children**](#children) | Attribute | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. | False |
+| [**containers**](#containers) | Attribute | Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'. | False |
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_label**](#display_label) | Attribute | Attribute or Jinja2 template to use to generate the display label | False |
@@ -60,6 +61,17 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | children |
 | **Kind** | `Text` |
 | **Description** | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### containers
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | containers |
+| **Kind** | `List` |
+| **Description** | Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'. |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
