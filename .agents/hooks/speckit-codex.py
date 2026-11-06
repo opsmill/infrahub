@@ -15,15 +15,19 @@ REPO_ROOT = HOOKS_DIR.parent.parent
 # The rewritten command is approved without asking, so only one exact form is accepted, with nothing that bash could read differently.
 SCRIPT_CALL = re.compile(
     r"[ \t]*(?:(?:ba)?sh[ \t]+)?"
-    r"(?P<quote>['\"]?)(?:(?P<root>/[A-Za-z0-9_./-]+)/)?"
+    r"(?P<quote>['\"]?)(?:(?P<root>/[^'\"$`\\\x00-\x1f\x7f]+)/)?"
     r"(?P<script>\.specify/(?:extensions/[a-z0-9-]+/)?scripts/bash/[a-z0-9-]+\.sh)(?P=quote)"
     r"(?:[ \t]+[A-Za-z0-9_./:=@+,-]+)*[ \t]*"
 )
+# Inside quotes, a checkout path may hold spaces and other characters that bash reads literally there.
+UNQUOTED_ROOT = re.compile(r"/[A-Za-z0-9_./-]+")
 
 
 def is_speckit_script_call(command: str, cwd: str) -> bool:
     match = SCRIPT_CALL.fullmatch(command)
     if match is None:
+        return False
+    if match.group("root") and not match.group("quote") and not UNQUOTED_ROOT.fullmatch(match.group("root")):
         return False
     root = match.group("root") or cwd
     if ".." in root.split("/"):
