@@ -148,7 +148,7 @@ class GraphRecordingClient(InfrahubClient):
         if tracker == "query-branch":
             name = variables["branch_name"]
             return {"Branch": [branch_payload(name=name, sync_with_git=name not in self.unsynced_branches)]}
-        if tracker == "mutation-repository-update-commit":
+        if tracker in {"mutation-repository-update-commit", "mutation-repository-record-commit-for-import"}:
             if kwargs["branch_name"] in self.rejecting_branches:
                 raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])
             self.recorded_commits.append((kwargs["branch_name"], variables["commit"]))

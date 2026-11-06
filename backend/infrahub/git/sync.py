@@ -145,28 +145,36 @@ async def import_branch(
 
     The run of its own keeps the import's logs and failure on the branch it imports into, rather than on
     the branch of the run that started the import. Any failure is returned, logged once, so a failed
-    branch never stops the import of the other branches.
+    branch never stops the import of the other branches. A failure before the apply starts sets the
+    branch to `ERROR_IMPORT`, because the branch may already read `syncing`; from then on the apply sets
+    the final status.
 
     Raises:
         RepositoryConnectionError: When the remote repository is unreachable.
         RepositoryCredentialsError: When the credentials for the remote repository are invalid.
 
     """
+    apply_started = False
 
     # Defined here so the collaborators are captured rather than passed, since Prefect stores a flow's parameters.
     @flow(name="import-branch-objects", flow_run_name="Import objects into branch {branch_name}", persist_result=False)
     async def import_branch_flow(branch_name: str) -> None:
+        nonlocal apply_started
         try:
             await activity.set_phase(phase=RepositoryActivityPhase.BUILDING, branch_name=branch_name)
             plan = await importer.build_branch_import(repo, pending_import)
             async with lock_registry.get(name=repo.name, namespace="repository"):
                 await activity.set_phase(phase=RepositoryActivityPhase.APPLYING, branch_name=branch_name)
+                apply_started = True
                 await importer.apply_branch_import(repo, plan)
         except (RepositoryConnectionError, RepositoryCredentialsError, RepositoryImportError):
             raise
         except Exception as exc:
             # A failure the import did not convert is still recorded on its branch, so the other branches import.
-            raise log_import_failure(identifier=repo.name, branch_name=branch_name, exc=exc) from exc
+            import_error = log_import_failure(identifier=repo.name, branch_name=branch_name, exc=exc)
+            if not apply_started:
+                await repo.mark_import_failed(branch_name=branch_name)
+            raise import_error from exc
 
     branch_name = pending_import.infrahub_branch_name
     try:
@@ -176,6 +184,12 @@ async def import_branch(
         return exc
     except (RepositoryConnectionError, RepositoryCredentialsError):
         activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
+        raise
+    except Exception:
+        # Raised by the flow run itself, for example when it cannot be created, so the import may never have started.
+        activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.FAILED)
+        if not apply_started:
+            await repo.mark_import_failed(branch_name=branch_name)
         raise
     activity.record_branch(branch_name=branch_name, outcome=RepositoryActivityBranchOutcome.IMPORTED)
     return None
@@ -285,6 +299,7 @@ class RepositorySyncer:
         activity: ActivityRun,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
+        reimport_default_branch: bool = False,
     ) -> SyncOutcome:
         """Synchronize the repository and return what the run did, including the branches that failed.
 
@@ -305,6 +320,7 @@ class RepositorySyncer:
                 recorder=self._recorder,
                 retarget_markers=self._retarget_markers,
                 state=self._state,
+                reimport_default_branch=reimport_default_branch,
             )
 
         failed_imports = list(collected.failed_imports)

@@ -430,6 +430,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     activity_run_id: str,
     staging_branch: str | None = None,
     graph_commits: dict[str, str | None] | None = None,
+    reimport_default_branch: bool = False,
 ) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
@@ -439,6 +440,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 
     Args:
         activity_run_id: The run, started by the caller in this process, that the synchronization reports to.
+        reimport_default_branch: Import the default branch even when the graph records its remote head.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -475,7 +477,11 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 
         try:
             outcome = await syncer.sync(
-                repo, activity=activity, staging_branch=staging_branch, graph_commits=graph_commits
+                repo,
+                activity=activity,
+                staging_branch=staging_branch,
+                graph_commits=graph_commits,
+                reimport_default_branch=reimport_default_branch,
             )
         except (RepositoryError, CommitNotFoundError):
             if online:
@@ -686,6 +692,7 @@ async def sync_repository_from_origin(
     client: InfrahubClient,
     activity: ActivityRun,
     graph_commits: dict[str, str | None] | None = None,
+    reimport_default_branch: bool = False,
 ) -> None:
     """Sync the repository from its origin and send the worker pool the commits of the cycle.
 
@@ -707,6 +714,7 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
             activity_run_id=activity.run_id,
             graph_commits=graph_commits,
+            reimport_default_branch=reimport_default_branch,
         )
     except RepositoryBranchesFailedError as exc:
         outcome = exc.outcome
@@ -761,6 +769,25 @@ async def report_failed_branches(
         log.info(failure.message)
 
 
+async def import_stopped_partway(
+    repo: InfrahubRepository, branch_name: str, cycle_status: str | None, run: ActivityRun
+) -> bool:
+    """Whether the branch reads syncing while no other run works on the repository, so its import stopped partway.
+
+    `cycle_status` is the status the cycle read before the bootstrap. The bootstrap can import the branch, so a branch
+    the cycle read as syncing is read again.
+    """
+    if cycle_status != RepositorySyncStatus.SYNCING.value:
+        return False
+    try:
+        recorded = await repo.read_recorded_import(branch_name=branch_name)
+    # A status that cannot be read skips the repair for this cycle rather than the synchronization of the repository.
+    except SdkError as exc:
+        get_run_logger().warning(f"Unable to read the status of branch {branch_name} of repository {repo.name}: {exc}")
+        return False
+    return recorded.sync_status == RepositorySyncStatus.SYNCING.value and not await run.another_run_is_active()
+
+
 async def sync_remote_repository(
     repo_name: str,
     repository_data: RepositoryData,
@@ -792,6 +819,25 @@ async def sync_remote_repository(
         if repo is None:
             return
 
+        graph_commits = select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches)
+        # The sync leaves the default branch alone in an inactive repository and while pushes wait, so neither is repaired.
+        reimport_default_branch = (
+            default_internal_status == RepositoryInternalStatus.ACTIVE.value
+            and infrahub_branch in graph_commits
+            and await import_stopped_partway(
+                repo=repo,
+                branch_name=infrahub_branch,
+                cycle_status=repository_data.branch_info[infrahub_branch].sync_status,
+                run=run,
+            )
+            and not await has_pending_pushes(state=state, repository_id=repository.id)
+        )
+        if reimport_default_branch:
+            get_run_logger().info(
+                f"Importing the default branch of repository {repo_name} again: it reads syncing, "
+                "and no other run works on the repository"
+            )
+
         await sync_repository_from_origin(
             repository=repository,
             repo=repo,
@@ -800,7 +846,8 @@ async def sync_remote_repository(
             default_branch_id=branches[registry.default_branch].id,
             client=client,
             activity=run,
-            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
+            graph_commits=graph_commits,
+            reimport_default_branch=reimport_default_branch,
         )
 
 

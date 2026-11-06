@@ -486,7 +486,8 @@ A branch import is built by `build_import_plan` and applied by `apply_import_pla
 the same boundary, `_import_failure_boundary` on the integrator; the apply step does not run when the
 build step fails, so a failure is handled once. Every import goes through these two
 methods: the add and sync flows, the scheduled sync of a new clone, the import-objects flow, and the
-read-only flows through `import_objects_from_files`.
+read-only flows through `import_objects_from_files`. A failure around the boundary, and an import that
+stops without raising, are covered in [Imports that stop partway](#imports-that-stop-partway).
 
 - **What the boundary does.** On any failure it sets the branch to `ERROR_IMPORT`, logs the failure
   once to the flow run's log, and raises `RepositoryImportError`
@@ -558,6 +559,41 @@ read-only flows through `import_objects_from_files`.
 - **Calling an import step directly.** The steps write to the run logger, which Prefect provides only
   inside a flow or task run. A test that calls one directly wraps the call in a flow
   (`tests/helpers/flow.py::call_in_flow`).
+
+## Imports that stop partway
+
+Do not leave a branch `syncing` when its import stops. The status has no owner, so it cannot tell an
+import under way from one whose run stopped.
+
+- **Set `error-import` on a failure before the apply.** The failure boundary does not cover what
+  `import_branch` runs around it: creating the import's flow run, recording the run's phase and
+  taking the repository lock. A failure there sets `error-import`
+  (`InfrahubRepositoryIntegrator.mark_import_failed`). Once the apply starts, the apply sets the final
+  status.
+- **Record a new commit of the default branch with `syncing`, in one write**
+  (`InfrahubRepository.record_commit_for_import`). The syncer records the commit under the lock and
+  imports it later, so a commit written alone leaves the `in-sync` of the earlier commit when the sync
+  stops in between. A default branch that the worker has not created yet, after the repository's
+  default branch changed, still records its commit alone.
+- **Import the default branch again when it reads `syncing` and no other run has a record.** A run
+  that stops without raising, such as a killed worker, writes no status, and its record expires five
+  minutes after its last renewal (see [Repository activity records](#repository-activity-records)).
+  The periodic sync checks after the bootstrap (`import_stopped_partway`) and asks the syncer to import
+  the branch again (`reimport_default_branch`). It reads the status in its existing query and again
+  after the bootstrap, which can import the branch in between. The cycle's own record does not count,
+  and two periodic syncs never overlap. The repair runs up to about six minutes after a run stops, and
+  again about every six minutes while the import keeps stopping its worker.
+- **Repair only an active repository with no pushes waiting.** The sync leaves the default branch
+  alone otherwise. This also keeps the repair away from the delivery of a merge, which imports the
+  default branch without a record before it clears the push queue.
+- **Keep a rewrite visible.** The syncer drops the recorded commit only when it is the remote head.
+  Otherwise it classifies the head against that commit, so a rewrite of the remote since the stopped
+  import is still recorded.
+- **Skip the repair when the state cannot be read.** A status that cannot be read skips the repair
+  for that cycle. A cache that cannot be read counts as no other run, which at worst repeats an import
+  that is under way.
+- **Only the default branch is repaired.** Other branches, and a seed into a staging branch, are
+  imported again only by a fresh clone on a worker that holds no copy of the repository.
 
 ## Git error surfacing
 

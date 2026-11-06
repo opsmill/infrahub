@@ -93,7 +93,7 @@ async def get_repositories_commit_per_branch(
         attributes = await reader.read(
             repository_ids=repository_ids,
             branch_names=chunk,
-            attribute_names=("commit", "internal_status", "ref"),
+            attribute_names=("commit", "internal_status", "ref", "sync_status"),
             at=at,
         )
         for repository_name, repository_data in repositories.items():
@@ -115,6 +115,11 @@ async def get_repositories_commit_per_branch(
                     branch_name=branch_name,
                     attribute_name="internal_status",
                 )
+                sync_status = attributes.get(
+                    repository_id=repository_data.repository_id,
+                    branch_name=branch_name,
+                    attribute_name="sync_status",
+                )
                 internal_status_value = internal_status.value if internal_status is not None else None
                 if internal_status_value is None:
                     internal_status_value = RepositoryInternalStatus.INACTIVE.value
@@ -122,6 +127,7 @@ async def get_repositories_commit_per_branch(
                 repository_data.branch_info[branch_name] = RepositoryBranchInfo(
                     internal_status=internal_status_value,
                     ref=tracked_ref.value if tracked_ref is not None else None,
+                    sync_status=sync_status.value if sync_status is not None else None,
                 )
 
     for repository_name, unresolved_branches in branches_without_internal_status.items():

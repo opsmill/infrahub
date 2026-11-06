@@ -1,0 +1,1 @@
+Fixed a Git repository branch staying in the syncing state when its import failed before the objects were applied, for example when the repository lock could not be taken; the branch now shows an import error.

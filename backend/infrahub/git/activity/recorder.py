@@ -7,7 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_key
+from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_key, activity_run_pattern
 from infrahub.log import get_logger
 
 from .models import (
@@ -69,6 +69,20 @@ class ActivityRun:
                 update={"phase": phase, "branch_name": branch_name, "updated_at": self._now()}
             )
             await self._write_record()
+
+    async def another_run_is_active(self) -> bool:
+        """Whether a run other than this one, on any worker, works on the same repository now.
+
+        A run that stops without ending keeps its record until the record expires, so it counts as active
+        until then. When the cache cannot be read the answer is no, which at worst repeats an import.
+        """
+        try:
+            keys = await self._cache.list_keys(filter_pattern=activity_run_pattern(repository_id=self.repository_id))
+        # Best effort: the answer selects an import, so a failed read falls back to the answer that imports.
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not read the run records", repository_id=self.repository_id, error=str(exc))
+            return False
+        return any(key != self._run_key for key in keys)
 
     def record_branch(self, branch_name: str, outcome: RepositoryActivityBranchOutcome) -> None:
         """Record the result of the run for one branch, replacing an earlier result for the same branch."""
