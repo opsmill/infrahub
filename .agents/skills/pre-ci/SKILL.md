@@ -67,6 +67,7 @@ them: **python** is narrowed to keep the slow phases off `models/` and root-scri
 | **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
 | **schema** | `schema/**` | Phase 4D |
+| **release** | `changelog/*.md`, `CHANGELOG.md`, `docs/docs/release-notes/infrahub/*.mdx` | Phase 4E |
 | **yaml** | `**/*.{yml,yaml}`, `**/pyproject.toml`, `**/uv.lock` | Phase 2C |
 
 Three frontend validation jobs gate on their own narrow filters rather than the whole frontend
@@ -82,7 +83,7 @@ area — check these paths separately:
 `Detected changes: frontend, docs. Skipping backend phases.`
 
 Sub-step letters are stable per area — **A** frontend, **B** backend or python, **C** docs (yaml
-in Phase 2), **D** schema — so a phase omits letters where an area has nothing to do. Phase 3 is
+in Phase 2), **D** schema, **E** release — so a phase omits letters where an area has nothing to do. Phase 3 is
 entirely frontend: `3A`–`3E` enumerate its individual CI jobs.
 
 > **Phase 3A always runs, even with no frontend changes.** The `frontend-lint` job has **no path
@@ -220,6 +221,16 @@ pnpm --dir frontend/app run check:error-bindings
    diffs. On failure the correct file is already on disk; stage and commit it.
 2. `uv run invoke schema.validate-jsonschema` — same, for `schema/openapi.json`.
 
+**4E. Release notes** — *if release changed* (job `validate-release-notes-style`)
+
+1. `uv run invoke release.vale` — vale over `changelog/`, the release-notes pages and
+   `CHANGELOG.md`. A fragment's text becomes the release notes, and `docs.lint` does not cover
+   `changelog/`. Errors fail the check; warnings do not.
+
+When `vale` is not installed, `release.vale` and `docs.lint` print `Warning, Vale is not installed`
+and exit 0 without checking anything. Report those rows as `not run (vale not installed)`, not as
+passed.
+
 ---
 
 ## Phase 5 — Slow unit tests
@@ -269,6 +280,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | JSON schema validation | json-schema | ... |
 | Docs lint (markdownlint + vale) | markdown-lint, validate-documentation-style | ... |
 | Generated docs validation | validate-generated-documentation | ... |
+| Release notes style (vale) | validate-release-notes-style | ... |
 | Backend unit tests | backend-tests-unit | ... |
 | Testcontainers unit tests | backend-testcontainers-unit | ... |
 
