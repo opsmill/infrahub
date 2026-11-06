@@ -1,32 +1,30 @@
-import { explorerPlugin } from "@graphiql/plugin-explorer";
-import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
+import { DEFAULT_PLUGINS, GraphiQL } from "graphiql";
 import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
 import { parallelModePlugin } from "@/shared/libs/graphiql/parallel-mode-plugin";
-import { useGraphiqlFetcher } from "@/shared/libs/graphiql/use-graphiql-fetcher";
+import { useGraphiqlTransport } from "@/shared/libs/graphiql/use-graphiql-transport";
 
 import { useTheme } from "@/entities/config/ui/theme-provider";
 
-import "graphiql/style.css";
-import "@graphiql/plugin-explorer/style.css";
+import "graphiql/setup-workers/vite";
 import "./graphiql-overrides.css";
 
-const plugins = [HISTORY_PLUGIN, explorerPlugin(), parallelModePlugin];
+const plugins = [...DEFAULT_PLUGINS, parallelModePlugin];
 
 export function Component() {
   const [query] = useQueryState(QSP.QUERY);
-  const fetcher = useGraphiqlFetcher();
+  const transport = useGraphiqlTransport();
   const { resolvedTheme: theme } = useTheme();
 
   return (
     <GraphiQL
-      className="rounded-lg border"
+      className="rounded-2xl border"
       defaultEditorToolsVisibility
       initialQuery={query ?? undefined}
       plugins={plugins}
       forcedTheme={theme}
-      fetcher={fetcher}
+      transport={transport}
     />
   );
 }
