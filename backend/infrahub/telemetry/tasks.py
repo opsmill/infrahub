@@ -32,12 +32,13 @@ from .models import (
     TelemetryContainerData,
     TelemetryData,
     TelemetrySchemaData,
+    TelemetryTaskManagerDatabaseData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
 from .resources import WorkerResourceReading
 from .snapshot import TelemetrySnapshot
-from .task_manager import gather_activity_24h, gather_prefect_information
+from .task_manager import gather_activity_24h, gather_prefect_information, gather_task_manager_database
 from .utils import determine_infrahub_type, safe_metric
 
 
@@ -120,6 +121,12 @@ class DefaultActivityGatherer:
             return await gather_activity_24h(client=prefect_client)
 
 
+class DefaultTaskManagerDatabaseGatherer:
+    async def gather(self) -> TelemetryTaskManagerDatabaseData:
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            return await gather_task_manager_database(client=prefect_client)
+
+
 class DefaultActiveBranchCounter:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
@@ -168,12 +175,14 @@ class AnonymousTelemetryGatherer:
         account_gatherer: GathererInterface[TelemetryAccountData],
         activity_gatherer: GathererInterface[TelemetryActivity24hData],
         active_branch_counter: GathererInterface[int],
+        task_manager_database_gatherer: GathererInterface[TelemetryTaskManagerDatabaseData],
     ) -> None:
         self.database = database
         self.component = component
         self.account_gatherer = account_gatherer
         self.activity_gatherer = activity_gatherer
         self.active_branch_counter = active_branch_counter
+        self.task_manager_database_gatherer = task_manager_database_gatherer
 
     async def gather(self) -> TelemetryData:
         start_time = time.time()
@@ -191,6 +200,7 @@ class AnonymousTelemetryGatherer:
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
+        task_manager_database = await safe_metric(self.task_manager_database_gatherer.gather())
 
         data = TelemetryData(
             deployment_id=registry.id,
@@ -217,6 +227,7 @@ class AnonymousTelemetryGatherer:
             prefect=await gather_prefect_information(),
         )
 
+        data.prefect.database = task_manager_database
         data.execution_time = time.time() - start_time
 
         return data
@@ -232,6 +243,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         account_gatherer=DefaultAccountGatherer(db=database),
         activity_gatherer=DefaultActivityGatherer(),
         active_branch_counter=DefaultActiveBranchCounter(db=database),
+        task_manager_database_gatherer=DefaultTaskManagerDatabaseGatherer(),
     )
 
 
