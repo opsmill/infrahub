@@ -57,3 +57,8 @@ class InfrahubCache(ABC):
     @abstractmethod
     async def close_connection(self) -> None:
         raise NotImplementedError()
+
+    @abstractmethod
+    async def check_health(self) -> None:
+        """Write to the cache, raising when it cannot store data."""
+        raise NotImplementedError()

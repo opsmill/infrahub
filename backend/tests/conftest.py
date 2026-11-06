@@ -1323,6 +1323,8 @@ class BusRPCMock(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("BusRPCMock.reply should not be called")
 
+    async def check_health(self) -> None: ...
+
 
 class TestHelper:
     """TestHelper profiles functions that can be used as a fixture throughout the test framework."""

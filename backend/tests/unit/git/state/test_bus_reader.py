@@ -74,6 +74,8 @@ class RecordingRPCBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("RecordingRPCBus.reply should not be called")
 
+    async def check_health(self) -> None: ...
+
     async def rpc(
         self,
         message: InfrahubMessage,

@@ -91,19 +91,19 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     return f"{scheme}://{userinfo}{host}:{cache.service_port}/{cache.database}{qs}"
 
 
-def _connection_defaults() -> dict[str, Any]:
+def _connection_defaults(retries: int = REDIS_COMMAND_RETRIES) -> dict[str, Any]:
     """Connection options that the URL's own query options override."""
     backoff = ExponentialWithJitterBackoff(base=REDIS_RETRY_BACKOFF_BASE, cap=REDIS_RETRY_BACKOFF_CAP)
     return {
         # Redis may already have run a command whose reply timed out, so only connection errors, which a failover raises,
         # are retried.
-        "retry": Retry(backoff, retries=REDIS_COMMAND_RETRIES, supported_errors=(RedisConnectionError,)),
+        "retry": Retry(backoff, retries=retries, supported_errors=(RedisConnectionError,)),
         "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
     }
 
 
-def _redis_from_url(url: str) -> redis.Redis:
-    return redis_from_url(url, asynchronous=True, **_connection_defaults())
+def _redis_from_url(url: str, retries: int = REDIS_COMMAND_RETRIES) -> redis.Redis:
+    return redis_from_url(url, asynchronous=True, **_connection_defaults(retries=retries))
 
 
 def validate_redis_url(url: str) -> None:
@@ -127,10 +127,14 @@ def validate_redis_url(url: str) -> None:
         raise ValueError(f"Redis URL is not valid: {exc}") from exc
 
 
-def build_redis_connection(settings: CacheSettings) -> redis.Redis:
+def build_redis_connection(settings: CacheSettings, retries: int = REDIS_COMMAND_RETRIES) -> redis.Redis:
     """Build a client that selects single-node or Sentinel mode from the URL the settings describe.
 
     Close it with ``prefect_redis.connection.aclose_redis_client``, which also releases a Sentinel
     client's daemon connections.
+
+    Args:
+        retries: How many times a connection error is retried, connecting included.
+
     """
-    return _redis_from_url(build_cache_connection_string(settings))
+    return _redis_from_url(build_cache_connection_string(settings), retries=retries)

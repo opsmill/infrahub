@@ -164,6 +164,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Health
+         * @description Report whether this API server can reach the services it needs, without requiring authentication.
+         */
+        get: operations["get_health_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -808,6 +828,23 @@ export interface components {
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
         };
+        /** DependencyHealth */
+        DependencyHealth: {
+            name: components["schemas"]["DependencyName"];
+            status: components["schemas"]["DependencyStatus"];
+            /** @default none */
+            error: components["schemas"]["ErrorCategory"];
+        };
+        /**
+         * DependencyName
+         * @enum {string}
+         */
+        DependencyName: "database" | "message_bus" | "cache" | "task_manager" | "task_manager_db";
+        /**
+         * DependencyStatus
+         * @enum {string}
+         */
+        DependencyStatus: "up" | "down";
         /**
          * DiffAction
          * @enum {string}
@@ -871,6 +908,12 @@ export interface components {
             /** Message */
             message?: string | null;
         };
+        /**
+         * ErrorCategory
+         * @description Why a dependency is down, without the internal details an unauthenticated caller must not see.
+         * @enum {string}
+         */
+        ErrorCategory: "none" | "timeout" | "connection_refused" | "connection_closed" | "name_resolution_failed" | "unavailable" | "unknown_error";
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
             /**
@@ -1385,6 +1428,22 @@ export interface components {
                 [key: string]: components["schemas"]["HashableModelDiff"] | null;
             };
         };
+        /** HealthReport */
+        HealthReport: {
+            status: components["schemas"]["HealthStatus"];
+            /** Dependencies */
+            dependencies: components["schemas"]["DependencyHealth"][];
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
+        /**
+         * HealthStatus
+         * @enum {string}
+         */
+        HealthStatus: "healthy" | "unhealthy";
         /** InfoAPI */
         InfoAPI: {
             /** Deployment Id */
@@ -4219,6 +4278,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_health_api_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+            /** @description At least one backing service is down */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthReport"];
                 };
             };
         };

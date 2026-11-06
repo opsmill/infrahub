@@ -343,6 +343,17 @@ class InfrahubDatabase:
     async def close(self) -> None:
         await self._driver.close()
 
+    async def check_health(self) -> None:
+        """Run a trivial query on the server that accepts writes, raising when it cannot.
+
+        The query goes through the driver alone, so a health check records no query metric or span.
+        """
+        async with self._driver.session(
+            database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
+        ) as session:
+            result = await session.run("RETURN 1")
+            await result.consume()
+
     async def execute_query(
         self,
         query: str,

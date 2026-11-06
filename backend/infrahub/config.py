@@ -992,6 +992,24 @@ class TLSSettings(BaseSettings):
         return self
 
 
+HEALTH_CHECK_TIMEOUT_MAX_SECONDS = 60
+
+
+class HealthSettings(BaseSettings):
+    """The health settings control the checks behind the `/api/health` endpoint."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_HEALTH_")
+    check_timeout: int = Field(
+        default=3,
+        ge=1,
+        le=HEALTH_CHECK_TIMEOUT_MAX_SECONDS,
+        description=(
+            "Time in seconds each backing service has to answer its health check before it is reported as down. "
+            "The checks run concurrently, so the endpoint answers within about this time."
+        ),
+    )
+
+
 class HTTPSettings(BaseSettings):
     """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
@@ -2094,6 +2112,10 @@ class ConfiguredSettings:
         return self.active_settings.git
 
     @property
+    def health(self) -> HealthSettings:
+        return self.active_settings.health
+
+    @property
     def http(self) -> HTTPSettings:
         return self.active_settings.http
 
@@ -2175,6 +2197,7 @@ class Settings(BaseSettings):
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
     dev: DevelopmentSettings = DevelopmentSettings()
+    health: HealthSettings = HealthSettings()
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
