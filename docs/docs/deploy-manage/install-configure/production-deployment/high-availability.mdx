@@ -51,6 +51,12 @@ The examples connect Infrahub and Prefect directly to the Redis Sentinel nodes, 
 
 :::
 
+:::note Neo4j version
+
+The examples install Neo4j chart `2026.5.0`, which runs Neo4j `2026.05.0`. When the release notes of your Infrahub version name a newer Neo4j version, install the chart of that version instead. To upgrade an existing cluster, see [Upgrading the Neo4j cluster](#upgrading-the-neo4j-cluster).
+
+:::
+
 ### Using Terraform
 
 <details>
@@ -158,6 +164,55 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 ```
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
+
+## Upgrading the Neo4j cluster
+
+Upgrade the Neo4j members one at a time, and upgrade the writer last. While one member restarts, the other two members keep the database available. When the writer restarts, the other members elect a new writer, and requests that are running at that moment can fail. Infrahub connects to the new writer when it uses the `neo4j` protocol, as described in [Connecting Infrahub to a Neo4j cluster](#connecting-infrahub-to-a-neo4j-cluster). When a new Infrahub release requires a newer Neo4j version, upgrade Neo4j first, then Infrahub.
+
+The Neo4j chart version is the Neo4j version without the leading zero of the month: chart `2026.5.0` runs Neo4j `2026.05.0`. The commands below use the release names of the Helm example above. Replace `<password>` with the password of the `neo4j` user and `<new-chart-version>` with the chart version to upgrade to.
+
+Before you start:
+
+- Back up the database. [Cluster backup and restore](../../maintain-upgrade/database-backup/cluster-backup-and-restore.mdx) describes the `neo4j-admin` commands with Docker Compose. On Kubernetes, run the same commands in a shell inside a member pod, for example `kubectl exec -it database-1-0 --namespace infrahub -- bash`.
+- Do not run Cypher administration commands, such as `CREATE USER` or `CREATE DATABASE`, until all members run the new version. Neo4j states this requirement in [Database administration](https://neo4j.com/docs/operations-manual/current/database-administration/) in its Operations Manual.
+
+1. Find the member that is the writer of the `neo4j` database:
+
+   ```bash
+   kubectl exec database-0-0 --namespace infrahub -- cypher-shell -u neo4j -p <password> -d system \
+     "SHOW DATABASE neo4j YIELD address, role, currentStatus, writer"
+   ```
+
+   The `address` of each row starts with the release name of the member. The writer is the member whose `writer` column is `TRUE`.
+
+2. Choose a member that you have not upgraded yet and that is not the writer. When the writer is the only member left, choose the writer. Upgrade the member with the same values file as the installation, and wait until its pod is ready. Replace `<member>` with the release name of the member, for example `database-1`:
+
+   ```bash
+   helm upgrade <member> neo4j/neo4j --version <new-chart-version> --namespace infrahub --values neo4j-values.yaml
+   kubectl rollout status statefulset/<member> --namespace infrahub
+   ```
+
+3. Run the command from step 1 again. Continue only when the 3 members show `currentStatus` as `online` and one member is the writer.
+
+4. Repeat steps 2 and 3 until you have upgraded the 3 members. The writer can change when a member restarts, so in step 2, use the writer that the last run of step 3 shows.
+
+5. Check that every member runs the new Neo4j version. The `bolt://localhost:7687` address makes each command answer for the member that it runs in:
+
+   ```bash
+   for member in database-0 database-1 database-2; do
+     kubectl exec $member-0 --namespace infrahub -- cypher-shell -a bolt://localhost:7687 --access-mode read \
+       -u neo4j -p <password> -d neo4j \
+       "CALL dbms.components() YIELD name, versions WHERE name = 'Neo4j Kernel' RETURN versions[0] AS version"
+   done
+   ```
+
+6. Upgrade the headless service to the same chart version:
+
+   ```bash
+   helm upgrade database-service neo4j/neo4j-headless-service --version <new-chart-version> --namespace infrahub --values service-values.yaml
+   ```
+
+If you installed the cluster with the Terraform example, set `version` of the `helm_release.database_ha` and `helm_release.database_ha_service` resources in `deploy.tf` to the new chart version after the upgrade. Otherwise the next `terraform apply` changes the releases back to the old chart version.
 
 ## Connecting Infrahub to a RabbitMQ cluster
 
