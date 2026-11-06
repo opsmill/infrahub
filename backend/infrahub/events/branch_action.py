@@ -20,6 +20,9 @@ class BranchDeletedEvent(InfrahubEvent):
     branch_id: str = Field(..., description="The ID of the mutated node")
     sync_with_git: bool = Field(..., description="Indicates if the branch was extended to Git")
     proposed_change_id: str | None = Field(default=None, description="Proposed change ID if available")
+    deletion_task_id: str | None = Field(
+        default=None, description="The ID of the task that deleted the branch if available"
+    )
 
     def get_resource(self) -> dict[str, str]:
         resource = {
