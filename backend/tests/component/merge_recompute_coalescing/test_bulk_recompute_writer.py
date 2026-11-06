@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from prefect import flow
 
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -24,6 +26,11 @@ from infrahub.core.recompute.bulk_write import (
     WrittenNode,
 )
 from infrahub.core.recompute.dispatch import BulkRecomputeDispatcher
+from infrahub.core.recompute.merge_gate import (
+    MERGE_WAIT_POLL_INTERVAL_SECONDS,
+    MERGE_WAIT_TIMEOUT_SECONDS,
+    MergingBranchWriteGate,
+)
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
@@ -38,6 +45,7 @@ from tests.helpers.merge_recompute.dataset import (
     load_chain_schema,
     load_profile_schema,
 )
+from tests.helpers.merge_recompute.merge_wait import FakeClock, MergeEndingSleep
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
@@ -57,6 +65,7 @@ def _dispatcher(
     event_service: InfrahubEventService,
     workflow: InfrahubWorkflow,
     schema_branch: SchemaBranch,
+    merge_gate: MergingBranchWriteGate | None = None,
 ) -> BulkRecomputeDispatcher:
     return BulkRecomputeDispatcher(
         db=db,
@@ -64,6 +73,10 @@ def _dispatcher(
         chain=RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        ),
+        merge_gate=merge_gate
+        or MergingBranchWriteGate(
+            db=db, timeout_seconds=MERGE_WAIT_TIMEOUT_SECONDS, poll_interval_seconds=MERGE_WAIT_POLL_INTERVAL_SECONDS
         ),
     )
 
@@ -332,6 +345,59 @@ async def test_dispatch_returns_without_writing_when_branch_is_gone(
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert await reloaded.get_display_label(db=db) != "ignored"
+
+
+async def test_dispatch_does_not_write_to_a_branch_merged_while_the_write_waits(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A write to a branch being merged waits, then leaves the branch untouched once it is merged."""
+    await load_profile_schema(db=db)
+    branch = await create_branch(branch_name="merging-branch", db=db)
+    node = await _make_node(db=db, branch=branch, name="n1", peer_name="p1")
+    loaded = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert loaded is not None
+    label_before = await loaded.get_display_label(db=db)
+    branch.status = BranchStatus.MERGING
+    await branch.save(db=db)
+
+    event_recorder = MemoryInfrahubEvent()
+    workflow_recorder = WorkflowRecorder()
+    sleep = MergeEndingSleep(clock=FakeClock(), db=db, branch=branch, end_status=BranchStatus.MERGED)
+    dispatcher = _dispatcher(
+        db=db,
+        event_service=event_recorder,
+        workflow=workflow_recorder,
+        schema_branch=registry.schema.get_schema_branch(name=branch.name),
+        merge_gate=MergingBranchWriteGate(
+            db=db,
+            timeout_seconds=MERGE_WAIT_TIMEOUT_SECONDS,
+            poll_interval_seconds=MERGE_WAIT_POLL_INTERVAL_SECONDS,
+            clock=sleep.clock,
+            sleep=sleep,
+        ),
+    )
+
+    @flow(name="test-dispatch-merging-branch")
+    async def _run() -> None:
+        await dispatcher.dispatch(
+            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="written during merge")],
+            branch_name=branch.name,
+            context=_event_context(),
+            coalesced=True,
+            recompute_depth=0,
+        )
+
+    await _run()
+
+    assert sleep.waits == [MERGE_WAIT_POLL_INTERVAL_SECONDS]
+    assert event_recorder.events == []
+    assert workflow_recorder.submit_calls == []
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=branch)
+    assert reloaded is not None
+    assert label_before != "written during merge"
+    assert await reloaded.get_display_label(db=db) == label_before
 
 
 async def test_dispatch_live_path_stamps_live_and_does_not_chain(

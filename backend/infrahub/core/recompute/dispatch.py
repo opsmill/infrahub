@@ -10,6 +10,11 @@ from infrahub.core.merge.recompute_coalescing import (
     RecomputeChainSubmitter,
 )
 from infrahub.core.recompute.bulk_write import BulkRecomputeWriter
+from infrahub.core.recompute.merge_gate import (
+    MERGE_WAIT_POLL_INTERVAL_SECONDS,
+    MERGE_WAIT_TIMEOUT_SECONDS,
+    MergingBranchWriteGate,
+)
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import BranchNotFoundError
@@ -35,10 +40,12 @@ class BulkRecomputeDispatcher:
         db: InfrahubDatabase,
         writer: BulkRecomputeWriter,
         chain: RecomputeChainSubmitter,
+        merge_gate: MergingBranchWriteGate,
     ) -> None:
         self._db = db
         self._writer = writer
         self._chain = chain
+        self._merge_gate = merge_gate
 
     async def dispatch(
         self,
@@ -50,6 +57,8 @@ class BulkRecomputeDispatcher:
         recompute_depth: int,
     ) -> None:
         if not writes:
+            return
+        if not await self._merge_gate.allows_write(branch_name=branch_name):
             return
 
         try:
@@ -75,4 +84,7 @@ async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRe
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
     )
-    return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)
+    merge_gate = MergingBranchWriteGate(
+        db=db, timeout_seconds=MERGE_WAIT_TIMEOUT_SECONDS, poll_interval_seconds=MERGE_WAIT_POLL_INTERVAL_SECONDS
+    )
+    return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain, merge_gate=merge_gate)

@@ -62,6 +62,18 @@ The writer:
 
 Writes commit per chunk and emit before the next chunk runs, so the write is not atomic across chunks. A mid-run failure can leave earlier chunks written. Recovery relies on the flow re-running and re-detecting no-ops.
 
+### Writes to a branch that is being merged
+
+**Location:** `core/recompute/merge_gate.py` (`MergingBranchWriteGate`), called by the dispatcher before every write
+
+The dispatcher does not write while the target branch is `MERGING`. The merge copies every edge active on the source branch but announces only its diff, so a value written between the diff and the graph merge would reach the default branch without the recompute its change triggers there. The dispatcher reads the branch status from the database and waits for the merge to end, then:
+
+- writes to a branch whose merge was rolled back,
+- writes nothing to a merged or deleted branch, which is read-only, and whose merge recomputes the default branch,
+- fails the flow when the merge failed and waits for recovery, or when the branch is still `MERGING` after the wait limit.
+
+Writes to the default branch during a merge are not held.
+
 ## Chaining and the depth bound
 
 A recompute write can feed a value that reads it on another node. On a coalesced pass, after the bulk write, `RecomputeChainSubmitter` treats the writes as a new change set and dispatches the next coalesced level for their readers. Each level carries an incremented `recompute_depth`.
@@ -85,6 +97,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `max_recompute_chain_depth` |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
+| `core/recompute/merge_gate.py` | `MergingBranchWriteGate`: no derived-value write to a branch while it is being merged, or once it is merged |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
