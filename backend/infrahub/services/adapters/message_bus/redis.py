@@ -4,8 +4,7 @@ import asyncio
 import contextlib
 import time
 from dataclasses import dataclass, field
-from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, MutableMapping, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable, Iterator, MutableMapping, TypeVar
 
 import redis.asyncio as redis
 import ujson
@@ -39,16 +38,7 @@ if TYPE_CHECKING:
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
 
-# Re-publishes due entries of the delayed queue (KEYS[1]) onto their target
-# streams. Every entry is removed right after its own successful XADD, so a
-# failure can never replay already-delivered entries (script errors abort
-# without rolling back applied effects). A failing entry is rescored to a
-# later due time instead of staying at the head of every scan; once it
-# exhausts its delivery attempts (tracked in KEYS[2]) it is parked in the
-# dead-letter list (KEYS[3]) for inspection. Retried and parked members are
-# returned to the caller for logging. The whole script runs serialized, so
-# concurrent pollers never deliver an entry twice. The target streams cannot
-# be declared as KEYS up front, so this requires a non-clustered Redis.
+# Each entry is removed right after its own XADD, because a script error does not undo the commands that already ran.
 DELIVER_DUE_MESSAGES_LUA = """
 local due = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
 local retried = {}
@@ -66,12 +56,7 @@ for _, member in ipairs(due) do
             fields[#fields + 1] = key
             fields[#fields + 1] = value
         end
-        local result
-        if entry.maxlen then
-            result = redis.pcall('XADD', entry.stream, 'MAXLEN', '~', entry.maxlen, '*', unpack(fields))
-        else
-            result = redis.pcall('XADD', entry.stream, '*', unpack(fields))
-        end
+        local result = redis.pcall('XADD', entry.stream, '*', unpack(fields))
         delivered = not (type(result) == 'table' and result.err)
     end
     if delivered then
@@ -102,7 +87,8 @@ class StreamSubscription:
     Without a group the stream is read directly from `start_id`, tracking
     concrete entry ids afterwards. With a group, entries are read through
     `XREADGROUP` and acknowledged when `ack_messages` is set. When `bindings`
-    is set, entries whose routing key matches no pattern are skipped.
+    is set on a stream read without a group, entries whose routing key matches
+    no AMQP topic pattern are skipped.
     `owns_stream` marks a stream with no other reader, allowing the consumer
     to trim entries it has already read. `in_progress` holds the ids of the
     group entries whose handler has started and not yet acknowledged them.
@@ -138,33 +124,23 @@ class RedisMessageBus(InfrahubMessageBus):
     WORK_DEAD_LETTER = "rpcs:dead"
     RPCS_GROUP = "git-workers"
 
-    # Approximate upper bound for the events stream; events are fire-and-forget
-    # broadcasts so older entries only need to survive long enough for live
-    # readers to catch up.
+    # Events are broadcasts, so an entry only has to last until the live readers have read it.
     EVENTS_STREAM_MAXLEN = 10_000
 
-    # Expiry for per-worker callback streams. A live worker keeps pushing its
-    # stream's expiry out and trims read entries, so the expiry only ever
-    # lapses for a stream orphaned by a worker that died without its shutdown
-    # cleanup.
+    # A live worker keeps pushing this expiry out, so it lapses only on the stream of a worker that died uncleanly.
     CALLBACK_STREAM_TTL: int = InfrahubMessageBus.DELIVER_TIMEOUT
 
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 30.0
 
-    # A work queue entry that nobody has marked as in progress for this long
-    # is claimed by another worker. Workers mark the entries they are handling
-    # every few seconds, so this only catches the entries of a worker that
-    # stopped, and the deliveries that never reached their worker.
+    # Workers mark the entries they handle every few seconds, so only an entry whose worker stopped stays idle this long.
     CLAIM_IDLE_MS: int = 60_000
 
     # Seconds between two marks of the entries a worker is handling, kept far
     # below the claim threshold so that a live handler never looks abandoned.
     IN_PROGRESS_REFRESH_SECONDS: float = 15.0
 
-    # A work queue entry delivered more times than this, which happens when
-    # its handler keeps stopping its worker, is parked in the work dead-letter
-    # list, which keeps the newest entries only, instead of being run again.
+    # A work item delivered more times than this keeps failing or stopping its worker, so it is parked instead.
     WORK_MAX_DELIVERIES: int = 5
     WORK_DEAD_LETTER_MAXLEN: int = 1_000
 
@@ -172,27 +148,20 @@ class RedisMessageBus(InfrahubMessageBus):
     # a consumer takes to notice a shutdown or a due maintenance pass.
     READ_BLOCK_MS: int = 1_000
 
-    # Abandoned entries taken over per XAUTOCLAIM call.
-    CLAIM_BATCH: int = 10
+    # A stream read without a group has no handler slots to wait for, so it takes several entries per read.
+    UNGROUPED_READ_BATCH: int = 100
 
     # Seconds a consumer waits after a failed read before reading again.
     ERROR_BACKOFF_SECONDS: float = 1.0
 
-    # A consumer that has read nothing for this long and holds no pending
-    # entry belongs to a worker that stopped without its shutdown cleanup,
-    # since a live one reads every second; by then its abandoned entries have
-    # been claimed by others.
+    # A live consumer reads every second, so one idle this long without a pending entry belongs to a stopped worker.
     STALE_CONSUMER_IDLE_MS: int = InfrahubMessageBus.DELIVER_TIMEOUT * 1_000
 
-    # Seconds between two scans of the delayed queue, and the maximum number
-    # of due entries one scan delivers; anything beyond the batch is picked up
-    # by the next scan.
     DELAYED_POLL_INTERVAL: float = 1.0
+    # A scan delivers at most this many due entries, and the next scan picks up the rest.
     DELAYED_DELIVERY_BATCH = 100
 
-    # A delayed entry that fails to deliver becomes due again after this
-    # backoff (milliseconds); once it exhausts its delivery attempts it is
-    # parked in the dead-letter list, which keeps the newest entries only.
+    # A delayed entry that fails to deliver is retried after this delay, and parked after its last attempt.
     DELAYED_RETRY_DELAY_MS: int = 60_000
     DELAYED_MAX_ATTEMPTS: int = 5
     DELAYED_DEAD_LETTER_MAXLEN: int = 1_000
@@ -251,13 +220,14 @@ class RedisMessageBus(InfrahubMessageBus):
         self._consumer_tasks.append(asyncio.create_task(self._deliver_delayed_messages()))
 
     async def shutdown(self) -> None:
-        """Shutdown the message bus and clean up resources."""
+        """Shutdown the message bus and clean up resources.
+
+        The consumers stop before the handlers are cancelled, since a running consumer can still start a handler.
+        """
         self._shutdown_event.set()
 
-        for task in [*self._consumer_tasks, *self._handler_tasks]:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+        await self._cancel_and_wait(self._consumer_tasks)
+        await self._cancel_and_wait(self._handler_tasks)
 
         with contextlib.suppress(redis.RedisError):
             await self._release_unfinished_entries()
@@ -265,11 +235,20 @@ class RedisMessageBus(InfrahubMessageBus):
         with contextlib.suppress(redis.RedisError):
             await self._deregister_consumers()
 
-        # Clean up callback stream
         with contextlib.suppress(redis.RedisError):
             await self.connection.delete(self.callback_stream)
 
         await aclose_redis_client(self.connection)
+
+    @staticmethod
+    async def _cancel_and_wait(tasks: Iterable[asyncio.Task]) -> None:
+        """Cancel the tasks and wait until every one of them has ended."""
+        cancelled = list(tasks)
+        for task in cancelled:
+            task.cancel()
+        for result in await asyncio.gather(*cancelled, return_exceptions=True):
+            if isinstance(result, Exception):
+                get_logger().error("A message bus task failed before the shutdown", exc_info=result)
 
     async def _release_unfinished_entries(self) -> None:
         """Make the entries whose handler the shutdown cancelled claimable by another worker at once.
@@ -348,8 +327,8 @@ class RedisMessageBus(InfrahubMessageBus):
         """Consume messages from a Redis stream until shutdown.
 
         Each entry is handled in its own task, so a slow handler does not hold up the entries behind it. A
-        consumer group reads an entry only once one of the broker's maximum_concurrent_messages handler slots is
-        free, so a busy worker leaves the entries it cannot start yet to the other workers.
+        consumer group reads or claims an entry only once one of the broker's maximum_concurrent_messages handler
+        slots is free, so a busy worker leaves the entries it cannot start yet to the other workers.
 
         Args:
             subscription: The stream subscription to consume.
@@ -376,12 +355,13 @@ class RedisMessageBus(InfrahubMessageBus):
                     await slots.acquire()
                     holds_slot = True
 
-                # A read returns at most one entry, so an entry never needs more than the slot taken above.
+                # A group read returns at most one entry, so an entry never needs more than the slot taken above.
                 entries, last_id = await self._read_stream_entries(subscription, last_id)
                 for _stream_name, stream_entries in entries:
                     for message_id, message_data in stream_entries:
-                        self._start_handler(message_id, message_data, subscription, slots)
-                        holds_slot = False
+                        if self._matches_bindings(message_data=message_data, bindings=subscription.bindings):
+                            self._start_handler(message_id, message_data, subscription, slots)
+                            holds_slot = False
 
             except asyncio.CancelledError:
                 break
@@ -392,10 +372,18 @@ class RedisMessageBus(InfrahubMessageBus):
                         stream=subscription.stream,
                         group=subscription.group,
                     )
-                    with contextlib.suppress(redis.RedisError):
+                    try:
                         await self._create_stream_and_group(subscription.stream, subscription.group)
-                    continue
-                get_logger().exception("Redis error in consumer")
+                    except redis.RedisError:
+                        get_logger().exception(
+                            "Failed to recreate the stream or consumer group",
+                            stream=subscription.stream,
+                            group=subscription.group,
+                        )
+                    else:
+                        continue
+                else:
+                    get_logger().exception("Redis error in consumer")
                 await asyncio.sleep(self.ERROR_BACKOFF_SECONDS)
             # Worker loop boundary: a malformed entry or driver surprise must not kill the consumer task.
             except Exception:  # noqa: BLE001
@@ -453,7 +441,7 @@ class RedisMessageBus(InfrahubMessageBus):
         else:
             response = await self.connection.xread(
                 streams={subscription.stream: last_id},
-                count=1,
+                count=self.UNGROUPED_READ_BATCH,
                 block=self.READ_BLOCK_MS,
             )
 
@@ -468,7 +456,10 @@ class RedisMessageBus(InfrahubMessageBus):
     async def _process_single_message(
         self, message_id: bytes, message_data: dict, subscription: StreamSubscription
     ) -> None:
-        """Process a single message from a stream.
+        """Run the subscription's callback on an entry, and acknowledge a group entry once the callback returns.
+
+        A group entry whose callback raised stays pending, so a claim pass runs it again, or parks it once it has
+        been delivered too many times.
 
         Args:
             message_id: The message ID.
@@ -477,13 +468,11 @@ class RedisMessageBus(InfrahubMessageBus):
 
         """
         try:
-            if self._matches_bindings(message_data=message_data, bindings=subscription.bindings):
-                await subscription.callback(message_data)
+            await subscription.callback(message_data)
         # Per-entry boundary: one failing entry is logged instead of stopping the consumer.
         except Exception:  # noqa: BLE001
-            # Failed messages are durably re-scheduled before their handler
-            # returns, so the original entry is acknowledged either way.
             get_logger().exception("Error processing message", message_id=message_id)
+            return
         if subscription.ack_messages and subscription.group:
             try:
                 await self.connection.xack(subscription.stream, subscription.group, message_id)
@@ -493,13 +482,13 @@ class RedisMessageBus(InfrahubMessageBus):
 
     @staticmethod
     def _matches_bindings(message_data: dict, bindings: list[str] | None) -> bool:
-        """Check whether an entry's routing key matches one of the binding patterns."""
+        """Check whether an entry's routing key matches one of the AMQP topic patterns."""
         if bindings is None:
             return True
         routing_key = message_data.get(b"routing_key") or message_data.get("routing_key") or b""
         if isinstance(routing_key, bytes):
             routing_key = routing_key.decode()
-        return any(fnmatch(routing_key, pattern) for pattern in bindings)
+        return any(topic_matches(pattern, routing_key) for pattern in bindings)
 
     async def _claim_pending_messages(self, subscription: StreamSubscription, slots: asyncio.Semaphore | None) -> None:
         """Take over entries whose owner stopped before acknowledging them.
@@ -507,46 +496,70 @@ class RedisMessageBus(InfrahubMessageBus):
         A live worker marks the entries it is handling as in progress far more
         often than the claim threshold, so an entry idle for longer belongs to
         a worker that stopped, or was never received by its worker, and is
-        re-processed here. An entry delivered too many times is parked instead. A claimed
-        entry waits for a free handler slot like a newly read one.
+        re-processed here. An entry delivered too many times is parked instead.
+        Each claim takes over a single entry once a handler slot is free, so a
+        claimed entry starts at once and never waits unmarked, which would let
+        another worker claim it again.
         """
         if not subscription.group:
             return
 
         start_id = "0-0"
         while not self._shutdown_event.is_set():
-            response = await self.connection.xautoclaim(
-                name=subscription.stream,
-                groupname=subscription.group,
-                consumername=subscription.consumer,
-                min_idle_time=self.CLAIM_IDLE_MS,
-                start_id=start_id,
-                count=self.CLAIM_BATCH,
-            )
-            next_start_id, claimed = response[0], response[1]
-
-            for message_id, message_data in claimed:
-                if message_id is None:
-                    # Redis 6.2 reports an entry deleted while pending without its id, so it cannot be acknowledged.
-                    continue
-                if message_data is None:
-                    # The entry was trimmed while pending; acknowledge to stop re-claiming it.
-                    await self.connection.xack(subscription.stream, subscription.group, message_id)
-                    continue
-                if message_id in subscription.in_progress:
-                    # Already running here, so the claim only reset its idle time.
-                    continue
-                if await self._park_if_delivered_too_often(subscription, message_id, message_data):
-                    continue
-                if slots is not None:
-                    await slots.acquire()
-                self._start_handler(message_id, message_data, subscription, slots)
+            if slots is not None:
+                await slots.acquire()
+            holds_slot = True
+            try:
+                response = await self.connection.xautoclaim(
+                    name=subscription.stream,
+                    groupname=subscription.group,
+                    consumername=subscription.consumer,
+                    min_idle_time=self.CLAIM_IDLE_MS,
+                    start_id=start_id,
+                    count=1,
+                )
+                start_id, claimed = response[0], response[1]
+                for message_id, message_data in claimed:
+                    if await self._start_claimed_entry(subscription, message_id, message_data, slots):
+                        holds_slot = False
+            finally:
+                if holds_slot and slots is not None:
+                    slots.release()
 
             # The cursor returns to 0-0 once the scan has covered every pending entry, so one pass never claims an
             # entry whose handler it has just started.
-            if next_start_id in (b"0-0", "0-0"):
+            if start_id in (b"0-0", "0-0"):
                 break
-            start_id = next_start_id
+
+    async def _start_claimed_entry(
+        self,
+        subscription: StreamSubscription,
+        message_id: bytes | None,
+        message_data: dict | None,
+        slots: asyncio.Semaphore | None,
+    ) -> bool:
+        """Start the handler of a claimed entry, unless the entry is gone, already running here, or parked.
+
+        Returns:
+            Whether a handler started, which then holds the handler slot.
+
+        """
+        if subscription.group is None:
+            return False
+        if message_id is None:
+            # Redis 6.2 reports an entry deleted while pending without its id, so it cannot be acknowledged.
+            return False
+        if message_data is None:
+            # The entry was trimmed while pending, so it is acknowledged to stop claiming it again.
+            await self.connection.xack(subscription.stream, subscription.group, message_id)
+            return False
+        if message_id in subscription.in_progress:
+            # Already running here, so the claim only reset its idle time.
+            return False
+        if await self._park_if_delivered_too_often(subscription, message_id, message_data):
+            return False
+        self._start_handler(message_id, message_data, subscription, slots)
+        return True
 
     async def _park_if_delivered_too_often(
         self, subscription: StreamSubscription, message_id: bytes, message_data: dict
@@ -857,9 +870,7 @@ class RedisMessageBus(InfrahubMessageBus):
         seconds, microseconds = await self.connection.time()
         return seconds * 1000 + microseconds // 1000
 
-    async def _schedule_delayed(
-        self, stream: str, fields: dict[FieldT, EncodableT], delay: MessageTTL, maxlen: int | None
-    ) -> None:
+    async def _schedule_delayed(self, stream: str, fields: dict[FieldT, EncodableT], delay: MessageTTL) -> None:
         """Persist a message for delivery once its delay elapses.
 
         The entry lives in a sorted set scored by its due time, so a pending
@@ -874,8 +885,6 @@ class RedisMessageBus(InfrahubMessageBus):
             "stream": stream,
             "fields": {key: value.decode() if isinstance(value, bytes) else value for key, value in fields.items()},
         }
-        if maxlen is not None:
-            entry["maxlen"] = maxlen
         due_time = await self._server_time_ms() + delay.value
         await self.connection.zadd(self.delayed_queue, {ujson.dumps(entry): due_time})
 
@@ -939,8 +948,6 @@ class RedisMessageBus(InfrahubMessageBus):
                 await enricher(message)
             message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
 
-            maxlen = self.EVENTS_STREAM_MAXLEN if stream == self.events_stream else None
-
             fields: dict[FieldT, EncodableT] = {
                 "routing_key": routing_key,
                 "body": message.body,
@@ -948,9 +955,9 @@ class RedisMessageBus(InfrahubMessageBus):
                 "priority": str(message.meta.priority or 0),
             }
             if delay:
-                await self._schedule_delayed(stream=stream, fields=fields, delay=delay, maxlen=maxlen)
-            elif maxlen is not None:
-                await self.connection.xadd(stream, fields, maxlen=maxlen, approximate=True)
+                await self._schedule_delayed(stream=stream, fields=fields, delay=delay)
+            elif stream == self.events_stream:
+                await self.connection.xadd(stream, fields, maxlen=self.EVENTS_STREAM_MAXLEN, approximate=True)
             else:
                 await self.connection.xadd(stream, fields)
 
@@ -964,8 +971,9 @@ class RedisMessageBus(InfrahubMessageBus):
             The stream name to use.
 
         """
-        # Events go to events stream, work items go to RPCs stream
-        if any(fnmatch(routing_key, pattern) for pattern in self.event_bindings + self.broadcasted_event_bindings):
+        if any(
+            topic_matches(pattern, routing_key) for pattern in self.event_bindings + self.broadcasted_event_bindings
+        ):
             return self.events_stream
         return self.rpcs_stream
 
