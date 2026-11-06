@@ -80,7 +80,7 @@ def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
             "Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
             "API server; without it each process generates its own random secret"
         )
-    if settings.secret_key.strip().strip("'\"") in PUBLISHED_SECRET_KEYS:
+    if settings.secret_key.strip().strip("'\"").lower() in PUBLISHED_SECRET_KEYS:
         return (
             "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
             "set a unique random secret before using storage encryption"
