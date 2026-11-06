@@ -128,7 +128,7 @@ class TestNodeCreateWithMandatoryRelationshipFromProfile:
         applier = NodeProfilesApplier(
             db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
         )
-        await applier.apply_profiles(node)
+        await node.save(db=db, fields=await applier.apply_profiles(node))
 
         node = await NodeManager.get_one(db=db, id=node.id)
         peer = await node.owner.get_peer(db=db)

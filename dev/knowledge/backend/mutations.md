@@ -148,6 +148,8 @@ A relationship's peers are all-or-nothing with respect to Profile sourcing: eith
 
 `NodeProfilesApplier` then treats such a relationship as user-defined and does not re-apply Profile peers to it.
 
+`NodeProfilesApplier.apply_profiles()` changes the node in memory only, relationships included, and returns the names of the fields it changed. Save the node with those fields: the save writes the Profile values and records them in the node changelog, so they reach the node event. Node creation applies the Profiles before its single save, inside the create transaction. `RelationshipAdd` and `RelationshipRemove` on a node's `profiles` save the Profile values as the requesting user and add their changes to the event of the mutation.
+
 On the Profile side, `RelationshipAdd` and `RelationshipRemove` on `related_nodes` or `related_templates` apply no Profile value in the request. Before the transaction, `RelationshipRemove` on `related_nodes` runs `RelationshipProfileRemovalConstraint`, as a Profile update or delete does: it refuses to remove a node that inherits a required attribute or relationship from the Profile, because the refresh flow could not clear that value. After the transaction commits, they submit the chunked profile refresh for the peers they added or removed, so the values arrive with the refresh flows and their readers recompute. A failed submission is logged and the mutation still returns `ok`: the change is committed, and a retry would add or remove no peer, so it would submit nothing.
 
 ### UUID vs HFID References
