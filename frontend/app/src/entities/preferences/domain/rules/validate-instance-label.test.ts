@@ -55,6 +55,7 @@ describe("instanceLabelError", () => {
     { name: "a NUL character", value: "QA\u0000staging" },
     { name: "a right-to-left override", value: "QA\u202Estaging" },
     { name: "an isolate terminator", value: "QA\u2069staging" },
+    { name: "a right-to-left mark", value: "QA\u200Fstaging" },
   ])("rejects a label containing $name", ({ value }) => {
     expect(instanceLabelError(value)).toBe("The instance label cannot contain control characters.");
   });

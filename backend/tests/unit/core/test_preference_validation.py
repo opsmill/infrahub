@@ -124,6 +124,11 @@ LABEL_REJECT_CASES: list[LabelRejectCase] = [
         value="a\u2066b",
         expected_message="instance_label cannot contain control characters",
     ),
+    LabelRejectCase(
+        name="right_to_left_mark",
+        value="a\u200fb",
+        expected_message="instance_label cannot contain control characters",
+    ),
 ]
 
 

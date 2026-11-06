@@ -11,9 +11,9 @@ from infrahub.exceptions import ValidationError
 _REJECTED_KEYS = frozenset({"localtime", "posixrules"})
 _REJECTED_PREFIXES = ("posix/", "right/")
 
-# Bidirectional embedding, override and isolate controls are category Cf, not Cc, so they need
-# listing: a label carrying one is rendered with its characters reordered.
-_BIDI_CONTROL_CHARACTERS = frozenset(map(chr, (*range(0x202A, 0x202F), *range(0x2066, 0x206A))))
+# Bidirectional controls and direction marks are category Cf, not Cc, so they need listing: a
+# label carrying one is rendered with its characters reordered.
+_BIDI_CONTROL_CHARACTERS = frozenset(map(chr, (0x061C, 0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x206A))))
 
 
 def _contains_control_character(value: str) -> bool:
