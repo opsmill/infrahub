@@ -297,6 +297,46 @@ Do not write a one-off `resolveUuid` function.
   });
   ```
 
+## GraphQL variables, not inlined values
+
+The backend caches parsed documents by query string in `cached_parse` and validation results by schema and parsed document in `cached_validate` (`backend/infrahub/graphql/execution.py`). A query that inlines a per-request value into the document produces a distinct string on every request, which misses both caches: each one pays parse + validate again and evicts useful entries.
+
+When generating a query, pass every per-request value as a GraphQL variable:
+
+- **Per-request values — must be variables:** `limit`/`offset`, search text, object ids (`ids`, `*__ids` filters), dates, and whole input payloads (declare the schema input type, e.g. `$data: PathTraversalInput!`).
+- **Structural values — fine to inline:** schema kind names, attribute/relationship field selections, operation names, and constants written literally in source (e.g. `partial_match: true`). These vary with the schema, not with the request, so the number of distinct documents stays bounded.
+
+With `json-to-graphql-query` builders, declare a `__variables` block, reference variables with `new VariableType(...)`, and pass the values through Apollo's `variables` option:
+
+```ts
+const query = gql(
+  jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${kind}`,
+      __variables: { limit: "Int", offset: "Int", ids: "[ID]" },
+      [kind]: {
+        __args: {
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
+          ids: new VariableType("ids"),
+        },
+        edges: { node: { id: true, display_label: true } },
+      },
+    },
+  })
+);
+
+graphqlClient.query({ query, variables: { limit, offset, ids: [objectId] } });
+```
+
+Notes:
+
+- GraphQL declares "all variables must be used", so only declare a variable when the corresponding argument is present (spread conditionally into `__variables` and `__args` together).
+- GraphQL list-input coercion accepts a bare value for a list-typed variable, so a single id string is a valid value for an `[ID]` variable.
+- Static `graphql(...)` documents must use `$variables` for the same values — never rebuild the document string per request.
+
+Known exception: filter values built by `addFiltersToRequest` (and non-id `filterQuery` entries) are still inlined; converting them needs a per-filter GraphQL type mapping in the shared util. Do not use that as a precedent for inlining new values.
+
 ## Backend is authoritative
 
 If the server defaults, filters, sorts, or hides something, the client must not maintain a parallel constant. Examples:
