@@ -34,6 +34,7 @@ import {
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
 import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar";
+import { KindLabel } from "@/entities/resource-manager/ui/pool/kind-label";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -71,21 +72,6 @@ function SourceTag({ provenance }: SourceTagProps) {
       )}
     >
       {isProvided ? "Provided" : "Allocated"}
-    </span>
-  );
-}
-
-interface KindLabelProps {
-  kind: string;
-}
-
-function KindLabel({ kind }: KindLabelProps) {
-  const { schema } = useSchema(kind);
-  const label = schema?.label ?? kind;
-
-  return (
-    <span className="truncate" title={label}>
-      {label}
     </span>
   );
 }

@@ -34,13 +34,13 @@ You'll see an overview of available resource pools. Each pool has a specific pur
 
 ![Loopbacks Pool](../../media/tutorial_resource_manager_loopbacks_pool.png)
 
-This view shows you the pool's configuration:
+The pool page shows you:
 
-- **Name**: A descriptive identifier for the pool
-- **Resources**: The IP prefixes or number ranges this pool can allocate from
-- **Default settings**: Configuration that determines how resources are allocated
+- **Header**: the pool's name and description, and one line that names its IP namespace and its defaults, such as the address kind and the prefix length a new allocation gets when the request sets none.
+- **Resource prefixes**: the IP prefixes this pool allocates from, in the order the pool fills them, each with its usage on the default branch and on the branch you are viewing.
+- **Allocated addresses**: the addresses the selected resource prefix already holds, with the identifier that reserved each one and its kind. More rows load as you scroll.
 
-Click the **View** button next to any resource to see which IP addresses have already been allocated. This gives you visibility into resource utilization across your entire infrastructure.
+Select a resource prefix in the list to see what it holds. This gives you visibility into resource utilization across your entire infrastructure.
 
 **Key insight**: Notice how you can see all allocations in one place, regardless of which branch they were created in.
 
@@ -97,9 +97,9 @@ Switch back to the **main** branch using the branch selector in the UI.
 
 Navigate to **Object Management** → **Resource Managers** and click on the `Loopbacks pool`.
 
-Click **View** next to the resource `10.0.0.0/16` to see all allocated addresses.
+Select the resource prefix `10.0.0.0/16` in the list to see all allocated addresses.
 
-Navigate to the last page of the Allocated resources table (or search for your device name).
+Scroll through the Allocated addresses table until you reach the address allocated to your device: its identifier names the device.
 
 **Important observation**: You'll find the IP address allocated to `atl1-leaf99` in this list, even though:
 

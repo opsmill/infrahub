@@ -59,10 +59,18 @@ class TestResourceManager:
         await admin_page.goto("/resource-manager")
         await admin_page.get_by_role("link", name="test prefix pool").click()
 
-        await expect(admin_page.get_by_text("CoreIP Prefix Pool")).to_be_visible()
-        await expect(admin_page.get_by_text("Nametest prefix pool")).to_be_visible()
-        await expect(admin_page.get_by_text("Description-")).to_be_visible()
+        header = admin_page.locator("header").filter(has=admin_page.get_by_role("heading", level=1))
+        await expect(header.get_by_role("heading", level=1, name="test prefix pool")).to_be_visible()
+        # the create form pre-fills the prefix type; the member type comes from the schema default
+        await expect(header).to_contain_text("In namespace default")
+        await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
+        await expect(header).to_contain_text("Prefix length has no default")
+        await expect(header).to_contain_text("Member type defaults to Prefix")
         assert "/resource-manager/" in admin_page.url
+
+        resources = admin_page.get_by_role("listbox", name="Resource prefixes")
+        for prefix in ("10.0.0.0/8", "10.0.0.0/16", "10.1.0.0/16"):
+            await expect(resources.get_by_role("option", name=prefix)).to_be_visible()
 
         await admin_page.get_by_role("button", name="View node metadata").click()
         await expect(admin_page.get_by_text("Created at")).to_be_visible()
@@ -70,17 +78,18 @@ class TestResourceManager:
         await expect(admin_page.get_by_text("Updated at")).to_be_visible()
         await expect(admin_page.get_by_text("Updated by")).to_be_visible()
 
-        # dismiss the metadata popover so it stops overlaying the edit button
+        # dismiss the metadata popover so it stops overlaying the actions menu
         await admin_page.keyboard.press("Escape")
         await expect(admin_page.get_by_text("Created at")).to_be_hidden()
 
-        await admin_page.get_by_test_id("edit-button").click()
+        await header.get_by_role("button", name="Actions").click()
+        await admin_page.get_by_role("menuitem", name="Edit").click()
         await expect(admin_page.get_by_label("Default Prefix Type")).to_contain_text("IP PrefixIpam")
         await admin_page.get_by_label("Description").fill("a test pool for e2e")
         await admin_page.get_by_role("button", name="Save").click()
 
         await expect(admin_page.get_by_text("IPPrefixPool updated")).to_be_visible()
-        await expect(admin_page.get_by_text("Descriptiona test pool for e2e")).to_be_visible()
+        await expect(header.get_by_text("a test pool for e2e")).to_be_visible()
 
     async def test_delete_a_pool(self, admin_page: Page, resource_pool_data: None) -> None:
         await admin_page.goto("/resource-manager")
