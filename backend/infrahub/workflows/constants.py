@@ -33,6 +33,8 @@ TAG_NAMESPACE = "infrahub.app"
 
 class WorkflowTag(InfrahubStringEnum):
     BRANCH = "branch/{identifier}"
+    DELETED_BRANCH = "deleted-branch/{identifier}"
+    DELETED_BRANCH_ID = "deleted-branch-id/{identifier}"
     WORKFLOWTYPE = "workflow-type/{identifier}"
     DATABASE_CHANGE = "database-change"
     RELATED_NODE = "node/{identifier}"

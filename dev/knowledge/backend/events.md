@@ -100,7 +100,7 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
-For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to move the deleted branch's settled flow runs off its branch tag, so a branch re-created with the same name does not list them, while each run stays readable by id (see [Asynchronous Tasks](async-tasks.md)).
 
 ## Trigger action parameters
 
