@@ -24,7 +24,7 @@ export type FormRef<TValues extends FieldValues = FieldValues> = UseFormReturn<T
 export interface FormProps<TValues extends FieldValues = FieldValues>
   extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   /** A rejected promise keeps the form dirty, so the user can retry; the handler reports the failure itself. */
-  onSubmit?: (v: TValues) => void | Promise<void>;
+  onSubmit?: (v: TValues) => unknown;
   onCancel?: () => void;
   defaultValues?: DefaultValues<TValues>;
   /** When the fields validate; ignored when `form` is given, since that form already has one. */
