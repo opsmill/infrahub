@@ -95,7 +95,7 @@ tests/e2e/
                       # (one module per slice + parity dump tool, see below)
   test_login.py       # ported login.spec.ts
   branches/           # ported branches/*.spec.ts
-  objects/            # ported objects/**/*.spec.ts, plus test_object_containers.py
+  objects/            # ported objects/**/*.spec.ts
 ```
 
 The suite lives at the repo root (`tests/e2e/`) and **not** under
