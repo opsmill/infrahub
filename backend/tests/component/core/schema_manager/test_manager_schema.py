@@ -3449,6 +3449,39 @@ async def test_database_round_trip_keeps_the_declaration_order_of_containers(
     assert _container_names(loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)) == expected
 
 
+async def _stored_containers(db: InfrahubDatabase, branch: Branch, name: str) -> list[str]:
+    schema_nodes = await NodeManager.query(
+        db=db, schema="SchemaNode", filters={"namespace__value": "Infra", "name__value": name}, branch=branch
+    )
+    return [container["name"] for container in schema_nodes[0].containers.value]
+
+
+async def test_saving_a_node_stores_only_its_own_containers(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)), branch=default_branch.name)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch)
+    relabelled = copy.deepcopy(LAG_SCHEMA)
+    relabelled["generics"][0]["containers"][0]["label"] = "Link aggregation"
+    candidate = schema.duplicate()
+    candidate.load_schema(schema=SchemaRoot(version="1.0", generics=relabelled["generics"]))
+    candidate.process()
+    await registry.schema.update_schema_branch(
+        schema=candidate, db=db, branch=default_branch.name, diff=schema.diff(other=candidate)
+    )
+
+    assert await _stored_containers(db=db, branch=default_branch, name="LagInterfaceL2") == []
+    assert await _stored_containers(db=db, branch=default_branch, name="LagInterfaceL3") == ["layer3"]
+    loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    l2_containers = loaded.get_node(name="InfraLagInterfaceL2", duplicate=False).containers
+    assert [(container.label, container.inherited) for container in l2_containers] == [
+        ("Link aggregation", True),
+        ("Layer 2", True),
+        ("Layer 3", True),
+    ]
+
+
 async def test_load_schema_from_db_accepts_a_schema_stored_without_containers(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
