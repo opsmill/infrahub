@@ -134,7 +134,10 @@ ENV PATH="/.venv/bin:${PATH}" \
     INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
-ENV PREFECT_WORKER_QUERY_SECONDS="2" \
+# PREFECT_UI_STATIC_DIRECTORY: the task manager builds its UI files at startup; the default location is
+# inside the virtualenv, which only root can write to. prefect-helm overrides it with its own volume.
+ENV PREFECT_UI_STATIC_DIRECTORY="/opt/infrahub/prefect-ui" \
+    PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
     PREFECT_API_DATABASE_TIMEOUT=60 \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30 \
@@ -153,17 +156,26 @@ RUN apt-get update && \
 # `FROM` this one can install extra Python packages into /.venv when extending Infrahub.
 COPY --from=base /root/.local/bin/uv /root/.local/bin/uvx /usr/local/bin/
 
+# Runtime directories are owned by group 0 with the owner's permissions (g=u), so the image can also
+# run as a non-root user: the bundled `infrahub` user (uid 1000, gid 0) or an arbitrary uid in group 0,
+# as OpenShift assigns. /opt/infrahub itself must be writable because the task worker creates its git
+# config there (git.global_config_file). The default user stays root, so existing deployments and
+# volumes are unaffected.
 RUN mkdir /prom_shared /remote && \
-    mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
+    mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow /opt/infrahub/prefect-ui && \
+    useradd --uid 1000 --gid 0 --home-dir /home/infrahub --create-home --shell /usr/sbin/nologin infrahub && \
+    chgrp -R 0 /prom_shared /remote /opt/infrahub /home/infrahub && \
+    chmod -R g=u /prom_shared /remote /opt/infrahub /home/infrahub
 
 # --------------------------------------------
 # Configure Git
 # --------------------------------------------
-RUN git config --global user.name "Infrahub" && \
-    git config --global user.email "infrahub@opsmill.com" && \
-    git config --global --add safe.directory '*' && \
-    git config --global credential.usehttppath true && \
-    git config --global credential.helper "/usr/bin/env infrahub-git-credential"
+# System-wide rather than per-user, so the settings apply to whichever user runs the container.
+RUN git config --system user.name "Infrahub" && \
+    git config --system user.email "infrahub@opsmill.com" && \
+    git config --system --add safe.directory '*' && \
+    git config --system credential.usehttppath true && \
+    git config --system credential.helper "/usr/bin/env infrahub-git-credential"
 
 WORKDIR /source
 

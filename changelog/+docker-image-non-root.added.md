@@ -1,0 +1,1 @@
+The Docker image can run as a non-root user. It ships an `infrahub` user (uid 1000, gid 0), its runtime directories are writable by group 0 (so an arbitrary uid in group 0, as OpenShift assigns, works too), and the git settings are written to the system git config instead of root's. The default user is still root, so existing deployments are unaffected.
