@@ -64,9 +64,9 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
   - `read_license_status(service, now=None) -> LicenseStatus`, the single failure-containment boundary every surface uses (`except Exception` with a comment naming the top-level-boundary reason from `dev/guidelines/backend/exceptions.md`; no `# noqa: BLE001`, because ruff does not flag a handler that logs with `log.exception` and rejects the unused suppression).
 
   Make T008 pass.
-- [X] T010 Add `build_license_service()` (cached in `_singletons` under `"license_service"`) and `get_license_service()` (with `@inject` and `Depends(build_license_service)`) to `backend/infrahub/workers/dependencies.py`, mirroring `build_ldap_auth_service` / `get_ldap_auth_service`
-- [X] T011 [P] Write `backend/tests/unit/license/test_settings.py`: `LicenseSettings().key` is `None` by default and reads `INFRAHUB_LICENSE_KEY` from the environment; `Settings().license` exists; setting the key does not add anything to `Settings.enterprise_features`
-- [X] T012 Add `LicenseSettings` (`env_prefix="INFRAHUB_LICENSE_"`, `key: str | None = Field(default=None, description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.")`) and register it as `license: LicenseSettings = LicenseSettings()` on `Settings` in `backend/infrahub/config.py`; make T011 pass
+- [X] T010 Add `build_license_service()` (cached in `_singletons` under `"license_service"`) and `get_license_service()` (resolving `build_license_service` through a private `@inject` resolver) to `backend/infrahub/workers/dependencies.py`, mirroring `build_ldap_auth_service` / `get_ldap_auth_service`. `get_license_service()` never raises: a builder that raises is logged once and replaced by a cached `LicenseServiceUnavailable`
+- [X] T011 [P] Write `backend/tests/unit/license/test_settings.py`: `LicenseSettings().key` is `None` by default and for a blank value, and reads `INFRAHUB_LICENSE_KEY` from the environment; `Settings().license` exists; setting the key does not add anything to `Settings.enterprise_features`
+- [X] T012 Add `LicenseSettings` (`env_prefix="INFRAHUB_LICENSE_"`, `key: str | None = Field(default=None, description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.")`, with a `before` validator that reads a blank value as `None`) and register it as `license: LicenseSettings = LicenseSettings()` on `Settings` in `backend/infrahub/config.py`; make T011 pass
 
 **Checkpoint**: The contract exists, the rules are fully tested, and nothing calls it yet.
 
@@ -78,14 +78,14 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Independent Test**: Start the API server and a task worker on Community with and without `INFRAHUB_LICENSE_KEY`. Check one INFO line in each case and no other change (quickstart.md §5).
 
-- [ ] T013 [P] [US1] Write tests for `log_license_state(service, key_is_set)` in `backend/tests/unit/license/test_reporting.py`:
+- [X] T013 [P] [US1] Write tests for `log_license_state(service, key_is_set)` in `backend/tests/unit/license/test_reporting.py`:
   - `not_required` without a key logs one INFO line;
   - `not_required` with a key logs one INFO line saying the key is ignored, without the key's value;
   - `valid` logs INFO; `unlicensed`, `not_yet_valid`, `expiring` and `expired` log WARNING; `invalid` logs ERROR with the reason code;
-  - a service that raises still produces one ERROR line and no exception.
-- [ ] T014 [US1] Implement `log_license_state(service, key_is_set)` in `backend/infrahub/license/reporting.py` using `read_license_status`; make T013 pass
-- [ ] T015 [US1] Call `log_license_state(get_license_service(), key_is_set=config.SETTINGS.license.key is not None)` in `backend/infrahub/server.py::app_initialization`, right after `validate_graph_version`. It is the first caller, so an Enterprise service is built and verified at startup
-- [ ] T016 [US1] Call `log_license_state(...)` the same way in `backend/infrahub/workers/infrahub_async.py::InfrahubWorkerAsync.setup`, right after `validate_graph_version`
+  - a service that raises produces two ERROR entries, the traceback from the failure boundary and then the `invalid` / `internal_error` state line, and no exception.
+- [X] T014 [US1] Implement `log_license_state(service, key_is_set)` in `backend/infrahub/license/reporting.py` using `read_license_status`; make T013 pass
+- [X] T015 [US1] Call `log_license_state(get_license_service(), key_is_set=config.SETTINGS.license.key is not None)` in `backend/infrahub/server.py::app_initialization`, right after `validate_graph_version`. It is the first caller, so an Enterprise service is built and verified at startup
+- [X] T016 [US1] Call `log_license_state(...)` the same way in `backend/infrahub/workers/infrahub_async.py::InfrahubWorkerAsync.setup`, right after `validate_graph_version`
 
 **Checkpoint**: Startup behaviour is complete; the rest of the stories add surfaces.
 

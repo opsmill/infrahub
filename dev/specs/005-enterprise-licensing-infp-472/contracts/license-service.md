@@ -35,15 +35,14 @@ def evaluate(outcome: License | LicenseFailure | None, now: datetime) -> License
 def notice_for(status: LicenseStatus, mode: NoticeMode) -> Notice
 ```
 
-An Enterprise service verifies the key once at construction, keeps the outcome, and returns `evaluate(outcome, now or utcnow())` from `status()`. It catches any unexpected error and returns `evaluate(LicenseFailure(INTERNAL_ERROR), now)` after logging it.
+An Enterprise service verifies the key once at construction, keeps the outcome, and returns `evaluate(outcome, now or utcnow())` from `status()`. It catches any unexpected error and returns `evaluate(LicenseFailure(INTERNAL_ERROR), now)` after logging it. An error it raises while being built is contained by `get_license_service()` (see the guarantees below).
 
 ## Registration
 
 ```python
 # backend/infrahub/workers/dependencies.py
-def build_license_service() -> LicenseService          # community default, cached in _singletons
-@inject
-def get_license_service(service = Depends(build_license_service)) -> LicenseService
+def build_license_service() -> LicenseService          # community default, cached in _singletons; the override point
+def get_license_service() -> LicenseService            # resolves build_license_service through @inject; never raises
 
 # opsmill/infrahub-private: infrahub_enterprise/enterprise.py::set_enterprise_dependencies()
 # registered only once a production issuer exists
@@ -61,9 +60,12 @@ dependency_provider.override(build_license_service, build_ent_license_service)
   - `not_yet_valid`, `valid` and `expiring`: `license` and `days_remaining`.
   - `expired`: `license` and `days_since_expiry`.
 - Use only the reasons in `LicenseFailureReason`. A new reason is added in this repository first.
+- Make `notice_mode` and `enforcing_release` per-release constants that never raise; unlike `status()`, they are read without a guard.
 
 ## Guarantees this repository gives the Enterprise service
 
 - Every surface (info endpoint, About dialog, banner, header, telemetry, upgrade output, startup log) reads `status()`, `notice_mode` and `enforcing_release` only.
-- A raised exception from `status()` is still caught at every call site and treated as `invalid` / `internal_error`, so a defect in the Enterprise service cannot fail a request or a startup.
-- The license key is never read from these surfaces; only the Enterprise service reads `config.SETTINGS.license.key`.
+- A raised exception from `status()` is still caught at every call site and treated as `invalid` / `internal_error`.
+- An exception while building the service is contained too: `get_license_service()` logs it once with the traceback and returns `LicenseServiceUnavailable` (`invalid` / `internal_error`, quiet mode, no enforcing release) for the rest of the process, without retrying the builder. Quiet mode, because a build failure is a defect in the edition, not the customer's license, so only super-admins see it.
+- Together these mean an exception while building the service or from `status()` cannot fail a request or a startup, and no surface wraps those two calls itself. `notice_mode` and `enforcing_release` are read without a guard.
+- The license key's value is never read by these surfaces; only the Enterprise service reads `config.SETTINGS.license.key`, and the startup log only checks whether a key is set. A blank or whitespace-only value counts as no key.
