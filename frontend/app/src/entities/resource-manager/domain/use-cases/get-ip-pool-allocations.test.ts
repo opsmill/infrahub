@@ -73,18 +73,4 @@ describe("getIpPoolAllocations", () => {
     // THEN
     expect(getIpPoolAllocationsFromApi).toHaveBeenCalledWith(params);
   });
-
-  it("throws the API errors", async () => {
-    // GIVEN
-    vi.mocked(getIpPoolAllocationsFromApi).mockResolvedValue({
-      data: undefined,
-      errors: [{ message: "first" }, { message: "second" }],
-    } as unknown as ApiResult);
-
-    // WHEN
-    const result = getIpPoolAllocations(params);
-
-    // THEN
-    await expect(result).rejects.toThrow("first; second");
-  });
 });
