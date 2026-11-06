@@ -55,6 +55,8 @@ schema/node_modules/*
 **/.playwright-mcp/**
 **/.worktrees/
 .claude/worktrees/
+# Review receipts written by the OpsMill quality-gates/judging-changes skill; tied to one commit, never committed
+.claude/quality-gates/receipts/
 .bug-analysis-*.md
 .specify/**/.cache/
 .specify/feature.json
