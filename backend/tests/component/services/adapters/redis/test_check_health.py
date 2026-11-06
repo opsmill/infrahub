@@ -32,11 +32,11 @@ async def cache(redis: dict[int, int] | None) -> AsyncIterator[RedisCache]:
         await cache.close_connection()
 
 
-@pytest.fixture
-async def unreachable_cache(redis: dict[int, int] | None) -> AsyncIterator[RedisCache]:
-    """A cache client configured with an address where nothing listens."""
+@pytest.fixture(params=["127.0.0.1", "localhost"])
+async def unreachable_cache(request: pytest.FixtureRequest, redis: dict[int, int] | None) -> AsyncIterator[RedisCache]:
+    """A cache client configured with an address where nothing listens, as an IP address or as a dual-stack name."""
     previous = (config.SETTINGS.cache.address, config.SETTINGS.cache.port)
-    config.SETTINGS.cache.address = "127.0.0.1"
+    config.SETTINGS.cache.address = request.param
     config.SETTINGS.cache.port = closed_local_port()
     try:
         cache = RedisCache()

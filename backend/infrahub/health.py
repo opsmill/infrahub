@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import errno
 import re
 import socket
 import time
@@ -68,14 +67,7 @@ _CATEGORY_BY_ERROR_TYPE: tuple[tuple[tuple[type[BaseException], ...], ErrorCateg
     ((DependencyUnhealthyError,), ErrorCategory.UNAVAILABLE),
 )
 
-_CATEGORY_BY_ERRNO: dict[int, ErrorCategory] = {
-    errno.ECONNREFUSED: ErrorCategory.CONNECTION_REFUSED,
-    errno.ETIMEDOUT: ErrorCategory.TIMEOUT,
-    errno.ECONNRESET: ErrorCategory.CONNECTION_CLOSED,
-    errno.ECONNABORTED: ErrorCategory.CONNECTION_CLOSED,
-    errno.EPIPE: ErrorCategory.CONNECTION_CLOSED,
-}
-
+_JOINED_ERRORS_PREFIX = "Multiple exceptions: "
 _ERRNO_IN_MESSAGE = re.compile(r"\[Errno (\d+)\]")
 
 
@@ -136,17 +128,22 @@ def _category_of(error: BaseException) -> ErrorCategory | None:
     for error_types, category in _CATEGORY_BY_ERROR_TYPE:
         if isinstance(error, error_types):
             return category
-    if isinstance(error, OSError) and error.errno is None:
+    if isinstance(error, OSError) and error.errno is None and str(error).startswith(_JOINED_ERRORS_PREFIX):
         return _category_of_joined_errors(message=str(error))
     return None
 
 
 def _category_of_joined_errors(message: str) -> ErrorCategory | None:
-    # asyncio joins the errors of every address it tried into the text of one OSError, which has no errno of its own.
-    codes = {int(code) for code in _ERRNO_IN_MESSAGE.findall(message)}
-    if len(codes) != 1:
+    # A connection to every address of a name that fails joins the error of each address into the text of one OSError,
+    # which has no errno of its own; an errno with no category, such as an address the host cannot use, is ignored.
+    categories = {
+        category
+        for code in _ERRNO_IN_MESSAGE.findall(message)
+        if (category := _category_of(OSError(int(code), ""))) is not None
+    }
+    if len(categories) != 1:
         return None
-    return _CATEGORY_BY_ERRNO.get(codes.pop())
+    return categories.pop()
 
 
 class HealthChecker:
