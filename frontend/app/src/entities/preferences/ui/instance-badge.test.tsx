@@ -5,7 +5,7 @@ import { useConfig } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";
 import { initPointerTracking } from "../../../../tests/components/utils";
-import { generateConfig } from "../../../../tests/fake/config";
+import { generateConfigWithInstance } from "../../../../tests/fake/config";
 import { InstanceBadge } from "./instance-badge";
 
 vi.mock("@/entities/config/ui/config-provider");
@@ -21,9 +21,7 @@ describe("InstanceBadge", () => {
 
   test("shows the label in the red variant when the color is RED", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: "RED" } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", "RED"));
 
     // WHEN
     const component = await render(<InstanceBadge />);
@@ -35,9 +33,7 @@ describe("InstanceBadge", () => {
 
   test("falls back to the gray variant when the label has no color", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: null } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", null));
 
     // WHEN
     const component = await render(<InstanceBadge />);
@@ -48,9 +44,7 @@ describe("InstanceBadge", () => {
 
   test("renders nothing when no label is set", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: null, color: "RED" } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance(null, "RED"));
 
     // WHEN
     const component = await render(<InstanceBadge />);
@@ -61,9 +55,7 @@ describe("InstanceBadge", () => {
 
   test("shows the full label in a tooltip on hover", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: LONG_LABEL, color: "BLUE" } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance(LONG_LABEL, "BLUE"));
     const component = await render(<InstanceBadge />);
     await initPointerTracking(component.locator);
 

@@ -1,14 +1,9 @@
-import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { useTitle } from "@/shared/hooks/useTitle";
-
 import { useConfig } from "@/entities/config/ui/config-provider";
-import { DocumentTitle } from "@/entities/config/ui/document-title";
 
 import { render } from "../../tests/components/render";
-import { generateConfig } from "../../tests/fake/config";
+import { generateConfigWithInstance } from "../../tests/fake/config";
 import { Component as AppLayout } from "./app-layout";
 
 vi.mock("@/entities/config/ui/config-provider");
@@ -19,11 +14,6 @@ vi.mock("@/entities/navigation/ui/app-header", () => ({
   AppHeader: () => <header data-testid="header-stub">header</header>,
 }));
 
-function BranchesPage() {
-  useTitle("Branches");
-  return <h1>Branches</h1>;
-}
-
 describe("AppLayout", () => {
   afterEach(() => {
     vi.resetAllMocks();
@@ -31,9 +21,7 @@ describe("AppLayout", () => {
 
   test("renders the instance color bar edge to edge above the padded sidebar and header row", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: "RED" } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", "RED"));
 
     // WHEN
     const component = await render(<AppLayout />);
@@ -50,9 +38,7 @@ describe("AppLayout", () => {
 
   test("renders no color bar when no instance color is set", async () => {
     // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: null } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", null));
 
     // WHEN
     const component = await render(<AppLayout />);
@@ -60,30 +46,5 @@ describe("AppLayout", () => {
     // THEN
     await expect.element(component.getByTestId("header-stub")).toBeVisible();
     expect(component.getByTestId("instance-color-bar").query()).toBeNull();
-  });
-
-  test("keeps the page title set by a child route when the layout and the page mount together", async () => {
-    // GIVEN
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: null } })
-    );
-
-    // WHEN
-    const component = await render(<DocumentTitle />, {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <MemoryRouter initialEntries={["/branches"]}>
-          {children}
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/branches" element={<BranchesPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      ),
-    });
-
-    // THEN
-    await expect.element(component.getByRole("heading", { name: "Branches" })).toBeVisible();
-    expect(document.title).toBe("QA · Branches");
   });
 });

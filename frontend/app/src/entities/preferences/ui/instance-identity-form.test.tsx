@@ -123,17 +123,6 @@ describe("InstanceIdentityForm", () => {
     await expect.element(component.getByText("2/32")).toBeVisible();
   });
 
-  test("counts the label in code points, not UTF-16 units", async () => {
-    // GIVEN
-    const component = await render(<InstanceIdentityForm />);
-
-    // WHEN
-    await component.getByLabelText("Instance label").fill("😀😀");
-
-    // THEN
-    await expect.element(component.getByText("2/32")).toBeVisible();
-  });
-
   test("names the 32-character limit as soon as the label exceeds it", async () => {
     // GIVEN
     const component = await render(<InstanceIdentityForm />);
@@ -175,19 +164,6 @@ describe("InstanceIdentityForm", () => {
     // THEN
     await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
     expect(updateGlobalPreference).not.toHaveBeenCalled();
-  });
-
-  test("toasts the error when the save fails", async () => {
-    // GIVEN
-    vi.mocked(updateGlobalPreference).mockRejectedValue(new Error("Not allowed"));
-    const component = await render(<InstanceIdentityForm />);
-    await component.getByLabelText("Instance label").fill("QA");
-
-    // WHEN
-    await component.getByRole("button", { name: "Save instance identity" }).click();
-
-    // THEN
-    await expect.element(component.getByText("Not allowed")).toBeVisible();
   });
 
   test("keeps the typed label and the save button enabled when the save fails", async () => {

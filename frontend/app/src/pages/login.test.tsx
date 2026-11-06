@@ -4,7 +4,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../tests/components/render";
-import { generateConfig } from "../../tests/fake/config";
+import { generateConfigWithInstance } from "../../tests/fake/config";
 import { Component as LoginPage } from "./login";
 
 vi.mock("@/entities/authentication/ui/auth-provider");
@@ -28,9 +28,7 @@ describe("LoginPage", () => {
   test("shows the instance color bar above the page and the badge above the logo", async () => {
     // GIVEN
     vi.mocked(useAuth).mockReturnValue(unauthenticated);
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: "QA", color: "RED" } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", "RED"));
 
     // WHEN
     const component = await render(<LoginPage />);
@@ -48,9 +46,7 @@ describe("LoginPage", () => {
   test("shows neither the bar nor the badge when no instance identity is set", async () => {
     // GIVEN
     vi.mocked(useAuth).mockReturnValue(unauthenticated);
-    vi.mocked(useConfig).mockReturnValue(
-      generateConfig({ instance: { label: null, color: null } })
-    );
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance(null, null));
 
     // WHEN
     const component = await render(<LoginPage />);

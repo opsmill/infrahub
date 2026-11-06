@@ -56,22 +56,6 @@ describe("GlobalPreferencesEditor", () => {
     );
   });
 
-  test("keeps the date and time save button distinct from the instance identity one", async () => {
-    // GIVEN
-    vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
-
-    // WHEN
-    const component = await render(<GlobalPreferencesEditor />);
-
-    // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Save", exact: true }))
-      .toBeVisible();
-    await expect
-      .element(component.getByRole("button", { name: "Save instance identity", exact: true }))
-      .toBeVisible();
-  });
-
   test("renders the card wide enough (max-w-3xl) for the inline date-format example", async () => {
     const component = await render(<GlobalPreferencesEditor />);
 

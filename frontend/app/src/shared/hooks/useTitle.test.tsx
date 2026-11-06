@@ -11,23 +11,13 @@ const useTitleWithRegistered = (title: string) => {
 };
 
 describe("useTitle", () => {
-  test("registers the page title", async () => {
-    // GIVEN
-    const title = "Schema";
-
-    // WHEN
-    const { result } = await renderHook(() => useTitleWithRegistered(title));
-
-    // THEN
-    expect(result.current).toBe("Schema");
-  });
-
-  test("replaces the registered title when the page title changes", async () => {
+  test("registers the page title and replaces it when the page title changes", async () => {
     // GIVEN
     const { result, rerender } = await renderHook(
       (title: string = "Loading") => useTitleWithRegistered(title),
       { initialProps: "Loading" }
     );
+    expect(result.current).toBe("Loading");
 
     // WHEN
     await rerender("Device details");
