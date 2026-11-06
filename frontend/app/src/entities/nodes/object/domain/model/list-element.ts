@@ -1,9 +1,13 @@
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+
 export type ListElementType = "Node" | "Object" | "Array" | "Text" | "Number" | "Boolean" | "Null";
 
-/** One element of a List value, or of an Any value holding an array. */
-export interface ListElement {
+interface ListElementBase {
   position: number;
-  value: unknown;
-  type: ListElementType;
   text: string;
 }
+
+/** One element of a List value, or of an Any value holding an array. */
+export type ListElement =
+  | (ListElementBase & { type: "Node"; value: NodeCore })
+  | (ListElementBase & { type: Exclude<ListElementType, "Node">; value: unknown });

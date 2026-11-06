@@ -21,7 +21,7 @@ const TOKYO_PREFS: ResolvedDatePreferences = {
 
 const dateTimeSchema = { name: "expiration", kind: "DateTime" } as FieldSchema;
 
-function attributeValue(value: string): NodeAttributeWithMetadata {
+function attributeValue(value: unknown): NodeAttributeWithMetadata {
   return { value } as NodeAttributeWithMetadata;
 }
 
@@ -73,10 +73,7 @@ describe("ObjectAttributeValue for a List", () => {
   test("opens every element of a long List from View all", async () => {
     // GIVEN
     const component = await render(
-      <ObjectAttributeValue
-        attributeSchema={listSchema}
-        attributeData={{ value: uplinks } as unknown as NodeAttributeWithMetadata}
-      />
+      <ObjectAttributeValue attributeSchema={listSchema} attributeData={attributeValue(uplinks)} />
     );
 
     // WHEN
@@ -91,10 +88,7 @@ describe("ObjectAttributeValue for a List", () => {
   test("renders an empty List as a dash", async () => {
     // WHEN
     const component = await render(
-      <ObjectAttributeValue
-        attributeSchema={listSchema}
-        attributeData={{ value: [] } as unknown as NodeAttributeWithMetadata}
-      />
+      <ObjectAttributeValue attributeSchema={listSchema} attributeData={attributeValue([])} />
     );
 
     // THEN

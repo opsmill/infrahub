@@ -5,6 +5,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
+import { isEmptyAttributeValue } from "@/entities/nodes/object/domain/rules/is-empty-attribute-value";
 import { JsonValueButton } from "@/entities/nodes/object/ui/attribute-values/json-value-button";
 import { ListValueCell } from "@/entities/nodes/object/ui/attribute-values/list-value";
 import { MaskedValue } from "@/entities/nodes/object/ui/attribute-values/masked-value";
@@ -22,7 +23,7 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (!attributeData || R.isEmptyish(attributeData.value)) return "-";
+  if (!attributeData || isEmptyAttributeValue(attributeData.value)) return "-";
 
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
 

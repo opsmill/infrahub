@@ -2,7 +2,6 @@ import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
 import type { ListElement } from "@/entities/nodes/object/domain/model/list-element";
-import { isNodeReference } from "@/entities/nodes/object/domain/rules/is-node-reference";
 import { RelationshipNodeDisplay } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 
 export interface ListElementBadgeProps {
@@ -12,7 +11,7 @@ export interface ListElementBadgeProps {
 }
 
 export function ListElementBadge({ element, isLink, className }: ListElementBadgeProps) {
-  if (isNodeReference(element.value)) {
+  if (element.type === "Node") {
     return (
       <RelationshipNodeDisplay
         node={element.value}

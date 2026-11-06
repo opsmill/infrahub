@@ -1,13 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { ListElement } from "@/entities/nodes/object/domain/model/list-element";
 
-import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { filterListElements } from "./filter-list-elements";
-
-vi.mock("@/entities/schema/domain/use-cases/get-schema", () => ({
-  getSchema: vi.fn((kind: string) => ({ schema: generateNodeSchema({ kind }) })),
-}));
 
 const elements: ListElement[] = [
   { position: 1, value: "Ethernet1/1", type: "Text", text: "Ethernet1/1" },

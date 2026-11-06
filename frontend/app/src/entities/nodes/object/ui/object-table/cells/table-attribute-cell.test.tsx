@@ -11,19 +11,33 @@ const attribute = (value: unknown) => ({ value }) as NodeAttribute;
 const uplinks = Array.from({ length: 30 }, (_, index) => `Ethernet1/${index + 1}`);
 
 describe("TableAttributeCell", () => {
-  test("offers every element of a one-element List", async () => {
+  test("opens the element of a one-element List", async () => {
     // GIVEN
     const schema = generateAttributeSchema({ name: "uplinks", kind: "List", label: "Uplinks" });
-
-    // WHEN
     const component = await render(
       <TableAttributeCell attributeSchema={schema} attributeData={attribute(["mgmt0"])} />
     );
 
+    // WHEN
+    await component.getByRole("button", { name: "View all 1 element of Uplinks" }).click();
+
     // THEN
     await expect
-      .element(component.getByRole("button", { name: "View all 1 elements of Uplinks" }))
-      .toBeVisible();
+      .element(component.getByRole("dialog").getByText("mgmt0", { exact: true }))
+      .toBeInTheDocument();
+  });
+
+  test("shows a JSON value holding size 0 rather than a dash", async () => {
+    // GIVEN
+    const schema = generateAttributeSchema({ name: "disk", kind: "JSON", label: "Disk" });
+
+    // WHEN
+    const component = await render(
+      <TableAttributeCell attributeSchema={schema} attributeData={attribute({ size: 0 })} />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "View Disk JSON" })).toBeVisible();
   });
 
   test("shows no filter in the dialog of a 12-element List", async () => {

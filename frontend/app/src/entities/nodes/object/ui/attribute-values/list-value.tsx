@@ -10,11 +10,14 @@ import { getListElements } from "@/entities/nodes/object/domain/rules/get-list-e
 import { ListElementBadge } from "@/entities/nodes/object/ui/attribute-values/list-element-badge";
 import { ListElementsTable } from "@/entities/nodes/object/ui/attribute-values/list-elements-table";
 import { ValueDialog } from "@/entities/nodes/object/ui/attribute-values/value-dialog";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 /** More badges than fit in the widest table column, which the cell clips at its edge. */
 const LIST_CELL_MAX_BADGES = 8;
 /** The detail view shows this many badges before "View all", so a long list stays a few lines tall. */
 const LIST_DETAIL_MAX_BADGES = 10;
+
+const isKnownKind = (kind: string) => !!getSchema(kind).schema;
 
 export interface ListValueProps {
   values: unknown[];
@@ -22,7 +25,12 @@ export interface ListValueProps {
 }
 
 function ListElementsDialogBody({ values, attributeLabel }: ListValueProps) {
-  return <ListElementsTable elements={getListElements(values)} attributeLabel={attributeLabel} />;
+  return (
+    <ListElementsTable
+      elements={getListElements(values, isKnownKind)}
+      attributeLabel={attributeLabel}
+    />
+  );
 }
 
 function ListElementsDialog({
@@ -39,7 +47,7 @@ function ListElementsDialog({
       subtitle={pluralize(values.length, "element")}
       copyLabel={`Copy all ${values.length}`}
       copyData={() =>
-        getListElements(values)
+        getListElements(values, isKnownKind)
           .map((element) => element.text)
           .join("\n")
       }
@@ -62,7 +70,7 @@ export function ListValueCell({ values, attributeLabel }: ListValueProps) {
           isOverflowing && "mask-r-from-85%"
         )}
       >
-        {getListElements(values.slice(0, LIST_CELL_MAX_BADGES)).map((element) => (
+        {getListElements(values.slice(0, LIST_CELL_MAX_BADGES), isKnownKind).map((element) => (
           <ListElementBadge
             key={element.position}
             element={element}
@@ -77,7 +85,7 @@ export function ListValueCell({ values, attributeLabel }: ListValueProps) {
         size="xxs"
         className="shrink-0 text-foreground-muted tabular-nums"
         onPress={() => setIsOpen(true)}
-        aria-label={`View all ${values.length} elements of ${attributeLabel}`}
+        aria-label={`View all ${pluralize(values.length, "element")} of ${attributeLabel}`}
       >
         <ListIcon />
         {values.length}
@@ -98,7 +106,7 @@ export function ListValueDetail({ values, attributeLabel }: ListValueProps) {
 
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {getListElements(values.slice(0, LIST_DETAIL_MAX_BADGES)).map((element) => (
+      {getListElements(values.slice(0, LIST_DETAIL_MAX_BADGES), isKnownKind).map((element) => (
         <ListElementBadge key={element.position} element={element} className="max-w-full" />
       ))}
 

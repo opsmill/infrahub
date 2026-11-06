@@ -1,16 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { isNodeReference } from "./is-node-reference";
 
-vi.mock("@/entities/schema/domain/use-cases/get-schema", () => ({
-  getSchema: vi.fn((kind: string) => ({
-    schema: kind === "BuiltinTag" ? generateNodeSchema({ kind }) : undefined,
-  })),
-}));
-
 describe("isNodeReference", () => {
-  it("should accept an object with a string id and the __typename of a known kind", () => {
+  it("should accept an object with a string id and a string __typename", () => {
     // GIVEN
     const value = { id: "18e5-1", __typename: "BuiltinTag", display_label: "blue" };
 
@@ -22,7 +15,6 @@ describe("isNodeReference", () => {
   });
 
   it.each([
-    ["an unknown kind", { id: "18e5-1", __typename: "Order" }],
     ["no __typename", { id: "18e5-1" }],
     ["a numeric id", { id: 1, __typename: "BuiltinTag" }],
     ["a string hfid", { id: "18e5-1", __typename: "BuiltinTag", hfid: "blue" }],

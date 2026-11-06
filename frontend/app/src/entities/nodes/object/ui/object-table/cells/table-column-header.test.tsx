@@ -324,6 +324,15 @@ describe("TableColumnHeader", () => {
     expect(component.getByRole("menuitem", { name: "Sort ascending" }).query()).toBeNull();
   });
 
+  test("renders a plain label for a JSON attribute in a table without a schema", async () => {
+    // WHEN
+    const component = await render(<TableColumnHeader columnSchema={jsonAttribute} />);
+
+    // THEN
+    await expect.element(component.getByText("Config")).toBeVisible();
+    expect(component.getByRole("button", { name: "Config" }).query()).toBeNull();
+  });
+
   test("opens the filter form pre-filled when a filter is active on the column", async () => {
     // GIVEN
     seedFiltersInUrl([{ name: "name__value", value: "atl" }]);

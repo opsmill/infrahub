@@ -12,7 +12,6 @@ import { pluralize } from "@/shared/utils/string";
 
 import type { ListElement } from "@/entities/nodes/object/domain/model/list-element";
 import { filterListElements } from "@/entities/nodes/object/domain/rules/filter-list-elements";
-import { isNodeReference } from "@/entities/nodes/object/domain/rules/is-node-reference";
 import { JsonValueButton } from "@/entities/nodes/object/ui/attribute-values/json-value-button";
 import { ListElementBadge } from "@/entities/nodes/object/ui/attribute-values/list-element-badge";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
@@ -55,7 +54,7 @@ function ElementValue({
 }
 
 function ElementCopyButton({ element }: { element: ListElement }) {
-  const node = isNodeReference(element.value) ? element.value : null;
+  const node = element.type === "Node" ? element.value : null;
 
   return (
     <CopyToClipboardButton
@@ -92,7 +91,7 @@ function getColumns(attributeLabel: string, hasTypeColumn: boolean): ColumnDef<L
             header: header("Type"),
             cell: ({ row }) => (
               <TableCell>
-                {isNodeReference(row.original.value) ? (
+                {row.original.type === "Node" ? (
                   <NodeKindCell kind={row.original.value.__typename} />
                 ) : (
                   <span className="text-foreground-muted">{row.original.type}</span>
