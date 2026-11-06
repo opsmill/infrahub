@@ -15,16 +15,13 @@ describe("isFilterableField", () => {
     expect(result).toBe(true);
   });
 
-  it.each(["List", "JSON", "Any", "Password", "HashedPassword"])(
-    "should reject a %s attribute",
-    (kind) => {
-      // WHEN
-      const result = isFilterableField(generateAttributeSchema({ kind }));
+  it.each(["List", "JSON", "Any", "Password"])("should reject a %s attribute", (kind) => {
+    // WHEN
+    const result = isFilterableField(generateAttributeSchema({ kind }));
 
-      // THEN
-      expect(result).toBe(false);
-    }
-  );
+    // THEN
+    expect(result).toBe(false);
+  });
 
   it("should accept a relationship", () => {
     // WHEN

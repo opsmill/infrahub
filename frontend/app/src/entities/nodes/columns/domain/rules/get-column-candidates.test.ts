@@ -74,7 +74,7 @@ describe("getColumnCandidates", () => {
     expect(fields.map(({ name }) => name)).toEqual(["name"]);
   });
 
-  it("lists List, JSON, Any and password attributes as hidden by default", () => {
+  it("lists List, JSON, Any and Password attributes as hidden by default, and never HashedPassword", () => {
     // GIVEN
     const schema = generateNodeSchema({
       attributes: [
@@ -98,7 +98,6 @@ describe("getColumnCandidates", () => {
       { name: "config", isDefaultVisible: false },
       { name: "anything", isDefaultVisible: false },
       { name: "secret", isDefaultVisible: false },
-      { name: "hashed", isDefaultVisible: false },
     ]);
   });
 

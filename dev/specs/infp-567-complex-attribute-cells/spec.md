@@ -21,8 +21,8 @@ picker, turn the attribute on, and check that the column appears with each node'
 
 **Acceptance Scenarios**:
 
-1. **Given** a schema with a List, JSON, Any, Password or HashedPassword attribute, **When** the
-   user opens the column picker, **Then** the attribute is offered and is off by default.
+1. **Given** a schema with a List, JSON, Any or Password attribute, **When** the user opens the
+   column picker, **Then** the attribute is offered and is off by default.
 2. **Given** the user turns such an attribute on, **When** the table loads, **Then** the column
    shows the value of each node, and the column stays on when the link is shared or reloaded.
 3. **Given** a table with no column picked, **When** it loads, **Then** it shows the same columns
@@ -78,8 +78,8 @@ The user checks which nodes have a password or a hashed password set.
 
 ### Functional Requirements
 
-- **FR-001**: The column picker MUST offer attributes of kind List, JSON, Any, Password and
-  HashedPassword, turned off by default.
+- **FR-001**: The column picker MUST offer attributes of kind List, JSON, Any and Password, turned
+  off by default. It MUST NOT offer HashedPassword attributes.
 - **FR-002**: The default columns of every table MUST stay the same as before this feature.
 - **FR-003**: When the user turns such a column on, the table MUST fetch the attribute's value and
   render it.
@@ -110,8 +110,8 @@ The user checks which nodes have a password or a hashed password set.
 
 ### Measurable Outcomes
 
-- **SC-001**: Every attribute of kind List, JSON, Any, Password and HashedPassword can be shown as a
-  column, and a cell with a value is never empty.
+- **SC-001**: Every attribute of kind List, JSON, Any and Password can be shown as a column, and a
+  cell with a value is never empty.
 - **SC-002**: A user reads a list or JSON value for 10 nodes from one table, without opening any
   node.
 - **SC-003**: No table shows a new column unless the user turns it on.
@@ -129,5 +129,7 @@ The user checks which nodes have a password or a hashed password set.
 - The detail view is out of scope, except for List values: they show up to 10 elements as badges
   and "View all" (FR-004a), decided in the design step. The TextArea, ID, NodeKind and Checkbox
   kinds are out of scope.
+- HashedPassword was removed from the column picker on 2026-11-06 (Paul Leménager): its column would
+  fetch every row's hash only to show masked characters, and the detail view does not show it either.
 - No change to the backend or to the GraphQL schema: the values are already available.
 - The people who use these tables work on a desktop screen.

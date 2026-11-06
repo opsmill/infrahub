@@ -380,7 +380,7 @@ The list-view rules above take an optional second argument that opts named field
 [Column Visibility](column-visibility.md). Kind is a second tier for attributes:
 `ATTRIBUTE_KINDS_FOR_LIST_VIEW` sets the kinds shown by default, and
 `ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW` adds the kinds a user can only turn on (`List`, `JSON`,
-`Any`, `Password`, `HashedPassword`), whatever their `display`.
+`Any`, `Password`), whatever their `display`.
 
 ## Column visibility: the `columns` entity
 
