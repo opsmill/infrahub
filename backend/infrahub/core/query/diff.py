@@ -985,7 +985,9 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
-        query = """
+        if self.branch.is_default:
+            # the default branch holds most edges of the database, so its branch index reads more than a label scan
+            query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
 // -------------------------------------
@@ -996,7 +998,29 @@ AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
-        """
+            """
+        else:
+            # each part names one edge type and no vertex label, so that it can start from that type's branch index
+            query = """
+// -------------------------------------
+// Identify nodes with an attribute/relationship added/removed on branch
+// -------------------------------------
+CALL () {
+    MATCH (p)-[diff_rel:HAS_ATTRIBUTE {branch: $branch_name}]-(q)
+    RETURN p, diff_rel, q
+    UNION ALL
+    MATCH (p)-[diff_rel:IS_RELATED {branch: $branch_name}]-(q)
+    RETURN p, diff_rel, q
+}
+WITH p, diff_rel, q
+WHERE p:Node
+AND q.branch_support = $branch_aware
+AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+            """
         self.add_to_query(query)
         self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
 
@@ -1006,7 +1030,9 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
-        query = """
+        if self.branch.is_default:
+            # the default branch holds most edges of the database, so its branch index reads more than a label scan
+            query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
 // -------------------------------------
@@ -1018,7 +1044,37 @@ AND (
     ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
     OR ($from_time <= diff_rel.to < $to_time)
 )
-        """
+            """
+        else:
+            # each part names one edge type and no vertex label, so that it can start from that type's branch index
+            query = """
+// -------------------------------------
+// Identify nodes with a property added/removed on branch
+// -------------------------------------
+CALL () {
+    MATCH (p)-[diff_rel:IS_PROTECTED {branch: $branch_name}]->()
+    RETURN p, diff_rel
+    UNION ALL
+    MATCH (p)-[diff_rel:HAS_SOURCE {branch: $branch_name}]->()
+    RETURN p, diff_rel
+    UNION ALL
+    MATCH (p)-[diff_rel:HAS_OWNER {branch: $branch_name}]->()
+    RETURN p, diff_rel
+    UNION ALL
+    MATCH (p)-[diff_rel:HAS_VALUE {branch: $branch_name}]->()
+    RETURN p, diff_rel
+}
+WITH p, diff_rel
+WHERE (p:Attribute OR p:Relationship)
+AND p.branch_support = $branch_aware
+AND (
+    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+    OR ($from_time <= diff_rel.to < $to_time)
+)
+WITH DISTINCT p
+MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+WHERE $node_kinds IS NULL OR n.kind IN $node_kinds
+            """
         self.add_to_query(query)
         self.return_labels = ["collect(DISTINCT n.uuid) AS node_uuids"]
 
