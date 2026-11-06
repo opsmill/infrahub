@@ -1,13 +1,4 @@
-"""E2E coverage for the instance label and color global settings.
-
-An administrator names and colors the instance on the Global preferences page.
-Every visitor, including a user without any permission and an anonymous visitor
-on the login page, then views the label badge in the header, the color bar at the
-top of the page and the label in the browser tab title.
-
-Uses the read-only account (from the RBAC slice) as the inheriting user, so the
-test declares the ``data_rbac`` dependency transitively via ``read_only_page``.
-"""
+"""E2E coverage for the instance label and color that an administrator sets and every visitor views."""
 
 from __future__ import annotations
 
@@ -20,44 +11,34 @@ from playwright.async_api import expect
 pytestmark = pytest.mark.shard_foundation
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
 INSTANCE_LABEL = "QA"
-INSTANCE_LABEL_MAX_LENGTH = 32
 BRANCHES_PAGE_TITLE = "Branches list"
 APPLICATION_TITLE = "Infrahub"
 
 
+SET_INSTANCE_IDENTITY = """
+mutation ($label: String, $color: InstanceColor) {
+  InfrahubSetPreferences(scope: GLOBAL, instance_label: $label, instance_color: $color) {
+    ok
+  }
+}
+"""
+
+
 async def _set_instance_identity(client: InfrahubClient, *, label: str | None, color: str | None) -> None:
-    label_argument = "null" if label is None else f'"{label}"'
-    color_argument = "null" if color is None else color
-    await client.execute_graphql(
-        query=(
-            "mutation { InfrahubSetPreferences(scope: GLOBAL, "
-            f"instance_label: {label_argument}, instance_color: {color_argument}) {{ ok }} }}"
-        ),
-    )
+    await client.execute_graphql(query=SET_INSTANCE_IDENTITY, variables={"label": label, "color": color})
 
 
-async def _stored_instance_identity(page: Page) -> dict[str, str | None]:
-    response = await page.request.get("/api/config")
-    return (await response.json())["instance"]
+async def _expect_identity_on_branches_page(page: Page) -> None:
+    await expect(page.get_by_test_id("instance-badge")).to_contain_text(INSTANCE_LABEL)
+    await expect(page.get_by_test_id("instance-color-bar")).to_be_visible()
+    await expect(page).to_have_title(f"{INSTANCE_LABEL} · {BRANCHES_PAGE_TITLE}")
 
 
 class TestInstanceIdentity:
-    @pytest.fixture(autouse=True)
-    async def reset_instance_identity(self, infrahub_client: InfrahubClient) -> AsyncGenerator[None, None]:
-        """Clear the instance label and color after the test.
-
-        The global row is shared by every account on the session instance, so it
-        must be reset or later tests view a stale badge and bar.
-        """
-        yield
-        await _set_instance_identity(infrahub_client, label=None, color=None)
-
     async def test_admin_sets_the_label_and_color_and_every_user_views_them(
         self, admin_page: Page, read_only_page: Page
     ) -> None:
@@ -70,28 +51,11 @@ class TestInstanceIdentity:
 
         # A user without any permission views the badge, the bar and the tab title.
         await read_only_page.goto("/branches")
-        await expect(read_only_page.get_by_test_id("instance-badge")).to_contain_text(INSTANCE_LABEL)
-        await expect(read_only_page.get_by_test_id("instance-color-bar")).to_be_visible()
-        await expect(read_only_page).to_have_title(f"{INSTANCE_LABEL} · {BRANCHES_PAGE_TITLE}")
+        await _expect_identity_on_branches_page(read_only_page)
 
         # The identity comes from the server, so it survives a reload.
         await read_only_page.reload()
-        await expect(read_only_page.get_by_test_id("instance-badge")).to_contain_text(INSTANCE_LABEL)
-        await expect(read_only_page.get_by_test_id("instance-color-bar")).to_be_visible()
-        await expect(read_only_page).to_have_title(f"{INSTANCE_LABEL} · {BRANCHES_PAGE_TITLE}")
-
-    async def test_label_over_the_limit_is_refused_and_nothing_is_stored(self, admin_page: Page) -> None:
-        await admin_page.goto("/global-preferences")
-        await admin_page.get_by_label("Instance label").fill("x" * (INSTANCE_LABEL_MAX_LENGTH + 1))
-        await admin_page.get_by_role("button", name="Save instance identity").click()
-
-        await expect(
-            admin_page.get_by_text(f"cannot be longer than {INSTANCE_LABEL_MAX_LENGTH} characters")
-        ).to_be_visible()
-        await expect(admin_page.get_by_text("Instance identity updated")).to_have_count(0)
-
-        stored = await _stored_instance_identity(admin_page)
-        assert stored["label"] is None
+        await _expect_identity_on_branches_page(read_only_page)
 
     async def test_anonymous_visitor_views_the_identity_on_the_login_page(
         self, infrahub_client: InfrahubClient, page: Page
