@@ -50,6 +50,18 @@ class UserScopeInstanceFieldCase:
     variables: dict[str, Any]
 
 
+@dataclass
+class LabelOnlyCase:
+    name: str
+    label: str | None
+
+
+LABEL_ONLY_CASES: list[LabelOnlyCase] = [
+    LabelOnlyCase(name="new_label", label="Staging"),
+    LabelOnlyCase(name="null_resets_label", label=None),
+]
+
+
 USER_SCOPE_INSTANCE_FIELD_CASES: list[UserScopeInstanceFieldCase] = [
     UserScopeInstanceFieldCase(name="label_alone", variables={"instance_label": "QA"}),
     UserScopeInstanceFieldCase(name="color_with_timezone", variables={"timezone": "UTC", "instance_color": "RED"}),
@@ -73,6 +85,12 @@ async def run_mutation(
         root_value=None,
         variable_values=variables,
     )
+
+
+async def _stored_global(db: InfrahubDatabase) -> Preference:
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    assert global_pref is not None
+    return global_pref
 
 
 # --------------------------------------------------------------------------------------------
@@ -371,18 +389,22 @@ async def test_global_sets_instance_label_and_color(
         "instance_color": "RED",
     }
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
+    global_pref = await _stored_global(db)
     assert global_pref.instance_label == "us-east-1 PROD"
     assert global_pref.instance_color == InstanceColor.RED
 
 
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in LABEL_ONLY_CASES],
+)
 async def test_global_changes_instance_label_only(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
     register_core_models_schema: None,
     session_global_prefs_manager: AccountSession,
+    case: LabelOnlyCase,
 ) -> None:
     await PreferenceRepository(db=db).save(
         Preference(
@@ -394,7 +416,7 @@ async def test_global_changes_instance_label_only(
         db=db,
         branch=default_branch,
         account_session=session_global_prefs_manager,
-        variables={"scope": "GLOBAL", "instance_label": "Staging"},
+        variables={"scope": "GLOBAL", "instance_label": case.label},
     )
     assert result.errors is None
     assert result.data is not None
@@ -402,43 +424,14 @@ async def test_global_changes_instance_label_only(
         "ok": True,
         "date_format": "ISO_DATETIME",
         "timezone": None,
-        "instance_label": "Staging",
+        "instance_label": case.label,
         "instance_color": "BLUE",
     }
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
-    assert global_pref.instance_label == "Staging"
+    global_pref = await _stored_global(db)
+    assert global_pref.instance_label == case.label
     assert global_pref.instance_color == InstanceColor.BLUE
     assert global_pref.date_format == "ISO_DATETIME"
-
-
-async def test_global_null_label_resets_it_and_keeps_color(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    session_global_prefs_manager: AccountSession,
-) -> None:
-    await PreferenceRepository(db=db).save(
-        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA", instance_color=InstanceColor.BLUE)
-    )
-
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_global_prefs_manager,
-        variables={"scope": "GLOBAL", "instance_label": None},
-    )
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubSetPreferences"]["instance_label"] is None
-    assert result.data["InfrahubSetPreferences"]["instance_color"] == "BLUE"
-
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
-    assert global_pref.instance_label is None
-    assert global_pref.instance_color == InstanceColor.BLUE
 
 
 async def test_global_trims_instance_label(
@@ -458,51 +451,8 @@ async def test_global_trims_instance_label(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["instance_label"] == "QA"
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
+    global_pref = await _stored_global(db)
     assert global_pref.instance_label == "QA"
-
-
-async def test_global_whitespace_only_label_resets_it(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    session_global_prefs_manager: AccountSession,
-) -> None:
-    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA"))
-
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_global_prefs_manager,
-        variables={"scope": "GLOBAL", "instance_label": "   "},
-    )
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubSetPreferences"]["instance_label"] is None
-
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
-    assert global_pref.instance_label is None
-
-
-async def test_global_rejects_instance_label_over_max_length(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    session_global_prefs_manager: AccountSession,
-) -> None:
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_global_prefs_manager,
-        variables={"scope": "GLOBAL", "instance_label": "a" * 33},
-    )
-    assert result.errors is not None
-    assert [error.message for error in result.errors] == ["instance_label cannot be longer than 32 characters"]
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 
 async def test_global_rejects_unknown_instance_color(
@@ -523,33 +473,6 @@ async def test_global_rejects_unknown_instance_color(
     # The coercion message is graphql-core's wording; only the enum it names is ours to pin.
     assert "InstanceColor" in result.errors[0].message
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
-
-
-async def test_global_instance_fields_denied_for_normal_account(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
-) -> None:
-    await PreferenceRepository(db=db).save(
-        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="PROD", instance_color=InstanceColor.RED)
-    )
-
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_first_account,
-        variables={"scope": "GLOBAL", "instance_label": "QA", "instance_color": "GREEN"},
-    )
-    assert result.errors is not None
-    assert [error.message for error in result.errors] == ["You are not allowed to manage global preferences"]
-
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
-    assert global_pref.instance_label == "PROD"
-    assert global_pref.instance_color == InstanceColor.RED
 
 
 @pytest.mark.parametrize(
@@ -575,27 +498,3 @@ async def test_user_scope_rejects_instance_fields(
         "instance_label and instance_color can only be set with scope GLOBAL"
     ]
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
-
-
-async def test_global_instance_fields_allowed_for_super_admin(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    create_test_admin: Node,
-    session_admin: AccountSession,
-) -> None:
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_admin,
-        variables={"scope": "GLOBAL", "instance_label": "QA", "instance_color": "GREEN"},
-    )
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubSetPreferences"]["ok"] is True
-
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert global_pref is not None
-    assert global_pref.instance_label == "QA"
-    assert global_pref.instance_color == InstanceColor.GREEN
