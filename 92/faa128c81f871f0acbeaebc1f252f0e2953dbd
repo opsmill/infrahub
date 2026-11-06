@@ -1,0 +1,21 @@
+dev/specs/20260903-user-greeting-helper/spec.md
+  s_39e80460cc65cb::t_72bd433f3d90d4 1-49
+dev/specs/20260903-user-greeting-helper/checklists/requirements.md
+  s_39e80460cc65cb::t_72bd433f3d90d4 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92faa128c81f871f0acbeaebc1f252f0e2953dbd",
+  "prompts": {},
+  "sessions": {
+    "s_39e80460cc65cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b0fc-9fa2-7a42-8bde-64538bfaab14",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
