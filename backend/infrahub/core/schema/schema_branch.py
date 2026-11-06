@@ -755,6 +755,7 @@ class SchemaBranch:
         self.process_attributes_state()
         self.process_relationships_state()
         self.process_containers_state()
+        self.process_cleared_container_references()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
@@ -2275,6 +2276,18 @@ class SchemaBranch:
                 continue
             updated_node = node.duplicate()
             updated_node.containers = containers
+            self.set(name=name, schema=updated_node)
+
+    def process_cleared_container_references(self) -> None:
+        """Move back to the main section each field loaded with `container: ""`, the schema's value to clear an optional text."""
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if not any(field.container == "" for field in [*node.attributes, *node.relationships]):  # noqa: PLC1901
+                continue
+            updated_node = node.duplicate()
+            for field in [*updated_node.attributes, *updated_node.relationships]:
+                if field.container == "":  # noqa: PLC1901
+                    field.container = None
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:

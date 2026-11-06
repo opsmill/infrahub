@@ -197,24 +197,56 @@ def _reload_generic(schema_branch: SchemaBranch, generic: dict[str, Any]) -> Non
     schema_branch.process()
 
 
-def _generic_without_field_container(field_list: str, field_name: str) -> dict[str, Any]:
+def _generic_with_field_container(field_list: str, field_name: str, container: str | None) -> dict[str, Any]:
     generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
     field = next(field for field in generic[field_list] if field["name"] == field_name)
-    del field["container"]
+    if container is None:
+        del field["container"]
+    else:
+        field["container"] = container
     return generic
 
 
-@pytest.mark.parametrize(
-    ("field_list", "field_name"), [("attributes", "lacp_rate"), ("relationships", "sub_interfaces")]
-)
-def test_reload_without_container_moves_a_field_back_to_details(field_list: str, field_name: str) -> None:
+FIELDS_IN_A_SECTION = [("attributes", "lacp_rate", "lacp"), ("relationships", "sub_interfaces", "advanced")]
+
+
+@pytest.mark.parametrize(("field_list", "field_name", "container"), FIELDS_IN_A_SECTION)
+def test_reload_without_container_keeps_the_field_in_its_section(
+    field_list: str, field_name: str, container: str
+) -> None:
     schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
 
-    _reload_generic(schema_branch, _generic_without_field_container(field_list=field_list, field_name=field_name))
+    _reload_generic(
+        schema_branch, _generic_with_field_container(field_list=field_list, field_name=field_name, container=None)
+    )
+
+    for kind in (GENERIC_KIND, L2_KIND):
+        node = schema_branch.get(name=kind, duplicate=False)
+        assert next(field for field in getattr(node, field_list) if field.name == field_name).container == container
+
+
+@pytest.mark.parametrize(("field_list", "field_name", "container"), FIELDS_IN_A_SECTION)
+def test_reload_with_an_empty_container_moves_a_field_back_to_details(
+    field_list: str, field_name: str, container: str
+) -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+
+    _reload_generic(
+        schema_branch, _generic_with_field_container(field_list=field_list, field_name=field_name, container="")
+    )
 
     for kind in (GENERIC_KIND, L2_KIND):
         node = schema_branch.get(name=kind, duplicate=False)
         assert next(field for field in getattr(node, field_list) if field.name == field_name).container is None
+
+
+def test_first_load_with_an_empty_container_shows_the_field_in_details() -> None:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["generics"][0]["attributes"][0]["container"] = ""
+
+    schema_branch = _processed_branch(schema=schema)
+
+    assert schema_branch.get(name=L2_KIND, duplicate=False).get_attribute(name="name").container is None
 
 
 def test_reload_removing_a_container_and_its_references_together_is_accepted() -> None:
@@ -223,7 +255,7 @@ def test_reload_removing_a_container_and_its_references_together_is_accepted() -
     generic["containers"] = [{"name": "lacp", "label": "LACP", "state": HashableModelState.ABSENT.value}]
     for attribute in generic["attributes"]:
         if attribute.get("container") == "lacp":
-            del attribute["container"]
+            attribute["container"] = ""
 
     _reload_generic(schema_branch, generic)
 

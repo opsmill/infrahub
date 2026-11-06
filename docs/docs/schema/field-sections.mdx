@@ -35,6 +35,7 @@ Set `container` on an attribute or a relationship to the name of a section of th
 - The name of a section that the node declares or inherits from a generic.
 - `advanced`, for the built-in Advanced section.
 - Nothing, to keep the field in the Details section.
+- An empty string (`container: ""`), to move a field that has a section back to the Details section when you load the schema again.
 
 <ReferenceLink title="Attribute reference" url="../reference/schema/attribute#container" openInNewTab />
 <ReferenceLink title="Relationship reference" url="../reference/schema/relationship#container" openInNewTab />
@@ -212,7 +213,7 @@ When you load a schema again, Infrahub merges the `containers` of each node and 
 - A section with a new name is added in that order.
 - A section with an existing name takes the properties of the new file. A `description` or `order_weight` that the new file leaves out keeps its previous value.
 - A section that the new file leaves out is kept, after the sections of the file.
-- A field that has a `container` in the stored schema but none in the new file moves back to **Details**.
+- A field that has a `container` in the stored schema keeps it when the new file leaves `container` out. To move the field back to **Details**, set `container: ""`.
 
 A load that changes only the order of the sections is a schema change. When two branches order the sections of the same node differently, merging one branch into the other reports a conflict on `containers`.
 
@@ -225,7 +226,14 @@ containers:
     state: absent
 ```
 
-Move the fields of that section to another section, or remove their `container`, in the same load: a field that still references a removed section makes the schema load fail.
+In the same load, move the fields of that section to another section, or move them back to **Details** with `container: ""`. A field that still references a removed section makes the schema load fail, and leaving `container` out of the field keeps the reference:
+
+```yaml
+attributes:
+  - name: mtu
+    kind: Number
+    container: ""
+```
 
 ## Errors when you load a schema
 
