@@ -5,9 +5,12 @@ import { Disclosure, DisclosurePanel, Button as DisclosureTrigger } from "react-
 
 import { classNames } from "@/shared/utils/common";
 
+import type { FieldSection } from "@/entities/nodes/object/domain/model/field-section";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
-import { hasExtraFields } from "@/entities/nodes/object/domain/rules/has-extra-fields";
-import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
+import {
+  getDataDisplayFields,
+  ObjectDataDisplay,
+} from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import { SectionTitle } from "@/entities/nodes/object/ui/object-details/section-title";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -18,10 +21,9 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
+  fieldNames?: string[];
   title?: React.ReactNode;
-  description?: string | null;
-  defaultCollapsed?: boolean;
-  sectionName?: string;
+  section?: FieldSection<unknown>["container"];
 }
 
 export function ObjectDetailsCard({
@@ -30,18 +32,19 @@ export function ObjectDetailsCard({
   permission,
   className,
   excludeRelationships,
+  fieldNames,
   title = "Details",
-  description,
-  defaultCollapsed,
-  sectionName,
+  section,
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
   const [showExtra, setShowExtra] = React.useState(false);
-  const schemaHasExtraFields = hasExtraFields(objectSchema);
+  const fields = getDataDisplayFields({ objectSchema, excludeRelationships, fieldNames });
+  const hasExtraFields = fields.some((field) => field.display === "extra");
+  const description = section?.description;
 
-  const extraButton = schemaHasExtraFields && (
+  const extraButton = hasExtraFields && (
     <Button
       variant="ghost"
       size="sm"
@@ -60,6 +63,7 @@ export function ObjectDetailsCard({
       permission={permission}
       showExtra={showExtra}
       excludeRelationships={excludeRelationships}
+      fieldNames={fieldNames}
     />
   );
 
@@ -73,7 +77,7 @@ export function ObjectDetailsCard({
     >
       <SectionTitle
         label={
-          defaultCollapsed === undefined ? (
+          section === undefined ? (
             title
           ) : (
             <DisclosureTrigger
@@ -88,7 +92,7 @@ export function ObjectDetailsCard({
                   isExpanded && "rotate-90"
                 )}
               />
-              {title}
+              {section.label}
             </DisclosureTrigger>
           )
         }
@@ -105,18 +109,18 @@ export function ObjectDetailsCard({
       className={className}
       role="region"
       aria-labelledby={titleId}
-      {...(sectionName === undefined
+      {...(section === undefined
         ? { "data-testid": "object-details" }
-        : { "data-testid": "object-details-section", "data-section": sectionName })}
+        : { "data-testid": "object-details-section", "data-section": section.name })}
     >
-      {defaultCollapsed === undefined ? (
+      {section === undefined ? (
         <>
           {header(true)}
           {dataDisplay}
         </>
       ) : (
         // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
-        <Disclosure defaultExpanded={!defaultCollapsed} className="rounded-[inherit]">
+        <Disclosure defaultExpanded={!section.collapsed} className="rounded-[inherit]">
           {({ isExpanded }) => (
             <>
               {header(isExpanded)}

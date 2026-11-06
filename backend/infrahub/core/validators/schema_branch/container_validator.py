@@ -35,15 +35,12 @@ class ContainerValidator(SchemaBranchValidator):
 
     def _validate_references(self, node: MainSchemaTypes) -> None:
         valid_names = {container.name for container in node.containers} | {ADVANCED_CONTAINER_NAME}
-        for attribute in node.attributes:
-            if attribute.container is not None and attribute.container not in valid_names:
-                raise ValueError(
-                    f"{node.kind}.attributes.{attribute.name}.container: "
-                    f"container '{attribute.container}' is not declared on {node.kind}"
-                )
-        for relationship in node.relationships:
-            if relationship.container is not None and relationship.container not in valid_names:
-                raise ValueError(
-                    f"{node.kind}.relationships.{relationship.name}.container: "
-                    f"container '{relationship.container}' is not declared on {node.kind}"
-                )
+        for field_list, fields in (("attributes", node.attributes), ("relationships", node.relationships)):
+            for field in fields:
+                if field.inherited:
+                    continue
+                if field.container is not None and field.container not in valid_names:
+                    raise ValueError(
+                        f"{node.kind}.{field_list}.{field.name}.container: "
+                        f"container '{field.container}' is not declared on {node.kind}"
+                    )

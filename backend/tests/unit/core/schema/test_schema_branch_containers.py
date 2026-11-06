@@ -35,6 +35,15 @@ def _lag_schema_with_generic_containers(containers: list[dict[str, Any]]) -> dic
     return schema
 
 
+def _lag_schema_with_generic_attribute_container(attribute_name: str, container: str) -> dict[str, Any]:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    attribute = next(
+        attribute for attribute in schema["generics"][0]["attributes"] if attribute["name"] == attribute_name
+    )
+    attribute["container"] = container
+    return schema
+
+
 def _lag_schema_with_l2_field(field_list: str, field: dict[str, Any]) -> dict[str, Any]:
     schema = copy.deepcopy(LAG_SCHEMA)
     schema["nodes"][L2_INDEX][field_list] = [field]
@@ -93,6 +102,11 @@ REFUSED_CONTAINER_CASES = [
             },
         ),
         message=f"{L2_KIND}.relationships.sub_interfaces.container: container 'layer4' is not declared on {L2_KIND}",
+    ),
+    RefusedContainerCase(
+        name="generic_attribute_referencing_an_undeclared_container",
+        schema=_lag_schema_with_generic_attribute_container(attribute_name="lacp_rate", container="lacpp"),
+        message=f"{GENERIC_KIND}.attributes.lacp_rate.container: container 'lacpp' is not declared on {GENERIC_KIND}",
     ),
     RefusedContainerCase(
         name="duplicate_container_names",
@@ -179,15 +193,18 @@ def test_reference_resolved_through_an_inherited_container_is_accepted() -> None
     assert node.get_attribute(name="l2_mode").container == "layer2"
 
 
-def test_removing_a_container_from_the_generic_refuses_the_inherited_field_on_the_next_load() -> None:
+def test_removing_a_container_from_the_generic_refuses_its_field_on_the_next_load() -> None:
     schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
     generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
     generic["containers"] = [{"name": "layer2", "label": "Layer 2", "state": HashableModelState.ABSENT.value}]
+    next(attribute for attribute in generic["attributes"] if attribute["name"] == "mac_address")["container"] = ""
     schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=[generic]))
 
     with pytest.raises(
         ValueError,
-        match=exact_message(f"{L2_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {L2_KIND}"),
+        match=exact_message(
+            f"{GENERIC_KIND}.attributes.l2_mode.container: container 'layer2' is not declared on {GENERIC_KIND}"
+        ),
     ):
         schema_branch.process()
 
@@ -197,33 +214,56 @@ def _reload_generic(schema_branch: SchemaBranch, generic: dict[str, Any]) -> Non
     schema_branch.process()
 
 
-def _generic_without_field_container(field_list: str, field_name: str) -> dict[str, Any]:
+def _generic_with_field_container(field_list: str, field_name: str, container: str | None) -> dict[str, Any]:
     generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
     field = next(field for field in generic[field_list] if field["name"] == field_name)
-    del field["container"]
+    if container is None:
+        del field["container"]
+    else:
+        field["container"] = container
     return generic
 
 
-def test_reload_without_container_moves_an_attribute_back_to_details() -> None:
-    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
-
-    _reload_generic(schema_branch, _generic_without_field_container(field_list="attributes", field_name="lacp_rate"))
-
-    assert schema_branch.get(name=GENERIC_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
-    assert schema_branch.get(name=L2_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
+FIELDS_IN_A_SECTION = [("attributes", "lacp_rate", "lacp"), ("relationships", "sub_interfaces", "advanced")]
 
 
-def test_reload_without_container_moves_a_relationship_back_to_details() -> None:
+@pytest.mark.parametrize(("field_list", "field_name", "container"), FIELDS_IN_A_SECTION)
+def test_reload_without_container_keeps_the_field_in_its_section(
+    field_list: str, field_name: str, container: str
+) -> None:
     schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
 
     _reload_generic(
-        schema_branch, _generic_without_field_container(field_list="relationships", field_name="sub_interfaces")
+        schema_branch, _generic_with_field_container(field_list=field_list, field_name=field_name, container=None)
     )
 
-    generic = schema_branch.get(name=GENERIC_KIND, duplicate=False)
-    node = schema_branch.get(name=L2_KIND, duplicate=False)
-    assert generic.get_relationship(name="sub_interfaces").container is None
-    assert node.get_relationship(name="sub_interfaces").container is None
+    for kind in (GENERIC_KIND, L2_KIND):
+        node = schema_branch.get(name=kind, duplicate=False)
+        assert next(field for field in getattr(node, field_list) if field.name == field_name).container == container
+
+
+@pytest.mark.parametrize(("field_list", "field_name", "container"), FIELDS_IN_A_SECTION)
+def test_reload_with_an_empty_container_moves_a_field_back_to_details(
+    field_list: str, field_name: str, container: str
+) -> None:
+    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+
+    _reload_generic(
+        schema_branch, _generic_with_field_container(field_list=field_list, field_name=field_name, container="")
+    )
+
+    for kind in (GENERIC_KIND, L2_KIND):
+        node = schema_branch.get(name=kind, duplicate=False)
+        assert next(field for field in getattr(node, field_list) if field.name == field_name).container is None
+
+
+def test_first_load_with_an_empty_container_shows_the_field_in_details() -> None:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["generics"][0]["attributes"][0]["container"] = ""
+
+    schema_branch = _processed_branch(schema=schema)
+
+    assert schema_branch.get(name=L2_KIND, duplicate=False).get_attribute(name="name").container is None
 
 
 def test_reload_removing_a_container_and_its_references_together_is_accepted() -> None:
@@ -232,7 +272,7 @@ def test_reload_removing_a_container_and_its_references_together_is_accepted() -
     generic["containers"] = [{"name": "lacp", "label": "LACP", "state": HashableModelState.ABSENT.value}]
     for attribute in generic["attributes"]:
         if attribute.get("container") == "lacp":
-            del attribute["container"]
+            attribute["container"] = ""
 
     _reload_generic(schema_branch, generic)
 
@@ -264,7 +304,7 @@ def test_reference_to_a_container_marked_absent_on_a_first_load_is_refused() -> 
     with pytest.raises(
         ValueError,
         match=exact_message(
-            f"{L2_KIND}.attributes.lacp_rate.container: container 'legacy' is not declared on {L2_KIND}"
+            f"{GENERIC_KIND}.attributes.lacp_rate.container: container 'legacy' is not declared on {GENERIC_KIND}"
         ),
     ):
         _processed_branch(schema=schema)

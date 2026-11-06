@@ -250,6 +250,24 @@ LOAD_CONTRACT_CASES = [
         warning_messages=[],
     ),
     LoadContractCase(
+        name="empty-container-on-a-field-accepted",
+        payload={
+            "version": "1.0",
+            "nodes": [
+                {
+                    "namespace": "Test",
+                    "name": "Widget",
+                    "attributes": [{"name": "field_one", "kind": "Text", "container": ""}],
+                    "relationships": [
+                        {"name": "gadgets", "peer": "TestGadget", "cardinality": "many", "container": ""}
+                    ],
+                }
+            ],
+        },
+        accepted=True,
+        warning_messages=[],
+    ),
+    LoadContractCase(
         name="inherited-flag-inside-container-is-read-only",
         payload=_node_with_containers(
             [{"name": "lacp", "label": "LACP", "inherited": True}, {"name": "layer2", "label": "Layer 2"}]

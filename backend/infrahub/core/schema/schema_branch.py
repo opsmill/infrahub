@@ -755,6 +755,7 @@ class SchemaBranch:
         self.process_attributes_state()
         self.process_relationships_state()
         self.process_containers_state()
+        self.process_cleared_container_references()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
@@ -2037,10 +2038,8 @@ class SchemaBranch:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
-                if any(container.inherited for container in node.containers):
-                    node = node.duplicate()
-                    node_inheritance_handler.inherit_containers(node=node, interfaces=[])
-                    self.set(name=name, schema=node)
+                if len(node.local_containers) != len(node.containers):
+                    self.set(name=name, schema=node.model_copy(update={"containers": node.local_containers}))
                 continue
 
             node = node.duplicate()
@@ -2051,12 +2050,14 @@ class SchemaBranch:
                 )
 
             generic_with_hierarchical_support = []
+            generics: list[GenericSchema] = []
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
                 generic_kind_schema = self.get_generic(generic_kind, duplicate=False)
+                generics.append(generic_kind_schema)
                 if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
@@ -2068,10 +2069,7 @@ class SchemaBranch:
                     generics_used_by[generic_kind].append(node.kind)
                 node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
-            node_inheritance_handler.inherit_containers(
-                node=node,
-                interfaces=[self.get_generic(name=generic_kind, duplicate=False) for generic_kind in node.inherit_from],
-            )
+            node_inheritance_handler.inherit_containers(node=node, interfaces=generics)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(
@@ -2270,12 +2268,23 @@ class SchemaBranch:
     def process_containers_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=name, duplicate=False)
-            if not any(container.state == HashableModelState.ABSENT for container in node.containers):
+            containers = [container for container in node.containers if container.state != HashableModelState.ABSENT]
+            if len(containers) == len(node.containers):
                 continue
             updated_node = node.duplicate()
-            updated_node.containers = [
-                container for container in node.containers if container.state != HashableModelState.ABSENT
-            ]
+            updated_node.containers = containers
+            self.set(name=name, schema=updated_node)
+
+    def process_cleared_container_references(self) -> None:
+        """Move back to the main section each field loaded with `container: ""`, the schema's value to clear an optional text."""
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if not any(field.container == "" for field in [*node.attributes, *node.relationships]):  # noqa: PLC1901
+                continue
+            updated_node = node.duplicate()
+            for field in [*updated_node.attributes, *updated_node.relationships]:
+                if field.container == "":  # noqa: PLC1901
+                    field.container = None
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
