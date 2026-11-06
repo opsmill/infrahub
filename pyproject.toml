@@ -486,6 +486,7 @@ exclude = [
     "build",
     "dist",
     "examples",
+    ".specify",
 ]
 
 
@@ -589,6 +590,9 @@ allow-dunder-method-names = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+
+# Agent hooks are standalone scripts run by Claude Code and Codex, outside the project's code.
+".agents/hooks/*.py" = ["ALL"]
 
 "backend/infrahub/**.py" = [
     ##################################################################################################
@@ -1224,6 +1228,7 @@ python-version = "3.12"
 [tool.ty.src]
 exclude = [
     "python_sdk/**",
+    ".specify/**",
 ]
 
 [[tool.ty.overrides]]
