@@ -24,6 +24,8 @@ PR synced           ──► reviewer auto-runs → FIX_APPROVED | FIX_CHANGES_
 
 The pipeline uses a single PR throughout: `/bug-tdd` opens it, `/bug-fix` adds the fix to the same branch. To revise a rejected step, re-run the same command on that PR — `/bug-tdd` after `TEST_CHANGES_REQUESTED`, `/bug-fix` after `FIX_CHANGES_REQUESTED`.
 
+The agents write each marker inside backticks. A marker written outside them is posted with its underscores escaped, and the gates remove that escaping before they match.
+
 ### Running the pipeline on community-reported issues
 
 Issues from outside contributors must be approved by an OpsMill maintainer before the pipeline can run on them. A maintainer applies the `state/ai-pipeline-ready` label after reviewing the report; once labeled, anyone can post `/bug-analyze`. The label must stay on for the duration of the pipeline. Maintainer-authored issues skip this step.
@@ -57,8 +59,8 @@ Issues from outside contributors must be approved by an OpsMill maintainer befor
 
 ### Bug reviewer (automatic)
 
-- **Where to invoke:** not invoked manually — runs automatically on `pull_request` events (`opened`, `synchronize`, `edited`, `reopened`) for PRs whose head branch starts with `ai-bug-pipeline-`.
-- **What it does:** picks test-review or fix-review mode based on the PR body markers, posts a verdict comment whose first line is one of `AGENT_REVIEW_VERDICT: TEST_APPROVED | TEST_CHANGES_REQUESTED | FIX_APPROVED | FIX_CHANGES_REQUESTED`. The verdict is the gate the downstream `/bug-tdd` or `/bug-fix` run reads.
+- **Where to invoke:** not invoked manually — runs automatically on `pull_request` events (`opened`, `synchronize`, `reopened`) for PRs whose head branch starts with `ai-bug-pipeline-`.
+- **What it does:** picks test-review or fix-review mode based on the PR body markers, posts a verdict comment whose first line is one of `AGENT_REVIEW_VERDICT: TEST_APPROVED | TEST_CHANGES_REQUESTED | FIX_APPROVED | FIX_CHANGES_REQUESTED`, inside backticks. The verdict is the gate the downstream `/bug-tdd` or `/bug-fix` run reads.
 - **Preconditions:** PR head branch matches `ai-bug-pipeline-*` and the PR body contains either `AGENT_TEST_COMPLETE` or `AGENT_FIX_COMPLETE`. The reviewer self-skips if the current mode is already approved or after three iterations of the same mode (labels the PR `state/needs-human-fix`).
 - **Owning workflow:** [`.github/workflows/bug-agent-review.md`](./.github/workflows/bug-agent-review.md)
 

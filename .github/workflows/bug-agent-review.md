@@ -26,17 +26,22 @@ tools:
     toolsets: [default]
     min-integrity: approved
     approval-labels: [state/ai-pipeline-ready]
+    # GitHub marks this bot's comments as CONTRIBUTOR, which min-integrity hides, but the agents must read them.
+    trusted-users: ["opsmill-bug-pipeline[bot]"]
 network: defaults
 checkout:
   fetch-depth: 0
   submodules: true
 jobs:
   review-gate:
+    # The escaped forms are how a marker written outside a code span gets posted.
     if: |
       startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
       (
         contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
-        contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
+        contains(github.event.pull_request.body, 'AGENT\_TEST\_COMPLETE') ||
+        contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE') ||
+        contains(github.event.pull_request.body, 'AGENT\_FIX\_COMPLETE')
       )
     runs-on: ubuntu-slim
     permissions:
@@ -75,6 +80,8 @@ jobs:
             exit 0
           }
 
+          # Agent output is posted with underscores outside code spans escaped, so markers are matched with that escaping removed.
+          PR_BODY=${PR_BODY//\\_/_}
           if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
             MODE=fix
             MARKER="AGENT_REVIEW_VERDICT: FIX_APPROVED"
@@ -84,10 +91,12 @@ jobs:
           fi
 
           # One line per approval comment: the reviewed SHA, or "none" when the comment predates the SHA marker.
+          export MARKER
           APPROVALS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq ".[] | select((.user.login == \"opsmill-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
-              and (.body | contains(\"$MARKER\")))
-              | ((.body | capture(\"AGENT_REVIEW_SHA: (?<s>[0-9a-f]{40})\") | .s) // \"none\")")
+            --jq '.[] | .body |= (. // "" | gsub("\\\\_"; "_"))
+              | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+                and (.body | contains($ENV.MARKER)))
+              | ((.body | capture("AGENT_REVIEW_SHA: (?<s>[0-9a-f]{40})") | .s) // "none")')
 
           if [ -z "$APPROVALS" ]; then
             review "No $MARKER yet: reviewing."
@@ -122,7 +131,9 @@ if: |
   startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
   (
     contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
-    contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
+    contains(github.event.pull_request.body, 'AGENT\_TEST\_COMPLETE') ||
+    contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE') ||
+    contains(github.event.pull_request.body, 'AGENT\_FIX\_COMPLETE')
   ) &&
   needs.review-gate.outputs.should_review == 'true'
 safe-outputs:
@@ -187,7 +198,9 @@ If neither marker is present, do nothing and stop.
 
 5. Post a **GitHub PR comment** (do NOT submit a PR review -- no approve, no request-changes).
    Downstream pipeline agents trigger on the verdict marker in your comment.
-   Your comment must contain:
+   Your comment must contain the markers below, each written inside backticks (for example
+   `` `AGENT_REVIEW_VERDICT: TEST_APPROVED` ``) so that their underscores are not escaped when
+   the comment is posted:
    - A verdict marker as the **very first line**, exactly one of these strings:
      - `AGENT_REVIEW_VERDICT: TEST_APPROVED` -- test meets quality standards
      - `AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED` -- test needs revision
