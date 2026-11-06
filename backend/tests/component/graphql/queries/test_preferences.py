@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import pytest
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
@@ -371,34 +374,38 @@ async def test_global_returns_instance_label_and_color(
     }
 
 
-async def test_user_query_does_not_expose_instance_label(
+@dataclass
+class HiddenInstanceLabelCase:
+    name: str
+    query: str
+    expected_error: str
+
+
+HIDDEN_INSTANCE_LABEL_CASES: list[HiddenInstanceLabelCase] = [
+    HiddenInstanceLabelCase(
+        name="user",
+        query=USER_QUERY_WITH_INSTANCE_LABEL,
+        expected_error="Cannot query field 'instance_label' on type 'RawPreferencesType'.",
+    ),
+    HiddenInstanceLabelCase(
+        name="effective",
+        query=EFFECTIVE_QUERY_WITH_INSTANCE_LABEL,
+        expected_error="Cannot query field 'instance_label' on type 'EffectivePreferencesType'.",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in HIDDEN_INSTANCE_LABEL_CASES])
+async def test_user_and_effective_queries_do_not_expose_instance_label(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     session_first_account: AccountSession,
+    case: HiddenInstanceLabelCase,
 ) -> None:
-    result = await run_query(
-        db=db, branch=default_branch, query=USER_QUERY_WITH_INSTANCE_LABEL, account_session=session_first_account
-    )
+    result = await run_query(db=db, branch=default_branch, query=case.query, account_session=session_first_account)
     assert result.errors is not None
-    assert [error.message for error in result.errors] == [
-        "Cannot query field 'instance_label' on type 'RawPreferencesType'."
-    ]
-
-
-async def test_effective_query_does_not_expose_instance_label(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-    session_first_account: AccountSession,
-) -> None:
-    result = await run_query(
-        db=db, branch=default_branch, query=EFFECTIVE_QUERY_WITH_INSTANCE_LABEL, account_session=session_first_account
-    )
-    assert result.errors is not None
-    assert [error.message for error in result.errors] == [
-        "Cannot query field 'instance_label' on type 'EffectivePreferencesType'."
-    ]
+    assert [error.message for error in result.errors] == [case.expected_error]
 
 
 async def test_global_allowed_for_super_admin(
