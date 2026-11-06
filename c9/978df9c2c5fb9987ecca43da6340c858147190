@@ -1,0 +1,19 @@
+dev/specs/005-user-greeting/tasks.md
+  s_4a76b7eb5788e6::t_18145319cc29b0 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9978df9c2c5fb9987ecca43da6340c858147190",
+  "prompts": {},
+  "sessions": {
+    "s_4a76b7eb5788e6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b0eb-5c40-79c0-b93c-01fd910c0d75",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
