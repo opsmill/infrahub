@@ -63,7 +63,6 @@ async def test_config_endpoint_anonymous_account(
 
     assert response.status_code == 200
     assert response.json()["instance"] == {"label": None, "color": None}
-    # The anonymous read reports "nothing set" without creating the global preference row.
     assert await PreferenceRepository(db=db).get_all() == []
 
 
