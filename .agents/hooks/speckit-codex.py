@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Route Codex calls to Spec Kit's YAML-dependent scripts through the venv wrapper."""
+"""Route Codex calls to Spec Kit's scripts through the venv wrapper."""
 
 import json
 import os
@@ -11,8 +11,8 @@ from pathlib import Path
 
 
 SPECKIT_COMMAND = re.compile(
-    r"(?:^|[\s;&|])['\"]?(?:[^\s;&|]*?/)?\.specify/scripts/bash/"
-    r"(?:setup-plan|setup-tasks)\.sh(?=$|[\s;&|])"
+    r"(?:^|[\s;&|])['\"]?(?:[^\s;&|]*?/)?\.specify/(?:extensions/[\w-]+/)?scripts/bash/"
+    r"[\w-]+\.sh(?=$|[\s;&|])"
 )
 
 
