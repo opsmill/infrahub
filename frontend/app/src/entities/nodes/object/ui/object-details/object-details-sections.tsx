@@ -1,5 +1,6 @@
 import { sortByOrderWeight } from "@/shared/utils/common";
 
+import { DETAILS_SECTION } from "@/entities/nodes/object/domain/model/field-section";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-detailed-view";
 import { groupFieldsBySection } from "@/entities/nodes/object/domain/rules/group-fields-by-section";
@@ -49,14 +50,14 @@ export function ObjectDetailsSections({
     );
   }
 
-  return sections.map(({ key, kind, container, items }) => {
+  return sections.map(({ container, items }) => {
     const attributes = items.filter((item): item is AttributeSchema => !isRelationshipSchema(item));
     const relationships = [...items.filter(isRelationshipSchema), ...poolRelationships];
-    const isDetails = kind === "details";
+    const isDetails = container.name === DETAILS_SECTION.name;
 
     return (
       <ObjectDetailsCard
-        key={key}
+        key={container.name}
         title={container.label}
         description={isDetails ? undefined : container.description}
         defaultCollapsed={isDetails ? undefined : container.collapsed}
