@@ -1,7 +1,7 @@
 from inspect import isawaitable
-from typing import Any
+from typing import Any, Callable
 
-from graphql import GraphQLResolveInfo
+from graphql import DocumentNode, GraphQLResolveInfo, OperationDefinitionNode, OperationType
 
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
@@ -10,6 +10,20 @@ ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "Bran
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]
 # BranchDelete is expected to verify that it is not deleting the merging branch
 ALLOWED_MUTATIONS_DURING_MERGE = ["BranchCreate", "BranchDelete"]
+
+
+def branch_status_middleware(document: DocumentNode) -> list[Callable[..., Any]] | None:
+    """Middleware to execute `document` with: the branch status check when it holds a mutation, else none.
+
+    The check gates the top-level fields of a mutation only, but graphql-core calls a middleware for every field
+    it resolves: for a query, it would cost one call per field, more than a million for a large query, and
+    check nothing. The operation definitions decide, not the fields they select, so that a mutation whose
+    top-level fields come from a fragment is still checked.
+    """
+    for definition in document.definitions:
+        if isinstance(definition, OperationDefinitionNode) and definition.operation == OperationType.MUTATION:
+            return [raise_on_mutation_for_branch_status]
+    return None
 
 
 def raise_on_mutation_for_branch_status(next: Any, root: Any, info: GraphQLResolveInfo, **kwargs: Any) -> Any:  # noqa: A002
