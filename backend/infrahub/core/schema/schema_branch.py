@@ -2038,10 +2038,8 @@ class SchemaBranch:
                 generics_used_by[InfrahubKind.NODE].append(node.kind)
 
             if not node.inherit_from:
-                if any(container.inherited for container in node.containers):
-                    node = node.duplicate()
-                    node_inheritance_handler.inherit_containers(node=node, interfaces=[])
-                    self.set(name=name, schema=node)
+                if len(node.local_containers) != len(node.containers):
+                    self.set(name=name, schema=node.model_copy(update={"containers": node.local_containers}))
                 continue
 
             node = node.duplicate()
@@ -2052,12 +2050,14 @@ class SchemaBranch:
                 )
 
             generic_with_hierarchical_support = []
+            generics: list[GenericSchema] = []
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
                 generic_kind_schema = self.get_generic(generic_kind, duplicate=False)
+                generics.append(generic_kind_schema)
                 if generic_kind_schema.hierarchical:
                     generic_with_hierarchical_support.append(generic_kind)
 
@@ -2069,10 +2069,7 @@ class SchemaBranch:
                     generics_used_by[generic_kind].append(node.kind)
                 node_inheritance_handler.inherit_from_interface(node=node, interface=generic_kind_schema)
 
-            node_inheritance_handler.inherit_containers(
-                node=node,
-                interfaces=[self.get_generic(name=generic_kind, duplicate=False) for generic_kind in node.inherit_from],
-            )
+            node_inheritance_handler.inherit_containers(node=node, interfaces=generics)
 
             if len(generic_with_hierarchical_support) > 1:
                 raise ValueError(

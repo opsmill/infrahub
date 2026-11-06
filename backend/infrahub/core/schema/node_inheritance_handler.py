@@ -105,7 +105,7 @@ class NodeInheritanceHandler:
 
         A node container named like a generic container replaces it in place; the first generic declaring a name wins.
         """
-        own_containers = [container for container in node.containers if not container.inherited]
+        own_containers = node.local_containers
         inherited_containers: dict[str, ContainerSchema] = {}
         for interface in interfaces:
             for container in interface.containers:
