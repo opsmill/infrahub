@@ -157,8 +157,7 @@ class InfrahubObjectStorage:
                 stored = f.read()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
-        # With encryption on, anything that starts like an envelope must authenticate; with it off, only a complete
-        # envelope counts, so plain files that happen to start with the magic are not refused.
+        # With encryption off only a complete envelope counts, so plain files that start with the magic are served.
         is_encrypted = has_envelope_magic(stored) if self._settings.encryption_enabled else is_envelope(stored)
         if not is_encrypted:
             return StoredContent(content=stored, authenticated=False)

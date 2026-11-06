@@ -12,7 +12,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import StorageEncryptionError
 from infrahub.storage import InfrahubObjectStorage
-from infrahub.storage_encryption.crypto import StorageKey
+from infrahub.storage_encryption.crypto import StorageKey, seal
 from tests.helpers.artifact import create_stored_artifact
 from tests.helpers.schema.file_contract import FILE_CONTRACT
 
@@ -284,6 +284,84 @@ async def test_object_nothing_records_a_checksum_for_is_served_as_it_is(
         response = client.get(url=f"/api/storage/object/{LOOSE_ID}", headers=admin_headers)
 
     assert (response.status_code, response.content) == (200, b"content nobody references")
+
+
+async def test_decrypted_artifact_is_still_checked_against_its_checksum_while_encryption_is_off(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    artifact = await create_stored_artifact(
+        db=db,
+        car_person_data_generic=car_person_data_generic,
+        storage_id=ARTIFACT_ID,
+        checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
+    )
+    key = StorageKey.derive(config.SETTINGS.security.secret_key)
+    InfrahubObjectStorage(
+        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}), key=key
+    ).store(identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT))
+    urls = [f"/api/artifact/{artifact.id}", f"/api/storage/object/{ARTIFACT_ID}"]
+
+    with client:
+        served = [client.get(url=url, headers=admin_headers) for url in urls]
+        forged = seal(identifier=ARTIFACT_ID, content=b'{"hostname": "evil"}', key=key)
+        (local_storage_dir / ARTIFACT_ID).write_bytes(forged)
+        refused = [client.get(url=url, headers=admin_headers) for url in urls]
+
+    assert [(response.status_code, response.content) for response in served] == [(200, ARTIFACT)] * 2
+    assert [(response.status_code, response.json()) for response in refused] == [
+        (409, checksum_refusal(ARTIFACT_ID))
+    ] * 2
+
+
+async def test_secret_published_in_the_example_files_does_not_decrypt_while_encryption_is_off(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    published = "327f747f-efac-42be-9e73-999f08f86b92"
+    monkeypatch.setattr(config.SETTINGS.security, "secret_key", published)
+    artifact = await create_stored_artifact(
+        db=db,
+        car_person_data_generic=car_person_data_generic,
+        storage_id=ARTIFACT_ID,
+        checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
+    )
+    forged = seal(identifier=ARTIFACT_ID, content=b'{"hostname": "evil"}', key=StorageKey.derive(published))
+    (local_storage_dir / ARTIFACT_ID).write_bytes(forged)
+
+    with client:
+        response = client.get(url=f"/api/artifact/{artifact.id}", headers=admin_headers)
+
+    assert (response.status_code, response.json()) == (
+        500,
+        {
+            "data": None,
+            "errors": [
+                {
+                    "message": (
+                        f"The stored object {ARTIFACT_ID} is encrypted but this process has no key to decrypt it; "
+                        "set INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled"
+                    ),
+                    "extensions": {"code": 500},
+                }
+            ],
+        },
+    )
 
 
 async def test_binary_content_is_served_byte_for_byte_whether_it_is_encrypted_or_not(

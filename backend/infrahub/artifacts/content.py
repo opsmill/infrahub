@@ -32,6 +32,7 @@ def get_artifact_content_reader(db: InfrahubDatabase) -> ArtifactContentReader:
         storage=registry.storage,
         verify_checksum=settings.verify_artifact_checksum or settings.encryption_enabled,
         verify_file_objects=settings.encryption_enabled,
+        trust_decrypted=settings.encryption_enabled,
     )
 
 
@@ -52,16 +53,20 @@ class ArtifactContentReader:
         storage: InfrahubObjectStorage,
         verify_checksum: bool,
         verify_file_objects: bool,
+        trust_decrypted: bool,
     ) -> None:
         """Create a reader.
 
         `verify_file_objects` turns on the checksum check of file objects stored before storage encryption
-        was enabled. File objects are not checked otherwise.
+        was enabled. File objects are not checked otherwise. `trust_decrypted` serves content that decrypted
+        without a checksum check; it is on only while storage encryption is enabled, as a key that is still held
+        after encryption was turned off no longer proves who wrote the file.
         """
         self.db = db
         self.storage = storage
         self.verify_checksum = verify_checksum
         self.verify_file_objects = verify_file_objects
+        self.trust_decrypted = trust_decrypted
 
     async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes:
         """Return the file stored under `storage_id` for an artifact whose recorded checksum is `checksum`.
@@ -74,7 +79,7 @@ class ArtifactContentReader:
 
         """
         stored = self.storage.read(identifier=storage_id)
-        if stored.authenticated or not self.verify_checksum:
+        if (stored.authenticated and self.trust_decrypted) or not self.verify_checksum:
             return stored.content
         # Generation always records a checksum with the file, so a file without one was set by hand and cannot be checked.
         if not checksum:
@@ -95,7 +100,7 @@ class ArtifactContentReader:
 
         """
         stored = self.storage.read(identifier=storage_id)
-        if stored.authenticated or not self.verify_checksum:
+        if (stored.authenticated and self.trust_decrypted) or not self.verify_checksum:
             return stored.content
         checksums = await self._get_recorded_checksums(storage_id=storage_id)
         if checksums:
@@ -115,7 +120,7 @@ class ArtifactContentReader:
 
         """
         stored = self.storage.read(identifier=storage_id)
-        if stored.authenticated or not self.verify_file_objects or not checksum:
+        if (stored.authenticated and self.trust_decrypted) or not self.verify_file_objects or not checksum:
             return stored.content
         if matches_recorded_checksum(content=stored.content, checksums={checksum}) is False:
             log.warning("Refused to serve a file that does not match its checksum", storage_id=storage_id)
