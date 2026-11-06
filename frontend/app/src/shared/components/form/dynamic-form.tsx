@@ -78,7 +78,7 @@ function DynamicFieldList({ fields }: { fields: Array<DynamicFieldProps> }) {
   return fields.map((field) => <DynamicField key={`${field.type}_${field.name}`} {...field} />);
 }
 
-function DynamicFields({ fields, sections }: Pick<DynamicFormProps, "fields" | "sections">) {
+export function DynamicFields({ fields, sections }: Pick<DynamicFormProps, "fields" | "sections">) {
   const fieldSections = sections ? groupFieldsBySection(sections, fields, getFieldContainer) : [];
 
   if (fieldSections.every((section) => section.container.name === DETAILS_SECTION.name)) {

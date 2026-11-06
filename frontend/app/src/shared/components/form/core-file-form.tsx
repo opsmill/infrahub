@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
-import { DynamicField } from "@/shared/components/form/dynamic-form";
+import { DynamicFields } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type { FormFieldValue } from "@/shared/components/form/type";
@@ -185,9 +185,7 @@ export function CoreFileForm({
         onFileSelect={setSelectedFile}
       />
 
-      {fields.map((field) => (
-        <DynamicField key={`${field.type}_${field.name}`} {...field} />
-      ))}
+      <DynamicFields fields={fields} sections={schema.containers} />
 
       <Row className="justify-end">
         {onCancel && (
