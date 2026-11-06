@@ -56,13 +56,23 @@ go before you change anything.
 
 ## 4. Change this repository
 
-Search for the old version and change every pin that the search finds, except the files that
-record past changes and `.github/workflows/version-upgrade.yml`, whose images are the versions that
-the upgrade test starts from:
+Search for the old version and change every pin that the search finds, except:
+
+- the files that record past changes;
+- `.github/workflows/version-upgrade.yml`, whose images are the versions that the upgrade test
+  starts from;
+- the high-availability example, `development/deploy.tf` and the
+  [high-availability guide](../../../docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx).
+  Each pins a whole stack: the Infrahub image, the Infrahub Enterprise chart and the charts of the
+  services. No release step moves its Infrahub version, so a new service version there runs with
+  an Infrahub release that does not ship it. After the release that ships the upgrade, move the
+  whole example to that release in one pull request.
 
 ```bash
 git grep -nF '<old tag>' -- ':!CHANGELOG.md' ':!changelog' ':!docs/docs/release-notes' \
-  ':!dev/specs' ':!docs/archive' ':!.github/workflows/version-upgrade.yml'
+  ':!dev/specs' ':!docs/archive' ':!.github/workflows/version-upgrade.yml' \
+  ':!development/deploy.tf' \
+  ':!docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx'
 ```
 
 The service notes give a better search for Neo4j and Prefect. Add a changelog fragment of type
@@ -169,8 +179,9 @@ then the `opsmill/infrahub-private` one. The person who cuts the release merges 
   change, which `AGENTS.md` says to agree on first: get that agreement and change it in the same
   pull request, or the end-to-end suite keeps testing a version that Infrahub no longer ships.
 - Performance runs: set `NEO4J_DOCKER_IMAGE`, or `DATABASE_DOCKER_IMAGE` for a cluster, in both
-  runs, because the defaults of the test containers can differ. The high-availability example
-  installs the `neo4j/neo4j` charts itself: install them at the new chart version.
+  runs, because the defaults of the test containers can differ. When you deploy the
+  high-availability example in step 7, install its `neo4j/neo4j` charts at the new chart version,
+  without changing the version in the example.
 
 ### Prefect
 
