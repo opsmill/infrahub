@@ -29,6 +29,7 @@ from infrahub.core.query.relationship import (
     RelData,
 )
 from infrahub.core.relationship import Relationship
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
@@ -1306,6 +1307,74 @@ async def test_query_RelationshipGetByIdentifierQuery(
     )
     await query.execute(db=db)
     assert await query.count(db=db) == 4
+
+
+@dataclass
+class RelationshipGetByIdentifierNodeIdsCase:
+    name: str
+    node_names: list[str]
+    excluded_node_names: list[str]
+    expected_pairs: set[frozenset[str]]
+
+
+RELATIONSHIP_GET_BY_IDENTIFIER_NODE_IDS_CASES: list[RelationshipGetByIdentifierNodeIdsCase] = [
+    RelationshipGetByIdentifierNodeIdsCase(
+        name="relationships_of_the_given_nodes_only",
+        node_names=["John"],
+        excluded_node_names=[],
+        expected_pairs={frozenset({"John", "accord"}), frozenset({"John", "volt"}), frozenset({"John", "prius"})},
+    ),
+    RelationshipGetByIdentifierNodeIdsCase(
+        name="relationships_of_excluded_nodes_are_left_out",
+        node_names=["accord", "camry"],
+        excluded_node_names=["John"],
+        expected_pairs={frozenset({"Jane", "camry"})},
+    ),
+]
+
+
+@pytest.fixture(scope="class")
+async def owners_and_cars_ids(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, car_person_schema_scope_class: SchemaBranch
+) -> dict[str, str]:
+    ids: dict[str, str] = {}
+    for name in ("John", "Jane"):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
+        await person.new(db=db, name=name, height=180)
+        await person.save(db=db)
+        ids[name] = person.id
+    for name, owner in (("accord", "John"), ("volt", "John"), ("prius", "John"), ("camry", "Jane"), ("yaris", "Jane")):
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
+        await car.new(db=db, name=name, nbr_seats=5, is_electric=False, owner=ids[owner])
+        await car.save(db=db)
+        ids[name] = car.id
+    return ids
+
+
+class TestRelationshipGetByIdentifierQueryNodeIds:
+    @pytest.mark.parametrize("case", RELATIONSHIP_GET_BY_IDENTIFIER_NODE_IDS_CASES, ids=lambda case: case.name)
+    async def test_relationships_of_nodes(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        owners_and_cars_ids: dict[str, str],
+        case: RelationshipGetByIdentifierNodeIdsCase,
+    ) -> None:
+        names_by_id = {node_id: name for name, node_id in owners_and_cars_ids.items()}
+
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=db,
+            branch=default_branch_scope_class,
+            identifiers=["testcar__testperson"],
+            node_ids=[owners_and_cars_ids[name] for name in case.node_names],
+            excluded_node_ids=[owners_and_cars_ids[name] for name in case.excluded_node_names],
+        )
+        await query.execute(db=db)
+
+        assert {
+            frozenset({names_by_id[str(peers.source_id)], names_by_id[str(peers.destination_id)]})
+            for peers in query.get_peers()
+        } == case.expected_pairs
 
 
 async def test_query_RelationshipGetPeerQuery_branch_agnostic(
