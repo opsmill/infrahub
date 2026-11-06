@@ -55,12 +55,6 @@ overrides:
   '@betterer/betterer>simple-git': ^4.0.2
   glob@>=9.0.0 <14.0.2: ^14.0.2
   minimatch@>=7.0.0 <11.0.1: ^11.0.1
-  '@fastify/busboy@<3.2.2': ^3.2.2
-  dompurify@<3.4.17: ^3.4.17
-  markdown-it@<14.3.3: ^14.3.3
-  shell-quote@<1.11.0: ^1.11.0
-  simple-git@<4.0.1: ^4.0.2
-  tinypool@<2.1.2: ^2.1.2
 
 importers:
 
