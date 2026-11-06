@@ -80,9 +80,7 @@ async def test_unknown_stored_instance_color_reads_back_as_none_and_warns_once(
     assert fetched.instance_label == "QA"
     assert fetched_again is not None
     assert fetched_again.instance_color is None
-    assert [record.getMessage() for record in caplog.records if "PINK" in record.getMessage()] == [
-        "Stored instance_color is not a known preset and is read as unset"
-    ]
+    assert sum("not a known preset" in record.getMessage() for record in caplog.records) == 1
 
 
 async def test_save_updates_in_place_without_creating_a_second_row(
