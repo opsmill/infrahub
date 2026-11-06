@@ -18112,12 +18112,7 @@ export type GenericPoolInput = {
   identifier?: InputMaybe<Scalars['String']['input']>;
 };
 
-/**
- * The organisation-wide raw preferences, plus the instance identity that exists at that scope only.
- *
- * `instance_label` and `instance_color` are shown to every visitor and have no per-user layer, so
- * they are absent from the user and effective views.
- */
+/** The organisation-wide raw preferences, plus the instance identity that exists at that scope only. */
 export type GlobalPreferencesType = {
   __typename: 'GlobalPreferencesType';
   date_format: Maybe<DateFormat>;
@@ -18675,9 +18670,6 @@ export type InfrahubRepositoryBranchStatusType = {
  * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
  * is lazily created on first write under a per-owner lock — the only path that ever creates a
  * Preference row.
- *
- * `instance_label` and `instance_color` describe the instance itself, so they are accepted with
- * scope=GLOBAL only; providing either with scope=USER is a validation error.
  */
 export type InfrahubSetPreferences = {
   __typename: 'InfrahubSetPreferences';
@@ -20354,9 +20346,6 @@ export type Mutation = {
    * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
    * is lazily created on first write under a per-owner lock — the only path that ever creates a
    * Preference row.
-   *
-   * `instance_label` and `instance_color` describe the instance itself, so they are accepted with
-   * scope=GLOBAL only; providing either with scope=USER is a validation error.
    */
   InfrahubSetPreferences: Maybe<InfrahubSetPreferences>;
   /** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
