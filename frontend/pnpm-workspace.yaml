@@ -35,7 +35,6 @@ overrides:
   "@betterer/betterer>simple-git": ^4.0.2
   "@fastify/busboy@<3.2.2": ^3.2.2
   "dompurify@<3.4.17": ^3.4.17
-  katex: ^0.18.2
   "markdown-it@<14.3.3": ^14.3.3
   "shell-quote@<1.11.0": ^1.11.0
   "simple-git@<4.0.1": ^4.0.2
