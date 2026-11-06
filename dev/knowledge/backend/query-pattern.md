@@ -156,7 +156,7 @@ class MyQuery(Query):
 
 ### Pagination
 
-Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters, with the bounds bound as the `$query_limit` and `$query_offset` parameters rather than written into the text, so every page of a query shares one cached plan (`Query.render()` returns the text together with the parameters it needs, leaving `self.params` untouched); a query that keeps automatic pagination must not use those two parameter names for anything else. Pass `limit` and `offset` through to `super().__init__()` — a subclass that keeps its own copies leaves the base `self.limit`/`self.offset` at `None`, and `execute()` reads those to decide how to run: with both unset it takes the `query_with_size_limit()` path, which re-runs the query in `query_size_limit` chunks with offsets of its own. The subclass then pages twice, against itself.
+Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters, with the bounds bound as the `$query_limit` and `$query_offset` parameters rather than written into the text, so every page of a query shares one cached plan (`Query.render()` returns the text together with the parameters it needs, leaving `self.params` untouched); a query that keeps automatic pagination must not use those two parameter names for anything else. Pass `limit` and `offset` through to `super().__init__()`: `render()` appends the clause from the base `self.limit`/`self.offset`, so a subclass that keeps its own copies gets no clause.
 
 Automatic pagination is only correct over a total order: give the query an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows.
 
@@ -214,20 +214,18 @@ class PagedNodeFieldsQuery(Query):
 Three details make this correct:
 
 - Type the page size as `limit: int`, not `int | None`: a query that pages itself has no meaningful unpaged mode, and a required constructor parameter says so at the call site instead of failing later.
-- Read the bounds from the base class's `self.limit` and `self.offset` rather than adding parallel attributes, and bind them as query parameters. Reusing the base fields keeps one source of truth for the page size and is what `execute()` inspects (see below); parameters rather than interpolated literals let every page reuse one compiled plan.
+- Read the bounds from the base class's `self.limit` and `self.offset` rather than adding parallel attributes, and bind them as query parameters. Reusing the base fields keeps one source of truth for the page size; parameters rather than interpolated literals let every page reuse one compiled plan.
 - Order strictly. `SKIP`/`LIMIT` over an unordered match can return one row on two pages and another on none; `elementId(n)` breaks ties when the sort property is not unique.
 
 `GetPathDetailsBranchQuery` in `backend/infrahub/core/migrations/query/path_details.py` is the reference implementation, driven by the caller loop in `backend/infrahub/core/migrations/helpers/attribute_recompute.py`.
 
-#### Always set self.limit on a self-paging read
+#### A read without a limit runs once
 
-`Query.execute()` treats a READ with neither `limit` nor `offset` as unpaginated and routes it through `query_with_size_limit()`, which re-runs the query once per `database.query_size_limit` rows with a growing `SKIP` appended after the `RETURN`. Wrapped around a query that already pages itself, that costs one extra execution of the whole query per full page; the extra run's rows are all discarded by the outer `SKIP`, so results stay correct and only the cost shows up.
+`Query.execute()` runs a READ query once. With neither `limit` nor `offset`, the query has no `SKIP`/`LIMIT` and returns every row, and the driver streams the rows in batches. Do not page an unbounded read in `database.query_size_limit` chunks: each page after the first runs the whole query again to skip the rows before it, so a read of N rows costs about N / page size runs of the query.
 
-With `insert_limit = False` it is worse than wasteful. The wrapper cannot append its `SKIP`/`LIMIT`, so every iteration re-sends identical text, and the loop ends only because a batch came back shorter than `query_size_limit`. A query whose own bound is greater than or equal to `query_size_limit` never produces a short batch, so the loop never terminates and keeps appending the same rows.
+Do not set `self.limit` only to size a read. `insert_limit` defaults to `True`, so the limit renders a literal `LIMIT`, and an exact-row-count limit with no `ORDER BY` drops an arbitrary row the moment the query matches one more than expected. Set `insert_limit = False` when the limit sizes the read rather than pages it.
 
-Because the wasted execution changes no returned value, assertions on query results cannot detect it. `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions by query name, so a test can assert how many queries a paged read issues.
-
-The converse trap: setting `self.limit` only so `execute()` runs a single round trip still renders a literal `LIMIT`, because `insert_limit` defaults to `True`. An exact-row-count limit with no `ORDER BY` silently drops an arbitrary row the moment the query matches one more than expected — set `insert_limit = False` when the limit sizes the read rather than pages it, and keep a computed limit non-zero (`execute()` reads a falsy limit as unpaginated and chunks the read).
+`CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions and rows by query name, so a test can assert how many queries a read issues.
 
 ### Branch-Aware Edge Resolution
 
