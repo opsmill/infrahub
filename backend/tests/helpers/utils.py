@@ -42,7 +42,7 @@ def find_available_prefect_port() -> int:
 
 
 def closed_local_port() -> int:
-    """Return a port on 127.0.0.1 that nothing listens on, so a connection to it is refused."""
+    """Return a port on 127.0.0.1 that nothing listened on when this returned, so a connection to it is refused."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]

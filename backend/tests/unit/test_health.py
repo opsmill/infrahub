@@ -127,6 +127,35 @@ CLASSIFY_ERROR_TEST_CASES: list[ClassifyErrorTestCase] = [
         expected=ErrorCategory.CONNECTION_REFUSED,
     ),
     ClassifyErrorTestCase(
+        name="refused_on_one_address_and_unusable_other_address_joined_into_one_message",
+        error=OSError(
+            f"Multiple exceptions: [Errno {errno.ECONNREFUSED}] Connect call failed ('127.0.0.1', 6379), "
+            f"[Errno {errno.EADDRNOTAVAIL}] Cannot assign requested address"
+        ),
+        expected=ErrorCategory.CONNECTION_REFUSED,
+    ),
+    ClassifyErrorTestCase(
+        name="reset_and_broken_pipe_joined_into_one_message",
+        error=OSError(
+            f"Multiple exceptions: [Errno {errno.ECONNRESET}] Connection reset by peer, "
+            f"[Errno {errno.EPIPE}] Broken pipe"
+        ),
+        expected=ErrorCategory.CONNECTION_CLOSED,
+    ),
+    ClassifyErrorTestCase(
+        name="timeouts_joined_into_one_message",
+        error=OSError(
+            f"Multiple exceptions: [Errno {errno.ETIMEDOUT}] Connect call failed ('::1', 6379, 0, 0), "
+            f"[Errno {errno.ETIMEDOUT}] Connect call failed ('127.0.0.1', 6379)"
+        ),
+        expected=ErrorCategory.TIMEOUT,
+    ),
+    ClassifyErrorTestCase(
+        name="errno_quoted_in_another_error_message",
+        error=OSError(f"Upstream said: [Errno {errno.ECONNREFUSED}] Connect call failed"),
+        expected=ErrorCategory.UNKNOWN_ERROR,
+    ),
+    ClassifyErrorTestCase(
         name="different_errors_joined_into_one_message",
         error=OSError(
             f"Multiple exceptions: [Errno {errno.ECONNREFUSED}] Connect call failed ('::1', 6379, 0, 0), "

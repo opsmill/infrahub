@@ -166,15 +166,17 @@ app = FastAPI(
 )
 
 
+TRACING_EXCLUDED_URLS = ".*/metrics,^[a-z]+://[^/]+/api/health$"
+"""Patterns matched against the full URL of a request; the health pattern matches only the path `/api/health`."""
+
+
 def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
         mask_recording_span_attributes(span=span)
 
 
-FastAPIInstrumentor().instrument_app(
-    app, excluded_urls=".*/metrics,/api/health$", server_request_hook=server_request_hook
-)
+FastAPIInstrumentor().instrument_app(app, excluded_urls=TRACING_EXCLUDED_URLS, server_request_hook=server_request_hook)
 
 FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
 FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"

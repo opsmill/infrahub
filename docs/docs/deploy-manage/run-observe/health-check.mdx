@@ -46,7 +46,7 @@ Each check makes the service do the work that the API server needs from it. A se
 | `task_manager` | Requests `/api/health` from the task manager. |
 | `task_manager_db` | Requests `/api/ready` from the task manager, which answers `200` only when it can open a connection to its database. The API server does not connect to this database, so it needs no credentials for it. |
 
-When the task manager is down, both `task_manager` and `task_manager_db` are reported as down. With `INFRAHUB_WORKFLOW_DRIVER=local`, the API server runs background tasks in its own process and has no task manager to check, so both are reported as up.
+When the task manager is down, both `task_manager` and `task_manager_db` are reported as down. With `INFRAHUB_WORKFLOW_DRIVER=local`, the API server does not check the task manager or its database and always reports both as up, even when it uses a task manager.
 
 ## Errors
 
