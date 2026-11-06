@@ -18,6 +18,7 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
+from infrahub.artifacts.query_data import RenderedQueryData
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
@@ -47,7 +48,8 @@ from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
-from infrahub.workers.dependencies import build_event_service
+from infrahub.workers.dependencies import build_cache, build_event_service
+from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
@@ -967,7 +969,7 @@ async def test_render_artifact_python_without_payload(
 ) -> None:
     repo = git_repo_transforms_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
-    branch = Branch(name="main", uuid=uuid4())
+    branch = Branch(name="main", uuid=uuid4(), is_default=True)
     registry.branch[branch.name] = branch
 
     message = RequestArtifactGenerate(
@@ -1009,9 +1011,23 @@ RENDERED_CONTENT = '{\n  "KEY1": "value1",\n  "KEY2": "value2"\n}'
 
 @pytest.fixture
 def main_branch(monkeypatch: pytest.MonkeyPatch) -> Branch:
-    branch = Branch(name="main", uuid=uuid4())
+    branch = Branch(name="main", uuid=uuid4(), is_default=True)
     monkeypatch.setitem(registry.branch, branch.name, branch)
     return branch
+
+
+@pytest.fixture
+def feature_branch(monkeypatch: pytest.MonkeyPatch) -> Branch:
+    branch = Branch(name="feature", uuid=uuid4())
+    monkeypatch.setitem(registry.branch, branch.name, branch)
+    return branch
+
+
+@pytest.fixture
+def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, None]:
+    cache = MemoryCache()
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+        yield cache
 
 
 @pytest.fixture
@@ -1027,7 +1043,7 @@ def render_again_request(repo: InfrahubRepository, branch: Branch, check_stored_
         artifact_name="artifact01",
         artifact_definition="c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         artifact_definition_name="artifactdef01",
-        commit=repo.get_commit_value(branch_name=branch.name, remote=False),
+        commit=repo.get_commit_value(branch_name="main", remote=False),
         content_type="application/json",
         transform_type=InfrahubKind.TRANSFORMPYTHON,
         transform_location="transform01.py::Transform01",
@@ -1165,6 +1181,98 @@ async def test_render_artifact_unchanged_fails_when_the_checked_stored_file_is_u
 
     assert artifact_node_02.storage_id.value == "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483"
     assert event_recorder.events == []
+
+
+QUERY_DATA_FINGERPRINT = "7bbadfc40ce9a90e354541cafd28aacd7ec1d245fae7a4a1245d39d84aac0a48"
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_on_a_branch_with_unchanged_content_remembers_its_query_data(
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    feature_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    memory_cache: MemoryCache,
+) -> None:
+    rendered_query_data = RenderedQueryData(cache=memory_cache)
+    branch_id = str(feature_branch.uuid)
+    await rendered_query_data.save(branch_id=branch_id, artifact_id=artifact_node_02.id, fingerprint="earlier-data")
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_02,
+        artifact_created=False,
+        message=render_again_request(repo=git_repo_transforms_w_client, branch=feature_branch, check_stored_file=False),
+    )
+
+    assert result.changed is False
+    assert await rendered_query_data.get_many(branch_id=branch_id, artifact_ids=[artifact_node_02.id]) == {
+        artifact_node_02.id: QUERY_DATA_FINGERPRINT
+    }
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_on_a_branch_with_new_content_remembers_its_query_data(
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_01: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
+    feature_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    memory_cache: MemoryCache,
+) -> None:
+    rendered_query_data = RenderedQueryData(cache=memory_cache)
+    branch_id = str(feature_branch.uuid)
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_01,
+        artifact_created=False,
+        message=render_again_request(repo=git_repo_transforms_w_client, branch=feature_branch, check_stored_file=False),
+    )
+
+    assert result.changed is True
+    assert await rendered_query_data.get_many(branch_id=branch_id, artifact_ids=[artifact_node_01.id]) == {
+        artifact_node_01.id: QUERY_DATA_FINGERPRINT
+    }
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_failing_on_a_branch_leaves_no_query_data(
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    feature_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    memory_cache: MemoryCache,
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=STORED_ARTIFACT_URL,
+        status_code=500,
+        json={"data": None, "errors": [{"message": "storage unavailable", "extensions": {"code": 500}}]},
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+    rendered_query_data = RenderedQueryData(cache=memory_cache)
+    branch_id = str(feature_branch.uuid)
+    await rendered_query_data.save(branch_id=branch_id, artifact_id=artifact_node_02.id, fingerprint="earlier-data")
+
+    with pytest.raises(httpx.HTTPStatusError, match="500 Internal Server Error"):
+        await git_repo_transforms_w_client.render_artifact(
+            artifact=artifact_node_02,
+            artifact_created=False,
+            message=render_again_request(
+                repo=git_repo_transforms_w_client, branch=feature_branch, check_stored_file=True
+            ),
+        )
+
+    assert await rendered_query_data.get_many(branch_id=branch_id, artifact_ids=[artifact_node_02.id]) == {
+        artifact_node_02.id: None
+    }
 
 
 async def test_execute_python_transform_file_missing(
