@@ -756,3 +756,145 @@ async def test_redis_refused_maintenance_does_not_stop_the_callback_stream(
             await bus.shutdown()
 
     assert refused.await_count >= 1
+
+
+class BlockingHandler:
+    """Stands in for the message handler, recording each start and holding it until released."""
+
+    def __init__(self) -> None:
+        self.started: list[str] = []
+        self.release = asyncio.Event()
+
+    async def __call__(self, routing_key: str, message_body: bytes, message_bus: RedisMessageBus) -> None:
+        self.started.append(routing_key)
+        await self.release.wait()
+
+
+async def test_redis_worker_runs_work_items_concurrently_up_to_the_limit(redis_api: RedisManager) -> None:
+    """A worker runs as many work items at once as maximum_concurrent_messages allows, and the rest wait."""
+    settings = redis_api.settings.model_copy(update={"maximum_concurrent_messages": 2})
+    handler = BlockingHandler()
+
+    with patch("infrahub.services.adapters.message_bus.redis.execute_message", handler):
+        api_bus = await RedisMessageBus.new(settings=settings, component_type=ComponentType.API_SERVER)
+        git_bus = await RedisMessageBus.new(settings=settings, component_type=ComponentType.GIT_AGENT)
+        try:
+            for index in range(3):
+                await api_bus.send(message=messages.SendEchoRequest(message=f"work {index}"))
+            await wait_until(lambda: len(handler.started) == 2)
+            # Several stream reads pass while both handler slots are taken.
+            await asyncio.sleep(RedisMessageBus.READ_BLOCK_MS * 3 / 1000)
+            started_while_busy = len(handler.started)
+            handler.release.set()
+            await wait_until(lambda: len(handler.started) == 3)
+        finally:
+            handler.release.set()
+            await git_bus.shutdown()
+            await api_bus.shutdown()
+
+    assert started_while_busy == 2
+
+
+async def test_redis_events_run_concurrently(redis_api: RedisManager) -> None:
+    """A slow event handler does not hold up the events published after it."""
+    handler = BlockingHandler()
+
+    with patch("infrahub.services.adapters.message_bus.redis.execute_message", handler):
+        bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+        try:
+            for routing_key in ("refresh.registry.branches", "refresh.registry.rebased_branch"):
+                await bus.publish(message=messages.SendEchoRequest(message="event"), routing_key=routing_key)
+            await wait_until(lambda: len(handler.started) == 2)
+        finally:
+            handler.release.set()
+            await bus.shutdown()
+
+    assert handler.started == ["refresh.registry.branches", "refresh.registry.rebased_branch"]
+
+
+async def test_redis_stale_consumers_are_removed(redis_api: RedisManager) -> None:
+    """Maintenance deletes a consumer that holds nothing and has stopped reading, and keeps one holding an entry."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    await api_bus.send(message=messages.SendEchoRequest(message="held"))
+    await api_bus.shutdown()
+
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+
+    async def consumer_names() -> set[str]:
+        return {_as_text(info["name"]) for info in await conn.xinfo_consumers(rpcs_stream, RedisMessageBus.RPCS_GROUP)}
+
+    await conn.xreadgroup(
+        groupname=RedisMessageBus.RPCS_GROUP, consumername="busy-worker", streams={rpcs_stream: ">"}, count=1
+    )
+    await conn.xgroup_createconsumer(rpcs_stream, RedisMessageBus.RPCS_GROUP, "stale-worker")
+    assert await consumer_names() == {"busy-worker", "stale-worker"}
+
+    async def stale_consumer_removed() -> bool:
+        return "stale-worker" not in await consumer_names()
+
+    git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    git_bus.STALE_CONSUMER_IDLE_MS = 0
+    try:
+        await git_bus._initialize()
+        await wait_until(stale_consumer_removed)
+        remaining = await consumer_names()
+    finally:
+        await git_bus.shutdown()
+
+    assert "busy-worker" in remaining
+
+
+@dataclass
+class ListenCase:
+    name: str
+    topic: str
+    expected: list[str]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ListenCase(
+            name="every_message",
+            topic="#",
+            expected=["refresh.git.fetch", "refresh.registry.branches", "send.echo.request"],
+        ),
+        ListenCase(
+            name="matching_topic", topic="refresh.#", expected=["refresh.git.fetch", "refresh.registry.branches"]
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_redis_listen(case: ListenCase, redis_api: RedisManager) -> None:
+    """A listener receives the events and work items matching its topic, and leaves work items to the workers."""
+    conn = await redis_api.get_connection()
+    events_stream = f"{redis_api.namespace}:events"
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    await conn.xgroup_create(rpcs_stream, RedisMessageBus.RPCS_GROUP, id="0", mkstream=True)
+    received: list[tuple[str, bytes]] = []
+
+    async def listener(routing_key: str, body: bytes) -> None:
+        received.append((routing_key, body))
+
+    bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.NONE)
+    try:
+        await bus.listen(topic=case.topic, listener=listener)
+        for stream, routing_key in (
+            (events_stream, "refresh.registry.branches"),
+            (rpcs_stream, "send.echo.request"),
+            (events_stream, "refresh.git.fetch"),
+        ):
+            await redis_api.publish_message(stream=stream, routing_key=routing_key, body='{"listened": true}')
+        await wait_until(lambda: len(received) == len(case.expected))
+    finally:
+        await bus.shutdown()
+
+    delivered = await conn.xreadgroup(
+        groupname=RedisMessageBus.RPCS_GROUP, consumername="worker", streams={rpcs_stream: ">"}, count=10
+    )
+    assert sorted(received) == [(routing_key, b'{"listened": true}') for routing_key in case.expected]
+    assert isinstance(delivered, list)
+    assert [_as_text(fields["routing_key"]) for _stream, entries in delivered for _entry_id, fields in entries] == [
+        "send.echo.request"
+    ]

@@ -16,12 +16,16 @@ from prefect_redis.connection import aclose_redis_client
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.exceptions import WorkerTimeoutError
-from infrahub.log import clear_log_context, get_log_data, get_logger
-from infrahub.message_bus import InfrahubMessage, Meta, messages
+from infrahub.log import clear_log_context, get_logger
+from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.redis_connection import build_broker_redis_connection
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.services.adapters.message_bus import (
+    InfrahubMessageBus,
+    MessageListener,
+    add_request_id,
+    topic_matches,
+)
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -91,12 +95,6 @@ return {retried, dead}
 """
 
 
-async def _add_request_id(message: InfrahubMessage) -> None:
-    """Add request ID to message metadata from log context."""
-    log_data = get_log_data()
-    message.meta.request_id = log_data.get("request_id", "")
-
-
 @dataclass
 class StreamSubscription:
     """Describes how one consumer task reads a Redis stream.
@@ -145,12 +143,27 @@ class RedisMessageBus(InfrahubMessageBus):
     # Expiry for per-worker callback streams. A live worker keeps pushing its
     # stream's expiry out and trims read entries, so the expiry only ever
     # lapses for a stream orphaned by a worker that died without its shutdown
-    # cleanup. Sized to the RPC timeout: an owner starved for longer has no
-    # reply worth keeping anyway.
+    # cleanup.
     CALLBACK_STREAM_TTL: int = InfrahubMessageBus.DELIVER_TIMEOUT
 
     # Seconds between the pending-claim and trim passes of a group consumer.
     MAINTENANCE_INTERVAL: float = 60.0
+
+    # Milliseconds a stream read waits for a new entry, which bounds how long
+    # a consumer takes to notice a shutdown or a due maintenance pass.
+    READ_BLOCK_MS: int = 1_000
+
+    # Abandoned entries taken over per XAUTOCLAIM call.
+    CLAIM_BATCH: int = 10
+
+    # Seconds a consumer waits after a failed read before reading again.
+    ERROR_BACKOFF_SECONDS: float = 1.0
+
+    # A consumer that has read nothing for this long and holds no pending
+    # entry belongs to a worker that stopped without its shutdown cleanup,
+    # since a live one reads every second; by then its abandoned entries have
+    # been claimed by others.
+    STALE_CONSUMER_IDLE_MS: int = InfrahubMessageBus.DELIVER_TIMEOUT * 1_000
 
     # Seconds between two scans of the delayed queue, and the maximum number
     # of due entries one scan delivers; anything beyond the batch is picked up
@@ -181,6 +194,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         self.component_type: ComponentType = component_type
         self._consumer_tasks: list[asyncio.Task] = []
+        self._handler_tasks: set[asyncio.Task] = set()
         self._deliver_due_script: AsyncScript
         self._group_memberships: list[tuple[str, str, str]] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
@@ -209,6 +223,9 @@ class RedisMessageBus(InfrahubMessageBus):
             await self._initialize_api_server()
         elif self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
+        else:
+            # A process that is neither a server nor a worker only sends or listens.
+            return
 
         self._deliver_due_script = self.connection.register_script(DELIVER_DUE_MESSAGES_LUA)
         self._consumer_tasks.append(asyncio.create_task(self._deliver_delayed_messages()))
@@ -217,7 +234,7 @@ class RedisMessageBus(InfrahubMessageBus):
         """Shutdown the message bus and clean up resources."""
         self._shutdown_event.set()
 
-        for task in self._consumer_tasks:
+        for task in [*self._consumer_tasks, *self._handler_tasks]:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
@@ -257,7 +274,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         """
         try:
-            # Create stream with a dummy entry if it doesn't exist, then delete it
+            # MKSTREAM creates a missing stream, since a group cannot be created on a stream that does not exist.
             await self.connection.xgroup_create(stream, group, id="0", mkstream=True)
         except redis.ResponseError as exc:
             if "BUSYGROUP" not in str(exc):
@@ -280,29 +297,41 @@ class RedisMessageBus(InfrahubMessageBus):
     async def _consume_stream(self, subscription: StreamSubscription) -> None:
         """Consume messages from a Redis stream until shutdown.
 
+        Each entry is handled in its own task, so a slow handler does not hold up the entries behind it. A
+        consumer group reads an entry only once one of the broker's maximum_concurrent_messages handler slots is
+        free, so a busy worker leaves the entries it cannot start yet to the other workers.
+
         Args:
             subscription: The stream subscription to consume.
 
         """
         last_id = ">" if subscription.group else subscription.start_id
         last_maintenance: float | None = None
+        slots = asyncio.Semaphore(self.settings.maximum_concurrent_messages) if subscription.group else None
 
         while not self._shutdown_event.is_set():
+            holds_slot = False
             try:
                 if self._maintenance_due(last_maintenance) and (subscription.group or subscription.owns_stream):
                     # Recorded first, so a maintenance failure waits for the next interval instead of blocking reads.
                     last_maintenance = time.monotonic()
                     if subscription.group:
-                        await self._claim_pending_messages(subscription)
+                        await self._claim_pending_messages(subscription, slots)
                         await self._trim_worked_stream(subscription)
+                        await self._remove_stale_consumers(subscription)
                     else:
                         await self._maintain_owned_stream(subscription, last_id)
 
-                entries, last_id = await self._read_stream_entries(subscription, last_id)
-                if not entries:
-                    continue
+                if slots is not None:
+                    await slots.acquire()
+                    holds_slot = True
 
-                await self._process_stream_entries(entries, subscription)
+                # A read returns at most one entry, so an entry never needs more than the slot taken above.
+                entries, last_id = await self._read_stream_entries(subscription, last_id)
+                for _stream_name, stream_entries in entries:
+                    for message_id, message_data in stream_entries:
+                        self._start_handler(message_id, message_data, subscription, slots)
+                        holds_slot = False
 
             except asyncio.CancelledError:
                 break
@@ -317,11 +346,30 @@ class RedisMessageBus(InfrahubMessageBus):
                         await self._create_stream_and_group(subscription.stream, subscription.group)
                     continue
                 get_logger().exception("Redis error in consumer")
-                await asyncio.sleep(1)  # Back off on errors
+                await asyncio.sleep(self.ERROR_BACKOFF_SECONDS)
             # Worker loop boundary: a malformed entry or driver surprise must not kill the consumer task.
             except Exception:  # noqa: BLE001
                 get_logger().exception("Unexpected error in consumer")
-                await asyncio.sleep(1)  # Back off on errors
+                await asyncio.sleep(self.ERROR_BACKOFF_SECONDS)
+            finally:
+                if holds_slot and slots is not None:
+                    slots.release()
+
+    def _start_handler(
+        self, message_id: bytes, message_data: dict, subscription: StreamSubscription, slots: asyncio.Semaphore | None
+    ) -> None:
+        """Handle an entry in a task of its own, which gives its handler slot back when it ends."""
+
+        async def handle() -> None:
+            try:
+                await self._process_single_message(message_id, message_data, subscription)
+            finally:
+                if slots is not None:
+                    slots.release()
+
+        task = asyncio.create_task(handle())
+        self._handler_tasks.add(task)
+        task.add_done_callback(self._handler_tasks.discard)
 
     async def _read_stream_entries(self, subscription: StreamSubscription, last_id: str) -> tuple[list[list[Any]], str]:
         """Read entries from a Redis stream.
@@ -344,13 +392,13 @@ class RedisMessageBus(InfrahubMessageBus):
                 consumername=subscription.consumer,
                 streams={subscription.stream: last_id},
                 count=1,
-                block=1000,
+                block=self.READ_BLOCK_MS,
             )
         else:
             response = await self.connection.xread(
                 streams={subscription.stream: last_id},
                 count=1,
-                block=1000,
+                block=self.READ_BLOCK_MS,
             )
 
         # Under RESP2, which this client speaks, redis-py returns a list of streams, empty when the blocking read times out.
@@ -360,18 +408,6 @@ class RedisMessageBus(InfrahubMessageBus):
             last_id = response[0][1][-1][0]
 
         return response, last_id
-
-    async def _process_stream_entries(self, entries: list, subscription: StreamSubscription) -> None:
-        """Process entries from a Redis stream.
-
-        Args:
-            entries: List of stream entries to process.
-            subscription: The stream subscription the entries were read for.
-
-        """
-        for _stream_name, stream_entries in entries:
-            for message_id, message_data in stream_entries:
-                await self._process_single_message(message_id, message_data, subscription)
 
     async def _process_single_message(
         self, message_id: bytes, message_data: dict, subscription: StreamSubscription
@@ -393,7 +429,11 @@ class RedisMessageBus(InfrahubMessageBus):
             # returns, so the original entry is acknowledged either way.
             get_logger().exception("Error processing message", message_id=message_id)
         if subscription.ack_messages and subscription.group:
-            await self.connection.xack(subscription.stream, subscription.group, message_id)
+            try:
+                await self.connection.xack(subscription.stream, subscription.group, message_id)
+            except redis.RedisError:
+                # The entry stays pending, so it is claimed again once it has been idle long enough.
+                get_logger().exception("Failed to acknowledge message", message_id=message_id)
 
     @staticmethod
     def _matches_bindings(message_data: dict, bindings: list[str] | None) -> bool:
@@ -405,13 +445,14 @@ class RedisMessageBus(InfrahubMessageBus):
             routing_key = routing_key.decode()
         return any(fnmatch(routing_key, pattern) for pattern in bindings)
 
-    async def _claim_pending_messages(self, subscription: StreamSubscription) -> None:
+    async def _claim_pending_messages(self, subscription: StreamSubscription, slots: asyncio.Semaphore | None) -> None:
         """Take over entries whose owner stopped before acknowledging them.
 
         An entry left pending for longer than DELIVER_TIMEOUT is considered
         abandoned by a dead worker and is re-processed here; nothing
         legitimately runs longer than that, so live handlers are never
-        double-executed.
+        double-executed. A claimed entry waits for a free handler slot like a
+        newly read one.
         """
         if not subscription.group:
             return
@@ -424,19 +465,26 @@ class RedisMessageBus(InfrahubMessageBus):
                 consumername=subscription.consumer,
                 min_idle_time=self.DELIVER_TIMEOUT * 1000,
                 start_id=start_id,
-                count=10,
+                count=self.CLAIM_BATCH,
             )
             next_start_id, claimed = response[0], response[1]
-            if not claimed:
-                break
 
             for message_id, message_data in claimed:
+                if message_id is None:
+                    # Redis 6.2 reports an entry deleted while pending without its id, so it cannot be acknowledged.
+                    continue
                 if message_data is None:
                     # The entry was trimmed while pending; acknowledge to stop re-claiming it.
                     await self.connection.xack(subscription.stream, subscription.group, message_id)
                     continue
-                await self._process_single_message(message_id, message_data, subscription)
+                if slots is not None:
+                    await slots.acquire()
+                self._start_handler(message_id, message_data, subscription, slots)
 
+            # The cursor returns to 0-0 once the scan has covered every pending entry, so one pass never claims an
+            # entry whose handler it has just started.
+            if next_start_id in (b"0-0", "0-0"):
+                break
             start_id = next_start_id
 
     async def _trim_worked_stream(self, subscription: StreamSubscription) -> None:
@@ -465,6 +513,27 @@ class RedisMessageBus(InfrahubMessageBus):
             return
 
         await self.connection.xtrim(subscription.stream, minid=threshold, approximate=False)
+
+    async def _remove_stale_consumers(self, subscription: StreamSubscription) -> None:
+        """Delete the group's consumers that hold no pending entry and have not read anything for a long time.
+
+        Deleting a consumer discards its pending entries, so one that still holds an entry is kept until another
+        worker has claimed it.
+        """
+        if not subscription.group:
+            return
+
+        for consumer in await self.connection.xinfo_consumers(subscription.stream, subscription.group):
+            name = consumer["name"].decode() if isinstance(consumer["name"], bytes) else consumer["name"]
+            if name == subscription.consumer or consumer["pending"] or consumer["idle"] < self.STALE_CONSUMER_IDLE_MS:
+                continue
+            await self.connection.xgroup_delconsumer(subscription.stream, subscription.group, name)
+            get_logger().info(
+                "Removed a consumer that stopped without its shutdown cleanup",
+                stream=subscription.stream,
+                group=subscription.group,
+                consumer=name,
+            )
 
     async def _maintain_owned_stream(self, subscription: StreamSubscription, last_id: str | bytes) -> None:
         """Trim read entries and push out the expiry of a stream this consumer owns.
@@ -632,7 +701,7 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await self._setup_callback(identity=f"api-worker-{WORKER_IDENTITY}")
 
-        self.message_enrichers.append(_add_request_id)
+        self.message_enrichers.append(add_request_id)
 
     async def _initialize_git_worker(self) -> None:
         """Initialize message bus for Git worker component."""
@@ -747,28 +816,12 @@ class RedisMessageBus(InfrahubMessageBus):
                 await enricher(message)
             message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
 
-            headers: dict[str, str] = {}
-            if message.meta.correlation_id:
-                headers["correlation_id"] = message.meta.correlation_id
-            if message.meta.reply_to:
-                headers["reply_to"] = message.meta.reply_to
-            if message.meta.expiration:
-                headers["expiration"] = str(message.meta.expiration)
-
-            if message.meta.headers:
-                for k, v in message.meta.headers.items():
-                    if v:
-                        headers[k] = str(v)
-
-            if is_instrumentation_enabled():
-                propagate.inject(headers)
-
             maxlen = self.EVENTS_STREAM_MAXLEN if stream == self.events_stream else None
 
             fields: dict[FieldT, EncodableT] = {
                 "routing_key": routing_key,
                 "body": message.body,
-                "headers": ujson.dumps(headers),
+                "headers": ujson.dumps(self._build_headers(message)),
                 "priority": str(message.meta.priority or 0),
             }
             if delay:
@@ -793,14 +846,9 @@ class RedisMessageBus(InfrahubMessageBus):
             return self.events_stream
         return self.rpcs_stream
 
-    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        """Send a reply message to a callback stream.
-
-        Args:
-            message: The reply message to send.
-            routing_key: The callback stream name (from message.meta.reply_to).
-
-        """
+    @staticmethod
+    def _build_headers(message: InfrahubMessage) -> dict[str, str]:
+        """Return the headers of a stream entry, carrying the message metadata and the trace context."""
         headers: dict[str, str] = {}
         if message.meta.correlation_id:
             headers["correlation_id"] = message.meta.correlation_id
@@ -809,24 +857,32 @@ class RedisMessageBus(InfrahubMessageBus):
         if message.meta.expiration:
             headers["expiration"] = str(message.meta.expiration)
         if message.meta.headers:
-            for k, v in message.meta.headers.items():
-                if v:
-                    headers[k] = str(v)
+            for key, value in message.meta.headers.items():
+                if value:
+                    headers[key] = str(value)
 
         if is_instrumentation_enabled():
             propagate.inject(headers)
+        return headers
 
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+        """Send a reply message to a callback stream.
+
+        Args:
+            message: The reply message to send.
+            routing_key: The callback stream name (from message.meta.reply_to).
+
+        """
         await self.connection.xadd(
             routing_key,
             {
                 "routing_key": routing_key,
                 "body": message.body,
-                "headers": ujson.dumps(headers),
+                "headers": ujson.dumps(self._build_headers(message)),
             },
         )
-        # nx only sets an expiry where none exists, so this can never shorten
-        # the refresh maintained by the stream's owner.
-        await self.connection.expire(routing_key, self.CALLBACK_STREAM_TTL, nx=True)
+        # Renewed with the same expiry the stream's owner keeps renewing, so a reply never shortens it.
+        await self.connection.expire(routing_key, self.CALLBACK_STREAM_TTL)
 
     async def rpc(
         self,
@@ -844,47 +900,30 @@ class RedisMessageBus(InfrahubMessageBus):
         Returns:
             The deserialized response object.
 
-        Raises:
-            WorkerTimeoutError: If no reply arrives within the timeout.
-            TimeoutError: If publishing raises one before the timeout expires.
-
         """
-        correlation_id = str(UUIDT())
-        bound = timeout if timeout is not None else self.settings.rpc_timeout
-        routing_key = messages.ROUTING_KEY_MAP.get(type(message), "")
-
-        future: asyncio.Future = self.loop.create_future()
-        self.futures[correlation_id] = future
-
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_stream)
-
-        published = False
-        try:
-            # Built inside the try so every failure after the future was registered reaches cleanup.
-            bounded_call = asyncio.timeout(bound)
-            async with bounded_call:
-                await self.send(message=message)
-                published = True
-                response: dict = await future
-        except TimeoutError as exc:
-            if not bounded_call.expired():
-                # A client error that happens to be a TimeoutError is not our bound elapsing.
-                raise
-            get_logger().warning(
-                "No worker answered within the allowed time",
-                correlation_id=correlation_id,
-                routing_key=routing_key,
-                timeout_seconds=bound,
-                stage="awaiting_reply" if published else "publishing",
-            )
-            raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
-        finally:
-            self.futures.pop(correlation_id, None)
-
+        response: dict = await self._publish_and_await_reply(
+            message=message, reply_to=self.callback_stream, timeout=timeout
+        )
         body = response.get("body", b"")
         if isinstance(body, bytes):
             body = body.decode()
         data = ujson.loads(body)
         return response_class(**data)
+
+    async def listen(self, topic: str, listener: MessageListener) -> None:
+        """Pass every message published from now on whose routing key matches the AMQP `topic` to `listener`.
+
+        Reading the work queue stream without its consumer group leaves the group's deliveries unchanged.
+        """
+
+        async def forward(message_data: dict) -> None:
+            data = self._decode_message_data(message_data)
+            routing_key = data.get("routing_key", "")
+            if topic_matches(topic, routing_key):
+                body = data.get("body", "")
+                await listener(routing_key, body.encode() if isinstance(body, str) else body)
+
+        for stream in (self.events_stream, self.rpcs_stream):
+            start_id = await self._get_last_stream_id(stream)
+            subscription = StreamSubscription(stream=stream, consumer="listener", callback=forward, start_id=start_id)
+            self._consumer_tasks.append(asyncio.create_task(self._consume_stream(subscription)))

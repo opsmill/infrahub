@@ -44,6 +44,7 @@ log = get_logger()
 # Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
 VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
+REDIS_DEFAULT_PORT = 6379
 
 
 def default_cors_allow_methods() -> list[str]:
@@ -615,7 +616,7 @@ class BrokerSettings(BaseSettings):
     )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
-        description="Message bus implementation. The redis driver is experimental.",
+        description="Message bus implementation. The redis driver is experimental and requires Redis 6.2 or later.",
     )
     queue_type: BrokerQueueType = Field(
         default=BrokerQueueType.CLASSIC,
@@ -668,7 +669,7 @@ class BrokerSettings(BaseSettings):
     def service_port(self) -> int:
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
         if self.driver == BrokerDriver.Redis:
-            return self.port or 6379
+            return self.port or REDIS_DEFAULT_PORT
         return self.port or default_ports[self.tls_enabled]
 
 
@@ -748,8 +749,7 @@ class CacheSettings(BaseSettings):
 
     @property
     def service_port(self) -> int:
-        default_ports: int = 6379
-        return self.port or default_ports
+        return self.port or REDIS_DEFAULT_PORT
 
     @model_validator(mode="after")
     def validate_url(self) -> Self:
