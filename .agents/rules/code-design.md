@@ -22,6 +22,13 @@ Applies to every source file, Python and TypeScript. The area rules say which la
 - No parameter, option, setting or fallback that no caller uses, and no function that only forwards its arguments to another.
 - Inline a helper used once, unless its name states a domain concept or a test calls it on its own.
 - Delete the code, branches and exports the change leaves unused.
+- Before pushing, delete what an earlier commit of the branch added for an approach a later commit replaced: helpers, parameters, flags, fallbacks, debug output, tests and comments.
+- Prefer the shorter code with the same behaviour: an early return over nested conditions, an existing helper or standard library call over a hand-written loop, no condition that is always true and no check its caller already makes.
+
+## Consistency
+
+- Do the same job the way the sibling code in the same folder does it: file name pattern, symbol naming, error handling, loading and empty states, test setup. Depart from it only for a reason written in the spec, the plan, the pull request description or a commit message.
+- Within a change, do one job one way, and put a file in the folder where its siblings of the same kind live.
 
 ## Not violations
 

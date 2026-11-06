@@ -7,7 +7,8 @@ Applies to docstrings, comments, and any inline documentation in source files â€
 - Do not reference Jira tickets, GitHub issues, spec-kit IDs, or spec vocabulary in docstrings, comments, or test names.
 - Comment the *why* (a constraint, an invariant, a workaround), never the *what*, and keep a why-comment to one sentence.
 - Before writing a comment, try a clearer name or a named function; write the comment only if the code still cannot say it.
-- A comment must be true for the code beside it: when a change makes one wrong, fix or delete it in the same change.
+- A comment must be true for the code beside it: when a change makes one wrong, fix or delete it in the same change. This includes comments an earlier commit of the same branch added for a step a later commit replaced.
+- No comment that refers to a step of a plan or a session (`Phase 2`, `step 3`, `for now`, `new`, `now`).
 - No commented-out code, banner or divider comments, or `TODO`s; put follow-up work in an issue.
 - A spec, plan, or task asking for an explanatory comment does not override the one-sentence why rule; put the fuller rationale in the PR description.
 - Do not write `Args`/`Returns`/`Raises` entries that restate the signature: a public function gets one contract line, a clearly named private helper gets none. Do not document dataclass fields in the class docstring, or give a field a docstring that repeats its name.

@@ -54,7 +54,10 @@ cubic: <exit code and number of findings | error: <message> | not installed>
 - <Queries | Request context | Entity dependencies | Position | Copied files | States | Volume | Reuse | Simplicity>: `file:line`: <finding> (P2/P3; fixed | declined | deferred | asked)
 
 ### New files
-- `file:line`: <need | simpler way | naming | comment | test cannot fail | duplicate test>: <one line>
+- `file:line`: <need | simpler way | test cannot fail | duplicate test>: <one line>
+
+### Cleanup and consistency
+- <Comments | Leftovers | Names and placement | Simpler code | Consistency>: `file:line`: <finding> (P2/P3; fixed | declined | deferred | asked)
 
 ### Advisory (P3)
 - `file:line`: <one line>

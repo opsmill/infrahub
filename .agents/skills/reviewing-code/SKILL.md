@@ -1,11 +1,11 @@
 ---
 name: reviewing-code
 description: >-
-  Reviews a branch before it is pushed, or a pull request after it opens, against the rules cubic and human reviewers apply. Runs cubic, `code-review`, and reviewers for the approach, the `.agents/rules/` files, the design, new files, the architecture and its decisions, and the specs, changelog and PR claims. Verifies each finding, fixes the approved ones, and proposes changes to the rules, the docs and this skill. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, or fewer review comments on it, or says "review my changes", "pre-push review" or "cubic review"; this session has just opened a PR; the user asks for a review of a PR by URL or number; a hook reports large pushes to a PR; or the user asks "will cubic complain about this". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into docs → `harvesting-review`; a bug hunt only → `code-review`; watching CI → `monitoring-pull-requests`.
+  Reviews a branch before it is pushed, or a pull request after it opens, against the rules cubic and human reviewers apply. Runs cubic, `code-review`, and reviewers for the approach, the `.agents/rules/` files, the design, new files, cleanup and consistency (useless or stale comments, code earlier commits left behind, names and placement, simpler code), the architecture and its decisions, and the specs, changelog and PR claims. Verifies each finding, fixes the approved ones, and proposes changes to the rules, the docs and this skill. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, or fewer review comments on it, or says "review my changes", "pre-push review" or "cubic review"; this session has just opened a PR; the user asks for a review of a PR by URL or number; a hook reports large pushes to a PR; or the user asks "will cubic complain about this". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into docs → `harvesting-review`; a bug hunt only → `code-review`; watching CI → `monitoring-pull-requests`.
 argument-hint: "[<PR number or URL> | <base branch>] [report] | compare <PR number>"
 compatibility: A Claude Code or Codex session started at the repository root, with `origin` fetched. The `gh` CLI reads the pull request. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 4.0.0
+  version: 4.1.0
   author: OpsMill
 ---
 
@@ -57,6 +57,7 @@ current steps, and a step run from memory misses the checks added since.
 | File | Read when |
 |---|---|
 | `references/architecture.md` | the architecture check starts in Phase 1 |
+| `references/cleanup.md` | the cleanup and consistency check starts in Phase 1 |
 | `references/fix.md` | Phase 3 starts |
 | `references/improve.md` | Phase 4 starts, and at the end of a compare |
 | `references/report.md` | Phase 5 starts |
@@ -196,10 +197,6 @@ the `creating-changelog-entries` skill. Instructions for the reviewer:
 If a listed file is missing from `READ`, send the reviewer back once. If it is still missing, mark
 that area's check as incomplete in the report.
 
-Also flag the comments the change adds (`git diff -U0 origin/<base>...HEAD`) that contain a
-ticket or spec ID (`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`) or history
-(`used to`, `no longer`, `previously`, `instead of`), citing `.agents/rules/code-doc-style.md`.
-
 ### Design
 
 The rule reviewers read one area at a time, and the bug review looks for defects, so neither
@@ -237,15 +234,19 @@ files in scope), give one reviewer per area `.agents/rules/code-design.md` and
 
 - Is the file needed, or does an existing helper, constant, type or component already do this?
   Is there a simpler way?
-- Do the file and symbol names say what they hold, with one term for each concept across the
-  change?
-- Does each comment explain why?
 - For each test, name the code change that would make it fail, and flag a test with none. Flag a
   test that repeats a case another test already covers.
 - For each negative assertion (`expect(page.getByText(X).query()).toBeNull()`,
   `not.toBeInTheDocument()`, `assert X not in ...`), check that the test's fixture can produce X.
   When no input in the test produces X, the assertion passes whether or not the code works: flag
   it and name the fixture change that would let it fail.
+
+### Cleanup and consistency
+
+Read `references/cleanup.md` and follow it. One reviewer per area reads every changed line for
+comments to delete or correct, code that earlier commits of the branch left unused, names and
+file placement that differ from their siblings, code that could be shorter, and jobs done in two
+different ways.
 
 ### Architecture and decisions
 
