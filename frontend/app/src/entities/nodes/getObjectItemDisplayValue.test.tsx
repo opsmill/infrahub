@@ -21,7 +21,7 @@ const TOKYO_PREFS: ResolvedDatePreferences = {
 
 const dateTimeSchema = { name: "expiration", kind: "DateTime" } as FieldSchema;
 
-function attributeValue(value: string): NodeAttributeWithMetadata {
+function attributeValue(value: unknown): NodeAttributeWithMetadata {
   return { value } as NodeAttributeWithMetadata;
 }
 
@@ -63,5 +63,35 @@ describe("ObjectAttributeValue", () => {
     );
 
     await expect.element(component.getByText("2026-06-09 23:30:00")).toBeVisible();
+  });
+});
+
+describe("ObjectAttributeValue for a List", () => {
+  const listSchema = { name: "uplinks", kind: "List", label: "Uplinks" } as FieldSchema;
+  const uplinks = Array.from({ length: 12 }, (_, index) => `Ethernet1/${index + 1}`);
+
+  test("opens every element of a long List from View all", async () => {
+    // GIVEN
+    const component = await render(
+      <ObjectAttributeValue attributeSchema={listSchema} attributeData={attributeValue(uplinks)} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "View all 12" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("dialog").getByText("Ethernet1/12", { exact: true }))
+      .toBeInTheDocument();
+  });
+
+  test("renders an empty List as a dash", async () => {
+    // WHEN
+    const component = await render(
+      <ObjectAttributeValue attributeSchema={listSchema} attributeData={attributeValue([])} />
+    );
+
+    // THEN
+    expect(component.container.textContent).toBe("-");
   });
 });

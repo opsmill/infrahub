@@ -69,10 +69,14 @@ instead of fixing instances as they are found.
 
 ## Where to actually see reveal working
 
-Reveal looks broken until you know where to point it, because **nothing in the demo dataset is
-hidden by default**. `show_columns` only means something where a schema author marked a field
-`display: "extra"`, and the `models/` directory sets `display` nowhere. The push state attributes of
-`CoreRepository` are `extra` but never column candidates, so `show_columns` cannot reveal them (see
+Reveal looks broken until you know where to point it. `show_columns` means something for a field a
+schema author marked `display: "extra"`, and for an attribute of a kind that is never a default
+column (`List`, `JSON`, `Any`, `Password`; see
+[the extra-field tier](entities-structure.md#schema-driven-rendering-the-extra-field-tier)). The
+quickest check of the second case is `/objects/CoreGeneratorDefinition`, whose picker offers
+**Parameters** (`JSON`) unchecked. For the first, the `models/` directory sets `display` nowhere.
+The push state attributes of `CoreRepository` are `extra` but never column candidates, so
+`show_columns` cannot reveal them (see
 [the extra-field tier](entities-structure.md#schema-driven-rendering-the-extra-field-tier)). Across the demo schema there
 are eleven such fields on three kinds, and only one of those kinds has objects behind it:
 `CoreAccountGroup.origin`.

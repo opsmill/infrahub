@@ -376,8 +376,11 @@ repository detail view and its "extra" toggle, `REPOSITORY_COLUMN_SURFACE` keeps
 repository list's column candidates, and only the push to remote card of the repository page shows
 them, read from the default branch.
 
-The list-view rules above take an optional second argument that opts named `extra` fields back in —
-see [Column Visibility](column-visibility.md).
+The list-view rules above take an optional second argument that opts named fields back in — see
+[Column Visibility](column-visibility.md). Kind is a second tier for attributes:
+`ATTRIBUTE_KINDS_FOR_LIST_VIEW` sets the kinds shown by default, and
+`ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW` adds the kinds a user can only turn on (`List`, `JSON`,
+`Any`, `Password`), whatever their `display`.
 
 ## Column visibility: the `columns` entity
 

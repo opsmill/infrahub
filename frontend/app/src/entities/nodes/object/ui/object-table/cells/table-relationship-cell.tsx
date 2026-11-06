@@ -1,5 +1,5 @@
 import { Icon } from "@/shared/components/display/icon";
-import { LinkPill } from "@/shared/components/ui/link-pill";
+import { LinkPill, type LinkPillProps, Pill } from "@/shared/components/ui/link-pill";
 
 import type {
   NodeCore,
@@ -39,15 +39,48 @@ export function TableRelationshipCell({
   return nodes.map((node) => <RelationshipNodeDisplay key={node.id} node={node} />);
 }
 
-export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
+export interface RelationshipNodeDisplayProps {
+  node: NodeCore;
+  size?: LinkPillProps["size"];
+  isLink?: boolean;
+  className?: string;
+}
+
+export function RelationshipNodeDisplay({
+  node,
+  size = "sm",
+  isLink = true,
+  className = "min-w-0 shrink",
+}: RelationshipNodeDisplayProps) {
   const { schema } = useSchema(node.__typename);
 
   if (!schema) return `Schema for ${node.__typename} not found`;
 
-  return (
-    <LinkPill href={getObjectDetailsUrl(node.__typename, node.id)} className="min-w-0 shrink">
+  const label = getNodeLabel(node);
+  const content = (
+    <>
       <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-accent" />
-      <span className="truncate">{getNodeLabel(node)}</span>
+      <span className="truncate" title={label}>
+        {label}
+      </span>
+    </>
+  );
+
+  if (!isLink) {
+    return (
+      <Pill size={size} className={className}>
+        {content}
+      </Pill>
+    );
+  }
+
+  return (
+    <LinkPill
+      href={getObjectDetailsUrl(node.__typename, node.id)}
+      size={size}
+      className={className}
+    >
+      {content}
     </LinkPill>
   );
 }

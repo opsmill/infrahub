@@ -131,14 +131,37 @@ describe("getAttributesVisibleInListView", () => {
     // GIVEN
     const attributes: AttributeSchema[] = [
       generateAttributeSchema({ name: "visible", kind: "Text", display: "default" }),
-      generateAttributeSchema({ name: "payload", kind: "JSON", display: "extra" }),
-      generateAttributeSchema({ name: "secret", kind: "Password", display: "default" }),
+      generateAttributeSchema({ name: "notes", kind: "TextArea", display: "extra" }),
     ];
 
     // WHEN
-    const result = getAttributesVisibleInListView(attributes, new Set(["payload", "secret"]));
+    const result = getAttributesVisibleInListView(attributes, new Set(["notes"]));
 
     // THEN
     expect(result.map((attribute) => attribute.name)).toEqual(["visible"]);
+  });
+
+  it("should return List, JSON, Any and Password attributes only when they are revealed", () => {
+    // GIVEN
+    const attributes: AttributeSchema[] = [
+      generateAttributeSchema({ name: "tags", kind: "List", display: "default" }),
+      generateAttributeSchema({ name: "payload", kind: "JSON", display: "extra" }),
+      generateAttributeSchema({ name: "anything", kind: "Any", display: "default" }),
+      generateAttributeSchema({ name: "secret", kind: "Password", display: "default" }),
+      generateAttributeSchema({ name: "hashed", kind: "HashedPassword", display: "default" }),
+    ];
+    const revealed = new Set(["tags", "payload", "anything", "secret", "hashed"]);
+    // A HashedPassword column would fetch every row's hash only to mask it.
+
+    // WHEN
+    const result = getAttributesVisibleInListView(attributes, revealed);
+
+    // THEN
+    expect(result.map((attribute) => attribute.name)).toEqual([
+      "tags",
+      "payload",
+      "anything",
+      "secret",
+    ]);
   });
 });

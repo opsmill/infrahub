@@ -20,6 +20,7 @@ import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { isFilterableField } from "@/entities/nodes/object/domain/rules/is-filterable-field";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
@@ -97,6 +98,12 @@ export function TableColumnHeader({
         role={role}
         filterConditions={filterConditions}
       />
+    );
+  }
+
+  if (!schema && !isFilterableField(columnSchema)) {
+    return (
+      <TableColumnHeaderSimple columnSchema={columnSchema} className={className} role={role} />
     );
   }
 
@@ -335,10 +342,12 @@ function ColumnHeaderMenu({
                 <MenuSeparator />
               </>
             ) : null}
-            <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
-              <ListFilterIcon />
-              <span>Filter</span>
-            </MenuItem>
+            {isFilterableField(columnSchema) && (
+              <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
+                <ListFilterIcon />
+                <span>Filter</span>
+              </MenuItem>
+            )}
             {schema ? <HideColumnMenuItem schema={schema} field={columnSchema.name} /> : null}
           </Menu>
         </Popover>
