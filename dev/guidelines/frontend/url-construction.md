@@ -4,6 +4,45 @@
 
 Guidelines for constructing URLs and paths in the React TypeScript frontend.
 
+## Build paths with `useConstructPath` during render
+
+`constructPath` resolves the active branch and the time-machine date by reading `window.location` at
+call time. That is accurate in an event handler and wrong during render: React Compiler caches a
+render-time call whose inputs are all non-reactive once per mount, so a link in a component that
+outlives a branch switch — the sidebar, the header, breadcrumbs, a tab bar — keeps pointing at the
+branch that was active when it first rendered. Clicking it silently returns the user to the default
+branch.
+
+Use the hook in render, the plain function in handlers:
+
+```tsx
+// ✅ Render: the hook reads the branch from context, so the path recomputes on a branch switch
+function AppSidebarHeader() {
+  const constructPath = useConstructPath();
+  return <Link to={constructPath("/")}>…</Link>;
+}
+
+// ✅ Event handler: reading the URL at call time is accurate
+const onSuccess = () => navigate(constructPath("/tasks"));
+
+// ❌ Render: frozen at mount, so the link loses the branch
+function AppSidebarHeader() {
+  return <Link to={constructPath("/")}>…</Link>;
+}
+```
+
+**Location:** `frontend/app/src/entities/navigation/ui/hooks/use-construct-path.ts`
+
+Caller overrides are applied after the ambient branch and date, so a link that deliberately targets
+another branch still wins:
+
+```tsx
+constructPath("/tasks", [{ name: QSP.BRANCH, value: task.branch }]);
+```
+
+The detail-page helpers below still call `constructPath` directly and carry the same staleness when
+called during render.
+
 ## Use `getObjectDetailsUrl` for Object URLs
 
 **Always use `getObjectDetailsUrl` for constructing URLs to object detail pages:**
