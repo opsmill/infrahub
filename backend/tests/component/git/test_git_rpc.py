@@ -31,7 +31,7 @@ from infrahub.git.models import (
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
 )
-from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository
+from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository, RecordedImport
 from infrahub.git.sync import RepositoryAdder
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.git.writeback.models import PendingMerge
@@ -101,6 +101,7 @@ class TestAddRepository:
             self.mock_repo.infrahub_branch_name = self.default_branch_name
             self.mock_repo.internal_status = "active"
             self.mock_repo.get_commit_value.return_value = "0123456789abcdef0123456789abcdef01234567"
+            self.mock_repo.read_recorded_import.return_value = RecordedImport(commit=None, sync_status=None)
             yield
 
             patch.stopall()
@@ -137,6 +138,10 @@ class TestAddRepository:
                 location=str(git_upstream_repo_01["path"]),
                 client=ANY,
                 infrahub_branch_name=self.default_branch_name,
+                update_commit_value=False,
+            )
+            self.mock_repo.record_commit_for_import.assert_awaited_once_with(
+                branch_name=self.default_branch_name, commit="0123456789abcdef0123456789abcdef01234567"
             )
             self.mock_repo.build_import_plan.assert_awaited_once_with(
                 infrahub_branch_name=self.default_branch_name,
