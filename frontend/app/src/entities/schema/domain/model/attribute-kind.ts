@@ -43,3 +43,13 @@ export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.IP_ADDRESS,
   ATTRIBUTE_KIND.DATETIME,
 ];
+
+/** Kinds the column picker can turn on, though they are not shown by default. */
+export const ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW: readonly AttributeKind[] = [
+  ...ATTRIBUTE_KINDS_FOR_LIST_VIEW,
+  ATTRIBUTE_KIND.LIST,
+  ATTRIBUTE_KIND.JSON,
+  ATTRIBUTE_KIND.ANY,
+  ATTRIBUTE_KIND.PASSWORD,
+  ATTRIBUTE_KIND.HASHED_PASSWORD,
+];

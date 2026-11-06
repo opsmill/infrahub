@@ -26,6 +26,7 @@ import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { ListValueDetail } from "@/entities/nodes/object/ui/attribute-values/list-value";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
@@ -236,23 +237,13 @@ export const ObjectAttributeValue = ({
     }
     case ATTRIBUTE_KIND.COLOR:
       return <ColorDisplay color={attributeData.value as string | null} />;
-    case ATTRIBUTE_KIND.LIST: {
-      const listData = attributeData.value as string[] | null;
-      const items = listData?.slice(0, 5);
-      const rest = listData?.slice(5).length;
-
+    case ATTRIBUTE_KIND.LIST:
       return (
-        <div className="flex flex-wrap items-center gap-1">
-          {items?.map((item, index) => (
-            <Badge key={index} className="font-normal">
-              {item}
-            </Badge>
-          ))}
-
-          {items?.length !== listData?.length && <i>{`(${rest} more)`}</i>}
-        </div>
+        <ListValueDetail
+          values={attributeData.value as unknown[]}
+          attributeLabel={attributeSchema.label ?? attributeSchema.name}
+        />
       );
-    }
     case ATTRIBUTE_KIND.JSON:
       return <CodeViewer>{JSON.stringify(attributeData.value ?? "", null, 2)}</CodeViewer>;
     default:

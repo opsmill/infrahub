@@ -1,8 +1,14 @@
+import * as R from "remeda";
+
 import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
+import { isEmptyAttributeValue } from "@/entities/nodes/object/domain/rules/is-empty-attribute-value";
+import { JsonValueButton } from "@/entities/nodes/object/ui/attribute-values/json-value-button";
+import { ListValueCell } from "@/entities/nodes/object/ui/attribute-values/list-value";
+import { MaskedValue } from "@/entities/nodes/object/ui/attribute-values/masked-value";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
@@ -17,11 +23,9 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (
-    !attributeData ||
-    (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false)
-  )
-    return "-";
+  if (!attributeData || isEmptyAttributeValue(attributeData.value)) return "-";
+
+  const attributeLabel = attributeSchema.label ?? attributeSchema.name;
 
   switch (attributeKind) {
     case ATTRIBUTE_KIND.DROPDOWN: {
@@ -37,7 +41,7 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     }
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX: {
-      return <span className="truncate">{attributeData.value.toString()}</span>;
+      return <span className="truncate">{String(attributeData.value)}</span>;
     }
     case ATTRIBUTE_KIND.ID:
     case ATTRIBUTE_KIND.TEXT:
@@ -64,15 +68,40 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
       return <ColorCell color={attributeData as TextAttribute} />;
     }
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
-    case ATTRIBUTE_KIND.PASSWORD:
-    case ATTRIBUTE_KIND.ANY:
-    case ATTRIBUTE_KIND.JSON:
+    case ATTRIBUTE_KIND.PASSWORD: {
+      return <MaskedValue />;
+    }
     case ATTRIBUTE_KIND.LIST: {
-      return null; // Not visible in table view
+      return (
+        <ListValueCell values={attributeData.value as unknown[]} attributeLabel={attributeLabel} />
+      );
+    }
+    case ATTRIBUTE_KIND.JSON: {
+      return <JsonValueCell value={attributeData.value} attributeLabel={attributeLabel} />;
+    }
+    case ATTRIBUTE_KIND.ANY: {
+      const value: unknown = attributeData.value;
+      if (Array.isArray(value)) {
+        return <ListValueCell values={value} attributeLabel={attributeLabel} />;
+      }
+      if (R.isPlainObject(value)) {
+        return <JsonValueCell value={value} attributeLabel={attributeLabel} />;
+      }
+      return <span className="truncate">{String(value)}</span>;
     }
     default: {
       warnUnexpectedType(attributeKind);
       return null;
     }
   }
+}
+
+function JsonValueCell({ value, attributeLabel }: { value: unknown; attributeLabel: string }) {
+  return (
+    <JsonValueButton
+      value={value}
+      title={attributeLabel}
+      className="h-full w-full text-foreground-muted leading-6 hover:text-foreground"
+    />
+  );
 }
