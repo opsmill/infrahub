@@ -4,30 +4,12 @@ import { formatDocumentTitle } from "@/entities/preferences/domain/rules/format-
 
 describe("formatDocumentTitle", () => {
   test.each([
-    { name: "a label and a page title", label: "QA", pageTitle: "Schema", expected: "QA · Schema" },
-    {
-      name: "a label and the app name",
-      label: "QA",
-      pageTitle: "Infrahub",
-      expected: "QA · Infrahub",
-    },
-    { name: "a null label", label: null, pageTitle: "Schema", expected: "Schema" },
-    { name: "an empty label", label: "", pageTitle: "Schema", expected: "Schema" },
-    { name: "a whitespace-only label", label: "   ", pageTitle: "Schema", expected: "Schema" },
-    {
-      name: "a label with surrounding spaces",
-      label: " QA ",
-      pageTitle: "Schema",
-      expected: "QA · Schema",
-    },
-  ])("composes the tab title from $name", ({ label, pageTitle, expected }) => {
-    // GIVEN a label and a page title
-    const input = { label, pageTitle };
-
-    // WHEN the document title is composed
-    const title = formatDocumentTitle(input.label, input.pageTitle);
-
-    // THEN it carries the label only when one is set
-    expect(title).toBe(expected);
+    { name: "a label", label: "QA", expected: "QA · Schema" },
+    { name: "a label with surrounding spaces", label: " QA ", expected: "QA · Schema" },
+    { name: "a null label", label: null, expected: "Schema" },
+    { name: "an empty label", label: "", expected: "Schema" },
+    { name: "a whitespace-only label", label: "   ", expected: "Schema" },
+  ])("composes the tab title from $name", ({ label, expected }) => {
+    expect(formatDocumentTitle(label, "Schema")).toBe(expected);
   });
 });

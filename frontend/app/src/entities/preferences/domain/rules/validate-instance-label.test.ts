@@ -7,29 +7,12 @@ import {
 } from "@/entities/preferences/domain/rules/validate-instance-label";
 
 describe("normalizeInstanceLabel", () => {
-  test("trims surrounding whitespace", () => {
-    // GIVEN a label with surrounding spaces
-    const value = "  Production  ";
-
-    // WHEN normalized
-    const normalized = normalizeInstanceLabel(value);
-
-    // THEN only the text remains
-    expect(normalized).toBe("Production");
-  });
-
   test.each([
-    { name: "an empty string", value: "" },
-    { name: "whitespace only", value: "   " },
-  ])("turns $name into null so the label is cleared", ({ value }) => {
-    // GIVEN a label without text
-    const input = value;
-
-    // WHEN normalized
-    const normalized = normalizeInstanceLabel(input);
-
-    // THEN it is null
-    expect(normalized).toBeNull();
+    { name: "a padded label", value: "  Production  ", expected: "Production" },
+    { name: "an empty string", value: "", expected: null },
+    { name: "whitespace only", value: "   ", expected: null },
+  ])("normalizes $name", ({ value, expected }) => {
+    expect(normalizeInstanceLabel(value)).toBe(expected);
   });
 });
 
@@ -40,14 +23,7 @@ describe("instanceLabelLength", () => {
     { name: "an accented label", value: "Zürich", expected: 6 },
     { name: "an emoji, which is two UTF-16 units", value: "😀", expected: 1 },
   ])("counts $name in code points", ({ value, expected }) => {
-    // GIVEN a label
-    const input = value;
-
-    // WHEN its length is counted
-    const length = instanceLabelLength(input);
-
-    // THEN each code point counts once
-    expect(length).toBe(expected);
+    expect(instanceLabelLength(value)).toBe(expected);
   });
 });
 
@@ -63,25 +39,13 @@ describe("instanceLabelError", () => {
     { name: "a label with a trailing tab, which the server removes", value: "QA\t" },
     { name: "a label with a leading line break, which the server removes", value: "\nQA" },
   ])("accepts $name", ({ value }) => {
-    // GIVEN a valid label
-    const input = value;
-
-    // WHEN validated
-    const error = instanceLabelError(input);
-
-    // THEN there is no error
-    expect(error).toBeNull();
+    expect(instanceLabelError(value)).toBeNull();
   });
 
   test("rejects a label longer than 32 characters with a message naming the limit", () => {
-    // GIVEN a 33-character label
-    const value = "a".repeat(33);
-
-    // WHEN validated
-    const error = instanceLabelError(value);
-
-    // THEN the message names the limit
-    expect(error).toBe("The instance label cannot be longer than 32 characters.");
+    expect(instanceLabelError("a".repeat(33))).toBe(
+      "The instance label cannot be longer than 32 characters."
+    );
   });
 
   test.each([
@@ -92,13 +56,6 @@ describe("instanceLabelError", () => {
     { name: "a right-to-left override", value: "QA\u202Estaging" },
     { name: "an isolate terminator", value: "QA\u2069staging" },
   ])("rejects a label containing $name", ({ value }) => {
-    // GIVEN a label with a control character
-    const input = value;
-
-    // WHEN validated
-    const error = instanceLabelError(input);
-
-    // THEN the message names the rule
-    expect(error).toBe("The instance label cannot contain control characters.");
+    expect(instanceLabelError(value)).toBe("The instance label cannot contain control characters.");
   });
 });

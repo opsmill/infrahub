@@ -2,6 +2,7 @@ import React from "react";
 import { useWatch } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import type { InstanceColor } from "@/shared/api/graphql/generated/types";
 import { Row } from "@/shared/components/container";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -14,18 +15,15 @@ import { Form, FormField, FormInput, FormMessage } from "@/shared/components/ui/
 import { Input } from "@/shared/components/ui/input";
 import { classNames } from "@/shared/utils/common";
 
-import {
-  INSTANCE_COLORS,
-  INSTANCE_LABEL_MAX_LENGTH,
-  type InstanceColor,
-  isInstanceColor,
-} from "@/entities/preferences/domain/model/instance-identity";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import {
+  INSTANCE_COLORS,
   instanceBarClassName,
   instanceColorLabel,
+  isInstanceColor,
 } from "@/entities/preferences/domain/rules/instance-color";
 import {
+  INSTANCE_LABEL_MAX_LENGTH,
   instanceLabelError,
   instanceLabelLength,
   normalizeInstanceLabel,
@@ -177,7 +175,6 @@ export function InstanceIdentityForm() {
               }
             />
           );
-          // A rejected submit keeps the typed values dirty, so the admin can retry the save.
           throw mutationError;
         }
         toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
