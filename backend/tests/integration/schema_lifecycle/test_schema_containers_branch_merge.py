@@ -27,7 +27,15 @@ L2_KIND = "InfraLagInterfaceL2"
 L3_KIND = "InfraLagInterfaceL3"
 
 L2_CONTAINERS = [
-    {"name": "lacp", "label": "LACP", "description": None, "order_weight": 100, "collapsed": False, "state": "present"},
+    {
+        "name": "lacp",
+        "label": "LACP",
+        "description": None,
+        "order_weight": 100,
+        "collapsed": False,
+        "state": "present",
+        "inherited": True,
+    },
     {
         "name": "layer2",
         "label": "Layer 2",
@@ -35,6 +43,7 @@ L2_CONTAINERS = [
         "order_weight": 200,
         "collapsed": False,
         "state": "present",
+        "inherited": True,
     },
     {
         "name": "layer3",
@@ -43,6 +52,7 @@ L2_CONTAINERS = [
         "order_weight": 300,
         "collapsed": True,
         "state": "present",
+        "inherited": True,
     },
 ]
 
@@ -100,10 +110,13 @@ class TestSchemaLifecycleContainersBranchMerge(TestSchemaLifecycleBase):
             "subscriber_of_groups": None,
             "profiles": None,
         }
-        assert "inherited" not in l2.containers[0].model_fields
 
         l3 = await client.schema.get(kind=L3_KIND, branch=LAG_BRANCH)
-        assert [container["label"] for container in _containers(l3)] == ["LACP", "Layer 2", "Layer 3 (routed)"]
+        assert [(container["label"], container["inherited"]) for container in _containers(l3)] == [
+            ("LACP", True),
+            ("Layer 2", True),
+            ("Layer 3 (routed)", False),
+        ]
 
         default_schema = await client.schema.all(branch=default_branch.name, refresh=True)
         assert L2_KIND not in default_schema

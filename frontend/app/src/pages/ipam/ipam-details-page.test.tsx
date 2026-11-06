@@ -98,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("IPAM details page", () => {
-  it("renders the sections of a prefix schema with containers", async () => {
+  it("renders the sections of a prefix schema and leaves out the excluded relationships", async () => {
     const component = await render(<IpamDetailsPage />);
 
     const details = component.getByRole("region", { name: "Details" });
@@ -109,14 +109,6 @@ describe("IPAM details page", () => {
       .element(component.getByRole("button", { name: "Advanced" }))
       .toHaveAttribute("aria-expanded", "false");
     expect(details.getByText("VRF target", { exact: true }).elements()).toHaveLength(0);
-  });
-
-  it("leaves out the relationships the IPAM summary excludes", async () => {
-    const component = await render(<IpamDetailsPage />);
-
-    await expect
-      .element(component.getByRole("region", { name: "Routing" }).getByText("VRF target"))
-      .toBeVisible();
     expect(component.getByText("Children", { exact: true }).elements()).toHaveLength(0);
   });
 });

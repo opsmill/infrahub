@@ -95,8 +95,9 @@ built with `_field`, plus `state` declared as an explicit `SchemaAttribute(name=
 kind="Text", internal_kind=HashableModelState, enum=HashableModelState.available_types(),
 enum_class="SchemaState", default_value=HashableModelState.PRESENT, optional=True, ...)` entry that
 mirrors the attribute-level `state` entry of `definitions/internal.py::attribute_schema`
-(`_field` is not extended, because it has no `enum_class` parameter). The list leaves out the
-internal `inherited` flag, so the SDK read and write models and the OpenAPI schema never carry it.
+(`_field` is not extended, because it has no `enum_class` parameter). The list also holds
+`inherited` with `Visibility.READ`: the SDK read model and the OpenAPI read schema carry it, and the
+write contract treats it as read-only, as on attributes and relationships.
 A field left out of that list becomes read-only in the write contract and a load that sends it
 drops the value with a warning, which is why `state` must be in the list for `state: absent` to
 remove a container. Details: [data-model.md](data-model.md).
@@ -110,7 +111,9 @@ generics list them (first generic in `inherit_from` first), then the node's own 
 declaration order. A node container with the same name as a generic container replaces it in the
 generic container's position. Existing `inherited` copies are ignored and rebuilt, so a generic
 that drops a container removes it from the node on the next process, and a second process yields
-the same list (FR-010). Field-level `container` needs no code: `update_from_generic` already
+the same list (FR-010). `SchemaManager` stores only the node's own containers, as it stores only
+its own attributes and relationships, so a change on a generic does not rewrite the stored
+`containers` of the nodes that inherit it. Field-level `container` needs no code: `update_from_generic` already
 copies it.
 
 ### D3. Validator plug-in
@@ -318,9 +321,9 @@ unpushed submodule commit.
 ## Risks
 
 1. Reload merge and the `inherited` flag: a reload that redeclares an inherited container relies on
-   `HashableModel.update` overwriting the bool from the write payload (default `False`), and nodes
-   loaded from the database carry `inherited=True` copies that the reset in `process_inheritance`
-   must drop. Guarded by the reload test that asserts `inherited` is `False` after the redeclaration
+   `HashableModel.update` overwriting the bool from the write payload (default `False`). Nodes
+   stored before inherited containers were left out of the database carry `inherited=True` copies
+   that the reset in `process_inheritance` must drop. Guarded by the reload test that asserts `inherited` is `False` after the redeclaration
    and by `test_reload_matches_saved_schema`.
 2. Nested interactive elements: the Extra button must not sit inside the Disclosure trigger button.
    It stays a sibling of the trigger in `CardHeader`.

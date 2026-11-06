@@ -70,7 +70,9 @@ A kind without sections returns `"containers": []` and `"container": null` on ev
   `inherited` is read-only, as on attributes and relationships, so a load that sends it gets a
   read-only warning and the value is dropped. An unknown key inside an item fails
   the write contract with a 422, as for any other schema key.
-- `container` on an attribute or relationship: a string or `null`.
+- `container` on an attribute or relationship: a string or `null`. On a reload, leaving `container`
+  out or sending `null` keeps the stored value, and `""` moves the field back to the Details
+  section, as for the optional text properties of a node.
 - A load that only changes containers or container assignments needs no migration and no
   constraint check; the response reports none.
 - A load that leaves a container out of the list keeps it; `"state": "absent"` on the item
@@ -122,8 +124,8 @@ with the placeholders filled from the request:
 ```
 
   The same shape with `relationships.<name>.container` for a relationship. When the reference is on
-  an inherited field whose container was removed from the generic, the kind in the message is the
-  node that fails.
+  a field declared on a generic, the kind in the message is the generic, not the nodes that inherit
+  the field.
 
 - Two containers with the same name on one kind after inheritance:
 
