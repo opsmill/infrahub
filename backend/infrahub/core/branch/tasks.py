@@ -83,6 +83,7 @@ from infrahub.git.constants import (
 from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
 from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.profiles.replay import ProfileReplayRefresher
 from infrahub.profiles.submission import submit_profile_refresh
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
@@ -483,13 +484,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             log.exception("Widening the post-rebase Python recompute: its resolver could not be built")
             python_resolver = UnavailablePythonTargetResolver()
 
+        schema_name = (
+            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
+        )
+        schema_branch = registry.schema.get_schema_branch(name=schema_name)
         with log_exception_guard(log, "Failed to submit the coalesced post-rebase recompute"):
-            schema_name = (
-                user_branch.name
-                if user_branch.name in registry.get_altered_schema_branches()
-                else registry.default_branch
-            )
-            schema_branch = registry.schema.get_schema_branch(name=schema_name)
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
                 submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
@@ -497,6 +496,14 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 barrier=barrier,
             )
             await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+
+    with log_exception_guard(log, "Failed to submit the post-rebase refresh of the replayed profiles"):
+        await ProfileReplayRefresher(workflow=workflow).refresh(
+            branch_name=user_branch.name,
+            schema_branch=schema_branch,
+            changelogs=[*default_branch_changelogs, *branch_changelogs],
+            context=low_context.to_event_context(),
+        )
 
     if profile_refresh_node_ids:
         with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):

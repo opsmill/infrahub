@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamNodeDetails
     from infrahub.core.models import SchemaDiff
     from infrahub.log import InfrahubLogger
+    from infrahub.profiles.replay import ProfileReplayRefresher
     from infrahub.services.adapters.event import InfrahubEventService
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
@@ -58,6 +59,7 @@ class PostMergeDispatcher:
         default_branch: Branch,
         python_resolver: PythonTargetResolver,
         barrier: RegenerationBarrier,
+        profile_replay_refresher: ProfileReplayRefresher,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
@@ -66,6 +68,7 @@ class PostMergeDispatcher:
         self.default_branch = default_branch
         self.python_resolver = python_resolver
         self.barrier = barrier
+        self.profile_replay_refresher = profile_replay_refresher
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -176,8 +179,8 @@ class PostMergeDispatcher:
             with log_exception_guard(self.log, f"Failed to send post-merge event '{type(event).__name__}'"):
                 await self.event_service.send(event=event)
 
+        schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
         with log_exception_guard(self.log, "Failed to submit the coalesced post-merge recompute"):
-            schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
             coordinator = MergeRecomputeCoordinator(
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
@@ -185,6 +188,14 @@ class PostMergeDispatcher:
                 barrier=self.barrier,
             )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
+
+        with log_exception_guard(self.log, "Failed to submit the post-merge profile refresh"):
+            await self.profile_replay_refresher.refresh(
+                branch_name=self.default_branch.name,
+                schema_branch=schema_branch,
+                changelogs=node_events,
+                context=event_context,
+            )
 
     async def _submit_workflow(
         self,
