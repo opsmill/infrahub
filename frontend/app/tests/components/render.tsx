@@ -7,8 +7,10 @@ import { Slide, ToastContainer } from "react-toastify";
 import { render as renderFromVitest } from "vitest-browser-react";
 
 import { BranchContext } from "../../src/entities/branches/ui/branches-provider";
+import { ConfigContext } from "../../src/entities/config/ui/config-provider";
 import { store } from "../../src/shared/stores";
 import { generateBranch } from "../fake/branch";
+import { generateConfig } from "../fake/config";
 
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -41,9 +43,11 @@ export const render = (component: React.ReactElement, options = {}) => {
                   newestOnTop
                   position="bottom-right"
                 />
-                <BranchContext value={{ currentBranch, setCurrentBranch: () => {} }}>
-                  {children}
-                </BranchContext>
+                <ConfigContext value={generateConfig()}>
+                  <BranchContext value={{ currentBranch, setCurrentBranch: () => {} }}>
+                    {children}
+                  </BranchContext>
+                </ConfigContext>
               </BrowserRouter>
             </QueryClientProvider>
           </Provider>

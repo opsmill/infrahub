@@ -9,9 +9,7 @@ vi.mock("@/entities/config/ui/queries/get-app-info.query", () => ({
 }));
 
 // Mock the config provider
-vi.mock("@/entities/config/ui/config-provider", () => ({
-  useConfig: vi.fn(),
-}));
+vi.mock("@/entities/config/ui/config-provider");
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
