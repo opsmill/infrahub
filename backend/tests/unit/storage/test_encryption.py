@@ -68,18 +68,56 @@ def test_plaintext_storage_is_unchanged_by_the_encryption_support(tmp_path: Path
     assert storage.read(identifier=IDENTIFIER) == StoredContent(content=CONTENT, authenticated=False)
 
 
-def test_plaintext_storage_refuses_to_return_an_encrypted_object(tmp_path: Path) -> None:
+def test_disabled_storage_still_reads_what_was_encrypted(tmp_path: Path) -> None:
+    (tmp_path / IDENTIFIER).write_bytes(seal(identifier=IDENTIFIER, content=CONTENT, key=KEY))
+    storage = build_storage(tmp_path, encryption_enabled=False, key=KEY)
+
+    assert storage.read(identifier=IDENTIFIER) == StoredContent(content=CONTENT, authenticated=True)
+    assert storage.retrieve_binary(identifier=IDENTIFIER) == CONTENT
+
+
+def test_disabled_storage_writes_plaintext_even_with_a_key(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=False, key=KEY)
+
+    storage.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
+
+    assert (tmp_path / IDENTIFIER).read_bytes() == CONTENT
+
+
+def test_disabled_storage_refuses_an_encrypted_object_it_has_no_key_for(tmp_path: Path) -> None:
     storage = build_storage(tmp_path, encryption_enabled=False, key=None)
     (tmp_path / IDENTIFIER).write_bytes(seal(identifier=IDENTIFIER, content=CONTENT, key=KEY))
 
     with pytest.raises(
         StorageEncryptionError,
         match=(
-            rf"^The stored object {IDENTIFIER} is encrypted but storage encryption is disabled; "
-            r"set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it$"
+            rf"^The stored object {IDENTIFIER} is encrypted but this process has no key to decrypt it; set "
+            r"INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled$"
         ),
     ):
         storage.read(identifier=IDENTIFIER)
+
+
+def test_disabled_storage_refuses_an_object_encrypted_with_another_key(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=False, key=OTHER_KEY)
+    (tmp_path / IDENTIFIER).write_bytes(seal(identifier=IDENTIFIER, content=CONTENT, key=KEY))
+
+    with pytest.raises(
+        StorageIntegrityError,
+        match=rf"^The stored content {IDENTIFIER} failed its integrity check and was not served\.$",
+    ) as excinfo:
+        storage.read(identifier=IDENTIFIER)
+
+    assert excinfo.value.reason == "unknown_key"
+
+
+def test_disabled_storage_does_not_refuse_plain_text_that_starts_like_the_marker(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=False, key=KEY)
+    (tmp_path / IDENTIFIER).write_bytes(b"IHSE plain text that merely starts like the marker")
+
+    assert storage.read(identifier=IDENTIFIER) == StoredContent(
+        content=b"IHSE plain text that merely starts like the marker", authenticated=False
+    )
 
 
 @dataclass

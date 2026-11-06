@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import ContentType, InfrahubKind
 from infrahub.core.node import Node
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ async def create_stored_artifact(
         name="artifactdef01",
         targets=group,
         transformation=transform,
-        content_type="application/json",
+        content_type=ContentType.APPLICATION_JSON,
         artifact_name="myartifact",
         parameters={"value": {"name": "name__value"}},
     )
@@ -46,7 +46,7 @@ async def create_stored_artifact(
         object=car_person_data_generic["c1"],
         storage_id=storage_id,
         checksum=checksum,
-        content_type="application/json",
+        content_type=ContentType.APPLICATION_JSON,
     )
     await artifact.save(db=db)
     return artifact

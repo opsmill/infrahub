@@ -4,16 +4,20 @@ title: Encrypt stored files
 
 # Encrypt stored files
 
-Infrahub can encrypt the artifacts and file objects it stores, on the local filesystem or in an S3-compatible bucket, and refuse to serve a stored file that was modified. Files are encrypted with AES-256-GCM using a key derived from `INFRAHUB_SECURITY_SECRET_KEY`.
+Infrahub can encrypt the artifacts and file objects it stores, on the local filesystem or in an S3-compatible bucket, and refuse to serve an encrypted file that was modified. Files are encrypted with AES-256-GCM using a key derived from `INFRAHUB_SECURITY_SECRET_KEY`.
 
 Encryption protects stored files from someone who has access to the storage, or to a copy of it, but not to the API servers' secret. It does not protect them from Infrahub users who can read the files through Infrahub, and it does not replace TLS for data in transit.
 
 ## Prerequisites
 
-An `INFRAHUB_SECURITY_SECRET_KEY` of at least 32 random characters, set to the same value on every API server. Infrahub refuses to start with a generated secret or with the value from the example deployment files. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
+An `INFRAHUB_SECURITY_SECRET_KEY` of at least 32 random characters, set to the same value on every API server. Generate it with a random generator, for example `openssl rand -hex 32`. When encryption is enabled, Infrahub refuses to start with a generated secret or with the value from the example deployment files. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
 
 :::warning
 The encryption key is never stored: Infrahub derives it from `INFRAHUB_SECURITY_SECRET_KEY` when it starts. Keep that secret in your secrets manager. Without it, encrypted files cannot be recovered, even from a backup.
+:::
+
+:::warning
+Infrahub checks the length of the secret, not whether it is random. Anyone who can read an encrypted file can test guesses of the secret against it offline. A secret that a person chose, such as a phrase with a year, can be found this way. The same secret signs the access tokens of users, so a guessed secret also lets an attacker create valid tokens.
 :::
 
 ## Enable encryption
@@ -23,7 +27,17 @@ Set `INFRAHUB_STORAGE_ENCRYPTION_ENABLED=true` on every API server, then restart
 From then on:
 
 - Every artifact generated and every file uploaded is stored encrypted, and Infrahub checks that it is unchanged each time it serves it.
-- A file stored before encryption was enabled stays as it is. Infrahub serves it only while it matches the checksum recorded when it was stored, even when `INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM` is `false`. A file for which no artifact or file object records a checksum is served as it is.
+- A file stored before encryption was enabled stays as it is: enabling encryption does not encrypt existing files, and regenerating an artifact whose content did not change keeps its stored file. When the content of an artifact changes, Infrahub stores the new content encrypted. It does not delete the previous file, which stays in the storage in plaintext. Infrahub serves it only while it matches the checksum recorded when it was stored, even when `INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM` is `false`. A file for which no artifact or file object records a checksum is served as it is. This includes an encrypted upload that no artifact or file object refers to: someone who can write to the storage can replace it with plain content, and Infrahub serves that content.
+
+## Turn encryption off
+
+Set `INFRAHUB_STORAGE_ENCRYPTION_ENABLED=false` (or remove it) on every API server, then restart them. Nothing else changes for users:
+
+- Files that were encrypted stay encrypted in the storage, and Infrahub keeps decrypting them when it serves them, as long as `INFRAHUB_SECURITY_SECRET_KEY` has the value that was in use when they were encrypted. Infrahub still refuses an encrypted file that was modified.
+- Every artifact generated and every file uploaded from then on is stored in plaintext.
+- Infrahub checks stored files as it did before encryption was enabled: artifacts against their recorded checksum, and file objects not at all.
+
+You can turn encryption on again at any time. A file encrypted while it was on stays encrypted, so the files are a mix of encrypted and plain files.
 
 ## Files that fail their integrity check
 
@@ -34,9 +48,8 @@ To repair a file object, upload the file again. To repair an artifact, delete it
 ## Limitations
 
 - Changing `INFRAHUB_SECURITY_SECRET_KEY` makes the files encrypted with the previous value unreadable: they are refused until the previous value is restored.
-- Encryption cannot be turned off again: with it off, reading a file stored while it was on fails with a `500` error that says the file is encrypted, and files modified in the storage are no longer checked. Turn it back on to read them.
 - An older encrypted copy of a file, put back under the same storage identifier, is served: only the storage identifier is authenticated, not the version of the file.
-- The API server holds a whole uploaded file in memory while it encrypts it.
+- The API server holds a whole file in memory while it encrypts or decrypts it: about twice the size of the file at the peak, for example about 100 MB for a 50 MB file. Without encryption, an upload is written in chunks and a download holds the file once.
 - Files stored before encryption was enabled stay in plaintext in the storage, and so do their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots.
 
 ## Back up and restore

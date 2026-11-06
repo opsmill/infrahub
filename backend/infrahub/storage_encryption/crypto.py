@@ -98,6 +98,18 @@ def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
     return StorageKey.derive(settings.secret_key)
 
 
+def storage_key_if_set(settings: SecuritySettings) -> StorageKey | None:
+    """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY when it is set explicitly, without the checks of `storage_key_from_settings`.
+
+    Those checks guard turning encryption on. Reading files that were encrypted earlier, after it was turned off,
+    needs only the secret that was in use then. Returns None when the secret is generated, as no earlier
+    secret can be recovered from it.
+    """
+    if "secret_key" not in settings.model_fields_set:
+        return None
+    return StorageKey.derive(settings.secret_key)
+
+
 def has_envelope_magic(content: bytes) -> bool:
     """Whether `content` starts like an envelope, even a truncated one or one of an unsupported version."""
     return content.startswith(MAGIC)

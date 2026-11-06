@@ -42,7 +42,7 @@ from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
 from infrahub.storage import InfrahubObjectStorage
-from infrahub.storage_encryption.crypto import storage_key_from_settings
+from infrahub.storage_encryption.crypto import storage_key_from_settings, storage_key_if_set
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, mask_recording_span_attributes
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
@@ -121,10 +121,14 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # We must initialize DB after initialize lock
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
-        if config.SETTINGS.storage.encryption_enabled:
-            registry.storage = await InfrahubObjectStorage.init(
-                settings=config.SETTINGS.storage, key=storage_key_from_settings(settings=config.SETTINGS.security)
-            )
+        registry.storage = await InfrahubObjectStorage.init(
+            settings=config.SETTINGS.storage,
+            key=(
+                storage_key_from_settings(settings=config.SETTINGS.security)
+                if config.SETTINGS.storage.encryption_enabled
+                else storage_key_if_set(settings=config.SETTINGS.security)
+            ),
+        )
         # Detect a failed merge, best effort to not block startup
         try:
             await scan_for_failed_merges(db=db, service=service)
