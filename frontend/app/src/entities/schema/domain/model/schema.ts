@@ -11,6 +11,8 @@ export type ModelSchema = GenericSchema | NodeSchema | ProfileSchema | TemplateS
 
 export type RelationshipSchema = components["schemas"]["RelationshipSchemaRead"];
 
+export type ContainerSchema = components["schemas"]["ContainerSchemaRead"];
+
 export type AttributeSchema =
   | components["schemas"]["TextAttributeRead"]
   | components["schemas"]["NumberAttributeRead"]

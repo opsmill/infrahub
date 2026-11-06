@@ -9,7 +9,7 @@ import { FILE_OBJECT_KIND } from "@/entities/nodes/object/domain/model/object-ki
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { FilePreviewCard } from "@/entities/nodes/object/ui/object-details/file-preview-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
-import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
+import { ObjectDetailsSections } from "@/entities/nodes/object/ui/object-details/object-details-sections";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
@@ -36,7 +36,7 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
             permission={permission}
           />
         ) : (
-          <ObjectDetailsCard
+          <ObjectDetailsSections
             objectSchema={objectSchema}
             objectData={objectData}
             permission={permission}

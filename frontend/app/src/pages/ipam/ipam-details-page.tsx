@@ -6,7 +6,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { IP_PREFIX_SUMMARY_EXCLUDED_RELATIONSHIPS } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
-import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
+import { ObjectDetailsSections } from "@/entities/nodes/object/ui/object-details/object-details-sections";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/domain/model/permission";
@@ -34,7 +34,7 @@ function IpamDetailsContent({ objectSchema, objectId, permission }: IpamDetailsC
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
       <Col className="shrink-0 grow md:col-span-2">
-        <ObjectDetailsCard
+        <ObjectDetailsSections
           objectSchema={objectSchema}
           objectData={data}
           permission={permission}
