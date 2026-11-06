@@ -42,8 +42,6 @@ PUBLISHED_SECRET_KEYS = frozenset(
     {
         # Default of the example deployment files and documentation: anyone can derive the key from it.
         "327f747f-efac-42be-9e73-999f08f86b92",
-        # The same value as the root docker-compose.yml expands it, with a stray trailing quote.
-        '327f747f-efac-42be-9e73-999f08f86b92"',
     }
 )
 
@@ -51,6 +49,7 @@ PUBLISHED_SECRET_KEYS = frozenset(
 class IntegrityFailure(StrEnum):
     UNKNOWN_KEY = "unknown_key"
     TAMPERED = "tampered"
+    UNSUPPORTED_FORMAT = "unsupported_format"
     CHECKSUM_MISMATCH = "checksum_mismatch"
 
 
@@ -86,7 +85,7 @@ def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
             "Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
             "API server; without it each process generates its own random secret"
         )
-    if settings.secret_key.strip() in PUBLISHED_SECRET_KEYS:
+    if settings.secret_key.strip().strip("'\"") in PUBLISHED_SECRET_KEYS:
         raise StorageEncryptionError(
             "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
             "set a unique random secret before using storage encryption"
@@ -99,10 +98,16 @@ def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
     return StorageKey.derive(settings.secret_key)
 
 
+def has_envelope_magic(content: bytes) -> bool:
+    """Whether `content` starts like an envelope, even a truncated one or one of an unsupported version."""
+    return content.startswith(MAGIC)
+
+
 def is_envelope(content: bytes) -> bool:
+    """Whether `content` is a complete envelope of the supported format."""
     return (
         len(content) >= HEADER_LENGTH + TAG_LENGTH
-        and content.startswith(MAGIC)
+        and has_envelope_magic(content)
         and content[len(MAGIC)] == FORMAT_VERSION
     )
 
@@ -114,12 +119,17 @@ def seal(*, identifier: str, content: bytes, key: StorageKey) -> bytes:
 
 
 def open_envelope(*, identifier: str, content: bytes, key: StorageKey) -> bytes:
-    """Authenticate an envelope stored under `identifier` and return its content; see `is_envelope`.
+    """Authenticate an envelope stored under `identifier` and return its content.
 
     Raises:
-        StorageIntegrityError: If the envelope was sealed with another key or fails authentication.
+        StorageIntegrityError: If the envelope is truncated, has an unsupported format, was sealed with another
+            key or fails authentication.
 
     """
+    if len(content) <= len(MAGIC) or content[len(MAGIC)] != FORMAT_VERSION:
+        raise StorageIntegrityError(identifier=identifier, reason=IntegrityFailure.UNSUPPORTED_FORMAT)
+    if len(content) < HEADER_LENGTH + TAG_LENGTH:
+        raise StorageIntegrityError(identifier=identifier, reason=IntegrityFailure.TAMPERED)
     if content[_FINGERPRINT_OFFSET : _FINGERPRINT_OFFSET + FINGERPRINT_LENGTH] != key._fingerprint:
         raise StorageIntegrityError(identifier=identifier, reason=IntegrityFailure.UNKNOWN_KEY)
     header = content[:HEADER_LENGTH]

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from infrahub import config
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
@@ -14,7 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
-from infrahub.artifacts.content import ArtifactContentReader
+from infrahub.artifacts.content import get_artifact_content_reader
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreFileObject
@@ -78,12 +77,9 @@ def build_content_disposition(filename: str, preview: bool = False) -> str:
 
 async def _build_file_response(db: InfrahubDatabase, file_object: CoreFileObject, *, preview: bool = False) -> Response:
     """Build a `Response` for downloading a FileObject's content."""
-    content = await ArtifactContentReader(
-        db=db,
-        storage=registry.storage,
-        verify_checksum=config.SETTINGS.storage.verify_artifact_checksum,
-        verify_file_objects=config.SETTINGS.storage.encryption_enabled,
-    ).read_file_object(storage_id=file_object.storage_id.value, checksum=file_object.checksum.value)
+    content = await get_artifact_content_reader(db=db).read_file_object(
+        storage_id=file_object.storage_id.value, checksum=file_object.checksum.value
+    )
     return Response(
         content=content,
         media_type=file_object.file_type.value,

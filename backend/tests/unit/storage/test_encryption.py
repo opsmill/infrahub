@@ -61,14 +61,25 @@ def test_file_stored_before_encryption_is_returned_unauthenticated(tmp_path: Pat
 
 def test_plaintext_storage_is_unchanged_by_the_encryption_support(tmp_path: Path) -> None:
     storage = build_storage(tmp_path, encryption_enabled=False, key=None)
-    envelope = seal(identifier=OTHER_IDENTIFIER, content=CONTENT, key=KEY)
-    (tmp_path / OTHER_IDENTIFIER).write_bytes(envelope)
 
     storage.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
 
     assert (tmp_path / IDENTIFIER).read_bytes() == CONTENT
     assert storage.read(identifier=IDENTIFIER) == StoredContent(content=CONTENT, authenticated=False)
-    assert storage.read(identifier=OTHER_IDENTIFIER) == StoredContent(content=envelope, authenticated=False)
+
+
+def test_plaintext_storage_refuses_to_return_an_encrypted_object(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=False, key=None)
+    (tmp_path / IDENTIFIER).write_bytes(seal(identifier=IDENTIFIER, content=CONTENT, key=KEY))
+
+    with pytest.raises(
+        StorageEncryptionError,
+        match=(
+            rf"^The stored object {IDENTIFIER} is encrypted but storage encryption is disabled; "
+            r"set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it$"
+        ),
+    ):
+        storage.read(identifier=IDENTIFIER)
 
 
 @dataclass
@@ -89,6 +100,12 @@ REFUSED_READ_CASES = [
         stored=seal(identifier=OTHER_IDENTIFIER, content=CONTENT, key=KEY),
         reason="tampered",
     ),
+    RefusedReadCase(
+        name="truncated_to_its_header",
+        stored=seal(identifier=IDENTIFIER, content=CONTENT, key=KEY)[:25],
+        reason="tampered",
+    ),
+    RefusedReadCase(name="truncated_to_its_magic", stored=b"IHSE", reason="unsupported_format"),
 ]
 
 
@@ -99,7 +116,10 @@ def test_encrypted_storage_refuses_an_envelope_that_does_not_authenticate(
     storage = build_storage(tmp_path, encryption_enabled=True, key=KEY)
     (tmp_path / IDENTIFIER).write_bytes(case.stored)
 
-    with pytest.raises(StorageIntegrityError) as excinfo:
+    with pytest.raises(
+        StorageIntegrityError,
+        match=rf"^The stored content {IDENTIFIER} failed its integrity check and was not served\.$",
+    ) as excinfo:
         storage.read(identifier=IDENTIFIER)
 
     assert (excinfo.value.identifier, excinfo.value.reason) == (IDENTIFIER, case.reason)

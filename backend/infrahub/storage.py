@@ -10,12 +10,15 @@ import botocore.exceptions
 import fastapi_storages
 from typing_extensions import Self
 
-from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError
-from infrahub.storage_encryption.crypto import is_envelope, open_envelope, seal
+from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError, StorageIntegrityError
+from infrahub.log import get_logger
+from infrahub.storage_encryption.crypto import has_envelope_magic, is_envelope, open_envelope, seal
 
 if TYPE_CHECKING:
     from infrahub.config import StorageSettings
     from infrahub.storage_encryption.crypto import StorageKey
+
+log = get_logger()
 
 
 @dataclass(frozen=True)
@@ -134,7 +137,8 @@ class InfrahubObjectStorage:
 
         Raises:
             NodeNotFoundError: If no object is stored under `identifier`.
-            StorageIntegrityError: If an encrypted object uses another key or fails authentication.
+            StorageIntegrityError: If an encrypted object is truncated, uses another key or fails authentication.
+            StorageEncryptionError: If the object is encrypted but storage encryption is disabled.
 
         """
         try:
@@ -142,9 +146,26 @@ class InfrahubObjectStorage:
                 stored = f.read()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
-        if not self._settings.encryption_enabled or not is_envelope(stored):
+        if not self._settings.encryption_enabled:
+            if is_envelope(stored):
+                raise StorageEncryptionError(
+                    f"The stored object {identifier} is encrypted but storage encryption is disabled; "
+                    "set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it"
+                )
             return StoredContent(content=stored, authenticated=False)
-        content = open_envelope(identifier=identifier, content=stored, key=self._active_key())
+        if not has_envelope_magic(stored):
+            return StoredContent(content=stored, authenticated=False)
+        key = self._active_key()
+        try:
+            content = open_envelope(identifier=identifier, content=stored, key=key)
+        except StorageIntegrityError as exc:
+            log.warning(
+                "Refused a stored object that failed its integrity check",
+                storage_id=identifier,
+                reason=exc.reason,
+                key_fingerprint=key.fingerprint,
+            )
+            raise
         return StoredContent(content=content, authenticated=True)
 
     def delete(self, identifier: str) -> None:

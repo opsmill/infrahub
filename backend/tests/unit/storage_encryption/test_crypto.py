@@ -7,7 +7,14 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from infrahub.config import SecuritySettings
 from infrahub.exceptions import StorageEncryptionError, StorageIntegrityError
-from infrahub.storage_encryption.crypto import StorageKey, is_envelope, open_envelope, seal, storage_key_from_settings
+from infrahub.storage_encryption.crypto import (
+    StorageKey,
+    has_envelope_magic,
+    is_envelope,
+    open_envelope,
+    seal,
+    storage_key_from_settings,
+)
 
 SECRET = "unit-test-secret-key-0123456789abcdef"
 OTHER_SECRET = "another-unit-test-secret-key-987654321"
@@ -72,6 +79,13 @@ REFUSED_ENVELOPE_CASES = [
         name="tag_changed", content=_flip(ENVELOPE, len(ENVELOPE) - 1), identifier=IDENTIFIER, reason="tampered"
     ),
     RefusedEnvelopeCase(name="truncated", content=ENVELOPE[:-1], identifier=IDENTIFIER, reason="tampered"),
+    RefusedEnvelopeCase(name="truncated_to_header", content=ENVELOPE[:25], identifier=IDENTIFIER, reason="tampered"),
+    RefusedEnvelopeCase(
+        name="truncated_to_magic", content=ENVELOPE[:4], identifier=IDENTIFIER, reason="unsupported_format"
+    ),
+    RefusedEnvelopeCase(
+        name="unsupported_version", content=_flip(ENVELOPE, 4), identifier=IDENTIFIER, reason="unsupported_format"
+    ),
     RefusedEnvelopeCase(name="bytes_appended", content=ENVELOPE + b"\n", identifier=IDENTIFIER, reason="tampered"),
     RefusedEnvelopeCase(
         name="copied_to_another_identifier",
@@ -100,11 +114,21 @@ def test_only_a_complete_envelope_of_a_known_version_is_recognized() -> None:
     assert not is_envelope(_flip(ENVELOPE, 4))
 
 
+def test_anything_that_starts_with_the_magic_looks_like_an_envelope() -> None:
+    assert has_envelope_magic(ENVELOPE)
+    assert has_envelope_magic(ENVELOPE[:4])
+    assert has_envelope_magic(_flip(ENVELOPE, 4))
+    assert not has_envelope_magic(CONTENT)
+    assert not has_envelope_magic(ENVELOPE[1:])
+
+
 def test_key_comes_from_an_explicitly_set_secret() -> None:
     assert storage_key_from_settings(settings=SecuritySettings(secret_key=SECRET)).fingerprint == SECRET_FINGERPRINT
 
 
-def test_generated_secret_is_refused() -> None:
+def test_generated_secret_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SECRET_KEY", raising=False)
+
     with pytest.raises(
         StorageEncryptionError,
         match=(
@@ -134,6 +158,11 @@ UNFIT_SECRET_CASES = [
     UnfitSecretCase(
         name="published_example_with_trailing_quote",
         secret='327f747f-efac-42be-9e73-999f08f86b92"',
+        message=r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files",
+    ),
+    UnfitSecretCase(
+        name="published_example_with_single_quotes",
+        secret="'327f747f-efac-42be-9e73-999f08f86b92'",
         message=r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files",
     ),
     UnfitSecretCase(
