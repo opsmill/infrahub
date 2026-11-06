@@ -1,18 +1,17 @@
 import {
   ADVANCED_SECTION,
-  BUILT_IN_SECTION_NAMES,
   DETAILS_SECTION,
   type FieldSection,
 } from "@/entities/nodes/object/domain/model/field-section";
 import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
 
-function orderContainers(containers: ContainerSchema[]): ContainerSchema[] {
-  const weighted = containers
-    .filter((container) => container.order_weight != null)
-    .sort((a, b) => a.order_weight! - b.order_weight!);
-  const unweighted = containers.filter((container) => container.order_weight == null);
+const BUILT_IN_SECTION_NAMES: string[] = [DETAILS_SECTION.name, ADVANCED_SECTION.name];
 
-  return [...weighted, ...unweighted];
+function orderContainers(containers: ContainerSchema[]): ContainerSchema[] {
+  const weightOf = (container: ContainerSchema) =>
+    container.order_weight ?? Number.MAX_SAFE_INTEGER;
+
+  return [...containers].sort((a, b) => weightOf(a) - weightOf(b));
 }
 
 export function groupFieldsBySection<T>(
@@ -43,24 +42,12 @@ export function groupFieldsBySection<T>(
   }
 
   const sections: FieldSection<T>[] = [
-    {
-      key: "built-in:details",
-      kind: "details",
-      container: { ...DETAILS_SECTION },
-      items: detailsItems,
-    },
+    { container: DETAILS_SECTION, items: detailsItems },
     ...declaredContainers.map((container) => ({
-      key: `declared:${container.name}`,
-      kind: "declared" as const,
       container,
       items: itemsByContainer.get(container.name) ?? [],
     })),
-    {
-      key: "built-in:advanced",
-      kind: "advanced",
-      container: { ...ADVANCED_SECTION },
-      items: advancedItems,
-    },
+    { container: ADVANCED_SECTION, items: advancedItems },
   ];
 
   return sections.filter((section) => section.items.length > 0);
