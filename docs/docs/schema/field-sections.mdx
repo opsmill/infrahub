@@ -184,7 +184,7 @@ nodes:
 With this schema, the detail page of an `InfraLagInterfaceL2` object shows these cards in this order:
 
 1. **Details**, with the fields that have no `container`, such as the name and the description of the interface.
-2. **LACP**, with **LACP**, **Minimum links** and **Mlag**.
+2. **LACP**, with **LACP**, **Minimum links** and the `mlag` relationship.
 3. **Layer 2**, with **Layer2 Mode**, **Untagged VLAN** and **Tagged VLANs**.
 4. **Advanced**, collapsed, with **MaxBundle**.
 
@@ -264,7 +264,7 @@ A section without `label`, or with a `name` that breaks the naming rules, fails 
 ## Data access and the API
 
 - The GraphQL schema and GraphQL queries do not change. Sections do not affect how you read or write data.
-- The schema REST API returns `containers` on nodes, generics, profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
+- The schema REST API returns `containers` on nodes, generics, Profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
 - Sections do not restrict access. To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview).
 
 ## Related concepts
