@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 class RelationshipSchema(GeneratedRelationshipSchema):
     _exclude_from_hash: list[str] = ["filters"]
     _sort_by: list[str] = ["name"]
-    _cleared_when_omitted: list[str] = ["container"]
 
     @property
     def is_attribute(self) -> bool:
