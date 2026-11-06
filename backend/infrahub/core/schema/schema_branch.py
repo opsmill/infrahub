@@ -2270,12 +2270,11 @@ class SchemaBranch:
     def process_containers_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=name, duplicate=False)
-            if not any(container.state == HashableModelState.ABSENT for container in node.containers):
+            containers = [container for container in node.containers if container.state != HashableModelState.ABSENT]
+            if len(containers) == len(node.containers):
                 continue
             updated_node = node.duplicate()
-            updated_node.containers = [
-                container for container in node.containers if container.state != HashableModelState.ABSENT
-            ]
+            updated_node.containers = containers
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
