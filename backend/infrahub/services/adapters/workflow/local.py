@@ -18,6 +18,12 @@ if TYPE_CHECKING:
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
+    """Runs workflows in this process, without a task manager or its database to check."""
+
+    async def check_health(self) -> None: ...
+
+    async def check_database_health(self) -> None: ...
+
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,

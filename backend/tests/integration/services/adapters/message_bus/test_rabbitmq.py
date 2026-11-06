@@ -12,10 +12,22 @@ import httpx
 import pytest
 import ujson
 from aio_pika import Message
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub import trace as infrahub_trace
 from infrahub.components import ComponentType
+from infrahub.exceptions import DependencyConnectionClosedError
+from infrahub.health import (
+    DependencyCheck,
+    DependencyHealth,
+    DependencyName,
+    DependencyStatus,
+    ErrorCategory,
+    HealthChecker,
+    classify_error,
+)
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
 from infrahub.message_bus.operations import execute_message
@@ -25,9 +37,13 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import SampleRatioState, create_tracer_provider, get_sample_ratio_state
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
+from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS, PORT_CLIENT_RABBITMQ
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.utils import get_exposed_port
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
     from fast_depends import Provider
 
@@ -619,3 +635,80 @@ async def test_task_worker_applies_a_trace_sample_ratio_change(
     assert get_sample_ratio_state() == SampleRatioState(
         default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
     )
+
+
+async def test_rabbitmq_check_health_publishes_without_creating_a_queue(rabbitmq_api: RabbitMQManager) -> None:
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+    try:
+        queues_before = await rabbitmq_api.get_queues()
+        for _ in range(3):
+            await bus.check_health()
+        queues_after = await rabbitmq_api.get_queues()
+    finally:
+        await bus.shutdown()
+
+    assert queues_after == queues_before
+
+
+async def test_rabbitmq_check_health_reports_a_closed_channel(rabbitmq_api: RabbitMQManager) -> None:
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+    try:
+        await bus.channel.close()
+        with pytest.raises(
+            DependencyConnectionClosedError, match=r"^The connection to the message broker is closed$"
+        ) as exc_info:
+            await bus.check_health()
+    finally:
+        await bus.shutdown()
+
+    assert classify_error(exc_info.value) == ErrorCategory.CONNECTION_CLOSED
+
+
+@pytest.fixture
+def stoppable_broker() -> Iterator[tuple[DockerContainer, BrokerSettings]]:
+    """A broker of its own, so a test can stop it without stopping the one the other tests share."""
+    if not INFRAHUB_USE_TEST_CONTAINERS:
+        pytest.skip("Stopping a broker needs a test container")
+    container = (
+        DockerContainer(image="rabbitmq:4.2.1-management")
+        .with_env("RABBITMQ_DEFAULT_USER", config.SETTINGS.broker.username)
+        .with_env("RABBITMQ_DEFAULT_PASS", config.SETTINGS.broker.password)
+        .with_exposed_ports(PORT_CLIENT_RABBITMQ)
+    )
+    container.start()
+    try:
+        wait_for_logs(container, "Server startup complete;")
+        settings = deepcopy(config.SETTINGS.broker)
+        settings.address = "localhost"
+        settings.port = get_exposed_port(container, PORT_CLIENT_RABBITMQ)
+        settings.virtualhost = "/"
+        yield container, settings
+    finally:
+        container.stop()
+
+
+async def test_rabbitmq_check_health_reports_a_stopped_broker(
+    stoppable_broker: tuple[DockerContainer, BrokerSettings],
+) -> None:
+    container, settings = stoppable_broker
+    bus = await RabbitMQMessageBus.new(settings=settings, component_type=ComponentType.API_SERVER)
+    checker = HealthChecker(
+        checks=[DependencyCheck(name=DependencyName.MESSAGE_BUS, check=bus.check_health)],
+        check_timeout=3,
+        max_report_age=0,
+    )
+    try:
+        report_while_running = await checker.report()
+        container.get_wrapped_container().stop()
+        report_after_stop = await checker.report()
+    finally:
+        await bus.shutdown()
+
+    assert report_while_running.dependencies == [
+        DependencyHealth(name=DependencyName.MESSAGE_BUS, status=DependencyStatus.UP, error=ErrorCategory.NONE)
+    ]
+    assert report_after_stop.dependencies == [
+        DependencyHealth(
+            name=DependencyName.MESSAGE_BUS, status=DependencyStatus.DOWN, error=ErrorCategory.CONNECTION_CLOSED
+        )
+    ]

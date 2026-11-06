@@ -614,6 +614,35 @@
                 }
             }
         },
+        "/api/health": {
+            "get": {
+                "summary": "Get Health",
+                "description": "Report whether this API server can reach the services it needs, without requiring authentication.",
+                "operationId": "get_health_api_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthReport"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "At least one backing service is down",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthReport"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/config": {
             "get": {
                 "summary": "Get Config",
@@ -3102,6 +3131,45 @@
                 ],
                 "title": "ConfigAPI"
             },
+            "DependencyHealth": {
+                "properties": {
+                    "name": {
+                        "$ref": "#/components/schemas/DependencyName"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/DependencyStatus"
+                    },
+                    "error": {
+                        "$ref": "#/components/schemas/ErrorCategory",
+                        "default": "none"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "status"
+                ],
+                "title": "DependencyHealth"
+            },
+            "DependencyName": {
+                "type": "string",
+                "enum": [
+                    "database",
+                    "message_bus",
+                    "cache",
+                    "task_manager",
+                    "task_manager_db"
+                ],
+                "title": "DependencyName"
+            },
+            "DependencyStatus": {
+                "type": "string",
+                "enum": [
+                    "up",
+                    "down"
+                ],
+                "title": "DependencyStatus"
+            },
             "DiffAction": {
                 "type": "string",
                 "enum": [
@@ -3242,6 +3310,20 @@
                     "feature"
                 ],
                 "title": "EnterpriseRequiredResponse"
+            },
+            "ErrorCategory": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "timeout",
+                    "connection_refused",
+                    "connection_closed",
+                    "name_resolution_failed",
+                    "unavailable",
+                    "unknown_error"
+                ],
+                "title": "ErrorCategory",
+                "description": "Why a dependency is down, without the internal details an unauthenticated caller must not see."
             },
             "ExperimentalFeaturesSettings": {
                 "properties": {
@@ -4490,6 +4572,40 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "HashableModelDiff"
+            },
+            "HealthReport": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/HealthStatus"
+                    },
+                    "dependencies": {
+                        "items": {
+                            "$ref": "#/components/schemas/DependencyHealth"
+                        },
+                        "type": "array",
+                        "title": "Dependencies"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dependencies",
+                    "timestamp"
+                ],
+                "title": "HealthReport"
+            },
+            "HealthStatus": {
+                "type": "string",
+                "enum": [
+                    "healthy",
+                    "unhealthy"
+                ],
+                "title": "HealthStatus"
             },
             "InfoAPI": {
                 "properties": {
