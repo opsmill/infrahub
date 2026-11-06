@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "reviewing-changes"
+SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "reviewing-code"
 
 
 def test_every_reference_file_is_listed_and_exists() -> None:

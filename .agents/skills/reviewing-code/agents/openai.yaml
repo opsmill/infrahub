@@ -1,7 +1,7 @@
 ---
 interface:
-  display_name: "Reviewing Changes"
+  display_name: "Reviewing Code"
   short_description: "Review a branch or pull request against the repository rules, REVIEW.md and cubic"
-  default_prompt: "Use $reviewing-changes with the URL of the pull request this session opened."
+  default_prompt: "Use $reviewing-code with the URL of the pull request this session opened."
 policy:
   allow_implicit_invocation: true

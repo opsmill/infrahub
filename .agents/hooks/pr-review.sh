@@ -60,7 +60,7 @@ ask_for_review() {
         systemMessage: ("Starting a code review of " + $u + ". Its findings will appear in this session when it finishes."),
         hookSpecificOutput: {
             hookEventName: "PostToolUse",
-            additionalContext: ($why + " The user has turned on automatic reviews. Run the reviewing-changes skill with the argument " + $u + " now. It runs in PR mode: it changes no files and asks no questions, so tell the user that the review is running and that its report will appear in this session when it finishes.")
+            additionalContext: ($why + " The user has turned on automatic reviews. Run the reviewing-code skill with the argument " + $u + " now. It runs in PR mode: it changes no files and asks no questions, so tell the user that the review is running and that its report will appear in this session when it finishes.")
         }
     }'
 }

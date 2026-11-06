@@ -27,6 +27,6 @@ review missed.
      resolver
    - a fix introduced it
 5. Report the counts: caught, declined, missed, introduced by a fix, and wrong comments. Then read
-   `.agents/skills/reviewing-changes/references/improve.md` with the Read tool and propose
+   `.agents/skills/reviewing-code/references/improve.md` with the Read tool and propose
    changes as it says. A miss that no rule or document change would prevent becomes a proposed
    change to this skill, for the user to decide.

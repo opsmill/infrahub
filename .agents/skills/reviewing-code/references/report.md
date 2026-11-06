@@ -78,7 +78,7 @@ This skill:
 - `<SKILL.md | references/<file>>`, <step>: <change in one line> (<what happened in this run>)
 ```
 
-Save the report to `$(git rev-parse --git-common-dir)/reviewing-changes/<branch>.md`, replacing
+Save the report to `$(git rev-parse --git-common-dir)/reviewing-code/<branch>.md`, replacing
 any earlier one. In PR mode, `<branch>` is the pull request's `headRefName`; once the report is
 saved, remove the temporary worktree with `git worktree remove --force <scratchpad>/pr-<n>`. Inside `.git` it is never committed, and every worktree of the repository can
 read it.

@@ -1,5 +1,5 @@
 ---
-name: reviewing-changes
+name: reviewing-code
 description: >-
   Reviews a branch before it is pushed, or a pull request after it opens, against the rules cubic and human reviewers apply. Runs cubic, `code-review`, and reviewers for the approach, the `.agents/rules/` files, the design, new files, the architecture and its decisions, and the specs, changelog and PR claims. Verifies each finding, fixes the approved ones, and proposes changes to the rules, the docs and this skill. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, or fewer review comments on it, or says "review my changes", "pre-push review" or "cubic review"; this session has just opened a PR; the user asks for a review of a PR by URL or number; a hook reports large pushes to a PR; or the user asks "will cubic complain about this". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into docs → `harvesting-review`; a bug hunt only → `code-review`; watching CI → `monitoring-pull-requests`.
 argument-hint: "[<PR number or URL> | <base branch>] [report] | compare <PR number>"
@@ -9,7 +9,7 @@ metadata:
   author: OpsMill
 ---
 
-# Reviewing changes
+# Reviewing code
 
 Each comment that cubic or a reviewer leaves on a pull request costs a CI round and a reply. Most
 cite a rule in `.agents/rules/` or a claim the diff does not support. This skill finds them
@@ -50,7 +50,7 @@ proposals to improve the rules, the docs and this skill.
 ## Files of this skill
 
 Phases 0 to 2 are in this file. The other steps are in `references/`, at
-`.agents/skills/reviewing-changes/references/` from the repository root. Read each file with the
+`.agents/skills/reviewing-code/references/` from the repository root. Read each file with the
 Read tool when its step starts, even when you remember it from an earlier run: the file holds the
 current steps, and a step run from memory misses the checks added since.
 
@@ -105,7 +105,7 @@ means its step ran without its instructions: read the file and run the step agai
    - **Leave them out**: rerun with `--committed`, or with `--exclude` for copied tooling such as
      `.agents/**`, `AGENTS.md`, `CLAUDE.md`, `cubic.yaml` and `.claude/settings.json`.
    - **Set them aside**, for local changes that must never be committed:
-     `git stash push --include-untracked -m "reviewing-changes <timestamp>" -- <paths>`. Record
+     `git stash push --include-untracked -m "reviewing-code <timestamp>" -- <paths>`. Record
      the SHA of the entry with that message from `git stash list --format='%H %gs'`. Do not use
      `stash@{0}`: worktrees share the stash list, so another session's entry can be on top. The
      report step restores them.

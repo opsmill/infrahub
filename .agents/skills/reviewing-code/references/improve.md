@@ -6,7 +6,7 @@ approves after reading the report.
 
 ## Read the log first
 
-Read `$(git rev-parse --git-common-dir)/reviewing-changes/proposals.md` when it exists. For each
+Read `$(git rev-parse --git-common-dir)/reviewing-code/proposals.md` when it exists. For each
 draft, look in the log for the same target and the same change:
 
 - Rejected before: keep the draft only when this run gives a new reason, and quote the earlier
