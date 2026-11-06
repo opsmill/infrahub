@@ -5,32 +5,41 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 
 
 HOOKS_DIR = Path(__file__).resolve().parent
-SPECIFY_DIR = HOOKS_DIR.parent.parent / ".specify"
-# The rewritten command is approved without asking, so only a command that is one script call qualifies.
-SHELL_SYNTAX = re.compile(r"[;&|<>`$(){}\n\\#]")
-ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
+REPO_ROOT = HOOKS_DIR.parent.parent
+# The rewritten command is approved without asking, so only one exact form is accepted, with nothing that bash could read differently.
+SCRIPT_CALL = re.compile(
+    r"[ \t]*(?:(?:ba)?sh[ \t]+)?"
+    r"(?P<quote>['\"]?)(?:(?P<root>/[A-Za-z0-9_./-]+)/)?"
+    r"(?P<script>\.specify/(?:extensions/[a-z0-9-]+/)?scripts/bash/[a-z0-9-]+\.sh)(?P=quote)"
+    r"(?:[ \t]+[A-Za-z0-9_./:=@+,-]+)*[ \t]*"
+)
 
 
 def is_speckit_script_call(command: str, cwd: str) -> bool:
-    if SHELL_SYNTAX.search(command):
+    match = SCRIPT_CALL.fullmatch(command)
+    if match is None:
+        return False
+    root = match.group("root") or cwd
+    if ".." in root.split("/"):
         return False
     try:
-        words = shlex.split(command)
-    except ValueError:
+        if Path(os.path.realpath(root)) != REPO_ROOT:
+            return False
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", match.group("script")],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            check=False,
+        )
+    except (OSError, ValueError):
         return False
-    while words and ASSIGNMENT.match(words[0]):
-        words.pop(0)
-    if words and words[0] in {"bash", "sh"}:
-        words.pop(0)
-    if not words or not words[0].endswith(".sh"):
-        return False
-    script = (Path(cwd) / words[0]).resolve()
-    return script.is_file() and SPECIFY_DIR in script.parents and "scripts" in script.parts
+    return tracked.returncode == 0
 
 
 def main() -> None:
