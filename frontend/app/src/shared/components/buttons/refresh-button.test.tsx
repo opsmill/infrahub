@@ -39,10 +39,12 @@ describe("RefreshButton", () => {
 
   it("stays idle while a query under its keys fetches in the background", async () => {
     // GIVEN
-    queryClient.prefetchQuery({
-      queryKey: ["repository", "branch-health", { branchName: "feature" }],
-      queryFn: () => new Promise(() => {}),
-    });
+    queryClient
+      .query({
+        queryKey: ["repository", "branch-health", { branchName: "feature" }],
+        queryFn: () => new Promise(() => {}),
+      })
+      .catch(() => {});
 
     // WHEN
     const component = await render(<RefreshButton queryKeys={[["repository"]]} />);
