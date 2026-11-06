@@ -4,16 +4,19 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from infrahub.workflows.constants import WorkflowTag
-from tests.adapters.workflow import WorkflowRecorder
+from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.workflow import ContextRecordingWorkflow, WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
@@ -136,7 +139,7 @@ async def test_profile_update_refreshes_the_added_and_removed_peers(
         (
             call["workflow"],
             call["parameters"]["branch_name"],
-            sorted(call["parameters"]["node_ids"]),
+            call["parameters"]["node_ids"],
             call["parameters"]["context"],
             call["tags"],
         )
@@ -152,6 +155,54 @@ async def test_profile_update_refreshes_the_added_and_removed_peers(
                 WorkflowTag.RELATED_NODE.render(identifier=profile.id),
             ],
         )
+    ]
+
+
+async def test_profile_update_succeeds_when_the_refresh_submission_fails(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
+) -> None:
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
+    )
+    device = await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
+    events = MemoryInfrahubEvent()
+    workflow = ContextRecordingWorkflow()
+    workflow.failures.append(RuntimeError(f"{PROFILE_REFRESH_MULTIPLE.name} submission rejected"))
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=await InfrahubServices.new(workflow=workflow, event=events),
+    )
+
+    with capture_logs() as records:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=f"""
+            mutation {{
+                ProfileTestDeviceUpdate(data: {{ id: "{profile.id}", related_nodes: [{{ id: "{device.id}" }}] }}) {{
+                    ok
+                }}
+            }}
+            """,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert result.errors is None
+    assert result.data == {"ProfileTestDeviceUpdate": {"ok": True}}
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    relationships = await profile.get_relationship(name="related_nodes").get_relationships(db=db)
+    assert [rel.peer_id for rel in relationships] == [device.id]
+    assert [(record["log_level"], record["event"]) for record in records if record["log_level"] == "error"] == [
+        ("error", f"Failed to submit the profile refresh of the peers of {profile.id}")
+    ]
+    assert [(type(event), event.node_id) for event in events.events] == [
+        (NodeUpdatedEvent, profile.id),
+        (NodeUpdatedEvent, device.id),
     ]
 
 

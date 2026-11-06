@@ -18,6 +18,7 @@ from infrahub.log import get_logger
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.profiles.submission import submit_profile_refresh
+from infrahub.utils import log_exception_guard
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -178,14 +179,16 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         # The automation of the profile does not trigger on these relationships, so the added and removed peers
         # are refreshed here.
         if changed_node_ids := original_related_node_ids ^ updated_related_node_ids:
-            await cls._send_profile_refresh_workflows(
-                db=db,
-                workflow_service=workflow_service,
-                branch_name=branch.name,
-                obj=obj,
-                context=info.context.to_event_context(),
-                node_ids=sorted(changed_node_ids),
-            )
+            # The change is committed, so a client error would invite a retry that adds or removes no peer.
+            with log_exception_guard(log, f"Failed to submit the profile refresh of the peers of {obj.get_id()}"):
+                await cls._send_profile_refresh_workflows(
+                    db=db,
+                    workflow_service=workflow_service,
+                    branch_name=branch.name,
+                    obj=obj,
+                    context=info.context.to_event_context(),
+                    node_ids=sorted(changed_node_ids),
+                )
 
         return obj, mutation
 
