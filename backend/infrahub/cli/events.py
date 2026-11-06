@@ -2,20 +2,19 @@ import asyncio
 
 import typer
 import ujson
-from aio_pika.abc import AbstractIncomingMessage
 from infrahub_sdk.async_typer import AsyncTyper
 from rich import print as rprint
 
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 app = AsyncTyper()
 
 
-async def print_event(event: AbstractIncomingMessage) -> None:
-    message = {"routing_key": event.routing_key, "message": ujson.loads(event.body)}
+async def print_event(routing_key: str, body: bytes) -> None:
+    message = {"routing_key": routing_key, "message": ujson.loads(body)}
     rprint(message)
 
 
@@ -26,18 +25,12 @@ async def listen(
     """Listen to event in the Events bus and print them."""
     config.load_and_exit(config_file)
 
-    # Below code seems to be a duplicate of `RabbitMQMessageBus._initialize_api_server`.
-    #  Also, here we are using ComponentType.NONE so RabbitMQMessageBus will NOT instantiate connection.
-    #  We might want to factorize here and use ComponentType.GitAgent so broker instantiates connection correctly.
     component_type = ComponentType.NONE
-    broker = await RabbitMQMessageBus.new(component_type=component_type)
+    broker = await InfrahubMessageBus.new_from_driver(
+        component_type=component_type, driver=config.SETTINGS.broker.driver
+    )
     _ = await InfrahubServices.new(message_bus=broker, component_type=component_type)
 
-    queue = await broker.channel.declare_queue(exclusive=True)
-    exchange_name = f"{config.SETTINGS.broker.namespace}.events"
-    exchange = await broker.channel.get_exchange(name=exchange_name)
-    await queue.consume(print_event, no_ack=True)
-
-    await queue.bind(exchange, routing_key=topic)
+    await broker.listen(topic=topic, listener=print_event)
     print(f" Waiting for events matching the topic `{topic}`. To exit press CTRL+C")
     await asyncio.Future()

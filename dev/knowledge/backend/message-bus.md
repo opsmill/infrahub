@@ -175,6 +175,14 @@ Build the Redis driver's client with `build_broker_redis_connection` from `infra
 - **Closing**: close the client with `prefect_redis.connection.aclose_redis_client`, which also closes a Sentinel client's connections to the Sentinel nodes.
 - **After a failover**: a connection that only reads (the `XREAD` of the events and callback streams) stays on the demoted master, now a replica, until it fails, and still receives new entries through replication. A connection that sends a write command, `XREADGROUP` included, gets `READONLY` from the replica and reconnects to the promoted master.
 
+## Redis Driver Message Handling
+
+The Redis driver requires Redis 6.2 or later, for `XAUTOCLAIM` and `XTRIM MINID`.
+
+- **Concurrency**: each entry is handled in a task of its own, as the RabbitMQ client library (aiormq) does for each delivery. A task worker reads the work queue only while fewer than `broker.maximum_concurrent_messages` of its work items are running, so the entries it cannot start yet stay with the group for other workers. Events and RPC replies have no limit, as on RabbitMQ.
+- **Maintenance**: once a minute, a worker claims the work queue entries left pending for 30 minutes, trims the entries the group is done with, and deletes the consumers that hold no pending entry and have read nothing for 30 minutes, which belong to workers that stopped without their shutdown cleanup. A failing maintenance step is retried at the next pass and does not stop the reads.
+- **Listening**: `listen()` reads the events stream and the work queue stream with `XREAD` from their current ends, which leaves the group's deliveries unchanged.
+
 ## Key Locations
 
 | Component | Location |

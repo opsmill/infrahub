@@ -621,3 +621,46 @@ async def test_task_worker_applies_a_trace_sample_ratio_change(
     assert get_sample_ratio_state() == SampleRatioState(
         default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
     )
+
+
+@dataclass
+class ListenCase:
+    name: str
+    topic: str
+    expected: list[str]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ListenCase(
+            name="every_message", topic="#", expected=["check.test.run", "refresh.git.fetch", "send.echo.request"]
+        ),
+        ListenCase(name="matching_topic", topic="refresh.#", expected=["refresh.git.fetch"]),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_rabbitmq_listen(case: ListenCase, rabbitmq_api: RabbitMQManager) -> None:
+    """A listener receives the published messages matching its topic."""
+    received: list[tuple[str, bytes]] = []
+
+    async def listener(routing_key: str, body: bytes) -> None:
+        received.append((routing_key, body))
+
+    api_bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+    listener_bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.NONE)
+    message = messages.SendEchoRequest(message="listened")
+    try:
+        await listener_bus.listen(topic=case.topic, listener=listener)
+        for routing_key in ("refresh.git.fetch", "send.echo.request", "check.test.run"):
+            await api_bus.publish(message=message, routing_key=routing_key)
+        for _ in range(_LOG_WAIT_ATTEMPTS):
+            if len(received) == len(case.expected):
+                break
+            await asyncio.sleep(_LOG_WAIT_INTERVAL)
+    finally:
+        await listener_bus.shutdown()
+        await api_bus.shutdown()
+
+    assert sorted(routing_key for routing_key, _body in received) == case.expected
+    assert {ujson.loads(body)["message"] for _routing_key, body in received} == {"listened"}
