@@ -148,7 +148,8 @@ checkout.
 - Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
 - Markdown formatting: `dev/guidelines/markdown.md`
-- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one
+- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one; `dev/guidelines/repository-organization.md` — load before adding, moving or splitting a file in `dev/`
+- Every article in `dev/knowledge/`, `dev/guidelines/` and `dev/guides/` is listed in an `AGENTS.md` file with when to load it. CI fails when one is missing; check locally with `python3 .agents/scripts/repo-context.py --check-index`
 
 ## Generated Files (Do Not Edit)
 
@@ -176,6 +177,8 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
+- If the session's working directory is not the repository root, tell the user once at the start: Claude Code then loads no `.agents/rules/`, runs no project hooks, and loads no `AGENTS.md` for other areas, so the session should be restarted from the repository root
+- Read files, docs included, with the Read tool, not `cat`, `head` or `sed` through Bash. Reading a file with the Read tool is what loads the `.agents/rules/` and `AGENTS.md` that apply to it, and Bash output can be cut or rewritten by local tooling
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)

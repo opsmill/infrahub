@@ -227,6 +227,10 @@ page.locator('input[type="file"]')
 page.locator("#alert-success-Tenant-created")
 ```
 
+Locate a table cell by its test id (`get_by_test_id("branch-actions-cell-my-branch")`), not by a
+sibling offset such as `following-sibling::*[3]`: an offset points at another column as soon as
+a column is added or moved. When the cell has no test id, add one in the frontend.
+
 ### Scoping Selectors
 
 Scope selectors to containers to avoid ambiguity:
