@@ -32,7 +32,7 @@ Custom webhooks might be useful in situations where the endpoint needs a specifi
 
 The data passed into a normal Python Transformation will typically be the result of the GraphQL query, but webhooks execute the Transformation by passing in the webhook data instead.
 
-Currently, it is **required** to define a GraphQL query to be defined on a Transformation regardless of whether it is used for a custom webhook or not. In the [future](https://github.com/opsmill/infrahub/issues/6650), this will not be required.
+A Transformation **requires** a GraphQL query, even when only a custom webhook uses it and the query never runs. Removing this requirement is tracked in [GitHub issue #6650](https://github.com/opsmill/infrahub/issues/6650).
 
 :::
 
@@ -53,7 +53,7 @@ Webhooks can also be configured to trigger based on branch types:
 
 A new webhook uses **Default Branch** unless you choose another scope.
 
-This flexibility ensures that webhooks only trigger when relevant, depending on the use case. For example, you might configure a webhook to notify an external system only when a user makes changes directly to the default branch.
+For example, choose **Default Branch** when an external system should receive events only for changes on the default branch.
 
 :::warning Branch scope for proposed change events
 
@@ -80,6 +80,16 @@ To rebase open branches each time a branch merges, see [Parallel branches](../br
 
 :::
 
+### Where webhooks are stored and read
+
+A webhook is the same on every branch. Its name, URL, event type, branch scope, node kind and headers do not differ between branches, so a change you make to them on any branch applies to every branch.
+
+Infrahub reads each webhook from the default branch, both when it sets up the events that fire the webhook and when it sends each delivery. The branch scope selects the branches whose events fire the webhook. It does not change which version of the webhook Infrahub uses.
+
+The Transformation on a custom webhook is the exception. Transformations are branch-aware, so the link between a webhook and its Transformation can differ between branches, and Infrahub uses only the link on the default branch. If you choose the Transformation while working on another branch, the webhook still fires, but Infrahub sends the standard event payload and the delivery's task log shows no error. Choose the Transformation while working on the default branch.
+
+The same applies to event rules: Infrahub reads trigger rules from the default branch only. See [Where trigger rules are stored and evaluated](../events/event-rules.mdx#where-trigger-rules-are-stored-and-evaluated).
+
 ### Node kind
 
 Node kinds can be configured to only trigger webhooks for specific nodes. For example only send webhooks for the node kind of `InfraDevice`.
@@ -102,7 +112,7 @@ Node kind can only be used where `node_kind` is `True` in [Infrahub events](../r
 
 - **Description**: A description can be set to identify the webhooks purpose.
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
-- **Transformation** (Custom Webhook only): The Python Transformation used to customize the webhook payload before being sent to the webhook receiver.
+- **Transformation** (Custom Webhook only): The Python Transformation used to customize the webhook payload before being sent to the webhook receiver. Infrahub reads this link from the default branch only; see [Where webhooks are stored and read](#where-webhooks-are-stored-and-read).
 
 ### Shared key for security
 
@@ -271,7 +281,7 @@ Webhooks can include custom HTTP headers in every request they send. This is use
 Custom headers are defined as reusable **key-value pair** entities that can be shared across multiple webhooks:
 
 - **Static Key-Value** (`CoreStaticKeyValue`): The header value is stored as plain text and sent as-is. Use this for non-sensitive metadata like `X-Source-System: infrahub` or for authentication tokens like `Authorization: Bearer <token>`.
-- **Environment Variable Key-Value** (`CoreEnvKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the Prefect worker's environment at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
+- **Environment Variable Key-Value** (`CoreEnvKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the environment of the [task worker](../overview/architecture.mdx#task-workers) at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
 
 ### Creating and associating headers
 
@@ -290,7 +300,7 @@ When a webhook fires, headers are merged in this order:
 
 ### Environment variable resolution
 
-For environment-variable-based headers, the value is resolved from `os.environ` on the Prefect worker at send time:
+For environment-variable-based headers, the value is resolved from `os.environ` on the task worker at send time:
 
 - If the environment variable exists, its value is used as the header value.
 - If the environment variable is **not found**, the delivery fails with a configuration error that names the webhook and the header, rather than sending the request without that header.
@@ -324,7 +334,7 @@ Each webhook delivery runs as a task. Open a webhook and select a delivery from 
 | Retry | The delivery has finished, or is being cancelled | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
 | Cancel | The delivery is still running or waiting to retry | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
 
-The Retry and Cancel actions appear only when they apply to the delivery's current state. Retrying creates a new delivery with the same settings and leaves the original unchanged; the new delivery re-computes its signature and runs against the current webhook configuration. Retry is available on any finished delivery, including one that already succeeded, so you can re-deliver an event on demand.
+The Retry and Cancel actions appear only when they apply to the delivery's current state. Retrying creates a new delivery with the same settings and leaves the original unchanged; the new delivery re-computes its signature and uses the current settings of the webhook on the default branch. Retry is available on any finished delivery, including one that already succeeded, so you can re-deliver an event on demand.
 
 ## Writing a reliable receiver
 
