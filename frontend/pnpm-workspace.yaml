@@ -32,12 +32,10 @@ overrides:
   playwright-core: 1.60.0
   # Security fixes that the parent packages do not accept yet.
   "@betterer/betterer>simple-git": ^4.0.2
+  "monaco-editor>dompurify": ^3.4.17
   "glob@>=9.0.0 <14.0.2": ^14.0.2
   "minimatch@>=7.0.0 <11.0.1": ^11.0.1
 
 peerDependencyRules:
   allowedVersions:
-    graphiql-explorer>graphql: ^17.0.0
-    graphiql-explorer>react: ^19.0.0
-    graphiql-explorer>react-dom: ^19.0.0
     openapi-typescript>typescript: ^6.0.0
