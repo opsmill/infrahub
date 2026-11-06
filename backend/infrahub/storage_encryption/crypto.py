@@ -73,6 +73,26 @@ class StorageKey:
         return cls(fingerprint=fingerprint.hex(), _fingerprint=fingerprint, _cipher=AESGCM(key))
 
 
+def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
+    """Why INFRAHUB_SECURITY_SECRET_KEY cannot be used as the storage key, or None when it can."""
+    if "secret_key" not in settings.model_fields_set:
+        return (
+            "Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
+            "API server; without it each process generates its own random secret"
+        )
+    if settings.secret_key.strip().strip("'\"") in PUBLISHED_SECRET_KEYS:
+        return (
+            "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
+            "set a unique random secret before using storage encryption"
+        )
+    if len(settings.secret_key) < MINIMUM_SECRET_LENGTH:
+        return (
+            f"INFRAHUB_SECURITY_SECRET_KEY must be at least {MINIMUM_SECRET_LENGTH} characters long to be used for "
+            "storage encryption"
+        )
+    return None
+
+
 def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
     """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY.
 
@@ -80,32 +100,20 @@ def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
         StorageEncryptionError: If the secret is not set explicitly, is a published example value, or is too short.
 
     """
-    if "secret_key" not in settings.model_fields_set:
-        raise StorageEncryptionError(
-            "Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
-            "API server; without it each process generates its own random secret"
-        )
-    if settings.secret_key.strip().strip("'\"") in PUBLISHED_SECRET_KEYS:
-        raise StorageEncryptionError(
-            "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            "set a unique random secret before using storage encryption"
-        )
-    if len(settings.secret_key) < MINIMUM_SECRET_LENGTH:
-        raise StorageEncryptionError(
-            f"INFRAHUB_SECURITY_SECRET_KEY must be at least {MINIMUM_SECRET_LENGTH} characters long to be used for "
-            "storage encryption"
-        )
+    reason = _unfit_secret_reason(settings)
+    if reason is not None:
+        raise StorageEncryptionError(reason)
     return StorageKey.derive(settings.secret_key)
 
 
 def storage_key_if_set(settings: SecuritySettings) -> StorageKey | None:
-    """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY when it is set explicitly, without the checks of `storage_key_from_settings`.
+    """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY when Infrahub would accept it for encryption.
 
-    Those checks guard turning encryption on. Reading files that were encrypted earlier, after it was turned off,
-    needs only the secret that was in use then. Returns None when the secret is generated, as no earlier
-    secret can be recovered from it.
+    Used to read files that were encrypted earlier after encryption was turned off. Encryption refuses a secret
+    that is generated, published or too short, so no file can have been encrypted with one, and a key derived
+    from such a secret would only let anyone who knows it forge an encrypted file. Returns None for those.
     """
-    if "secret_key" not in settings.model_fields_set:
+    if _unfit_secret_reason(settings) is not None:
         return None
     return StorageKey.derive(settings.secret_key)
 

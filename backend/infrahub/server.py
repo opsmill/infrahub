@@ -65,6 +65,11 @@ REQUEST_DURATION_BUCKETS = [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
     _validate_feature_selection(configuration=config.SETTINGS.active_settings)
+    storage_key = (
+        storage_key_from_settings(settings=config.SETTINGS.security)
+        if config.SETTINGS.storage.encryption_enabled
+        else storage_key_if_set(settings=config.SETTINGS.security)
+    )
 
     # Build the admission controller once here, at startup, and publish it (with the kill-switch)
     # on app.state for AdmissionMiddleware to read. Constructing it at the app entry
@@ -121,14 +126,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # We must initialize DB after initialize lock
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
-        registry.storage = await InfrahubObjectStorage.init(
-            settings=config.SETTINGS.storage,
-            key=(
-                storage_key_from_settings(settings=config.SETTINGS.security)
-                if config.SETTINGS.storage.encryption_enabled
-                else storage_key_if_set(settings=config.SETTINGS.security)
-            ),
-        )
+        registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, key=storage_key)
         # Detect a failed merge, best effort to not block startup
         try:
             await scan_for_failed_merges(db=db, service=service)
