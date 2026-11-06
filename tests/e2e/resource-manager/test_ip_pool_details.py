@@ -4,9 +4,9 @@ Depends on data_sites: the seeded "External prefixes pool" allocates one /29
 per upstream and peering interface of every edge device (identifier
 "<role>: <interface>.<device>"), the "Loopbacks pool" one /32 per device
 (identifier = device name) and the "Internal networks pool" the three
-10.x.0.0/16 prefixes without identifier. Every test reads the allocation
-count it expects through the SDK, because the scenario-branch slice replays
-two more /29 allocations on main when it is loaded in the same session.
+10.x.0.0/16 prefixes without identifier. The tests that check an allocation
+count read the expected count through the SDK, because the scenario branch
+data adds two more /29 allocations on main when the same session loads it.
 """
 
 from __future__ import annotations

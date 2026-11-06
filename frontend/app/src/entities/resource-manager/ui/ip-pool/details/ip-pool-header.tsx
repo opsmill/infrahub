@@ -3,6 +3,7 @@ import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IpPoolActionsMenu } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-actions-menu";
@@ -12,7 +13,7 @@ import { PoolId } from "@/entities/resource-manager/ui/pool/pool-id";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-const REFRESHED_QUERY_KEYS = [resourceManagerQueryKeys.all];
+const REFRESHED_QUERY_KEYS = [resourceManagerQueryKeys.all, objectQueryKeys.all];
 
 export interface IpPoolHeaderProps {
   pool: IpPoolData;

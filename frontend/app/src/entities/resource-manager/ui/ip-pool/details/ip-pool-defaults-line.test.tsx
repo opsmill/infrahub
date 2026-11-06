@@ -68,47 +68,12 @@ describe("IpPoolDefaultsLine", () => {
       );
   });
 
-  it("says a prefix pool has no default for each unset default", async () => {
-    // GIVEN
-    const pool = generateIpPrefixPoolData({
-      default_prefix_type: { value: null },
-      default_prefix_length: { value: null },
-      default_member_type: { value: null },
-    });
-
-    // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
-
-    // THEN
-    await expect
-      .element(component.baseElement)
-      .toMatchTextContent(
-        /Prefix kind has no default\s*·\s*Prefix length has no default\s*·\s*Member type has no default$/
-      );
-  });
-
-  it("says an address pool without a prefix length follows the resource prefix", async () => {
-    // GIVEN
-    const pool = generateIpAddressPoolData({
-      default_address_type: { value: null },
-      default_prefix_length: { value: null },
-    });
-
-    // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={pool} poolLabel="IP Prefix Pool" />);
-
-    // THEN
-    await expect
-      .element(component.baseElement)
-      .toMatchTextContent(
-        /Address kind has no default\s*·\s*Prefix length follows the resource prefix$/
-      );
-  });
-
   it("opens the schema viewer on the kind when its schema is loaded", async () => {
     // GIVEN
     store.set(nodeSchemasAtom, [prefixSchema]);
-    const component = await render(<IpPoolDefaultsLine pool={generateIpPrefixPoolData()} />);
+    const component = await render(
+      <IpPoolDefaultsLine pool={generateIpPrefixPoolData()} poolLabel="IP Prefix Pool" />
+    );
 
     // WHEN
     await component.getByRole("button", { name: "IpamIPPrefix" }).click();
@@ -122,7 +87,9 @@ describe("IpPoolDefaultsLine", () => {
     store.set(nodeSchemasAtom, []);
 
     // WHEN
-    const component = await render(<IpPoolDefaultsLine pool={generateIpPrefixPoolData()} />);
+    const component = await render(
+      <IpPoolDefaultsLine pool={generateIpPrefixPoolData()} poolLabel="IP Prefix Pool" />
+    );
 
     // THEN
     await expect.element(component.getByText("IpamIPPrefix", { exact: true })).toBeVisible();

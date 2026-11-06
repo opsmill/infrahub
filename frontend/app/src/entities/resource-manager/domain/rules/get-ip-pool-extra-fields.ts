@@ -9,7 +9,6 @@ const FIELDS_SHOWN_BY_THE_PAGE = new Set([
   "name",
   "description",
   "ip_namespace",
-  "resources",
   "default_prefix_type",
   "default_prefix_length",
   "default_member_type",

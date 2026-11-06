@@ -66,6 +66,6 @@ describe("BreadcrumbResourceManager", () => {
     await expect
       .element(component.getByRole("link", { name: secondResource?.display_label }))
       .toHaveAttribute("href", `/resource-manager/pool-id/resources/${secondResource?.id}`);
-    expect(useGetIpPoolUtilization).toHaveBeenCalledWith("pool-id", { enabled: false });
+    expect(useGetIpPoolUtilization).toHaveBeenCalledWith("pool-id");
   });
 });

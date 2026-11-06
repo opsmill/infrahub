@@ -52,8 +52,7 @@ function ResourceSelector({
   resourceId: string;
   resourcePoolId: string;
 }) {
-  // disabled so it reads only the cached utilization and never fetches its own
-  const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId, { enabled: false });
+  const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId);
 
   if (isPending) {
     return <BreadcrumbItemLoading />;
