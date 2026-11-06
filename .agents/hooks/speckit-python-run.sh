@@ -31,4 +31,4 @@ for python in "${SPECKIT_PYTHON_EXECUTABLE:-}" "${SPECKIT_PYTHON:-}" "$venv/bin/
         break
     fi
 done
-exec /bin/bash -c "$1"
+exec sh -c "$1"
