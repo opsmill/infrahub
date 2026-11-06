@@ -95,7 +95,6 @@ export function useCodeMirror(
           keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
           ...(isDark ? [darkTheme, syntaxHighlighting(oneDarkHighlightStyle)] : [basicLight]),
           markdown({ base: markdownLanguage }),
-          updateListener,
           placeholderView(placeholder),
           EditorState.readOnly.of(readOnly),
         ],
