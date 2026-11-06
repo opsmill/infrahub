@@ -229,37 +229,44 @@ async def test_file_stored_before_encryption_is_checked_even_when_the_checksum_c
     assert (response.status_code, response.json()) == (409, checksum_refusal(ARTIFACT_ID))
 
 
-async def test_encrypted_object_is_refused_while_encryption_is_turned_off(
+async def test_files_encrypted_earlier_are_still_served_after_encryption_is_turned_off(
     db: InfrahubDatabase,
     client: TestClient,
     local_storage_dir: Path,
     admin_headers: dict[str, str],
     default_branch: Branch,
     authentication_base: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
-    key = StorageKey.derive(config.SETTINGS.security.secret_key)
+    artifact = await create_stored_artifact(
+        db=db,
+        car_person_data_generic=car_person_data_generic,
+        storage_id=ARTIFACT_ID,
+        checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
+    )
     InfrahubObjectStorage(
-        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}), key=key
-    ).store(identifier=LOOSE_ID, content=io.BytesIO(ARTIFACT))
+        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}),
+        key=StorageKey.derive(config.SETTINGS.security.secret_key),
+    ).store(identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT))
+    encrypted = (local_storage_dir / ARTIFACT_ID).read_bytes()
+    urls = [f"/api/artifact/{artifact.id}", f"/api/storage/object/{ARTIFACT_ID}"]
 
     with client:
-        response = client.get(url=f"/api/storage/object/{LOOSE_ID}", headers=admin_headers)
+        served = [client.get(url=url, headers=admin_headers) for url in urls]
+        uploaded = client.post(
+            url="/api/storage/upload/content", json={"content": ARTIFACT.decode()}, headers=admin_headers
+        )
+        tampered = bytearray(encrypted)
+        tampered[-1] ^= 0x01
+        (local_storage_dir / ARTIFACT_ID).write_bytes(bytes(tampered))
+        refused = [client.get(url=url, headers=admin_headers) for url in urls]
 
-    assert (response.status_code, response.json()) == (
-        500,
-        {
-            "data": None,
-            "errors": [
-                {
-                    "message": (
-                        f"The stored object {LOOSE_ID} is encrypted but storage encryption is disabled; "
-                        "set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it"
-                    ),
-                    "extensions": {"code": 500},
-                }
-            ],
-        },
-    )
+    assert encrypted[:4] == b"IHSE"
+    assert [(response.status_code, response.content) for response in served] == [(200, ARTIFACT)] * 2
+    assert (local_storage_dir / uploaded.json()["identifier"]).read_bytes() == ARTIFACT
+    assert [(response.status_code, response.json()) for response in refused] == [(409, refusal(ARTIFACT_ID))] * 2
 
 
 async def test_object_nothing_records_a_checksum_for_is_served_as_it_is(
@@ -277,6 +284,29 @@ async def test_object_nothing_records_a_checksum_for_is_served_as_it_is(
         response = client.get(url=f"/api/storage/object/{LOOSE_ID}", headers=admin_headers)
 
     assert (response.status_code, response.content) == (200, b"content nobody references")
+
+
+async def test_binary_content_is_served_byte_for_byte_whether_it_is_encrypted_or_not(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+) -> None:
+    content = b"\xff\xfe\x00\x80 not valid UTF-8 \xc3\x28"
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+        identifier=LOOSE_ID, content=io.BytesIO(content)
+    )
+    (local_storage_dir / FILE_ID).write_bytes(content)
+
+    with client:
+        encrypted = client.get(url=f"/api/storage/object/{LOOSE_ID}", headers=admin_headers)
+        plain = client.get(url=f"/api/storage/object/{FILE_ID}", headers=admin_headers)
+
+    assert (local_storage_dir / LOOSE_ID).read_bytes()[:4] == b"IHSE"
+    assert [(response.status_code, response.content) for response in (encrypted, plain)] == [(200, content)] * 2
 
 
 async def test_server_does_not_start_with_the_published_secret(

@@ -14,6 +14,7 @@ from infrahub.storage_encryption.crypto import (
     open_envelope,
     seal,
     storage_key_from_settings,
+    storage_key_if_set,
 )
 
 SECRET = "unit-test-secret-key-0123456789abcdef"
@@ -179,3 +180,15 @@ UNFIT_SECRET_CASES = [
 def test_unfit_secret_is_refused(case: UnfitSecretCase) -> None:
     with pytest.raises(StorageEncryptionError, match=case.message):
         storage_key_from_settings(settings=SecuritySettings(secret_key=case.secret))
+
+
+def test_key_for_reading_comes_from_an_explicitly_set_secret_without_the_checks_that_guard_enabling() -> None:
+    assert storage_key_if_set(settings=SecuritySettings(secret_key=SECRET)) == StorageKey.derive(SECRET)
+    assert storage_key_if_set(settings=SecuritySettings(secret_key="short")) == StorageKey.derive("short")
+    assert storage_key_if_set(settings=SecuritySettings(secret_key="327f747f-efac-42be-9e73-999f08f86b92")) is not None
+
+
+def test_no_key_for_reading_comes_from_a_generated_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SECRET_KEY", raising=False)
+
+    assert storage_key_if_set(settings=SecuritySettings()) is None

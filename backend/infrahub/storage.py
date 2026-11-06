@@ -93,8 +93,8 @@ class InfrahubObjectStorage:
     def __init__(self, settings: StorageSettings, key: StorageKey | None = None) -> None:
         """Access the configured storage driver.
 
-        With encryption enabled, `key` seals every object written and opens every encrypted object read;
-        without it, writing an object or reading an encrypted one raises.
+        `key` opens every encrypted object read, and with encryption enabled it also seals every object written.
+        Without it, reading an encrypted object raises, and so does writing one while encryption is enabled.
         """
         self._settings = settings
         self._key = key
@@ -116,6 +116,16 @@ class InfrahubObjectStorage:
             )
         return self._key
 
+    def _key_to_open(self, identifier: str) -> StorageKey:
+        if self._key is not None:
+            return self._key
+        if self._settings.encryption_enabled:
+            return self._active_key()
+        raise StorageEncryptionError(
+            f"The stored object {identifier} is encrypted but this process has no key to decrypt it; set "
+            "INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled"
+        )
+
     def store(self, identifier: str, content: BinaryIO) -> None:
         if not self._settings.encryption_enabled:
             self._storage.write(content, identifier)
@@ -131,14 +141,15 @@ class InfrahubObjectStorage:
         return self.read(identifier=identifier).content
 
     def read(self, identifier: str) -> StoredContent:
-        """Return the content of a stored object, decrypted when it is encrypted and encryption is enabled.
+        """Return the content of a stored object, decrypted when it is encrypted.
 
-        An object stored before encryption was enabled is returned as it is, not authenticated.
+        An encrypted object is decrypted whether or not encryption is still enabled, so turning it off leaves
+        earlier files readable. An object that was never encrypted is returned as it is, not authenticated.
 
         Raises:
             NodeNotFoundError: If no object is stored under `identifier`.
             StorageIntegrityError: If an encrypted object is truncated, uses another key or fails authentication.
-            StorageEncryptionError: If the object is encrypted but storage encryption is disabled.
+            StorageEncryptionError: If the object is encrypted and this process has no key to decrypt it.
 
         """
         try:
@@ -146,16 +157,12 @@ class InfrahubObjectStorage:
                 stored = f.read()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
-        if not self._settings.encryption_enabled:
-            if is_envelope(stored):
-                raise StorageEncryptionError(
-                    f"The stored object {identifier} is encrypted but storage encryption is disabled; "
-                    "set INFRAHUB_STORAGE_ENCRYPTION_ENABLED to true to read it"
-                )
+        # With encryption on, anything that starts like an envelope must authenticate; with it off, only a complete
+        # envelope counts, so plain files that happen to start with the magic are not refused.
+        is_encrypted = has_envelope_magic(stored) if self._settings.encryption_enabled else is_envelope(stored)
+        if not is_encrypted:
             return StoredContent(content=stored, authenticated=False)
-        if not has_envelope_magic(stored):
-            return StoredContent(content=stored, authenticated=False)
-        key = self._active_key()
+        key = self._key_to_open(identifier=identifier)
         try:
             content = open_envelope(identifier=identifier, content=stored, key=key)
         except StorageIntegrityError as exc:

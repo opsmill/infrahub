@@ -383,7 +383,8 @@ class StorageSettings(BaseSettings):
         description=(
             "Encrypt the artifacts and files stored from now on with a key derived from INFRAHUB_SECURITY_SECRET_KEY, "
             "and refuse to serve a stored file that fails its integrity check. Files stored before are served only "
-            "if they match their recorded checksum."
+            "if they match their recorded checksum; a file with no recorded checksum is served as it is. Turning "
+            "it off stores new files in plaintext and keeps files encrypted earlier readable."
         ),
     )
 
@@ -1263,8 +1264,10 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid,
         description=(
-            "The secret key used to validate authentication tokens. With storage encryption enabled, the key that "
-            "encrypts stored files is derived from it: changing it makes those files unreadable."
+            "The secret key used to validate authentication tokens. With storage encryption enabled, it must be set "
+            "explicitly to a random value of at least 32 characters, the same on every API server and not the value "
+            "from the example deployment files. The key that encrypts stored files is derived from it: changing it "
+            "makes those files unreadable."
         ),
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
