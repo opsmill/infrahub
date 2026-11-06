@@ -25,6 +25,8 @@ class BusSimulator(InfrahubMessageBus):
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
 
+    async def check_health(self) -> None: ...
+
     async def publish(
         self,
         message: InfrahubMessage,

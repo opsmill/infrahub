@@ -103,6 +103,14 @@ class ServiceUnavailableError(Error):
         super().__init__(self.message)
 
 
+class DependencyUnhealthyError(ServiceUnavailableError):
+    """Raised by a health check when a backing service answers but reports that it cannot serve requests."""
+
+
+class DependencyConnectionClosedError(ServiceUnavailableError):
+    """Raised by a health check when the connection to a backing service is closed and not yet restored."""
+
+
 class WorkflowOrchestrationError(ServiceUnavailableError):
     """Raised when the task manager cannot start a workflow run or follow it to a final state."""
 

@@ -107,8 +107,8 @@ Pass-through cases that bypass admission entirely:
 
 - Non-`http` scopes (WebSocket, lifespan).
 - The kill-switch: when `backpressure_enabled` is false, every request passes through.
-- Excluded paths — liveness/scrape/probe/static/docs: `/health`, `/metrics`, `/api/config`,
-  `/assets`, `/favicons`, `/docs`, `/api/schema`. Liveness, scraping, and the config probe must
+- Excluded paths — liveness/scrape/probe/static/docs: `/health`, `/api/health`, `/metrics`,
+  `/api/config`, `/assets`, `/favicons`, `/docs`, `/api/schema`. Liveness, scraping, and the config probe must
   never be shed.
 - CORS preflights (`OPTIONS` advertising `access-control-request-method`) — see
   [Known limitations](#known-limitations).

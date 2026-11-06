@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from prefect_redis.connection import aclose_redis_client
+from redis.exceptions import ResponseError
 
 from infrahub import config
+from infrahub.exceptions import DependencyUnhealthyError
+from infrahub.message_bus.types import KVTTL
 from infrahub.redis_connection import build_redis_connection
 from infrahub.services.adapters.cache import InfrahubCache
-
-if TYPE_CHECKING:
-    from infrahub.message_bus.types import KVTTL
+from infrahub.worker import WORKER_IDENTITY
 
 
 class RedisCache(InfrahubCache):
     def __init__(self) -> None:
         self.connection = build_redis_connection(config.SETTINGS.cache)
+        # A client of its own without retries, so a failing cache is reported with its error instead of a timeout of
+        # the retries; it connects only when a health check runs.
+        self._health_check_connection = build_redis_connection(config.SETTINGS.cache, retries=0)
 
     async def delete(self, key: str) -> None:
         await self.connection.delete(key)
@@ -59,3 +61,13 @@ class RedisCache(InfrahubCache):
 
     async def close_connection(self) -> None:
         await aclose_redis_client(self.connection)
+        await aclose_redis_client(self._health_check_connection)
+
+    async def check_health(self) -> None:
+        # A write, because Redis keeps answering PING while it refuses writes (persistence failing, memory full, replica).
+        try:
+            await self._health_check_connection.set(
+                name=f"health:check:{WORKER_IDENTITY}", value="1", ex=int(KVTTL.ONE_MINUTE)
+            )
+        except ResponseError as exc:
+            raise DependencyUnhealthyError(message="The cache refused a write") from exc

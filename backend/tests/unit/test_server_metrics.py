@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from prometheus_client import REGISTRY
 
+from infrahub.health import HealthChecker
 from infrahub.server import app
 
 if TYPE_CHECKING:
@@ -96,3 +97,26 @@ def test_request_duration_is_recorded_up_to_twenty_minutes(client: TestClient) -
         "600.0",
         "1200.0",
     ]
+
+
+@pytest.fixture
+def healthy_checker() -> Iterator[None]:
+    """A health checker with nothing to check, installed on the application without its startup."""
+    previous = getattr(app.state, "health_checker", None)
+    app.state.health_checker = HealthChecker(checks=[], check_timeout=1, max_report_age=0)
+    try:
+        yield
+    finally:
+        if previous is None:
+            del app.state.health_checker
+        else:
+            app.state.health_checker = previous
+
+
+def test_health_request_is_not_recorded(client: TestClient, healthy_checker: None) -> None:
+    count_before = _recorded_request_count(method="GET", path="/api/health")
+
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert _recorded_request_count(method="GET", path="/api/health") == count_before == 0
