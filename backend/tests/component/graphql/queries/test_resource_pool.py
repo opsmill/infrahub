@@ -792,6 +792,66 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     } == {peer_id, prefix_id}
 
 
+async def test_address_pool_utilization_counts_every_address_of_a_pool_prefix(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    init_nodes_registry: None,
+) -> None:
+    namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await namespace.new(db=db, name="ns-pool-prefix")
+    await namespace.save(db=db)
+
+    prefix = await Node.init(db=db, schema="IpamIPPrefix")
+    await prefix.new(db=db, prefix="192.0.2.0/29", member_type="address", is_pool=True, ip_namespace=namespace)
+    await prefix.save(db=db)
+    for host in range(6):
+        address = await Node.init(db=db, schema="IpamIPAddress")
+        await address.new(db=db, address=f"192.0.2.{host}/29", ip_prefix=prefix, ip_namespace=namespace)
+        await address.save(db=db)
+
+    address_pool = await CoreIPAddressPool.init(schema=InfrahubKind.IPADDRESSPOOL, db=db, branch=default_branch)
+    await address_pool.new(
+        db=db,
+        name="pool-prefix",
+        default_address_type="IpamIPAddress",
+        resources=[prefix],
+        ip_namespace=namespace,
+    )
+    await address_pool.save(db=db)
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=POOL_UTILIZATION,
+        context_value=gql_params.context,
+        variable_values={"pool_id": address_pool.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubResourcePoolUtilization"] == {
+        "count": 1,
+        "edges": [
+            {
+                "node": {
+                    "display_label": "192.0.2.0/29",
+                    "id": prefix.id,
+                    "kind": "IpamIPPrefix",
+                    "utilization": 75.0,
+                    "utilization_branches": 0.0,
+                    "utilization_default_branch": 75.0,
+                    "weight": 8,
+                }
+            }
+        ],
+        "utilization": 75.0,
+        "utilization_branches": 0.0,
+        "utilization_default_branch": 75.0,
+    }
+
+
 async def test_number_pool_utilization(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
