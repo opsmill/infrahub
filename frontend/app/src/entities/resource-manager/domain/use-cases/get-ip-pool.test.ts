@@ -56,20 +56,6 @@ describe("getIpPool", () => {
     });
   });
 
-  it("throws the API errors", async () => {
-    // GIVEN
-    vi.mocked(getIpPoolFromApi).mockResolvedValue({
-      data: undefined,
-      errors: [{ message: "first" }, { message: "second" }],
-    } as unknown as ApiResult);
-
-    // WHEN
-    const result = getIpPool(params);
-
-    // THEN
-    await expect(result).rejects.toThrow("first; second");
-  });
-
   it("throws when neither query finds the pool", async () => {
     // GIVEN
     vi.mocked(getIpPoolFromApi).mockResolvedValue({

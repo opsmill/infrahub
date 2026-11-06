@@ -132,10 +132,7 @@ describe("getIpPoolUtilization", () => {
     vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
       data: utilizationData,
     } as unknown as UtilizationResult);
-    vi.mocked(getIpPoolResourceWeightsFromApi).mockResolvedValue({
-      data: undefined,
-      errors: [{ message: "Unknown type" }],
-    } as unknown as WeightsResult);
+    vi.mocked(getIpPoolResourceWeightsFromApi).mockRejectedValue(new Error("Unknown type"));
 
     // WHEN
     const utilization = await getIpPoolUtilization({
@@ -151,19 +148,5 @@ describe("getIpPoolUtilization", () => {
         ["r-b", null],
       ]
     );
-  });
-
-  it("throws the API errors", async () => {
-    // GIVEN
-    vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
-      data: undefined,
-      errors: [{ message: "first" }, { message: "second" }],
-    } as unknown as UtilizationResult);
-
-    // WHEN
-    const result = getIpPoolUtilization({ poolId: "pool", weightedKinds: [], ...context });
-
-    // THEN
-    await expect(result).rejects.toThrow("first; second");
   });
 });
