@@ -6,16 +6,18 @@ from typing import TYPE_CHECKING, Any
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.ipam.constants import ANY_BRANCH
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from .ip_pool_branch import get_namespace_on_branch, get_resources_on_branch
 from .kind_validation import validate_allocated_kind
 from .reservation import validate_reserved_kind, validate_reserved_prefix_length
 
@@ -87,7 +89,7 @@ class CoreIPPrefixPool(Node):
                         )
                         return node
 
-            ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+            ip_namespace = await get_namespace_on_branch(db=db, pool=self, branch=branch)
 
             prefixlen = prefixlen or data.get("prefixlen", None) or self.default_prefix_length.value  # type: ignore[attr-defined]
             if not prefixlen:
@@ -96,7 +98,9 @@ class CoreIPPrefixPool(Node):
                     "A prefixlen or a default_value must be provided to allocate a new prefix"
                 )
 
-            next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
+            next_prefix = await self._get_next_on_branch(
+                db=db, prefixlen=prefixlen, branch=branch, ip_namespace=ip_namespace
+            )
 
             prefix_type = requested_prefix_type or self.default_prefix_type.value  # type: ignore[attr-defined]
             if not prefix_type:
@@ -126,22 +130,35 @@ class CoreIPPrefixPool(Node):
 
             return node
 
-    async def get_next(self, db: InfrahubDatabase, prefixlen: int) -> IPNetworkType:
-        resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
-        ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
-        allocator = IPAMResourceAllocator(db=db, namespace=ip_namespace, branch=self._branch, branch_agnostic=True)
+    async def get_next(self, db: InfrahubDatabase, prefixlen: int, branch: Branch | None = None) -> IPNetworkType:
+        """Return the next free prefix of `prefixlen` on `branch`, by default the branch the pool was read on.
 
-        try:
-            weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
-        except AttributeError:
-            weighted_resources = list(resources.values())
+        Raises:
+            ResourceNotFoundError: When the pool's namespace does not exist on the branch.
+            PoolExhaustedError: When no resource exists on the branch, or none has room left.
 
-        for resource in weighted_resources:
+        """
+        branch = branch or self._branch
+        ip_namespace = await get_namespace_on_branch(db=db, pool=self, branch=branch)
+        return await self._get_next_on_branch(db=db, prefixlen=prefixlen, branch=branch, ip_namespace=ip_namespace)
+
+    async def _get_next_on_branch(
+        self, db: InfrahubDatabase, prefixlen: int, branch: Branch, ip_namespace: Node
+    ) -> IPNetworkType:
+        resources = await get_resources_on_branch(db=db, pool=self, branch=branch)
+        # A value stays taken while any live branch holds it, so free values are searched across branches.
+        allocator = IPAMResourceAllocator(db=db)
+
+        for resource in resources:
             resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             next_available = await allocator.get_next_prefix(
-                ip_prefix=resource_prefix, target_prefix_length=prefixlen, parent_uuid=resource.id
+                ip_prefix=resource_prefix,
+                target_prefix_length=prefixlen,
+                namespace=ip_namespace.get_id(),
+                on_branch=ANY_BRANCH,
+                parent_uuid=resource.id,
             )
             if next_available:
                 return next_available
 
-        raise IndexError("No more resources available")
+        raise PoolExhaustedError

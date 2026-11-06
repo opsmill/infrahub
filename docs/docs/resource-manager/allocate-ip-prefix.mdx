@@ -256,6 +256,24 @@ The customer service is created with an IP prefix allocated from the pool!
 
 :::
 
+## Allocate on a branch
+
+When you allocate from the pool on a branch, Infrahub uses the pool's IP namespace and source prefixes as they exist on that branch. Infrahub skips a source prefix that does not exist on the branch, for example a prefix created on another branch that is not merged yet.
+
+Infrahub does not allocate a prefix that any branch still holds, unless that branch is being deleted. For example, if you delete an allocated prefix on the default branch after you create a branch, Infrahub does not allocate that prefix again while the branch still holds it. See [Releasing an allocated resource](./overview.mdx#releasing-an-allocated-resource).
+
+The allocation fails with one of these errors when the branch does not have what the pool needs:
+
+- `Pool '<pool>' cannot allocate on branch '<branch>': its namespace '<namespace>' does not exist on this branch.`
+  - The pool's IP namespace does not exist on the branch, for example because it was created on another branch that is not merged yet, or deleted on this branch.
+  - When the pool no longer links to a namespace, for example because the branch that held the namespace was deleted, the message does not include the name of the namespace: `Pool '<pool>' cannot allocate on branch '<branch>': its namespace does not exist on this branch.`
+  - Allocate on a branch where the namespace exists. If the namespace was created on another branch, merge that branch and rebase this one first.
+- `Pool '<pool>' cannot allocate on branch '<branch>': none of its resources exist on this branch.`
+  - None of the pool's source prefixes exist on the branch.
+  - Allocate on a branch where at least one source prefix exists, or add a source prefix that exists on this branch to the pool.
+
+When the source prefixes exist on the branch but none has room for a prefix of the requested length, the allocation fails with `No more resources available in the pool`.
+
 ## Next
 
 - [Allocate IP addresses](./allocate-ip-address.mdx)

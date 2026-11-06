@@ -121,8 +121,10 @@ async def test_ipaddress_is_within_ipprefix(
     prefix_ip_network = ipaddress.ip_network(prefix.prefix.value)
     address_ip_address = ipaddress.ip_interface(address.address.value)
 
-    allocator = IPAMResourceAllocator(db=db, branch=default_branch)
-    ip_addresses = list(await allocator.get_ip_addresses(ip_prefix=prefix_ip_network))
+    allocator = IPAMResourceAllocator(db=db)
+    ip_addresses = list(
+        await allocator.get_ip_addresses(ip_prefix=prefix_ip_network, namespace=None, on_branch=default_branch)
+    )
     assert len(ip_addresses) == 1
     assert ip_addresses[0].address == address_ip_address
 
