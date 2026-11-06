@@ -29,7 +29,7 @@ Fields:
 | `date_format` | `DateFormat` enum, nullable | a semantic key (e.g. `ISO_DATETIME`), not a render pattern; each client maps the key to its own formatter |
 | `timezone` | `str` (IANA name), nullable | validated at write, not on the model (see below) |
 | `instance_label` | `str`, nullable | global row only; trimmed, at most `INSTANCE_LABEL_MAX_LENGTH` (32) characters, no control character; validated at write only |
-| `instance_color` | `InstanceColor` enum, nullable | global row only; one of `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, `GRAY`; an unknown stored value is read as unset |
+| `instance_color` | `InstanceColor` enum, nullable | global row only; one of `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, `GRAY` |
 
 `date_format` is enum-typed, so an unknown key is rejected at construction, including when a row is
 loaded from the database. It round-trips as a plain string because the enum subclasses `str`.
@@ -49,10 +49,7 @@ U+202A–U+202E and U+2066–U+2069) or more than 32 characters with a `Validati
 rule. A stored value never breaks a read.
 
 `instance_color` needs no validator of its own: the GraphQL enum rejects an unknown member with a
-message that lists the allowed ones, and Pydantic does the same on the REST model. On read, a stored
-value outside the enum (a backup restored from a later version with a new preset) is logged at
-warning level and read as unset, because `/api/config` reads this row before any page renders and a
-raised error there would reach every visitor. Each member's name
+message that lists the allowed ones, and Pydantic does the same on the REST model. Each member's name
 equals its value (`RED = "RED"`) on purpose: graphene puts member *names* on the GraphQL wire while
 Pydantic serialises *values* on REST, so the equality keeps `schema.graphql`, `openapi.json` and the
 two generated TypeScript types in agreement. Renaming a member later needs a data migration, because
@@ -152,7 +149,7 @@ Every client, the login page included, loads `GET /api/config` before it renders
 is the only way an anonymous visitor reads the instance label and color. `ConfigAPI.instance` is an
 `InstanceIdentityAPI(label, color)` filled from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)`; a
 missing row yields `null` for both. The read goes through the repository, so it never creates the
-global row. A `DatabaseError` on that read is logged and served as `null` for both, because the
+global row. Any exception on that read is logged and served as `null` for both, because the
 config response bootstraps every page and the login page must not fail with the identity. Only
 these two fields are exposed; `date_format` and `timezone` stay behind the
 authenticated GraphQL queries.

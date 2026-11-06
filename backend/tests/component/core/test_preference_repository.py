@@ -5,11 +5,8 @@ from typing import TYPE_CHECKING
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
-from infrahub.core.query import preference as preference_query
 
 if TYPE_CHECKING:
-    import pytest
-
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -31,12 +28,12 @@ async def test_save_then_get_for_owner_round_trip(db: InfrahubDatabase, default_
     assert fetched.owner_id == "owner-a"
     assert fetched.date_format == "EU_DATETIME"
     assert fetched.timezone == "Europe/Paris"
+    assert fetched.instance_label is None
+    assert fetched.instance_color is None
 
 
 async def test_global_row_round_trips_instance_label_and_color(db: InfrahubDatabase, default_branch: Branch) -> None:
     repository = PreferenceRepository(db=db)
-    assert await repository.get_all() == []
-
     await repository.save(
         Preference(owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED)
     )
@@ -47,40 +44,6 @@ async def test_global_row_round_trips_instance_label_and_color(db: InfrahubDatab
     assert fetched.instance_color == InstanceColor.RED
     assert fetched.date_format is None
     assert fetched.timezone is None
-
-
-async def test_instance_fields_read_back_as_none_when_unset(db: InfrahubDatabase, default_branch: Branch) -> None:
-    repository = PreferenceRepository(db=db)
-    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
-
-    fetched = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert fetched is not None
-    assert fetched.instance_label is None
-    assert fetched.instance_color is None
-
-
-async def test_unknown_stored_instance_color_reads_back_as_none_and_warns_once(
-    db: InfrahubDatabase, default_branch: Branch, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A stored color outside the enum, written by a later version, must not break the read."""
-    monkeypatch.setattr(preference_query, "_WARNED_INSTANCE_COLORS", set())
-    repository = PreferenceRepository(db=db)
-    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA", instance_color=InstanceColor.RED))
-    await db.execute_query(
-        query="MATCH (n:Preference { owner_id: $owner_id }) SET n.instance_color = $color",
-        params={"owner_id": GLOBAL_OWNER_ID, "color": "PINK"},
-    )
-
-    with caplog.at_level("WARNING", logger="infrahub"):
-        fetched = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
-        fetched_again = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
-
-    assert fetched is not None
-    assert fetched.instance_color is None
-    assert fetched.instance_label == "QA"
-    assert fetched_again is not None
-    assert fetched_again.instance_color is None
-    assert sum("not a known preset" in record.getMessage() for record in caplog.records) == 1
 
 
 async def test_save_updates_in_place_without_creating_a_second_row(
