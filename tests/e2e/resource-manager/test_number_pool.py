@@ -9,7 +9,7 @@ Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the number pools it creates on that branch. Every test depends on the SAME
 fixtures (admin_page + number_pool_branch) and the chain relies on pytest's
 default definition-order collection (see the README's serial-specs gotcha).
-Depends on data_sites (the atl1-core1 device); the InterfaceL3 schema and the
+Depends on data_site_atl1 (the atl1-core1 device); the InterfaceL3 schema and the
 InfraService number pool come from the schema, not the data.
 """
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 class TestNumberPool:
     @pytest.fixture(scope="class")
     async def number_pool_branch(
-        self, infrahub_client: InfrahubClient, data_sites: SitesHandle
+        self, infrahub_client: InfrahubClient, data_site_atl1: SitesHandle
     ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("number-pool")
         await infrahub_client.branch.create(branch_name=name, sync_with_git=False)

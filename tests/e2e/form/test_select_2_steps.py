@@ -10,7 +10,7 @@ share one created branch (no object is read across tests). The branch is a
 class-scoped fixture created via `infrahub_client`; every test depends on the
 SAME fixtures (admin_page + select_branch) and the chain relies on pytest's
 default definition-order collection (see the README's serial-specs gotcha).
-Relies on data_sites (atl1 site, atl1-core1 device, MGMT gateway, and
+Relies on data_site_atl1 (atl1 site, atl1-core1 device, MGMT gateway, and
 Ethernet1's connected endpoint from the per-site edge1<->edge2 cabling).
 """
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class TestVerifiesObjectCreation:
     @pytest.fixture(scope="class")
     async def select_branch(
-        self, infrahub_client: InfrahubClient, data_sites: SitesHandle
+        self, infrahub_client: InfrahubClient, data_site_atl1: SitesHandle
     ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("select-2-steps")
         await infrahub_client.branch.create(branch_name=name, sync_with_git=False)

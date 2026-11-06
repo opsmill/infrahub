@@ -3,7 +3,7 @@
 Selecting a Site through the Explore tab of a hierarchical relationship input on
 the InfraDevice creation form: drilling North America -> United States of America
 -> atl1. Relies on the demo hierarchy and the atl1 site on a throwaway branch cut
-from main, hence the data_sites dependency (the atl1 site option and the Explore
+from main, hence the data_site_atl1 dependency (the atl1 site option and the Explore
 drill-down to atl1).
 """
 
@@ -31,7 +31,7 @@ class TestRelationshipHierarchicalInput:
     async def branch(
         self,
         branch_api: BranchAPI,
-        data_sites: SitesHandle,
+        data_site_atl1: SitesHandle,
     ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("relationship-hierarchical-input")
         await branch_api.create(name)

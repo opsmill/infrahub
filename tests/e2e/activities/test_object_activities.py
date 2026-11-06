@@ -2,7 +2,7 @@
 
 Object activity log: open atl1-edge1's activity timeline (reloading until the
 activity appears) and the per-event "View more" popover. Reads the activity
-timeline populated by the data_sites load itself, so depends on data_sites.
+timeline populated by the data_site_atl1 load itself, so depends on data_site_atl1.
 """
 
 from __future__ import annotations
@@ -21,7 +21,9 @@ if TYPE_CHECKING:
 
 
 class TestObjectActivities:
-    async def test_display_activity_log_details_for_atl1_edge1(self, admin_page: Page, data_sites: SitesHandle) -> None:
+    async def test_display_activity_log_details_for_atl1_edge1(
+        self, admin_page: Page, data_site_atl1: SitesHandle
+    ) -> None:
         # Navigate to InfraDevice page
         await admin_page.goto("/objects/InfraDevice")
         await admin_page.get_by_role("link", name="atl1-edge1").click()
