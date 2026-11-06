@@ -10,6 +10,7 @@ from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERM
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
+    GlobalPreferencesType,
     RawPreferencesType,
 )
 
@@ -85,9 +86,11 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     return {
         "date_format": global_.date_format if global_ else None,
         "timezone": global_.timezone if global_ else None,
+        "instance_label": global_.instance_label if global_ else None,
+        "instance_color": global_.instance_color if global_ else None,
     }
 
 
 InfrahubEffectivePreferences = Field(EffectivePreferencesType, resolver=resolve_effective_preferences, required=True)
 InfrahubUserPreferences = Field(RawPreferencesType, resolver=resolve_user_preferences, required=True)
-InfrahubGlobalPreferences = Field(RawPreferencesType, resolver=resolve_global_preferences, required=True)
+InfrahubGlobalPreferences = Field(GlobalPreferencesType, resolver=resolve_global_preferences, required=True)

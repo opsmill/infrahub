@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { getConfigQueryOptions } from "@/entities/config/ui/queries/get-config.query";
 import {
   type UpdateGlobalPreferenceParams,
   updateGlobalPreference,
@@ -13,6 +14,7 @@ export function useUpdateGlobalPreferences() {
     mutationFn: (params: UpdateGlobalPreferenceParams) => updateGlobalPreference(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() });
+      queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey });
     },
   });
 }

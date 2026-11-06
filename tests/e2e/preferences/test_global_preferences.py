@@ -20,9 +20,6 @@ from playwright.async_api import expect
 pytestmark = pytest.mark.shard_foundation
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
 # US 12-hour preset — distinct from the ISO default so an inherited value is
@@ -31,18 +28,6 @@ GLOBAL_DATE_FORMAT = "MM/dd/yyyy hh:mm a"
 
 
 class TestGlobalPreferences:
-    @pytest.fixture(autouse=True)
-    async def reset_global_preferences(self, infrahub_client: InfrahubClient) -> AsyncGenerator[None, None]:
-        """Clear the organisation-wide defaults after the test.
-
-        The global row is shared by every account on the session instance, so it
-        must be reset or later tests inherit a stale default.
-        """
-        yield
-        await infrahub_client.execute_graphql(
-            query=("mutation { InfrahubSetPreferences(scope: GLOBAL, date_format: null, timezone: null) { ok } }"),
-        )
-
     async def test_global_default_is_inherited_by_users_without_an_override(
         self, admin_page: Page, read_only_page: Page
     ) -> None:

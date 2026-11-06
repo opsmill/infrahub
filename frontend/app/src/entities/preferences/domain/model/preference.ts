@@ -1,4 +1,4 @@
-import type { PreferenceSource } from "@/shared/api/graphql/generated/types";
+import type { InstanceColor, PreferenceSource } from "@/shared/api/graphql/generated/types";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
 
@@ -30,4 +30,7 @@ export interface EffectivePreferences {
 }
 
 // Org's own stored values, never merged with personal overrides.
-export type GlobalPreferences = PreferenceValues;
+export type GlobalPreferences = PreferenceValues & {
+  instanceLabel: string | null;
+  instanceColor: InstanceColor | null;
+};

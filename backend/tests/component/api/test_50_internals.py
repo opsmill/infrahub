@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from dataclasses import dataclass
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,7 +8,11 @@ from infrahub import config
 from infrahub.api import internal
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import DatabaseError
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
 from tests.adapters.message_bus import BusRecorder
@@ -33,6 +38,7 @@ async def test_config_endpoint(
         "analytics",
         "experimental_features",
         "installation_type",
+        "instance",
         "ldap",
         "logging",
         "main",
@@ -48,13 +54,101 @@ async def test_config_endpoint_anonymous_account(
     default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", allow_anonymous_access)
 
     with client:
         response = client.get("/api/config")
 
     assert response.status_code == 200
+    assert response.json()["instance"] == {"label": None, "color": None}
+    assert await PreferenceRepository(db=db).get_all() == []
+
+
+@dataclass
+class StoredIdentityCase:
+    name: str
+    allow_anonymous_access: bool
+    preference: Preference
+    expected: dict[str, str | None]
+
+
+STORED_IDENTITY_CASES: list[StoredIdentityCase] = [
+    StoredIdentityCase(
+        name="label_and_color_authenticated_only",
+        allow_anonymous_access=False,
+        preference=Preference(
+            owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED
+        ),
+        expected={"label": "us-east-1 PROD", "color": "RED"},
+    ),
+    StoredIdentityCase(
+        name="label_and_color_anonymous_allowed",
+        allow_anonymous_access=True,
+        preference=Preference(
+            owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED
+        ),
+        expected={"label": "us-east-1 PROD", "color": "RED"},
+    ),
+    StoredIdentityCase(
+        name="label_without_color",
+        allow_anonymous_access=True,
+        preference=Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA"),
+        expected={"label": "QA", "color": None},
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STORED_IDENTITY_CASES])
+async def test_config_endpoint_returns_stored_instance_identity(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    monkeypatch: pytest.MonkeyPatch,
+    case: StoredIdentityCase,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", case.allow_anonymous_access)
+    await PreferenceRepository(db=db).save(case.preference)
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == case.expected
+
+
+@dataclass
+class ReadFailureCase:
+    name: str
+    error: Exception
+
+
+READ_FAILURE_CASES: list[ReadFailureCase] = [
+    ReadFailureCase(name="database_error", error=DatabaseError(message="Unable to connect to the database")),
+    ReadFailureCase(name="unexpected_error", error=RuntimeError("read() called while another coroutine is waiting")),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in READ_FAILURE_CASES])
+async def test_config_endpoint_serves_unset_identity_when_the_read_fails(
+    client: TestClient,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    monkeypatch: pytest.MonkeyPatch,
+    case: ReadFailureCase,
+) -> None:
+    async def failing(self: PreferenceRepository, owner_id: str) -> Preference | None:
+        raise case.error
+
+    monkeypatch.setattr(PreferenceRepository, "get_for_owner", failing)
+
+    with client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["instance"] == {"label": None, "color": None}
 
 
 async def test_info_endpoint(
@@ -82,8 +176,9 @@ async def test_info_endpoint_anonymous_account(
     default_branch: Branch,
     register_core_models_schema: None,
     allow_anonymous_access: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", allow_anonymous_access)
 
     with client:
         response = client.get("/api/info")

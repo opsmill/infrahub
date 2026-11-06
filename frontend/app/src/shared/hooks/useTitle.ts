@@ -1,16 +1,22 @@
-import { useEffect, useRef } from "react";
+import { useSetAtom } from "jotai";
+import { useEffect, useId } from "react";
+
+import { pageTitleRegistrationsAtom } from "@/shared/stores/page-title.atom";
 
 export const useTitle = (title: string) => {
-  const documentDefined = typeof document !== "undefined";
-  const originalTitle = useRef(documentDefined ? document.title : "");
+  const id = useId();
+  const setRegistrations = useSetAtom(pageTitleRegistrationsAtom);
 
   useEffect(() => {
-    if (!documentDefined) return;
-
-    if (document.title !== title) document.title = title;
+    setRegistrations((registrations) => [
+      ...registrations.filter((registration) => registration.id !== id),
+      { id, title },
+    ]);
 
     return () => {
-      document.title = originalTitle.current;
+      setRegistrations((registrations) =>
+        registrations.filter((registration) => registration.id !== id)
+      );
     };
-  }, [title]);
+  }, [id, title, setRegistrations]);
 };

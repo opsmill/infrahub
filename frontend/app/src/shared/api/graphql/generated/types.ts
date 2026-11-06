@@ -18112,6 +18112,15 @@ export type GenericPoolInput = {
   identifier?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** The organisation-wide raw preferences, plus the instance identity that exists at that scope only. */
+export type GlobalPreferencesType = {
+  __typename: 'GlobalPreferencesType';
+  date_format: Maybe<DateFormat>;
+  instance_color: Maybe<InstanceColor>;
+  instance_label: Maybe<Scalars['String']['output']>;
+  timezone: Maybe<Scalars['String']['output']>;
+};
+
 export type GraphQlQueryReport = {
   __typename: 'GraphQLQueryReport';
   /** True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
@@ -18665,6 +18674,8 @@ export type InfrahubRepositoryBranchStatusType = {
 export type InfrahubSetPreferences = {
   __typename: 'InfrahubSetPreferences';
   date_format: Maybe<DateFormat>;
+  instance_color: Maybe<InstanceColor>;
+  instance_label: Maybe<Scalars['String']['output']>;
   ok: Maybe<Scalars['Boolean']['output']>;
   timezone: Maybe<Scalars['String']['output']>;
 };
@@ -18683,6 +18694,18 @@ export type InfrahubTaskRetry = {
   task: Maybe<TaskInfo>;
 };
 
+/** Preset colors for the instance badge and bar. The stored instance_color is one of these keys; each client maps the key to its own theme. */
+export const InstanceColor = {
+  AMBER: 'AMBER',
+  BLUE: 'BLUE',
+  GRAY: 'GRAY',
+  GREEN: 'GREEN',
+  INDIGO: 'INDIGO',
+  PURPLE: 'PURPLE',
+  RED: 'RED'
+} as const;
+
+export type InstanceColor = typeof InstanceColor[keyof typeof InstanceColor];
 /** Token for User Account */
 export type InternalAccountToken = CoreNode & {
   __typename: 'InternalAccountToken';
@@ -22051,6 +22074,8 @@ export type MutationInfrahubRepositoryProcessArgs = {
 
 export type MutationInfrahubSetPreferencesArgs = {
   date_format?: InputMaybe<DateFormat>;
+  instance_color?: InputMaybe<InstanceColor>;
+  instance_label?: InputMaybe<Scalars['String']['input']>;
   scope: PreferenceWriteScope;
   timezone?: InputMaybe<Scalars['String']['input']>;
 };
@@ -26293,7 +26318,7 @@ export type Query = {
   InfrahubBranch: InfrahubBranchType;
   InfrahubEffectivePreferences: EffectivePreferencesType;
   InfrahubEvent: Events;
-  InfrahubGlobalPreferences: RawPreferencesType;
+  InfrahubGlobalPreferences: GlobalPreferencesType;
   /** Analyze a GraphQL query string and return a report describing how Infrahub will interpret it. */
   InfrahubGraphQLQueryReport: GraphQlQueryReport;
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
