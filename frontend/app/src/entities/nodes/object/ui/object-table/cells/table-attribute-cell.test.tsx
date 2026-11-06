@@ -63,7 +63,7 @@ describe("TableAttributeCell", () => {
     const component = await render(
       <TableAttributeCell
         attributeSchema={schema}
-        attributeData={attribute({ bgp: { asn: 65101 } })}
+        attributeData={attribute({ bgp: { asn: 65_101 } })}
       />
     );
 
