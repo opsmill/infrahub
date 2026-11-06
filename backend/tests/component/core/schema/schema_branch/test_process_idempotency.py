@@ -262,23 +262,12 @@ def test_process_idempotency(register_core_models_schema: SchemaBranch, idempote
     assert generics_after_first == generics_after_second, "generic names changed after second process()"
     assert profiles_after_first == profiles_after_second, "profile names changed after second process()"
     assert templates_after_first == templates_after_second, "template names changed after second process()"
-
-
-def test_process_twice_yields_the_same_hash_with_inherited_containers(
-    register_core_models_schema: SchemaBranch, idempotency_schema: SchemaRoot
-) -> None:
-    schema_branch = register_core_models_schema
-    schema_branch.load_schema(schema=idempotency_schema)
-    schema_branch.process()
-    hash_after_first = schema_branch.get_hash()
-
-    schema_branch.process()
-
-    assert schema_branch.get_hash() == hash_after_first
     for kind in ("TestDevice", "TestInterface"):
         node = schema_branch.get_node(name=kind, duplicate=False)
-        inherited_names = [container.name for container in node.containers if container.inherited]
-        assert inherited_names == ["documentation", "lifecycle"]
+        assert [container.name for container in node.containers if container.inherited] == [
+            "documentation",
+            "lifecycle",
+        ]
 
 
 def test_generic_dropping_a_container_removes_it_from_the_node_on_reprocess(

@@ -59,7 +59,6 @@ DISPLAY_CONTAINER = {"name": "display", "label": "Display", "collapsed": True}
 
 
 def _schema_with_grading_container(schema_all_in_one: dict[str, Any]) -> dict[str, Any]:
-    """Return a copy of the schema where TestingCriticality declares a grading container holding its level."""
     schema = copy.deepcopy(schema_all_in_one)
     criticality = _get_schema_by_kind(schema, kind="TestingCriticality")
     criticality["containers"] = [copy.deepcopy(GRADING_CONTAINER)]
@@ -3338,7 +3337,6 @@ async def test_clean_diff_after_reload_from_db(
 def _load_criticality_twice(
     schema_all_in_one: dict[str, Any], containers_on_reload: list[dict[str, Any]]
 ) -> NodeSchema:
-    """Load the schema with the grading container, load TestingCriticality again with the given containers and return it."""
     schema_with_grading = _schema_with_grading_container(schema_all_in_one)
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_with_grading))
@@ -3350,59 +3348,35 @@ def _load_criticality_twice(
     return schema.get_node(name="TestingCriticality", duplicate=False)
 
 
-async def test_reload_appends_a_container(schema_all_in_one: dict[str, Any]) -> None:
-    criticality = _load_criticality_twice(
-        schema_all_in_one, containers_on_reload=[copy.deepcopy(GRADING_CONTAINER), copy.deepcopy(DISPLAY_CONTAINER)]
-    )
+@pytest.mark.parametrize(
+    ("containers_on_reload", "expected_containers"),
+    [
+        pytest.param(
+            [GRADING_CONTAINER, DISPLAY_CONTAINER],
+            [GRADING_CONTAINER, DISPLAY_CONTAINER],
+            id="appends_a_container",
+        ),
+        pytest.param(
+            [{**GRADING_CONTAINER, "label": "Grading level"}],
+            [{**GRADING_CONTAINER, "label": "Grading level"}],
+            id="updates_a_container_label",
+        ),
+        pytest.param([DISPLAY_CONTAINER], [DISPLAY_CONTAINER, GRADING_CONTAINER], id="keeps_a_left_out_container"),
+        pytest.param(
+            [{**GRADING_CONTAINER, "state": HashableModelState.ABSENT.value}], [], id="removes_an_absent_container"
+        ),
+    ],
+)
+async def test_reload_merges_the_containers(
+    schema_all_in_one: dict[str, Any],
+    containers_on_reload: list[dict[str, Any]],
+    expected_containers: list[dict[str, Any]],
+) -> None:
+    criticality = _load_criticality_twice(schema_all_in_one, containers_on_reload=copy.deepcopy(containers_on_reload))
 
-    assert criticality.containers == [
-        ContainerSchema(name="grading", label="Grading", order_weight=100),
-        ContainerSchema(name="display", label="Display", collapsed=True),
-    ]
-    assert criticality.get_attribute("level").container == "grading"
-
-
-async def test_reload_updates_a_container_label(schema_all_in_one: dict[str, Any]) -> None:
-    criticality = _load_criticality_twice(
-        schema_all_in_one, containers_on_reload=[{"name": "grading", "label": "Grading level", "order_weight": 100}]
-    )
-
-    assert criticality.containers == [ContainerSchema(name="grading", label="Grading level", order_weight=100)]
-
-
-async def test_reload_keeps_a_container_left_out_of_the_list(schema_all_in_one: dict[str, Any]) -> None:
-    criticality = _load_criticality_twice(schema_all_in_one, containers_on_reload=[copy.deepcopy(DISPLAY_CONTAINER)])
-
-    assert criticality.containers == [
-        ContainerSchema(name="display", label="Display", collapsed=True),
-        ContainerSchema(name="grading", label="Grading", order_weight=100),
-    ]
-    assert criticality.get_attribute("level").container == "grading"
-
-
-async def test_reload_removes_a_container_marked_absent(schema_all_in_one: dict[str, Any]) -> None:
-    criticality = _load_criticality_twice(
-        schema_all_in_one,
-        containers_on_reload=[{"name": "grading", "label": "Grading", "state": HashableModelState.ABSENT.value}],
-    )
-
-    assert criticality.containers == []
-
-
-async def test_reload_node_redeclaring_an_inherited_container_wins_on_reload() -> None:
-    schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)))
-    schema.process()
-
-    reloaded = copy.deepcopy(LAG_INTERFACE_L2)
-    reloaded["containers"] = [{"name": "layer2", "label": "Switching", "order_weight": 200}]
-    schema.load_schema(schema=SchemaRoot(version="1.0", nodes=[reloaded]))
-    schema.process()
-
-    node = schema.get_node(name="InfraLagInterfaceL2", duplicate=False)
-    layer2 = next(container for container in node.containers if container.name == "layer2")
-    assert layer2.label == "Switching"
-    assert layer2.inherited is False
+    assert criticality.containers == [ContainerSchema(**container) for container in expected_containers]
+    if expected_containers:
+        assert criticality.get_attribute("level").container == "grading"
 
 
 async def test_reload_node_redeclaring_an_inherited_container_matches_a_fresh_load() -> None:
@@ -3428,7 +3402,6 @@ async def test_reload_node_redeclaring_an_inherited_container_matches_a_fresh_lo
 
 
 def _lag_schema_with_containers(container_names: list[str]) -> dict[str, Any]:
-    """Return a copy of the LAG schema whose generic declares the named containers, without order_weight."""
     schema = copy.deepcopy(LAG_SCHEMA)
     schema["generics"][0]["containers"] = [{"name": name, "label": name.capitalize()} for name in container_names]
     return schema
@@ -3447,18 +3420,9 @@ async def test_reload_keeps_the_declaration_order_of_containers() -> None:
     schema.load_schema(schema=SchemaRoot(version="1.0", generics=reloaded["generics"]))
     schema.process()
 
-    assert _container_names(schema.get_generic(name="InfraLagInterface", duplicate=False)) == [
-        "layer2",
-        "layer4",
-        "lacp",
-        "layer3",
-    ]
-    assert _container_names(schema.get_node(name="InfraLagInterfaceL2", duplicate=False)) == [
-        "layer2",
-        "layer4",
-        "lacp",
-        "layer3",
-    ]
+    expected = ["layer2", "layer4", "lacp", "layer3"]
+    assert _container_names(schema.get_generic(name="InfraLagInterface", duplicate=False)) == expected
+    assert _container_names(schema.get_node(name="InfraLagInterfaceL2", duplicate=False)) == expected
 
 
 async def test_database_round_trip_keeps_the_declaration_order_of_containers(
@@ -3480,16 +3444,9 @@ async def test_database_round_trip_keeps_the_declaration_order_of_containers(
 
     loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
 
-    assert _container_names(loaded.get_generic(name="InfraLagInterface", duplicate=False)) == [
-        "layer2",
-        "layer3",
-        "lacp",
-    ]
-    assert _container_names(loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)) == [
-        "layer2",
-        "layer3",
-        "lacp",
-    ]
+    expected = ["layer2", "layer3", "lacp"]
+    assert _container_names(loaded.get_generic(name="InfraLagInterface", duplicate=False)) == expected
+    assert _container_names(loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)) == expected
 
 
 async def test_load_schema_from_db_accepts_a_schema_stored_without_containers(

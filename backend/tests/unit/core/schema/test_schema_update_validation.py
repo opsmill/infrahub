@@ -437,28 +437,13 @@ def _build_sectioned_schema() -> SchemaBranch:
     return schema
 
 
-async def test_changing_containers_emits_no_migration_and_no_constraint() -> None:
+async def test_changing_containers_and_moving_an_attribute_emits_no_migration_and_no_constraint() -> None:
     schema = _build_sectioned_schema()
 
     candidate = schema.duplicate()
     widget = candidate.get_node(name="TestWidget", duplicate=True)
     widget.containers[0].label = "Link aggregation"
     widget.containers.append(ContainerSchema(name="layer3", label="Layer 3", order_weight=300))
-    candidate.set(name="TestWidget", schema=widget)
-
-    diff = schema.diff(other=candidate)
-    result = schema.validate_update(other=candidate, diff=diff)
-
-    assert result.errors == []
-    assert result.migrations == []
-    assert result.constraints == []
-
-
-async def test_moving_an_attribute_to_another_container_emits_no_migration_and_no_constraint() -> None:
-    schema = _build_sectioned_schema()
-
-    candidate = schema.duplicate()
-    widget = candidate.get_node(name="TestWidget", duplicate=True)
     widget.get_attribute(name="lacp_rate").container = "layer2"
     candidate.set(name="TestWidget", schema=widget)
 

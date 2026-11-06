@@ -204,26 +204,17 @@ def _generic_without_field_container(field_list: str, field_name: str) -> dict[s
     return generic
 
 
-def test_reload_without_container_moves_an_attribute_back_to_details() -> None:
+@pytest.mark.parametrize(
+    ("field_list", "field_name"), [("attributes", "lacp_rate"), ("relationships", "sub_interfaces")]
+)
+def test_reload_without_container_moves_a_field_back_to_details(field_list: str, field_name: str) -> None:
     schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
 
-    _reload_generic(schema_branch, _generic_without_field_container(field_list="attributes", field_name="lacp_rate"))
+    _reload_generic(schema_branch, _generic_without_field_container(field_list=field_list, field_name=field_name))
 
-    assert schema_branch.get(name=GENERIC_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
-    assert schema_branch.get(name=L2_KIND, duplicate=False).get_attribute(name="lacp_rate").container is None
-
-
-def test_reload_without_container_moves_a_relationship_back_to_details() -> None:
-    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
-
-    _reload_generic(
-        schema_branch, _generic_without_field_container(field_list="relationships", field_name="sub_interfaces")
-    )
-
-    generic = schema_branch.get(name=GENERIC_KIND, duplicate=False)
-    node = schema_branch.get(name=L2_KIND, duplicate=False)
-    assert generic.get_relationship(name="sub_interfaces").container is None
-    assert node.get_relationship(name="sub_interfaces").container is None
+    for kind in (GENERIC_KIND, L2_KIND):
+        node = schema_branch.get(name=kind, duplicate=False)
+        assert next(field for field in getattr(node, field_list) if field.name == field_name).container is None
 
 
 def test_reload_removing_a_container_and_its_references_together_is_accepted() -> None:
