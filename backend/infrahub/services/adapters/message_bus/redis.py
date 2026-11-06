@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, MutableMapping, TypeVar
 
@@ -104,7 +104,8 @@ class StreamSubscription:
     `XREADGROUP` and acknowledged when `ack_messages` is set. When `bindings`
     is set, entries whose routing key matches no pattern are skipped.
     `owns_stream` marks a stream with no other reader, allowing the consumer
-    to trim entries it has already read.
+    to trim entries it has already read. `in_progress` holds the ids of the
+    group entries whose handler has started and not yet acknowledged them.
     """
 
     stream: str
@@ -115,6 +116,7 @@ class StreamSubscription:
     start_id: str = "0"
     bindings: list[str] | None = None
     owns_stream: bool = False
+    in_progress: set[bytes] = field(default_factory=set)
 
 
 class RedisMessageBus(InfrahubMessageBus):
@@ -133,6 +135,7 @@ class RedisMessageBus(InfrahubMessageBus):
     DELAYED_QUEUE = "delayed"
     DELAYED_ATTEMPTS = "delayed:attempts"
     DELAYED_DEAD_LETTER = "delayed:dead"
+    WORK_DEAD_LETTER = "rpcs:dead"
     RPCS_GROUP = "git-workers"
 
     # Approximate upper bound for the events stream; events are fire-and-forget
@@ -147,7 +150,23 @@ class RedisMessageBus(InfrahubMessageBus):
     CALLBACK_STREAM_TTL: int = InfrahubMessageBus.DELIVER_TIMEOUT
 
     # Seconds between the pending-claim and trim passes of a group consumer.
-    MAINTENANCE_INTERVAL: float = 60.0
+    MAINTENANCE_INTERVAL: float = 30.0
+
+    # A work queue entry that nobody has marked as in progress for this long
+    # is claimed by another worker. Workers mark the entries they are handling
+    # every few seconds, so this only catches the entries of a worker that
+    # stopped, and the deliveries that never reached their worker.
+    CLAIM_IDLE_MS: int = 60_000
+
+    # Seconds between two marks of the entries a worker is handling, kept far
+    # below the claim threshold so that a live handler never looks abandoned.
+    IN_PROGRESS_REFRESH_SECONDS: float = 15.0
+
+    # A work queue entry delivered more times than this, which happens when
+    # its handler keeps stopping its worker, is parked in the work dead-letter
+    # list, which keeps the newest entries only, instead of being run again.
+    WORK_MAX_DELIVERIES: int = 5
+    WORK_DEAD_LETTER_MAXLEN: int = 1_000
 
     # Milliseconds a stream read waits for a new entry, which bounds how long
     # a consumer takes to notice a shutdown or a due maintenance pass.
@@ -187,6 +206,7 @@ class RedisMessageBus(InfrahubMessageBus):
         self.delayed_queue = f"{self.settings.namespace}:{self.DELAYED_QUEUE}"
         self.delayed_attempts = f"{self.settings.namespace}:{self.DELAYED_ATTEMPTS}"
         self.delayed_dead_letter = f"{self.settings.namespace}:{self.DELAYED_DEAD_LETTER}"
+        self.work_dead_letter = f"{self.settings.namespace}:{self.WORK_DEAD_LETTER}"
         self.message_enrichers: list[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
@@ -196,7 +216,7 @@ class RedisMessageBus(InfrahubMessageBus):
         self._consumer_tasks: list[asyncio.Task] = []
         self._handler_tasks: set[asyncio.Task] = set()
         self._deliver_due_script: AsyncScript
-        self._group_memberships: list[tuple[str, str, str]] = []
+        self._group_subscriptions: list[StreamSubscription] = []
         self._shutdown_event: asyncio.Event = asyncio.Event()
 
     @classmethod
@@ -240,6 +260,9 @@ class RedisMessageBus(InfrahubMessageBus):
                 await task
 
         with contextlib.suppress(redis.RedisError):
+            await self._release_unfinished_entries()
+
+        with contextlib.suppress(redis.RedisError):
             await self._deregister_consumers()
 
         # Clean up callback stream
@@ -248,6 +271,26 @@ class RedisMessageBus(InfrahubMessageBus):
 
         await aclose_redis_client(self.connection)
 
+    async def _release_unfinished_entries(self) -> None:
+        """Make the entries whose handler the shutdown cancelled claimable by another worker at once.
+
+        The entries stay pending to this consumer with an idle time already at the claim threshold, so they keep
+        their delivery count, and the next claim pass of any worker takes them over.
+        """
+        for subscription in self._group_subscriptions:
+            if not subscription.group or not subscription.in_progress:
+                continue
+            await self.connection.xclaim(
+                subscription.stream,
+                subscription.group,
+                subscription.consumer,
+                min_idle_time=0,
+                message_ids=list(subscription.in_progress),
+                idle=self.CLAIM_IDLE_MS,
+                justid=True,
+            )
+            subscription.in_progress.clear()
+
     async def _deregister_consumers(self) -> None:
         """Remove this worker's consumers from their groups.
 
@@ -255,12 +298,19 @@ class RedisMessageBus(InfrahubMessageBus):
         cancelled mid-message, and deleting it would discard those entries
         instead of leaving them for a peer to claim.
         """
-        for stream, group, consumer in self._group_memberships:
+        for subscription in self._group_subscriptions:
+            if not subscription.group:
+                continue
             pending = await self.connection.xpending_range(
-                stream, group, min="-", max="+", count=1, consumername=consumer
+                subscription.stream,
+                subscription.group,
+                min="-",
+                max="+",
+                count=1,
+                consumername=subscription.consumer,
             )
             if not pending:
-                await self.connection.xgroup_delconsumer(stream, group, consumer)
+                await self.connection.xgroup_delconsumer(subscription.stream, subscription.group, subscription.consumer)
 
     async def _create_stream_and_group(self, stream: str, group: str) -> None:
         """Create a stream and consumer group if they don't exist.
@@ -359,10 +409,16 @@ class RedisMessageBus(InfrahubMessageBus):
         self, message_id: bytes, message_data: dict, subscription: StreamSubscription, slots: asyncio.Semaphore | None
     ) -> None:
         """Handle an entry in a task of its own, which gives its handler slot back when it ends."""
+        tracked = bool(subscription.group and subscription.ack_messages)
+        if tracked:
+            subscription.in_progress.add(message_id)
 
         async def handle() -> None:
             try:
                 await self._process_single_message(message_id, message_data, subscription)
+                # Left in place when the handler is cancelled, so the shutdown can hand the entry to another worker.
+                if tracked:
+                    subscription.in_progress.discard(message_id)
             finally:
                 if slots is not None:
                     slots.release()
@@ -448,11 +504,11 @@ class RedisMessageBus(InfrahubMessageBus):
     async def _claim_pending_messages(self, subscription: StreamSubscription, slots: asyncio.Semaphore | None) -> None:
         """Take over entries whose owner stopped before acknowledging them.
 
-        An entry left pending for longer than DELIVER_TIMEOUT is considered
-        abandoned by a dead worker and is re-processed here; nothing
-        legitimately runs longer than that, so live handlers are never
-        double-executed. A claimed entry waits for a free handler slot like a
-        newly read one.
+        A live worker marks the entries it is handling as in progress far more
+        often than the claim threshold, so an entry idle for longer belongs to
+        a worker that stopped, or was never received by its worker, and is
+        re-processed here. An entry delivered too many times is parked instead. A claimed
+        entry waits for a free handler slot like a newly read one.
         """
         if not subscription.group:
             return
@@ -463,7 +519,7 @@ class RedisMessageBus(InfrahubMessageBus):
                 name=subscription.stream,
                 groupname=subscription.group,
                 consumername=subscription.consumer,
-                min_idle_time=self.DELIVER_TIMEOUT * 1000,
+                min_idle_time=self.CLAIM_IDLE_MS,
                 start_id=start_id,
                 count=self.CLAIM_BATCH,
             )
@@ -477,6 +533,11 @@ class RedisMessageBus(InfrahubMessageBus):
                     # The entry was trimmed while pending; acknowledge to stop re-claiming it.
                     await self.connection.xack(subscription.stream, subscription.group, message_id)
                     continue
+                if message_id in subscription.in_progress:
+                    # Already running here, so the claim only reset its idle time.
+                    continue
+                if await self._park_if_delivered_too_often(subscription, message_id, message_data):
+                    continue
                 if slots is not None:
                     await slots.acquire()
                 self._start_handler(message_id, message_data, subscription, slots)
@@ -486,6 +547,71 @@ class RedisMessageBus(InfrahubMessageBus):
             if next_start_id in (b"0-0", "0-0"):
                 break
             start_id = next_start_id
+
+    async def _park_if_delivered_too_often(
+        self, subscription: StreamSubscription, message_id: bytes, message_data: dict
+    ) -> bool:
+        """Move a claimed entry to the work dead-letter list when it has been delivered too many times.
+
+        Returns:
+            Whether the entry was parked, in which case it must not be handled.
+
+        Raises:
+            TypeError: If the pending entry summary reports a delivery count that is not an integer.
+
+        """
+        if not subscription.group:
+            return False
+        pending = await self.connection.xpending_range(
+            subscription.stream, subscription.group, min=message_id, max=message_id, count=1
+        )
+        deliveries = pending[0]["times_delivered"] if pending else 0
+        if not isinstance(deliveries, int):
+            raise TypeError(f"Expected an integer delivery count, got {type(deliveries).__name__}")
+        if deliveries <= self.WORK_MAX_DELIVERIES:
+            return False
+
+        entry = {
+            "id": message_id.decode(),
+            "stream": subscription.stream,
+            "deliveries": deliveries,
+            "fields": self._decode_message_data(message_data),
+        }
+        async with self.connection.pipeline(transaction=True) as pipe:
+            pipe.rpush(self.work_dead_letter, ujson.dumps(entry))
+            pipe.ltrim(self.work_dead_letter, -self.WORK_DEAD_LETTER_MAXLEN, -1)
+            pipe.xack(subscription.stream, subscription.group, message_id)
+            await pipe.execute()
+        get_logger().error(
+            "Parked a work item delivered too many times in the dead-letter list",
+            message_id=entry["id"],
+            deliveries=deliveries,
+        )
+        return True
+
+    async def _refresh_in_progress(self, subscription: StreamSubscription) -> None:
+        """Mark the entries this worker is handling as in progress, until shutdown.
+
+        Claiming an entry to its own consumer with JUSTID resets its idle time without counting a delivery.
+        """
+        while not self._shutdown_event.is_set():
+            await asyncio.sleep(self.IN_PROGRESS_REFRESH_SECONDS)
+            if not subscription.group or not subscription.in_progress:
+                continue
+            try:
+                await self.connection.xclaim(
+                    subscription.stream,
+                    subscription.group,
+                    subscription.consumer,
+                    min_idle_time=0,
+                    message_ids=list(subscription.in_progress),
+                    justid=True,
+                )
+            except redis.RedisError:
+                get_logger().exception("Redis error marking work items as in progress")
+            # Worker loop boundary: an unexpected error must not let live work items look abandoned.
+            except Exception:  # noqa: BLE001
+                get_logger().exception("Unexpected error marking work items as in progress")
 
     async def _trim_worked_stream(self, subscription: StreamSubscription) -> None:
         """Delete entries the consumer group is done with.
@@ -713,19 +839,16 @@ class RedisMessageBus(InfrahubMessageBus):
         await self._create_stream_and_group(self.rpcs_stream, self.RPCS_GROUP)
 
         consumer = f"git-worker-{WORKER_IDENTITY}"
-        self._group_memberships.append((self.rpcs_stream, self.RPCS_GROUP, consumer))
-        task = asyncio.create_task(
-            self._consume_stream(
-                StreamSubscription(
-                    stream=self.rpcs_stream,
-                    group=self.RPCS_GROUP,
-                    consumer=consumer,
-                    callback=self.on_message,
-                    ack_messages=True,
-                )
-            )
+        subscription = StreamSubscription(
+            stream=self.rpcs_stream,
+            group=self.RPCS_GROUP,
+            consumer=consumer,
+            callback=self.on_message,
+            ack_messages=True,
         )
-        self._consumer_tasks.append(task)
+        self._group_subscriptions.append(subscription)
+        self._consumer_tasks.append(asyncio.create_task(self._consume_stream(subscription)))
+        self._consumer_tasks.append(asyncio.create_task(self._refresh_in_progress(subscription)))
 
         await self._setup_callback(identity=consumer)
 

@@ -538,7 +538,7 @@ async def test_redis_pending_messages_reclaimed(redis_api: RedisManager, fake_lo
     assert entries
 
     git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
-    git_bus.DELIVER_TIMEOUT = 0  # claim immediately instead of after 30 minutes
+    git_bus.CLAIM_IDLE_MS = 0  # claim at once instead of after a minute of idleness
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
         await git_bus._initialize()
         await wait_until(lambda: len(fake_log.info_logs) == 1)
@@ -898,3 +898,141 @@ async def test_redis_listen(case: ListenCase, redis_api: RedisManager) -> None:
     assert [_as_text(fields["routing_key"]) for _stream, entries in delivered for _entry_id, fields in entries] == [
         "send.echo.request"
     ]
+
+
+async def test_redis_running_work_item_is_not_claimed_again(redis_api: RedisManager) -> None:
+    """A worker keeps marking the work item it is handling, so the claim passes leave it alone while it runs."""
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    handler = BlockingHandler()
+
+    with patch("infrahub.services.adapters.message_bus.redis.execute_message", handler):
+        api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+        git_bus.CLAIM_IDLE_MS = 1_000
+        git_bus.IN_PROGRESS_REFRESH_SECONDS = 0.2
+        git_bus.MAINTENANCE_INTERVAL = 0.3
+        try:
+            await git_bus._initialize()
+            await api_bus.send(message=messages.SendEchoRequest(message="long running"))
+            await wait_until(lambda: len(handler.started) == 1)
+            # Several claim passes run while the handler takes longer than the claim threshold.
+            await asyncio.sleep(git_bus.CLAIM_IDLE_MS * 3 / 1000)
+            started_while_running = len(handler.started)
+            pending = await conn.xpending_range(rpcs_stream, RedisMessageBus.RPCS_GROUP, min="-", max="+", count=10)
+        finally:
+            handler.release.set()
+            await git_bus.shutdown()
+            await api_bus.shutdown()
+
+    assert started_while_running == 1
+    assert [entry["times_delivered"] for entry in pending] == [1]
+
+
+async def test_redis_work_item_interrupted_by_a_shutdown_is_taken_over_at_once(redis_api: RedisManager) -> None:
+    """A worker that shuts down mid-task leaves the work item to the next worker's first claim pass."""
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    handler = BlockingHandler()
+
+    with patch("infrahub.services.adapters.message_bus.redis.execute_message", handler):
+        api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+        first_worker = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+        try:
+            await api_bus.send(message=messages.SendEchoRequest(message="interrupted"))
+            await wait_until(lambda: len(handler.started) == 1)
+        finally:
+            await first_worker.shutdown()
+        handler.release.set()
+
+        # A second process, so a second consumer of the group.
+        with patch("infrahub.services.adapters.message_bus.redis.WORKER_IDENTITY", "second-worker"):
+            second_worker = await RedisMessageBus.new(
+                settings=redis_api.settings, component_type=ComponentType.GIT_AGENT
+            )
+        try:
+            await wait_until(lambda: len(handler.started) == 2)
+
+            async def acknowledged() -> bool:
+                summary = await conn.xpending(rpcs_stream, RedisMessageBus.RPCS_GROUP)
+                return summary["pending"] == 0
+
+            await wait_until(acknowledged)
+        finally:
+            await second_worker.shutdown()
+            await api_bus.shutdown()
+
+    assert handler.started == ["send.echo.request", "send.echo.request"]
+
+
+@dataclass
+class RedeliveryCase:
+    name: str
+    previous_deliveries: int
+    parked: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RedeliveryCase(
+            name="last_allowed_delivery", previous_deliveries=RedisMessageBus.WORK_MAX_DELIVERIES - 1, parked=False
+        ),
+        RedeliveryCase(
+            name="one_delivery_too_many", previous_deliveries=RedisMessageBus.WORK_MAX_DELIVERIES, parked=True
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_redis_work_item_delivered_too_often_is_parked(
+    case: RedeliveryCase, redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """A claimed work item already delivered the maximum number of times goes to the dead-letter list instead."""
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    await api_bus.send(message=messages.SendEchoRequest(message="crashes its worker"))
+    await api_bus.shutdown()
+
+    conn = await redis_api.get_connection()
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    dead_letter = f"{redis_api.namespace}:rpcs:dead"
+    delivered = await conn.xreadgroup(
+        groupname=RedisMessageBus.RPCS_GROUP, consumername="crashed-worker", streams={rpcs_stream: ">"}, count=1
+    )
+    assert isinstance(delivered, list)
+    entry_id = delivered[0][1][0][0]
+    # Records the deliveries of earlier workers that stopped while handling the entry.
+    await conn.xclaim(
+        rpcs_stream,
+        RedisMessageBus.RPCS_GROUP,
+        "crashed-worker",
+        min_idle_time=0,
+        message_ids=[entry_id],
+        retrycount=case.previous_deliveries,
+        justid=True,
+    )
+
+    async def entry_settled() -> bool:
+        summary = await conn.xpending(rpcs_stream, RedisMessageBus.RPCS_GROUP)
+        return summary["pending"] == 0
+
+    git_bus = RedisMessageBus(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+    git_bus.CLAIM_IDLE_MS = 0
+    with (
+        patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log),
+        patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log),
+    ):
+        try:
+            await git_bus._initialize()
+            await wait_until(entry_settled)
+        finally:
+            await git_bus.shutdown()
+
+    dead_entries = [ujson.loads(member) for member in await conn.lrange(dead_letter, 0, -1)]
+    assert ("Received message: crashes its worker" in fake_log.info_logs) is not case.parked
+    if case.parked:
+        assert [(entry["id"], entry["deliveries"]) for entry in dead_entries] == [
+            (entry_id, RedisMessageBus.WORK_MAX_DELIVERIES + 1)
+        ]
+        assert dead_entries[0]["fields"]["routing_key"] == "send.echo.request"
+    else:
+        assert dead_entries == []
