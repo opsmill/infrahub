@@ -6,7 +6,7 @@ import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import type { Config } from "@/entities/config/domain/model/config";
 import { useGetConfig } from "@/entities/config/ui/queries/get-config.query";
 
-export const ConfigContext = React.createContext<Config | null>(null);
+export const ConfigContext = React.createContext<Config>({} as Config);
 
 export function useConfig() {
   const context = React.use(ConfigContext);

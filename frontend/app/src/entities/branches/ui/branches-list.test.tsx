@@ -23,11 +23,6 @@ vi.mock("@/entities/nodes/filters/ui/hooks/use-filters", () => ({
 
 vi.mock("@/entities/tasks/domain/use-cases/is-task-finished");
 
-vi.mock("@/entities/config/ui/config-provider", async () => {
-  const { generateConfig } = await import("../../../../tests/fake/config");
-  return { useConfig: () => generateConfig() };
-});
-
 // The reload control is a clickable div with no role or accessible name.
 const findReloadControl = (container: HTMLElement) =>
   container.querySelector<HTMLElement>(':has(> iconify-icon[icon="mdi:reload"])');
