@@ -75,9 +75,7 @@ export const Form = <TValues extends FieldValues = FieldValues>({
                 // Keeps errors the submit handler set, such as a refusal from the backend.
                 currentForm.reset(data, { keepErrors: true });
               })(event)
-              .catch(() => {
-                // The handler already reported its failure; the fields stay dirty for a retry.
-              });
+              .catch(() => {});
           }
         }}
         className={classNames("space-y-6", className)}
