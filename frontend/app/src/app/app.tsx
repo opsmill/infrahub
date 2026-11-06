@@ -15,9 +15,9 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
-import { DocumentTitle } from "@/entities/config/ui/document-title";
 import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
+import { DocumentTitle } from "@/entities/preferences/ui/document-title";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";

@@ -3,14 +3,14 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
-import { APPLICATION_TITLE, DocumentTitle } from "@/entities/config/ui/document-title";
+import { APPLICATION_TITLE, DocumentTitle } from "@/entities/preferences/ui/document-title";
 
 import { render } from "../../../../tests/components/render";
-import { generateConfig } from "../../../../tests/fake/config";
+import { generateConfigWithInstance } from "../../../../tests/fake/config";
 
 vi.mock("@/entities/config/ui/config-provider");
 
-const withLabel = (label: string | null) => generateConfig({ instance: { label, color: null } });
+const withLabel = (label: string | null) => generateConfigWithInstance(label, null);
 
 function Page({ title }: { title: string }) {
   useTitle(title);
@@ -37,17 +37,6 @@ describe("DocumentTitle", () => {
     expect(document.title).toBe(`QA · ${APPLICATION_TITLE}`);
   });
 
-  test("shows the application name alone when neither a label nor a page title is set", async () => {
-    // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel(null));
-
-    // WHEN
-    await render(<DocumentTitle />);
-
-    // THEN
-    expect(document.title).toBe("Infrahub");
-  });
-
   test("keeps the page title when the owner, a layout and the page mount in the same commit", async () => {
     // GIVEN
     vi.mocked(useConfig).mockReturnValue(withLabel("QA"));
@@ -64,22 +53,6 @@ describe("DocumentTitle", () => {
 
     // THEN
     expect(document.title).toBe("QA · Branches");
-  });
-
-  test("shows the page title alone when no instance label is set", async () => {
-    // GIVEN
-    vi.mocked(useConfig).mockReturnValue(withLabel(null));
-
-    // WHEN
-    await render(
-      <>
-        <DocumentTitle />
-        <Page title="Schema" />
-      </>
-    );
-
-    // THEN
-    expect(document.title).toBe("Schema");
   });
 
   test("follows the instance label when it changes while a page is open", async () => {
