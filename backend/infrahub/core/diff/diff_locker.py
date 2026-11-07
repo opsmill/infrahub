@@ -15,9 +15,10 @@ class DiffLocker:
 
     def get_existing_lock(
         self, target_branch_name: str, source_branch_name: str, is_incremental: bool = False
-    ) -> lock.InfrahubLock | None:
+    ) -> lock.InfrahubLock:
+        """Return the lock to check for a diff update in progress, in this process or, through Redis, in another one."""
         name = self.get_lock_name(target_branch_name, source_branch_name, is_incremental)
-        return self.lock_registry.get_existing(name=name, namespace=self.lock_namespace)
+        return self.lock_registry.get(name=name, namespace=self.lock_namespace)
 
     def acquire_lock(
         self, target_branch_name: str, source_branch_name: str, is_incremental: bool = False
