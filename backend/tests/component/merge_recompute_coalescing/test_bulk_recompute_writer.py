@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import TYPE_CHECKING
 
 import pytest
 from prefect import flow
 
-from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE, BranchStatusChecker
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
@@ -31,14 +32,14 @@ from infrahub.core.recompute.bulk_write import (
     WrittenNode,
 )
 from infrahub.core.recompute.dispatch import BulkRecomputeDispatcher
-from infrahub.core.recompute.merge_gate import MergeSourceWriteGate
+from infrahub.core.recompute.merge_gate import MergeGateVerdict, MergeSourceWriteGate
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import MergeRecoveryRequiredError
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
-from tests.adapters.cache import MemoryCache
+from tests.adapters.cache import MemoryCache, UnreachableCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
@@ -64,6 +65,9 @@ def _event_context() -> EventContext:
 
 
 POLL_INTERVAL_SECONDS = 0.5
+CONCURRENT_WRITES = 10
+# Bounds a wedged database connection, which would otherwise hang until the suite timeout.
+CONCURRENT_WRITES_DEADLINE_SECONDS = 60
 
 
 async def _refuse_to_wait(seconds: float) -> None:
@@ -77,7 +81,7 @@ def _merge_gate(
 ) -> MergeSourceWriteGate:
     return MergeSourceWriteGate(
         db=db,
-        status_checker=BranchStatusChecker(db=db, merge_write_blocker=merge_write_blocker),
+        merge_write_blocker=merge_write_blocker,
         sleep=sleep,
         poll_interval_seconds=POLL_INTERVAL_SECONDS,
     )
@@ -106,6 +110,23 @@ class MergeEndingSleep:
             branch.status = BranchStatus.MERGED
             await branch.save(db=self.db)
         await self.merge_write_blocker.delete()
+
+
+class MergeRollingBackOnceAllWait:
+    """Stands in for the gate's poll sleep: the merge rolls back once every held write is waiting on it."""
+
+    def __init__(self, merge_write_blocker: MergeWriteBlocker, writes: int) -> None:
+        self.merge_write_blocker = merge_write_blocker
+        self.writes = writes
+        self.waiting = 0
+        self.merge_ended = asyncio.Event()
+
+    async def __call__(self, seconds: float) -> None:
+        self.waiting += 1
+        if self.waiting == self.writes:
+            await self.merge_write_blocker.delete()
+            self.merge_ended.set()
+        await self.merge_ended.wait()
 
 
 def _dispatcher(
@@ -487,6 +508,41 @@ async def test_bulk_writer_does_not_hold_a_default_branch_write_during_a_merge(
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert reloaded.summary.value == "live summary"
+
+
+async def test_merge_gate_releases_concurrent_writes_held_by_the_same_merge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+) -> None:
+    """A worker runs several recompute flows at once through one database object, and one merge can hold them all."""
+    branch = await create_branch(branch_name="held-by-one-merge", db=db)
+    merge_write_blocker = MergeWriteBlocker(cache=MemoryCache())
+    await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
+    sleep = MergeRollingBackOnceAllWait(merge_write_blocker=merge_write_blocker, writes=CONCURRENT_WRITES)
+    gate = _merge_gate(db=db, merge_write_blocker=merge_write_blocker, sleep=sleep)
+
+    verdicts = await asyncio.wait_for(
+        asyncio.gather(*(gate.admit(branch=branch) for _ in range(CONCURRENT_WRITES))),
+        timeout=CONCURRENT_WRITES_DEADLINE_SECONDS,
+    )
+
+    assert sleep.waiting == CONCURRENT_WRITES
+    assert verdicts == [MergeGateVerdict.REOPENED] * CONCURRENT_WRITES
+
+
+async def test_merge_gate_checks_concurrent_writes_in_the_database_when_the_cache_is_unreachable(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+) -> None:
+    branch = await create_branch(branch_name="checked-without-cache", db=db)
+    gate = _merge_gate(db=db, merge_write_blocker=MergeWriteBlocker(cache=UnreachableCache()), sleep=_refuse_to_wait)
+
+    verdicts = await asyncio.wait_for(
+        asyncio.gather(*(gate.admit(branch=branch) for _ in range(CONCURRENT_WRITES))),
+        timeout=CONCURRENT_WRITES_DEADLINE_SECONDS,
+    )
+
+    assert verdicts == [MergeGateVerdict.OPEN] * CONCURRENT_WRITES
 
 
 async def test_dispatch_returns_without_writing_when_branch_is_gone(

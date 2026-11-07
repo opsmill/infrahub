@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.exceptions import BranchNotFoundError, MergeInProgressError, MergeRecoveryRequiredError
@@ -13,7 +14,7 @@ from infrahub.utils import InfrahubStringEnum
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from infrahub.branch.status_checker import BranchStatusChecker
+    from infrahub.core.merge.write_blocker import MergeWriteBlocker
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
@@ -50,12 +51,12 @@ class MergeSourceWriteGate:
     def __init__(
         self,
         db: InfrahubDatabase,
-        status_checker: BranchStatusChecker,
+        merge_write_blocker: MergeWriteBlocker,
         sleep: Callable[[float], Awaitable[None]],
         poll_interval_seconds: float,
     ) -> None:
         self.db = db
-        self.status_checker = status_checker
+        self.merge_write_blocker = merge_write_blocker
         self.sleep = sleep
         self.poll_interval_seconds = poll_interval_seconds
 
@@ -78,7 +79,9 @@ class MergeSourceWriteGate:
 
     async def _verdict_after_merge(self, branch: Branch) -> MergeGateVerdict:
         try:
-            reloaded = await Branch.get_by_name(db=self.db, name=branch.name)
+            # A worker runs concurrent flows through one database object, and a session runs one query at a time.
+            async with self.db.start_session(read_only=True) as db:
+                reloaded = await Branch.get_by_name(db=db, name=branch.name)
         except BranchNotFoundError:
             return MergeGateVerdict.CLOSED
         if reloaded.status == BranchStatus.MERGED:
@@ -87,7 +90,10 @@ class MergeSourceWriteGate:
 
     async def _is_merge_source(self, branch: Branch) -> bool:
         try:
-            await self.status_checker.check_merging_status(branch)
+            # The check falls back to the database when the cache cannot be read, so it needs its own session too.
+            async with self.db.start_session(read_only=True) as db:
+                status_checker = BranchStatusChecker(db=db, merge_write_blocker=self.merge_write_blocker)
+                await status_checker.check_merging_status(branch)
         except MergeInProgressError as exc:
             return exc.merging_branch == branch.name
         except MergeRecoveryRequiredError as exc:

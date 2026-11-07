@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
     CoalescedRecomputeSubmitter,
@@ -76,7 +75,7 @@ async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRe
     db = await get_database()
     merge_gate = MergeSourceWriteGate(
         db=db,
-        status_checker=BranchStatusChecker(db=db, merge_write_blocker=MergeWriteBlocker(cache=await get_cache())),
+        merge_write_blocker=MergeWriteBlocker(cache=await get_cache()),
         sleep=asyncio.sleep,
         poll_interval_seconds=MERGE_WAIT_POLL_INTERVAL_SECONDS,
     )
