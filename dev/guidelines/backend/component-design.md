@@ -37,6 +37,7 @@ A component should generally expose a single entry point method (occasionally mo
 
 - `db` is always injected to the constructor.
 - `branch` is usually injected to the constructor, but not always — inject it when the component's lifetime is tied to a single branch; pass it per-call when the component is reused across branches.
+- Connection-like collaborators (a Prefect or HTTP client, a cache handle) are injected to the constructor, never passed to each method. Key a per-client cache on the client when one component instance must serve several clients.
 - Entities being examined or updated (nodes, schemas, diffs, request payloads) are passed to the entry method, not stored on the instance.
 
 The boundary is: long-lived collaborators go in the constructor; transient work items go in the method.
