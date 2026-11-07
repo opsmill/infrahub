@@ -211,6 +211,60 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
         await wait_for(holder, timeout=10)
 
 
+async def test_registry_keeps_no_lock_after_its_holders_released_it() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    for index in range(3):
+        async with lock_registry.get(name=f"object.single.{index}"):
+            assert lock_registry.get_existing(name=f"object.single.{index}", namespace=None) is not None
+        async with InfrahubMultiLock(
+            lock_registry=lock_registry, locks=[f"object.first.{index}", f"object.second.{index}"], metrics=False
+        ):
+            assert lock_registry.get_existing(name=f"object.first.{index}", namespace=None) is not None
+
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_excludes_a_second_holder_until_it_releases() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    events: list[str] = []
+    first_held = Event()
+    second_trying = Event()
+    release_first = Event()
+
+    async def hold_first() -> None:
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("first acquired")
+            first_held.set()
+            await release_first.wait()
+            events.append("first releasing")
+
+    async def take_second() -> None:
+        await first_held.wait()
+        # Nothing awaits between setting the event and queueing on the held lock, so the holder releases only after.
+        second_trying.set()
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("second acquired")
+
+    holder = create_task(hold_first())
+    taker = create_task(take_second())
+    await wait_for(second_trying.wait(), timeout=10)
+    release_first.set()
+    await wait_for(gather(holder, taker), timeout=10)
+
+    assert events == ["first acquired", "first releasing", "second acquired"]
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_local_schema_wait_returns_once_the_schema_lock_was_released() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    async with lock_registry.local_schema_lock():
+        pass
+
+    await wait_for(lock_registry.local_schema_wait(), timeout=10)
+
+
 def test_generate_name() -> None:
     generate_name = lock.LockNameGenerator().generate_name
 

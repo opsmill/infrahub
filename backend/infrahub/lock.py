@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+import weakref
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
@@ -56,6 +57,9 @@ GLOBAL_WORKER_TASKMGR_INIT_LOCK = "global.worker.taskmgr.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"
 GLOBAL_INIT_LOCKS = frozenset({GLOBAL_INIT_LOCK, GLOBAL_TASKMGR_INIT_LOCK, GLOBAL_WORKER_TASKMGR_INIT_LOCK})
+# Waiting for a schema refresh reads the event of the local schema lock without holding the lock, so these locks are
+# kept for the life of the process.
+PROCESS_LOCKS = frozenset({LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, *GLOBAL_INIT_LOCKS})
 
 _LOCK_TOKEN_SEPARATOR = "::"
 
@@ -88,6 +92,8 @@ class InfrahubMultiLock:
         self.registry = lock_registry
         self.locks = locks or []
         self.metrics = metrics
+        self._held: list[InfrahubLock] = []
+        """Locks taken by the last acquisition, kept here because the registry forgets a lock nothing references."""
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -117,10 +123,12 @@ class InfrahubMultiLock:
                     # stopped the acquisition rather than this one.
                     log.exception("Could not release a lock after a multi-lock failed to acquire", lock=lock.name)
             raise
+        self._held = acquired
 
     async def release(self) -> None:
-        for lock in reversed(self.locks):
-            await self.registry.get(name=lock, metrics=self.metrics).release()
+        while self._held:
+            await self._held[-1].release()
+            self._held.pop()
 
 
 class RedisLock:
@@ -399,7 +407,9 @@ class InfrahubLockRegistry:
             self.connection = None
 
         self.token = token or str(uuid.uuid4())
-        self.locks: dict[str, InfrahubLock] = {}
+        self.locks: weakref.WeakValueDictionary[str, InfrahubLock] = weakref.WeakValueDictionary()
+        """Locks that something in this process still references, since names built from node IDs would otherwise pile up."""
+        self._process_locks: dict[str, InfrahubLock] = {}
         self.name_generator = name_generator or LockNameGenerator()
 
     def get_existing(
@@ -408,10 +418,9 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
+        """Return the lock of this name if this process holds it, waits for it or keeps it for its whole life."""
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
-        if lock_name not in self.locks:
-            return None
-        return self.locks[lock_name]
+        return self._find(lock_name=lock_name)
 
     def get(
         self,
@@ -423,11 +432,23 @@ class InfrahubLockRegistry:
         ttl: int | None = None,
     ) -> InfrahubLock:
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
+        existing = self._find(lock_name=lock_name)
+        if existing is not None:
+            return existing
         if ttl is None and lock_name in GLOBAL_INIT_LOCKS:
             ttl = _init_lock_ttl_seconds()
-        if lock_name not in self.locks:
-            self.locks[lock_name] = self._create_lock(name=lock_name, in_multi=in_multi, metrics=metrics, ttl=ttl)
-        return self.locks[lock_name]
+        new_lock = self._create_lock(name=lock_name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        if lock_name in PROCESS_LOCKS:
+            self._process_locks[lock_name] = new_lock
+        else:
+            self.locks[lock_name] = new_lock
+        return new_lock
+
+    def _find(self, lock_name: str) -> InfrahubLock | None:
+        process_lock = self._process_locks.get(lock_name)
+        if process_lock is not None:
+            return process_lock
+        return self.locks.get(lock_name)
 
     def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
         return InfrahubLock(name=name, connection=self.connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
