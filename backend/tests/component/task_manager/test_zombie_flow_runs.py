@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC
+from datetime import UTC, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,7 +18,7 @@ from infrahub.task_manager.flow_run.prefect_client import (
     FLOW_RUN_RESOURCE_PREFIX,
     PrefectClientAdapter,
 )
-from infrahub.task_manager.flow_run.zombie import ZOMBIE_CRASH_MESSAGE, ZOMBIE_HEARTBEAT_WINDOW, ZombieFlowRunReaper
+from infrahub.task_manager.flow_run.zombie import ZombieFlowRunReaper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
 POLL_INTERVAL_SECONDS = 0.5
+# Short enough to wait out in a test; the reaper's checks do not depend on the window's length.
+TEST_WINDOW = timedelta(seconds=5)
 
 
 @flow
@@ -54,36 +56,44 @@ async def emit_heartbeat(flow_run_id: UUID) -> None:
 async def wait_for_stored_heartbeat(adapter: PrefectClientAdapter, flow_run_id: UUID, since: DateTime) -> bool:
     deadline = asyncio.get_running_loop().time() + PREFECT_EVENT_WAIT_SECONDS
     while asyncio.get_running_loop().time() < deadline:
-        if flow_run_id in await adapter.flow_runs_with_heartbeat_since(flow_run_ids=[flow_run_id], since=since):
+        if flow_run_id in await adapter.latest_heartbeats(flow_run_ids=[flow_run_id], since=since):
             return True
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
     return False
 
 
-async def test_crashes_a_silent_running_run_and_leaves_the_others(prefect_client: PrefectClient) -> None:
+async def wait_until(moment: DateTime) -> None:
+    await asyncio.sleep(max(0.0, (moment - DateTime.now(tz=UTC)).total_seconds()))
+
+
+async def test_crashes_the_running_run_that_stopped_sending_heartbeats(prefect_client: PrefectClient) -> None:
     adapter = PrefectClientAdapter(prefect_client)
+    reaper = ZombieFlowRunReaper(client=adapter, window=TEST_WINDOW)
     silent = await prefect_client.create_flow_run(flow=_watched_flow, state=State(type=StateType.RUNNING))
     alive = await prefect_client.create_flow_run(flow=_watched_flow, state=State(type=StateType.RUNNING))
     finished = await prefect_client.create_flow_run(flow=_watched_flow, state=State(type=StateType.COMPLETED))
-    assert silent.state is not None
-    assert alive.state is not None
-    # Judged one window after both runs entered their running state, so both are old enough to be judged and a
-    # heartbeat sent now falls inside the window.
-    entered_running = max(silent.state.timestamp, alive.state.timestamp)
-    judged_at = DateTime.fromtimestamp(entered_running.timestamp(), tz=UTC) + ZOMBIE_HEARTBEAT_WINDOW
+    started = DateTime.now(tz=UTC)
+    await emit_heartbeat(silent.id)
+    assert await wait_for_stored_heartbeat(adapter, silent.id, since=started - TEST_WINDOW)
+
+    # The clock cannot be injected into the server, so a full window really passes before the live run beats again.
+    await wait_until(started + TEST_WINDOW + TEST_WINDOW / 5)
+    beat_again = DateTime.now(tz=UTC)
     await emit_heartbeat(alive.id)
-    assert await wait_for_stored_heartbeat(adapter, alive.id, since=judged_at - ZOMBIE_HEARTBEAT_WINDOW)
+    assert await wait_for_stored_heartbeat(adapter, alive.id, since=beat_again - TEST_WINDOW / 5)
 
-    crashed = await ZombieFlowRunReaper(client=adapter).crash_zombies(now=judged_at)
+    check = await reaper.crash_zombies(now=DateTime.now(tz=UTC))
 
-    assert silent.id in crashed
-    assert alive.id not in crashed
-    silent_after = await prefect_client.read_flow_run(silent.id)
-    assert silent_after.state is not None
-    assert (silent_after.state.type, silent_after.state.message) == (StateType.CRASHED, ZOMBIE_CRASH_MESSAGE)
-    alive_after = await prefect_client.read_flow_run(alive.id)
-    assert alive_after.state is not None
-    assert alive_after.state.type == StateType.RUNNING
-    finished_after = await prefect_client.read_flow_run(finished.id)
-    assert finished_after.state is not None
-    assert finished_after.state.type == StateType.COMPLETED
+    assert set(check.crashed) & {silent.id, alive.id, finished.id} == {silent.id}
+    silent_state = (await prefect_client.read_flow_run(silent.id)).state
+    alive_state = (await prefect_client.read_flow_run(alive.id)).state
+    finished_state = (await prefect_client.read_flow_run(finished.id)).state
+    assert silent_state is not None
+    assert alive_state is not None
+    assert finished_state is not None
+    assert (silent_state.type, silent_state.message, alive_state.type, finished_state.type) == (
+        StateType.CRASHED,
+        "Flow run marked as crashed due to missing heartbeats.",
+        StateType.RUNNING,
+        StateType.COMPLETED,
+    )
