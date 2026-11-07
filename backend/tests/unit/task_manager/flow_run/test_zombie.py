@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -16,7 +16,9 @@ from infrahub.task_manager.flow_run.zombie import (
     ZombieFlowRunReaper,
 )
 
-NOW = DateTime(2026, 11, 7, 12, 0, tzinfo=UTC)
+# pendulum, Prefect's DateTime before Python 3.13, drops a standard-library tzinfo on arithmetic, and fromtimestamp
+# converts the zone to pendulum's own UTC.
+NOW = DateTime.fromtimestamp(datetime(2026, 11, 7, 12, 0, tzinfo=UTC).timestamp(), tz=UTC)
 LONG_AGO = NOW - ZOMBIE_HEARTBEAT_WINDOW - timedelta(minutes=10)
 RECENTLY = NOW - ZOMBIE_HEARTBEAT_WINDOW / 2
 
