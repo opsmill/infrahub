@@ -396,17 +396,18 @@ Because the discriminant is intrinsic to every run, historical runs type correct
 
 ## Liveness and zombie detection
 
-A running flow emits a `prefect.flow-run.heartbeat` event every 30 seconds while it executes. The `crash-zombie-flow-runs` flow (`tasks/zombie_flow_runs.py`), run every minute and single-flighted across workers, marks a run `CRASHED` when its worker died without recording a final state, which would otherwise leave the run waiting indefinitely.
+A running flow emits a `prefect.flow-run.heartbeat` event on the interval set by `PREFECT_FLOWS_HEARTBEAT_FREQUENCY` (30 seconds in the image). The `crash-zombie-flow-runs` flow (`tasks/zombie_flow_runs.py`), run every minute, marks a run `CRASHED` when its worker died without recording a final state, which would otherwise leave the run waiting indefinitely.
 
 ### Judge the current state of each run, not the event stream
 
 Keep zombie detection a scheduled check of the runs' current states (`task_manager/flow_run/zombie.py::ZombieFlowRunReaper`); don't move it back into a Prefect automation. Prefect's triggers service can run hours behind its event stream under load. A proactive trigger then judges each run long after the fact, so it fires a crash for runs that already finished, which Prefect refuses, and could crash a long run that is still alive. Each tick:
 
-- considers a run in `RUNNING` once its running state started more than the window ago, and crashes it when no heartbeat for it was stored within the window;
-- skips the tick when no event at all was stored within the window, because a missing heartbeat only means a dead run while events are being stored;
-- requests the crash without `force`, so orchestration refuses it for a run that finished in the meantime.
+- crashes a run in `RUNNING` once its running state started more than the window ago and its last heartbeat is older than the window;
+- leaves a run that never sent a heartbeat alone, so turning heartbeats off turns detection off instead of crashing every long run;
+- measures the window back from the newest stored event rather than from the current time, so a delay in storing events does not make a live run look silent, and judges nothing when no event was stored within the window;
+- requests the crash without `force`, so orchestration refuses it for a run that finished in the meantime. Two overlapping ticks are therefore harmless, and the flow has no concurrency limit, which a run stuck holding the only slot would otherwise turn off for good.
 
-Heartbeats are read through the events API, which the event persister keeps close to real time even when the triggers service lags.
+The window is six heartbeat intervals and at least three minutes (`zombie.py::heartbeat_window`). Heartbeats are read through the events API, which the event persister keeps close to real time even when the triggers service lags.
 
 ### Retry waits
 

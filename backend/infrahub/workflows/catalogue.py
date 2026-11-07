@@ -675,8 +675,6 @@ CRASH_ZOMBIE_FLOW_RUNS = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.tasks.zombie_flow_runs",
     function="crash_zombie_flow_runs",
-    concurrency_limit=1,
-    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
     default_priority=WorkflowPriority.HIGH,
 )
 
