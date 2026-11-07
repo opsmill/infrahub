@@ -57,8 +57,8 @@ GLOBAL_WORKER_TASKMGR_INIT_LOCK = "global.worker.taskmgr.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"
 GLOBAL_INIT_LOCKS = frozenset({GLOBAL_INIT_LOCK, GLOBAL_TASKMGR_INIT_LOCK, GLOBAL_WORKER_TASKMGR_INIT_LOCK})
-# Waiting for a schema refresh reads the event of the local schema lock without holding the lock, so these locks are
-# kept for the life of the process.
+# Waiting for a schema refresh reads the local schema lock's event without holding the lock, and the global locks are few
+# and used by every process, so these locks are kept for the life of the process.
 PROCESS_LOCKS = frozenset({LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, *GLOBAL_INIT_LOCKS})
 
 _LOCK_TOKEN_SEPARATOR = "::"
@@ -92,8 +92,8 @@ class InfrahubMultiLock:
         self.registry = lock_registry
         self.locks = locks or []
         self.metrics = metrics
-        self._held: list[InfrahubLock] = []
-        """Locks taken by the last acquisition, kept here because the registry forgets a lock nothing references."""
+        self._held: list[list[InfrahubLock]] = []
+        """Locks taken by each acquisition not yet released, kept because the registry forgets a lock nothing references."""
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -123,12 +123,16 @@ class InfrahubMultiLock:
                     # stopped the acquisition rather than this one.
                     log.exception("Could not release a lock after a multi-lock failed to acquire", lock=lock.name)
             raise
-        self._held = acquired
+        self._held.append(acquired)
 
     async def release(self) -> None:
-        while self._held:
-            await self._held[-1].release()
-            self._held.pop()
+        if not self._held:
+            return
+        acquired = self._held[-1]
+        while acquired:
+            await acquired[-1].release()
+            acquired.pop()
+        self._held.pop()
 
 
 class RedisLock:
@@ -418,7 +422,7 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
-        """Return the lock of this name if this process holds it, waits for it or keeps it for its whole life."""
+        """Return the lock of this name if something in this process still references it or keeps it for its whole life."""
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         return self._find(lock_name=lock_name)
 

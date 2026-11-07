@@ -186,13 +186,15 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
         async with InfrahubMultiLock(lock_registry=lock_registry, locks=["first", "second", "third"]):
             pass
 
+    # Held here so the registry keeps handing out this lock and the checks below look at the one the multi-lock took.
+    first_lock = lock_registry.get(name="first")
     holder = create_task(hold_third_lock())
     try:
         await wait_for(third_lock_held.wait(), timeout=10)
         waiter = create_task(take_all_locks())
         # Yields once so the multi-lock takes the first two locks and queues on the third.
         await sleep(0)
-        assert await lock_registry.get(name="first").locked()
+        assert await first_lock.locked()
 
         with caplog.at_level("ERROR", logger="infrahub"):
             waiter.cancel()
@@ -200,7 +202,7 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
 
         assert waiter in done
         assert waiter.cancelled()
-        assert not await lock_registry.get(name="first").locked()
+        assert not await first_lock.locked()
         failures = find_logged_events(
             caplog, event="Could not release a lock after a multi-lock failed to acquire", lock="second"
         )
@@ -254,6 +256,19 @@ async def test_multi_lock_excludes_a_second_holder_until_it_releases() -> None:
 
     assert events == ["first acquired", "first releasing", "second acquired"]
     assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_entered_twice_releases_its_locks_on_the_outer_exit() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    multi_lock = InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"])
+    lock_a = lock_registry.get(name="object.a")
+
+    async with multi_lock:
+        async with multi_lock:
+            pass
+        assert await lock_a.locked()
+
+    assert not await lock_a.locked()
 
 
 async def test_local_schema_wait_returns_once_the_schema_lock_was_released() -> None:
