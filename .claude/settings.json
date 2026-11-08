@@ -13,6 +13,15 @@
             "command": "dev/setup-environment.sh"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.specify/extensions/opsmill/scripts/bash/python-env.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
