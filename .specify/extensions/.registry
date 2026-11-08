@@ -69,7 +69,7 @@
         "catalog": "default"
       },
       "manifest_hash": "sha256:270100175bb742c37b8d549f2233c5b79114869dac754883dbecac2a4813beef",
-      "enabled": true,
+      "enabled": false,
       "priority": 10,
       "registered_commands": {
         "claude": [
