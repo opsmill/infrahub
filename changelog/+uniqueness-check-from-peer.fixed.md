@@ -1,0 +1,1 @@
+Creating or updating nodes whose uniqueness constraint combines a relationship and an attribute, such as an interface unique per device and name, no longer slows down as more nodes share the attribute value. The check now reads only the nodes linked to the same peer.
