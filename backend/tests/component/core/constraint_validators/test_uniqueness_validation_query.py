@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -354,3 +356,57 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
     await query.execute(db=db)
     violation_nodes = query.get_violation_nodes()
     assert set(violation_nodes) == {(jane_dog.id, "TestDog"), (joes_dog.id, "TestDog"), (johns_dog.id, "TestDog")}
+
+
+SHARED_NUMBER = 7
+OTHER_HOLDERS = 20
+
+
+def _sum_database_hits(plan: dict[str, Any]) -> int:
+    return int(plan.get("dbHits", 0)) + sum(_sum_database_hits(child) for child in plan.get("children", []))
+
+
+async def _database_hits(db: InfrahubDatabase, query: UniquenessValidationQuery) -> int:
+    rendered = query.render()
+    _, metadata = await db.execute_query_with_metadata(
+        query="PROFILE\n" + rendered.text, params=rendered.params, name="profile_uniqueness_validation"
+    )
+    return _sum_database_hits(metadata["profile"])
+
+
+async def test_query_relationship_then_attribute_reads_do_not_grow_with_attributes_sharing_the_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+) -> None:
+    """Once the peer has narrowed the nodes, the attribute check reads only those nodes, whatever else holds the value."""
+    johns_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await johns_car.new(db=db, name="johns-car", nbr_seats=SHARED_NUMBER, is_electric=False, owner=person_john_main.id)
+    await johns_car.save(db=db)
+    owner_rel_schema = db.schema.get("TestCar", branch=default_branch, duplicate=False).get_relationship(name="owner")
+    query_request = NodeUniquenessQueryRequestValued(
+        kind="TestCar",
+        unique_valued_paths=[
+            QueryRelationshipPathValued(
+                relationship_schema=owner_rel_schema,
+                peer_id=person_john_main.id,
+                attribute_name=None,
+                attribute_value=None,
+            ),
+            QueryAttributePathValued(attribute_name="nbr_seats", value=SHARED_NUMBER),
+        ],
+    )
+    query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
+    hits_with_one_holder = await _database_hits(db=db, query=query)
+
+    # Every attribute holding the number links to one shared value vertex; these add no car or owner link.
+    for index in range(OTHER_HOLDERS):
+        other_holder = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await other_holder.new(db=db, name=f"person-{index}", height=SHARED_NUMBER)
+        await other_holder.save(db=db)
+    query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
+    await query.execute(db=db)
+    hits_with_many_holders = await _database_hits(db=db, query=query)
+
+    assert query.get_violation_nodes() == [(johns_car.id, "TestCar")]
+    assert hits_with_many_holders == hits_with_one_holder
