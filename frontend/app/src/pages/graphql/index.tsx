@@ -19,7 +19,7 @@ export function Component() {
 
   return (
     <GraphiQL
-      className="rounded-2xl border"
+      className="relative rounded-2xl border"
       defaultEditorToolsVisibility
       initialQuery={query ?? undefined}
       plugins={plugins}
