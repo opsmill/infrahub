@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import weakref
 from typing import TYPE_CHECKING, Any, overload
 
 from prefect.client.schemas.objects import StateType
@@ -7,6 +8,7 @@ from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
 from infrahub import config, lock
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
     setup_task_manager,  # noqa: TID251 - worker startup owns the setup
@@ -15,9 +17,12 @@ from infrahub.workflows.initialization import (
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
+from .creation_slots import RunCreationSlots
 from .priority import prepare_dispatch
+from .run_follower import FlowRunFollower
 
 if TYPE_CHECKING:
+    from prefect.client.orchestration import PrefectClient
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
@@ -26,10 +31,25 @@ if TYPE_CHECKING:
     from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
 
+# Creating a run sends several requests through the Prefect client the flow run shares with its own state proposals,
+# so no more runs are created at once than the worker lets its submissions take.
+RUN_CREATION_SLOTS = SUBMISSION_WINDOW_CAPACITY
+RUN_STATE_POLL_INTERVAL = 1
+
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
+        self._creation_slots = RunCreationSlots(capacity=RUN_CREATION_SLOTS)
+        # A follower holds its client, so only the follower is weak: both go away once no wait holds the follower.
+        self._followers: weakref.WeakValueDictionary[PrefectClient, FlowRunFollower] = weakref.WeakValueDictionary()
+
+    def _follower(self, client: PrefectClient) -> FlowRunFollower:
+        follower = self._followers.get(client)
+        if follower is None:
+            follower = FlowRunFollower(client=client, poll_interval=RUN_STATE_POLL_INTERVAL)
+            self._followers[client] = follower
+        return follower
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
@@ -81,13 +101,26 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
         inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
-        response: FlowRun = await run_deployment(
-            name=workflow.full_name,
-            poll_interval=1,
-            parameters=parameters or {},
-            tags=tags,
-            work_queue_name=work_queue_name,
-        )  # type: ignore[misc]
+        client_context = AsyncClientContext.get()
+        if client_context is None:
+            response: FlowRun = await run_deployment(
+                name=workflow.full_name,
+                poll_interval=RUN_STATE_POLL_INTERVAL,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
+        else:
+            client = client_context.client
+            async with self._creation_slots.slot(client=client):
+                flow_run: FlowRun = await run_deployment(
+                    name=workflow.full_name,
+                    timeout=0,
+                    parameters=parameters or {},
+                    tags=tags,
+                    work_queue_name=work_queue_name,
+                )  # type: ignore[misc]
+            response = await self._follower(client=client).wait(flow_run_id=flow_run.id)
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 

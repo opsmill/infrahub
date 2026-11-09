@@ -11,7 +11,6 @@ from structlog.testing import capture_logs
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
-    CacheDriver,
     CacheSettings,
     DatabaseSettings,
     GitSettings,
@@ -418,6 +417,7 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
         "INFRAHUB_CACHE_USERNAME": "",
         "INFRAHUB_CACHE_TLS_ENABLED": "false",
         "INFRAHUB_CACHE_TLS_INSECURE": "false",
+        "INFRAHUB_CACHE_MAX_CONNECTIONS": "1000",
     }
     for name, value in compose_env.items():
         monkeypatch.setenv(name, value)
@@ -430,6 +430,42 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
     assert records == [
         {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
     ]
+
+
+@dataclass
+class PoolSizeOverrideCase:
+    name: str
+    url: str
+    superseded: bool
+
+
+POOL_SIZE_SUPERSEDED = {
+    "event": SUPERSEDED_WARNING,
+    "log_level": "warning",
+    "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
+}
+
+POOL_SIZE_OVERRIDE_CASES = [
+    PoolSizeOverrideCase(name="url_size", url="redis://cache:6379/0?max_connections=7", superseded=True),
+    PoolSizeOverrideCase(
+        name="sentinel_url_size", url="redis+sentinel://s1:26379/mymaster?max_connections=7", superseded=True
+    ),
+    # redis-py reads 0 as its own default of 100 connections, so the setting is not applied either.
+    PoolSizeOverrideCase(name="zero", url="redis://cache:6379/0?max_connections=0", superseded=True),
+    # redis-py drops a blank option, so the setting still sizes the pool.
+    PoolSizeOverrideCase(name="blank", url="redis://cache:6379/0?max_connections=", superseded=False),
+    PoolSizeOverrideCase(name="no_size", url="redis://cache:6379/0?socket_timeout=3", superseded=False),
+]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("case", POOL_SIZE_OVERRIDE_CASES, ids=lambda case: case.name)
+def test_cache_url_pool_size_supersedes_the_setting_only_when_it_applies(case: PoolSizeOverrideCase) -> None:
+    """The override is reported when the pool that the URL builds does not get the configured size."""
+    with capture_logs() as records:
+        CacheSettings(url=SecretStr(case.url), max_connections=250)
+
+    assert records == ([POOL_SIZE_SUPERSEDED] if case.superseded else [])
 
 
 @pytest.mark.usefixtures("without_cache_environment")
@@ -452,21 +488,6 @@ def test_blank_cache_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -
     monkeypatch.setenv("INFRAHUB_CACHE_URL", blank)
 
     assert CacheSettings().url is None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_coexists_with_redis_driver() -> None:
-    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
-    assert settings.driver is CacheDriver.Redis
-    assert settings.url is not None
-
-
-@pytest.mark.usefixtures("without_cache_environment")
-def test_cache_url_ignored_for_non_redis_driver() -> None:
-    # A URL whose scheme is not a Redis scheme must not fail the load, since only the Redis driver reads it.
-    settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
-    assert settings.driver is CacheDriver.NATS
-    assert settings.url is not None
 
 
 @pytest.mark.usefixtures("without_cache_environment")

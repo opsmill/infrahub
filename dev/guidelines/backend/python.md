@@ -22,13 +22,11 @@ def get_node(db, node_id):
 
 ## Module layout
 
-### constants.py holds constants only
+### Constants
 
-Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
+Follow [Constants and literals](../constants.md) when creating or reusing values that encode a rule.
 
-Why: readers grep and import from `constants.py` expecting inert values with no behavior and no import-time or call-time side effects. A function hiding there muddies that contract and gets overlooked when reasoning about runtime behavior.
-
-If the value genuinely never changes at runtime, prefer an actual constant over a function returning one.
+Keep `constants.py` limited to module-level values (plain literals, enums, frozen containers); do not put functions or other classes there. Prefer a constant over a function returning a fixed value. Put environment reads and runtime computation in a purpose-named module such as `settings.py` or `limits.py`, so importing constants has no behavioral side effects.
 
 ### Imports
 

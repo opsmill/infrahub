@@ -147,7 +147,6 @@ class TestInfrahubAppBase(TestInfrahub):
         db_class: InfrahubDatabase,
         initialize_registry: None,
         redis: dict[int, int] | None,
-        nats: dict[int, int] | None,
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while

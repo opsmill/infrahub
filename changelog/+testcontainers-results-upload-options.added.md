@@ -1,1 +1,0 @@
-Added the `--performance-result-compress`, `--performance-result-required` and `--performance-result-file` options to the `infrahub-testcontainers` pytest plugin, which send the performance results gzip-compressed, fail a passing session when the results cannot be stored, and also write them to a file.

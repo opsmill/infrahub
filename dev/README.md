@@ -46,6 +46,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 ## Current Guidelines
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
+- **Constants and Literals**: [guidelines/constants.md](guidelines/constants.md) - When to create and reuse named values
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
 - **Python Typing**: [guidelines/backend/typing.md](guidelines/backend/typing.md)
 - **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
@@ -128,10 +129,9 @@ request in a subagent that has not seen the conversation, with the rules in
 not every time.
 
 A hook makes it run after every `gh pr create`, and again when pushes add 300 or more changed lines
-to an open pull request since its last automatic review. The hook is off by default:
-`.claude/settings.json` sets `PR_REVIEW` to `off`. To turn it on, add this `env` block to
-`.claude/settings.local.json` in your main checkout, which Git ignores. Sessions in its worktrees
-read that file too.
+to an open pull request since its last automatic review. The hook is off by default and runs only
+when `PR_REVIEW` is `on`. To turn it on, add this `env` block to `.claude/settings.local.json` in
+your main checkout, which Git ignores. Sessions in its worktrees read that file too.
 
 ```json
 {
@@ -144,3 +144,7 @@ read that file too.
 Set `PR_REVIEW_MIN_LINES` in the same block to change the 300. The hook needs `jq`. The Codex hook
 checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` instead, only after
 `gh pr create`.
+
+Cloud sessions have no `.claude/settings.local.json` and open pull requests with the GitHub MCP
+tool, which the hook also covers, so to turn the review on there, add `PR_REVIEW=on` to your cloud
+environment's variables.

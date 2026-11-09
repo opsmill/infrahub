@@ -1,10 +1,14 @@
-from typing import Any, AsyncGenerator
+from __future__ import annotations
 
-from graphene import Field, Int, ObjectType, Schema, String
+from typing import TYPE_CHECKING, Any, AsyncGenerator
+
+from graphene import Field, Int, ObjectType, String
 from graphene.types.generic import GenericScalar
-from graphql import GraphQLResolveInfo
 
 from .graphql_query import resolver_graphql_query
+
+if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo, GraphQLSchema
 
 GraphQLQuerySubscription = Field(
     GenericScalar(),
@@ -16,7 +20,7 @@ GraphQLQuerySubscription = Field(
 
 class InfrahubBaseSubscription(ObjectType):
     query = GraphQLQuerySubscription
-    graphql_schema: Schema | None = None
+    graphql_schema: GraphQLSchema | None = None
 
     @classmethod
     async def subscribe_query(
