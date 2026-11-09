@@ -1,97 +1,80 @@
-# Cleanup and consistency
+# Cleanup
 
-The rule reviewers read one area at a time, the Design reviewer looks at how the files depend on
-each other, and the New files reviewer reads only the files the change adds. None of them reads
-every changed line for comments that say nothing, code an earlier commit of the branch left
-behind, names that do not match, or code that could be shorter. A branch built over several
-agent sessions collects all four: each session adds comments and helpers for its own step, and a
-later session replaces the step without removing them.
-
-## Inputs
+A branch built over several sessions keeps the comments, helpers and tests of steps that later
+commits replaced. This check reads every changed line for them.
 
 Give one reviewer per area:
 
-- `.agents/rules/code-design.md` and `.agents/rules/code-doc-style.md`, to read with the Read
-  tool before the code
-- the area's changed files from the manifest, and `git diff origin/<base>...HEAD -- <files>`
-- the branch's commits, oldest first: `git log --reverse --format='%h %s' origin/<base>..HEAD`
-- the folder of each changed file, to compare with its sibling files
+- `.agents/rules/code-design.md` and `.agents/rules/code-doc-style.md`
+- the area's changed files and `git diff origin/<base>...HEAD -- <files>`
+- the commits, oldest first: `git log --reverse --format='%h %s' origin/<base>..HEAD`
 
-The reviewer starts its answer with `READ:` and one line per file read, as in the rule check.
-Grade a finding P2 when one of the two rules covers it, P3 otherwise. Report only lines the
-change adds or changes, and code the change leaves unused or untrue.
+It reports only lines the change adds or changes, and code the change leaves unused or untrue.
 
-## Questions
+## Comments
 
-### Comments
+For each comment and docstring on or beside a changed line, delete or fix it when it:
 
-For each comment and docstring the change adds or keeps beside a changed line:
+- restates the code, narrates the change or describes its history
+- is no longer true for the code beside it, often because a later commit changed the code
+- holds a ticket or spec ID (`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`), a plan step
+  (`Phase 2`, `step 3`, `for now`), commented-out code, a banner or a `TODO`
+- could be replaced by a clearer name; propose the name
 
-- Does it restate the code below it, narrate the change, or describe the code's history? Delete
-  it.
-- Is it still true for the code beside it? A later commit can change the code and leave the
-  comment of an earlier one. Fix it or delete it.
-- Does it hold a ticket or spec ID (`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`), history
-  words (`used to`, `no longer`, `previously`, `instead of`, `now`, `new`), a step of a plan
-  (`Phase 2`, `step 3`, `for now`), commented-out code, a banner, or a `TODO`? Delete it, or
-  move the follow-up work to an issue.
-- Would a clearer name or a named function make the comment unnecessary? Propose the name.
+## Leftovers from earlier commits
 
-### Leftovers from earlier commits
+For each function, class, component, hook, constant, type, parameter, flag, fallback, export,
+test, fixture and file an earlier commit added, flag it when:
 
-Read the commits in order. For each function, class, component, hook, constant, type, parameter,
-option, flag, fallback, export, test, fixture and file that an earlier commit added:
+- nothing calls it, or only its own test does (`git grep -n '<name>'`)
+- it served an approach a later commit replaced: a branch for a case that can no longer happen,
+  a parameter every caller passes with the same value, a fallback for data nothing produces, a
+  test for the old behaviour
+- it is debug output, a temporary log line, a scratch file or a sample value
 
-- Does the final code still use it? Search for its callers (`git grep -n '<name>'`). Flag it when
-  nothing calls it, or only its own test does.
-- Did a later commit replace the approach it served? Flag the parts of the old approach that are
-  still there: a branch for a case that can no longer happen, a parameter every caller passes
-  with the same value, a fallback for data the new code never produces, a test for the old
-  behaviour.
-- Is it debug output, a temporary log line, a scratch file or a sample value left from testing?
+A leftover is a Fix. When a caller outside the manifest uses it, drop the finding.
 
-A leftover is a Fix: delete it in the same change. When a caller outside the manifest uses it,
-it is not a leftover: drop the finding.
+## Names and placement
 
-### Names and placement
+For each file, function, class, component, hook, constant and type the change adds or renames:
 
-For each file, function, class, component, hook, constant and type the change adds or renames,
-in changed files as well as new ones:
+- Does the name say what it holds or does?
+- Does it follow its siblings in the same folder: file name pattern (`use-*.ts`, `*-query.ts`,
+  `test_*.py`), suffixes, word order? Name the sibling.
+- Does each concept have one name across names, comments, tests and user-visible text?
+- Is the file in the folder where files of the same kind live?
+- After a rename, does any caller, test name, doc or spec keep the old name?
 
-- Does the name say what it holds or does, as the Naming section of `code-design.md` asks?
-- Does it follow the pattern of its siblings in the same folder: the same file name pattern
-  (`use-*.ts`, `*-query.ts`, `test_*.py`), the same suffixes and the same word order? Name the
-  sibling it departs from.
-- Does the change use one term for each concept, in names, comments, test names and user-visible
-  text? List each concept that has two names.
-- Is the file in the folder where its siblings of the same kind live? Leave the question of which
-  layer owns the code to the architecture check.
-- After a rename, does any caller, test name, doc or spec still use the old name?
+## Simpler code
 
-### Simpler code
+For each function the change adds or changes, flag:
 
-For each function the change adds or changes:
+- a condition that is always true or false, a check the caller already makes, a variable used
+  once, nesting an early return removes
+- a block repeated within the change
+- code the language, the framework or an existing helper already provides; name it as
+  `file:line`
 
-- Can it be shorter with the same behaviour: a condition that is always true or always false, a
-  check repeated by its caller, a variable used once, nested conditions that one early return
-  removes, a loop a standard library or existing helper call replaces?
-- Does the change repeat a block of its own code in two places?
-- Does it re-implement something the language, the framework or an existing helper of the
-  codebase already does? Name the helper as `file:line`.
+## Consistency
 
-Leave new layers, abstractions and options to the Design check.
+- Within the change, is each job done one way: error handling, loading and empty states,
+  logging, queries, test setup?
+- Does the change do a job differently from the closest sibling feature (`file:line`) with no
+  reason written in the spec, plan, pull request description or a commit message?
 
-### Consistency
+## New files and tests
 
-- Within the change, is the same job done the same way: error handling, loading and empty
-  states, logging, query structure, test setup and assertions?
-- Compared with the closest sibling feature in the codebase, does the change do the same job in
-  another way? Name the sibling `file:line`. Flag it unless the spec, the plan, the pull request
-  description or a commit message gives a reason for the difference.
+For each file the change adds (`git diff --name-only --diff-filter=A origin/<base>...HEAD`, plus
+untracked files in scope):
 
-## How Phase 2 and Phase 3 handle these findings
+- Is it needed, or does an existing helper, constant, type or component do the job?
+- For each test, name the code change that would make it fail. Flag a test with none, and a test
+  that repeats a case another test covers.
+- For each negative assertion (`toBeNull()`, `not.toBeInTheDocument()`, `assert X not in ...`),
+  check that the fixture can produce X. When nothing produces X, the assertion always passes:
+  name the fixture change that would let it fail.
 
-Merge them with the other findings and drop duplicates: a Design Simplicity finding and a
-Simpler code finding on the same lines are one finding. A rename or a removal that reaches a
-caller outside the manifest is Ask, as Phase 2 step 4 says. In Phase 3, show the cleanup findings
-as one group, so the user can approve them together.
+## In Phase 2 and Phase 3
+
+A Design Simplicity finding and a Simpler code finding on the same lines are one finding. In
+Phase 3, show the cleanup findings as one group the user can approve together.

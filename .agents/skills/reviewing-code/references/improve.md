@@ -1,64 +1,51 @@
 # Phase 4: Propose improvements
 
-Each run shows where the rules, the docs or this skill fell short. Draft a proposal for each case
-below and put it in the report under "Proposed improvements". Apply only the proposals the user
-approves after reading the report.
+Draft a proposal for each case below and list it under "Proposed improvements" in the report.
+Apply only what the user approves after reading it.
 
-## Read the log first
-
-Read `$(git rev-parse --git-common-dir)/reviewing-code/proposals.md` when it exists. For each
-draft, look in the log for the same target and the same change:
-
-- Rejected before: keep the draft only when this run gives a new reason, and quote the earlier
-  decision with its date.
-- Proposed before and still pending, or applied and the problem came back: say how many runs
-  proposed it.
+First read the log, `$(git rev-parse --git-common-dir)/reviewing-code/proposals.md`, when it
+exists. Drop a draft rejected before unless this run gives a new reason, and quote the earlier
+decision with its date. For a draft proposed before, say in how many runs.
 
 ## Rules and the index
 
-- **A "Not violations" line** in a rule, for a finding declined because the rule did not mention
-  the accepted pattern. When the declined pattern is debt rather than an accepted pattern,
-  propose a cleanup task instead: a rule states the target, not exceptions for existing code.
-- **A new rule line** in `.agents/rules/`, for what a pull request reviewer caught that no rule states.
-- **A `paths:` glob or a new rule file**, for each changed area that no rule's globs cover.
+- **A "Not violations" line**, for a finding declined because the rule did not name the accepted
+  pattern. When the pattern is debt rather than accepted, propose a cleanup task instead.
+- **A new rule line** in `.agents/rules/`, for what a pull request reviewer caught that no rule
+  states.
+- **A `paths:` glob or a new rule file**, for each changed area no rule covers.
 - **A better "load before" line** in an `AGENTS.md`, for each article a reviewer had to find on
-  its own: say when the article applies, so the next agent is pointed to it.
-- **A narrower rule line**, for each finding the user rejected in Phase 3 because the rule asks
-  for something they do not want. Quote the reason they gave.
+  its own.
+- **A narrower rule line**, for each finding the user rejected because the rule asks for
+  something they do not want. Quote their reason.
 
 A new `dev/` article needs an `AGENTS.md` line, or `repo-context.py --check-index` fails in CI.
 
-## Knowledge and guideline articles
+## Articles
 
 - **A correction**, for each statement in a `dev/knowledge/`, `dev/guidelines/` or `dev/guides/`
-  article that the code read in Phase 2 contradicts. Give the article's `path:line`, the
-  corrected sentence, and the `file:line` that shows it.
-- **An addition**, for a fact a reviewer had to find in the code or a library's source because no
-  article states it, when the next change in that area needs it too. Name the article it belongs
-  in. Do not propose one for a fact only this change needs.
+  article the code contradicts: the article's `path:line`, the corrected sentence and the
+  `file:line` that shows it.
+- **An addition**, for a fact a reviewer had to find in the code that the next change in that
+  area needs too. Name the article.
 
 ## This skill
 
-Propose a change to `SKILL.md` or a file of `references/`, naming the step, when:
+Propose a change to a file of this skill, naming the step, when:
 
-- a reviewer's `READ:` list still missed a listed file after the second request
+- a reviewer missed a listed file after the second request
 - the user rejected or the skill declined every finding of one check
-- the user rejected a finding for a reason the skill could have checked itself
-- the user had to correct the scope, the classification or a fix by hand
-- the hooks were inactive, and the context block did not give a reviewer the file it needed
-- a compare found a miss that no rule or document change would prevent
+- the user rejected a finding for a reason the skill could have checked
+- the user corrected the scope, the classification or a fix by hand
+- the hooks were inactive and a reviewer lacked a file it needed
+- a compare found a miss no rule or document change would prevent
 
 ## After the report
 
-Ask the user which proposals to apply. In PR mode, do not ask: log every proposal as pending.
-Apply the approved ones, then run `python3 .agents/scripts/repo-context.py --check-index`. Do
-not commit: the user reviews the changes.
-
-Append one line per proposal to the log, whatever the decision:
+Ask the user which proposals to apply; in PR mode, log every proposal as pending without asking.
+Apply the approved ones, run `python3 .agents/scripts/repo-context.py --check-index`, and do not
+commit. Append one line per proposal to the log:
 
 ```text
-<date> | <branch> | <target path> | <proposal in one line> | <applied | rejected: reason | pending>
+<date> | <branch> | <target path> | <proposal> | <applied | rejected: reason | pending>
 ```
-
-The log is inside `.git`, so it is never committed, and every worktree of the repository reads
-the same one.
