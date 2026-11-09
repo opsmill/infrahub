@@ -1,9 +1,9 @@
 ---
 title: Release 1.12.0
-release_date: TBD
+release_date: 2026-11-10
 release_type: minor
 breaking: true
-description: "Review changes to data and Git-managed automation together with greater confidence, automate new services without renumbering your existing network, and validate large changes more efficiently."
+description: "Review changes to data and Git-managed automation together with greater confidence, automate new services without renumbering your existing infrastructure, and validate large changes more efficiently."
 ---
 <table>
   <tbody>
@@ -13,7 +13,7 @@ description: "Review changes to data and Git-managed automation together with gr
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>TBD</td>
+      <td>November, 10th 2026</td>
     </tr>
     <tr>
       <th>Tag</th>
@@ -22,16 +22,16 @@ description: "Review changes to data and Git-managed automation together with gr
   </tbody>
 </table>
 
-With Infrahub 1.12, you can manage network and infrastructure automation more reliably at scale. Review changes to data and Git-managed automation together with greater confidence, automate new services without renumbering your existing network, and validate large changes more efficiently.
+Infrahub 1.12 focuses on how Infrahub works with your Git repositories. Before you merge an Infrahub branch, you can check which commit it imported from each repository and whether the import succeeded. If Infrahub cannot push a merge back to Git, you can view the cause and retry. The release also changes how number pools allocate numbers, reduces the processing after large merges, adds tracing for slow automation, and introduces dark mode as an alpha.
+
+This release contains breaking changes that need action before you upgrade. See [Before you upgrade](#before-you-upgrade).
 
 ## Release highlights
 
 - **[Review changes to automation and data together with greater confidence](#review-and-troubleshoot-git-repository-changes).** Verify that schemas, templates, Transformations, and Generator definitions have been imported successfully from Git before merging an Infrahub branch. If synchronization fails, you can identify the cause and recover while continuing to test changes on other branches.
-- **[Automate on the network you already run](#allocate-new-numbers-while-preserving-existing-assignments).** Manage existing VLAN IDs and ASNs alongside new allocations, with number pools that support multiple ranges and independent allocation sequences for each site.
-- **[Keep making changes efficiently as your infrastructure grows](#generate-configurations-and-review-large-proposed-changes-with-fewer-delays).** Reduce the processing required to update computed attributes and validate large Proposed Changes, and [trace slow Generators, Transformations, and API requests](#diagnose-api-response-times-and-automation-delays) to identify where time is spent.
+- **[Automate on the infrastructure you already operate](#allocate-new-numbers-while-preserving-existing-assignments).** Record the numbers your objects already hold in a number pool and allocate new numbers alongside them. A pool can now contain multiple ranges and keep a separate allocation sequence for each site or other scope.
+- **[Keep making changes efficiently as your infrastructure grows](#merge-and-review-large-changes-with-fewer-delays).** Reduce the processing required to update computed attributes and validate large Proposed Changes, and [trace slow Generators, Transformations, and API requests](#diagnose-api-response-times-and-automation-delays) to identify where time is spent.
 - **[Work in dark mode (alpha)](#announcing-dark-mode).** Choose a dark appearance or match your operating system's theme.
-
-{/* PLACEHOLDER from the concise draft: before you upgrade. Review and approve before publication. */}
 
 ## Before you upgrade
 
@@ -44,14 +44,13 @@ Review the [breaking changes and required actions](#breaking-changes-and-require
 | SSO with existing accounts | Link existing accounts to their SSO identities before the account-name fallback default changes. |
 | Experimental NATS drivers | Before upgrading, replace the NATS message broker with RabbitMQ and the NATS cache with Redis. |
 | Number pools for unique attributes | Before allocating numbers after upgrading, record existing assignments in their pools and resolve overlapping pool ranges. |
-| Scripts that merge Infrahub branches | Before upgrading, update the scripts to confirm that the intended Git commit was imported successfully before requesting a merge. |
 | Local `infrahubctl` commands | Before running Generators, Transformations, or checks after upgrading, select the intended Infrahub branch explicitly or enable selection from your current Git branch. |
-
-{/* END PLACEHOLDER: before you upgrade */}
 
 ## Announcing Dark Mode
 
 You can now work in Infrahub in dark mode or match your operating system's appearance. The [**Theme** menu](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/faq/faq.mdx#does-the-web-interface-have-a-dark-theme) in your account offers **Dark**, **Light**, and **System**. Dark mode is available as an alpha; some pages may still display incorrect colors.
+
+![Dark Mode](../../media/release_notes/infrahub_1_12_0/dark_mode.png)
 
 ## Review and troubleshoot Git repository changes
 
@@ -63,24 +62,28 @@ Before merging an Infrahub branch, you can now confirm that it successfully impo
 - **Continue working on other branches while correcting an import error.** Errors in one Git branch's schema, object data files, or GraphQL queries no longer stop imports from other Git branches.
 - **Continue using a Git branch after rebasing it.** Rebased or force-pushed branches in connected read-write repositories now import without the false merge conflicts that previously interrupted synchronization.
 
+![Git Repository detailed view](../../media/release_notes/infrahub_1_12_0/repository_detailed_view.png)
+![Git Repository commits](../../media/release_notes/infrahub_1_12_0/repository_commits.png)
+
 ## Allocate new numbers while preserving existing assignments
 
-Allocate VLAN IDs, ASNs, and other numbers alongside those already in use on your network. You can now [record existing assignments in a number pool](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/track-existing-numbers.mdx) without changing their values. The pool marks those numbers as used and excludes them when allocating new ones.
+Allocate numbers to objects alongside the numbers already in use in your infrastructure. You can now [record existing assignments in a number pool](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/track-existing-numbers.mdx) without changing their values. The pool marks those numbers as used and excludes them when allocating new ones.
 
-- **Assign a specific number from a pool.** You can now [choose a VLAN ID or ASN](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#request-a-specific-number) instead of taking the next available number. The pool records the assignment and excludes that number from subsequent allocations.
-- **Allocate around gaps in your numbering plan.** A pool can now contain [multiple ranges](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#change-the-ranges-of-a-pool), such as VLAN IDs 100–199 and 300–399, leaving 200–299 outside automatic allocation. You can also choose which range the pool uses first.
-- **Reuse VLAN IDs across sites without creating separate pools.** For sites that share the same numbering plan, [allocation scopes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-numbers-per-scope.mdx) let one pool allocate independently for each site. The pool can assign VLAN ID 100 at multiple sites without allocating it twice within the same site.
-- **Identify where more numbers are needed.** You can now [check how much of each range or allocation scope is in use](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#view-how-much-of-a-pool-is-in-use) to decide where to expand a pool. You can also inspect individual assignments to see which objects hold the numbers and on which branches.
+- **Assign a specific number from a pool.** You can now [choose the number an object receives](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#request-a-specific-number) instead of taking the next available number. The pool records the assignment and excludes that number from subsequent allocations.
+- **Allocate around gaps in your numbering plan.** A pool can now contain [multiple ranges](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#change-the-ranges-of-a-pool), such as 100–199 and 300–399, leaving 200–299 outside automatic allocation. You can also choose which range the pool uses first.
+- **Reuse the same numbers across sites or other scopes from one pool.** [Allocation scopes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-numbers-per-scope.mdx) let one pool keep a separate allocation sequence for each value of an attribute or relationship you choose, such as the site an object belongs to. The pool can assign the same number to objects at different sites without allocating it twice within one site.
+- **Identify where more numbers are needed.** You can now [check how much of each range or allocation scope is in use](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-number.mdx#view-how-much-of-a-pool-is-in-use) to decide where to expand a pool. You can also view which object holds each number and on which branch.
 
-- **Reuse IP pools across different object kinds.** You can now allocate [addresses](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-ip-address.mdx) or [prefixes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-ip-prefix.mdx) for multiple kinds in your schema from the same pool, without changing its default kind.
+![Number pools](../../media/release_notes/infrahub_1_12_0/number_pools.png)
 
-## Generate configurations and review large Proposed Changes with fewer delays
+## Merge and review large changes with fewer delays
 
-When changing device or interface data across a large network, you can review the resulting configurations and merge your changes with fewer delays resulting from updating computed attributes and running checks.
+When you change data across a large infrastructure, you can review and merge your changes with fewer delays from recalculating computed attributes and running checks.
 
-- **Generate configurations sooner after merging data changes.** If your configurations depend on [Python computed attributes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/computed-attributes/overview.mdx#python-computed-attribute), those values must finish recalculating before you generate configurations from the updated data. Merges and rebases now recalculate these attributes in batches, reducing the background work that delays this step. Infrahub recalculates each affected computed attribute in batches of objects. In a test merge of an AI data center fabric with 1,504 interfaces, recalculating one Python computed attribute took seven tasks on a development build containing this improvement, compared with 1,504 tasks on Infrahub 1.11.3. If the Transformation’s query is not pinned to a single object, Infrahub recalculates the attribute for its whole kind instead.
-- **Check requirements across large groups of objects with fewer API requests.** Before merging a Proposed Change, you can [check requirements](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/checks/overview.mdx) such as naming conventions or redundant WAN circuits across the objects in your target groups. These checks now avoid repeated API requests that previously caused validation load to grow disproportionately with group size. Artifact validation receives the same improvement.
-- **Review generated configurations for large groups of devices.** When reviewing a Proposed Change, you can [compare the configurations generated from your branch](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/proposed-changes/overview.mdx#artifact-generation) before merging. For artifact definitions targeting large groups of objects, connection pool timeouts no longer leave the artifact generation checks stuck in progress and block the merge.
+- **Get updated computed attribute values sooner after a merge or rebase.** Merges and rebases now recalculate each affected [Python computed attribute](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/computed-attributes/overview.mdx#python-computed-attribute) in batches of objects, instead of starting one task for every changed object. In a test merge of an AI data center fabric with 1,504 interfaces, this took 7 tasks instead of 1,504 on Infrahub 1.11.3, so the values are up to date sooner when you generate artifacts or run Generators. This applies when the attribute's Transformation uses a [query that targets a single object](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/development-resources/graphql/single-target-queries.mdx). Otherwise, Infrahub recalculates the attribute for every object of its kind.
+- **Check requirements across large groups of objects with fewer API requests.** Before merging a Proposed Change, you can [check requirements](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/checks/overview.mdx), such as naming conventions, across the objects in your target groups. Previously, the API load of these checks grew with the square of the number of objects in the group. Artifact checks receive the same improvement. Proposed Changes with many checks also finish validation sooner, because Infrahub now reads the state of all running checks together instead of one at a time.
+- **Complete artifact checks for large groups of objects.** The CI pipeline of a Proposed Change [generates the artifacts from your branch](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/proposed-changes/overview.mdx#artifact-generation), so you can compare them before merging. For artifact definitions that target about a thousand objects, these artifact checks no longer stay in progress after a connection pool timeout, which blocked the merge.
+- **Edit one automation definition without rerunning the others.** When you [change an artifact or Generator definition in `.infrahub.yml`](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/proposed-changes/overview.mdx#understanding-artifact-regeneration), Infrahub now regenerates the artifacts or runs the Generator for that definition only. An edit that changes no definition, such as a comment, regenerates nothing. A definition that still regenerates on any repository file change, or that lists `.infrahub.yml` under `watch.files`, runs on every edit.
 
 ## Diagnose API response times and automation delays
 
@@ -93,17 +96,9 @@ When an API request takes longer than expected to return, or a Generator or Tran
 ## UI improvements
 
 - **Customize, save and share table views.** Show or hide columns in object lists, relationship tabs, and IPAM address and prefix lists from the **Columns** menu in the toolbar. Bookmark your customized view for later use or share it with other users via the page URL.
-- **Read labels and follow connections in SVG diagrams.** Zoom into large diagrams and pan across them in the artifact and file viewers.
+- **Read labels and follow connections in SVG diagrams.** Zoom into large diagrams and pan across them in the artifact and file object viewers.
 - **Run a Generator from an object's detail page.** You can now [start a Generator](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/generators/overview.mdx) for the service or device you're viewing from its **Actions** menu. The run processes that object only, rather than every member of the Generator's target group.
-
-## Update individual devices and services without rerunning all automation
-
-When changing one device, service, or automation definition, you can now generate and review its results without waiting for unrelated configurations and objects to be regenerated.
-
-- **Review configuration changes for an individual device.** When you merge a change to an interface description used in a device's configuration, Infrahub now [regenerates that device's artifact](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/development-resources/graphql/single-target-queries.mdx#why-every-target-is-regenerated) instead of every artifact in the definition. After a merge or during Proposed Change checks, changes to a related object's display label or human-friendly ID also regenerate only the artifacts and run only the Generator instances that depend on those values.
-- **Revise one automation definition independently.** When you [edit an artifact or Generator definition in `.infrahub.yml`](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/proposed-changes/overview.mdx#understanding-artifact-regeneration), Infrahub now regenerates the artifacts or runs the Generator for that definition, so you can review the result without triggering unrelated automation.
-
-Infrahub still processes the whole group when it cannot determine which targets depend on a change. Automation explicitly configured to run when `.infrahub.yml` changes, or on any repository file change, also continues to run.
+- **Choose the kind of IP address or prefix to allocate from a pool.** When a relationship accepts several IP address or prefix kinds, the **Type to allocate** field on the **From pool** tab lets you choose which kind to create, instead of always using the pool's default kind. See allocating [addresses](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-ip-address.mdx) and [prefixes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/allocate-ip-prefix.mdx) from a pool.
 
 ## Identify objects from webhook payloads without additional API queries
 
@@ -126,20 +121,12 @@ You can now define how your automation responds when a required attribute is mis
 
 - **Set connection timeouts separately from API response timeouts.** You can now configure your Python automation to stop a connection attempt after, for example, 5 seconds while allowing up to 60 seconds to receive an API response once connected. The new [connection timeout](https://github.com/opsmill/infrahub-sdk-python/blob/a3c30b0ff52eb2f720d703f5bf4a13d263bd629b/docs/docs/python-sdk/reference/config.mdx#connect_timeout) defaults to 10 seconds.
 
-
-
 ## Security fixes
 
 - **Prevent unauthorized API token deletion.** Fixed an authorization flaw that allowed a signed-in user who knew another account’s API token ID to delete that token, potentially interrupting automation that used it.
 - **Apply global permission changes only after merging.** Fixed an issue where changes to account group membership, roles, or [global permissions](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/deploy-manage/user-management/permissions-roles/overview.mdx#global-permissions) on an Infrahub branch could alter users’ access before the branch was merged into the default branch.
 - **Exclude sensitive information from traces.** Removed SSO credentials and identity-provider user details from OpenTelemetry traces. Infrahub also [masks sensitive trace attributes](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/deploy-manage/install-configure/install/observability-stack.mdx#values-that-spans-never-contain), including client IP addresses, URL query strings, and account names, before export. Previously stored traces remain unchanged; this masking does not apply to log entries.
 - **Fix GraphQL denial-of-service vulnerabilities.** Updated `graphql-core` to address vulnerabilities that could cause excessive CPU or memory consumption when processing queries: [CVE-2026-75507](https://github.com/graphql-python/graphql-core/security/advisories/GHSA-vj8h-fx38-h3vc) and [CVE-2026-75508](https://github.com/graphql-python/graphql-core/security/advisories/GHSA-r77w-qph3-7vf8).
-
-## Other changes
-
-**The daily telemetry report now includes additional CPU and memory information about your deployment.** It records the resources available to the API server and task workers, along with database CPU and memory settings. To stop sending telemetry to OpsMill, set `INFRAHUB_TELEMETRY_OPTOUT=true`. Daily snapshots remain stored in your local database and can be inspected or exported using the [telemetry commands](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/deploy-manage/run-observe/telemetry.mdx).
-
-{/* PLACEHOLDER from the concise draft: breaking changes and required actions. Review and approve before publication. */}
 
 ## Breaking changes and required actions
 
@@ -155,8 +142,6 @@ Before the next import after upgrading, correct these references or files, or re
 
 **Merging an Infrahub branch now fails if a required Git repository import failed or has not completed.** The branch and its Proposed Change stay open, and the error identifies the repository. For branches synchronized with Git, the merge also fails if Infrahub has not recorded the latest Git commits. These [checks apply to both Proposed Changes and direct branch merges](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/branches/merge.mdx#before-the-merge-starts-repository-imports).
 
-**Before upgrading**, update scripts that push changes to a Git branch and then merge the corresponding Infrahub branch into the default branch. Check that the intended Git commit has been imported successfully into that Infrahub branch before starting the merge.
-
 **Read-write Git repositories require credentials with write access.** When adding a repository to Infrahub, use a Git account or access token that can write to that repository. No action is required for existing repositories before upgrading; credentials are checked when you add a repository or run **Check connectivity**.
 
 **Check connectivity** does not test branch protections or push rules. A successful check does not guarantee that the Git server will accept a later push.
@@ -165,13 +150,13 @@ Before the next import after upgrading, correct these references or files, or re
 
 **Branches with Sync with Git disabled no longer import changes from Git.** **Before upgrading**, check whether your workflow relies on pushing changes to a Git branch and importing them into an Infrahub branch created with this setting disabled. To continue importing those changes, use a branch created with **Sync with Git** enabled. Infrahub’s default branch is unaffected.
 
-**Removing the last object file from a Git repository now deletes the corresponding objects from Infrahub on the next import.** This also applies when you remove all entries under `objects:` in `.infrahub.yml`.
+**Removing the last object file from a Git repository now deletes the objects it defined.** Infrahub tracks the objects that each repository's object files define and, on every import, deletes the tracked objects that the files no longer define. This already happened when you removed one object file among several. It now also happens when you remove the last object file or clear the `objects:` list in `.infrahub.yml`, which previously left those objects in Infrahub.
 
-If you made either change before upgrading, the corresponding objects still present in Infrahub are deleted during the first repository import after upgrading. **To retain those objects, before upgrading restore the object files containing their definitions and the corresponding entries under `objects:` in `.infrahub.yml`.**
+If you made either change before upgrading, those objects are deleted during the first import after upgrading. **To keep them, restore the object files and their `objects:` entries before upgrading.**
+
+If another object still refers to one of these objects through a mandatory relationship, the import reports a warning instead of deleting it, and the next import tries the deletion again.
 
 ### Generators
-
-{/* Approved in review: Generator cleanup summary and upgrade action. */}
 
 **Objects tracked by a Generator are now deleted if no `save()` calls are made when you run it.** For example, if your Generator code calls `save()` only when values change, the existing objects can be deleted when all values are unchanged.
 
@@ -184,8 +169,6 @@ If you use a Generator to update existing objects that should remain independent
 **Before running the updated Generator**, remove those objects from its Generator group if they are already members. Changing the `save()` call alone does not remove their membership, and they can still be deleted.
 
 ### Number pools and IP pools
-
-**Allocating a number now fails if the proposed value is already assigned to a unique attribute but is not recorded in the pool.** Manually assigned values are no longer automatically skipped.
 
 **Before allocating numbers after upgrading**, [attach manually assigned values within the pool’s ranges to that pool](https://github.com/opsmill/infrahub/blob/99b0f19f17b674642d757506a9438bb4c3db4032/docs/docs/resource-manager/track-existing-numbers.mdx). The existing values remain unchanged and are excluded from subsequent allocations.
 
@@ -243,8 +226,6 @@ If you maintain generated protocols for your schema, regenerate them with `infra
 
 If you encounter this error after upgrading, simplify repeated field selections or divide the query into smaller requests, then test again.
 
-{/* END PLACEHOLDER: breaking changes and required actions */}
-
 ## Deprecations
 
 **`start_range` and `end_range`, which define the lower and upper limits of a number pool, are deprecated in favor of `ranges`.** These fields remain supported in 1.12 for pools with a single range. If you add multiple ranges to a pool, reading the old fields returns `null`, and attempts to change them fail.
@@ -260,8 +241,6 @@ The name-matching option, `security.sso_account_name_fallback`, is already disab
 **`infrahub-sdk` 1.24.0 is the last SDK release that supports Python 3.10.** If your automation uses Python 3.10, upgrade its Python environment before installing the next SDK release.
 
 **`infrahub-testcontainers` 1.12.0 is the last version that supports Python 3.10.** This package starts Infrahub instances in Docker for integration tests. If you run those tests with Python 3.10, update the Python environment that runs them—including any CI jobs—before installing the next package release. Python 3.10 remains supported with version 1.12.0.
-
-{/* PLACEHOLDER from the concise draft: upgrade instructions. Review and approve before publication. */}
 
 ## Upgrade an existing instance
 
@@ -286,8 +265,6 @@ The first Git repository import after upgrading reruns Generators, regenerates a
 That import also deletes repository-managed objects whose defining files were removed. Restore the files and their `objects:` entries before upgrading if those objects must remain.
 
 If you revert to an earlier version while pushes to remote Git repositories are pending, they do not resume automatically. Push the changes manually or merge again, then run a full regeneration of the default branch to replace the regeneration that was waiting for the pending pushes.
-
-{/* END PLACEHOLDER: upgrade instructions */}
 
 ## Full changelog
 
