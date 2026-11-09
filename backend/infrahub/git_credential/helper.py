@@ -78,3 +78,11 @@ def store(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),  # noqa: ARG001
 ) -> None:
     raise typer.Exit()
+
+
+@app.command()
+def erase(
+    input_str: str = typer.Argument(None),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Do nothing, because the credentials live in Infrahub and the helper keeps no copy to erase."""

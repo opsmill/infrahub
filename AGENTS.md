@@ -4,16 +4,18 @@ Infrahub is a graph-based infrastructure data management platform by OpsMill. It
 
 This file is a router: it carries repo-wide facts and points to the per-area AGENTS.md and `dev/` docs for depth.
 
-Style: be direct and substantive. No filler, preamble, or pleasantries. Challenge flawed approaches and ask before guessing intent.
+Style: be direct and substantive. Challenge flawed approaches and ask before guessing intent.
 
 ## Tech Stack
 
-- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.2), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
+Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/app/package.json` (frontend).
+
+- **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
+- **Frontend:** TypeScript 5, React 19, Vite 8, Tailwind CSS 4
+- **Testing:** pytest 9, Vitest 5, Playwright
+- **Linting:** ruff, mypy 2, Biome 2
 - **Package Managers:** uv (Python), pnpm (Frontend)
-- **Task Runner:** Invoke 2.2.1
+- **Task Runner:** Invoke 2
 
 ## File Structure
 
@@ -83,25 +85,25 @@ unbuffered through the pipe). Inspect with docker/curl from a separate shell,
 then kill the process once done — pdb cannot receive commands over the dummy
 stdin. Match the node id, not the literal shell line (a bare
 `pkill -f <pattern>` kills your own shell if the pattern appears in its
-command line). Killing pytest skips the fixture teardown, so sweep the
-leftover stack afterwards: `docker compose -p $PROJECT down -v
---remove-orphans`.
+command line). Killing pytest skips the fixture teardown. Ryuk, the
+testcontainers cleanup container, then removes the stack once every client has
+disconnected from it and its reconnection timeout (10 seconds by default) has
+passed. Any other client connected to Ryuk's published port delays the removal
+until it disconnects, and Ryuk stores each line that client sends as a filter;
+each filter Docker rejects adds about 30 seconds of retries. So when
+`docker ps --filter name=$PROJECT` still lists the stack, remove it with
+`docker compose -p $PROJECT down -v --remove-orphans`.
 
 See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
 ### Linting & Formatting
 
 ```bash
-uv run invoke format                  # Format all Python code
-uv run invoke lint                    # Lint all Python code
+uv run invoke format                  # ruff format + fix on all Python code except python_sdk (same scope as CI)
+uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk (same scope as CI); mypy on backend
 cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
-
-`invoke lint` runs `yamllint` repo-wide, but its ruff checks cover only `tasks`, `models`,
-`utilities`, `python_testcontainers` and `backend`, while CI runs `ruff check . --exclude python_sdk`
-over the whole repo — so a Python violation elsewhere passes locally and fails in CI. `/pre-ci`
-includes that whole-repo check.
 
 ### Build
 
@@ -135,6 +137,7 @@ checkout.
 
 ## Coding Standards
 
+- Constants and literals: `dev/guidelines/constants.md` — avoid magic numbers; load before writing or reviewing code that introduces or uses domain limits, defaults, thresholds, or other policy values; create named constants and reuse existing owners
 - Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does), `dev/guidelines/backend/prefect-payloads.md` (load when adding, changing or reviewing a `@flow`/`@task`, or passing data across one) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
 - Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
@@ -167,12 +170,13 @@ CI validates that all generated files are committed — the `validate-generated-
 ### Always Do
 
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
-- Before pushing, run `/pre-ci` — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
 - Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
@@ -200,6 +204,7 @@ CI validates that all generated files are committed — the `validate-generated-
 | What are we building? | `dev/specs/` |
 | How should I write code? | `dev/guidelines/` |
 | What commands are available? | `.agents/commands/` |
+| What skills are available (`/pre-ci`, `creating-changelog-entries`, ...)? | `.agents/skills/` |
 
 ## Component Maps
 

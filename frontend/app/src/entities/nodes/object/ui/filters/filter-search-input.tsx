@@ -25,10 +25,14 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   // Update URL when debounced value changes
   useEffect(() => {
-    if (debouncedInputValue === search) return;
+    // Skips a value replaced by a URL change during the delay (ex: quick back then forward).
+    if (debouncedInputValue !== inputValue) return;
 
-    if (debouncedInputValue) {
-      setSearch(debouncedInputValue);
+    const nextSearch = debouncedInputValue.trim();
+    if (nextSearch === search) return;
+
+    if (nextSearch) {
+      setSearch(nextSearch);
     } else {
       removeSearchFilter();
     }
@@ -37,7 +41,8 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
   // Sync input when URL changes (ex: browser back/forward)
   if (search !== prevSearch && inputValue === debouncedInputValue) {
     setPrevSearch(search);
-    setInputValue(search);
+    // Keeps a space the user just typed. Otherwise, search would remove it because it's trimmed.
+    if (inputValue.trim() !== search) setInputValue(search);
   }
   return (
     <SearchInput

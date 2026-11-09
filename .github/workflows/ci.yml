@@ -87,7 +87,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -118,7 +118,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -151,7 +151,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -194,7 +194,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -218,7 +218,8 @@ jobs:
 
   frontend-validate-graphql-types:
     if: |
-      needs.files-changed.outputs.graphql_schema == 'true'
+      needs.files-changed.outputs.graphql_schema == 'true' ||
+      needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed"]
     defaults:
       run:
@@ -235,7 +236,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -271,7 +272,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -317,7 +318,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -354,7 +355,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25.0.0
         with:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
@@ -379,7 +380,7 @@ jobs:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -419,7 +420,7 @@ jobs:
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
@@ -462,6 +463,7 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -472,7 +474,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -510,7 +512,7 @@ jobs:
           - "3.13"
           - "3.14"
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -518,7 +520,7 @@ jobs:
           submodules: true
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -621,7 +623,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -680,7 +682,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -727,7 +729,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -788,7 +790,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install tini
@@ -841,12 +843,6 @@ jobs:
   #         - name: backend-tests-unit-memgraph
   #           env:
   #             INFRAHUB_DB_TYPE: memgraph
-  #         # - name: backend-tests-unit-nats
-  #         #   env:
-  #         #     INFRAHUB_DB_TYPE: memgraph
-  #         #     INFRAHUB_USE_NATS: 1
-  #         #     INFRAHUB_BROKER_DRIVER: nats
-  #         #     INFRAHUB_CACHE_DRIVER: nats
   #   name: ${{ matrix.name }}
   #   env: ${{ matrix.env }}
   #   steps:
@@ -889,7 +885,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -920,7 +916,7 @@ jobs:
         with:
           package_json_file: frontend/package.json
       - name: Install NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
@@ -963,7 +959,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -989,7 +985,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1016,7 +1012,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1046,14 +1042,14 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1064,7 +1060,7 @@ jobs:
         run: "uv sync --all-groups"
       - name: "Install npm dependencies"
         working-directory: ./docs
-        run: npm install
+        run: npm ci
       - name: "Build docs"
         run: "uv run invoke docs.build"
 
@@ -1084,14 +1080,14 @@ jobs:
         with:
           submodules: true
       - name: Install NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1213,7 +1209,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1246,7 +1242,7 @@ jobs:
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
-          echo NEO4J_DOCKER_IMAGE=neo4j:2025.10.1-enterprise >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2026.05.0-enterprise >> $GITHUB_ENV
       - name: Build no-netlink shim
         run: |
           gcc -shared -fPIC -Wall -Wextra \
@@ -1268,7 +1264,7 @@ jobs:
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
       - name: e2e-artifacts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: E2E-testing-pytest-playwright-${{ matrix.shard }}
           path: |
@@ -1301,7 +1297,7 @@ jobs:
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
@@ -1390,7 +1386,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: "Setup git credentials"
@@ -1410,7 +1406,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@c4fd08a3a159bd0cc208da1e0edf32b8c47d75e5 # v5.4.0
+        uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1419,7 +1415,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@c4fd08a3a159bd0cc208da1e0edf32b8c47d75e5 # v5.4.0
+        uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation

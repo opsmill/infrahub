@@ -74,10 +74,14 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         requests: list[RequestT] = []
         for loaded in loaded_definitions:
             definition = loaded.definition
+            query_report = self.impacted_resolver.analyze(
+                query_payload=definition.query_payload, target_branch=target_branch
+            )
             gate_result = self.gate.evaluate(
                 definition=definition,
                 diff_summary=diff_summary,
                 modified_kinds=modified_kinds,
+                read_kinds=query_report.impacted_models,
                 group_id=loaded.group_id,
             )
 
@@ -103,7 +107,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             impacted: list[str] = []
             if not regenerate_all_members:
                 selection = await self.impacted_resolver.resolve(
-                    query_payload=definition.query_payload,
+                    query_report=query_report,
                     diff_summary=diff_summary,
                     target_branch=target_branch,
                     subscriber_kind=self.subscriber_kind,
@@ -125,12 +129,6 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     impacted=impacted,
                 )
             ]
-            self.log.debug(
-                f"SELECTIVE_REGEN select [{definition.definition_name}]: "
-                f"regenerate_all_members={regenerate_all_members} forced={forced} "
-                f"members={len(member_ids)} mapped_subscribers={len(subscriber_by_member)} "
-                f"impacted={len(impacted)} rendered={len(rendered_members)}"
-            )
             if not rendered_members:
                 continue
             members = _narrow_members_filter(rendered_members, len(member_ids))

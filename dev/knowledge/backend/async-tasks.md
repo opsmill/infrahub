@@ -95,6 +95,17 @@ async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
 
+### Result storage
+
+The task worker runs Prefect with `PREFECT_RESULTS_PERSIST_BY_DEFAULT` enabled, so every flow's
+return value is pickled and written to Redis through the `redis-database/infrahub-storage` block, a
+prefect-redis `RedisDatabase` saved by `setup_blocks()` in `workflows/initialization.py`. Prefect
+never deletes a persisted result, so the block is saved with `key_ttl` set to
+`TASK_RESULT_TTL_SECONDS` and every key expires on its own. A result is read at most once: by
+`execute_workflow` in the caller that waited for the run, and never for a run started with
+`submit_workflow`. A flow whose return value is a large object tree should opt out with
+`persist_result=False` rather than push it through Redis.
+
 ### InfrahubBatch is concurrent, not ordered
 
 The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
@@ -225,7 +236,7 @@ Every workflow runs in one of three priority lanes, each backed by a Prefect wor
 | Medium | `medium` | 2 |
 | Low | `low` | 3 (served last) |
 
-The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only matters under contention — a lower number is served first, and nothing preempts a run that already started.
+The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only orders runs still waiting on the server — a lower number is served first, and nothing preempts a run that already started. How a worker claims runs, and why it claims only a few at a time, is in [Task Workers](task-workers.md).
 
 Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the resolved priority for that dispatch — and, because the value is stamped into an `InfrahubContext` when one is passed, re-roots the priority for the dispatched flow's whole subtree. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
 
@@ -431,8 +442,8 @@ milliseconds; only a C extension holding it for longer than the key's expiry cou
 The key therefore means "this process is alive", not "this process's event loop is idle", which is
 what every consumer above wants to know.
 
-The thread needs its own cache connection because the asyncio Redis and NATS clients bind to the
-loop that created them. A failed beat closes that connection and the next beat reconnects through
+The thread needs its own cache connection because the asyncio Redis client binds to the
+loop that created it. A failed beat closes that connection and the next beat reconnects through
 the factory after a short backoff, so a cache outage delays the heartbeat rather than ending it.
 Each beat carries its own deadline and the next one is scheduled from before the current one starts,
 so three beats fit in every expiry and one slow, failed or unanswered beat cannot push the next
@@ -451,12 +462,15 @@ the deadlock cleanup has no equivalent.
 | Workflow models | `backend/infrahub/workflows/models.py` |
 | Constants & types | `backend/infrahub/workflows/constants.py` |
 | Initialization | `backend/infrahub/workflows/initialization.py` |
+| Result storage TTL | `backend/infrahub/workflows/models.py` |
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
 | Branch task purge | `backend/infrahub/task_manager/flow_run/branch_cleanup.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
 | System automations | `backend/infrahub/trigger/system.py` |
 | Worker liveness heartbeat | `backend/infrahub/services/heartbeat.py`, `backend/infrahub/services/component.py` |
+| Worker submission window | `backend/infrahub/workers/submission.py` |
+| Awaited child runs of a flow run | `backend/infrahub/services/adapters/workflow/run_follower.py`, `backend/infrahub/services/adapters/workflow/creation_slots.py` |
 | Deadlock cleanup | `backend/infrahub/locks/tasks.py` |
 
 ## See Also
@@ -464,6 +478,7 @@ the deadlock cleanup has no equivalent.
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Why we use Prefect
 - [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md) - How to create a new workflow
 - [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
+- [Task Workers](task-workers.md) - How workers claim and start flow runs
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure

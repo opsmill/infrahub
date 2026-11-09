@@ -5,11 +5,13 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
+from structlog.testing import capture_logs
 
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
+    CacheSettings,
     DatabaseSettings,
     GitSettings,
     MainSettings,
@@ -376,3 +378,147 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
     assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
+
+
+SUPERSEDED_WARNING = "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings"
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_supersedes_scalar_connection_fields() -> None:
+    """A URL alongside scalar settings is accepted; the URL wins and the override is reported.
+
+    Rejecting the combination is not an option: the shipped Compose files set every scalar cache
+    variable unconditionally, so an exclusivity error would make INFRAHUB_CACHE_URL unusable there.
+    """
+    with capture_logs() as records:
+        settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), address="other")
+
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == "redis://cache:6379/0"
+    assert records == [
+        {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
+    ]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The shipped docker-compose.yml sets every scalar cache variable, most at their default.
+
+    A default-valued scalar carries no operator intent, so it must neither fail the load nor be
+    reported as superseded. Only INFRAHUB_CACHE_ADDRESS differs from its default here.
+    """
+    url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
+    compose_env = {
+        "INFRAHUB_CACHE_URL": url,
+        "INFRAHUB_CACHE_ADDRESS": "cache",
+        "INFRAHUB_CACHE_DATABASE": "0",
+        "INFRAHUB_CACHE_DRIVER": "redis",
+        "INFRAHUB_CACHE_PASSWORD": "",
+        "INFRAHUB_CACHE_USERNAME": "",
+        "INFRAHUB_CACHE_TLS_ENABLED": "false",
+        "INFRAHUB_CACHE_TLS_INSECURE": "false",
+        "INFRAHUB_CACHE_MAX_CONNECTIONS": "1000",
+    }
+    for name, value in compose_env.items():
+        monkeypatch.setenv(name, value)
+
+    with capture_logs() as records:
+        settings = CacheSettings()
+
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == url
+    assert records == [
+        {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
+    ]
+
+
+@dataclass
+class PoolSizeOverrideCase:
+    name: str
+    url: str
+    superseded: bool
+
+
+POOL_SIZE_SUPERSEDED = {
+    "event": SUPERSEDED_WARNING,
+    "log_level": "warning",
+    "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
+}
+
+POOL_SIZE_OVERRIDE_CASES = [
+    PoolSizeOverrideCase(name="url_size", url="redis://cache:6379/0?max_connections=7", superseded=True),
+    PoolSizeOverrideCase(
+        name="sentinel_url_size", url="redis+sentinel://s1:26379/mymaster?max_connections=7", superseded=True
+    ),
+    # redis-py reads 0 as its own default of 100 connections, so the setting is not applied either.
+    PoolSizeOverrideCase(name="zero", url="redis://cache:6379/0?max_connections=0", superseded=True),
+    # redis-py drops a blank option, so the setting still sizes the pool.
+    PoolSizeOverrideCase(name="blank", url="redis://cache:6379/0?max_connections=", superseded=False),
+    PoolSizeOverrideCase(name="no_size", url="redis://cache:6379/0?socket_timeout=3", superseded=False),
+]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("case", POOL_SIZE_OVERRIDE_CASES, ids=lambda case: case.name)
+def test_cache_url_pool_size_supersedes_the_setting_only_when_it_applies(case: PoolSizeOverrideCase) -> None:
+    """The override is reported when the pool that the URL builds does not get the configured size."""
+    with capture_logs() as records:
+        CacheSettings(url=SecretStr(case.url), max_connections=250)
+
+    assert records == ([POOL_SIZE_SUPERSEDED] if case.superseded else [])
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_does_not_report_defaulted_scalars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scalars explicitly set to their own default value are not reported as superseded."""
+    monkeypatch.setenv("INFRAHUB_CACHE_ADDRESS", "localhost")
+    monkeypatch.setenv("INFRAHUB_CACHE_PASSWORD", "")
+
+    with capture_logs() as records:
+        settings = CacheSettings(url=SecretStr("redis://cache:6379/0"))
+
+    assert settings.url is not None
+    assert records == []
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "spaces"])
+def test_blank_cache_url_is_unset(monkeypatch: pytest.MonkeyPatch, blank: str) -> None:
+    """A blanked INFRAHUB_CACHE_URL falls back to the scalar settings instead of failing the load."""
+    monkeypatch.setenv("INFRAHUB_CACHE_URL", blank)
+
+    assert CacheSettings().url is None
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_invalid_cache_url_fails_the_load_without_echoing_it() -> None:
+    with pytest.raises(ValidationError, match=r"Value error, A Sentinel connection URL requires a service name") as exc:
+        CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
+
+    assert "topsecret" not in str(exc.value)
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("reserved", ["/", "?", "#"])
+def test_unencoded_cache_url_password_fails_the_load_without_echoing_it(reserved: str) -> None:
+    with pytest.raises(ValidationError, match=r"Value error, Redis URL has an '@' after its host") as exc:
+        CacheSettings(url=SecretStr(f"redis://user:s3cr{reserved}etpass@cache:6379/0"))
+
+    assert "s3cr" not in str(exc.value)
+    assert "etpass" not in str(exc.value)
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_username_without_password_fails_the_load() -> None:
+    with pytest.raises(
+        ValidationError,
+        match=r"Value error, INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not\. Both are required\.",
+    ):
+        CacheSettings(address="redis.internal", username="user")
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+def test_cache_url_supersedes_a_username_without_password() -> None:
+    settings = CacheSettings(url=SecretStr("redis://user:secret@cache:6379/0"), username="user")
+
+    assert settings.url is not None

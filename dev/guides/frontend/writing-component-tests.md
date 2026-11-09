@@ -368,7 +368,7 @@ describe("List Component", () => {
 
     // THEN
     await expect.element(component.getByText("Empty list")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("test item");
+    await expect.element(component.baseElement).not.toMatchTextContent("test item");
     expect(items).toEqual([]);
   });
 });

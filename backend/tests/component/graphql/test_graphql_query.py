@@ -297,9 +297,8 @@ async def test_ipaddress_attribute_filters(
         assert result.data
         return sorted(item["node"]["name"]["value"] for item in result.data["TestAllAttributeTypes"]["edges"])
 
-    # the compressed form matches, the expanded input form does not
     assert await names_for('bare_address__value: "2001:db8::1"') == ["obj1"]
-    assert await names_for('bare_address__value: "2001:0DB8::0001"') == []
+    assert await names_for('bare_address__value: "2001:0DB8::0001"') == ["obj1"]
     assert await names_for('bare_address__values: ["2001:db8::1", "10.0.0.2"]') == ["obj1", "obj2"]
     assert await names_for("bare_address__isnull: true") == []
     assert await names_for("bare_address__is_protected: false") == ["obj1", "obj2"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
@@ -34,7 +35,12 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
+from infrahub.core.query.subquery import (
+    build_subquery_filter,
+    build_subquery_order,
+    build_subquery_order_metadata,
+    ranks_latest_value,
+)
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
@@ -52,6 +58,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -69,6 +77,20 @@ if TYPE_CHECKING:
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
 NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
+
+IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
+
+
+def _compress_ipv6(text: str) -> str:
+    """Return a complete IPv6 address or interface in its compressed form.
+
+    Raises:
+        ValueError: When the text is not a complete IPv6 address or interface.
+
+    """
+    if "/" in text:
+        return ipaddress.IPv6Interface(text).with_prefixlen
+    return str(ipaddress.IPv6Address(text))
 
 
 @dataclass
@@ -1665,6 +1687,25 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, attr, av
         WHERE r.status = "active"
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
+        // --------------------------
+        // Keep the HFID only if it is the latest value of the attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
+        // --------------------------
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(latest_av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r, latest_av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r, latest_av
+        WHERE r.status = "active" AND latest_av.value = av.value
+        """
+        else:
+            query += """
         // --------------------------
         // Filter HAS_VALUE edges to resolve the active value
         // on the correct branch at the requested point in time
@@ -1678,7 +1719,8 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, av, r
         WHERE r.status = "active"
-        """ % {
+        """
+        query %= {
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
         }
@@ -1964,12 +2006,22 @@ WITH %(tracked_vars)s,
         )
         self.params.update(branch_params)
 
+        node_labels = self.schema.kind
+        node_ids_where = ""
+        if self.filters and ("id" in self.filters or "ids" in self.filters):
+            self.params["node_ids"] = [self.filters["id"]] if self.has_filter_by_id else self.filters["ids"]
+            # Of a node vertex's labels only Node carries the uuid index, and the uuid check has to be in the
+            # first MATCH for Neo4j to use that index instead of reading every node of the kind.
+            node_labels = f"Node:{self.schema.kind}"
+            node_ids_where = "n.uuid IN $node_ids"
+
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
         if not self.branch.is_default:
             topquery = """
-            MATCH (n:%(node_kind)s)
+            MATCH (n:%(node_labels)s)
+            %(node_ids_where)s
             CALL (n) {
                 MATCH (root:Root)<-[r:IS_PART_OF]-(n)
                 WHERE %(branch_filter)s
@@ -1979,20 +2031,25 @@ WITH %(tracked_vars)s,
             }
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "branch_filter": branch_filter,
+                "node_labels": node_labels,
+                "node_ids_where": f"WHERE {node_ids_where}" if node_ids_where else "",
+            }
             self.add_to_query(topquery)
         else:
             topquery = """
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
-            WHERE %(branch_filter)s
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_labels)s)
+            WHERE %(where)s
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "where": f"{node_ids_where} AND ({branch_filter})" if node_ids_where else branch_filter,
+                "node_labels": node_labels,
+            }
             self.add_to_query(topquery)
 
-        if self.has_filter_by_id and self.filters:
-            self.params["uuid"] = self.filters["id"]
-            self.add_to_query(" AND n.uuid = $uuid")
+        if self.has_filter_by_id:
             return
 
         # Determine ordering behavior
@@ -2014,10 +2071,6 @@ WITH %(tracked_vars)s,
             # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
             self.order_by = ["n.uuid"]
             return
-
-        if self.filters and "ids" in self.filters:
-            self.add_to_query("AND n.uuid IN $node_ids")
-            self.params["node_ids"] = self.filters["ids"]
 
         # Get unified field requirements for filtering and ordering
         field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
@@ -2077,6 +2130,7 @@ WITH %(tracked_vars)s,
                 subquery_idx=far.index,
                 partial_match=self.partial_match,
                 extra_tail_properties=extra_tail_properties,
+                branch_agnostic=self.branch_agnostic,
             )
             for query_var in extra_tail_properties:
                 self._track_variable(query_var)
@@ -2223,14 +2277,53 @@ WITH %(tracked_vars)s,
         index: int,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for an attribute/relationship filter."""
+        if isinstance(attr_value, Enum):
+            attr_value = attr_value.value
         return FieldAttributeRequirement(
             field_name=field_name,
             field=field,
             field_attr_name=attr_name,
-            field_attr_value=attr_value.value if isinstance(attr_value, Enum) else attr_value,
+            field_attr_value=self._normalize_ip_filter_value(
+                field_name=field_name, field=field, attr_name=attr_name, attr_value=attr_value
+            ),
             index=index,
             types=[FieldAttributeRequirementType.FILTER],
         )
+
+    def _normalize_ip_filter_value(
+        self,
+        field_name: str,
+        field: AttributeSchema | RelationshipSchema | None,
+        attr_name: str,
+        attr_value: Any,
+    ) -> Any:
+        """Return an IP filter value in the form IP values are saved in, so any valid notation of it matches.
+
+        A value that does not parse as an IP is returned unchanged.
+        """
+        if attr_name not in ("value", "values"):
+            return attr_value
+
+        normalize: Callable[[str], str]
+        if field is None and field_name in ("any", "attribute"):
+            normalize = _compress_ipv6
+        elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
+            # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.
+            normalize = _compress_ipv6 if self.partial_match else field.get_class()._normalize_value
+        else:
+            return attr_value
+
+        def _normalize(value: Any) -> Any:
+            if not isinstance(value, str):
+                return value
+            try:
+                return normalize(value)
+            except ValueError:
+                return value
+
+        if isinstance(attr_value, list):
+            return [_normalize(value) for value in attr_value]
+        return _normalize(attr_value)
 
     def _get_filter_requirements(self, start_index: int) -> list[FieldAttributeRequirement]:
         """Build filter requirements from self.filters.
@@ -2504,6 +2597,27 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
+        // --------------------------
+        // Search the latest value of each candidate attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
+        // --------------------------
+        WITH DISTINCT n, attr
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, av, r
+        WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
+        WITH n, attr
+        """
+        else:
+            query += """
         WITH DISTINCT n, attr, av
         // --------------------------
         // filter HAS_VALUE edges
@@ -2517,6 +2631,8 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr
         WHERE r.status = "active"
+        """
+        query += """
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------
@@ -2529,7 +2645,8 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr, r
         WHERE r.status = "active"
-        """ % {
+        """
+        query %= {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,

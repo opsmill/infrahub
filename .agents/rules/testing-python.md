@@ -105,11 +105,17 @@ No `assert elapsed_seconds < N`, and no assertion on wall-clock gaps between eve
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
+A component test goes in the topic directory of its area — a node metadata query in `backend/tests/component/graphql/metadata/`, not appended to `test_graphql_query.py` — and starts a new module there when no module fits. A test appended to a large catch-all module is missed by the next coverage check.
+
 Do not reference issue numbers, GitHub URLs, or Jira tickets in test names, docstrings, or comments.
 
 ## Schema fixtures
 
-Check `backend/tests/helpers/schema/` before defining test schemas inline. Use `deepcopy` to derive variants from existing helpers rather than writing new schemas from scratch.
+Search for an existing schema before defining one inline, and search by the shape the test needs (an optional cardinality-one relationship to a generic, a hierarchy), not by name. Look in `backend/tests/helpers/schema/` and in the schema fixtures of `backend/tests/conftest.py` and `backend/tests/component/conftest.py`: `generic_car_person_schema`, for example, already has `TestPerson.car`, an optional cardinality-one relationship to the generic `TestCar`. Use `deepcopy` to derive a variant rather than writing a new schema from scratch.
+
+## Share one schema and data load across a class
+
+When several tests or parametrized cases read the same schema and data, put them in a class and build that data once in `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants (`default_branch_scope_class`, `car_person_schema_scope_class`), then vary the query per method or case. A function-scoped schema or data fixture runs again for every test and every parametrized case. A class-scoped fixture cannot request a function-scoped one, so add a `_scope_class` variant beside a schema fixture that lacks one. Methods share the data: a method that changes it must come after the methods that read the original state. Example: `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters`; the fixture chain is in `dev/knowledge/backend/testing.md` §"Schema Fixtures".
 
 ## Generate protocols for test schemas
 

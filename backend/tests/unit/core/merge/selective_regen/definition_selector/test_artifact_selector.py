@@ -20,7 +20,6 @@ def _artifact_definition() -> ProposedChangeArtifactDefinition:
         artifact_name="artifact",
         query_name="q",
         query_id="q-1",
-        query_models=["TestDevice"],
         query_payload="query {}",
         repository_id="repo-1",
         transform_kind="CoreTransformJinja2",

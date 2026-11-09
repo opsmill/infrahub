@@ -83,10 +83,9 @@ async def execute_graphql_query(
         operation_name,
         field_resolver,
         type_resolver,
-        None,
-        middleware,
-        execution_context_class,
-        is_awaitable,
+        middleware=middleware,
+        execution_context_class=execution_context_class,
+        is_awaitable=is_awaitable,
     )
 
     if isawaitable(result):

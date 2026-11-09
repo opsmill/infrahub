@@ -364,3 +364,33 @@ def test_hfid_constraint_matches_existing_constraint_by_field_set(
     schema_branch.process()
 
     assert schema_branch.get(name="TestCar", duplicate=False).uniqueness_constraints == expected
+
+
+def test_rejects_malformed_existing_constraint_with_corrected_hfid(car_person_schema_root: SchemaRoot) -> None:
+    schema_branch = _load_processed_branch(schema_root=car_person_schema_root)
+    node = schema_branch.get(name="TestCar", duplicate=False)
+    node.human_friendly_id = ["name__value", "color__value"]
+    node.uniqueness_constraints = [["name__value__color__value"]]
+
+    with pytest.raises(
+        ValueError,
+        match=r"^TestCar: Requested unique constraint not found within node\. \(`name__value__color__value`\)$",
+    ):
+        schema_branch.process()
+
+
+def test_malformed_hfid_is_not_propagated_to_constraints(car_person_schema_root: SchemaRoot) -> None:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=car_person_schema_root)
+    node = schema_branch.get(name="TestCar", duplicate=False)
+    node.human_friendly_id = ["name__value__color__value"]
+    node.uniqueness_constraints = []
+
+    schema_branch.process_human_friendly_id(raise_parsing_errors=False)
+
+    assert schema_branch.get(name="TestCar").uniqueness_constraints == []
+    with pytest.raises(
+        ValueError,
+        match=r"^TestCar\.human_friendly_id: name__value__color__value has too many segments on schema TestCar$",
+    ):
+        schema_branch.validate_human_friendly_id()

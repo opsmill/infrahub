@@ -120,6 +120,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
+- `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
@@ -128,6 +129,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
+- `dev/knowledge/backend/task-workers.md` - How task workers poll, reserve, claim and start flow runs; read before changing the worker or diagnosing a run that waits before it starts
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
@@ -142,7 +144,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/guides/backend/creating-events.md` - Creating new events
 - `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
-- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration or fixing data a migration got wrong.
+- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration, renumbering one after a rebase, or fixing data a migration got wrong.
 - `dev/guides/backend/creating-permission-checkers.md` - Adding a checker to the GraphQL permission pipeline: category, registration, permission report, denial message, tests. Load when enforcing a permission that object permissions cannot express.
 
 ### ADRs (Why we decided)

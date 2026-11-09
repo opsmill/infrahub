@@ -46,6 +46,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 ## Current Guidelines
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
+- **Constants and Literals**: [guidelines/constants.md](guidelines/constants.md) - When to create and reuse named values
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
 - **Python Typing**: [guidelines/backend/typing.md](guidelines/backend/typing.md)
 - **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
@@ -64,6 +65,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [testing.md](knowledge/backend/testing.md) - Testing infrastructure and patterns
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
+- [task-workers.md](knowledge/backend/task-workers.md) - How task workers claim and start flow runs
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
@@ -102,6 +104,7 @@ Start a new ADR from [template.md](adr/template.md).
 
 Backend guides in [guides/backend/](guides/backend/):
 
+- [choosing-tests.md](guides/backend/choosing-tests.md) - Choose unit or component coverage and remove redundant tests
 - [creating-events.md](guides/backend/creating-events.md) - How to create new events
 - [creating-async-tasks.md](guides/backend/creating-async-tasks.md) - How to create async tasks
 - [creating-messages.md](guides/backend/creating-messages.md) - How to create message bus messages
@@ -111,14 +114,37 @@ Backend guides in [guides/backend/](guides/backend/):
 Agent commands live in [../.agents/commands/](../.agents/commands/); run one by its name:
 
 - `/new-component` - React component creation flow
-- `/guided-task` - General task flow
-- `/add-docs` - Documentation flow
 - `/bug-analyze <issue>` - Root cause analysis
 - `/bug-tdd <issue>` - Failing test from analysis
 - `/bug-fix <issue>` - Fix implementation
-- `/fix-github-issue` - GitHub issue fixing
 - `/fix-mypy-module` - Mypy type fixes
 - `/fix-ruff-rule` - Ruff linting fixes
 
 The flows read their shared testing options and execution checklist from `_shared.md` in the same
 folder, which is not a command.
+
+The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
+request in a subagent that has not seen the conversation, with the rules in
+[REVIEW.md](../REVIEW.md). Claude Code also runs it on its own after opening a pull request, though
+not every time.
+
+A hook makes it run after every `gh pr create`, and again when pushes add 300 or more changed lines
+to an open pull request since its last automatic review. The hook is off by default and runs only
+when `PR_REVIEW` is `on`. To turn it on, add this `env` block to `.claude/settings.local.json` in
+your main checkout, which Git ignores. Sessions in its worktrees read that file too.
+
+```json
+{
+  "env": {
+    "PR_REVIEW": "on"
+  }
+}
+```
+
+Set `PR_REVIEW_MIN_LINES` in the same block to change the 300. The hook needs `jq`. The Codex hook
+checks `PR_REVIEW` in the environment Codex starts with and runs `codex review` instead, only after
+`gh pr create`.
+
+Cloud sessions have no `.claude/settings.local.json` and open pull requests with the GitHub MCP
+tool, which the hook also covers, so to turn the review on there, add `PR_REVIEW=on` to your cloud
+environment's variables.

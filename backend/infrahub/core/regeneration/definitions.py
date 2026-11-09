@@ -41,9 +41,6 @@ query GatherArtifactDefinitions {
             query {
               node {
                 id
-                models {
-                  value
-                }
                 name {
                   value
                 }
@@ -99,7 +96,6 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
             timeout=transformation["timeout"]["value"],
             query_name=transformation["query"]["node"]["name"]["value"],
             query_id=transformation["query"]["node"]["id"],
-            query_models=transformation["query"]["node"]["models"]["value"] or [],
             query_payload=transformation["query"]["node"]["query"]["value"],
             repository_id=transformation["repository"]["node"]["id"],
             transform_kind=transformation["__typename"],

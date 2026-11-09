@@ -7,6 +7,7 @@ from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
 
 from ..interface import ConstraintCheckerInterface
+from ..renamed_kinds import get_kinds_with_previous_names
 from ..shared import SchemaValidatorQuery
 
 if TYPE_CHECKING:
@@ -21,10 +22,14 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 
     def __init__(
         self,
+        allowed_peer_kinds: list[str],
+        allowed_hierarchy_kinds: list[str],
         check_children: bool = False,
         check_parent: bool = False,
         **kwargs: Any,
     ) -> None:
+        self.allowed_peer_kinds = allowed_peer_kinds
+        self.allowed_hierarchy_kinds = allowed_hierarchy_kinds
         self.check_children = check_children
         self.check_parent = check_parent
         super().__init__(**kwargs)
@@ -34,27 +39,16 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             raise RuntimeError("Cannot check children and parent at same time")
         if self.check_children:
             to_children, to_parent = "<", ""
-            peer_kind = getattr(self.node_schema, "children", None)
-            if not peer_kind:
-                raise RuntimeError(
-                    f"Cannot check children for '{self.node_schema.kind}' because no children kind is defined"
-                )
         elif self.check_parent:
             to_children, to_parent = "", ">"
-            peer_kind = getattr(self.node_schema, "parent", None)
-            if not peer_kind:
-                raise RuntimeError(
-                    f"Cannot check parents for '{self.node_schema.kind}' because no parent kind is defined"
-                )
+        if not self.allowed_peer_kinds or not self.allowed_hierarchy_kinds:
+            raise RuntimeError(f"No peer or hierarchy kind to check for '{self.node_schema.kind}'")
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        if hierarchy := getattr(self.node_schema, "hierarchy", None):
-            self.params["hierarchy_kind"] = hierarchy
-        else:
-            raise RuntimeError(f"No 'hierarchy' defined for {self.node_schema.kind}")
-        self.params["peer_kind"] = peer_kind
+        self.params["hierarchy_kinds"] = self.allowed_hierarchy_kinds
+        self.params["peer_kinds"] = self.allowed_peer_kinds
 
         # ruff: noqa: E501
         query = """
@@ -107,8 +101,8 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         WITH start_node, current_peer, branch_name, current_path
         WHERE all(r in relationships(current_path) WHERE r.status = "active")
         AND (
-            any(r in relationships(current_path) WHERE r.hierarchy <> $hierarchy_kind)
-            OR NOT ($peer_kind IN labels(current_peer))
+            any(r in relationships(current_path) WHERE NOT r.hierarchy IN $hierarchy_kinds)
+            OR NOT any(label IN labels(current_peer) WHERE label IN $peer_kinds)
         )
         """ % {
             "branch_filter": branch_filter,
@@ -139,6 +133,8 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
+    # Writing a parent or child already checks its kind, so only a change to the hierarchy can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
@@ -156,10 +152,12 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
 
         if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list
-        if request.constraint_name == "node.parent.update" and not request.node_schema.parent:
+        check_parent = request.constraint_name == "node.parent.update"
+        peer_kind = request.node_schema.parent if check_parent else request.node_schema.children
+        if not peer_kind:
             return grouped_data_paths_list
-        if request.constraint_name == "node.children.update" and not request.node_schema.children:
-            return grouped_data_paths_list
+        if not request.node_schema.hierarchy:
+            raise RuntimeError(f"No 'hierarchy' defined for {request.node_schema.kind}")
 
         for query_class in self.query_classes:
             # TODO add exception handling
@@ -168,8 +166,12 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                 branch=self.branch,
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
-                check_children=request.constraint_name == "node.children.update",
-                check_parent=request.constraint_name == "node.parent.update",
+                allowed_peer_kinds=get_kinds_with_previous_names(db=self.db, request=request, kinds=[peer_kind]),
+                allowed_hierarchy_kinds=get_kinds_with_previous_names(
+                    db=self.db, request=request, kinds=[request.node_schema.hierarchy]
+                ),
+                check_children=not check_parent,
+                check_parent=check_parent,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

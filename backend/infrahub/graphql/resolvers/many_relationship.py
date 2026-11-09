@@ -22,6 +22,7 @@ from infrahub.graphql.metadata import build_metadata_query_options, get_metadata
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..order import deserialize_order_input
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
+from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
@@ -128,11 +129,7 @@ class ManyRelationshipResolver:
             mapped_name = RELATIONS_PROPERTY_MAP[key]
             node_fields[mapped_name] = value
 
-        filters = {
-            f"{info.field_name}__{key}": value
-            for key, value in kwargs.items()
-            if ("__" in key and value) or key in ["id", "ids"]
-        }
+        filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
         response: dict[str, Any] = {"edges": [], "count": None}
 

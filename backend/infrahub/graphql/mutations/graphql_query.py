@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
-from graphql import GraphQLResolveInfo
+from graphql import GraphQLResolveInfo, GraphQLSyntaxError
 from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
@@ -43,13 +44,16 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         query_info = {}
         schema_branch = db.schema.get_schema_branch(name=branch.name)
 
-        analyzer = InfrahubGraphQLQueryAnalyzer(
-            query=query_value, schema=info.schema, branch=branch, schema_branch=schema_branch
-        )
+        try:
+            analyzer = InfrahubGraphQLQueryAnalyzer(
+                query=query_value, schema=info.schema, branch=branch, schema_branch=schema_branch
+            )
+        except GraphQLSyntaxError as exc:
+            raise ValidationError(input_value=f"Query is not valid, {exc.message}") from exc
 
         valid, errors = analyzer.is_valid
         if not valid:
-            raise ValueError(f"Query is not valid, {str(errors)}")
+            raise ValidationError(input_value=f"Query is not valid, {str(errors)}")
 
         query_info["models"] = {"value": analyzer.query_report.impacted_models}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
