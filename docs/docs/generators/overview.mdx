@@ -208,7 +208,7 @@ You add objects to a target group through the `member_of_groups` relationship, w
 Adding or removing group members changes what gets targeted on the next Generator run:
 
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
-- **Remove an object from the group**: it is no longer targeted. The objects that earlier runs created for it are not deleted, because only a run for that target deletes the objects in that target's Generator group (see [Objects a run deletes](#objects-a-run-deletes) and [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
+- **Remove an object from the group**: it is no longer targeted. When the definition's `parameters` give each target different values, each target has its own Generator group, and the objects that earlier runs created for the removed object are not deleted, because no run uses that Generator group any more. When the definition has no `parameters`, all targets share one Generator group, and the next run for another target deletes those objects unless it saves them again (see [Objects a run deletes](#objects-a-run-deletes) and [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
 - **Delete an object that is a target**: its Generator instance remains, and the proposed change Generator checks skip it. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 ### Standard groups vs. Generator groups
@@ -228,6 +228,8 @@ The SDK names each Generator group `<generator definition name>-<parameters hash
 ## Objects a run deletes
 
 A Generator run keeps the objects it saves and deletes the objects it no longer saves. When `generate()` finishes, the SDK compares the members of the run's Generator group, which are the objects that earlier runs with the same parameters saved, with the objects the current run saved. It deletes every earlier member that the current run did not save, then writes the group with the objects the current run saved. This happens on every run, whether Infrahub starts it or you start it with `infrahubctl generator`. It also happens on a run that saves no objects: that run deletes every object that earlier runs with the same parameters saved.
+
+When the definition has no `parameters`, the runs for all its targets use the same Generator group, as described in [Standard groups vs. Generator groups](#standard-groups-vs-generator-groups). A run for one target then deletes the objects that a run for another target saved and the current run did not save.
 
 :::info Changed in Infrahub 1.12
 
