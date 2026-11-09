@@ -14,30 +14,18 @@ from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
-<<<<<<< HEAD
     LOCK_ACQUIRE_TIME_METRICS,
     LOCK_RESERVE_TIME_METRICS,
-||||||| 7f692f80d
-=======
     InfrahubLock,
->>>>>>> origin/stable
     InfrahubLockRegistry,
-<<<<<<< HEAD
+    InfrahubMultiLock,
     get_lock_cache_key,
     get_requested_at_from_lock_token,
-||||||| 7f692f80d
-=======
-    InfrahubMultiLock,
->>>>>>> origin/stable
     get_worker_id_from_lock_token,
     initialize_lock,
 )
-<<<<<<< HEAD
-from tests.helpers.metrics import bucket_bounds
-||||||| 7f692f80d
-=======
 from tests.helpers.log import find_logged_events
->>>>>>> origin/stable
+from tests.helpers.metrics import bucket_bounds
 
 
 @dataclass

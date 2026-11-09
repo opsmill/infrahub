@@ -87,12 +87,8 @@ from tests.helpers.constants import (
 )
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
-<<<<<<< HEAD
 from tests.helpers.git import clone_repository
-||||||| 7f692f80d
-=======
 from tests.helpers.paused_branch_list import PausedBranchList
->>>>>>> origin/stable
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.schema import SHARED_NUMBER_TICKET, TICKET, load_schema
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
