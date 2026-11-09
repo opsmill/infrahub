@@ -22,6 +22,7 @@ When adding a new migration:
 - Bump `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py` to match the new migration number
 - Set the migration's `minimum_version` to the previous `GRAPH_VERSION`
 - Run `uv run pytest backend/tests/unit/core/graph/test_graph_version.py` to verify consistency between `GRAPH_VERSION` and the migrations
+- Batch any migration that deletes or rewrites an unbounded number of nodes, and collect failures per item instead of aborting on the first one — see [Creating Migrations, Step 3](../../guides/backend/creating-migrations.md#step-3-batching-large-datasets)
 
 ### How will this feature maintain graph integrity?
 

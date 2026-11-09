@@ -101,8 +101,22 @@ class InfrahubMultiLock:
         await self.release()
 
     async def acquire(self) -> None:
-        for lock in self.locks:
-            await self.registry.get(name=lock, metrics=self.metrics).acquire()
+        acquired: list[InfrahubLock] = []
+        try:
+            for lock_name in self.locks:
+                lock = self.registry.get(name=lock_name, metrics=self.metrics)
+                await lock.acquire()
+                acquired.append(lock)
+        except BaseException:
+            # The context exit never runs when entering fails, so a partial acquisition is undone here.
+            for lock in reversed(acquired):
+                try:
+                    await lock.release()
+                except (RedisError, RuntimeError):
+                    # The remaining locks still have to be released, and the caller has to receive the error that
+                    # stopped the acquisition rather than this one.
+                    log.exception("Could not release a lock after a multi-lock failed to acquire", lock=lock.name)
+            raise
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
@@ -376,8 +390,10 @@ class InfrahubLockRegistry:
     ) -> None:
         self.service = service
         self.connection_url: str | None = None
+        self.max_connections: int | None = None
         if not local_only:
             self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
+            self.max_connections = config.SETTINGS.cache.max_connections
             self.connection = build_redis_connection(config.SETTINGS.cache)
         else:
             self.connection = None
@@ -426,10 +442,23 @@ class InfrahubLockRegistry:
         await self.get(name=LOCAL_SCHEMA_LOCK).event.wait()
 
     def global_schema_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
+        """Return the lock for a schema update.
+
+        The global lock is taken before this process's schema lock, so an update queued behind another worker does
+        not hold up branch creation or registry refreshes in this process, and a holder of a global lock can take the
+        local lock without deadlock. Once it holds the global lock, the update waits for a registry refresh already
+        running in this process.
+        """
+        return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
+        """Return the lock for a whole-graph change such as a merge or a rebase.
+
+        This process's schema lock is not part of it, so branch creation and registry refreshes in this process go
+        ahead during the graph change. A holder that changes this process's schema registry takes the local lock after
+        the global ones, and waits there for a registry refresh already running in this process.
+        """
+        return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
 def _init_lock_ttl_seconds() -> int:
@@ -445,6 +474,7 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
         and registry.service is service
         and registry.connection_url is not None
         and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)
+        and registry.max_connections == config.SETTINGS.cache.max_connections
     ):
         return
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
