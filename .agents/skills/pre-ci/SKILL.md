@@ -123,8 +123,8 @@ uv run invoke docs.format
 **2B. Python** — *if backend or python changed*
 
 1. `uv run invoke main.lint`
-2. `uv run ruff check . --exclude python_sdk`
-3. `uv run ruff format --check --diff --exclude python_sdk .`
+2. `uv run ruff check . --exclude python_sdk,.specify`
+3. `uv run ruff format --check --diff --exclude python_sdk,.specify .`
 4. `uv run ty check .`
 5. `uv lock --check` — root project (job `infrahub-uv-check`). On failure run `uv lock` and
    commit the updated lockfile.

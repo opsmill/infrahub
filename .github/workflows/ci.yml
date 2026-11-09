@@ -329,9 +329,9 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Linting: ruff check"
-        run: "uv run ruff check . --exclude python_sdk"
+        run: "uv run ruff check . --exclude python_sdk,.specify"
       - name: "Linting: ruff format"
-        run: "uv run ruff format --check --diff --exclude python_sdk ."
+        run: "uv run ruff format --check --diff --exclude python_sdk,.specify ."
       - name: "Linting: ty check"
         run: "uv run ty check ."
       - name: "Linting: mypy"
