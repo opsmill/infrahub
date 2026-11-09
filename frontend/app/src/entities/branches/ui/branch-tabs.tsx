@@ -2,7 +2,7 @@ import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 
 export function BranchTabs() {
   const { branchName } = useRequiredParams("branchName");

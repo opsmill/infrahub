@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetNumberPoolsParams,
   getNumberPools,
-} from "@/entities/resource-manager/domain/get-number-pools";
+} from "@/entities/resource-manager/domain/use-cases/get-number-pools";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 
 export function getNumberPoolsQueryOptions(params: GetNumberPoolsParams) {

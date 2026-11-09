@@ -1,10 +1,10 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ActionsHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/actions-header-cell";
 import { RelationshipActionsCell } from "@/entities/nodes/relationships/ui/relationship-table/relationship-actions-cell";
-import type { NodeObject } from "@/entities/nodes/types";
-import { PERMISSION_DENY_ALL } from "@/entities/permission/constants";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import { PERMISSION_DENY_ALL } from "@/entities/permission/domain/model/permission";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

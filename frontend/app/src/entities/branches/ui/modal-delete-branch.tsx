@@ -5,11 +5,11 @@ import { Heading } from "react-aria-components";
 
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { REPOSITORY_KIND } from "@/shared/config/constants";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { classNames } from "@/shared/utils/common";
 
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
 export const DELETE_BRANCH_SCOPE = {
   LOCAL: "local",
@@ -76,10 +76,10 @@ export function ModalDeleteBranch({
 
   if (!showScopeChoice && !(hasSyncedBranches && isLoadingRepoCount)) {
     return (
-      <ModalDelete
+      <ModalDanger
         title="Delete"
         description={description}
-        onDelete={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
+        onConfirm={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
         isOpen={isOpen}
         onOpenChange={handleOpenChange}
         isLoading={isLoading}
@@ -92,7 +92,6 @@ export function ModalDeleteBranch({
       isDismissable={!isLoading}
       isOpen={isOpen}
       onOpenChange={handleOpenChange}
-      className="w-full max-w-lg p-0"
       data-testid="modal-delete"
     >
       <Col className="gap-4 p-3">

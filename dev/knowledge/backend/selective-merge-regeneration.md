@@ -1,0 +1,111 @@
+# Selective Post-Merge Regeneration
+
+> Part of: `dev/knowledge/backend/` | Related: [merge-recompute.md](merge-recompute.md), [code-generation.md](code-generation.md), [events.md](events.md)
+
+When a branch merges, the follow-up re-runs generators and regenerates artifacts. The blanket behavior ran every Generator and regenerated every artifact for every member regardless of what the merge changed, which on a real dataset spawned thousands of tasks. This path narrows that work to the definitions and members the merge actually affected. The guiding rule is that over-execution is acceptable but under-execution is not: whenever the affected set cannot be determined with confidence, the path regenerates everything for that merge.
+
+This covers generator definitions and artifact definitions. Jinja2 computed attributes, display labels, and human-friendly ids take the separate coalesced path in [merge-recompute.md](merge-recompute.md); Python-transform computed attributes and profile refresh are not part of either.
+
+The behavior is gated by `selective_execution_after_merge` (env `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`), enabled by default. Disabling it restores the blanket path exactly.
+
+## The flow
+
+```text
+merge (BranchMergeOrchestrator.merge)
+  -> serialize the in-memory enriched branch_diff -> list[NodeDiff]  (before the diff is frozen)
+  -> after the MERGED transition + write-block lift: cache the summary under the merge key
+  -> run_follow_ups threads merge_diff_cache_key to post_process_branch_merge
+       -> PostMergeRegenerationDispatcher.dispatch(target_branch, merge_diff_cache_key)
+            -> flag off / no key / summary unavailable -> full regeneration (blanket triggers)
+            -> RegenerationSelector.build_plan(diff_summary, target_branch)  -> generator runs + artifact generates
+            -> _dispatch_plan(plan)
+```
+
+Every uncertain signal short-circuits to `submit_full_regeneration` (the two `TRIGGER_*` workflows), which is the byte-for-byte blanket behavior. The dispatcher builds nothing that can leave an affected definition unselected without falling back.
+
+## Selection
+
+`RegenerationSelector` (`selective_regen/orchestrator.py`, `MergeSelectiveRegeneration`) turns a `list[NodeDiff]` summary into a plan of generator runs and artifact generations. It loads the generator and artifact definitions on the **target (destination) branch**, then runs each through a definition selector.
+
+The selectors live in `selective_regen/definition_selector/`. The shared loop in `base.py` applies, per definition:
+
+- The **gate** (`gate.py`): the definition is selected when the diff changed its query, the definition node itself (including its `fingerprint` element), a data kind its query reads, or its target group membership.
+  The kinds a query reads come from its text, analyzed against the branch's current schema (`InfrahubGraphQLQueryAnalyzer`), not from the `models` attribute stored on the `CoreGraphQLQuery`: that attribute is computed only when the query text is saved, so it misses what a later analyzer or schema change makes the query read. The proposed change checks select their definitions the same way. The selector analyzes each definition's query once and hands the report to both the gate and the target selection below.
+- The **member reconciliation** (`impacted.py`, `core/regeneration/members.py`): live group members are fetched on the target branch, impacted subscriber ids are mapped to member ids, new members without a subscriber are force-rendered, and the result is emitted as a member-id filter.
+  - Narrowing to specific subscribers requires the query to target unique nodes (`QueryImpactClassifier`, `core/regeneration/impact_classifier.py`). A change on a root kind maps straight to its members. A change on a kind read through a relationship is mapped back to the owning members by walking the relationship chains that reach it: the query's read surface reconstructs those chains (`relationship_reached_paths_by_kind` / `ReachedPathResolver`, `graphql/analyzer.py`), and each hop is resolved to the owners referencing the changed nodes until the chain ends at the root members (`ReachedMemberResolver`, `core/regeneration/impact.py`). Every hop returns a superset of the truly-related nodes, so the resolved member set is a superset — over-execution, never under.
+  - For uniquely-targeted queries without an unscopable derived read, a relationship-reached change widens to every member when its chain cannot be pinned: a hop whose field is not a relationship on its owner. An inline or named fragment restricts the type of the node it sits on without reaching another node, so the chain steps over it, and a fragment on a generic stands for the generic's implementations. When a kind is read **both** at a root and through a relationship, a change to it cannot be traced to one of the two reads, so the kind stays in `traversed_kinds` and its chains cover both reads: an empty chain maps a changed node to itself, besides the relationship chains that walk it back to the members reading it.
+  - A read of a `display_label` or `human_friendly_id` is imprecise: the value can be composed from a peer's attribute the read set never names, so a change to that peer moves the value without touching any kind the query reads. Each such read's declared paths are followed to the kind that owns the backing attribute (a read on a generic follows the definition each implementation carries, inherited or its own, since no node is an instance of the generic itself), and the relationship chain from that peer back to the reading member is reported (`DerivedFieldDependencyResolver` / `DerivedPathResolver`, `core/regeneration/derived_dependencies.py` / `core/schema/derived_path.py`). `QueryClassifierBuilder` (`classifier_builder.py`) folds each resolved peer into the classifier as a traversed kind carrying that chain, so a peer change narrows like any relationship-reached change; when the reading kind is itself relationship-reached, the peer chain is extended through that kind's own chains to the root. A peer the query also reads at a root keeps an empty chain besides the derived one. A cross-kind derived read that cannot be resolved to a peer chain — no declared path, or an unresolvable segment — sets `depends_on_everything`, and any real change on the query branch then widens; a path scoped to the reading kind's own attributes is already covered by that kind's read set and does not widen.
+  - A field the query reads off a generic, such as inside a fragment on it, counts as read off each implementation (`QueryClassifierBuilder`): a diff reports a node under its concrete kind, so a read keyed on the generic alone never matches a change.
+  - A field the query filters on counts as a read field (`filtered_fields_by_kind`, `graphql/analyzer.py`, folded in by `QueryClassifierBuilder`): an argument such as `owner__name__value` selects on the `owner` relationship, and a change to it moves which objects answer the query even though the query never reads it back. `any__value` matches every attribute of the kind, `display_label__value` selects on `display_label` and `hfid` on `human_friendly_id`, so the last two are handled like reads of those derived fields. Arguments that select on no field (`ids`, pagination) are left out.
+  - A relationship read with constant filters, such as `prefixes(role__value: "aggregate")`, only reads the peers that pass them. For each relationship read, the analyzer records the filters the relationship resolver would pass to its peer query, built from the read's constant arguments by the same function the resolver uses (`build_peer_filters`, `graphql/resolvers/peer_filters.py`; `_peer_filters`, `graphql/analyzer.py`), so an argument the resolver ignores, such as a false, zero or empty value or a pagination argument, is ignored here too. An argument is left out when the value the resolver receives is not in the query text: it holds a variable, or an enum name, which GraphQL turns into the enum's value before the resolver runs (a text value on an enum attribute, the default when GraphQL enums are disabled, is recorded). A filter on `display_label` or `hfid` is left out as well, since its value can change with other nodes. A query that also selects peers through a filter on a field of a related node (`owner__name__value`) or a hierarchy read (`descendants`, `ancestors`, `include_descendants`), records no filter at all. Leaving a filter out can only select more targets, never fewer. A change is then left out when the peer it concerns fails those filters both before and after it, which `FilteredPeerReads` (`core/regeneration/filtered_peers.py`) decides by running the resolver's peer query, `NodeManager.query_peers`, on the current data (`RelationshipPeerQuery`, `core/regeneration/peer_query.py`): a peer whose field named by a filter changed, or a removed peer, may have entered or left the filters, so the read is assumed to return it without running the query; any other peer has the same filtered values before and after the change. Two places apply it, because a diff reports a relationship change on both sides. Each hop carries the filters of the relationship read it stands for, and `ReachedMemberResolver` keeps, among the owners currently related to the changed peers, those whose read returns one of them. On the owner side, the diff names the changed relationship but not the peer, so `FilteredRelationshipExclusions` looks for the peers in the same diff whose side of the relationship changed, and lists the owner's relationship change as excluded when every read of it is filtered and the peer query returns none of those peers from their current owners; the classifier then leaves the excluded changes out, and the diff itself is not modified; an unfiltered read, no peer found in the diff, a peer that is currently related to no owner, or an added or removed owner keeps the change.
+  - Only entries marked `unchanged` are skipped, at the node and the element level: a diff carries nodes purely as hierarchical context, and hangs an unchanged parent relationship off nodes that did change. A `removed` node stays selected — whatever read it is now stale, so dropping it would under-execute.
+  - The outcome is a single `TargetSelection` whose `ids` are always complete; `widening` records only why narrowing was abandoned (target uniqueness not guaranteed, a change on a kind reached through a relationship, or an unscopable `human_friendly_id`/`display_label` read), for the diagnostic line. The caller supplies the set to fall back to, so an empty `ids` unambiguously means *nothing to process* and can never stand for *everything*.
+- The **untrusted-closure fallback** (`fallbacks.py`): a definition with a null or incomplete dependency closure is selected for all its members rather than narrowed. A repository holding any definition with no computed fingerprint is escalated so every definition of that repository regenerates (`repositories_forcing_full_regeneration`).
+
+The predicates and member helpers in `core/regeneration/` are shared with the proposed-change pipeline; the merge path passes a resolved summary and an explicit query branch so both callers run one implementation.
+
+### Narrowed passes must not draw conclusions from absence
+
+Artifact generation also deletes artifacts whose target has left the target group. That conclusion is drawn from a member's *absence*, so it only holds for a pass that examined every member. `RequestArtifactDefinitionGenerate.evaluates_every_member` (`git/models.py`) is the gate: it is true only when neither filter is set. Reading `limit` alone would call a `members`-scoped pass complete, because such a pass leaves `limit` empty — and the cleanup would then delete artifacts it never re-evaluated.
+
+The two filters are a conjunction and key on different things: `members` on the member node id, so a member with no artifact yet is still selected; `limit` on the existing artifact id, so it can only narrow to members that already have one. No caller sets both, and consolidation clears either filter as soon as one side of a merge left it empty.
+
+The dependency closure and `fingerprint` are computed at repository import. The closure is trusted (`dependencies_complete = true`) or not; see [code-generation.md](code-generation.md) and the [proposed changes overview](../../../docs/docs/proposed-changes/overview.mdx) for how a closure is built (Python: the entry file alone, since imports are not analyzed; Jinja2: the static include/import/extends graph) and how `watch.files` restores a trusted closure. Note that `PythonClosure` reads nothing off disk and never reports `complete = false` itself, so a correctly configured Python definition lands on `complete = true` and the commit-id fold in the fingerprint is its only safety net. `complete = false` is reachable for Python only through the aggregator's failure isolation, from an unusable `file_path` or a `watch.files` entry git cannot enumerate (a pathspec escaping the repository raises `GitCommandError`). Both are misconfiguration, so the untrusted-closure fallback does not fire for a Python definition in normal operation. This asymmetry is the reason the user-facing docs describe the undeclared-`watch` case as a fallback without attributing it to `dependencies_complete`.
+
+## The generator-to-artifact cascade
+
+Generators dispatched by the follow-up write their output after the merge diff was captured, so those writes are absent from that diff. On a merge that runs at least one generator, `_dispatch_plan` (`regeneration_dispatcher.py`):
+
+1. Awaits each generator run so its writes have landed, isolating failures per generator (one failure does not abort the others or discard the narrowing already computed).
+2. Captures the nodes those generators wrote, scoped to the members each generator tracks, through `GeneratorTrackingGroupDiffCapturer` (`generator_diff_capturer.py`). The capturer calculates the target branch's diff over the window the generators ran in for the nodes in each generator's per-member tracking group only, in memory and never stored, which leaves out concurrent writes to the branch.
+3. Selects only the artifacts that read the captured output (`RegenerationSelector.select_artifacts`), and dispatches those alongside the merge-diff artifacts. Requests selected by both are consolidated into one request per artifact definition (member and limit filters unioned; an empty filter, meaning all members, subsumes a specific one).
+
+The capture keeps every change in the window when any generator's tracked set is unresolved or empty, and every artifact is regenerated when the output cannot be captured. A generator run failure regenerates every artifact without re-running the generators (which would fail the same way). The merge-diff artifacts are dispatched only after the generator-output capture, so the capture never selects on their own writes.
+
+The cascade engages on any merge whose plan selects an after-merge generator, whether the branch merged directly or through a proposed change: the follow-up is not told which.
+
+## Known limitation: content composition
+
+A composite artifact that inlines another artifact's content is **not** refreshed when a merge changes the upstream artifact. The composite keeps the stale inlined section until something else regenerates it.
+
+The selection reads the merge diff and the generators' tracked output; neither carries the fact that one artifact's rendered content is embedded in another, so the composite is never selected. Blanket regeneration did refresh it, which makes this a behaviour change for content composition users now that `selective_execution_after_merge` defaults to on. Setting the flag to `false` restores the refresh along with the rest of the blanket path.
+
+Confirmed live on the demo stack. See [performance-scenarios.md](../../specs/archive/ifc-2704-incremental-merge-regen/performance-scenarios.md) for the full scenario matrix, and [content composition](../../../docs/docs/artifacts/content-composition.mdx) for the user-facing feature.
+
+## Fallback reasons
+
+| Reason | Trigger |
+|--------|---------|
+| `FEATURE_DISABLED` | `selective_execution_after_merge` is off |
+| `NO_SUMMARY_CAPTURED` | no merge-diff cache key threaded (capture failed or rolled back) |
+| `SUMMARY_UNAVAILABLE` | the cached summary is missing or unreadable |
+| `SELECTION_FAILED` | building or dispatching the plan raised |
+| `MISSING_FINGERPRINT` | a repository has a definition with no computed fingerprint (whole-repository escalation) |
+| `DEPENDENCIES_NULL` / `DEPENDENCIES_INCOMPLETE` | a definition's closure is untrusted (per-definition widening) |
+
+A per-merge line records the path taken (selective, with generator/artifact counts and whether the cascade engaged, or the named fallback reason) at debug level.
+
+## Key Files
+
+| File | What |
+|------|------|
+| `core/merge/orchestrator.py` | Serialize the enriched diff and cache it after the point of no return |
+| `core/diff/summary_serializer.py` | `DiffSummarySerializer` — the `EnrichedDiffRoot -> list[NodeDiff]` converter |
+| `core/diff/summary_cache.py` | `DiffSummaryCache` — the merge-scoped cache |
+| `core/merge/regeneration_dispatcher.py` | `PostMergeRegenerationDispatcher`, the cascade, `submit_full_regeneration`, `FullRegenerationReason` |
+| `core/merge/selective_regen/orchestrator.py` | `RegenerationSelector` / `MergeSelectiveRegeneration`, `build_merge_selective_regeneration` |
+| `core/merge/selective_regen/definition_selector/` | Shared select loop (`base.py`) and the artifact / generator selectors |
+| `core/merge/selective_regen/gate.py`, `impacted.py`, `fallbacks.py` | Definition gate, member impact, untrusted-closure widening |
+| `core/merge/selective_regen/generator_diff_capturer.py` | `GeneratorTrackingGroupDiffCapturer` (group-scoped output capture) |
+| `core/regeneration/` | Predicates, member mapping, definition models shared with the proposed-change pipeline |
+| `core/regeneration/derived_dependencies.py`, `classifier_builder.py`, `core/schema/derived_path.py` | Resolve a `display_label` / `human_friendly_id` read's backing peers and fold them into the classifier as traversed kinds |
+| `graphql/analyzer.py` | `ReachedPathResolver` / `relationship_reached_paths_by_kind` — reconstructs the relationship chains reaching each related kind |
+| `core/branch/tasks.py` | `_build_post_merge_regeneration_dispatcher`, `post_process_branch_merge` wiring |
+| `config.py` | `selective_execution_after_merge` |
+
+## See Also
+
+- [Coalesced Recompute on Merge and Rebase](merge-recompute.md) - the sibling merge-followup path for computed attributes, display labels, and human-friendly ids
+- [Code Generation](code-generation.md) - fingerprints and dependency closures computed at repository import
+- [Events System](events.md) - node mutation events consumed by the non-coalesced regeneration paths
+- Feature spec: `dev/specs/archive/ifc-2704-incremental-merge-regen/`

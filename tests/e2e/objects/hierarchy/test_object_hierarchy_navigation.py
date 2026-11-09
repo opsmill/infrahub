@@ -5,7 +5,8 @@ without redirecting, navigating via the tree without re-expanding, and keeping
 the tree state stable when navigating from the right panel. Relies on the demo
 hierarchy (North America, United States of America, Canada) on a throwaway
 branch cut from main, hence the data_sites dependency (the asserted USA
-"Children5" are the five sites).
+"Site5" are the five sites; the children relationship surfaces the peer kind
+label "Site" instead of the generic "Children").
 """
 
 from __future__ import annotations
@@ -61,7 +62,7 @@ class TestObjectHierarchyNavigation:
         # navigate using tree should not expand tree
         await object_hierarchy_tree.get_by_text("United States of America").click()
         await expect(admin_page.get_by_text("NameUnited States of America")).to_be_visible()
-        await expect(admin_page.get_by_text("Children5")).to_be_visible()
+        await expect(admin_page.get_by_text("Site5")).to_be_visible()
         await expect(object_hierarchy_tree.get_by_role("row", name="United States of America")).to_contain_class(
             "bg-neutral-100"
         )

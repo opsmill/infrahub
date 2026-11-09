@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { SearchInput, type SearchInputProps } from "@/shared/components/inputs/search-input";
-import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import useFilters from "@/shared/hooks/useFilters";
-import { useSearch } from "@/shared/hooks/useSearch";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import { SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { useSearch } from "@/entities/nodes/filters/ui/hooks/use-search";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
   schema?: ModelSchema;
@@ -25,10 +25,14 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   // Update URL when debounced value changes
   useEffect(() => {
-    if (debouncedInputValue === search) return;
+    // Skips a value replaced by a URL change during the delay (ex: quick back then forward).
+    if (debouncedInputValue !== inputValue) return;
 
-    if (debouncedInputValue) {
-      setSearch(debouncedInputValue);
+    const nextSearch = debouncedInputValue.trim();
+    if (nextSearch === search) return;
+
+    if (nextSearch) {
+      setSearch(nextSearch);
     } else {
       removeSearchFilter();
     }
@@ -37,7 +41,8 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
   // Sync input when URL changes (ex: browser back/forward)
   if (search !== prevSearch && inputValue === debouncedInputValue) {
     setPrevSearch(search);
-    setInputValue(search);
+    // Keeps a space the user just typed. Otherwise, search would remove it because it's trimmed.
+    if (inputValue.trim() !== search) setInputValue(search);
   }
   return (
     <SearchInput

@@ -16,6 +16,8 @@ from infrahub_sdk.testing.schemas.car_person import (
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_b
+
 
 class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
     @pytest.fixture(scope="class")

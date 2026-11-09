@@ -4,7 +4,8 @@ import React from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { pluralize } from "@/shared/utils/string";
 
-import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type { UpdateObjectParams } from "@/entities/nodes/object/domain/use-cases/update-object";
 import {
   GroupCard,
   GroupPanelBody,
@@ -13,7 +14,6 @@ import {
 import { ProcessingMutateObject } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-mutate-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { UPDATE_OBJECT_MUTATION_KEY } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeCore } from "@/entities/nodes/types";
 
 interface ProcessingBulkEditObjectsProps {
   selectedRows: Array<NodeCore>;

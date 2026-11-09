@@ -10,6 +10,7 @@ from infrahub.api.internal import get_config
 from infrahub.config import LDAPSettings, Settings
 from infrahub.telemetry.constants import InfrahubType
 from infrahub.workers.dependencies import build_installation_type
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -31,9 +32,8 @@ def enterprise_installation_type() -> Iterator[None]:
     def _ent() -> str:
         return InfrahubType.ENTERPRISE.value
 
-    dependency_provider.override(build_installation_type, _ent)
-    yield
-    dependency_provider.override(build_installation_type, build_installation_type)
+    with override_dependency(build_installation_type, _ent, dependency_provider=dependency_provider):
+        yield
 
 
 def _set_ldap(ldap_settings: LDAPSettings) -> None:

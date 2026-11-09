@@ -5,7 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import UniquenessViolationError
 
 from .interface import NodeConstraintInterface
 
@@ -48,6 +48,6 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
             )
 
             if any(n for n in nodes if n.get_id() != node.id):
-                raise ValidationError(
+                raise UniquenessViolationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                 )

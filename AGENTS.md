@@ -4,27 +4,29 @@ Infrahub is a graph-based infrastructure data management platform by OpsMill. It
 
 This file is a router: it carries repo-wide facts and points to the per-area AGENTS.md and `dev/` docs for depth.
 
-Style: be direct and substantive. No filler, preamble, or pleasantries. Challenge flawed approaches and ask before guessing intent.
+Style: be direct and substantive. Challenge flawed approaches and ask before guessing intent.
 
 ## Tech Stack
 
-- **Backend:** Python 3.13, FastAPI 0.131.0, Neo4j 2025.10 (driver 6.0), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
+Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/app/package.json` (frontend).
+
+- **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
+- **Frontend:** TypeScript 5, React 19, Vite 8, Tailwind CSS 4
+- **Testing:** pytest 9, Vitest 5, Playwright
+- **Linting:** ruff, mypy 2, Biome 2
 - **Package Managers:** uv (Python), pnpm (Frontend)
-- **Task Runner:** Invoke 2.2.1
+- **Task Runner:** Invoke 2
 
 ## File Structure
 
 - `backend/` – Python backend (FastAPI, GraphQL, core logic) - see [backend/AGENTS.md](backend/AGENTS.md)
 - `frontend/app/` – React frontend - see [frontend/app/AGENTS.md](frontend/app/AGENTS.md)
-- `docs/` – Docusaurus documentation - see [docs/AGENTS.md](docs/AGENTS.md)
+- `docs/` – External customers documentation by Docusaurus, deployed at https://docs.infrahub.app/ - see [docs/AGENTS.md](docs/AGENTS.md)
+- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 - `python_sdk/` – Python SDK (Git submodule)
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
 - `changelog/` – Towncrier changelog fragments
-- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
 ## Commands
 
@@ -41,9 +43,12 @@ cd frontend/app && pnpm install       # Install frontend dependencies
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
 cd frontend/app && pnpm test          # Frontend unit tests
-cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
+
+Component tests (`backend/tests/component/`) start their backing services via testcontainers, so
+they need a running Docker daemon (set `INFRAHUB_USE_TEST_CONTAINERS=false` to reuse an
+already-running database instead).
 
 #### Debugging e2e tests with `--pdb`
 
@@ -80,17 +85,22 @@ unbuffered through the pipe). Inspect with docker/curl from a separate shell,
 then kill the process once done — pdb cannot receive commands over the dummy
 stdin. Match the node id, not the literal shell line (a bare
 `pkill -f <pattern>` kills your own shell if the pattern appears in its
-command line). Killing pytest skips the fixture teardown, so sweep the
-leftover stack afterwards: `docker compose -p $PROJECT down -v
---remove-orphans`.
+command line). Killing pytest skips the fixture teardown. Ryuk, the
+testcontainers cleanup container, then removes the stack once every client has
+disconnected from it and its reconnection timeout (10 seconds by default) has
+passed. Any other client connected to Ryuk's published port delays the removal
+until it disconnects, and Ryuk stores each line that client sends as a filter;
+each filter Docker rejects adds about 30 seconds of retries. So when
+`docker ps --filter name=$PROJECT` still lists the stack, remove it with
+`docker compose -p $PROJECT down -v --remove-orphans`.
 
 See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
 ### Linting & Formatting
 
 ```bash
-uv run invoke format                  # Format all Python code
-uv run invoke lint                    # Lint all Python code
+uv run invoke format                  # ruff format + fix on all Python code except python_sdk (same scope as CI)
+uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk (same scope as CI); mypy on backend
 cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
@@ -103,12 +113,37 @@ cd frontend/app && pnpm build         # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
+## Submodules
+
+- `python_sdk/` → [opsmill/infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python)
+- `frontend/packages/schema-visualizer/` → [opsmill/infrahub-schema-visualizer](https://github.com/opsmill/infrahub-schema-visualizer)
+
+The `python_sdk` submodule tracks the SDK branch **named after** the current
+Infrahub branch, not the SDK's own same-named branch:
+
+- Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `stable` → SDK `stable`
+
+The SDK repo also has its own `develop` branch. It is **not** the counterpart of
+Infrahub `develop` — do not use it to update the submodule. When updating
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+
+You can modify code inside a submodule, but the changes live in a separate
+repository. Before opening a PR on this repository, push the submodule commit
+upstream and open a separate PR on the submodule repo first. Only once that is
+merged (or the commit is otherwise available upstream) should the submodule
+pointer bump land here — a pointer to an unpushed commit breaks every other
+checkout.
+
 ## Coding Standards
 
-- Backend: `dev/guidelines/backend/python.md`
+- Constants and literals: `dev/guidelines/constants.md` — avoid magic numbers; load before writing or reviewing code that introduces or uses domain limits, defaults, thresholds, or other policy values; create named constants and reuse existing owners
+- Backend: `dev/guidelines/backend/python.md` (load before writing or reviewing backend Python — imports, data structures), `dev/guidelines/backend/typing.md` (load when a type checker flags your change, or when you narrow a type or review code that does), `dev/guidelines/backend/exceptions.md` (load when writing or reviewing a `try`/`except`), `dev/guidelines/backend/testing.md` (load before writing, changing or reviewing backend tests), `dev/guidelines/backend/component-design.md` (load before adding a backend class or reshaping responsibilities, or reviewing a change that does), `dev/guidelines/backend/prefect-payloads.md` (load when adding, changing or reviewing a `@flow`/`@task`, or passing data across one) and `dev/guidelines/backend/checklist.md` (feature-planning checklist)
 - Frontend: `frontend/app/AGENTS.md`
+- Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
-- Markdown: `dev/guidelines/markdown.md`
+- Markdown formatting: `dev/guidelines/markdown.md`
+- Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one
 
 ## Generated Files (Do Not Edit)
 
@@ -134,12 +169,15 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
+- Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
+- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
-- Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
+- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
 
@@ -166,10 +204,12 @@ CI validates that all generated files are committed — the `validate-generated-
 | What are we building? | `dev/specs/` |
 | How should I write code? | `dev/guidelines/` |
 | What commands are available? | `.agents/commands/` |
+| What skills are available (`/pre-ci`, `creating-changelog-entries`, ...)? | `.agents/skills/` |
 
 ## Component Maps
 
 - Backend: `backend/AGENTS.md`
 - Frontend: `frontend/app/AGENTS.md`
 - Documentation: `docs/AGENTS.md`
+- Grafana dashboards: `development/grafana/AGENTS.md`
 - Python SDK: `python_sdk/AGENTS.md`

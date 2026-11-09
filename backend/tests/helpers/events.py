@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
-from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter
+from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter, EventResourceFilter
 from prefect.events.schemas.events import Event, RelatedResource, Resource
 from pydantic import TypeAdapter
 
@@ -66,8 +66,16 @@ async def query_event(client: PrefectClient, event_id: UUID) -> Event:
     raise Exception(f"No event found for id {event_id}")
 
 
-async def query_events_by_name(client: PrefectClient, event_name: str) -> list[Event]:
-    filters = EventFilter(event=EventNameFilter(name=[event_name]))  # type: ignore[call-arg]
+async def query_events_by_name(client: PrefectClient, event_name: str, resource_id: str | None = None) -> list[Event]:
+    # The Prefect server is shared by every test class running in the same xdist worker, so a
+    # name-only query can match events emitted by other tests; scope by resource where possible.
+    if resource_id:
+        filters = EventFilter(  # type: ignore[call-arg]
+            event=EventNameFilter(name=[event_name]),  # type: ignore[call-arg]
+            resource=EventResourceFilter(id=[resource_id]),  # type: ignore[call-arg]
+        )
+    else:
+        filters = EventFilter(event=EventNameFilter(name=[event_name]))  # type: ignore[call-arg]
     body = {"filter": filters.model_dump(mode="json", exclude_unset=True)}
 
     response = await client._client.post("/events/filter", json=body)

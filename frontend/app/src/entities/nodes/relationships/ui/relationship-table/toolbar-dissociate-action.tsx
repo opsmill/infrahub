@@ -1,8 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import React from "react";
-
-import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import {
   type DissociateRelationshipModalProps,

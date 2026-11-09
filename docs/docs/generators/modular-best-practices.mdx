@@ -4,7 +4,7 @@ title: Best practices for modular Generators
 
 The patterns below come from real-world experience building and operating modular Generator cascades in Infrahub. They address problems that are not obvious until you have built a multi-layer cascade and run it in production.
 
-For foundational concepts, see [modular Generators](./modular). For the chaining mechanism, see [Build chained generators](../academy/tutorials/generators/build-chained-generators).
+For foundational concepts, see [modular Generators](./modular). For the chaining mechanism, see [Build chained generators](../learn/tutorials/generators/build-chained-generators).
 
 ## 1. One Generator, one layer
 
@@ -192,7 +192,7 @@ Generators work best when the schema supports the generation pattern. A few sche
 
 ### Add `GeneratorTarget` to all downstream target nodes
 
-Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [Build chained generators](../academy/tutorials/generators/build-chained-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
+Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [Build chained generators](../learn/tutorials/generators/build-chained-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
 
 ```yaml
 nodes:
@@ -255,7 +255,7 @@ Always test cascades in a branch, not on the default branch. This lets you:
 - Delete the branch and start over if something goes wrong
 - Review the cascade output in a proposed change before merging
 
-The `branch_scope: "other_branches"` trigger configuration (from [Build chained generators](../academy/tutorials/generators/build-chained-generators)) ensures triggers only fire in branches, giving you a controlled testing environment.
+The `branch_scope: "other_branches"` trigger configuration (from [Build chained generators](../learn/tutorials/generators/build-chained-generators)) ensures triggers only fire in branches, giving you a controlled testing environment.
 
 ### Monitor Generator instances after changes
 

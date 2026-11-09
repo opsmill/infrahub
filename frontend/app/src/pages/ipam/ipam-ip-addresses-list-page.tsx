@@ -1,6 +1,6 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
-import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { IpAddressManager } from "@/entities/ipam/ip-addresses/ui/ip-address-manager";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IpNamespaceTabs } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-tabs";

@@ -1,4 +1,4 @@
-import { useBranchDetailsOutlet } from "@/entities/branches/ui/use-branch-details-outlet";
+import { useBranchDetailsOutlet } from "@/entities/branches/ui/routing/use-branch-details-outlet";
 import { NodeDiff } from "@/entities/diff/ui/node-diff";
 
 export function Component() {

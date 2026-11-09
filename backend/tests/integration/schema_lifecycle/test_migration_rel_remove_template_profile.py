@@ -11,7 +11,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import InitializationError
 from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
@@ -386,6 +386,5 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
             tag_profile.get_relationship("persons")
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
         await assert_no_virtual_schema_relationships_in_db(db=db)

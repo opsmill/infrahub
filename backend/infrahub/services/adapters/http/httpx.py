@@ -31,6 +31,23 @@ class HttpxAdapter(InfrahubHTTP):
         self._tls_registry = tls_registry
         self._settings: config.HTTPSettings | None = None
 
+    @staticmethod
+    def _extract_ssl_error(exc: BaseException) -> ssl.SSLError | None:
+        """Return the TLS error buried in a transport exception's cause/context chain, if any.
+
+        A failed handshake reaches this layer wrapped in a transport-level error, with the original
+        ssl.SSLError preserved only in the chained context, so the chain has to be walked to tell a
+        certificate problem apart from a generic connection failure.
+        """
+        seen: set[int] = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            if isinstance(current, ssl.SSLError):
+                return current
+            seen.add(id(current))
+            current = current.__cause__ or current.__context__
+        return None
+
     @property
     def settings(self) -> config.HTTPSettings:
         if self._settings:
@@ -92,15 +109,20 @@ class HttpxAdapter(InfrahubHTTP):
                     timeout=self.settings.timeout,
                     **params,
                 )
-            except ssl.SSLCertVerificationError as exc:
-                log.info(f"TLS verification failed for connection to {url}")
-                raise HTTPServerSSLError(message=f"Unable to validate TLS certificate for connection to {url}") from exc
             except httpx.ReadTimeout as exc:
                 log.info(f"Connection timed out when trying to reach {url}")
                 raise HTTPServerTimeoutError(
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
+                ssl_error = self._extract_ssl_error(exc)
+                if ssl_error is not None:
+                    log.info(f"TLS error for connection to {url}")
+                    if isinstance(ssl_error, ssl.SSLCertVerificationError):
+                        message = f"Unable to validate TLS certificate for connection to {url}"
+                    else:
+                        message = f"TLS error when connecting to {url}"
+                    raise HTTPServerSSLError(message=message) from exc
                 # Catch all error from httpx
                 log.warning(f"Unhandled HTTP error for {url} ({exc})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.initialization import create_branch
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -184,6 +186,39 @@ async def test_graphql_endpoint_generics(
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]) == 2
     assert len(result_per_name["Jane"]["cars"]) == 1
+
+
+async def test_graphql_menu_delete_missing_returns_node_not_found(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A menu mutation targeting a missing id must return NODE_NOT_FOUND, not an HTTP 500."""
+    missing_id = str(UUIDT())
+    mutation = """
+    mutation ($id: String!) {
+        CoreMenuItemDelete(data: { id: $id }) {
+            ok
+        }
+    }
+    """
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post(
+            "/graphql",
+            json={"query": mutation, "variables": {"id": missing_id}},
+            headers=admin_headers,
+        )
+
+    assert response.status_code == 200
+    errors = response.json()["errors"]
+    assert errors[0]["extensions"]["code"] == "NODE_NOT_FOUND"
+    assert errors[0]["extensions"]["http_status"] == 404
+    assert errors[0]["extensions"]["data"]["node_kind"] == "CoreMenuItem"
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

@@ -1,0 +1,61 @@
+---
+title: Analyze your data
+description: Ask an AI assistant questions about live Infrahub data through the MCP server, without writing GraphQL.
+---
+
+Ask questions about your live infrastructure in plain language and get an answer back, without writing a query. Use this to check what depends on a circuit before a maintenance window, find the devices missing a platform, or see where the deployed state has drifted from the design.
+
+You do not have to be the engineer who built the model. Your assistant reads your schema through the [Infrahub MCP server](https://docs.infrahub.app/mcp), so it works out which kinds and relationships to follow from the question you asked.
+
+:::info Prerequisite
+
+Requires the Infrahub MCP server connected to a running instance. See [Set up your AI assistant](../overview/build-with-ai/setup.mdx).
+
+To ask questions and change nothing, a read-only deployment is enough: with `INFRAHUB_MCP_READ_ONLY=true` the write tools are not offered to your assistant, and GraphQL mutations are rejected.
+
+:::
+
+## Querying
+
+Ask single questions — find, list, count:
+
+```text
+List devices without a primary IP address.
+```
+
+```text
+Which prefixes in this pool are unallocated?
+```
+
+Ask relationship questions the same way:
+
+```text
+How are these two devices connected?
+```
+
+Behind those answers, your assistant uses the MCP server's tools directly: `get_nodes` and `search_nodes` for straightforward reads, `query_graphql` for anything relationship-heavy, and `find_paths` and `find_reachable` for graph traversal.
+
+For the same relationship questions answered by hand, see [Analyze dependencies](../graph-traversal/analyze-dependencies) and [Query traversal with GraphQL](../graph-traversal/query-with-graphql).
+
+## Analysis
+
+These six categories cross several domains at once, which is what makes them awkward to express as a single query:
+
+- **Compliance** — "Which devices break our naming standard?"
+- **Service impact** — "Which services depend on this circuit?"
+- **Maintenance windows** — "What is affected if this device goes down Saturday?"
+- **Drift detection** — "Where does the realized state differ from the design?"
+- **Capacity planning** — "Which resource pools are near their limits?"
+- **Inventory gaps** — "Which devices are missing a platform or location?"
+
+## When this is the wrong tool
+
+Each of these answers the question for your data as it is now. Where a rule should hold for every future change, it belongs in a check that runs on every Proposed Change instead — see [Checks & Validation](../checks/overview). Compliance questions are the common case: asking which devices break a naming standard tells you about today, and a check keeps it true.
+
+## Related
+
+- [Analyze dependencies](../graph-traversal/analyze-dependencies) — Dependency and impact analysis by hand
+- [Query traversal with GraphQL](../graph-traversal/query-with-graphql) — Programmatic queries by hand
+- [Checks & Validation](../checks/overview) — Enforce a rule on every Proposed Change instead of asking once
+- [Set up your AI assistant](../overview/build-with-ai/setup.mdx) — Connect the MCP server to your instance
+- [Data Analyzer skill reference](https://docs.infrahub.app/skills/skills-reference/analyzing-data) — Full tool and prompt reference

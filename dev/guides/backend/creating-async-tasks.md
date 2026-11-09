@@ -50,9 +50,9 @@ from infrahub.workers.dependencies import get_database
 
 
 @flow(name="my-workflow", flow_run_name="Process {resource_id}")
-async def my_workflow(resource_id: str, context: InfrahubContext) -> None:
+async def my_workflow(resource_id: str, branch: str, context: InfrahubContext) -> None:
     log = get_run_logger()
-    log.info(f"Starting workflow for {resource_id}")
+    log.info(f"Starting workflow for {resource_id} on branch {branch}")
 
     database = await get_database()
     async with database.start_session() as db:
@@ -69,7 +69,7 @@ Key requirements:
 - Use `flow_run_name` for human-readable run names (see naming guidelines below)
 - Accept `context: InfrahubContext` parameter (injected automatically)
 - Use `get_run_logger()` for logging — the stdlib default logger never surfaces in Prefect's UI/logs
-- Keep the flow body a thin composition root: resolve singletons (`get_database()`, `get_workflow()`, …) at the top of the flow only, build a component with those dependencies injected, and delegate to it. Business logic lives in the component, not the flow function — see `.agents/rules/backend-component-design.md`
+- Keep the flow body a thin composition root: resolve singletons (`get_database()`, `get_workflow()`, …) at the top of the flow only, build a component with those dependencies injected, and delegate to it. Business logic lives in the component, not the flow function — see `dev/guidelines/backend/component-design.md`
 
 **`flow_run_name` guidelines:**
 
@@ -87,6 +87,15 @@ The `flow_run_name` is visible to users in the Infrahub UI. Keep it clear and sh
 # Bad: Redundant context
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} on {branch_id}")
 ```
+
+### Logging inside flows, tasks, and their helpers
+
+- Inside a `@flow` or `@task` body, use Prefect's `get_run_logger()`.
+- In a plain helper called from within a flow (no run context, also called from tests), use
+  `infrahub.log.get_run_logger()` — the `infrahub.tasks` logger.
+
+A bare `logging.getLogger(__name__)` will not surface in Prefect. See the Logging section of
+`dev/knowledge/backend/async-tasks.md` for why.
 
 ### Step 3: Register the WorkflowDefinition
 
@@ -160,6 +169,17 @@ async def my_workflow(branch: str, node_id: str, context: InfrahubContext) -> No
     # ... rest of implementation
 ```
 
+`add_tags()` is enough for tags that only annotate a run for a human reading the task list. A tag
+another system *filters* on must also be passed at submission — see the caution below and Step 6.
+
+**Caution:** `add_tags()` rebuilds the tag list from the tags present at flow start, not from
+what an earlier `add_tags()` call in this same run just set — so if this flow (or a shared helper
+it calls, e.g. a recompute dispatcher) calls `add_tags` more than once, only the last call's own
+additions survive. Any tag another system filters on (the branch tag, for branch-filtered task
+queries) must be passed as a *creation* tag — via `tags=` on `submit_workflow`/`ExecuteWorkflow`,
+or the deployment's static `tags=` — not solely through an in-flow `add_tags()` call. See
+[Tagging System](../../knowledge/backend/async-tasks.md#tagging-system).
+
 ### Step 6: Invoke the Workflow
 
 Trigger the workflow from application code:
@@ -167,11 +187,16 @@ Trigger the workflow from application code:
 ```python
 from infrahub.workers.dependencies import get_workflow
 from infrahub.workflows.catalogue import MY_WORKFLOW
+from infrahub.workflows.constants import WorkflowTag
 
 workflow = await get_workflow()
-await workflow.submit(
+await workflow.submit_workflow(
     workflow=MY_WORKFLOW,
-    parameters={"resource_id": "abc123"},
+    context=context,
+    parameters={"resource_id": "abc123", "branch": branch},
+    # Creation tag: branch-scoped task queries filter on this, and a tag added from
+    # inside the run does not reach that filter.
+    tags=[WorkflowTag.BRANCH.render(identifier=branch)],
 )
 ```
 
@@ -264,7 +289,7 @@ Before submitting your workflow:
 - [ ] Workflow added to `WORKFLOWS` list
 - [ ] Correct `WorkflowType` selected (CORE/USER/INTERNAL)
 - [ ] `DATABASE_CHANGE` tag added if workflow modifies database
-- [ ] Uses `get_run_logger()` for logging
+- [ ] Logs use a Prefect-visible logger (`get_run_logger()` in flows/tasks; `infrahub.log.get_run_logger()` in helpers), never a bare module logger
 - [ ] Flow body is a thin composition root — singletons resolved at the flow entry, logic in a dependency-injected component
 - [ ] Any other code that needs the workflow's name imports its `WorkflowDefinition` from `catalogue.py` instead of re-typing the string
 - [ ] Tests cover workflow execution (using local execution mode)
@@ -276,3 +301,4 @@ Before submitting your workflow:
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Architectural decision
 - [Events System](../../knowledge/backend/events.md) - Event-driven workflow triggers
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
+- [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive

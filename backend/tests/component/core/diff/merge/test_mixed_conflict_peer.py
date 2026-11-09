@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_graph
+from infrahub.database.validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 

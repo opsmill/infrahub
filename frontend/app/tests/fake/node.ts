@@ -1,4 +1,4 @@
-import type { RelationshipNode } from "../../src/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "../../src/entities/nodes/relationships/domain/model/relationships";
 import type {
   NodeAttributeWithMetadata,
   NodeRelationshipOneWithMetadata,

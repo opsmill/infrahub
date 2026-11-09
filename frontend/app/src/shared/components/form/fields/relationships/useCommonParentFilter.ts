@@ -4,8 +4,8 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 // Matches no field, so the useWatch call stays unconditional without subscribing to the whole
 // form when the relationship declares no common_parent.

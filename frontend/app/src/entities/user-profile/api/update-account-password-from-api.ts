@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const UPDATE_ACCOUNT_PASSWORD = graphql(`
   mutation UPDATE_ACCOUNT_PASSWORD($password: String!) {

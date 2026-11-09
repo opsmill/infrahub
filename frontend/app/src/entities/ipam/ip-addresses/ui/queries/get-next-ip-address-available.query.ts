@@ -5,7 +5,7 @@ import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/domain/get-next-ip-address-available";
+import { getNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/domain/use-cases/get-next-ip-address-available";
 
 export interface GetNextIpAddressAvailableQueryOptionsParams extends ContextParams {
   parentPrefixId?: string;

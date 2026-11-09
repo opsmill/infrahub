@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { type RunGeneratorParams, runGenerator } from "@/entities/generators/domain/run-generator";
+import {
+  type RunGeneratorParams,
+  runGenerator,
+} from "@/entities/generators/domain/use-cases/run-generator";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export const useRunGeneratorMutation = () => {

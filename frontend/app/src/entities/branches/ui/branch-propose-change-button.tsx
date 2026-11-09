@@ -5,8 +5,8 @@ import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { QSP } from "@/shared/config/qsp";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 
 type BranchProposeChangeButtonProps = {
   branch: BranchDetail;

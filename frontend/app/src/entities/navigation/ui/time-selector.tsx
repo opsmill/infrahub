@@ -1,13 +1,14 @@
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { format, isPast } from "date-fns";
+import { isPast } from "date-fns";
 import { useAtom } from "jotai";
 import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
 import { QSP } from "@/shared/config/qsp";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 
@@ -16,6 +17,7 @@ import "react-datepicker/dist/react-datepicker.css";
 export const TimeFrameSelector = () => {
   const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
   const [date, setDate] = useAtom(datetimeAtom);
+  const { formatDate } = useFormatDate();
 
   React.useEffect(() => {
     if (date === qspDate) return;
@@ -72,7 +74,7 @@ export const TimeFrameSelector = () => {
 
         <div className="flex flex-col items-center truncate">
           <span className="font-medium">Current view time</span>
-          {date && <span>{format(date, "PP | H:mm")}</span>}
+          {date && <span>{formatDate(date, "datetime")}</span>}
         </div>
 
         <Button

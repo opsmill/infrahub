@@ -12,9 +12,9 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.component.core.diff.get_one_node import get_one_diff_node
 from tests.component.core.test_utils import verify_all_linked_edges_deleted
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 
@@ -357,7 +357,7 @@ async def test_base_delete_with_added_branch_attribute(
     assert before_main_delete < john_rels_to_car[0].updated_at < after_main_delete
 
     # Rollback and re-verify — car stays deleted, no resurrection
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
     rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
     assert rolled_back_car is None
 

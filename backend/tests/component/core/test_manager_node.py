@@ -9,16 +9,19 @@ from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema import DEVICE_SCHEMA
 
 
@@ -226,6 +229,49 @@ async def test_get_one_by_id_or_default_filter(
     assert node2.id == criticality_low.id
 
 
+async def test_get_one_missing_class_kind_reports_str_node_type(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    # Passing a schema/protocol class as ``kind`` must surface the kind name as a string on the
+    # raised error; leaving it as the class object broke error serialization downstream.
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / CoreMenuItem in the database\."
+    ) as exc_info:
+        await NodeManager.get_one(db=db, id=missing_id, kind=CoreMenuItem, raise_on_error=True)
+
+    assert exc_info.value.node_type == "CoreMenuItem"
+    assert isinstance(exc_info.value.node_type, str)
+
+
+async def test_get_one_by_id_or_default_filter_missing_class_kind_reports_str_node_type(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / CoreMenuItem in the database\."
+    ) as exc_info:
+        await NodeManager.get_one_by_id_or_default_filter(db=db, id=missing_id, kind=CoreMenuItem)
+
+    assert exc_info.value.node_type == "CoreMenuItem"
+    assert isinstance(exc_info.value.node_type, str)
+
+
+async def test_get_one_missing_without_kind_reports_str_node_type(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # With no kind supplied, node_type falls back to a plain string, never None.
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / Node in the database\."
+    ) as exc_info:
+        await NodeManager.get_one(db=db, id=missing_id, raise_on_error=True)
+
+    assert exc_info.value.node_type == "Node"
+    assert isinstance(exc_info.value.node_type, str)
+
+
 async def test_get_one_by_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -328,6 +374,30 @@ async def test_iphost_attribute_value_is_normalized_after_save(db: InfrahubDatab
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert reloaded.address.value == "192.0.2.10/32"
+
+
+async def test_ipaddress_attribute_value_is_normalized_after_save(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """An IPAddress attribute exposes its bare normalized value after a save/reload cycle."""
+    schema_root = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="DnsRecord",
+                namespace="Test",
+                attributes=[AttributeSchema(name="address", kind="IPAddress")],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node = await Node.init(db=db, schema="TestDnsRecord", branch=default_branch)
+    await node.new(db=db, address="2001:0DB8::0001")
+    await node.save(db=db)
+
+    assert node.get_attribute("address").value == "2001:db8::1"
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.get_attribute("address").value == "2001:db8::1"
 
 
 async def test_macaddress_attribute_value_is_normalized_after_save(
@@ -759,3 +829,43 @@ async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base
     assert obj2.nbr_seats.value == 4
     assert obj2.color.value == "#444444"
     assert obj2.is_electric.value is True
+
+
+async def test_prefetch_relationships_covers_relationships_without_a_peer(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=person.id)
+    await car.save(db=db)
+
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    fetched = await NodeManager.get_one(
+        db=counting_db, id=person.id, branch=default_branch, prefetch_relationships=True, raise_on_error=True
+    )
+
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+
+    relationship_names = fetched.get_schema().relationship_names
+    assert all(fetched.get_relationship(rel_name).has_fetched_relationships for rel_name in relationship_names)
+
+    peers_per_relationship = {
+        rel_name: [
+            str(rel.peer_id)
+            for rel in await fetched.get_relationship(rel_name).get_relationships(db=counting_db)
+            if rel.peer_id
+        ]
+        for rel_name in relationship_names
+    }
+
+    assert peers_per_relationship == {
+        "cars": [car.id],
+        "cars_driven": [],
+        "member_of_groups": [],
+        "subscriber_of_groups": [],
+        "profiles": [],
+    }
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0

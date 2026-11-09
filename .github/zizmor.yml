@@ -1,0 +1,47 @@
+---
+# zizmor static analysis for GitHub Actions workflows (https://docs.zizmor.sh).
+# Run by the `action-lint` job in .github/workflows/ci.yml; zizmor itself is a
+# `dev` dependency in pyproject.toml, so the version is pinned by uv.lock.
+#
+# Scope: this config enforces ONE rule today -- every `uses:` reference must be
+# pinned to a full commit SHA. A tag is mutable, so whoever owns an action
+# repository can move `v4` onto new code that then runs with whatever secrets
+# the step is handed. Enforcing it here is what stops a tag ref from creeping
+# back in after the repo-wide pinning in #10470.
+#
+# The other audits are disabled rather than removed: each reports pre-existing
+# findings that deserve their own review, so they are listed below with the
+# count measured on 2026-09-08 and are meant to be enabled one at a time in
+# follow-up PRs -- not silently dropped.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # Our own reusable workflows are meant to track a branch: SHA-pinning
+        # opsmill/infrahub-helm would freeze the helm publish pipeline at one
+        # commit, which is not the intent.
+        opsmill/*: any
+        # Everything else -- GitHub-owned actions included -- must be a SHA.
+        "*": hash-pin
+
+  # --- Pre-existing findings; enable one per follow-up PR. Counts: 2026-09-08.
+  template-injection:
+    disable: true      # 67 findings
+  excessive-permissions:
+    disable: true      # 60 findings
+  artipacked:
+    disable: true      # 51 findings
+  cache-poisoning:
+    disable: true      # 29 findings
+  self-repository:
+    disable: true      # 18 findings
+  adhoc-packages:
+    disable: true      # 12 findings
+  secrets-inherit:
+    disable: true      # 9 findings
+  dangerous-triggers:
+    disable: true      # 1 finding
+  overprovisioned-secrets:
+    disable: true      # 1 finding
+  use-trusted-publishing:
+    disable: true      # 1 finding

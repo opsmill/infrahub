@@ -1,8 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Text: "mdi:text",
@@ -21,6 +26,7 @@ export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Bandwidth: "mdi:gauge",
   IPHost: "mdi:ip-network-outline",
   IPNetwork: "mdi:ip-network-outline",
+  IPAddress: "mdi:ip-outline",
   Checkbox: "mdi:checkbox-marked-circle-outline",
   List: "mdi:format-list-bulleted-square",
   JSON: "mdi:code-json",
@@ -34,7 +40,7 @@ interface FieldSchemaIconProps {
 }
 
 export function FieldSchemaIcon({ fieldSchema }: FieldSchemaIconProps) {
-  if ("peer" in fieldSchema) {
+  if (isRelationshipSchema(fieldSchema)) {
     return <RelationshipFieldIcon relationshipSchema={fieldSchema} />;
   }
 

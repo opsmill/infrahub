@@ -1,12 +1,13 @@
 import { useState } from "react";
 
 import type { BranchStatus } from "@/shared/api/graphql/generated/types";
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import {
   FILTER_CONDITION,
   type FilterCondition,

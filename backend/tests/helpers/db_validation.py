@@ -4,7 +4,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.node import Node
 from infrahub.core.query import Query, QueryType
-from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 
 
@@ -103,234 +102,6 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
         assert result.data[0] == "Edges state is correct"
 
 
-async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
-    """Verify that no duplicate paths exist at the database level.
-
-    Raises:
-        ValueError: When duplicate paths are found between two nodes.
-
-    """
-    query = """
-MATCH path = (p)-[e]->(q)
-WITH
-    %(id_func)s(p) AS node_id1,
-    e.branch AS branch,
-    e.from AS from_time,
-    type(e) AS edge_type,
-    %(id_func)s(q) AS node_id2,
-    path
-WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
-WHERE num_paths > 1
-RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
-    """ % {"id_func": db.get_id_function_name()}
-    records = await db.execute_query(query=query)
-    for record in records:
-        node_id1 = record.get("node_id1")
-        branch = record.get("branch")
-        from_time = record.get("from_time")
-        edge_type = record.get("edge_type")
-        node_id2 = record.get("node_id2")
-        num_paths = record.get("num_paths")
-        raise ValueError(
-            f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
-        )
-
-
-async def verify_graph(db: InfrahubDatabase) -> None:
-    """Run all post-merge graph validation checks."""
-    await verify_no_duplicate_paths(db=db)
-    await verify_no_orphaned_active_edges(db=db)
-    await verify_relationship_edge_counts(db=db)
-
-
-async def verify_no_orphaned_active_edges(db: InfrahubDatabase) -> None:
-    """Verify that no active second-level edges exist under deleted first-level edges.
-
-    If a HAS_ATTRIBUTE or IS_RELATED edge is deleted/closed on a branch, then all
-    sub-edges (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED)
-    hanging off the same Attribute/Relationship vertex on the same branch should also
-    be deleted/closed.
-
-    Raises:
-        ValueError: When an active second-level edge is found under a deleted first-level edge.
-
-    """
-    query = """
-// ----------------
-// Find deleted/closed first-level edges (HAS_ATTRIBUTE or IS_RELATED)
-// ----------------
-MATCH (n:Node)-[r1:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-WHERE (r1.status = "deleted" AND r1.to IS NULL)
-   OR (r1.status = "active" AND r1.to IS NOT NULL)
-WITH n, field, r1,
-    CASE WHEN r1.status = "deleted" THEN r1.from ELSE r1.to END AS r1_deleted_at
-// ----------------
-// Exclude cases where another active first-level edge to this field exists on the same branch
-// (e.g. migrated-kind nodes where old vertex HAS_ATTRIBUTE is deleted but new vertex's is active)
-// ----------------
-WHERE NOT EXISTS {
-    MATCH (other:Node)-[active_r1:HAS_ATTRIBUTE|IS_RELATED {branch: r1.branch, status: "active"}]-(field)
-    WHERE active_r1.to IS NULL
-}
-// ----------------
-// Find all second-level peers of this field, then get the latest edge to each
-// visible from the deleted first-level edge's branch
-// ----------------
-WITH n, field, r1, r1_deleted_at
-MATCH (field)-[prop_edge:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
-WHERE peer <> n
-WITH DISTINCT n, field, r1, r1_deleted_at, type(prop_edge) AS prop_edge_type, peer
-// ----------------
-// Get the branched_from time if r1.branch is a user branch
-// ----------------
-OPTIONAL MATCH (r1_br:Branch {name: r1.branch})
-// Use created_at instead of branched_from because branched_from is updated after a merge
-WITH n, field, r1, r1_deleted_at, prop_edge_type, peer, r1_br.created_at AS r1_branch_created_at
-// ----------------
-// Get the latest edge to this peer visible from the first-level edge's branch
-// ----------------
-CALL (field, r1, r1_branch_created_at, prop_edge_type, peer) {
-    MATCH (field)-[r2:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
-    WHERE (
-        r2.branch = r1.branch
-        OR (r1_branch_created_at IS NOT NULL AND r2.branch = $default_branch AND r2.from < r1_branch_created_at)
-    )
-    AND type(r2) = prop_edge_type
-    RETURN r2
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC
-    LIMIT 1
-}
-// ----------------
-// Flag if the latest visible edge is active — it should have been deleted/closed
-// ----------------
-WITH field, r1, r2
-WHERE r2.status = "active" AND r2.to IS NULL
-RETURN DISTINCT
-    field.name AS field_name,
-    r1.branch AS branch,
-    labels(field)[0] AS field_type,
-    type(r2) AS child_type
-    """
-    params = {
-        "default_branch": registry.default_branch,
-    }
-    records = await db.execute_query(query=query, params=params)
-    for record in records:
-        field_name = record.get("field_name")
-        branch = record.get("branch")
-        field_type = record.get("field_type")
-        child_type = record.get("child_type")
-        raise ValueError(
-            f"Orphaned active {child_type} edge on {field_type} '{field_name}' "
-            f"where all parent edges are deleted on branch '{branch}'"
-        )
-
-
-async def verify_relationship_edge_counts(db: InfrahubDatabase) -> None:
-    """Verify that every Relationship vertex has exactly 0 or 2 active IS_RELATED edges per branch.
-
-    A Relationship vertex connects two Node vertices. For any given branch, there should be
-    either 0 active IS_RELATED edges (relationship not active on that branch) or exactly 2
-    (one to each Node). Having 1 or 3+ is always invalid.
-
-    Raises:
-        ValueError: When a Relationship has an invalid number of active IS_RELATED edges on a branch.
-
-    """
-    query = """
-MATCH (rel:Relationship)
-// ----------------
-// Get all distinct branches from any edge connected to this Relationship
-// ----------------
-CALL (rel) {
-    MATCH (rel)-[e]-()
-    RETURN DISTINCT e.branch AS branch
-}
-// ----------------
-// Get created_at for user branches (NULL for default)
-// Use created_at instead of branched_from because branched_from is updated after a merge
-// ----------------
-OPTIONAL MATCH (br:Branch {name: branch})
-WITH rel, branch, br.created_at AS branch_created_at
-// ----------------
-// Find all peer Nodes this Relationship might connect to
-// ----------------
-MATCH (rel)-[:IS_RELATED]-(peer:Node)
-WITH DISTINCT rel, branch, branch_created_at, peer
-// ----------------
-// For each (rel, branch, peer), get the latest IS_RELATED edge visible from this branch
-// ----------------
-CALL (rel, branch, branch_created_at, peer) {
-    MATCH (rel)-[r:IS_RELATED]-(peer)
-    WHERE (r.branch = branch)
-       OR (branch_created_at IS NOT NULL AND r.branch = $default_branch AND r.from < branch_created_at)
-    RETURN r
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-}
-// ----------------
-// Count peers where the latest visible edge is active
-// ----------------
-WITH rel, branch,
-    CASE
-        WHEN r.status = "active"
-        AND (
-            r.to IS NULL
-            OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_created_at)
-        )
-        THEN 1
-        ELSE NULL
-    END AS is_active
-
-WITH rel, branch, count(is_active) AS active_count
-WHERE active_count <> 0 AND active_count <> 2
-RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count
-    """
-    records = await db.execute_query(query=query, params={"default_branch": registry.default_branch})
-    for record in records:
-        rel_name = record.get("rel_name")
-        rel_uuid = record.get("rel_uuid")
-        branch = record.get("branch")
-        active_count = record.get("active_count")
-        raise ValueError(
-            f"Relationship '{rel_name}' ({rel_uuid}) has {active_count} active "
-            f"IS_RELATED edges on branch '{branch}' (expected 0 or 2)"
-        )
-
-
-async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
-    """Validate that no Nodes have duplicated attribute or relationship names."""
-    branch_filter, branch_params = branch.get_query_filter_path()
-
-    query = """
-// -------------
-// get all the active Attributes this branch and count them up
-// -------------
-MATCH (n:Node)-[:HAS_ATTRIBUTE]->(field:Attribute)
-WITH DISTINCT n, field
-CALL (n, field) {
-MATCH (n)-[r:HAS_ATTRIBUTE]->(field)
-WHERE %(branch_filter)s
-RETURN r
-ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-LIMIT 1
-}
-WITH n, field, r
-WHERE r.status = "active" AND r.to IS NULL
-WITH n.uuid AS node_id, field.name AS field_name, count(*) AS num_fields
-WHERE num_fields > 1
-RETURN node_id, field_name, num_fields
-    """ % {"branch_filter": branch_filter}
-    results = await db.execute_query(query=query, params=branch_params)
-    errors = []
-    for result in results:
-        node_id = result.get("node_id")
-        field_name = result.get("field_name")
-        num_fields = result.get("num_fields")
-        errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
-    return errors
-
-
 LATEST_ATTRIBUTE_PATH_STATUS_QUERY = """
 MATCH (node:%(label)s)
 CALL (node) {
@@ -379,3 +150,27 @@ async def assert_attribute_absent(
     query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
     results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
     assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"
+
+
+async def count_branch_edges_at(db: InfrahubDatabase, branch_name: str, at: str) -> int:
+    """Count edges on a branch whose ``from`` timestamp equals ``at`` (edges written exactly then)."""
+    result = await db.execute_query(
+        query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
+        params={"at": at, "branch": branch_name},
+    )
+    return result[0].get("c")
+
+
+async def get_node_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
+    """Return a node vertex's ``updated_at``/``previous_updated_at`` metadata."""
+    result = await db.execute_query(
+        query=(
+            "MATCH (n:Node {uuid: $uuid}) "
+            "RETURN n.updated_at AS updated_at, n.previous_updated_at AS previous_updated_at"
+        ),
+        params={"uuid": node_uuid},
+    )
+    return {
+        "updated_at": result[0].get("updated_at"),
+        "previous_updated_at": result[0].get("previous_updated_at"),
+    }

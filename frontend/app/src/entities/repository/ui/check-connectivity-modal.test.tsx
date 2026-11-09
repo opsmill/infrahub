@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { useCheckConnectivityMutation } from "@/entities/repository/ui/queries/check-connectivity.mutation";
 
@@ -10,10 +10,6 @@ vi.mock("@/entities/repository/ui/queries/check-connectivity.mutation");
 describe("CheckConnectivityModal", () => {
   const mockMutate = vi.fn();
   const mockOnOpenChange = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   test("renders initial state with title and description", async () => {
     // GIVEN

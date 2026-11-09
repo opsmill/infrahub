@@ -1,0 +1,82 @@
+export type PathNode = {
+  id: string;
+  kind: string;
+  label: string;
+  display_label: string;
+  hfid: string[];
+};
+
+export type PathRelationship = {
+  from_rel: string;
+  from_label: string;
+  to_rel: string;
+  to_label: string;
+  kind: string;
+};
+
+export type PathHop = {
+  node: PathNode;
+  relationship: PathRelationship | null;
+};
+
+export type PathResult = {
+  hops: PathHop[];
+  depth: number;
+};
+
+export type PathTraversalResponse = {
+  paths: PathResult[];
+  source: PathNode;
+  destination: PathNode;
+  count: number;
+  /**
+   * Null when the search completed. Otherwise the depth at which it ran out of
+   * budget: the returned paths are complete only for depths below this value,
+   * and deeper paths may exist.
+   */
+  truncated_at_depth: number | null;
+};
+
+export type ReachableNode = {
+  node: PathNode;
+  depth: number;
+  path: PathResult;
+};
+
+export type ReachableNodesResponse = {
+  source: PathNode;
+  dependencies: ReachableNode[];
+  count: number;
+};
+
+type ContextParams = {
+  branchName?: string;
+  atDate?: Date | null;
+};
+
+export type GetPathTraversalParams = ContextParams & {
+  sourceId: string;
+  destinationId: string;
+  maxDepth?: number;
+  maxPaths?: number;
+  kindFilter?: string[];
+  relationshipFilter?: string[];
+  excludedKinds?: string[];
+  shortestPathsOnly?: boolean;
+};
+
+export type GetReachableNodesParams = ContextParams & {
+  sourceId: string;
+  targetKinds: string[];
+  maxDepth?: number;
+  maxResults?: number;
+  maxPaths?: number;
+  shortestPathsOnly?: boolean;
+};
+
+/**
+ * Maximum value for the "Max Depth" control in both path-traversal modes.
+ * Mirrors the backend cap (`MAX_DEPTH` in the graph-traversal planner); the backend
+ * rejects anything above it, so keep the two in sync.
+ */
+export const MAX_TRAVERSAL_DEPTH = 30;

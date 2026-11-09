@@ -104,9 +104,11 @@ For each finding, map it to a specific existing knowledge file and section. If n
 Scan `research.md` for implementation patterns that establish **repeatable, prescriptive conventions** for future code:
 
 - New parameter patterns → `dev/guidelines/backend/python.md` or `dev/guidelines/cyclopts.md`
-- New error handling conventions → `dev/guidelines/backend/python.md`
+- New error handling conventions → `dev/guidelines/backend/exceptions.md`
 - New API design conventions → `dev/guidelines/backend/graphql.md` (create if needed)
 - New testing patterns → relevant guidelines file
+
+These targets are routing examples, not a fixed map — content moves as files split, so confirm the section still lives in the named file before writing to it.
 
 Only extract patterns that are **prescriptive** (should be followed in future code). Do NOT extract patterns that are merely **descriptive** of how this specific feature works — those belong in knowledge.
 
@@ -145,7 +147,7 @@ Use this format:
 
 | # | Target File | Section | Change | Summary |
 |---|-------------|---------|--------|---------|
-| 4 | dev/guidelines/backend/python.md | Error Handling | UPDATE | <what changes> |
+| 4 | dev/guidelines/backend/exceptions.md | Error Handling | UPDATE | <what changes> |
 
 #### Skipped (with reasons)
 

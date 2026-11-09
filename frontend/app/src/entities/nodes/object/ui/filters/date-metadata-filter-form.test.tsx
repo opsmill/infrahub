@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import { QSP } from "@/shared/config/qsp";
 
-import { METADATA_UPDATED_AT } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import { METADATA_UPDATED_AT } from "@/entities/nodes/object/domain/model/metadata-filter-definitions";
 
 import { render } from "../../../../../../tests/components/render";
 import { DateMetadataFilterForm } from "./date-metadata-filter-form";

@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 import time
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -20,7 +20,6 @@ from infrahub_sdk.branch import BranchData
 from infrahub_sdk.uuidt import UUIDT
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
-from prefect import settings as prefect_settings
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -45,6 +44,7 @@ from infrahub.core.schema.definitions.core import (
     core_account_token,
     core_generic_account,
     core_profile_schema_definition,
+    core_refresh_token,
     internal_external_identity,
 )
 from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
@@ -76,12 +76,13 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
-    PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
@@ -90,6 +91,7 @@ ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 pytest.register_assert_rewrite("tests.db_snapshot")
+pytest.register_assert_rewrite("tests.helpers.agnostic_edges")
 
 graphql_registry.clear_cache()
 
@@ -143,6 +145,31 @@ def dependency_provider() -> Provider:
     return provider
 
 
+@pytest.fixture(autouse=True)
+def _dependency_overrides_are_restored() -> Generator[None, None, None]:
+    """Fail the test that leaves a dependency override behind, and put the provider back."""
+    overrides_before = dict(provider.overrides)
+    workflow_before = config.OVERRIDE.workflow
+    yield
+    # Identity, not key presence: re-pointing an entry that a wider-scoped fixture owns leaves the
+    # key in place and would otherwise pass unnoticed.
+    changed = sorted(
+        getattr(key, "__name__", repr(key))
+        for key in provider.overrides.keys() | overrides_before.keys()
+        if provider.overrides.get(key) is not overrides_before.get(key)
+    )
+    workflow_changed = config.OVERRIDE.workflow is not workflow_before
+    if not changed and not workflow_changed:
+        return
+    provider.overrides.clear()
+    provider.overrides.update(overrides_before)
+    config.OVERRIDE.workflow = workflow_before
+    pytest.fail(
+        f"the test left dependency overrides behind (put back now): provider={changed}, "
+        f"config.OVERRIDE.workflow changed={workflow_changed}"
+    )
+
+
 @pytest.fixture(scope="module")
 async def db(
     neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module: None
@@ -158,13 +185,13 @@ async def db(
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
-    with provider.scope(build_database, _db):
+    with override_dependency(build_database, _db, dependency_provider=provider):
         driver = await get_database()
         await add_indexes(db=driver)
-
-        yield driver
-
-        await driver.close()
+        try:
+            yield driver
+        finally:
+            await driver.close()
 
 
 @pytest.fixture(scope="class")
@@ -355,7 +382,16 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
-    container = start_neo4j_container(NEO4J_IMAGE)
+    # Bound neo4j memory: the image auto-sizes heap/pagecache from HOST memory, so with
+    # several xdist workers the containers overcommit and get the host OOM-killed.
+    container = start_neo4j_container(
+        NEO4J_IMAGE,
+        extra_env={
+            "NEO4J_server_memory_heap_initial__size": "1g",
+            "NEO4J_server_memory_heap_max__size": "1g",
+            "NEO4J_server_memory_pagecache_size": "512m",
+        },
+    )
     request.addfinalizer(container.stop)
 
     return {
@@ -406,7 +442,7 @@ def rabbitmq(
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
 def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
@@ -420,7 +456,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 @pytest.fixture(scope="module")
 def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
         config.SETTINGS.cache.username = ""
@@ -475,36 +511,6 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
 
 
 @pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
-        return None
-
-    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
-    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
-
-    container.start()
-    wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
-
-    return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
-
-
-@pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
-        config.SETTINGS.cache.address = "localhost"
-        config.SETTINGS.cache.port = nats_container[PORT_NATS]
-
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.broker.driver == config.BrokerDriver.NATS:
-        config.SETTINGS.broker.address = "localhost"
-        config.SETTINGS.broker.port = nats_container[PORT_NATS]
-
-        return nats_container
-
-    return None
-
-
-@pytest.fixture(scope="session")
 def prefect_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
     return start_prefect_server_container(request)
 
@@ -526,14 +532,7 @@ def prefect(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 
@@ -547,14 +546,7 @@ def prefect_class(
     else:
         server_api_url = f"http://localhost:{PORT_PREFECT}/api"
 
-    with ExitStack() as stack:
-        stack.enter_context(
-            prefect_settings.temporary_settings(
-                updates={
-                    prefect_settings.PREFECT_API_URL: server_api_url,
-                }
-            )
-        )
+    with prefect_api_target(server_api_url):
         yield server_api_url
 
 
@@ -608,7 +600,7 @@ def do_data_schema(branch: Branch) -> None:
             core_profile_schema_definition,
             core_generic_account,
         ],
-        "nodes": [core_account_token, internal_external_identity],
+        "nodes": [core_account_token, core_refresh_token, internal_external_identity],
     }
 
     schema = SchemaRoot(**SCHEMA)

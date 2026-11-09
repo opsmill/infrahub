@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getBranchActionStateQueryOptions } from "./get-branch-action-state.query";
 
-vi.mock("@/entities/branches/domain/get-branch-action-state", () => ({
+vi.mock("@/entities/branches/domain/use-cases/get-branch-action-state", () => ({
   getBranchActionState: vi.fn().mockResolvedValue({ ongoingTaskCount: 0 }),
 }));
 

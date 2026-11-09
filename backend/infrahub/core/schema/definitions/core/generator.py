@@ -27,7 +27,7 @@ core_generator_definition = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/generator",
+    documentation="/generators/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="description", kind="Text", optional=True),
@@ -54,6 +54,24 @@ core_generator_definition = NodeSchema(
             description="Whether to run this generator after a merge",
             optional=True,
             default_value=True,
+        ),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies",
+            kind="List",
+            description="Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies_complete",
+            kind="Boolean",
+            description="True when the dependency closure can be trusted. False when auto-detection found unresolved references.",
+            optional=True,
         ),
     ],
     relationships=[
@@ -114,7 +132,7 @@ core_generator_instance = NodeSchema(
     branch=BranchSupportType.LOCAL,
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/generator",
+    documentation="/generators/overview/",
     attributes=[
         Attr(name="name", kind="Text"),
         Attr(name="status", kind="Text", enum=GeneratorInstanceStatus.available_types()),

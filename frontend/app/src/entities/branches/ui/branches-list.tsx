@@ -1,14 +1,14 @@
 import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
-import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
 import Content from "@/shared/components/layout/content";
-import useFilters from "@/shared/hooks/useFilters";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { BRANCH_FILTER_DEFINITIONS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches-count.query";
+import { ActiveFilterTags } from "@/entities/nodes/filters/ui/active-filter-tags";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 
 function BranchesListHeader() {

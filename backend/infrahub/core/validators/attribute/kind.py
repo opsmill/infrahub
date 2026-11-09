@@ -12,6 +12,7 @@ from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
+    from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -75,6 +76,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                 infrahub_attribute_class.validate_content(
                     value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
+                self._validate_value_is_canonical(value=attr_value, attribute_class=infrahub_attribute_class)
             except ValidationError:
                 grouped_data_paths.add_data_path(
                     DataPath(
@@ -87,6 +89,22 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                     )
                 )
         return grouped_data_paths
+
+    def _validate_value_is_canonical(self, value: Any, attribute_class: type[BaseAttribute]) -> None:
+        """Reject a value that parses under the new kind but is not stored in that kind's canonical form.
+
+        A kind change does not rewrite stored values, so a value such as ``10.0.0.1`` would survive a
+        change to ``IPHost`` while the canonical form is ``10.0.0.1/32``, leaving value filters and
+        uniqueness comparisons matching against a stale string.
+
+        Raises:
+            ValidationError: The value is not canonical for the new kind
+
+        """
+        if attribute_class._normalize_value(value) != value:
+            raise ValidationError(
+                {self.attribute_schema.name: f"{value} is not stored as a valid {self.attribute_schema.kind}"}
+            )
 
 
 class AttributeKindChecker(ConstraintCheckerInterface):

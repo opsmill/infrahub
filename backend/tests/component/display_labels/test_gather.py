@@ -92,14 +92,14 @@ async def test_gather_trigger_gather_trigger_display_labels_jinja2_custom_schema
 
     assert not test_person_trigger.target_kind  # Related triggers doesn't have a target_kind defined
     assert test_person_trigger.trigger.events == {NodeUpdatedEvent.event_name}
-    assert test_person_trigger.trigger.match == {"infrahub.node.kind": "TestPerson"}
+    assert test_person_trigger.trigger.match == {"infrahub.node.kind": "TestPerson", "infrahub.node.origin": "live"}
     assert isinstance(test_person_trigger.trigger.match_related, dict)
     assert "infrahub.field.name" in test_person_trigger.trigger.match_related
     assert test_person_trigger.trigger.match_related["infrahub.field.name"] == ["name"]
 
     assert test_car_trigger.target_kind == "TestCar"
     assert test_car_trigger.trigger.events == {NodeUpdatedEvent.event_name}
-    assert test_car_trigger.trigger.match == {"infrahub.node.kind": "TestCar"}
+    assert test_car_trigger.trigger.match == {"infrahub.node.kind": "TestCar", "infrahub.node.origin": "live"}
     assert isinstance(test_car_trigger.trigger.match_related, dict)
     assert "infrahub.field.name" in test_car_trigger.trigger.match_related
     assert test_car_trigger.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]

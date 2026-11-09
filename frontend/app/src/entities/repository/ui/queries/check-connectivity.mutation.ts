@@ -5,7 +5,7 @@ import type { MutationConfig } from "@/shared/api/types";
 import {
   type CheckConnectivityParams,
   checkConnectivity,
-} from "@/entities/repository/domain/check-connectivity";
+} from "@/entities/repository/domain/use-cases/check-connectivity";
 
 interface CheckConnectivityProps extends MutationConfig<typeof checkConnectivity> {}
 

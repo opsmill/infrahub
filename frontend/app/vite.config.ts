@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     port: 8080,
     watch: {
-      ignored: ["**/generated/**", "**/*.generated.ts", "**/playwright-report/**"],
+      ignored: ["**/generated/**", "**/*.generated.ts"],
       followSymlinks: true,
     },
     fs: {
@@ -43,5 +43,10 @@ export default defineConfig({
   ],
   resolve: {
     tsconfigPaths: true,
+    // @infrahub/graph declares @xyflow/react as a peer dependency; resolve it
+    // from the app's own copy so a single module instance backs the React Flow
+    // context (and so the prod Docker install, which skips devDependencies,
+    // can still resolve it from graph source files).
+    dedupe: ["@xyflow/react"],
   },
 });

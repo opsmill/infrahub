@@ -142,6 +142,8 @@ If you are using a **personal access token for authentication**, you should put 
         data: {
           name: { value: "My Git Repository" },
           location: { value: "https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git" },
+          # Optional: name of the Git branch mapped to Infrahub's default branch, where merges are pushed back (default "main"; set your Git default branch name for a non-main default)
+          default_branch: { value: "main" },
           # The HFID returned in step 2 will be used for the credentials
           credential: { hfid: ["my-git-credential"] }
         }
@@ -200,6 +202,7 @@ If you are using a **personal access token for authentication**, you should put 
         "CoreRepository",
         name="My Git repository",
         location="https://GIT_SERVER/YOUR_GIT_USERNAME/YOUR_REPOSITORY_NAME.git",
+        default_branch="main",  # Optional: Git branch mapped to Infrahub's default branch, where merges are pushed back (default "main"; set your Git default branch name for a non-main default)
         credential=credential,  # The credential object created above
     )
     repository.save()
@@ -371,6 +374,50 @@ If you encounter issues with your repository connections, you can use the follow
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
 :::
 
+#### Repository fails certificate verification with a CA bundle configured
+
+A repository hosted on a Git server with a private CA can fail with `SSL verification failed for <repository>, please validate the certificate chain.` even though `INFRAHUB_TLS_CA_BUNDLE` or `INFRAHUB_GIT_TLS_CA_FILE` is set. Check first whether the task worker could write its git configuration file.
+
+At startup, the task worker writes its git settings into the file named by `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` (default `/opt/infrahub/.gitconfig`): the CA bundle as `http.sslCAInfo`, `http.sslVerify`, and the credential helper. When the container runs as a user that cannot write to the directory holding that file, the task worker logs one error per setting and keeps starting. Git then verifies HTTPS remotes against the system trust store of the container, which does not hold your CA. The credential helper is not written either, so cloning a repository that needs credentials can also fail authentication.
+
+Search the task worker's startup log for the error:
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+```shell
+docker compose logs task-worker | grep "could not lock config file"
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```shell
+kubectl logs -l service=infrahub-task-worker --prefix --tail=-1 | grep "could not lock config file"
+```
+
+</TabItem>
+</Tabs>
+
+A match looks like `Failed to set git http.sslCAInfo: error: could not lock config file /opt/infrahub/.gitconfig: Permission denied`.
+
+To fix it, set `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` to a path the task worker can write and restart the task worker. The task worker creates the file and rewrites every setting at each startup, so the file does not need to persist. With Helm, an `emptyDir` volume is writable by any user:
+
+```yaml title="values.yaml"
+infrahubTaskWorker:
+  infrahubTaskWorker:
+    env:
+      INFRAHUB_GIT_GLOBAL_CONFIG_FILE: /opt/infrahub/gitconfig/.gitconfig
+    extraVolumes:
+      - name: gitconfig
+        emptyDir: {}
+    extraVolumeMounts:
+      - name: gitconfig
+        mountPath: /opt/infrahub/gitconfig
+```
+
+Then run the check in [Trust a private CA, step 4](../deploy-manage/install-configure/production-deployment/private-ca.mdx#step-4-restart-and-verify), which prints the path of your bundle, and select **Check connectivity** on the repository.
+
 ### GitHub access token
 
 Please refer to the official GitHub documentation for creating access tokens. GitHub offers two types of tokens:
@@ -422,57 +469,26 @@ Now that you have created your token, you can use it to connect your GitLab repo
 
 :::
 
-### Installing custom CA certificates
+### Connecting to a Git server with a private CA
 
-If your Git server uses a certificate signed by a custom Certificate Authority (CA) not recognized by default, you'll need to add your CA certificate to the Infrahub container.
+If your Git server presents a certificate signed by a private Certificate Authority (CA), point Infrahub at your CA bundle instead of rebuilding the Docker image:
 
-:::warning Maintenance consideration
+1. Save your CA certificate and every intermediate certificate in a single PEM file, such as `ca-bundle.pem`
+2. Mount the file read-only into the `infrahub-server` and `task-worker` containers, for example at `/opt/infrahub/tls/ca-bundle.pem`, or skip the mount and pass the PEM text through the setting in the next step
+3. Set `INFRAHUB_TLS_CA_BUNDLE=/opt/infrahub/tls/ca-bundle.pem` so every component trusts the CA, or `INFRAHUB_GIT_TLS_CA_FILE=/opt/infrahub/tls/ca-bundle.pem` to scope it to git only; both settings also accept the PEM text itself
+4. Restart your environment
 
-This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
+The task worker writes the path as `http.sslCAInfo` into its git configuration file at startup (`INFRAHUB_GIT_GLOBAL_CONFIG_FILE`, default `/opt/infrahub/.gitconfig`), so every clone, fetch and push over HTTPS uses it. The mount and configuration steps for Docker Compose, Docker and Helm are detailed in [Trust a private CA](../deploy-manage/install-configure/production-deployment/private-ca.mdx).
+
+:::info Bundle contents
+
+Git trusts the bundle in addition to the system trust store of the container, so repositories on GitHub, GitLab or another Git server with a publicly issued certificate keep working with a bundle that contains only your private CA certificates.
 
 :::
 
-Follow these steps to add your custom CA certificate:
-
-1. Save your CA certificate (and any intermediate certificates) in PEM format (such as `mycacertificate.crt`)
-2. Create a Dockerfile in the same directory as your certificate:
-
-```dockerfile
-ARG INFRAHUB_VERSION=latest
-FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
-
-COPY mycacertificate.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-```
-
-3. Build the Docker image:
-
-```shell
-INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
-```
-
-<Tabs groupId="deployment" queryString>
-<TabItem value="Using Docker Compose" default>
-
-If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
-
-4. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
-
-```yaml
----
-services:
-  task-worker:
-    image: custom/infrahub:latest
-```
-
-5. Start your environment using the `docker compose` command.
-
-</TabItem>
-</Tabs>
-
 :::success Validation
 
-After restarting your environment, Infrahub should now trust your custom CA and be able to connect to Git servers using certificates signed by it.
+Run `docker compose exec task-worker sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslCAInfo'`: it prints the path of your bundle. Read the file explicitly rather than using `--global`: Infrahub selects that file through `GIT_CONFIG_GLOBAL` in its own process only, so an exec shell's `--global` reads a different file. [Trust a private CA, step 4](../deploy-manage/install-configure/production-deployment/private-ca.mdx#step-4-restart-and-verify) has the same check for Docker and Kubernetes. A repository hosted on your Git server now reaches the `Online` operational status instead of failing with `SSL verification failed`. If it still fails, see [Repository fails certificate verification with a CA bundle configured](#repository-fails-certificate-verification-with-a-ca-bundle-configured).
 
 :::
 
@@ -484,51 +500,11 @@ Disabling certificate validation is a bad security practice and is strongly disc
 
 :::
 
-:::warning Custom Docker Image
-
-This process requires building a custom Docker image, which you'll need to rebuild with each Infrahub release.
-
-:::
-
-If you absolutely need to disable certificate verification for testing purposes:
-
-1. Create a Dockerfile with the following content:
-
-```dockerfile
-ARG INFRAHUB_VERSION=latest
-FROM registry.opsmill.io/opsmill/infrahub:${INFRAHUB_VERSION}
-
-RUN git config --global http.sslVerify "false"
-```
-
-2. Build the Docker image:
-
-```shell
-INFRAHUB_VERSION=latest && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
-```
-
-<Tabs groupId="deployment" queryString>
-<TabItem value="Using Docker Compose" default>
-
-If you are using Docker Compose, you can override part of your existing `docker-compose.yml` file to use your custom image. See the official [Docker Compose documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/#how-to-merge-multiple-compose-files) for more details.
-
-3. Create a `docker-compose.override.yml` file in the same directory as your `docker-compose.yml` file:
-
-```yaml
----
-services:
-  task-worker:
-    image: custom/infrahub:latest
-```
-
-4. Start your environment using the `docker compose` command.
-
-</TabItem>
-</Tabs>
+If you absolutely need to disable certificate verification for testing purposes, set `INFRAHUB_GIT_TLS_INSECURE=true` on the task workers and restart your environment. The task worker sets `http.sslVerify` to `false` in its git configuration file, so git skips certificate validation for every HTTPS remote. It takes precedence over `INFRAHUB_GIT_TLS_CA_FILE`, so a configured bundle can stay in place while verification is switched off. Infrahub owns `http.sslVerify` and `http.sslCAInfo` in its git configuration file and rewrites them at every task-worker startup, so a value written into that file by hand does not survive a restart; use the setting instead.
 
 :::success Validation
 
-After restarting your environment, Infrahub should now connect to Git servers without validating SSL certificates.
+Run `docker compose exec task-worker sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslVerify'`, or on Kubernetes `kubectl exec deployment/infrahub-infrahub-task-worker -- sh -c 'git config --file "${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}" --get http.sslVerify'`: it prints `false`, and Infrahub connects to Git servers without validating their certificates. If it prints nothing, see [Repository fails certificate verification with a CA bundle configured](#repository-fails-certificate-verification-with-a-ca-bundle-configured): the same cause applies.
 
 :::
 

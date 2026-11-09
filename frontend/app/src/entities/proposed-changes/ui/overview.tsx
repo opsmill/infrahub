@@ -1,18 +1,18 @@
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent } from "@infrahub/ui";
 import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import type { FormRef } from "@/shared/components/ui/form";
-import {
-  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-  PROPOSED_CHANGES_THREAD_OBJECT,
-} from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
+import {
+  PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+  PROPOSED_CHANGES_THREAD_OBJECT,
+} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 
 import { ProposedChangeEvents } from "./proposed-change-events";

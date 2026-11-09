@@ -4,7 +4,7 @@ import {
   DIFF_TREE_PER_PAGE,
   type GetDiffTreeInfiniteQueryOptionsParams,
   getDiffTree,
-} from "@/entities/diff/domain/get-diff-tree";
+} from "@/entities/diff/domain/use-cases/get-diff-tree";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export const getDiffTreeInfiniteQueryOptions = ({

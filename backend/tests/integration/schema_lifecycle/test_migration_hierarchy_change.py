@@ -9,7 +9,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.helpers.test_app import TestInfrahubApp
 
 PERSON_KIND = "TestingPerson"
@@ -124,6 +124,17 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name
         )
         assert success
+        # Submitting a full internal dump carries the fields Infrahub owns and derives itself, so
+        # the check reports each of them rather than dropping the values silently.
+        assert [warning["message"] for warning in response.pop("warnings")] == [
+            "'hierarchy' is a read-only field, the submitted value is ignored",
+            "'used_by' is a read-only field, the submitted value is ignored",
+            "'inherited' is a read-only field, the submitted value is ignored",
+            "'parameters.id' is a read-only field, the submitted value is ignored",
+            "'parameters.state' is a read-only field, the submitted value is ignored",
+            "'extensions.id' is a read-only field, the submitted value is ignored",
+            "'extensions.state' is a read-only field, the submitted value is ignored",
+        ]
         assert response == {
             "diff": {
                 "added": {"LocationMetro": {"added": {}, "changed": {}, "removed": {}}},
@@ -155,7 +166,6 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                     },
                 },
             },
-            "warnings": [],
         }
 
     async def test_load_schema_02(
@@ -177,16 +187,15 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert rels_by_name["parent"].peer == "LocationMetro"
         assert rels_by_name["children"].peer == "LocationGeneric"
 
-        country_schema = db.schema.get(name="LocationCountry", branch=branch_1, duplicate=False)
+        country_schema = db.schema.get_node_schema(name="LocationCountry", branch=branch_1, duplicate=False)
         assert country_schema.parent == ""  # noqa: PLC1901
         assert country_schema.children == "LocationMetro"
-        metro_schema = db.schema.get(name="LocationMetro", branch=branch_1, duplicate=False)
+        metro_schema = db.schema.get_node_schema(name="LocationMetro", branch=branch_1, duplicate=False)
         assert metro_schema.parent == "LocationCountry"
         assert metro_schema.children == "LocationSite"
-        site_schema = db.schema.get(name="LocationSite", branch=branch_1, duplicate=False)
+        site_schema = db.schema.get_node_schema(name="LocationSite", branch=branch_1, duplicate=False)
         assert site_schema.parent == "LocationMetro"
         assert site_schema.children == ""  # noqa: PLC1901
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

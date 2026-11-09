@@ -1,81 +1,29 @@
 from __future__ import annotations
 
-from infrahub_sdk.exceptions import URLNotFoundError
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
+from infrahub.core.recompute.bulk_write import DISPLAY_LABEL_FIELD, AttributeValueWrite
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2, TRIGGER_UPDATE_DISPLAY_LABELS
+from infrahub.workflows.constants import WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_display_labels_jinja2
 from .models import (
     DisplayLabelJinja2GraphQL,
-    DisplayLabelJinja2GraphQLResponse,
     DisplayLabelTriggerDefinition,
 )
-
-UPDATE_DISPLAY_LABEL = """
-mutation UpdateDisplayLabel(
-    $id: String!,
-    $kind: String!,
-    $value: String!,
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateDisplayLabel(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
-@flow(
-    name="display-label-jinja2-update-value",
-    flow_run_name="Update value for display_label on {node_kind}",
-)
-async def display_label_jinja2_update_value(
-    branch_name: str,
-    obj: DisplayLabelJinja2GraphQLResponse,
-    node_kind: str,
-    template: InfrahubJinja2Template,
-    context: EventContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    value = await template.render(variables=obj.variables)
-    if value == obj.display_label_value:
-        log.debug(f"Ignoring to update {obj} with existing value on display_label={value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_DISPLAY_LABEL,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "value": value,
-                "context_account_id": context.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating {node_kind}.display_label='{value}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Updating {node_kind}.display_label='{value}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
-        )
 
 
 @flow(
@@ -85,12 +33,20 @@ async def display_label_jinja2_update_value(
 async def process_display_label(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     target_kind: str,
     context: EventContext,
+    object_id: str | None = None,
+    object_ids: list[str] | None = None,
+    recompute_depth: int = 0,
 ) -> None:
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
+
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for display label recompute")
+        return
 
     await add_tags(branches=[branch_name])
 
@@ -111,7 +67,7 @@ async def process_display_label(
         node_schema=node_schema, variables=variables, filter_key=display_label_template.filter_key
     )
 
-    query = display_label_graphql.render_graphql_query(filter_id=object_id)
+    query = display_label_graphql.render_graphql_query(filter_id=filter_id)
     response = await client.execute_graphql(query=query, branch_name=branch_name)
     update_candidates = display_label_graphql.parse_response(response=response)
 
@@ -119,18 +75,24 @@ async def process_display_label(
         log.debug("No nodes found that requires updates")
         return
 
-    batch = await client.create_batch()
+    writes: list[AttributeValueWrite] = []
     for node in update_candidates:
-        batch.add(
-            task=display_label_jinja2_update_value,
-            branch_name=branch_name,
-            obj=node,
-            node_kind=node_schema.kind,
-            template=jinja_template,
-            context=context,
-        )
+        try:
+            value = await jinja_template.render(variables=node.variables)
+        except JinjaTemplateError as exc:
+            log.warning(f"Skipping display label recompute for node {node.node_id}: template raised {exc}")
+            continue
+        if value != node.display_label_value:
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
 
-    _ = [response async for _, response in batch.execute()]
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        coalesced=object_ids is not None,
+        recompute_depth=recompute_depth,
+    )
 
 
 @flow(name="display-labels-setup-jinja2", flow_run_name="Setup display labels in task-manager")
@@ -201,19 +163,23 @@ async def trigger_update_display_labels(
     await add_tags(branches=[branch_name])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     node_query = DisplayLabelNodeIDQuery(kind=kind)
     workflow = get_workflow()
-    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node_id in node_batch:
-            await workflow.submit_workflow(
-                workflow=DISPLAY_LABELS_PROCESS_JINJA2,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "node_kind": kind,
-                    "target_kind": kind,
-                    "object_id": node_id,
-                    "context": context,
-                },
-            )
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
+            workflow=DISPLAY_LABELS_PROCESS_JINJA2,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "node_kind": kind,
+                "target_kind": kind,
+                "object_ids": node_ids,
+                "context": context,
+            },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
+        )

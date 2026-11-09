@@ -1,5 +1,9 @@
+from copy import deepcopy
+
+import pytest
+
 from infrahub.core.branch import Branch
-from infrahub.core.initialization import initialize_registry
+from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
@@ -50,6 +54,96 @@ async def test_allocate_from_number_pool(
     assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
 
     assert await np1.get_free(db=db, branch=default_branch) == 3
+
+
+async def test_allocate_reuses_value_when_attribute_not_globally_unique(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Existing target values are skipped only when the attribute is globally unique."""
+    schema = deepcopy(TICKET)
+    next(attr for attr in schema.attributes if attr.name == "ticket_id").unique = False
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    await initialize_registry(db=db)
+
+    np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
+    await np1.save(db=db)
+
+    # Created by hand inside the pool range, without going through the pool.
+    manual_ticket = await Node.init(db=db, schema=TICKET.kind)
+    await manual_ticket.new(db=db, title="manual", ticket_id=1)
+    await manual_ticket.save(db=db)
+
+    ticket = await Node.init(db=db, schema=TICKET.kind)
+    await ticket.new(db=db, title="ticket", ticket_id={"from_pool": {"id": np1.id}})
+    await ticket.save(db=db)
+
+    assert ticket.ticket_id.value == 1
+
+
+class TestNumberPoolAllocation:
+    """Allocation against one unique ticket schema and a 1-10 pool, loaded once for the class.
+
+    The methods share the loaded schema, pool and accumulated data, and run in definition order: each
+    builds on the state the previous one leaves behind.
+    """
+
+    @pytest.fixture(scope="class")
+    async def pool(self, db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch) -> CoreNumberPool:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+        await initialize_registry(db=db)
+
+        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+        await pool.new(
+            db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10
+        )
+        await pool.save(db=db)
+        return pool
+
+    @pytest.fixture(scope="class")
+    async def present_ticket(self, db: InfrahubDatabase, pool: CoreNumberPool) -> Node:
+        """A ticket created by hand at value 1, inside the pool range but never handed out by the pool."""
+        ticket = await Node.init(db=db, schema=TICKET.kind)
+        await ticket.new(db=db, title="manual", ticket_id=1)
+        await ticket.save(db=db)
+        return ticket
+
+    async def test_taken_values_see_origin_branch_after_branch_point(
+        self, db: InfrahubDatabase, pool: CoreNumberPool
+    ) -> None:
+        """A value added to the origin branch after the branch point counts as taken on the branch."""
+        branch = await create_branch(db=db, branch_name="feat")
+
+        # Created on the origin branch after the branch point.
+        origin_ticket = await Node.init(db=db, schema=TICKET.kind)
+        await origin_ticket.new(db=db, title="origin", ticket_id=5)
+        await origin_ticket.save(db=db)
+
+        assert await pool.get_taken(db=db, branch=branch, min_value=1, max_value=10) == {5}
+
+    async def test_allocate_skips_value_already_present_on_target(
+        self, db: InfrahubDatabase, pool: CoreNumberPool, present_ticket: Node
+    ) -> None:
+        """A value already present on the target kind but never handed out by the pool is skipped."""
+        ticket = await Node.init(db=db, schema=TICKET.kind)
+        await ticket.new(db=db, title="ticket", ticket_id={"from_pool": {"id": pool.id}})
+        await ticket.save(db=db)
+
+        # 1 is held by present_ticket, so the pool skips it and hands out the next free value.
+        assert ticket.ticket_id.value == 2
+
+    async def test_allocate_reuses_value_after_conflicting_target_deleted(
+        self, db: InfrahubDatabase, pool: CoreNumberPool, present_ticket: Node
+    ) -> None:
+        """A value freed by deleting the conflicting target object becomes allocatable again."""
+        await present_ticket.delete(db=db)
+
+        ticket = await Node.init(db=db, schema=TICKET.kind)
+        await ticket.new(db=db, title="reuse", ticket_id={"from_pool": {"id": pool.id}})
+        await ticket.save(db=db)
+
+        # Deleting present_ticket frees value 1, now the lowest available.
+        assert ticket.ticket_id.value == 1
 
 
 async def test_resource_utilization(

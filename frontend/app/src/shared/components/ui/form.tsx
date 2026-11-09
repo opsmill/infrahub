@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from "@infrahub/ui";
+import { Button, type ButtonProps, DismissGuardContext } from "@infrahub/ui";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 import {
@@ -11,7 +11,7 @@ import {
   useFormState,
 } from "react-hook-form";
 
-import { SlideOverContext } from "@/shared/components/display/slide-over";
+import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
@@ -20,6 +20,7 @@ export type FormRef = ReturnType<typeof useForm>;
 
 export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
+  onCancel?: () => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
   ref?: React.Ref<FormRef>;
@@ -31,12 +32,14 @@ export const Form = ({
   className,
   children,
   onSubmit,
+  onCancel,
   ref,
   ...props
 }: FormProps) => {
   const currentForm = form ?? useForm({ defaultValues });
 
-  const slideOverContext = React.use(SlideOverContext);
+  const dismissGuard = React.use(DismissGuardContext);
+  const [showConfirm, setShowConfirm] = React.useState(false);
 
   React.useImperativeHandle(ref, () => currentForm);
 
@@ -44,12 +47,10 @@ export const Form = ({
     if (!form) currentForm.reset(defaultValues);
   }, [JSON.stringify(defaultValues)]);
 
+  const isDirty = currentForm.formState.isDirty;
   React.useEffect(() => {
-    // Stop logic if there is no context to prevent the slide over close
-    if (!slideOverContext?.setPreventClose) return;
-
-    slideOverContext.setPreventClose(currentForm.formState.isDirty);
-  }, [currentForm.formState.isDirty]);
+    dismissGuard?.setDismissable(!isDirty, () => setShowConfirm(true));
+  }, [isDirty]);
 
   return (
     <FormProvider {...currentForm}>
@@ -71,6 +72,18 @@ export const Form = ({
       >
         {children}
       </form>
+
+      <ModalConfirm
+        isOpen={showConfirm}
+        onOpenChange={setShowConfirm}
+        title="Closing form"
+        description="Are you sure you want to close this form? All unsaved changes will be lost."
+        onConfirm={() => {
+          setShowConfirm(false);
+          dismissGuard?.setDismissable(true);
+          onCancel?.();
+        }}
+      />
     </FormProvider>
   );
 };
@@ -102,16 +115,39 @@ export const FormInput = ({ className, ref, ...props }: FormInputProps) => {
   const { id, name } = React.use(FormFieldContext);
   const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
+  // Flag the input only for this field's own error. A field that merely contains a
+  // nested child field's error (e.g. a from-pool allocation's prefix-length field)
+  // gets a nested error object with no top-level `type`, so its primary input must
+  // not light up for an error the child already surfaces.
+  const hasOwnError = Boolean(error?.type);
 
   return (
     <Slot
       ref={ref}
       id={id}
-      className={classNames(error && inputErrorStyle, className)}
-      aria-invalid={!!error}
+      className={classNames(hasOwnError && inputErrorStyle, className)}
+      aria-invalid={hasOwnError}
       {...props}
     />
   );
+};
+
+/**
+ * Returns the first error message found in a react-hook-form error object,
+ * descending into nested child-field errors (e.g. a from-pool allocation's
+ * prefix-length field) so a field's message area can surface a sub-field's error
+ * full-width.
+ */
+export const findErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") return;
+  const entry = error as { message?: unknown; [key: string]: unknown };
+  if (typeof entry.message === "string" && entry.message) return entry.message;
+  for (const key of Object.keys(entry)) {
+    if (key === "ref" || key === "type" || key === "message") continue;
+    const nested = findErrorMessage(entry[key]);
+    if (nested) return nested;
+  }
+  return;
 };
 
 export const FormMessage = ({
@@ -124,7 +160,7 @@ export const FormMessage = ({
   const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
 
-  const message = error?.message?.toString() ?? children;
+  const message = findErrorMessage(error) ?? children;
 
   if (!message) return null;
 

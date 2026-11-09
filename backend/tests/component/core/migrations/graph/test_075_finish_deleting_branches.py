@@ -3,6 +3,7 @@ import pytest
 from infrahub.core.branch.data_deleter import BranchDataDeleter, BranchDataDeleterInterface, BranchDeleteResult
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m075_finish_deleting_branches import Migration075
@@ -24,11 +25,11 @@ class FailingBranchDeleter:
         self.failing_branch_name = failing_branch_name
         self.attempted: list[str] = []
 
-    async def delete(self, branch: Branch) -> BranchDeleteResult:
+    async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult:
         self.attempted.append(branch.name)
         if branch.name == self.failing_branch_name:
             raise ValueError("FAILED")
-        return await self.deleter.delete(branch=branch)
+        return await self.deleter.delete(branch=branch, user_id=user_id)
 
 
 class Migration075WithFailingDeleter(Migration075):

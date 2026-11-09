@@ -2,12 +2,17 @@ from neo4j.exceptions import Neo4jError
 from prefect import task
 from prefect.cache_policies import NONE
 
-from infrahub.core import utils
+from infrahub.core import registry, utils
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
+from infrahub.core.manager import NodeManager
 from infrahub.core.query import QueryType
+from infrahub.core.schema import NodeSchema
 from infrahub.database import DatabaseType, InfrahubDatabase
 
 from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, TelemetryDatabaseSystemInfoData
+from .queries import CountNodesByKindsQuery
+from .utils import safe_metric
 
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
@@ -47,8 +52,31 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
     )
 
 
+async def count_corenode(db: InfrahubDatabase) -> int:
+    """Count managed (CoreNode) nodes on the default branch."""
+    return await NodeManager.count(db=db, schema=InfrahubKind.NODE)
+
+
+async def count_user_nodes(db: InfrahubDatabase) -> int:
+    """Count concrete nodes in user-editable namespaces, excluding group-generic kinds."""
+    default_branch = registry.get_branch_from_registry()
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+    user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
+    schemas = [
+        node_schema
+        for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces)
+        if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from
+    ]
+    if not schemas:
+        return 0
+    query = await CountNodesByKindsQuery.init(db=db, branch=default_branch, schemas=schemas)
+    await query.execute(db=db)
+    return sum(item.count for item in query.get_data())
+
+
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabaseData:
+    """Gather node/relationship counts and database server/system info."""
     async with db.start_session(read_only=True) as dbs:
         server_info = []
         system_info = None
@@ -58,8 +86,7 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
             server_info = await get_server_info(db=dbs)
             system_info = await get_system_info(db=dbs)
 
-            # server_info is only available on Neo4j Enterprise
-            #  so if it's not empty, we can assume the database is of type Enterprise
+            # server_info is populated only on Neo4j Enterprise, so a non-empty result implies it.
             if len(server_info) == 0:
                 database_type = f"{database_type}-community"
             else:
@@ -82,5 +109,9 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
 
         for name in GRAPH_SCHEMA["nodes"]:
             data.node_count[name] = await utils.count_nodes(db=dbs, label=name)
+
+        # corenode/user each degrade to None independently through the shared metric helper.
+        data.node_count["corenode"] = await safe_metric(count_corenode(db=dbs))
+        data.node_count["user"] = await safe_metric(count_user_nodes(db=dbs))
 
         return data

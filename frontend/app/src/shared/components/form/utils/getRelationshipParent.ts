@@ -1,4 +1,4 @@
-import type { NodeRelationship } from "@/entities/nodes/types";
+import type { NodeRelationship } from "@/entities/nodes/object/domain/model/node";
 
 export const getRelationshipParent = (relationshipData: NodeRelationship | undefined) => {
   if (!relationshipData) return;

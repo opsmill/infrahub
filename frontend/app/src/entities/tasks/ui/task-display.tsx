@@ -53,7 +53,7 @@ function Task({ task }) {
       >
         <div className="flex justify-between">
           <div className="flex items-center gap-4">
-            {getLogBadge[task.state] ?? <Badge variant={"gray-outline"}>UNKOWN</Badge>}
+            {getLogBadge[task.state] ?? <Badge variant={"gray-outline"}>UNKNOWN</Badge>}
             {task.title}
           </div>
 

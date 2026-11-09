@@ -34,7 +34,7 @@ import { render } from "../../../../tests/components/render";
 import { ComponentName } from "./component-name";
 
 describe("ComponentName", () => {
-  test("shows button when clicked", async () => {
+  test("shows content when the button is clicked", async () => {
     // GIVEN
     const component = await render(<ComponentName prop="value" />);
 
@@ -51,11 +51,37 @@ describe("ComponentName", () => {
 
 Follow BDD structure consistently:
 
-- **GIVEN**: Set up the component and initial state (component render)
-- **WHEN**: Perform user interactions or trigger events
-- **THEN**: Assert expected outcomes
+- **GIVEN**: Arrange the inputs and initial state (props, schema, URL/route state, mocks)
+- **WHEN**: The single action that triggers the expectation
+- **THEN**: Assert the expected outcomes
 
-**Important**: Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+**Important**:
+
+- Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+- Every test has **exactly one** of each marker - always a GIVEN, a WHEN, and a THEN.
+- The WHEN is whatever triggers the expectation:
+  - When a **user interaction** triggers it, that interaction is the WHEN and the render is part of
+    the GIVEN setup.
+  - When the **render itself** produces what you assert (a render-only test, no interaction), the
+    render is the WHEN and the GIVEN arranges its inputs.
+- A test that needs a second WHEN/THEN is exercising a multi-phase flow - split it into separate,
+  single-phase tests instead of chaining WHEN → THEN → WHEN → THEN in one test.
+
+## The test has to fail when the behavior breaks
+
+Before you call a test done, ask what would make it fail. Two shapes pass no matter what the component
+does:
+
+- **An assertion on the static part of the output.** `getByText("Now working on")` passes when the
+  branch name beside it is wrong, missing, or blank. Assert the whole user-visible string, including the
+  value the change is about: `getByText("Now working on platform-upgrade")`.
+- **A setup flag the component never reads.** Setting `isFetching: true` on a mocked query hook proves
+  nothing if the component only destructures `isPending` — the test is indistinguishable from the one
+  above it. Check the component actually reads what you varied.
+
+A behavior change needs a test that exercises the new behavior, not the old default: replacing a
+hardcoded `"main"` with a `is_default` lookup is only covered by a case whose default branch *isn't*
+named `main`.
 
 ## Querying Elements
 
@@ -110,7 +136,10 @@ Test that components render correctly based on props or state:
 describe("StatusBadge", () => {
   test("renders success state", async () => {
     // GIVEN
-    const component = await render(<StatusBadge status="success" />);
+    const status = "success";
+
+    // WHEN
+    const component = await render(<StatusBadge status={status} />);
 
     // THEN
     await expect.element(component.getByText("Success")).toBeVisible();
@@ -118,7 +147,10 @@ describe("StatusBadge", () => {
 
   test("hides when status is null", async () => {
     // GIVEN
-    const component = await render(<StatusBadge status={null} />);
+    const status = null;
+
+    // WHEN
+    const component = await render(<StatusBadge status={status} />);
 
     // THEN
     await expect.element(component.queryByTestId("status-badge")).not.toBeVisible();
@@ -130,20 +162,27 @@ describe("StatusBadge", () => {
 
 Test user interactions and their visible outcomes:
 
+Each test covers a single phase. Don't chain WHEN → THEN → WHEN → THEN - split a multi-step flow
+into one test per outcome:
+
 ```tsx
 describe("FormComponent", () => {
-  test("shows validation then submits", async () => {
+  test("shows a validation error when the required field is empty", async () => {
     // GIVEN
-    const component = await render(<FormComponent />);
+    const component = await render(<FormComponent defaultValues={{ name: "" }} />);
 
     // WHEN
     await component.getByRole("button", { name: "Save" }).click();
 
     // THEN
     await expect.element(component.getByText("Name is required")).toBeVisible();
+  });
+
+  test("submits when the required field is filled", async () => {
+    // GIVEN
+    const component = await render(<FormComponent defaultValues={{ name: "device-1" }} />);
 
     // WHEN
-    await component.getByLabelText("Name").fill("device-1");
     await component.getByRole("button", { name: "Save" }).click();
 
     // THEN
@@ -159,7 +198,7 @@ Use `userEvent` from `vitest/browser` for keyboard interactions:
 ```tsx
 import { userEvent } from "vitest/browser";
 
-test("adds item when pressing enter", async () => {
+test("adds an item when pressing enter", async () => {
   // GIVEN
   const component = await render(<List />);
   const input = component.getByPlaceholder("Add a new item + hit 'enter'");
@@ -171,6 +210,33 @@ test("adds item when pressing enter", async () => {
   // THEN
   await expect.element(component.getByText("test item")).toBeVisible();
 });
+```
+
+### Tooltip hover tests: park the pointer afterwards
+
+In browser mode the pointer position persists across tests in the same file.
+A test that ends with the pointer on a tooltip trigger leaves that tooltip
+open; after a layout shift in a later render, the stale overlay can cover a
+target and make its `hover()` fail actionability checks (symptom: a
+`TimeoutError` that only reproduces in full-file runs, never solo).
+
+After asserting a tooltip, park the pointer away from the trigger with
+`initPointerTracking(component.locator)` (from `tests/components/utils.ts`)
+so the tooltip closes before the next test renders. Example:
+`src/entities/preferences/ui/user-preferences-card.test.tsx`.
+
+### Asserting unauthorized messages
+
+`UnauthorizedScreen` renders the custom `unauthorizedMessage` (passed via
+`RequireGlobalPermission`) inside a collapsed `Accordion` — the message is
+not in the DOM until the accordion is expanded. Click the accordion title
+first:
+
+```tsx
+await component.getByText("You can't access this view").click();
+await expect
+  .element(component.getByText("You don't have permission to edit global preferences"))
+  .toBeVisible();
 ```
 
 ## When to Mock
@@ -208,6 +274,20 @@ describe("TaskStatus", () => {
 });
 ```
 
+## Test Isolation
+
+If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
+
+```tsx
+const initialNodeSchemas = store.get(nodeSchemasAtom);
+beforeAll(() => store.set(nodeSchemasAtom, [generateNodeSchema()]));
+afterAll(() => store.set(nodeSchemasAtom, initialNodeSchemas));
+afterEach(() => {
+  vi.resetAllMocks(); // clearAllMocks only clears call history; reset also drops mockReturnValue/mockImplementation overrides
+  window.history.replaceState(null, "", window.location.pathname);
+});
+```
+
 ## File Location
 
 Colocate tests with components using `.test.tsx` extension:
@@ -223,7 +303,8 @@ src/entities/schema/components/status-badge.test.tsx
 
 - Use accessibility-first queries (`getByRole`, `getByLabelText`) over `getByTestId`
 - Test user interactions and visible outcomes, not internal state
-- Follow BDD structure: GIVEN = component render, WHEN = user interaction, THEN = assertion
+- Follow BDD structure: GIVEN = arrange props/state (and the render when an interaction follows), WHEN = the action that triggers the expectation, THEN = assertion
+- Give every test exactly one GIVEN, one WHEN, and one THEN - split multi-phase flows into separate tests
 - Keep GIVEN/WHEN/THEN comments separate
 - Test component-specific behavior only
 - Use descriptive test names that explain what is being tested
@@ -234,6 +315,7 @@ src/entities/schema/components/status-badge.test.tsx
 - Don't test behavior implemented by third-party libraries
 - Don't test internal implementation details
 - Don't mix GIVEN/WHEN/THEN comments
+- Don't repeat a marker within one test (two WHENs/THENs)
 - Don't test library functionality that's already tested
 
 ## Example: Complete Test File
@@ -248,7 +330,10 @@ import { List } from "./list";
 describe("List Component", () => {
   test("renders empty list state correctly", async () => {
     // GIVEN
-    const component = await render(<List />);
+    const defaultValue: string[] = [];
+
+    // WHEN
+    const component = await render(<List defaultValue={defaultValue} />);
 
     // THEN
     await expect.element(component.getByPlaceholder("Add a new item + hit 'enter'")).toBeVisible();
@@ -283,7 +368,7 @@ describe("List Component", () => {
 
     // THEN
     await expect.element(component.getByText("Empty list")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("test item");
+    await expect.element(component.baseElement).not.toMatchTextContent("test item");
     expect(items).toEqual([]);
   });
 });
@@ -293,7 +378,7 @@ describe("List Component", () => {
 
 Before submitting your component tests:
 
-- [ ] Tests use GIVEN/WHEN/THEN structure with separate comments
+- [ ] Every test has exactly one GIVEN, one WHEN, and one THEN, as separate comments (WHEN = whatever triggers the expectation)
 - [ ] Tests use accessibility-first queries (`getByRole`, `getByLabelText`)
 - [ ] `getByTestId` is only used as a last resort
 - [ ] Tests focus on component-specific behavior

@@ -23,6 +23,24 @@ TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP: dict[str, str] = {
     "subscriber_of_groups_for_instances": "subscriber_of_groups",
 }
 
+# A hard list: a relationship kind that is not named here is never read when a template is applied,
+# so a kind newly added to a template has to be classified here.
+# `test_relationship_kinds_on_templates_are_classified` fails while one is left unclassified.
+TEMPLATE_APPLICATION_RELATIONSHIP_KINDS = frozenset(
+    {
+        RelationshipKind.ATTRIBUTE,
+        RelationshipKind.COMPONENT,
+        RelationshipKind.GENERIC,
+        RelationshipKind.PARENT,
+        RelationshipKind.PROFILE,
+    }
+)
+
+
+def get_relationship_names_to_read(schema: MainSchemaTypes) -> set[str]:
+    """Return the names of the relationships an object template is read for."""
+    return {rel.name for rel in schema.relationships if rel.kind in TEMPLATE_APPLICATION_RELATIONSHIP_KINDS}
+
 
 class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""
@@ -57,8 +75,7 @@ class NodeTemplateApplier:
             if attr.value is None:
                 continue
 
-            # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
-            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
+            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}
             if attr.is_from_profile:
                 field_data["is_from_profile"] = True
             fields[attr_name] = field_data

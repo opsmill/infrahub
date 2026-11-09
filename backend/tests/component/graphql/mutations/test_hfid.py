@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -248,6 +249,9 @@ async def test_update_hfid_sends_node_updated_event(
     assert event.node_id == tshirt.id
     assert event.kind == TSHIRT.kind
     assert "human_friendly_id" in event.fields
+    # The recompute write must emit live origin; a merge/rebase origin would be suppressed by the
+    # coalesced recompute, leaving dependent values stale.
+    assert event.get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
     # The display label in the changelog must reflect the relationship traversal
     assert event.changelog.display_label == "Ocean Blue"
 

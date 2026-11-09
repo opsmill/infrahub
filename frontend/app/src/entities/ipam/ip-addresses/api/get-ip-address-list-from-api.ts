@@ -1,21 +1,26 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
+  addOrderByToRequest,
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  IP_ADDRESS_AVAILABLE_KIND,
+  IP_ADDRESS_GENERIC,
+} from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
@@ -25,6 +30,7 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -39,6 +45,7 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
           include_available: true,
           ...(objectKind !== IP_ADDRESS_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
@@ -75,6 +82,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -89,6 +97,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
           limit,
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
@@ -116,7 +125,7 @@ export function getIpAddressListWithAvailabilityFromApi({
   const graphqlQuery = getIpAddressListWithAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
-    query: gql(graphqlQuery),
+    query: graphql(graphqlQuery),
     context: {
       branch: branchName,
       date: atDate,
@@ -132,7 +141,7 @@ export function getIpAddressListWithoutAvailabilityFromApi({
   const graphqlQuery = getIpAddressListWithoutAvailabilityGraphQLQuery(params);
 
   return graphqlClient.query({
-    query: gql(graphqlQuery),
+    query: graphql(graphqlQuery),
     context: {
       branch: branchName,
       date: atDate,

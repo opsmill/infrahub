@@ -7,7 +7,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import {
   type RemoveRelationshipsParams,
   removeRelationships,
-} from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/remove-relationships";
 
 export function useRemoveRelationships() {
   const { currentBranch } = useCurrentBranch();

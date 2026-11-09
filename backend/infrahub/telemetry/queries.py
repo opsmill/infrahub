@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -26,6 +31,65 @@ def _normalize_end_date(value: str) -> str:
     if len(value) <= 10 and "T" not in value:
         return f"{value}T23:59:59.999999+00:00"
     return value
+
+
+@dataclass(frozen=True)
+class NodeKindCount:
+    kind: str
+    count: int
+
+
+class CountNodesByKindsQuery(Query):
+    """Count active nodes of the given concrete kinds on the query's branch at the query's time.
+
+    One pass over the graph replaces a per-kind count query fan-out; kinds with no
+    active node return no row.
+
+    Concrete node schemas only: the match is on the vertex ``kind`` property, which
+    always holds the node's concrete kind. A generic kind never appears there (it is
+    carried only in the vertex labels), so matching a generic would silently count
+    zero. Supporting generics would require matching on labels instead, and a sum over
+    label matches double-counts nodes inheriting several of the requested kinds.
+    """
+
+    name = "count-nodes-by-kinds"
+    type = QueryType.READ
+    insert_return = False
+
+    def __init__(self, schemas: list[NodeSchema], **kwargs: Any) -> None:
+        self.kinds = [schema.kind for schema in schemas]
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        self.params["kinds"] = self.kinds
+
+        query = """
+        MATCH (n:Node)
+        WHERE n.kind IN $kinds
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            // r.status is a tie-breaker for nodes added/deleted at the same time
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, r
+        WHERE r.status = "active"
+        RETURN n.kind AS kind, count(n) AS total
+        ORDER BY kind
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.update_return_labels(["kind", "total"])
+
+    def get_data(self) -> Generator[NodeKindCount, None, None]:
+        for result in self.get_results():
+            yield NodeKindCount(
+                kind=result.get_as_type("kind", str),
+                count=result.get_as_type("total", int),
+            )
 
 
 class TelemetrySnapshotGetListQuery(StandardNodeGetListQuery):

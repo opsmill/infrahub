@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_OBJECT_THREADS = graphql(`
   query GET_OBJECT_THREADS($changeIds: [ID!], $objectPath: String) {
@@ -42,6 +40,5 @@ export function getDiffThreadFromApi(params: GetDiffThreadFromApiParams) {
       changeIds: [params.proposedChangeId],
       objectPath: params.objectPath,
     },
-    fetchPolicy: "no-cache",
   });
 }

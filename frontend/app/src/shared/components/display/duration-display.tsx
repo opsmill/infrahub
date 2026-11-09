@@ -1,7 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { format, formatDistanceStrict } from "date-fns";
+import { Tooltip } from "@infrahub/ui";
+import { formatDistanceStrict } from "date-fns";
 
-import { Tooltip } from "@/shared/components/ui/tooltip";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 type DateDisplayProps = {
   date: number | string | Date;
@@ -9,25 +10,23 @@ type DateDisplayProps = {
   hideDefault?: boolean;
 };
 
-export const getDateDisplay = (date?: number | string | Date) =>
-  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
-
 export const DurationDisplay = (props: DateDisplayProps) => {
   const { date, endDate } = props;
+  const { formatDate } = useFormatDate();
 
   const tooltip = (
     <div className="flex items-center">
-      {getDateDisplay(date)}
+      {formatDate(date, "datetime")}
 
       <Icon icon="mdi:chevron-right" className="mx-2" />
 
-      {getDateDisplay(endDate)}
+      {endDate ? formatDate(endDate, "datetime") : "—"}
     </div>
   );
 
   return (
     <span className="flex flex-wrap items-center">
-      <Tooltip enabled content={tooltip}>
+      <Tooltip message={tooltip} nonInteractiveTrigger>
         <span className="font-normal text-xs">
           {formatDistanceStrict(
             date ? new Date(date) : new Date(),

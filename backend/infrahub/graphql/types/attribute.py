@@ -145,6 +145,16 @@ class IPNetworkType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class IPAddressType(BaseAttribute):
+    value = Field(String)
+    version = Field(Int)
+
+    class Meta:
+        description = "Attribute of type IPAddress"
+        name = "IPAddress"
+        interfaces = {AttributeInterface}
+
+
 class MacAddressType(BaseAttribute):
     value = Field(String)
     oui = Field(String)

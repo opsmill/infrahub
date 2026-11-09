@@ -7,14 +7,15 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { QSP } from "@/shared/config/qsp";
 
-import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
-import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace.query";
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
-import { constructPathForIpam } from "@/entities/ipam/utils";
-import type { NodeObject } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
+import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace.query";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 type IpNamespaceContext = {
   currentIpNamespace: NodeObject;
@@ -26,7 +27,7 @@ export const IpNamespaceContext = React.createContext<IpNamespaceContext | null>
 export function IpNamespaceProvider({ children }: { children: React.ReactNode }) {
   const { objectKind } = useParams();
   const navigate = useNavigate();
-  const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
+  const [namespaceQSP] = useQueryState(QSP.IPAM_NAMESPACE);
 
   const {
     data: currentIpNamespace,
@@ -75,8 +76,8 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
           navigate(
             constructPathForIpam(basePath, [
               newIpNamespaceId
-                ? { name: IPAM_QSP.NAMESPACE, value: newIpNamespaceId }
-                : { name: IPAM_QSP.NAMESPACE, exclude: true },
+                ? { name: QSP.IPAM_NAMESPACE, value: newIpNamespaceId }
+                : { name: QSP.IPAM_NAMESPACE, exclude: true },
             ])
           );
         },

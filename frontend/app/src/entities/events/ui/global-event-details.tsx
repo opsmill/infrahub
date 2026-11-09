@@ -1,6 +1,6 @@
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 
 import { EventDetails } from "./event-details";
 import { NodeEvents } from "./node-details-events";

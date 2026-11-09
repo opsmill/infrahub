@@ -8,7 +8,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.helpers.schema import load_schema
 from tests.integration.schema_lifecycle.shared import TestSchemaLifecycleBase
 
@@ -88,5 +88,4 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
         assert len(devices) == 2
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

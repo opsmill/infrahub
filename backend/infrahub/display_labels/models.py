@@ -10,6 +10,7 @@ from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import (
     EventTrigger,
@@ -127,6 +128,7 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": fields,
@@ -172,7 +174,7 @@ class DisplayLabelJinja2GraphQL(BaseModel):
     node_schema: NodeSchema = Field(..., description="The node kind where the computed attribute is defined")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, filter_id: str) -> str:
+    def render_graphql_query(self, filter_id: str | list[str]) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields["display_label"] = None

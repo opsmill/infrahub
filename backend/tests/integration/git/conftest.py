@@ -214,3 +214,16 @@ def delete_git_branch_after_merge_reset_config() -> Generator[None, None, None]:
     original = config.SETTINGS.git.delete_git_branch_after_merge
     yield
     config.SETTINGS.git.delete_git_branch_after_merge = original
+
+
+@pytest.fixture
+def import_every_remote_branch() -> Generator[None, None, None]:
+    """Import every remote branch, whatever INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES holds in the ambient environment.
+
+    An empty list disables branch-name filtering. Without this, a value exported in the developer's
+    shell leaks into the test process and silently drops the branches the test relies on.
+    """
+    original = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = []
+    yield
+    config.SETTINGS.git.import_sync_branch_names = original

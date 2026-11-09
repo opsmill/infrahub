@@ -76,33 +76,15 @@ class NodePropertyData:
 @dataclass
 class RelationshipPeerData:
     branch: str
-
     source_id: UUID
-    """UUID of the Source Node."""
-
     source_db_id: str
-    """Internal DB ID of the Source Node."""
-
     source_kind: str
-    """Kind of the Source Node."""
-
     peer_id: UUID
-    """UUID of the Peer Node."""
-
     peer_db_id: str
-    """Internal DB ID of the Peer Node."""
-
     peer_kind: str
-    """Kind of the Peer Node."""
-
     properties: dict[str, FlagPropertyData | NodePropertyData]
-    """UUID of the Relationship Node."""
-
     rel_node_id: UUID
-    """UUID of the Relationship Node."""
-
     rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
 
     rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
@@ -314,7 +296,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.ACTIVE, user_id=self.user_id
         )
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -585,7 +567,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
         self.params.update(rel_params)
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
@@ -966,7 +948,7 @@ RETURN updated_at, updated_by
         self.params["peer_kind"] = self.schema.peer
         self.params["source_kind"] = self.source_kind
 
-        arrows = self.schema.get_query_arrows()
+        arrows = self.get_query_arrows(direction=self.schema.direction)
 
         path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 
@@ -1038,6 +1020,7 @@ RETURN updated_at, updated_by
                 branch_filter=branch_filter,
                 branch=self.branch,
                 subquery_idx=filter_cnt,
+                branch_agnostic=self.branch_agnostic,
             )
             self.params.update(subquery_params)
 
@@ -1061,6 +1044,8 @@ RETURN updated_at, updated_by
         # ----------------------------------------------------------------------------
         await self._add_peer_order_by(db=db, peer_schema=peer_schema, branch_filter=branch_filter)
         self.order_by.append("peer.uuid ASC")
+        # Source nodes can share a peer, and a read in pages needs a total order to not skip rows.
+        self.order_by.append("source_node.uuid ASC")
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
@@ -1152,10 +1137,6 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
-
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
 
         super().__init__(**kwargs)
 
@@ -1381,10 +1362,15 @@ class RelationshipDeleteAllQuery(Query):
 
         for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
             for edge_type in edge_types:
+                # Resolve the latest edge to each peer and close it
                 sub_query = """
                     CALL (rl) {
                         MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
-                        WHERE %(active_rel_filter)s AND active_edge.status ="active"
+                        WHERE %(active_rel_filter)s
+                        WITH rl, active_edge, n
+                        ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+                        WITH rl, n, head(collect(active_edge)) AS active_edge
+                        WHERE active_edge.status = "active"
                         CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
                         SET deleted_edge.hierarchy = active_edge.hierarchy
                         WITH active_edge, n
@@ -1396,6 +1382,7 @@ class RelationshipDeleteAllQuery(Query):
                     "arrow_right": arrow_right,
                     "active_rel_filter": active_rel_filter,
                     "edge_type": edge_type,
+                    "id_func": db.get_id_function_name(),
                 }
 
                 self.add_to_query(sub_query)
@@ -1466,14 +1453,17 @@ class RelationshipDeleteAllQuery(Query):
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
+        # Both sides of a hierarchy share one identifier, so it cannot be the key.
+        rel_name_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
         for item in self.get_data():
             if item.uuid == self.node_id:
                 continue
 
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
+                rel_schema
+                for rel_schema in node_schema.relationships
+                if rel_schema.get_identifier() == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
@@ -1495,14 +1485,14 @@ class RelationshipDeleteAllQuery(Query):
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
+                changelog_mapper = rel_name_to_changelog_mapper[deleted_rel_schema.name]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
+                rel_name_to_changelog_mapper[deleted_rel_schema.name] = changelog_mapper
 
             changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
-        return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
+        return [changelog_mapper.changelog for changelog_mapper in rel_name_to_changelog_mapper.values()]
 
 
 class GetAllPeersIds(Query):

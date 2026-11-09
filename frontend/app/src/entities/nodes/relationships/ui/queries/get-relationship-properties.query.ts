@@ -7,7 +7,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetRelationshipPropertiesParams,
   getRelationshipProperties,
-} from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties";
+} from "@/entities/nodes/relationships/domain/use-cases/get-relationship-properties";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 export type UseGetRelationshipPropertiesParams = Omit<

@@ -27,7 +27,8 @@ type LinkProps =
 
 - Prefix: `use*`
 - Let TypeScript infer return types (annotate only when complex)
-- Include all deps in useEffect/useCallback/useMemo arrays
+- Include all deps in the `useEffect` array. Don't reach for `useMemo`/`useCallback`/`memo` at all — the
+  React Compiler memoizes for you (see [react.md](../../knowledge/frontend/react.md))
 
 ## Type Safety
 
@@ -64,6 +65,21 @@ if (!proposedChangeData.source_branch?.value) {
   return <NoDataFound message="Proposed change is missing a source branch." />;
 }
 const sourceBranchValue = proposedChangeData.source_branch.value; // narrowed
+```
+
+"Safe by construction" is still a type lie — seeding a `Map` from the same array you look it up
+against doesn't make the non-null assertion any less of one:
+
+```tsx
+// ❌ Bad — "safe by construction" is still a type lie
+const itemsByUuid = new Map(nodes.map((n) => [n.uuid, createItem(n)]));
+const item = itemsByUuid.get(node.uuid)!; // n was in the same array, so... trust me
+
+// ✅ Good — pair values upfront so there is no re-lookup to assert past
+const entries = nodes.map((n) => ({ node: n, item: createItem(n) }));
+for (const { node, item } of entries) {
+  /* item is already paired, no lookup needed */
+}
 ```
 
 ### Reading route params
@@ -120,5 +136,26 @@ Resolve each remaining hit (or explicitly note it as out-of-scope in the PR desc
 
 ## Constants
 
+Follow [Constants and literals](../constants.md) when creating or reusing values that encode a rule.
+
 - Module-level: `SCREAMING_SNAKE_CASE`
 - Object/array constants: `PascalCase` with `as const`
+
+## The TypeScript gate is `betterer`, not `tsc`
+
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+
+The repo does not have a green `pnpm tsc` — it carries ~200 tracked pre-existing errors, ratcheted
+by [betterer](https://phenomnomnominal.github.io/betterer/) (`pnpm betterer`, results in
+`frontend/app/.betterer.results`). Do not chase the pre-existing errors; the rule is only that the
+count never grows.
+
+Practical consequences when moving or renaming files:
+
+- `.betterer.results` keys entries by file path (and content hash), so moving a file with tracked
+  errors requires refreshing `.betterer.results` and committing it with the move.
+- **Relative imports break silently under the `@/` alias habit**: moving a file one directory
+  deeper (e.g. `domain/x.ts` → `domain/use-cases/x.ts`) adds a level to every *relative* import it
+  contains — typically test-fixture paths like `../../../../tests/fake/schema`. An alias-based
+  search-and-replace won't catch these; the full `tsc` run behind betterer is what surfaces them.
+  Add one `../` per directory level moved.

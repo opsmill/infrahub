@@ -1,4 +1,4 @@
-import { Card, type CardProps } from "@infrahub/ui/card";
+import { Card, type CardProps } from "@infrahub/ui";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { Retry } from "@/shared/components/buttons/retry";

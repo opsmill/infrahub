@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
+from collections.abc import AsyncGenerator
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -11,8 +12,10 @@ import pytest
 from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1 import HydrationHandler
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
+from prefect.client.orchestration import PrefectClient, get_client
+from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -68,15 +71,64 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_workflow
+from infrahub.workers.dependencies import build_cache
+from tests.adapters.cache import MemoryCache
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
+    PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.paused_branch_list import PausedBranchList
+from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.utils import find_available_prefect_port
+from tests.helpers.workflow_override import override_workflow
 from tests.test_data import dataset01 as ds01
+
+COMPONENT_TESTS_DIR = Path(__file__).parent
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Default every component test using ``httpx_mock`` to intercepting only the fake SDK host.
+
+    The per-worker Prefect server flushes batched API logs on its own schedule; a flush landing
+    inside a mocked test must reach the real server instead of failing inside the mock. Tests that
+    declare their own ``httpx_mock`` marker keep it: a hook-added function-level marker would
+    otherwise outrank an explicit module-level one, so the default is only added when none exists.
+    """
+    default_marker = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+    for item in items:
+        if COMPONENT_TESTS_DIR not in item.path.parents:
+            continue
+        if "httpx_mock" not in getattr(item, "fixturenames", ()):
+            continue
+        if list(item.iter_markers("httpx_mock")):
+            continue
+        item.add_marker(default_marker)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[None]
+) -> Generator[None, pytest.TestReport, pytest.TestReport]:
+    """Make a test the Prefect server wedged carry that server's stacks into the failure.
+
+    A wedged server takes its whole worker down through timeouts that describe nothing but the
+    test they killed. The report has to be added here, before the report is logged: xdist ships
+    it to the controller at that point, and anything attached later never leaves the worker.
+    """
+    report = yield
+    section = timeout_diagnostics_section(
+        nodeid=item.nodeid, when=call.when, exception=call.excinfo.value if call.excinfo else None
+    )
+    if section is not None:
+        report.sections.append(section)
+    return report  # noqa: B901 - a pytest wrapper hook yields, then returns the result it wrapped
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -100,9 +152,17 @@ def neo4j_factory() -> _GraphHydrator:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def prefect_test_fixture() -> Generator[None, None, None]:
+def prefect_test_fixture(tmp_path_factory: pytest.TempPathFactory) -> Generator[None, None, None]:
+    log_dir = tmp_path_factory.getbasetemp()
+
     def _run_uvicorn_command(self: Any) -> subprocess.Popen[Any]:
-        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead."""
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead.
+
+        The server is launched through a wrapper that answers SIGUSR1 with the stacks of all its
+        threads, and its output is redirected to a file rather than left to interleave with the
+        worker's own. A server that stops answering is otherwise invisible in CI: blocked, it
+        logs nothing at all, and the tests only ever see their own timeouts.
+        """
         # used to turn off serving the UI
         server_env = {
             "PREFECT_UI_ENABLED": "0",
@@ -111,11 +171,15 @@ def prefect_test_fixture() -> Generator[None, None, None]:
             "PREFECT_SERVER_API_MAX_PARAMETER_SIZE": "0",
         }
 
-        return subprocess.Popen(
+        log_path = log_dir / f"prefect-test-server-{self.port}.log"
+        # Held open for the lifetime of the server process, which outlives this function.
+        log_file = log_path.open("wb")
+
+        process = subprocess.Popen(
             args=[
                 sys.executable,
                 "-m",
-                "uvicorn",
+                "tests.helpers.prefect_test_server",
                 # "--app-dir",
                 # str(infrahub.__module_path__.parent),
                 "--factory",
@@ -134,14 +198,29 @@ def prefect_test_fixture() -> Generator[None, None, None]:
                 **server_env,
                 **get_current_settings().to_environment_variables(exclude_unset=True),
             },
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
         )
+        register_prefect_test_server(port=self.port, process=process, log_path=log_path)
+        return process
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
-    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
-        with prefect_test_harness(server_startup_timeout=60):
-            yield
+    with (
+        patch.object(SubprocessASGIServer, "_port_range", PREFECT_TEST_SERVER_PORT_RANGE),
+        patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command),
+        patch("prefect.testing.utilities._find_available_port", find_available_prefect_port),
+        prefect_test_harness(server_startup_timeout=60),
+    ):
+        yield
+
+
+@pytest.fixture
+async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
+    async with get_client(sync_client=False) as client:
+        yield client
 
 
 @pytest.fixture
@@ -1648,6 +1727,7 @@ async def all_attribute_types_schema(
             {"name": "myjson", "kind": "JSON", "optional": True},
             {"name": "ipaddress", "kind": "IPHost", "optional": True},
             {"name": "prefix", "kind": "IPNetwork", "optional": True},
+            {"name": "bare_address", "kind": "IPAddress", "optional": True},
         ],
     }
 
@@ -2043,6 +2123,10 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema: None, data
 
 @pytest.fixture
 async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
+    return do_hierarchical_location_schema_simple_unregistered()
+
+
+def do_hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2122,6 +2206,16 @@ async def hierarchical_location_schema(
 ) -> None: ...
 
 
+@pytest.fixture(scope="class")
+async def hierarchical_location_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
+) -> None:
+    registry.schema.register_schema(
+        schema=do_hierarchical_location_schema_simple_unregistered(), branch=default_branch_scope_class.name
+    )
+    default_branch_scope_class.update_schema_hash()
+
+
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
@@ -2134,6 +2228,13 @@ async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None
 ) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db, branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def hierarchical_location_data_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, hierarchical_location_schema_scope_class: None
+) -> dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db, branch=default_branch_scope_class)
 
 
 async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
@@ -2956,16 +3057,46 @@ async def prefix_pool_01(
 
 @pytest.fixture
 def workflow_local(dependency_provider: Provider) -> Generator[WorkflowLocalExecution, None, None]:
-    original = config.OVERRIDE.workflow
-    workflow = WorkflowLocalExecution()
-    config.OVERRIDE.workflow = workflow
-    with dependency_provider.scope(build_workflow, lambda: workflow):
+    with override_workflow(WorkflowLocalExecution(), dependency_provider=dependency_provider) as workflow:
         yield workflow
-    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecorder, None, None]:
+    """Record workflow submissions instead of running them."""
+    with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
+        yield recorder
+
+
+@pytest.fixture
+def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, None]:
+    """Serve the cache from one in-memory instance rather than from a cache another module's app left running."""
+    cache = MemoryCache()
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+        yield cache
+
+
+@pytest.fixture
+def paused_branch_list(monkeypatch: pytest.MonkeyPatch) -> PausedBranchList:
+    """Serve the registry's branch lookups from one whose first list read waits after reading the database."""
+    branch_list = PausedBranchList()
+    monkeypatch.setattr(registry, "branch_object", branch_list)
+    return branch_list
 
 
 @pytest.fixture
 async def generic_car_person_schema(default_branch: Branch, data_schema: None) -> None:
+    do_generic_car_person_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def generic_car_person_schema_scope_class(
+    default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_generic_car_person_schema(branch=default_branch_scope_class)
+
+
+def do_generic_car_person_schema(branch: Branch) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -3022,7 +3153,8 @@ async def generic_car_person_schema(default_branch: Branch, data_schema: None) -
     }
 
     schema_root = SchemaRoot(**schema)
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    branch.update_schema_hash()
 
 
 @pytest.fixture

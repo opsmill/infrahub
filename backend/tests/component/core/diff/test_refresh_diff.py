@@ -13,8 +13,7 @@ from infrahub.core.diff.tasks import refresh_diff_all
 from infrahub.database import InfrahubDatabase
 from infrahub.workflows.catalogue import DIFF_REFRESH, DIFF_UPDATE
 from infrahub.workflows.models import WorkflowDefinition
-
-from .factories import EnrichedRootFactory
+from tests.helpers.diff_factories import EnrichedRootFactory
 
 
 def _make_context(branch_name: str) -> InfrahubContext:

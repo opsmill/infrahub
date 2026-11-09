@@ -25,6 +25,14 @@ All events extend `InfrahubEvent` from `backend/infrahub/events/models.py` and c
 - **related**: Additional context resources (returned by `get_related()`)
 - **payload**: Event-specific data (returned by `get_event_payload()`)
 
+### Sensitive values are masked only at construction
+
+The changelog models (`backend/infrahub/core/changelog/models.py`) mask `Password`/
+`HashedPassword` attribute values to `***` in a `model_validator(mode="after")` — which runs only
+when the model is constructed. Assigning `value`/`value_previous` on an existing instance bypasses
+the mask (`validate_assignment` is not enabled) and leaks the secret into the event payload. Build
+changelog entries with their final values; never patch them after construction.
+
 ### Related resources cap
 
 The Prefect API rejects any event whose `related` list exceeds
@@ -33,10 +41,32 @@ an oversized event is dropped entirely, never recorded. Node mutation events
 build their related resources in priority order — node-scoped entries first
 (attribute updates, parent, the node's own related-node entry), then
 relationship updates (which automation triggers match on), then per-peer
-related-node entries — and truncate at that maximum with a warning log. A node
+related-node entries — and truncate with a warning log. A node
 with a very large cardinality-many relationship therefore keeps its event, but
 not every peer is represented in `related`; the full peer list remains
 available in the event payload's changelog.
+
+Events truncate to `get_related_resource_budget()`, which sits below that
+maximum rather than on it. Prefect's events worker appends run-context
+resources (flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag) after the event has been handed over, and attaches only
+as many of them as still fit under the maximum, logging a warning for the rest.
+An event that leaves Infrahub on the maximum therefore reaches the API valid
+but stripped of its run context, which carries the tags a run is filtered by.
+The reserved headroom keeps room for those resources.
+
+Group mutation events (`member_added` / `member_removed`) follow the same rule.
+Each member and each ancestor is a single related resource carrying its own
+role (`infrahub.group.member` / `infrahub.group.ancestor`) rather than a
+role-plus-duplicate pair, so the list grows by one per member instead of two.
+The fixed group-scoped entries come first and members/ancestors come last, so
+the same ordered truncation keeps the event within the budget. Group
+automations match the primary group resource and read the changed members from
+the payload, so truncating overflow members only trims the event-query display;
+the event is always recorded and automations always fire. The event query
+API treats members and ancestors as related nodes (matching all three roles and
+deduplicating by id), which keeps its output stable across the consolidated
+format and any older events still carrying the duplicate related-node role.
 
 ## Event Types
 
@@ -61,7 +91,7 @@ Application Code
        ▼
 InfrahubEventService.send(event)
        │
-       ├──► _send_bus() ──► Message Bus (RabbitMQ/NATS)
+       ├──► _send_bus() ──► Message Bus (RabbitMQ)
        │         │
        │         └──► event.get_messages() → Internal handlers
        │
@@ -69,6 +99,8 @@ InfrahubEventService.send(event)
                    │
                    └──► emit_event() → Prefect Automations
 ```
+
+For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
 
 ## Trigger action parameters
 
@@ -90,6 +122,7 @@ The `EventMeta` class provides rich context:
 - **account_id**: Initiating account
 - **request_id**: Correlation ID
 - **context**: Full `InfrahubContext` for the operation
+- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 
@@ -117,4 +150,5 @@ Events can be queried through:
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
+- [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure

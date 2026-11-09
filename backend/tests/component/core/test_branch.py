@@ -508,6 +508,24 @@ async def test_create_branch(db: InfrahubDatabase, empty_database: None) -> None
     assert branch.description == description
 
 
+async def test_branch_merge_started_at_round_trip(db: InfrahubDatabase, empty_database: None) -> None:
+    """merge_started_at persists on the :Branch node and is read back unchanged."""
+    branch_name = "merge-started-at-branch"
+    branch = Branch(name=branch_name, status=BranchStatus.OPEN, branched_from=Timestamp().to_string())
+    await branch.save(db=db)
+
+    # Defaults to None and round-trips as None.
+    reloaded = await Branch.get_by_name(name=branch_name, db=db)
+    assert reloaded.merge_started_at is None
+
+    merge_at = Timestamp()
+    branch.merge_started_at = merge_at.to_string()
+    await branch.save(db=db)
+
+    reloaded = await Branch.get_by_name(name=branch_name, db=db)
+    assert reloaded.merge_started_at == merge_at.to_string()
+
+
 async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch) -> None:
     """Test that Branch.get_list offset skips the expected number of records."""
     for i in range(5):

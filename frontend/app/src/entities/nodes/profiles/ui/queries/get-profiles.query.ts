@@ -6,7 +6,10 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { type GetProfilesParams, getProfiles } from "@/entities/nodes/profiles/domain/get-profiles";
+import {
+  type GetProfilesParams,
+  getProfiles,
+} from "@/entities/nodes/profiles/domain/use-cases/get-profiles";
 
 export function getProfilesQueryOptions(params: GetProfilesParams) {
   return queryOptions({

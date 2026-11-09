@@ -1,9 +1,10 @@
 import pytest
 from graphene.types.field import Field
+from pydantic import create_model
 
 from infrahub.core import attribute
 from infrahub.graphql import types
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_PYTHON_TYPES, ATTRIBUTE_TYPES
 
 
 @pytest.mark.parametrize(
@@ -19,12 +20,17 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     attribute_type = ATTRIBUTE_TYPES[test_case]
 
     graphql_query_type = getattr(types, attribute_type.graphql_query)
-    include_binary_address = test_case in {"IPHost", "IPNetwork"}
+    include_binary_address = test_case in {"IPAddress", "IPHost", "IPNetwork"}
     path_list = _get_path_field_list(
         include_binary_address=include_binary_address, fields=graphql_query_type._meta.fields
     )
     infrahub_type: attribute.BaseAttribute = getattr(attribute, attribute_type.infrahub)
     assert path_list == infrahub_type.get_allowed_property_in_path()
+
+
+def test_attribute_python_types_cover_every_kind() -> None:
+    """Every attribute kind needs a python type, the REST schema endpoint looks it up unguarded."""
+    assert set(ATTRIBUTE_PYTHON_TYPES) == set(ATTRIBUTE_TYPES)
 
 
 def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field]) -> list[str]:
@@ -44,3 +50,21 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
     included.extend(name for name in fields if name not in excluded_fields)
 
     return sorted(included)
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(attribute_name, id=attribute_name) for attribute_name in ATTRIBUTE_PYTHON_TYPES],
+)
+def test_attribute_python_types_build_a_json_schema(test_case: str) -> None:
+    """Every attribute kind's python type can back a pydantic field, so the REST JSON schema endpoint can render it."""
+    model = create_model("Model", value=(ATTRIBUTE_PYTHON_TYPES[test_case], None))
+
+    assert "value" in model.model_json_schema()["properties"]
+
+
+def test_list_attribute_renders_as_untyped_array() -> None:
+    """A List attribute holds items of any type, so its JSON schema is an array with unconstrained items."""
+    model = create_model("Model", value=(ATTRIBUTE_PYTHON_TYPES["List"], ...))
+
+    assert model.model_json_schema()["properties"]["value"] == {"items": {}, "title": "Value", "type": "array"}

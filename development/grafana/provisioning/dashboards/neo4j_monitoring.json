@@ -837,7 +837,7 @@
             "uid": "localprometheus"
           },
           "editorMode": "code",
-          "expr": "neo4j_database_neo4j_ids_in_use_relationship_type{job=\"$job\", instance=~'$instance'}",
+          "expr": "neo4j_database_neo4j_ids_in_use_relationship_type{job=\"database\", instance=~\"database:2004\"}",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -949,8 +949,8 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "rate(neo4j_database_neo4j_db_query_execution_latency_millis_sum[5m]) / rate(neo4j_database_neo4j_db_query_execution_latency_millis_count[5m])",
-          "legendFormat": "Average",
+          "expr": "neo4j_database_neo4j_db_query_execution_latency_millis{quantile=\"0.5\"}",
+          "legendFormat": "Median (p50)",
           "refId": "A"
         },
         {
@@ -958,7 +958,7 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "histogram_quantile(0.95, rate(neo4j_database_neo4j_db_query_execution_latency_millis_bucket[5m]))",
+          "expr": "neo4j_database_neo4j_db_query_execution_latency_millis{quantile=\"0.95\"}",
           "legendFormat": "p95",
           "refId": "B"
         }
@@ -1488,14 +1488,6 @@
             "steps": [
               {
                 "color": "green"
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 85
               }
             ]
           },
@@ -1535,7 +1527,7 @@
             "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
-          "expr": "neo4j_database_neo4j_store_size_total",
+          "expr": "neo4j_database_neo4j_store_size_database",
           "range": true,
           "refId": "A"
         }

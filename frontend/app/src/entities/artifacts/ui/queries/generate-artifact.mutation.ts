@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type GenerateArtifactParams,
   generateArtifact,
-} from "@/entities/artifacts/domain/generate-artifact";
+} from "@/entities/artifacts/domain/use-cases/generate-artifact";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 

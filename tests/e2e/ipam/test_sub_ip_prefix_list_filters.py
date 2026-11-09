@@ -31,6 +31,7 @@ class TestSubIpPrefixListFiltering:
 
         # filter using column filtering
         await page.get_by_role("button", name="Member Type").click()
+        await page.get_by_role("menuitem", name="Filter").click()
         await page.get_by_role("option", name="Prefix Prefix serves as").click()
         await page.get_by_role("button", name="Apply").click()
         await expect(identifier_cell.get_by_role("link", name="10.1.0.0/16")).to_be_visible()

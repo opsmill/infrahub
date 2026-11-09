@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_a
+
 
 class TestProfiles(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")

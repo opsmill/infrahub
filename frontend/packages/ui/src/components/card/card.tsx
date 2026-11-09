@@ -13,7 +13,7 @@ export function Card({ className, ref, ...props }: CardProps) {
       className={cn(
         "flex flex-col",
         "rounded-2xl",
-        "bg-linear-to-b from-stone-50 to-10% to-white",
+        "bg-linear-to-b from-stone-50 to-white to-10%",
         "border border-neutral-200",
         "shadow-[0_1px_1px_rgba(0,0,0,0.02)] inset-shadow-[0_2px_0_rgb(255,255,255),0_-1px_2px_1px_rgba(0,0,0,0.03)]",
         className,
@@ -36,7 +36,7 @@ export function CardHeader({ className, ref, ...props }: CardHeaderProps) {
         "border-b border-b-neutral-200",
         "bg-linear-to-b from-neutral-100 to-neutral-50",
         "px-3 py-2",
-        "font-medium text-neutral-700 text-sm tracking-tight",
+        "text-sm font-medium tracking-tight text-neutral-700",
         "inset-shadow-[0_1px_0_rgba(255,255,255,0.85)]",
         className,
       )}

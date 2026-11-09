@@ -8,15 +8,15 @@ If you completed the [Quick Start](./quickstart.mdx), you have a local Infrahub 
 
 ## 1. Design your schema
 
-The Quick Start used pre-built schemas from the Schema Library. For a POC, model a slice of your actual infrastructure — the devices, services, or resources that matter most to your team.
+The Quick Start used pre-built schemas from the Infrahub Marketplace. For a POC, model a slice of your actual infrastructure — the devices, services, or resources that matter most to your team.
 
 Start with a focused scope. Pick one domain (for example: data center fabric, WAN sites, or firewall policies) and model it. You can always expand later. The [Infrahub Marketplace](https://marketplace.infrahub.app) is a good starting point — browse it for schemas that match your domain and extend from there.
 
-<ReferenceLink title="Create a schema" url="../academy/tutorials/build-your-first-schema"/>
+<ReferenceLink title="Create a schema" url="../learn/tutorials/build-your-first-schema"/>
 
 ## 2. Load real data
 
-With a schema that reflects your infrastructure, bring in real data. If you already have a source of truth (Netbox, Nautobot, IP Fabric, or others), [Infrahub Sync](https://github.com/opsmill/infrahub-sync) can pull data from these systems directly.
+With a schema that reflects your infrastructure, bring in real data. If you already have a source of truth (Netbox, Nautobot, IP Fabric, or others), [Infrahub Sync](https://github.com/opsmill/infrahub-sync) can pull data from these systems directly. If you use NetBox, you can also [convert its device types into object templates](../object-templates/import-from-netbox.mdx) with an AI coding assistant.
 
 Alternatively, describe your data in YAML object files and load them with `infrahubctl`, the same way you did in the Quick Start. This works well for initial seeding or for data that doesn't live in another system yet.
 
@@ -52,7 +52,7 @@ A local Docker setup works for development, but for a POC that involves your tea
 
 At this point, you have a running Infrahub instance with your own schema, real data, a connected Git repository, and generated artifacts. From here you can:
 
-- [Build Generators](../academy/tutorials/generators/build-your-first-generator) to automate the creation of infrastructure objects from templates and business logic.
+- [Build Generators](../learn/tutorials/generators/build-your-first-generator) to automate the creation of infrastructure objects from templates and business logic.
 - [Set up events and webhooks](../events/overview) to trigger external systems when data changes.
 - [Deploy artifacts with Ansible]($(base_url)ansible) or [Nornir]($(base_url)nornir) to push configurations to your infrastructure.
 

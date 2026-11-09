@@ -12,6 +12,7 @@ from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.groups.tasks import update_graphql_query_group
 from infrahub.workers.dependencies import build_client
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 
 
 @pytest.fixture
@@ -25,8 +26,10 @@ async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTT
 async def test_graphql_group_update(
     db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02: HTTPXMock, dependency_provider: Provider
 ) -> None:
-    with dependency_provider.scope(
-        build_client, lambda: InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
+    with override_dependency(
+        build_client,
+        lambda: InfrahubClient(config=Config(address="http://mock", insert_tracker=True)),
+        dependency_provider=dependency_provider,
     ):
         q1 = str(uuid.uuid4())
         p1 = str(uuid.uuid4())

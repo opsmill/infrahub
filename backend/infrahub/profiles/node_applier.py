@@ -80,7 +80,7 @@ class NodeProfilesApplier:
         self,
         profile_ids: list[str],
         attr_names_for_profiles: list[str],
-        relationship_filters: list[RelationshipFilter] | None = None,
+        include_relationships: list[RelationshipFilter] | None = None,
     ) -> list[ProfileData]:
         if not profile_ids:
             return []
@@ -89,7 +89,7 @@ class NodeProfilesApplier:
             branch=self.branch,
             profile_ids=profile_ids,
             attr_names=attr_names_for_profiles,
-            relationship_filters=relationship_filters,
+            include_relationships=include_relationships,
         )
         await query.execute(db=self.db)
         profile_data_list = query.get_profile_data()
@@ -106,7 +106,7 @@ class NodeProfilesApplier:
         if node_attr.is_from_profile is not True:
             node_attr.is_from_profile = True
             is_changed = True
-        if node_attr.source_id != profile_id:  # type: ignore[attr-defined]
+        if node_attr.source_id != profile_id:
             node_attr.set_source(value=profile_id)
             is_changed = True
         return is_changed
@@ -215,7 +215,7 @@ class NodeProfilesApplier:
         sorted_profile_data = await self._get_sorted_profile_data(
             profile_ids=profile_ids,
             attr_names_for_profiles=attr_names_for_profiles,
-            relationship_filters=rel_filters_for_profiles,
+            include_relationships=rel_filters_for_profiles,
         )
 
         updated_field_names: list[str] = []
@@ -253,7 +253,7 @@ class NodeProfilesApplier:
                     break
 
             # Refresh the relationship manager to update the is_from_profile property
-            await node_rel.fetch_relationship_ids(db=self.db)
+            await node_rel.refresh_update_details(db=self.db)
             if not has_profile_rel_data and node_rel.is_from_profile:
                 await self._remove_profile_from_relationship(relationship_manager=node_rel)
                 updated_field_names.append(node_rel.name)

@@ -12,7 +12,7 @@ import {
   type GetBranchesParams,
   getAllBranches,
   getBranches,
-} from "@/entities/branches/domain/get-branches";
+} from "@/entities/branches/domain/use-cases/get-branches";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 
 type GetBranchesInfiniteQueryOptionsParams = Omit<GetBranchesParams, keyof PaginationParams>;

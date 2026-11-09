@@ -1,6 +1,6 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchActionsCell } from "@/entities/branches/ui/branches-table/cells/branch-actions-cell";
 import { BranchCreatedByCell } from "@/entities/branches/ui/branches-table/cells/branch-created-by-cell";

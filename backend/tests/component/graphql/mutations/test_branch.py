@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -7,22 +8,181 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_database, build_message_bus
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
+
+BRANCH_CREATE = """
+mutation(
+    $name: String!
+    $description: String
+    $originBranch: String
+    $branchedFrom: String
+    $syncWithGit: Boolean
+) {
+    BranchCreate(
+        data: {
+            name: $name
+            description: $description
+            origin_branch: $originBranch
+            branched_from: $branchedFrom
+            sync_with_git: $syncWithGit
+        }
+    ) {
+        ok
+        object {
+            id
+            name
+            description
+            origin_branch
+            branched_from
+            sync_with_git
+        }
+    }
+}
+"""
+
+BRANCHED_FROM_ERROR = "branched_from input is deprecated and cannot be set, it will be the create time of the branch."
+
+
+@dataclass
+class RejectedInputTestCase:
+    name: str
+    """Descriptive name for the test scenario."""
+
+    branch_name: str
+    """Name of the branch the mutation attempts to create."""
+
+    variables: dict[str, Any]
+    """Optional BranchCreate input variables sent alongside the branch name."""
+
+    expected_message: str
+    """The exact GraphQL error message the mutation must return."""
+
+
+REJECTED_INPUT_TEST_CASES: list[RejectedInputTestCase] = [
+    RejectedInputTestCase(
+        name="branched_from_timestamp_rejected",
+        branch_name="own-branched-from",
+        variables={"branchedFrom": "2020-01-01T00:00:00.000Z"},
+        expected_message=BRANCHED_FROM_ERROR,
+    ),
+    RejectedInputTestCase(
+        name="branched_from_empty_string_rejected",
+        branch_name="empty-branched-from",
+        variables={"branchedFrom": ""},
+        expected_message=BRANCHED_FROM_ERROR,
+    ),
+    RejectedInputTestCase(
+        name="origin_branch_other_than_default_rejected",
+        branch_name="other-origin-branch",
+        variables={"originBranch": "not-the-default-branch"},
+        expected_message="origin_branch must be 'main'",
+    ),
+    RejectedInputTestCase(
+        name="origin_branch_empty_string_rejected",
+        branch_name="empty-origin-branch",
+        variables={"originBranch": ""},
+        expected_message="origin_branch must be 'main'",
+    ),
+]
+
+
+class TestBranchCreateInputValidation(TestInfrahubApp):
+    @pytest.mark.parametrize(
+        "test_case",
+        [pytest.param(tc, id=tc.name) for tc in REJECTED_INPUT_TEST_CASES],
+    )
+    async def test_server_owned_input_is_rejected(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
+        test_case: RejectedInputTestCase,
+    ) -> None:
+        """branched_from and origin_branch are decided by the server, so a client-supplied value is an input error."""
+        result = await graphql_mutation(
+            query=BRANCH_CREATE,
+            db=db,
+            service=service,
+            branch=default_branch,
+            account_session=session_admin,
+            variables={"name": test_case.branch_name} | test_case.variables,
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) == 1
+        assert result.errors[0].message == test_case.expected_message
+
+        with pytest.raises(BranchNotFoundError):
+            await Branch.get_by_name(db=db, name=test_case.branch_name)
+
+    @pytest.mark.parametrize(
+        ("branch_name", "variables"),
+        [
+            pytest.param("omitted-optional-input", {}, id="optional_input_omitted"),
+            pytest.param(
+                "null-optional-input",
+                {"description": None, "originBranch": None, "branchedFrom": None, "syncWithGit": None},
+                id="optional_input_explicitly_null",
+            ),
+        ],
+    )
+    async def test_unset_optional_input_falls_back_to_defaults(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        service: InfrahubServices,
+        branch_name: str,
+        variables: dict[str, Any],
+    ) -> None:
+        """An explicit null says no more than omitting the field, so both must land on the server defaults."""
+        result = await graphql_mutation(
+            query=BRANCH_CREATE,
+            db=db,
+            service=service,
+            branch=default_branch,
+            account_session=session_admin,
+            variables={"name": branch_name} | variables,
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+
+        branch = await Branch.get_by_name(db=db, name=branch_name)
+        assert isinstance(branch.description, str)
+        assert not branch.description
+        assert branch.origin_branch == default_branch.name
+        assert branch.sync_with_git is True
+        assert isinstance(branch.branched_from, str)
+        assert branch.branched_from
 
 
 class TestBranchCreate(TestInfrahubApp):
@@ -287,11 +447,11 @@ async def local_services(db: InfrahubDatabase, dependency_provider: Provider) ->
     workflow = WorkflowLocalExecution()
 
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_message_bus, lambda: message_bus),
-        dependency_provider.scope(build_workflow, lambda: workflow),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_message_bus, lambda: message_bus, dependency_provider=dependency_provider),
+        override_workflow(workflow, dependency_provider=dependency_provider),
     ):
-        yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow)
+        yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow, cache=MemoryCache())
 
 
 async def test_branch_delete(
@@ -315,6 +475,45 @@ async def test_branch_delete(
 
     assert delete_before_create.errors
     assert delete_before_create.errors[0].message == "Branch: branch3 not found."
+
+
+async def test_branch_delete_merge_failed_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    local_services: InfrahubServices,
+) -> None:
+    # A branch left durably in MERGE_FAILED must not be deletable until an administrator recovers it,
+    # even when the volatile write-protection cache key is absent (the routine state after a restart or
+    # cache flush) and regardless of which branch the request targets. No merge:protected key is set
+    # here, so a passing assertion proves the delete block reads the durable branch status rather than
+    # the cache key.
+    failed_branch = Branch(
+        name="merge-failed-branch",
+        status=BranchStatus.MERGE_FAILED,
+        branched_from=Timestamp().to_string(),
+        merge_started_at=Timestamp().to_string(),
+    )
+    await failed_branch.save(db=db)
+
+    assert await MergeWriteBlocker(cache=local_services.cache).get() is None
+
+    result = await graphql_mutation(
+        query='mutation { BranchDelete(data: { name: "merge-failed-branch" }) { ok } }',
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=local_services,
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == MERGE_RECOVERY_REQUIRED_MESSAGE
+
+    # The guard raises before the delete workflow runs, so the branch is left intact for recovery.
+    reloaded = await Branch.get_by_name(db=db, name=failed_branch.name)
+    assert reloaded.status == BranchStatus.MERGE_FAILED
 
 
 async def test_branch_rebase_wrong_branch(
@@ -391,12 +590,62 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
+    # The mutation publishes what it saved, so the cache reflects the committed description
+    cached_branch4 = registry.branch["branch4"]
+    assert cached_branch4.description == "testing"
+    assert cached_branch4.description == branch4_updated.description
+
     assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
     assert branch4.updated_at
     assert branch4_updated.updated_at
     assert branch4_updated.updated_at > branch4.updated_at
     assert branch4_updated.updated_by == session_admin.account_id
+
+
+async def test_branch_update_leaves_an_unknown_branch_out_of_the_registry(
+    db: InfrahubDatabase, base_dataset_02: dict, session_admin: AccountSession, local_services: InfrahubServices
+) -> None:
+    """A branch this worker has never seen must stay out of the cache, so refresh_branches still creates it.
+
+    `Branch.get_by_name` does not load the schema, so caching it here would leave an entry that the sweep
+    treats as already present and never repairs.
+    """
+    branch5 = await create_branch(branch_name="branch5", db=db)
+    # Undo what create_branch cached: this stands in for a branch created on another worker
+    del registry.branch[branch5.name]
+
+    query = """
+    mutation {
+    BranchUpdate(
+        data: {
+        name: "branch5",
+        description: "testing"
+        }
+    ) {
+        ok
+    }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, branch=registry.default_branch, account_session=session_admin, service=local_services
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["BranchUpdate"]["ok"] is True
+
+    # The write still landed; only the cache was left for the sweep to populate
+    assert (await Branch.get_by_name(db=db, name="branch5")).description == "testing"
+    assert branch5.name not in registry.branch
 
 
 async def test_branch_merge_wrong_branch(

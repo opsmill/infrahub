@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import weakref
 from typing import TYPE_CHECKING, Any, overload
 
 from prefect.client.schemas.objects import StateType
@@ -7,24 +8,48 @@ from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
 from infrahub import config, lock
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
+from infrahub.workflows.initialization import (
+    setup_task_manager,  # noqa: TID251 - worker startup owns the setup
+    setup_task_manager_identifiers,
+)
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
+from .creation_slots import RunCreationSlots
+from .priority import prepare_dispatch
+from .run_follower import FlowRunFollower
 
 if TYPE_CHECKING:
+    from prefect.client.orchestration import PrefectClient
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
     from infrahub.tls.registry import TlsContextRegistry
+    from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
+
+# Creating a run sends several requests through the Prefect client the flow run shares with its own state proposals,
+# so no more runs are created at once than the worker lets its submissions take.
+RUN_CREATION_SLOTS = SUBMISSION_WINDOW_CAPACITY
+RUN_STATE_POLL_INTERVAL = 1
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
+        self._creation_slots = RunCreationSlots(capacity=RUN_CREATION_SLOTS)
+        # A follower holds its client, so only the follower is weak: both go away once no wait holds the follower.
+        self._followers: weakref.WeakValueDictionary[PrefectClient, FlowRunFollower] = weakref.WeakValueDictionary()
+
+    def _follower(self, client: PrefectClient) -> FlowRunFollower:
+        follower = self._followers.get(client)
+        if follower is None:
+            follower = FlowRunFollower(client=client, poll_interval=RUN_STATE_POLL_INTERVAL)
+            self._followers[client] = follower
+        return follower
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
@@ -47,6 +72,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Return: ...
 
     @overload
@@ -57,6 +83,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -67,14 +94,33 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
-        response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
-        )  # type: ignore[misc]
+        client_context = AsyncClientContext.get()
+        if client_context is None:
+            response: FlowRun = await run_deployment(
+                name=workflow.full_name,
+                poll_interval=RUN_STATE_POLL_INTERVAL,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
+        else:
+            client = client_context.client
+            async with self._creation_slots.slot(client=client):
+                flow_run: FlowRun = await run_deployment(
+                    name=workflow.full_name,
+                    timeout=0,
+                    parameters=parameters or {},
+                    tags=tags,
+                    work_queue_name=work_queue_name,
+                )  # type: ignore[misc]
+            response = await self._follower(client=client).wait(flow_run_id=flow_run.id)
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
@@ -89,14 +135,22 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         tls_insecure = config.SETTINGS.http.tls_insecure
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
         tls_context = self._tls_registry.get(insecure=tls_insecure, ca_bundle=tls_ca_bundle)
         async with AsyncClientContext(httpx_settings={"verify": tls_context}):
-            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[misc]
+            flow_run = await run_deployment(
+                name=workflow.full_name,
+                timeout=0,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

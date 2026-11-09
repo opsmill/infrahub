@@ -13,7 +13,7 @@ import {
   ProcessingGroupItem,
   type ProcessingGroupItemProps,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-group-item";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface ProcessingGroupsPanelProps extends Omit<ProcessingGroupItemProps, "group"> {
   selectedGroups: RelationshipNode[];

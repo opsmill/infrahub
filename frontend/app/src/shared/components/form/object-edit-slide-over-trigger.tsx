@@ -1,14 +1,13 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps } from "@infrahub/ui";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;
@@ -58,28 +57,23 @@ const ObjectEditSlideOverTrigger = ({
     <>
       {editButton}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={getNodeLabel(data)}
-            title={`Edit ${getNodeLabel(data)}`}
-            subtitle={data?.description?.value}
-          />
-        }
-        open={isEditDrawerOpen}
-        setOpen={setIsEditDrawerOpen}
-      >
-        <ObjectItemEditComponent
+      <Sheet isOpen={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={getNodeLabel(data)}
+          title={`Edit ${getNodeLabel(data)}`}
+          subtitle={data?.description?.value}
+        />
+        <ObjectEdit
           closeDrawer={() => setIsEditDrawerOpen(false)}
           onUpdateComplete={() => {
             onUpdateComplete?.();
             setIsEditDrawerOpen(false);
           }}
           objectId={data.id}
-          objectname={schema.kind!}
+          objectKind={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

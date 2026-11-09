@@ -110,13 +110,14 @@ class DiffDataCheckSynchronizer:
         return None
 
     def _update_diff_conflicts(self, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
+        # This loop runs without an ``await`` over a diff that can hold tens of thousands of nodes, so
+        # each match has to be a single lookup.
+        retrieved_nodes_by_identifier = retrieved_diff.get_node_map()
         for updated_node in updated_diff.nodes:
-            try:
-                retrieved_node = retrieved_diff.get_node(node_identifier=updated_node.identifier)
-            except ValueError:
-                retrieved_node = None
+            retrieved_node = retrieved_nodes_by_identifier.get(updated_node.identifier)
             if not retrieved_node:
                 retrieved_diff.nodes.add(updated_node)
+                retrieved_nodes_by_identifier[updated_node.identifier] = updated_node
                 continue
             retrieved_node.conflict = updated_node.conflict
             self._update_diff_attr_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
@@ -152,13 +153,14 @@ class DiffDataCheckSynchronizer:
             if not retrieved_rel:
                 retrieved_node.relationships.add(updated_rel)
                 continue
+            # A cardinality-many relationship can hold tens of thousands of peers, so each match has to
+            # be a single lookup.
+            retrieved_elements_by_peer_id = {element.peer_id: element for element in retrieved_rel.relationships}
             for updated_element in updated_rel.relationships:
-                try:
-                    retrieved_element = retrieved_rel.get_element(updated_element.peer_id)
-                except ValueError:
-                    retrieved_element = None
+                retrieved_element = retrieved_elements_by_peer_id.get(updated_element.peer_id)
                 if not retrieved_element:
                     retrieved_rel.relationships.add(updated_element)
+                    retrieved_elements_by_peer_id[updated_element.peer_id] = updated_element
                     continue
                 retrieved_element.conflict = updated_element.conflict
                 for updated_prop in updated_element.properties:

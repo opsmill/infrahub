@@ -7,7 +7,11 @@ on:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
-engine: claude
+engine:
+  id: claude
+  bare: false
+  permission-mode: acceptEdits
+model: opus
 timeout-minutes: 60
 permissions:
   contents: read
@@ -63,7 +67,7 @@ steps:
       if [ "$APPROVED" = "0" ]; then
         fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
       fi
-  - uses: actions/setup-python@v6
+  - uses: actions/setup-python@v7.1.0
     with:
       python-version: "3.12"
   - uses: astral-sh/setup-uv@v7
@@ -73,7 +77,7 @@ steps:
   - uses: pnpm/action-setup@v4
     with:
       version: 10
-  - uses: actions/setup-node@v6
+  - uses: actions/setup-node@v7.1.0
     with:
       # https://github.com/microsoft/playwright/issues/41000
       node-version: 24.15.0
@@ -94,7 +98,7 @@ safe-outputs:
     target: "*"
   push-to-pull-request-branch:
     max: 5
-  missing-tool:
+  report-missing-tool:
 ---
 
 # Bug fixer agent
@@ -188,7 +192,7 @@ Write your reasoning as a "Fix strategy" section in the PR body BEFORE implement
 Run the specific test the test-writer wrote using the same runner they used:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
 - Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
-- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
+- Frontend E2E (repo root; needs a locally built image: `uv run invoke dev.build`): `INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/path/to/test.py -x -v`
 - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
 - Before continuing, verify `git diff` shows no changes to the test file(s) from the
   test-writer's PR. If you accidentally modified a test file, revert those changes.

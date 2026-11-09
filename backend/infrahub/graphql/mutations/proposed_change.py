@@ -39,6 +39,7 @@ from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, P
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
+from infrahub.workflows.constants import WorkflowPriority
 
 from ...core.node.lock_utils import build_object_lock_name
 from .main import InfrahubMutationOptions
@@ -216,6 +217,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
                 },
+                priority=WorkflowPriority.HIGH,
             )
             # When the PROPOSED_CHANGE_MERGE succeeds it will have correctly changed the state
             # from the overridden "merging" value, so here we change it back to reflect the
@@ -490,6 +492,7 @@ class ProposedChangeMerge(Mutation):
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
                 },
+                priority=WorkflowPriority.HIGH,
             )
         else:
             workflow = await graphql_context.service.workflow.submit_workflow(
@@ -499,6 +502,7 @@ class ProposedChangeMerge(Mutation):
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
                 },
+                priority=WorkflowPriority.HIGH,
             )
             task = {"id": workflow.id}
 

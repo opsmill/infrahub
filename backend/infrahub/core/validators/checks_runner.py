@@ -6,6 +6,7 @@ from infrahub_sdk.protocols import CoreValidator
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
+from infrahub.log import get_logger
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.validators.events import send_failed_validator, send_passed_validator
 
@@ -20,7 +21,7 @@ async def run_checks_and_update_validator(
     """Execute a list of checks coroutines, and set validator fields accordingly.
 
     Tasks are retrieved by completion order so as soon as we detect a failing check,
-    we set validator conclusion to failure.
+    we set validator conclusion to failure. A check that raises counts as a failing check.
     """
     event_context = context.to_event_context()
 
@@ -33,7 +34,12 @@ async def run_checks_and_update_validator(
     failed_early = False
 
     for earliest_task in asyncio.as_completed(checks):
-        result = await earliest_task
+        # One check run that fails or times out must fail the validator, not leave it in progress.
+        try:
+            result = await earliest_task
+        except Exception:
+            get_logger().exception("A check run failed", validator_id=validator.id)
+            result = ValidatorConclusion.FAILURE
         if validator.conclusion.value != ValidatorConclusion.FAILURE.value and result == ValidatorConclusion.FAILURE:
             validator.conclusion.value = ValidatorConclusion.FAILURE.value
             failed_early = True

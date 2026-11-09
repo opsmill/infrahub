@@ -42,7 +42,7 @@ def ruff(context: Context) -> None:
     """Run ruff linter against Python SDK files."""
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
-    exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory / 'pyproject.toml'}"
+    exec_cmd = f"ruff check {exec_directory} --config {exec_directory / 'pyproject.toml'}"
 
     with context.cd(exec_directory):
         context.run(exec_cmd)

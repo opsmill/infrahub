@@ -20,15 +20,15 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {
   RelationshipComboboxList,
   type RelationshipComboboxListProps,
 } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 
 export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {
   // The tree explorer browses the peer's own hierarchy and cannot honor an external filterQuery,

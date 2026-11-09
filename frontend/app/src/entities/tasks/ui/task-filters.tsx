@@ -1,15 +1,13 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver from "@/shared/components/display/slide-over";
-import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";
-import { SEARCH_FILTERS } from "@/shared/config/constants";
-import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { SEARCH_FILTERS } from "@/entities/nodes/filters/domain/model/filter";
+import { getFiltersFromFormData } from "@/entities/nodes/filters/domain/rules/getFiltersFromFormData";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { TasksFilterForm } from "@/entities/tasks/ui/tasks-filter-form";
 
 export const TaskFilters = () => {
@@ -73,13 +71,14 @@ export const TaskFilters = () => {
         )}
       </div>
 
-      <SlideOver title={"Apply filters"} open={showFilters} setOpen={setShowFilters}>
+      <Sheet isOpen={showFilters} onOpenChange={setShowFilters} aria-label="Apply filters">
+        <h3 className="mb-4 font-semibold text-lg">Apply filters</h3>
         <TasksFilterForm
           filters={filters}
           onSubmit={handleSubmit}
           onCancel={() => setShowFilters(false)}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

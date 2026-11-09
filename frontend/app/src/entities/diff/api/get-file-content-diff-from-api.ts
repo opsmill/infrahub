@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const GET_FILE_THREADS = graphql(`
   query GET_FILE_THREADS($changeIds: [ID!]) {
@@ -60,6 +58,5 @@ export function getFileContentDiffFromApi(params: GetFileContentDiffFromApiParam
     variables: {
       changeIds: [params.proposedChangeId],
     },
-    fetchPolicy: "no-cache",
   });
 }

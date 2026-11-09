@@ -5,4 +5,4 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 class SchemaUniquenessConstraintDependency(DependencyBuilder[UniquenessChecker]):
     @classmethod
     def build(cls, context: DependencyBuilderContext) -> UniquenessChecker:
-        return UniquenessChecker(db=context.db, branch=context.branch)
+        return UniquenessChecker(db=context.db)

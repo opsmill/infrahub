@@ -10,3 +10,4 @@ class ConstraintIdentifier(StrEnum):
     ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE = "attribute.parameters.excluded_values.update"
     ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE = "attribute.parameters.end_range.update"
     ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE = "attribute.parameters.start_range.update"
+    NODE_UNIQUENESS_CONSTRAINTS_UPDATE = "node.uniqueness_constraints.update"

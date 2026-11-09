@@ -3,7 +3,7 @@ import { ArrowRightIcon, PlusIcon } from "lucide-react";
 
 import { classNames } from "@/shared/utils/common";
 
-import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 
 export interface IPAddressAvailableIdentifierProps extends ButtonProps {
   ipAddressAvailableNode: IpAddressAvailableNode;

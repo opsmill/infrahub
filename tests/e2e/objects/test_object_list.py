@@ -56,7 +56,9 @@ class TestObjectList:
         await page.goto(f"/objects/BuiltinTag?branch={branch_name}")
         await expect(page.get_by_role("link", name="blue")).to_be_visible()
         await expect(page.get_by_test_id("select-all-rows")).not_to_be_visible()
-        await expect(page.get_by_test_id("identifier-checkbox-cell")).not_to_be_visible()
+        # The row checkbox is auth-gated inside identifier-cell (the cell itself still renders
+        # the object link), so assert the checkbox role is absent rather than the cell.
+        await expect(page.get_by_test_id("identifier-cell").get_by_role("checkbox")).not_to_be_visible()
 
     async def test_open_object_details_in_a_new_tab(
         self, page: Page, context: BrowserContext, branch_name: str

@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 
@@ -7,7 +7,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 import ResourcePoolUtilization from "./ResourcePoolUtilization";
 

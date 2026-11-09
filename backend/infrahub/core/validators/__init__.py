@@ -44,7 +44,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "relationship.max_count.update": RelationshipCountChecker,
     "relationship.common_parent.update": RelationshipPeerParentChecker,
     "node.inherit_from.update": NodeInheritFromChecker,
-    "node.uniqueness_constraints.update": UniquenessChecker,
+    ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,
     "node.generate_profile.update": NodeGenerateProfileChecker,

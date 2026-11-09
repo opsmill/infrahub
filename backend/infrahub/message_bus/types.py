@@ -104,7 +104,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
     artifact_name: str
     query_name: str
     query_id: str
-    query_models: list[str]
     query_payload: str = Field(..., description="GraphQL query")
     repository_id: str
     transform_kind: str
@@ -124,6 +123,18 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=None,
         description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
     )
+    fingerprint: str | None = Field(
+        default=None,
+        description="Content hash of the definition's inputs, recomputed on each import. None when not yet computed.",
+    )
+
+    @property
+    def source_noun(self) -> str:
+        return "transform"
+
+    @property
+    def instance_noun(self) -> str:
+        return "artifacts"
 
     @property
     def transform_location(self) -> str:

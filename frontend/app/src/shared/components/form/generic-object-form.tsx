@@ -4,7 +4,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { GenericSelector } from "@/shared/components/form/generic-selector";
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 
-import type { GenericSchema } from "@/entities/schema/types";
+import type { GenericSchema } from "@/entities/schema/domain/model/schema";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
   genericSchema: GenericSchema;

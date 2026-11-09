@@ -86,17 +86,15 @@ class TestVerifiesObjectCreation:
         )
         await admin_page.get_by_test_id("edit-button").click()
 
-        # Use get_by_label (the <label for> association) rather than get_by_role(combobox,
-        # name="Kind"): once the polymorphic Kind combobox is hydrated, its visible value
-        # ("Interface L3") becomes its accessible name, so a role+name="Kind" query no longer
-        # matches. This mirrors the TS original (select-2-steps.spec.ts uses getByLabel).
-        await expect(admin_page.get_by_label("Kind")).to_contain_text("Interface L3 Infra")
+        # The polymorphic Kind combobox keeps "Kind" as its accessible name after the
+        # @infrahub/ui ListBox/combobox migration (even once hydrated to "Interface L3 Infra"),
+        # so query it by role+name. This mirrors the TS original (select-2-steps.spec.ts uses
+        # getByRole("combobox", { name: "Kind" })).
+        await expect(admin_page.get_by_role("combobox", name="Kind")).to_contain_text("Interface L3 Infra")
         await expect(admin_page.locator('button[name="connected_endpoint_parent"]')).to_contain_text("atl1-edge2")
-        await expect(admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3")).to_contain_text(
-            "Ethernet1"
-        )
+        await expect(admin_page.get_by_label("sheet").get_by_label("Interface L3")).to_contain_text("Ethernet1")
 
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3").click()
+        await admin_page.get_by_label("sheet").get_by_label("Interface L3").click()
         await expect(admin_page.get_by_role("option", name="Ethernet10")).to_be_visible()
         await expect(admin_page.get_by_role("option", name="Loopback0")).to_be_visible()
         await expect(admin_page.get_by_role("option", name="Management0")).to_be_visible()

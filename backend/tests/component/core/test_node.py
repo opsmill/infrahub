@@ -14,6 +14,7 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -21,6 +22,8 @@ from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from infrahub.profiles.node_applier import NodeProfilesApplier
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 
 async def test_node_init(
@@ -946,8 +949,6 @@ async def test_node_create_with_object_template_with_profile(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test creating a device from a template with profile application."""
-    from infrahub.profiles.node_applier import NodeProfilesApplier
-
     # Define schemas
     DUMMY = NodeSchema(
         name="Dummy",
@@ -1058,8 +1059,6 @@ async def test_node_create_with_object_template_with_profile_and_components(
     - Interface templates can have profiles
     - Profiles are applied correctly to interface templates
     """
-    from infrahub.profiles.node_applier import NodeProfilesApplier
-
     # Define schemas
     INTERFACE = NodeSchema(
         name="Interface",
@@ -1814,3 +1813,38 @@ async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Bran
 
     retrieve_i2 = await NodeManager.get_one(id=i2.id, db=db)
     assert retrieve_i2.address.value == "2001:db8::/128"
+
+
+async def test_update_reports_the_parent_only_when_something_changed(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, owner=person.id)
+    await car.save(db=db)
+
+    loaded = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    loaded.nbr_seats.value = 5
+    await loaded.save(db=counting_db, fields=["nbr_seats"])
+
+    assert loaded.node_changelog.has_changes is False
+    assert loaded.node_changelog.parent is None
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 0
+
+    counting_db.reset_counts()
+    loaded.nbr_seats.value = 4
+    await loaded.save(db=counting_db, fields=["nbr_seats"])
+
+    assert loaded.node_changelog.has_changes is True
+    assert loaded.node_changelog.parent is not None
+    assert loaded.node_changelog.parent.node_id == person.id
+    assert loaded.node_changelog.parent.node_kind == "TestPerson"
+    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
+
+    reloaded = await NodeManager.get_one(db=db, id=car.id, branch=default_branch, raise_on_error=True)
+    assert reloaded.nbr_seats.value == 4

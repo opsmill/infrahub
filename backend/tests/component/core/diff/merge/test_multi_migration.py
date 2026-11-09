@@ -22,8 +22,8 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
-from tests.helpers.db_validation import verify_graph
 from tests.node_creation import create_and_save
 
 from .conftest import get_diff_coordinator, get_diff_merger
@@ -118,15 +118,16 @@ async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
 
     # migrate Test2NewElectricCar to inherit from TestVehicle
     schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    car_schema_before_inherit = schema_branch.get(name="Test2NewElectricCar", duplicate=True)
     car_schema_branch = schema_branch.get(name="Test2NewElectricCar", duplicate=True)
     car_schema_branch.inherit_from += ["TestVehicle"]
-    schema_branch.set(name="Test2ElectricNewCar", schema=car_schema_branch)
+    schema_branch.set(name="Test2NewElectricCar", schema=car_schema_branch)
     schema_branch.process()
     await registry.schema.update_schema_branch(
         db=db, branch=branch2, schema=schema_branch, limit=["Test2NewElectricCar"], update_db=True
     )
     migration = NodeKindUpdateMigration(
-        previous_node_schema=schema_branch.get(name="Test2NewElectricCar"),
+        previous_node_schema=car_schema_before_inherit,
         new_node_schema=car_schema_branch,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewElectricCar", field_name="inherit_from"
@@ -251,7 +252,7 @@ async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
 
     await verify_graph(db=db)
 
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     rolled_back_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)

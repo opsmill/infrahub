@@ -10,7 +10,7 @@ function ScrollBar({ className, orientation = "vertical", ...props }: ScrollBarP
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       orientation={orientation}
       className={cn(
-        "flex touch-none rounded-full select-none bg-neutral-100 transition-colors",
+        "flex touch-none rounded-full bg-neutral-100 transition-colors select-none",
         orientation === "vertical" && "h-full w-1",
         orientation === "horizontal" && "h-1 flex-col",
         className,
@@ -44,7 +44,11 @@ export function ScrollArea({
       className={cn("relative overflow-hidden", className)}
       {...props}
     >
-      <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]" ref={ref}>
+      <ScrollAreaPrimitive.Viewport
+        // `isolate` keeps z-indexed content, such as sticky table cells, from painting over the overlay scrollbars.
+        className="isolate size-full rounded-[inherit]"
+        ref={ref}
+      >
         {children}
       </ScrollAreaPrimitive.Viewport>
       {scrollX && <ScrollBar orientation="horizontal" className={scrollBarClassName} />}

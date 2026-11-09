@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 
 import {
   generateAttributeSchema,
@@ -34,6 +34,7 @@ describe("getFormFieldFromAttribute", () => {
 
       const field = getFormFieldFromAttribute({
         auth: undefined,
+        isDefaultBranch: undefined,
         attributeSchema,
         currentObject: undefined,
         objectTemplate: undefined,
@@ -65,6 +66,7 @@ describe("getFormFieldFromAttribute", () => {
 
       const field = getFormFieldFromAttribute({
         auth: undefined,
+        isDefaultBranch: undefined,
         attributeSchema,
         currentObject: undefined,
         objectTemplate: undefined,

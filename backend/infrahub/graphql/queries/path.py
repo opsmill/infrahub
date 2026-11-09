@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
@@ -9,20 +8,25 @@ from graphql import GraphQLError
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from infrahub.graph_traversal.runner import DefaultQueryRunner
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
+    from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.results import PathData
     from infrahub.graphql.initialization import GraphqlContext
+
+log = get_logger()
 
 
 MAX_PATHS = 100
@@ -141,7 +145,9 @@ class PathTraversalInput(InputObjectType):
     )
 
 
-async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) -> dict[str, dict[str, Any]]:
+async def _get_node_labels(
+    db: InfrahubDatabase, graphql_context: GraphqlContext, node_ids: set[str]
+) -> dict[str, dict[str, Any]]:
     """Load nodes by id and return per-uuid {label, display_label, hfid}.
 
     `label` is the schema-level label for the node's kind; `display_label` is
@@ -152,7 +158,7 @@ async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) 
         return labels_map
 
     loaded_nodes = await NodeManager.get_many(
-        db=graphql_context.db,
+        db=db,
         branch=graphql_context.branch,
         at=graphql_context.at,
         ids=list(node_ids),
@@ -165,8 +171,8 @@ async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) 
             schema_label_cache[kind] = _schema_label_for_kind(graphql_context=graphql_context, kind=kind)
         labels_map[node_id] = {
             "label": schema_label_cache[kind],
-            "display_label": await node.get_display_label(db=graphql_context.db),
-            "hfid": (await node.get_hfid(db=graphql_context.db)) or [],
+            "display_label": await node.get_display_label(db=db),
+            "hfid": (await node.get_hfid(db=db)) or [],
         }
     return labels_map
 
@@ -192,54 +198,132 @@ def _node_payload(node_id: str, kind: str, labels_map: dict[str, dict[str, Any]]
     }
 
 
+def _get_schema_or_none(graphql_context: GraphqlContext, kind: str) -> MainSchemaTypes | None:
+    try:
+        return graphql_context.db.schema.get(name=kind, branch=graphql_context.branch, duplicate=False)
+    except SchemaNotFoundError:
+        return None
+
+
+def _candidate_relationships(
+    schema: MainSchemaTypes, identifier: str, other_kind: str, other_schema: MainSchemaTypes | None
+) -> list[RelationshipSchema]:
+    """Relationships declared under ``identifier``, narrowed to those whose peer covers the other endpoint."""
+    candidates = schema.get_relationships_by_identifier(id=identifier)
+    other_kinds = {other_kind}
+    if isinstance(other_schema, NodeSchema):
+        other_kinds.update(other_schema.inherit_from)
+    matching = [candidate for candidate in candidates if candidate.peer in other_kinds]
+    return matching or candidates
+
+
+def select_hop_relationships(
+    *,
+    from_schema: MainSchemaTypes | None,
+    to_schema: MainSchemaTypes | None,
+    from_kind: str,
+    to_kind: str,
+    identifier: str,
+) -> tuple[RelationshipSchema | None, RelationshipSchema | None]:
+    """Pick the relationship each end of a hop holds for ``identifier``.
+
+    Both ends of an edge share one identifier, like a hierarchy's ``parent`` and
+    ``children``, so candidates are narrowed by peer kind, paired by mirrored
+    direction, and the pairs are ranked by how many of their peers name the other
+    end's exact kind. The pick is unambiguous when a single pair mirrors, or when
+    a single pair pins both peer kinds. Anything less is a deterministic guess
+    with a logged warning: a peer left on the hierarchy generic covers both ends,
+    so the schema cannot tell them apart.
+    """
+    from_candidates = (
+        _candidate_relationships(schema=from_schema, identifier=identifier, other_kind=to_kind, other_schema=to_schema)
+        if from_schema
+        else []
+    )
+    to_candidates = (
+        _candidate_relationships(
+            schema=to_schema, identifier=identifier, other_kind=from_kind, other_schema=from_schema
+        )
+        if to_schema
+        else []
+    )
+
+    pairs = [(from_rel, to_rel) for from_rel in from_candidates for to_rel in to_candidates if from_rel.mirrors(to_rel)]
+    if not pairs:
+        if from_candidates and to_candidates:
+            log.warning(
+                "No relationship pair mirrors for this hop, reporting the first candidates",
+                from_kind=from_kind,
+                to_kind=to_kind,
+                identifier=identifier,
+                from_candidates=[candidate.name for candidate in from_candidates],
+                to_candidates=[candidate.name for candidate in to_candidates],
+            )
+        return (
+            from_candidates[0] if from_candidates else None,
+            to_candidates[0] if to_candidates else None,
+        )
+
+    def exactness(pair: tuple[RelationshipSchema, RelationshipSchema]) -> int:
+        pair_from, pair_to = pair
+        return int(pair_from.peer == to_kind) + int(pair_to.peer == from_kind)
+
+    best_score = max(exactness(pair) for pair in pairs)
+    best_pairs = [pair for pair in pairs if exactness(pair) == best_score]
+    if len(pairs) > 1 and (len(best_pairs) > 1 or best_score < 2):
+        log.warning(
+            "Several relationship pairs mirror each other for this hop, keeping the best-ranked one",
+            from_kind=from_kind,
+            to_kind=to_kind,
+            identifier=identifier,
+            kept=(best_pairs[0][0].name, best_pairs[0][1].name),
+            candidates=[(from_rel.name, to_rel.name) for from_rel, to_rel in pairs],
+        )
+    return best_pairs[0]
+
+
 def _resolve_relationship(
     graphql_context: GraphqlContext, identifier: str, from_kind: str, to_kind: str
 ) -> dict[str, str]:
     """Project a hop's relationship identifier into bidirectional API fields.
 
-    Look up the schema for both endpoints and find the RelationshipSchema with
-    the given identifier on each side. Falls back to the identifier when schema
-    lookup fails (e.g. legacy data or unknown kinds).
+    Falls back to the identifier when schema lookup fails (e.g. legacy data or
+    unknown kinds).
     """
-    from_rel_name = identifier
-    from_label = identifier
-    to_rel_name = identifier
-    to_label = identifier
+    from_rel, to_rel = select_hop_relationships(
+        from_schema=_get_schema_or_none(graphql_context=graphql_context, kind=from_kind),
+        to_schema=_get_schema_or_none(graphql_context=graphql_context, kind=to_kind),
+        from_kind=from_kind,
+        to_kind=to_kind,
+        identifier=identifier,
+    )
+
     kind = ""
-
-    with contextlib.suppress(SchemaNotFoundError):
-        from_schema: MainSchemaTypes = graphql_context.db.schema.get(
-            name=from_kind, branch=graphql_context.branch, duplicate=False
-        )
-        from_rel = from_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
-        if from_rel is not None:
-            from_rel_name = from_rel.name
-            from_label = from_rel.label or from_rel.name
-            kind = from_rel.kind.value if hasattr(from_rel.kind, "value") else str(from_rel.kind)
-
-    with contextlib.suppress(SchemaNotFoundError):
-        to_schema: MainSchemaTypes = graphql_context.db.schema.get(
-            name=to_kind, branch=graphql_context.branch, duplicate=False
-        )
-        to_rel = to_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
-        if to_rel is not None:
-            to_rel_name = to_rel.name
-            to_label = to_rel.label or to_rel.name
-            if not kind:
-                kind = to_rel.kind.value if hasattr(to_rel.kind, "value") else str(to_rel.kind)
+    if from_rel is not None:
+        kind = from_rel.kind.value
+    elif to_rel is not None:
+        kind = to_rel.kind.value
 
     return {
-        "from_rel": from_rel_name,
-        "from_label": from_label,
-        "to_rel": to_rel_name,
-        "to_label": to_label,
+        "from_rel": from_rel.name if from_rel else identifier,
+        "from_label": (from_rel.label or from_rel.name) if from_rel else identifier,
+        "to_rel": to_rel.name if to_rel else identifier,
+        "to_label": (to_rel.label or to_rel.name) if to_rel else identifier,
         "kind": kind,
     }
 
 
 def _path_data_to_result(
-    path_data: PathData, labels_map: dict[str, dict[str, Any]], graphql_context: GraphqlContext
+    path_data: PathData,
+    labels_map: dict[str, dict[str, Any]],
+    graphql_context: GraphqlContext,
+    relationship_cache: dict[tuple[str, str, str], dict[str, str]],
 ) -> dict[str, Any]:
+    """Project one path into the API shape.
+
+    ``relationship_cache`` is request-scoped: a hop triple always resolves to the same
+    payload, and caching keeps the ambiguous-pair warning to one line per triple.
+    """
     start_node_payload = _node_payload(
         node_id=path_data.start_node.uuid, kind=path_data.start_node.kind, labels_map=labels_map
     )
@@ -247,12 +331,16 @@ def _path_data_to_result(
     previous_kind = path_data.start_node.kind
     for hop in path_data.hops:
         node_payload = _node_payload(node_id=hop.node.uuid, kind=hop.node.kind, labels_map=labels_map)
-        relationship_payload = _resolve_relationship(
-            graphql_context=graphql_context,
-            identifier=hop.relationship_identifier,
-            from_kind=previous_kind,
-            to_kind=hop.node.kind,
-        )
+        cache_key = (hop.relationship_identifier, previous_kind, hop.node.kind)
+        relationship_payload = relationship_cache.get(cache_key)
+        if relationship_payload is None:
+            relationship_payload = _resolve_relationship(
+                graphql_context=graphql_context,
+                identifier=hop.relationship_identifier,
+                from_kind=previous_kind,
+                to_kind=hop.node.kind,
+            )
+            relationship_cache[cache_key] = relationship_payload
         hops.append({"node": node_payload, "relationship": relationship_payload})
         previous_kind = hop.node.kind
 
@@ -278,90 +366,100 @@ async def path_traversal_resolver(
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
 
-    source_node: Node | None = await NodeManager.get_one(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        at=graphql_context.at,
-        id=source_id,
-    )
-    if not source_node:
-        raise GraphQLError(f"Source node not found: {source_id}")
-
-    destination_node: Node | None = await NodeManager.get_one(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        at=graphql_context.at,
-        id=destination_id,
-    )
-    if not destination_node:
-        raise GraphQLError(f"Destination node not found: {destination_id}")
-
-    user_filters = UserFilters.from_graphql_input(data)
-    try:
-        planner = SchemaPlanner(
-            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
+    async with graphql_context.db.start_session(read_only=True) as db:
+        source_node: Node | None = await NodeManager.get_one(
+            db=db,
             branch=graphql_context.branch,
-            permission_resolver=graphql_context.active_permissions.resolver,
+            at=graphql_context.at,
+            id=source_id,
         )
-        plan = planner.plan(
-            source_kind=source_node.get_kind(),
-            terminal_predicate=TerminalById(node_id=destination_id, kind=destination_node.get_kind()),
-            max_depth=int(max_depth),
-            user_filters=user_filters,
-        )
-    except ValueError as exc:
-        raise GraphQLError(str(exc)) from exc
+        if not source_node:
+            raise GraphQLError(f"Source node not found: {source_id}")
 
-    truncated_at_depth: int | None = None
-    if plan.is_empty:
-        # No schema route survives planning, return an empty result
-        path_data_list: list[PathData] = []
-    else:
-        executor = PathTraversalExecutor(
-            db=graphql_context.db,
+        destination_node: Node | None = await NodeManager.get_one(
+            db=db,
             branch=graphql_context.branch,
-            renderer=GraphTraversalCypherRenderer(
-                branch=graphql_context.branch,
-                default_branch_name=registry.default_branch,
-            ),
-            query_runner=DefaultQueryRunner(),
-            timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
+            at=graphql_context.at,
+            id=destination_id,
         )
+        if not destination_node:
+            raise GraphQLError(f"Destination node not found: {destination_id}")
+
+        user_filters = UserFilters.from_graphql_input(data)
         try:
-            result = await executor.run(
-                plan=plan,
-                source_id=source_id,
-                max_paths=max_paths,
-                shortest_paths_only=shortest_paths_only,
-                at=graphql_context.at,
+            planner = SchemaPlanner(
+                schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
+                branch=graphql_context.branch,
+                permission_resolver=graphql_context.active_permissions.resolver,
             )
-            path_data_list = result.paths
-            truncated_at_depth = result.truncated_at_depth
+            plan = planner.plan(
+                source_kind=source_node.get_kind(),
+                terminal_predicate=TerminalById(node_id=destination_id, kind=destination_node.get_kind()),
+                max_depth=int(max_depth),
+                user_filters=user_filters,
+            )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
 
-    all_node_ids: set[str] = {source_id, destination_id}
-    for path_data in path_data_list:
-        all_node_ids.add(path_data.start_node.uuid)
-        all_node_ids.update(hop.node.uuid for hop in path_data.hops)
+        truncated_at_depth: int | None = None
+        if plan.is_empty:
+            # No schema route survives planning, return an empty result
+            path_data_list: list[PathData] = []
+        else:
+            executor = PathTraversalExecutor(
+                db=db,
+                branch=graphql_context.branch,
+                renderer=GraphTraversalCypherRenderer(
+                    branch=graphql_context.branch,
+                    default_branch_name=registry.default_branch,
+                ),
+                query_runner=DefaultQueryRunner(),
+                timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
+            )
+            try:
+                result = await executor.run(
+                    plan=plan,
+                    source_id=source_id,
+                    max_paths=max_paths,
+                    shortest_paths_only=shortest_paths_only,
+                    at=graphql_context.at,
+                )
+                path_data_list = result.paths
+                truncated_at_depth = result.truncated_at_depth
+            except ValueError as exc:
+                raise GraphQLError(str(exc)) from exc
 
-    labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_node_ids)
+        all_node_ids: set[str] = {source_id, destination_id}
+        for path_data in path_data_list:
+            all_node_ids.add(path_data.start_node.uuid)
+            all_node_ids.update(hop.node.uuid for hop in path_data.hops)
 
-    source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
-    destination_info = _node_payload(
-        node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
-    )
+        labels_map = await _get_node_labels(db=db, graphql_context=graphql_context, node_ids=all_node_ids)
 
-    paths = [_path_data_to_result(p, labels_map, graphql_context) for p in path_data_list]
+        source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
+        destination_info = _node_payload(
+            node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
+        )
 
-    return {
-        "paths": paths,
-        "source": source_info,
-        "destination": destination_info,
-        "count": len(path_data_list),
-        "excluded_kinds": sorted(plan.excluded_kinds),
-        "truncated_at_depth": truncated_at_depth,
-    }
+        relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+        paths = [
+            _path_data_to_result(
+                path_data=p,
+                labels_map=labels_map,
+                graphql_context=graphql_context,
+                relationship_cache=relationship_cache,
+            )
+            for p in path_data_list
+        ]
+
+        return {
+            "paths": paths,
+            "source": source_info,
+            "destination": destination_info,
+            "count": len(path_data_list),
+            "excluded_kinds": sorted(plan.excluded_kinds),
+            "truncated_at_depth": truncated_at_depth,
+        }
 
 
 InfrahubPathTraversal = Field(

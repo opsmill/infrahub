@@ -296,7 +296,8 @@ class AccountObjectPermissionQuery(Query):
 
 
 async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = AccountGlobalPermissionQuery(branch=branch, account_id=account_id, branch_agnostic=True)
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    query1 = AccountGlobalPermissionQuery(branch=default_branch, account_id=account_id)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 
@@ -503,7 +504,8 @@ class AccountRoleObjectPermissionQuery(Query):
 
 
 async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = await AccountRoleGlobalPermissionQuery.init(db=db, branch=branch, role_id=role_id, branch_agnostic=True)
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    query1 = await AccountRoleGlobalPermissionQuery.init(db=db, branch=default_branch, role_id=role_id)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 

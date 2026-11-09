@@ -6,6 +6,7 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..query import MigrationBaseQuery  # noqa: TC001
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult, SchemaMigration
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
-    name: str = "node.uniqueness_constraints.update"
+    name: str = ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
     queries: Sequence[type[MigrationBaseQuery]] = []
 
     async def execute(

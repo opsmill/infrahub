@@ -7,9 +7,9 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type UpdateObjectParams,
   updateObject,
-} from "@/entities/nodes/object/domain/update-object";
+} from "@/entities/nodes/object/domain/use-cases/update-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { objectItemEditQueryKeys } from "@/entities/nodes/object-item-edit/ui/queries/object-item-edit.query-keys";
+import { objectItemEditQueryKeys } from "@/entities/nodes/object/ui/queries/object-item-edit.query-keys";
 
 interface UpdateObjectProps extends MutationConfig<typeof updateObject> {}
 

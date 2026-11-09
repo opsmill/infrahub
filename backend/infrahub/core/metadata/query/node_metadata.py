@@ -5,9 +5,9 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
+from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -224,8 +224,6 @@ RETURN n.uuid AS node_uuid, n.kind AS node_kind, node_is_deleted,
 
     def get_metadatas(self) -> list[NodeMetadata]:
         """Process query results into NodeMetadata dataclasses."""
-        from infrahub.core.timestamp import Timestamp
-
         nodes: list[NodeMetadata] = []
 
         for result in self.get_results():

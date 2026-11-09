@@ -8,8 +8,9 @@ export function NodeKindCell({ kind }: { kind: string }) {
   if (!schema) return "-";
 
   return (
-    <div className="flex items-center gap-2">
-      {schema.label} <Badge>{schema.namespace}</Badge>
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{schema.label}</span>
+      <Badge className="shrink-0">{schema.namespace}</Badge>
     </div>
   );
 }

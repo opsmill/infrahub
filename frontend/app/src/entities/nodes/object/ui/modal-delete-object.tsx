@@ -1,11 +1,11 @@
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { ACCOUNT_TOKEN_OBJECT } from "@/entities/role-manager/domain/model/account";
 
 interface ModalDeleteObjectProps {
   label?: string | null;
@@ -62,7 +62,7 @@ export default function ModalDeleteObject({
   };
 
   return (
-    <ModalDelete
+    <ModalDanger
       title="Delete"
       description={
         objectDisplay ? (
@@ -80,7 +80,7 @@ export default function ModalDeleteObject({
           </>
         )
       }
-      onDelete={handleDeleteObject}
+      onConfirm={handleDeleteObject}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isLoading={isPending}

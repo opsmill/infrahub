@@ -62,6 +62,7 @@ from infrahub.core.schema.attribute_parameters import (
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -184,6 +185,19 @@ class SchemaBranch:
     @property
     def all_names(self) -> list[str]:
         return self.node_names + self.generic_names + self.profile_names + self.template_names
+
+    def get_object_kinds_different_from(self, other: SchemaBranch) -> list[str]:
+        """Return the node, profile and template kinds whose schema is missing from or different in ``other``."""
+        return sorted(
+            kind
+            for own_hashes, other_hashes in (
+                (self.nodes, other.nodes),
+                (self.profiles, other.profiles),
+                (self.templates, other.templates),
+            )
+            for kind, schema_hash in own_hashes.items()
+            if other_hashes.get(kind) != schema_hash
+        )
 
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
@@ -1760,6 +1774,8 @@ class SchemaBranch:
     def _propagate_human_friendly_id_to_constraints(self, name: str, raise_parsing_errors: bool) -> None:
         """Append the HFID-derived constraint to node.uniqueness_constraints if not already present.
 
+        Presence is the set of fields, so an existing constraint with the same fields in a
+        different order is kept as-is. A subset or superset does not count as the same constraint.
         No-op if the node has no HFID or the conversion produces an empty constraint.
         Path-parsing failures from `convert_hfid_to_uniqueness_constraint` are re-raised
         when `raise_parsing_errors=True` and silently skipped otherwise.
@@ -1780,8 +1796,9 @@ class SchemaBranch:
 
         node = self.get(name=name, duplicate=True)
         # Make sure there is no duplicate regarding generics values.
+        hfid_fields = set(hfid_uniqueness_constraint)
         if node.uniqueness_constraints:
-            if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+            if not any(set(constraint) == hfid_fields for constraint in node.uniqueness_constraints):
                 node.uniqueness_constraints.append(hfid_uniqueness_constraint)
         else:
             node.uniqueness_constraints = [hfid_uniqueness_constraint]
@@ -2579,7 +2596,7 @@ class SchemaBranch:
                 self.set(name=node_name, schema=node_schema)
 
     def _get_profile_kind(self, node_kind: str) -> str:
-        return f"Profile{node_kind}"
+        return get_profile_kind(node_kind=node_kind)
 
     def generate_profile_from_node(self, node: NodeSchema | GenericSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
@@ -2644,7 +2661,7 @@ class SchemaBranch:
         return profile
 
     def _get_object_template_kind(self, node_kind: str) -> str:
-        return f"Template{node_kind}"
+        return get_object_template_kind(node_kind=node_kind)
 
     def manage_object_template_relationships(self) -> None:
         """Add an `object_template` relationship to all nodes that can be created from object templates.

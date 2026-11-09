@@ -28,7 +28,7 @@ def test_webhook_header_resolve_environment() -> None:
         assert header.resolve() == "secret123"
 
 
-def test_webhook_header_resolve_missing_environment() -> None:
+def test_webhook_header_resolve_missing_environment(cleared_environment: None) -> None:
     header = WebhookHeader(key="X-API-Key", value="MISSING_VAR", kind=HeaderKind.ENVIRONMENT)
-    with patch.dict("os.environ", {}, clear=True), pytest.raises(WebhookHeaderResolutionError, match="MISSING_VAR"):
+    with pytest.raises(WebhookHeaderResolutionError, match="MISSING_VAR"):
         header.resolve()

@@ -21,6 +21,8 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
+* `reset`: Erase all Infrahub data from the databases...
+* `delete-diffs`: Delete the stored diffs that are not...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
@@ -128,6 +130,69 @@ $ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--deployment-id TEXT`: Set an explicit UUID instead of generating a random one.
+* `-y, --yes`: Skip the confirmation prompt.
+* `--help`: Show this message and exit.
+
+## `infrahub db reset`
+
+Erase all Infrahub data from the databases configured in this environment.
+
+This resets Infrahub completely: objects, schemas, branches, accounts, permissions, task history
+and logs are permanently erased and cannot be recovered, so make sure a backup exists before
+running it. The graph database is reset when its connection is configured, through INFRAHUB_DB_* settings
+or the `database` section of the configuration file: every vertex and edge is removed, indexes
+and constraints are kept. The task manager (Prefect) database is reset when
+PREFECT_API_DATABASE_CONNECTION_URL is set: every table is dropped and recreated empty. A
+database that is not configured is skipped, and each configured one is confirmed separately
+unless its --yes flag is given. Each Infrahub container only knows its own database, so run the
+command in the infrahub-server container to reset the graph and in the task-manager container
+to reset the task manager. Stop the Infrahub server and task workers first and start them
+again afterwards: on startup the server initializes the empty databases exactly as on a first
+installation.
+
+**Usage**:
+
+```console
+$ infrahub db reset [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--yes-graph`: Reset the graph database without asking for confirmation.
+* `--yes-task-manager`: Reset the task manager database without asking for confirmation.
+* `--help`: Show this message and exit.
+
+## `infrahub db delete-diffs`
+
+Delete the stored diffs that are not frozen, for every branch or for a single one.
+
+By default only named diffs are deleted: diffs computed under a name for a given time range,
+which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
+over its lifetime are deleted too, except those of a merged branch, which could not be calculated
+again. A deleted branch diff is calculated again from the start of its branch the next time it is
+requested, and the conflict resolutions recorded in it are lost. Frozen diffs are always kept:
+they record what a closed or merged proposed change, or a merged or deleted branch, changed. The
+diffs of a branch are deleted once any diff update of that branch in progress has finished, and
+branch diffs once any merge in progress has finished.
+
+**Usage**:
+
+```console
+$ infrahub db delete-diffs [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `-b, --branch TEXT`: Only delete the diffs of this branch, which does not need to exist anymore.
+* `--include-branch-diffs`: Also delete the diffs that track a branch over its lifetime, not only the named diffs.
 * `-y, --yes`: Skip the confirmation prompt.
 * `--help`: Show this message and exit.
 

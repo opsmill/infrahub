@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type CheckTaskDetailsParams,
   checkTaskDetails,
-} from "@/entities/tasks/domain/check-task-details/check-task-details";
+} from "@/entities/tasks/domain/use-cases/check-task-details";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function checkTaskDetailsQueryOptions(params: CheckTaskDetailsParams) {

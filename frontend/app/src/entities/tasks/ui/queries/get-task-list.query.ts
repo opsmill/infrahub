@@ -6,7 +6,7 @@ import usePagination from "@/shared/hooks/usePagination";
 import {
   type GetTaskListParams,
   getTaskList,
-} from "@/entities/tasks/domain/get-task-list/get-task-list";
+} from "@/entities/tasks/domain/use-cases/get-task-list";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function getTaskListQueryOptions(params: GetTaskListParams) {

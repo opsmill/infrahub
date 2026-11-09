@@ -218,15 +218,22 @@ def infrahub_app(
     try:
         compose.start()
     except Exception as exc:  # pragma: no cover - surfaced with logs for debugging
-        stdout, stderr = compose.get_logs()
+        try:
+            stdout, stderr = compose.get_logs()
+        finally:
+            compose.stop()
         raise RuntimeError(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
 
     yield compose
 
-    if request.session.testsfailed:
-        stdout, stderr = compose.get_logs("infrahub-server", "task-worker")
-        warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
-    compose.stop()
+    try:
+        if request.session.testsfailed:
+            stdout, stderr = compose.get_logs(
+                "infrahub-server", "task-worker", "task-manager", "database", "message-queue"
+            )
+            warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
+    finally:
+        compose.stop()
 
 
 @pytest.fixture(scope="session")

@@ -1,6 +1,6 @@
+import { Tooltip } from "@infrahub/ui";
 import { DownloadIcon } from "lucide-react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { dataViewerActionStyle } from "@/shared/components/data-viewer/data-viewer.styles";
 import { Download, type DownloadProps } from "@/shared/components/download";
 import { classNames } from "@/shared/utils/common";

@@ -5,7 +5,7 @@ import type {
   PathNode,
   PathResult,
   PathTraversalResponse,
-} from "../domain/path-traversal.types";
+} from "../domain/model/path-traversal";
 import { copyAllPathsAsText, formatPathAsText } from "./format-paths";
 
 const node = (id: string, kind: string, label: string): PathNode => ({

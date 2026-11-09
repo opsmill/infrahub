@@ -129,7 +129,7 @@ export function CheckConnectivityModal({
   repositoryId,
 }: CheckConnectivityModalProps) {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} className="w-full max-w-lg">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} className="max-w-lg">
       {({ close }) => <CheckConnectivity repositoryId={repositoryId} onClose={close} />}
     </Modal>
   );

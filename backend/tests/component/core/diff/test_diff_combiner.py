@@ -23,8 +23,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-
-from .factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
     EnrichedNodeFactory,

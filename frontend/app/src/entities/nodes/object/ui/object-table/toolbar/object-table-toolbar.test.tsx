@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { NodeObject } from "@/entities/nodes/types";
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 
 import { render } from "../../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../../tests/fake/schema";
@@ -17,10 +17,6 @@ describe("ObjectTableToolbar Component", () => {
   ] as NodeObject[];
 
   const mockOnClose = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   test("renders correctly with selected rows", async () => {
     // GIVEN

@@ -22,6 +22,7 @@ When adding a new migration:
 - Bump `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py` to match the new migration number
 - Set the migration's `minimum_version` to the previous `GRAPH_VERSION`
 - Run `uv run pytest backend/tests/unit/core/graph/test_graph_version.py` to verify consistency between `GRAPH_VERSION` and the migrations
+- Batch any migration that deletes or rewrites an unbounded number of nodes, and collect failures per item instead of aborting on the first one — see [Creating Migrations, Step 3](../../guides/backend/creating-migrations.md#step-3-batching-large-datasets)
 
 ### How will this feature maintain graph integrity?
 
@@ -39,7 +40,7 @@ Design the feature to ensure:
 Plan for query efficiency and data volume by considering:
 
 - **Database round-trips** - design to use batch queries when operating on multiple nodes
-- **N+1 query patterns** - plan to load related data in bulk rather than iteratively
+- **N+1 query patterns** - operate set-based in both directions: load related data in bulk, and update/delete by condition in one query instead of mutating each fetched node individually
 - **Data volume per query** - avoid overquerying by fetching only necessary fields and relationships
 - **Memory footprint** - consider how much data will be held in memory during processing
 - **Pagination and streaming** - plan to process large result sets incrementally when appropriate
@@ -56,6 +57,19 @@ Plan the access control requirements:
 - **Role-based access control** - should only certain roles have access?
 - **Object-level permissions** - should users only access/modify their own resources?
 - **Branch permissions** - are branch-specific restrictions needed?
+
+## Configuration
+
+### Does this feature add a setting to `infrahub.config.Settings`?
+
+A new setting must be reachable from every Compose entry point, and the two files are maintained
+differently:
+
+- The root `docker-compose.yml` env block is **generated** from the `Settings` classes and
+  CI-validated — regenerate it with `uv run invoke release.validate-dockercomposeenv`
+- `development/docker-compose.yml` forwards each `INFRAHUB_*` variable through a **hand-maintained**
+  anchor that nothing generates or validates — add the mapping yourself, or the setting is
+  documented but untunable in the dev stack
 
 ## Error Handling & User Experience
 

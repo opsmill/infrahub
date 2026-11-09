@@ -116,7 +116,7 @@ async def fill_circuit_contract_fields(
         "end_date": end_date if end_date is not None else "2025-12-31",
     }
 
-    form = page.get_by_test_id("side-panel-container")
+    form = page.get_by_label("sheet")
 
     # Wait for form to be ready
     await form.get_by_label("Contract Number").wait_for(state="visible")

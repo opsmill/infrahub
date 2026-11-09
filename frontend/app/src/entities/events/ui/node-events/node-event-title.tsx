@@ -6,7 +6,7 @@ import { QSP } from "@/shared/config/qsp";
 
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 const NodeEventTitleContent = ({ primary_node, event, payload, branch }: NodeMutatedEvent) => {

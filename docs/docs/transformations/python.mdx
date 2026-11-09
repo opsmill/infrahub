@@ -7,7 +7,7 @@ title: Write a Python Transformation
 A Python Transformation processes Infrahub data through user-written Python code, producing JSON output (or any structured data you serialize). Use this when Jinja templating isn't enough — for example, conditional logic, external API calls, or complex aggregation. The steps below cover how to write one.
 
 For conceptual background, see [Transformations](./overview).
-For a step-by-step walkthrough with a running example, see [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) in the Academy tutorials.
+For a step-by-step walkthrough with a running example, see [Build a Python Transformation](../learn/tutorials/transformations/build-a-python-transformation) in the Academy tutorials.
 
 > Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/overview) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
 
@@ -113,12 +113,32 @@ To cache transform output and tie it to a specific target object, define an arti
 
 ## Dependency tracking
 
-When a Python Transformation feeds an artifact, Infrahub regenerates that artifact only when a file the transform depends on changes. On import, Infrahub records the transform's dependency closure as every Git-tracked file in the directory that contains its `file_path`, including subdirectories — so a transform in `transforms/` picks up its sibling modules and any package nested under that directory. `.pyc` files, `__pycache__/`, and Git-ignored files are excluded. A change to any file in that directory regenerates the artifacts of definitions that use this Transformation.
+When a Python Transformation feeds an artifact, Infrahub regenerates that artifact only when a file it depends on changes. On import, Infrahub records the Transformation's dependency closure as the file named by its `file_path`, and nothing else. Files that merely sit in the same directory are not part of the closure, so several unrelated Transformations can share a directory without each one regenerating whenever any of them is edited.
 
-This is a directory-level heuristic, not import analysis, so two cases need attention:
+Infrahub does not analyze your imports, so anything a Transformation depends on beyond its own file has to be declared with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml` - a helper module sitting beside it just as much as one in another package such as `shared/`. A `watch` entry naming a directory watches every Git-tracked file beneath it, so a Transformation with several helper modules alongside it can declare its own directory in one line:
 
-- **A transform at the repository root** has no containing directory to scope to, so its closure collapses to the single file. Keep the transform in a subdirectory to get directory-level tracking.
-- **Imports from another top-level package** — a helper in `shared/` that a transform under `transforms/` imports — fall outside the directory and aren't detected. A change to such a helper won't regenerate the artifacts unless you declare it with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`.
+```yaml
+python_transforms:
+  - name: OCInterfaces
+    class_name: OCInterfaces
+    file_path: transforms/openconfig.py
+    watch:
+      files:
+        - transforms/
+```
+
+**Declare `watch` even when the Transformation depends on nothing but its own file**, using an empty list:
+
+```yaml
+python_transforms:
+  - name: OCInterfaces
+    class_name: OCInterfaces
+    file_path: transforms/openconfig.py
+    watch:
+      files: []
+```
+
+Because imports are never analyzed, Infrahub cannot tell a Transformation with no further dependencies from one whose dependencies it simply has no way to see. Until the `watch` key is present, it assumes the latter and ties the Transformation's fingerprint to the repository's current commit, so every commit regenerates its artifacts. Declaring `watch` - whether it lists files or not - is your statement that the closure already names everything, which is what unties the fingerprint from the commit and makes regeneration precise. Note that the key has to carry the `files` list: a bare `watch:` with nothing under it reads as no declaration at all.
 
 See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration) for how to read which change triggered a regeneration.
 

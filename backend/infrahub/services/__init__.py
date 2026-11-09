@@ -11,7 +11,8 @@ from infrahub.tls.registry import TlsContextRegistry
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
 from .adapters.workflow.worker import WorkflowWorkerExecution
-from .scheduler import InfrahubScheduler
+from .heartbeat import WorkerHeartbeat, build_heartbeat_cache
+from .scheduler import HEARTBEAT_COMPONENT_TYPES, InfrahubScheduler
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -95,7 +96,12 @@ class InfrahubServices:
         """
         component_type = component_type or ComponentType.NONE
 
-        scheduler = InfrahubScheduler(component_type)
+        heartbeat = (
+            WorkerHeartbeat(component_type=component_type, cache_factory=build_heartbeat_cache)
+            if component_type in HEARTBEAT_COMPONENT_TYPES
+            else None
+        )
+        scheduler = InfrahubScheduler(component_type=component_type, heartbeat=heartbeat)
         service = cls(
             cache=cache,
             client=client,

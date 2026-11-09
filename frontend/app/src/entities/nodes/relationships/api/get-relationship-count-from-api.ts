@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 export type getRelationshipCountQueryParams = {
@@ -35,7 +34,7 @@ const getRelationshipCountQuery = ({
     },
   };
 
-  return gql(jsonToGraphQLQuery(query));
+  return graphql(jsonToGraphQLQuery(query));
 };
 
 export interface GetRelationshipCountFromApiParams

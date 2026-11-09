@@ -61,6 +61,8 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 **Content Lifecycle**: Approved plans. Living during development, then archived or moved to knowledge/guidelines.
 
+Living means kept consistent: when a design decision changes mid-implementation, sweep every artifact in the spec directory (spec, plan, research, data-model, tasks, quickstart, decision records) to the new design in the same pass, and re-verify literal references — test paths, migration numbers, `GRAPH_VERSION` — against the final code. When two artifacts contradict, the code decides which one is stale. Re-running `/speckit-analyze` after a redesign catches drift.
+
 **Primary Target**: Human
 
 **File Size Guidelines**: 200-500 lines
@@ -84,6 +86,11 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - Archived (kept for historical reference)
 - Moved to `knowledge/` (if describing how something works)
 - Moved to `guidelines/` (if describing how to use something)
+
+**Proportionality**: Not every change needs a spec. When the change is small enough to be
+self-explanatory — an annotation-only fix, a one-line correction with no behavior change — skip the
+spec-kit scaffolding, or trim `dev/specs/<feature>/` from the PR before review. The design record
+scales with the change it documents. See [Git Workflow → Pull Requests](git-workflow.md#pull-requests).
 
 ### guidelines/
 
@@ -251,7 +258,6 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
 - `bug-analyze.md` - Bug root cause analysis
-- `add-docs.md` - Documentation creation flow
 
 **Subdirectories**: None. Keep flat for easy discovery by agents.
 
@@ -317,10 +323,16 @@ source), not under `dev/`. Tool adapters symlink here (e.g. `.claude/skills` →
 skills/
 └── {skill-name}/
     ├── SKILL.md          # Main skill documentation
+    ├── agents/
+    │   └── openai.yaml   # Optional: Codex settings for the skill
     └── references/       # Optional: Supporting reference materials
         ├── file1.md
         └── file2.md
 ```
+
+For a skill that only a person may start, set `disable-model-invocation: true` in the `SKILL.md`
+frontmatter for Claude Code, and `policy.allow_implicit_invocation: false` in
+`agents/openai.yaml` for Codex. `pre-ci` is the example.
 
 **Example**:
 
@@ -579,20 +591,13 @@ dev/
 │   │   └── python.md            # Domain-specific
 │   └── frontend/
 │       └── typescript.md         # Domain-specific
-├── guides/
-│   ├── docs/
-│   │   ├── writing-a-guide.md   # Category-specific
-│   │   └── writing-a-topic.md   # Category-specific
-│   └── frontend/
-│       ├── writing-unit-tests.md      # Domain-specific
-│       └── writing-component-tests.md # Domain-specific
-└── skills/
-    └── neo4j-cypher-guide/
-        ├── SKILL.md
-        └── references/
-            ├── deprecated-syntax.md
-            ├── subqueries.md
-            └── qpp.md
+└── guides/
+    ├── docs/
+    │   ├── writing-a-guide.md   # Category-specific
+    │   └── writing-a-topic.md   # Category-specific
+    └── frontend/
+        ├── writing-unit-tests.md      # Domain-specific
+        └── writing-component-tests.md # Domain-specific
 ```
 
 ### Bad Organization
@@ -611,4 +616,3 @@ dev/
 
 - [ADR-0001: Context Nuggets Pattern](../adr/0001-context-nuggets-pattern.md) - Decision record for this pattern
 - [Dev README](../README.md) - Quick navigation guide
-- [AGENTS.md](../../AGENTS.md) - Root-level map and glossary

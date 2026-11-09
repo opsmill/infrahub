@@ -8,6 +8,7 @@ import type {
   FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 export const updateFormFieldValue = (
   newValue: Exclude<FormFieldValue, AttributeValueFromPool | RelationshipValueFromPool>["value"],
@@ -28,16 +29,26 @@ export const updateAttributeFieldValue = (
   defaultValue?: FormAttributeValue
 ): FormAttributeValue => {
   if (newValue && "from_pool" in newValue) {
+    if (defaultValue?.source?.type === "pool" && defaultValue.source.id === newValue.from_pool.id) {
+      // Re-selecting the field's original pool restores the existing allocation
+      // unchanged. Allocation is idempotent on the reservation identifier, so the
+      // original pool cannot be re-allocated with a different mask — show the
+      // resolved value rather than a pending allocation with an editable length.
+      return defaultValue;
+    }
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
-      },
+        defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
+      }),
       value: {
         from_pool: {
           id: newValue.from_pool.id,
+          ...(newValue.from_pool.prefixLength !== undefined && {
+            prefixLength: newValue.from_pool.prefixLength,
+          }),
         },
       },
     };
@@ -51,16 +62,26 @@ export const updateRelationshipFieldValue = (
   defaultValue?: FormRelationshipValue
 ): FormRelationshipValue => {
   if (newValue && "from_pool" in newValue) {
+    if (defaultValue?.source?.type === "pool" && defaultValue.source.id === newValue.from_pool.id) {
+      // Re-selecting the field's original pool restores the existing allocation
+      // unchanged. Allocation is idempotent on the reservation identifier, so the
+      // original pool cannot be re-allocated with a different mask — show the
+      // resolved value rather than a pending allocation with an editable length.
+      return defaultValue;
+    }
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
-      },
+        defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
+      }),
       value: {
         from_pool: {
           id: newValue.from_pool.id,
+          ...(newValue.from_pool.prefixLength !== undefined && {
+            prefixLength: newValue.from_pool.prefixLength,
+          }),
         },
       },
     };

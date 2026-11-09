@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const GET_BRANCH_DETAILS = graphql(`
@@ -31,7 +29,7 @@ const GET_BRANCH_DETAILS = graphql(`
           is_default {
             value
           }
-          has_schema_changes {
+          schema_differs_from_default_branch {
             value
           }
         }

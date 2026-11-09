@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
+    from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 Return = TypeVar("Return")
@@ -23,6 +24,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Return: ...
 
     @overload
@@ -33,6 +35,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Any: ...
 
     @abstractmethod
@@ -43,6 +46,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> Any:
         raise NotImplementedError()
 
@@ -53,5 +57,6 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
         raise NotImplementedError()

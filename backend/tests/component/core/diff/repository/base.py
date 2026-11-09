@@ -13,8 +13,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-
-from ..factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedNodeFactory,
     EnrichedPropertyFactory,

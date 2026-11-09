@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 
 import {

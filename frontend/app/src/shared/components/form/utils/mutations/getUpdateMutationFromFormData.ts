@@ -6,6 +6,7 @@ import type {
   FormFieldValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
+import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
 type GetUpdateMutationFromFormDataParams = {
   fields: Array<DynamicFieldProps>;
@@ -28,7 +29,6 @@ export const getUpdateMutationFromFormData = ({
       (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
         fieldData?.source?.id
     ) {
-      // If the same pool is selected, then remove from the updates
       return acc;
     }
 
@@ -37,20 +37,19 @@ export const getUpdateMutationFromFormData = ({
     switch (fieldData.source?.type) {
       case "pool": {
         if (
-          fromPoolField &&
           fieldData.value &&
           typeof fieldData.value === "object" &&
           "from_pool" in fieldData.value
         ) {
-          const clearField =
-            field.type === "relationship"
-              ? { [field.name]: null }
-              : { [field.name]: { value: null } };
-          return {
-            ...acc,
-            ...clearField,
-            [fromPoolField]: { id: fieldData.value.from_pool.id },
-          };
+          const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
+          if (fromPoolField) {
+            const clearField =
+              field.type === "relationship"
+                ? { [field.name]: null }
+                : { [field.name]: { value: null } };
+            return { ...acc, ...clearField, [fromPoolField]: fromPool };
+          }
+          return { ...acc, [field.name]: { from_pool: fromPool } };
         }
         return { ...acc, [field.name]: fieldData.value };
       }

@@ -9,6 +9,7 @@ import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { useGetTaskDetailsTitle } from "@/entities/tasks/ui/queries/get-task-details-title.query";
+import { TaskActions } from "@/entities/tasks/ui/task-actions";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 const TaskDetailsPage = () => {
@@ -49,7 +50,12 @@ const TaskDetailsPage = () => {
 
   return (
     <Content.Card>
-      <Content.CardTitle title={title} isReloadLoading={isFetching} reload={() => refetch()} />
+      <Content.CardTitle
+        title={title}
+        isReloadLoading={isFetching}
+        reload={() => refetch()}
+        end={<TaskActions task={taskData} />}
+      />
 
       <TaskItemDetails />
     </Content.Card>

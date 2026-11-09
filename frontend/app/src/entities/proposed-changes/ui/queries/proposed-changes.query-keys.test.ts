@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/shared/config/constants";
-import type { Filter } from "@/shared/hooks/useFilters";
-
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 import { proposedChangesQueryKeys } from "./proposed-changes.query-keys";
 
@@ -19,15 +19,35 @@ describe("proposedChangesQueryKeys", () => {
   it("returns query key for list", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "status__value", value: "open" }];
+    const sort: Sort[] = [{ field: "node_metadata__created_at", direction: "DESC" }];
     const params = {
       filters,
+      sort,
     };
 
     // WHEN
     const result = proposedChangesQueryKeys.list(params);
 
     // THEN
-    expect(result).toEqual(["objects", PROPOSED_CHANGE_OBJECT, filters]);
+    expect(result).toEqual(["objects", PROPOSED_CHANGE_OBJECT, filters, sort]);
+  });
+
+  it("returns a different list query key per sort", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "status__value", value: "open" }];
+
+    // WHEN
+    const newestFirst = proposedChangesQueryKeys.list({
+      filters,
+      sort: [{ field: "node_metadata__created_at", direction: "DESC" }],
+    });
+    const oldestFirst = proposedChangesQueryKeys.list({
+      filters,
+      sort: [{ field: "node_metadata__created_at", direction: "ASC" }],
+    });
+
+    // THEN
+    expect(newestFirst).not.toEqual(oldestFirst);
   });
 
   it("returns query key for count", () => {

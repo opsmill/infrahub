@@ -1,0 +1,51 @@
+---
+# Usage: STORAGE_CLASS=<storage-class> envsubst '${STORAGE_CLASS}' < infrahub-bench.yml | kubectl apply -f -
+# Results, once the Job completes: kubectl logs job/infrahub-bench
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: infrahub-bench
+  labels:
+    app.kubernetes.io/name: infrahub-bench
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ${STORAGE_CLASS}
+  resources:
+    requests:
+      # Some cloud volume types scale IOPS with size, so request the size planned for the Neo4j volume.
+      storage: 10Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infrahub-bench
+  labels:
+    app.kubernetes.io/name: infrahub-bench
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: infrahub-bench
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bench
+          image: registry.opsmill.io/opsmill/bench:latest
+          imagePullPolicy: Always
+          resources:
+            # No CPU limit, because CPU throttling would lower the single-core score.
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            # fio writes its test file to the working directory, so the PVC must be mounted there.
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: infrahub-bench

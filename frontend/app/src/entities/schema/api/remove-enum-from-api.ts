@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 export const ENUM_REMOVE_MUTATION = graphql(`
   mutation EnumDelete($kind: String!, $attribute: String!, $enum: String!) {

@@ -1,6 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const REMOVE_RELATIONSHIP = graphql(`

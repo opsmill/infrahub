@@ -4,8 +4,9 @@ title: Infrahub Marketplace
 
 # Infrahub Marketplace
 
-The Infrahub Marketplace is a public catalog of pre-built schemas and schema collections that you can fetch and load into any Infrahub instance.
+The [Infrahub Marketplace](https://marketplace.infrahub.app) is a public catalog of pre-built schemas and schema collections that you can fetch and load into any Infrahub instance.
 It provides a curated starting point for common infrastructure domains — from physical device modeling to IP address management — so you can get a working data model without building one from scratch.
+Browse the full catalog at [marketplace.infrahub.app/browse](https://marketplace.infrahub.app/browse).
 
 ## What the Marketplace contains
 
@@ -18,8 +19,8 @@ The Marketplace hosts two types of content:
 
 Every item in the Marketplace is identified by a `namespace/name` reference, similar to Docker Hub image names or npm package scopes.
 
-- `infrahub/dcim` — the `dcim` schema published by the `infrahub` namespace
-- `infrahub/base-schemas` — the `base-schemas` collection published by `infrahub`
+- [`infrahub/dcim`](https://marketplace.infrahub.app/schemas/infrahub/dcim) — the `dcim` schema published by the `infrahub` namespace
+- [`infrahub/base-schemas`](https://marketplace.infrahub.app/collections/infrahub/base-schemas) — the `base-schemas` collection published by `infrahub`
 
 Namespaces are tied to the account of the schema's author on the Marketplace.
 
@@ -42,7 +43,7 @@ The Marketplace is an external catalog — it stores schema definitions, not you
 
 ### Find the schema
 
-Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) and identify the schema or collection you want.
+Browse the [Marketplace catalog](https://marketplace.infrahub.app/browse) and identify the schema or collection you want.
 Each item has an identifier in `namespace/name` format — for example, `infrahub/dcim`.
 Note this identifier; you will use it in the next step.
 
@@ -129,6 +130,7 @@ Check the schema's Marketplace page for the minimum supported Infrahub version b
 
 ## Related resources
 
+- [Infrahub Marketplace](https://marketplace.infrahub.app) — the catalog of published schemas and collections
 - [About Schema](../overview.mdx) — core schema concepts and how schemas govern data in Infrahub
 - [Create and load schema](../create-and-load.mdx) — create a schema from scratch and load it into Infrahub
 - [Schema extensions](../extensions.mdx) — add attributes and relationships to existing nodes using extension files

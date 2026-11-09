@@ -11,7 +11,7 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -22,7 +22,7 @@
                 },
                 {
                     "name": "location",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -52,7 +52,7 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -72,7 +72,7 @@
             "attributes": [
                 {
                     "name": "query",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -83,7 +83,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -94,7 +94,7 @@
                 },
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -129,7 +129,7 @@
             "attributes": [
                 {
                     "name": "type",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": "LOCAL",
@@ -140,7 +140,7 @@
                 },
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -151,7 +151,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -162,7 +162,7 @@
                 },
                 {
                     "name": "commit",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -173,7 +173,7 @@
                 },
                 {
                     "name": "location",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -184,7 +184,7 @@
                 },
                 {
                     "name": "default_branch",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": "main",
@@ -243,7 +243,7 @@
             "attributes": [
                 {
                     "name": "username",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -272,7 +272,7 @@
             "attributes": [
                 {
                     "name": "name",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -283,7 +283,7 @@
                 },
                 {
                     "name": "description",
-                    "kind": "String",
+                    "kind": "Text",
                     "label": null,
                     "description": null,
                     "default_value": null,
@@ -304,9 +304,9 @@
             "namespace": "Testing",
             "default_filter": "name__value",
             "attributes": [
-                {"name": "name", "kind": "String", "unique": true},
-                {"name": "description", "kind": "String", "optional": true},
-                {"name": "type", "kind": "String"}
+                {"name": "name", "kind": "Text", "unique": true},
+                {"name": "description", "kind": "Text", "optional": true},
+                {"name": "type", "kind": "Text"}
             ],
             "relationships": [
                 {"name": "tags", "peer": "TestingTag", "optional": true, "cardinality": "many"},

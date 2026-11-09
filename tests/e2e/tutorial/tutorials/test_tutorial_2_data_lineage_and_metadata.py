@@ -42,7 +42,6 @@ class TestTutorial2Metadata:
         await expect(read_write_page.get_by_text("Metadata updated")).to_be_visible()
 
         # wait for the metadata edit slide-over to close before checking updated data
-        await expect(read_write_page.get_by_test_id("side-panel-container")).to_be_hidden()
+        await expect(read_write_page.get_by_label("sheet")).to_be_hidden()
 
-        await read_write_page.get_by_text("Description-").get_by_test_id("view-metadata-button").click()
         await expect(read_write_page.get_by_text("Is protectedTrue")).to_be_visible()

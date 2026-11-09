@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 const getDeleteObjectQuery = (kind: string, objectId: string) => {
@@ -26,7 +25,7 @@ export function deleteObjectFromApi({
   atDate,
 }: ContextParams & { objectKind: string; objectId: string }) {
   return graphqlClient.mutate({
-    mutation: gql(getDeleteObjectQuery(objectKind, objectId)),
+    mutation: graphql(getDeleteObjectQuery(objectKind, objectId)),
     context: {
       branch: branchName,
       date: atDate,

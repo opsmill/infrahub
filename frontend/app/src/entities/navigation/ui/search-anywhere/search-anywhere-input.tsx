@@ -1,11 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { Command, type Command as CommandPrimitive } from "cmdk";
 import { useAtom } from "jotai";
 import { CaseSensitiveIcon } from "lucide-react";
 import type * as React from "react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 

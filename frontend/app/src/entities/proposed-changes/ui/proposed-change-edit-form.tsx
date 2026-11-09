@@ -5,24 +5,30 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { branchesState } from "@/entities/branches/stores";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { ACCOUNT_GENERIC_OBJECT } from "@/entities/role-manager/domain/model/account";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {
   initialData: Record<string, AttributeType>;
   onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
-export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFormProps) => {
+export const ProposedChangeEditForm = ({
+  initialData,
+  onSuccess,
+  onCancel,
+}: ProposedChangeEditFormProps) => {
   const nodes = useAtomValue(nodeSchemasAtom);
   const branches = useAtomValue(branchesState);
   const updateObject = useUpdateObjectMutation();
-  const proposedChangeSchema = nodes.find(({ kind }) => kind === PROPOSED_CHANGES_OBJECT);
+  const proposedChangeSchema = nodes.find(({ kind }) => kind === PROPOSED_CHANGE_OBJECT);
 
   if (!proposedChangeSchema) return null;
 
@@ -128,5 +134,5 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
     }
   }
 
-  return <DynamicForm onSubmit={onSubmit} fields={fields} className="overflow-auto p-4" />;
+  return <DynamicForm onSubmit={onSubmit} onCancel={onCancel} fields={fields} />;
 };

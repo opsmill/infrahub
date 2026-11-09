@@ -9,7 +9,7 @@ from infrahub.core.migrations.graph.m041_deleted_dup_edges import Migration041
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_no_duplicate_paths
+from infrahub.database.validation import verify_graph
 
 
 class TestMigration041:
@@ -126,7 +126,7 @@ DETACH DELETE r
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)
 
         after_nodes_map = await NodeManager.get_many(
             db=db,

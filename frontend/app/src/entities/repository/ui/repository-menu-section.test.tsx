@@ -1,6 +1,5 @@
+import { Menu } from "@infrahub/ui";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-
-import { Menu } from "@/shared/components/aria/menu";
 
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
@@ -19,8 +18,6 @@ describe("RepositoryMenuSection", () => {
   const mockOnCheckConnectivity = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     vi.mocked(useReimportLastCommitMutation).mockReturnValue({
       mutate: mockReimportLastCommit,
       isPending: false,
@@ -50,7 +47,7 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: /Check connectivity/i }))
       .toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
+    await expect.element(component.baseElement).not.toMatchTextContent("Import latest commit");
   });
 
   test("renders Import latest commit only for read-only repositories", async () => {
@@ -145,7 +142,7 @@ describe("RepositoryMenuSection", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
+    await expect.element(component.baseElement).not.toMatchTextContent("Import latest commit");
   });
 
   test("shows Reimport current commit only for read-only repositories", async () => {

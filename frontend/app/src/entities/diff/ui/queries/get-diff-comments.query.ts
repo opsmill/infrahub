@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type GetDiffCommentsParams,
   getDiffComments,
-} from "@/entities/diff/domain/get-diff-comments";
+} from "@/entities/diff/domain/use-cases/get-diff-comments";
 import { diffCommentsKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getDiffCommentsQueryOptions(params: GetDiffCommentsParams) {

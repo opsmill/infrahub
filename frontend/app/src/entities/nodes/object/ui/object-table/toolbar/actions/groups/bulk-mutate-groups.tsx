@@ -5,7 +5,7 @@ import {
   type ProcessingGroupsPanelProps,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-groups-panel";
 import { SelectedGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-groups-panel";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import {
   RelationshipComboboxList,
   type RelationshipComboboxListProps,

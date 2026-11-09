@@ -8,8 +8,7 @@ from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.database import InfrahubDatabase
-
-from .factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
     EnrichedNodeFactory,

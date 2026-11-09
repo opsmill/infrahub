@@ -12,6 +12,7 @@ from pydantic import ConfigDict, ValidationError, field_validator
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants.schema import SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS, SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
@@ -128,6 +129,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return self.namespace + self.name
 
     @property
+    def concrete_kinds(self) -> tuple[str, ...]:
+        """The concrete kinds this schema stands for: itself, unless a generic expands to its implementations."""
+        return (self.kind,)
+
+    @property
     def menu_title(self) -> str:
         return self.label or self.name
 
@@ -135,6 +141,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if self.id:
             return self.id
         raise ValueError(f"id is not defined on {self.kind}")
+
+    def get_labels(self) -> list[str]:
+        """Return the graph labels carried by a vertex of this kind.
+
+        Subclasses that support inheritance extend this with their generics.
+        """
+        return [self.kind]
 
     def __hash__(self) -> int:
         """Return a hash of the object.
@@ -469,38 +482,53 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         If neither display_label nor display_labels is defined, we return None which equal to everything.
         """
-        fields: dict[str, str | dict[str, None] | None] = {}
-
-        if self.display_labels:
-            for item in self.display_labels:
-                fields.update(self.convert_path_to_graphql_fields(path=item))
-            return fields
-
-        if not self.display_label:
-            return None
-
-        if "{{" in self.display_label:
-            for var in InfrahubJinja2Template(template=self.display_label).get_variables():
-                fields.update(self.convert_path_to_graphql_fields(path=var))
-        else:
-            fields.update(self.convert_path_to_graphql_fields(path=self.display_label))
-
-        return fields or None
+        return self._generate_fields_for_derived_field(field_name="display_label")
 
     def generate_fields_for_hfid(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required.
 
         to generate the hfid.
 
-        If display_labels is not defined, we return None which equal to everything.
+        If human_friendly_id is not defined, we return None which equal to everything.
         """
-        if not self.human_friendly_id:
+        return self._generate_fields_for_derived_field(field_name="human_friendly_id")
+
+    def _generate_fields_for_derived_field(self, field_name: str) -> dict | None:
+        paths = self.get_derived_field_paths(field_name=field_name)
+        if paths is None:
             return None
 
         fields: dict[str, str | dict[str, None] | None] = {}
-        for item in self.human_friendly_id:
-            fields.update(self.convert_path_to_graphql_fields(path=item))
-        return fields
+        for path in paths:
+            fields.update(self.convert_path_to_graphql_fields(path=path))
+        return fields or None
+
+    def get_derived_field_paths(self, field_name: str) -> list[str] | None:
+        """Return the schema paths a derived field is built from.
+
+        This is the only place that decides the precedence between ``display_labels``, a plain
+        ``display_label`` path, and a ``display_label`` template.
+
+        ``None`` means the field has no path definition on this kind, so its value comes from
+        somewhere other than a declared path.
+
+        Raises:
+            ValueError: When ``field_name`` is not a derived node property.
+
+        """
+        if field_name not in NODE_PROPERTY_ATTRIBUTES:
+            raise ValueError(f"{field_name} is not a derived node property of {self.kind}")
+
+        if field_name == "human_friendly_id":
+            return list(self.human_friendly_id) if self.human_friendly_id else None
+
+        if self.display_labels:
+            return list(self.display_labels)
+        if not self.display_label:
+            return None
+        if "{{" in self.display_label:
+            return list(InfrahubJinja2Template(template=self.display_label).get_variables())
+        return [self.display_label]
 
     @field_validator("name")
     @classmethod
@@ -535,6 +563,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             property_piece = path_parts[2] if len(path_parts) > 2 else None
         else:
             raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
+
+        max_parts = SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS if relationship_piece else SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS
+        if len(path_parts) > max_parts:
+            raise AttributePathParsingError(f"{path} has too many segments on schema {self.kind}")
 
         if relationship_piece and not schema:
             raise AttributePathParsingError("schema must be provided in order to check a path with a relationship")

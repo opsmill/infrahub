@@ -1,7 +1,7 @@
 import { ScrollArea } from "@infrahub/ui";
 import { TagGroup, TagList } from "react-aria-components";
 
-import { EVENT_TYPE_CHOICES } from "@/entities/events/constants";
+import { EVENT_TYPE_CHOICES } from "@/entities/events/domain/model/event-constants";
 
 import { GlobalBranchFilter } from "./global-branch-filter";
 import { GlobalFilter } from "./global-filter";

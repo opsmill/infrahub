@@ -12,6 +12,8 @@ interface ModalConfirmProps {
   description?: ReactNode;
   onConfirm: () => void | Promise<void>;
   isLoading?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 export function ModalConfirm({
@@ -21,14 +23,11 @@ export function ModalConfirm({
   description,
   onConfirm,
   isLoading,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
 }: ModalConfirmProps) {
   return (
-    <Modal
-      isDismissable={!isLoading}
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      className="w-full max-w-lg p-0"
-    >
+    <Modal isDismissable={!isLoading} isOpen={isOpen} onOpenChange={onOpenChange}>
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">
@@ -42,10 +41,10 @@ export function ModalConfirm({
 
       <Row className="justify-end bg-gray-50 p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
-          Cancel
+          {cancelLabel}
         </Button>
         <Button variant="primary" onPress={onConfirm} isPending={isLoading} isDisabled={isLoading}>
-          Confirm
+          {confirmLabel}
         </Button>
       </Row>
     </Modal>

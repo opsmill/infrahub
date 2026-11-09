@@ -86,18 +86,21 @@ jobs:
 
       - name: Checkout
         if: steps.check.outputs.skip == 'false'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
+          # Full history + tags so the Dockerfile's hatch-vcs resolver reads the real tag version
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.skip == 'false'
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login to Docker Hub
         if: steps.check.outputs.skip == 'false' && inputs.publish
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
@@ -105,7 +108,7 @@ jobs:
 
       - name: Build and push by digest
         if: steps.check.outputs.skip == 'false'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: push
         with:
           context: .
@@ -128,7 +131,7 @@ jobs:
 
       - name: Upload digest
         if: steps.check.outputs.skip == 'false' && inputs.publish
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.artifact_prefix }}-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           path: /tmp/digests/*
@@ -143,17 +146,17 @@ jobs:
       digest: ${{ steps.inspect.outputs.digest }}
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: /tmp/digests
           pattern: ${{ inputs.artifact_prefix }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
@@ -189,19 +192,43 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.2
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Login to Harbor
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
       - name: Sign manifest
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}
         run: |
-          cosign sign --yes --recursive --new-bundle-format=false --use-signing-config=false \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
+          # cosign gives up after two internal attempts when a Sigstore transparency
+          # log write fails, so a brief rekor.sigstore.dev blip is enough to fail a
+          # release. Retry the whole command instead; five attempts 60s apart cover a
+          # ~4-minute outage. The sbom job carries a verbatim copy of this function:
+          # the jobs run on separate runners, so sharing it would take a checkout or a
+          # third-party action in the signing path. Keep the two copies identical.
+          retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "${attempt}" -lt 5 ]; then
+                echo "::warning::${1} ${2} failed (attempt ${attempt}/5), retrying in 60s"
+                sleep 60
+              fi
+            done
+            echo "::error::${1} ${2} failed after 5 attempts"
+            return 1
+          }
+
+          retry cosign sign --yes --recursive \
+            --new-bundle-format=false --use-signing-config=false \
+            "${IMAGE}"
 
   sbom:
     needs: merge
@@ -209,13 +236,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.2
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.24.0
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
 
       - name: Login to Harbor
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
@@ -233,25 +260,55 @@ jobs:
             "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}" \
             --output cyclonedx-json=infrahub-sbom.cdx.json
 
-      - name: Attest SBOM (SPDX)
-        run: |
-          cosign attest --yes \
-            --type spdxjson \
-            --predicate infrahub-sbom.spdx.json \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
-
-      - name: Attest SBOM (CycloneDX)
-        run: |
-          cosign attest --yes \
-            --type cyclonedx \
-            --predicate infrahub-sbom.cdx.json \
-            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
-
+      # Uploaded before the attestations so that a transparency-log outage cannot cost
+      # us the SBOMs themselves: v1.10.7 shipped without any because the attest step
+      # failed first and skipped this one.
+      #
+      # overwrite is required precisely because this now runs before a step that can
+      # fail. Artifacts are scoped to the run rather than the attempt, so on a re-run
+      # this name already exists from the earlier attempt and the default overwrite:
+      # false would fail the upload, breaking the recovery path this ordering exists to
+      # protect. Every caller passes a version unique to its invocation, so the only
+      # artifact this can replace is the same SBOM from a previous attempt.
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom-${{ inputs.version }}
           path: |
             infrahub-sbom.spdx.json
             infrahub-sbom.cdx.json
           retention-days: 90
+          overwrite: true
+
+      - name: Attest SBOMs
+        env:
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}
+        run: |
+          # Same transparency-log flakiness the sign job guards against; this is a
+          # verbatim copy of that job's retry function (separate runners, so it cannot
+          # be shared without a checkout or a third-party action in the signing path).
+          # Keep the two copies identical.
+          retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "${attempt}" -lt 5 ]; then
+                echo "::warning::${1} ${2} failed (attempt ${attempt}/5), retrying in 60s"
+                sleep 60
+              fi
+            done
+            echo "::error::${1} ${2} failed after 5 attempts"
+            return 1
+          }
+
+          retry cosign attest --yes \
+            --type spdxjson \
+            --predicate infrahub-sbom.spdx.json \
+            "${IMAGE}"
+
+          retry cosign attest --yes \
+            --type cyclonedx \
+            --predicate infrahub-sbom.cdx.json \
+            "${IMAGE}"

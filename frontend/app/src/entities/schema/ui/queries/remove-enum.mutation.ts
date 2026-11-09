@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { removeEnum } from "@/entities/schema/domain/remove-enum";
+import { removeEnum } from "@/entities/schema/domain/use-cases/remove-enum";
 import { invalidateSchemaQueries } from "@/entities/schema/ui/queries/invalidate-schema-queries";
 
 export function useRemoveEnumMutation() {

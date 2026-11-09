@@ -1,16 +1,16 @@
-import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
+import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Row, type RowProps } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { classNames } from "@/shared/utils/common";
 
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
+import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectDetailsHeaderProps {
   objectSchema: ModelSchema;

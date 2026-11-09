@@ -1,4 +1,4 @@
-import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
+import type { PathResult, PathTraversalResponse } from "../domain/model/path-traversal";
 
 export function formatPathAsText(data: PathTraversalResponse, pathIndex: number): string {
   const path = data.paths[pathIndex];

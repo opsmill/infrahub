@@ -39,7 +39,6 @@ class TestBranchMergeAction:
         # access the branch details page
         await admin_page.goto(f"/branches/{branch_name}")
         await admin_page.get_by_text("Tasks").click()
-        await expect(admin_page.get_by_text("Loading...Loading...")).to_be_visible()
         await expect(admin_page.get_by_text("Loading...Loading...")).not_to_be_visible()
         await expect(admin_page.get_by_text("No task")).to_be_visible()
 

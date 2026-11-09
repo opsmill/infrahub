@@ -1,10 +1,10 @@
 ---
-title: Manage objects from the command line
+title: Manage objects with infrahubctl
 ---
 
 Use `infrahubctl` to query, create, update, and delete objects directly from your terminal. The commands accept any schema kind in your instance and can display results as a table, JSON, CSV, or YAML.
 
-These commands operate on individual objects, which suits interactive work and scripting. To load many objects at once from version-controlled files, see [Load data in bulk using YAML file](./load-from-yaml.mdx).
+These commands operate on individual objects, which suits interactive work and scripting. To load many objects at once from version-controlled files, see [Load data using YAML file](./load-from-yaml.mdx). For an overview of every way to create an object, see [Create objects](./create-objects.mdx).
 
 ## Prerequisites
 
@@ -106,7 +106,7 @@ infrahubctl object update InfraDevice spine01 --set status=active
 
 An update only changes the fields you provide. Attributes and relationships you leave out keep their current values — omitting a field does not clear it.
 
-With `--file`, the file defines which objects to update and what to change, so the kind and identifier on the command line are ignored:
+With `--file`, the file defines which objects to update and what to change. The kind and identifier are still required on the command line, but their values are ignored — the file supplies the targets:
 
 ```bash
 infrahubctl object update InfraDevice spine01 --file updates.yml

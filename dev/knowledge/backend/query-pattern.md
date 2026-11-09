@@ -4,6 +4,31 @@
 
 All database access in Infrahub goes through Query classes that encapsulate Cypher queries with proper parameterization, branch-awareness, and temporal versioning. Queries return typed dataclass results for type safety and clear API contracts.
 
+## Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`
+
+The `registry` is a legitimate in-memory cache (schemas, branches, node classes) but a global singleton imported across ~150 modules — a source of circular imports and coupling. Encapsulate and inject it instead. Preference order:
+
+1. **Inject `SchemaManager`** into the constructor, built at the entry point (task/flow/API/CLI) — never import `registry` inside a component.
+2. **`db.schema`** when injection isn't practical — temporally correct against the operation's branch/time; `registry.schema` is not.
+3. **`registry.schema`** — avoid.
+
+```python
+# ✅ Best - inject SchemaManager, constructed at the entry point
+class MyComponent:
+    def __init__(self, schema_manager: SchemaManager) -> None:
+        self.schema_manager = schema_manager
+
+# ✅ OK - db.schema when injection isn't practical (temporally correct)
+schema = db.schema.get(name="MyNode", branch=branch)
+
+# ❌ Avoid - global singleton, loses temporal flexibility
+schema = registry.schema.get(name="MyNode")
+```
+
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
+
+Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
+
 ## Query Lifecycle
 
 ### Initialization
@@ -33,6 +58,8 @@ def __init__(self, node_id: str, **kwargs):
 | `add_to_query(str)` | Append Cypher clause(s) |
 | `add_subquery(str, alias)` | Wrap in `CALL (alias) { }` block |
 | `update_return_labels(list)` | Add labels to RETURN clause |
+
+Constructors take primitives (ids, names, ranges, kinds) — not domain objects like a `Node` subclass. A query that reads fields off a node instance creates a two-way dependency between the query layer and the node layer; compute the primitive values at the call site and pass them in. Some legacy queries (e.g. the number-pool family) still take node objects — follow this rule for new queries rather than the sibling precedent.
 
 ### Execution
 
@@ -80,15 +107,17 @@ All user input must be parameterized to prevent Cypher injection and enable quer
 ```python
 # Good: Parameterized
 self.params["uuid"] = user_provided_id
-self.add_to_query("MATCH (n { uuid: $uuid })")
+self.add_to_query("MATCH (n:Node { uuid: $uuid })")
 
 # Bad: String interpolation (security risk)
-self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
+self.add_to_query(f"MATCH (n:Node {{ uuid: '{user_provided_id}' }})")
 ```
 
 ### Keep Cypher readable inline
 
 Readability of the raw query outranks deduplication. Do not extract repeated Cypher blocks into shared Python string-building helpers or fragment formatters just to avoid duplication — a query assembled from indirected fragments is much harder to read, review, and paste into a Neo4j console. Duplicating a few similar Cypher blocks inline is the accepted trade-off.
+
+The bar for a shared fragment constant is a substantial body with several consumers: a predicate of dozens of lines composed into three or four queries earns a named constant, while a few-line `MATCH` used twice is pasted into both call sites — especially when the copies are not quite identical anyway.
 
 ### Return Labels
 
@@ -125,7 +154,11 @@ class MyQuery(Query):
 
 ### Pagination
 
-Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
+Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters, with the bounds bound as the `$query_limit` and `$query_offset` parameters rather than written into the text, so every page of a query shares one cached plan (`Query.render()` returns the text together with the parameters it needs, leaving `self.params` untouched); a query that keeps automatic pagination must not use those two parameter names for anything else. Pass `limit` and `offset` through to `super().__init__()` — a subclass that keeps its own copies leaves the base `self.limit`/`self.offset` at `None`, and `execute()` reads those to decide how to run: with both unset it takes the `query_with_size_limit()` path, which re-runs the query in `query_size_limit` chunks with offsets of its own. The subclass then pages twice, against itself.
+
+Automatic pagination is only correct over a total order: give the query an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows.
+
+To write pagination directly in your query, set `insert_limit = False`:
 
 > **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
 >
@@ -145,6 +178,52 @@ class MyQuery(Query):
         self.add_to_query("MATCH (n:Node)")
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
+
+#### Paginating a query that expands each row
+
+The automatic clause is appended *after* the `RETURN`, so it bounds the rows a query returns, not the work it does to produce them. When a query expands each matched row — a per-row `CALL` subquery, a `collect()` over a traversal — that expansion has already run for every match by the time the automatic `LIMIT` applies, and an `ORDER BY` there forces every expanded row to be materialized before sorting. A query that must bound *that* work takes its page in the body, before the expansion:
+
+```python
+class PagedNodeFieldsQuery(Query):
+    name = "paged_node_fields"
+    type = QueryType.READ
+    insert_limit = False
+
+    def __init__(self, limit: int, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.limit = limit
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
+        self.add_to_query("""
+        MATCH (n:Node)
+        WITH n
+        ORDER BY n.uuid, elementId(n)
+        SKIP $page_offset
+        LIMIT $page_limit
+        CALL (n) {
+            OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE]->(a:Attribute)
+            RETURN collect(DISTINCT a.name) AS attr_names
+        }
+        """)
+        self.return_labels = ["n.uuid AS node_uuid", "attr_names"]
+```
+
+Three details make this correct:
+
+- Type the page size as `limit: int`, not `int | None`: a query that pages itself has no meaningful unpaged mode, and a required constructor parameter says so at the call site instead of failing later.
+- Read the bounds from the base class's `self.limit` and `self.offset` rather than adding parallel attributes, and bind them as query parameters. Reusing the base fields keeps one source of truth for the page size and is what `execute()` inspects (see below); parameters rather than interpolated literals let every page reuse one compiled plan.
+- Order strictly. `SKIP`/`LIMIT` over an unordered match can return one row on two pages and another on none; `elementId(n)` breaks ties when the sort property is not unique.
+
+`GetPathDetailsBranchQuery` in `backend/infrahub/core/migrations/query/path_details.py` is the reference implementation, driven by the caller loop in `backend/infrahub/core/migrations/helpers/attribute_recompute.py`.
+
+#### Always set self.limit on a self-paging read
+
+`Query.execute()` treats a READ with neither `limit` nor `offset` as unpaginated and routes it through `query_with_size_limit()`, which re-runs the query once per `database.query_size_limit` rows with a growing `SKIP` appended after the `RETURN`. Wrapped around a query that already pages itself, that costs one extra execution of the whole query per full page; the extra run's rows are all discarded by the outer `SKIP`, so results stay correct and only the cost shows up.
+
+With `insert_limit = False` it is worse than wasteful. The wrapper cannot append its `SKIP`/`LIMIT`, so every iteration re-sends identical text, and the loop ends only because a batch came back shorter than `query_size_limit`. A query whose own bound is greater than or equal to `query_size_limit` never produces a short batch, so the loop never terminates and keeps appending the same rows.
+
+Because the wasted execution changes no returned value, assertions on query results cannot detect it. `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions by query name, so a test can assert how many queries a paged read issues.
 
 ### Branch-Aware Edge Resolution
 
@@ -172,7 +251,24 @@ Each subquery:
 
 Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For queries filtering multiple edges with different variable names, use `variable_name="r_custom"` to generate a filter bound to a specific variable.
 
-Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
+Example: `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time; `NodeGetListByAttributeValueQuery` chains two (`HAS_VALUE`, then `HAS_ATTRIBUTE`).
+
+On a branch other than the default branch, rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. Keep the value-first form for a branch-agnostic read: its branch filter does not scope by branch, so ranking every edge would elect another branch's value. `ranks_latest_value` in `core/query/subquery.py` holds this condition.
+
+```cypher
+// ❌ on a branch: ranks only the edges to the matched value vertex
+CALL (av, attr) { MATCH (av)<-[r:HAS_VALUE]-(attr) ... LIMIT 1 }
+// ✅ on a branch: ranks every value edge of the attribute, then compares
+CALL (attr) { MATCH (attr)-[r:HAS_VALUE]->(latest_av) ... RETURN r, latest_av ... LIMIT 1 }
+WITH n, av, r, latest_av
+WHERE r.status = "active" AND latest_av.value = av.value
+```
+
+The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
+
+### Query performance
+
+`AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
@@ -195,7 +291,11 @@ CALL (attr) {
 }
 ```
 
-Similarly, `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — transform the input first with `MATCH`, then `CALL` only the write operations:
+### Batched writes: server-side or driver-side
+
+Use `CALL { ... } IN TRANSACTIONS` when the rows to write come from the graph: a `MATCH` streams the candidates and each batch commits on its own, so the transaction memory a run needs is bounded by the batch size and the fan-out of its rows, not by the dataset; a row that reaches many edges or attributes, such as `DETACH DELETE` on a high-degree vertex, still holds all of them in its batch. The branch-agnostic retirement, the rollback and the `delete_all_nodes` helper are written this way. Neo4j accepts it only in an auto-commit transaction, so a query that may run inside a caller's transaction needs a plain fallback when `db.is_transaction` is set, and Memgraph does not support it at all.
+
+The `MATCH` that produces the rows stays outside the subquery — transform the input first, then `CALL` only the write operations:
 
 ```cypher
 UNWIND $updates AS update
@@ -205,6 +305,10 @@ CALL (update, attr, old_r, old_av) {
     // write operations here
 } IN TRANSACTIONS OF 500 ROWS
 ```
+
+Add `IN n CONCURRENT TRANSACTIONS` when the batches write disjoint subgraphs, with no vertex two batches would both lock, such as a root. Add `ON ERROR RETRY THEN FAIL` when those concurrent batches can still deadlock on an incidental shared vertex, a parent link or a peer: the server replays the failed batch instead of failing the statement and leaving the client to re-run everything. Committed batches stay committed whichever `ON ERROR` mode is chosen. Per-batch progress is only visible afterwards through `REPORT STATUS AS s`, which Neo4j accepts only with `ON ERROR CONTINUE` or `ON ERROR BREAK`, so a `THEN FAIL` form rules it out.
+
+Do not use it to push the content the batches write. A parameter that only names the rows, as in the example above, stays small, but a payload carrying every value to write travels as one parameter and sits in the outer transaction's memory before the first batch runs, and the concurrency stays inside that one statement. Driver-side batches, one `db.start_session()` per batch under a semaphore with each batch wrapped in `retry_db_transaction`, stream small messages and overlap Python parameter building with database work. They need the same caller-transaction guard: when `db.is_transaction` is set, run the batches on the caller's database one after the other, since a batch on its own session commits independently and the caller's transaction never sees it. For the diff save they were roughly twice as fast as the concurrent server-side form, whose parameter transfer alone took as long as the whole driver-side save.
 
 ## Result Dataclass Pattern
 
@@ -248,122 +352,38 @@ class MyQuery(Query):
 | Result dataclass | `{QueryName}Result` | `NodeGetListQueryResult` |
 | Query method | `get_data()` | Yields typed results as a Generator |
 
-### Pattern Examples
+### Reading values out of a result
 
-The following examples show common patterns for building dataclasses within the `get_data()` method.
+Every shape follows the same `get_data()` loop; only the accessor changes. Pick it by the column's
+shape and let it do the typing, rather than indexing the raw record and casting:
 
-**Scalar values** (`RETURN n.uuid AS uuid, n.kind AS kind`):
-
-```python
-@dataclass(frozen=True)
-class ScalarResult:
-    uuid: str
-    kind: str
-
-# In get_data():
-def get_data(self) -> Generator[ScalarResult, None, None]:
-    for result in self.get_results():
-        yield ScalarResult(
-            uuid=result.get_as_type("uuid", str),
-            kind=result.get_as_type("kind", str),
-        )
-```
-
-**Node properties** (`RETURN n.uuid AS node_uuid, n.kind AS node_kind, elementId(n) AS db_id`):
+| Column shape | Accessor |
+|---|---|
+| A scalar | `get_as_type("uuid", str)` |
+| A scalar that may be absent | `get_as_optional_type("description", str)` |
+| A string (shorthand, returns `str | None`) | `get_as_str("node_uuid")` |
+| A `collect(...)` list | `get_as_list_of_type("related_uuids", str)` |
+| A whole node or relationship | `get("n")` |
 
 ```python
 @dataclass(frozen=True)
-class NodePropertiesResult:
-    uuid: str
-    kind: str
-    db_id: str
-
-# In get_data():
-def get_data(self) -> Generator[NodePropertiesResult, None, None]:
-    for result in self.get_results():
-        yield NodePropertiesResult(
-            uuid=result.get_as_str("node_uuid"),
-            kind=result.get_as_str("node_kind"),
-            db_id=result.get_as_str("db_id"),
-        )
-```
-
-**Node + relationship properties** (`RETURN n.uuid AS node_uuid, r.branch AS rel_branch, r.status AS rel_status`):
-
-```python
-@dataclass(frozen=True)
-class NodeWithRelResult:
-    node_uuid: str
-    rel_branch: str
-    rel_status: str
-
-# In get_data():
-def get_data(self) -> Generator[NodeWithRelResult, None, None]:
-    for result in self.get_results():
-        yield NodeWithRelResult(
-            node_uuid=result.get_as_str("node_uuid"),
-            rel_branch=result.get_as_str("rel_branch"),
-            rel_status=result.get_as_str("rel_status"),
-        )
-```
-
-**Collection of properties** (`RETURN n.uuid AS primary_uuid, collect(peer.uuid) AS related_uuids`):
-
-```python
-@dataclass(frozen=True)
-class CollectionResult:
-    primary_uuid: str
-    related_uuids: tuple[str, ...]  # tuple for frozen dataclass
-
-# In get_data():
-def get_data(self) -> Generator[CollectionResult, None, None]:
-    for result in self.get_results():
-        yield CollectionResult(
-            primary_uuid=result.get_as_str("primary_uuid"),
-            related_uuids=tuple(r_uuid for r_uuid in result.get("related_uuids")),
-        )
-```
-
-**Optional values**:
-
-```python
-@dataclass(frozen=True)
-class OptionalResult:
+class NodeWithPeers:
     uuid: str
     description: str | None
+    peer_uuids: tuple[str, ...]  # tuple, so the dataclass can stay frozen
 
-# In get_data():
-def get_data(self) -> Generator[OptionalResult, None, None]:
+def get_data(self) -> Generator[NodeWithPeers, None, None]:
     for result in self.get_results():
-        yield OptionalResult(
+        yield NodeWithPeers(
             uuid=result.get_as_type("uuid", str),
             description=result.get_as_optional_type("description", str),
+            peer_uuids=tuple(result.get_as_list_of_type("peer_uuids", str)),
         )
 ```
 
-### Query Method Patterns
 
-```python
-# Multiple results (standard pattern):
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> Generator[MyQueryResult, None, None]:
-    for result in self.get_results():
-        yield MyQueryResult(
-            uuid=result.get_as_str("node_uuid"),
-            name=result.get_as_str("node_name"),
-        )
-
-# Single result:
-# Query returns: RETURN n.uuid AS node_uuid, n.name AS node_name
-def get_data(self) -> MyQueryResult | None:
-    result = self.get_result()
-    if result is None:
-        return None
-    return MyQueryResult(
-        uuid=result.get_as_str("node_uuid"),
-        name=result.get_as_str("node_name"),
-    )
-```
+For a query expected to yield at most one row, return `MyQueryResult | None` from a
+`self.get_result()` check instead of a generator.
 
 ### Guidelines
 
@@ -375,25 +395,9 @@ def get_data(self) -> MyQueryResult | None:
 - Use `get_as_str()`, `get_as_type()` for scalars, `get_as_optional_type()` for nullable values
 - Use `Generator` return type since `get_results()` returns a generator
 
-### Why Return Only Needed Properties
-
-Returning entire nodes (`RETURN n`) transfers all properties from the database, even those you don't use. This wastes:
-
-1. **Network bandwidth** between Neo4j and the application
-2. **Memory** for deserializing and storing unused data
-3. **CPU cycles** for parsing unnecessary properties
-
-```cypher
--- Bad: Returns all properties of n, r, and p
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n, r, p
-
--- Good: Returns only the 3 properties actually needed
-MATCH (n:Node)-[r:REL]->(p:Peer)
-RETURN n.uuid AS node_uuid, n.name AS node_name, r.branch AS rel_branch
-```
-
-Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just to access `node.element_id`.
+Use `elementId(n) AS db_id` when you need the database ID, rather than returning the full node just
+to access `node.element_id` (see [Return Labels](#return-labels) for why whole-node returns waste
+bandwidth and memory).
 
 ## Internals
 
@@ -401,28 +405,7 @@ This section documents internal implementation details. External callers should 
 
 ### Query Base Class
 
-**Location:** `backend/infrahub/core/query/__init__.py`
-
-```python
-class Query:
-    name: str = "base-query"
-    type: QueryType  # READ or WRITE
-
-    def __init__(
-        self,
-        branch: Branch | None = None,
-        at: Timestamp | str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-        order_by: list[str] | None = None,
-        branch_agnostic: bool = False,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> None:
-        self.params: dict = {}
-        self.query_lines: list[str] = []
-        self.return_labels: list[str] = []
-        self.results: list[QueryResult] = []
-```
+**Location:** `backend/infrahub/core/query/__init__.py`. The constructor also takes `branch`, `at`, `limit`/`offset`, `order_by`, `branch_agnostic` and `user_id`.
 
 | Attribute | Purpose |
 |-----------|---------|
@@ -455,8 +438,8 @@ Wraps Neo4j records and provides typed access methods:
 Helper dataclasses for building Cypher patterns:
 
 ```python
-# Node pattern: (n:Label { uuid: $uuid })
-QueryNode(name="n", labels=["Label"], params={"uuid": "$uuid"})
+# Node pattern: (n:Node:Label { uuid: $uuid })
+QueryNode(name="n", labels=["Node", "Label"], params={"uuid": "$uuid"})
 
 # Relationship pattern with direction: -[r:IS_PART_OF]->
 QueryRel(name="r", labels=["IS_PART_OF"], direction=QueryRelDirection.OUTBOUND)
@@ -485,12 +468,7 @@ Specialized base classes for different domains:
 
 **Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
 
-1. **Schema access via database proxy:** Enables temporal queries using previous schema versions
-
-   ```python
-   schema = db.schema.get(name="MyNode", branch=branch)  # Good
-   schema = registry.schema.get(name="MyNode")  # Avoid: loses temporal flexibility
-   ```
+1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 2. **Database type abstraction:** Contains database-specific functions
 

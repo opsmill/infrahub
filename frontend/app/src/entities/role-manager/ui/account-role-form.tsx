@@ -15,11 +15,14 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/entities/role-manager/domain/model/account";
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 
 interface AccountRoleFormProps {
@@ -102,67 +105,65 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <InputField
-          name="name"
-          label="Name"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
 
-        <RelationshipManyField
-          name="groups"
-          label="Groups"
-          relationship={{
-            name: "groups",
-            peer: ACCOUNT_GROUP_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={groups}
-        />
+      <RelationshipManyField
+        name="groups"
+        label="Groups"
+        relationship={{
+          name: "groups",
+          peer: ACCOUNT_GROUP_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={groups}
+      />
 
-        <FormField
-          name="permissions"
-          render={({ field }) => {
-            const fieldData = field.value;
-            return (
-              <div className="flex flex-col gap-2">
-                <LabelFormField label="Permissions" fieldData={fieldData} />
+      <FormField
+        name="permissions"
+        render={({ field }) => {
+          const fieldData = field.value;
+          return (
+            <div className="flex flex-col gap-2">
+              <LabelFormField label="Permissions" fieldData={fieldData} />
 
-                <FormInput>
-                  <PermissionCombobox
-                    {...field}
-                    value={fieldData.value}
-                    onChange={(newValue) => {
-                      field.onChange(
-                        updateRelationshipFieldValue(
-                          newValue.length > 0 ? newValue : null,
-                          permissions
-                        )
-                      );
-                    }}
-                  />
-                </FormInput>
-              </div>
-            );
-          }}
-        />
+              <FormInput>
+                <PermissionCombobox
+                  {...field}
+                  value={fieldData.value}
+                  onChange={(newValue) => {
+                    field.onChange(
+                      updateRelationshipFieldValue(
+                        newValue.length > 0 ? newValue : null,
+                        permissions
+                      )
+                    );
+                  }}
+                />
+              </FormInput>
+            </div>
+          );
+        }}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

@@ -1,18 +1,17 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type GenerateObjectRelationshipsQueryParams = PaginationParams & {
   parentKind: string;
@@ -84,7 +83,7 @@ export const getObjectRelationshipsFromApi = ({
   atDate,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
-  const query = gql(generateObjectRelationshipsQuery(params));
+  const query = graphql(generateObjectRelationshipsQuery(params));
 
   return graphqlClient.query({
     query,

@@ -72,7 +72,7 @@ WorkflowDefinition(
 
 ### Flow Functions
 
-Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `.agents/rules/backend-component-design.md`).
+Async functions decorated with `@flow`. A flow function is a **composition root, not the home of business logic**: it resolves the singleton services (`get_database()`, `get_workflow()`, …), builds a component with those dependencies injected, and delegates to it. Keep the flow body thin — the logic lives in the component, where it is testable without a running worker (see `dev/guidelines/backend/component-design.md`).
 
 ```python
 @flow(name="branch-merge", flow_run_name="Merge branch {branch}")
@@ -94,6 +94,54 @@ Discrete work units decorated with `@task` for granular tracking:
 async def validate_schema(db: InfrahubDatabase, branch: Branch) -> bool:
     # ... implementation
 ```
+
+### Result storage
+
+The task worker runs Prefect with `PREFECT_RESULTS_PERSIST_BY_DEFAULT` enabled, so every flow's
+return value is pickled and written to Redis through the `redis-database/infrahub-storage` block, a
+prefect-redis `RedisDatabase` saved by `setup_blocks()` in `workflows/initialization.py`. Prefect
+never deletes a persisted result, so the block is saved with `key_ttl` set to
+`TASK_RESULT_TTL_SECONDS` and every key expires on its own. A result is read at most once: by
+`execute_workflow` in the caller that waited for the run, and never for a run started with
+`submit_workflow`. A flow whose return value is a large object tree should opt out with
+`persist_result=False` rather than push it through Redis.
+
+### InfrahubBatch is concurrent, not ordered
+
+The SDK's `InfrahubBatch` runs everything added to it concurrently when executed — grouping tasks
+into one batch (or into a "phase" of batches) is not a serialization mechanism. When tasks must not
+overlap (e.g. writes touching overlapping vertices whose idempotency guards only protect
+*sequential* reruns), cap the batch's max concurrent execution to 1 or run the items in a plain
+loop.
+
+### What crosses a flow or task boundary
+
+Prefect processes every value that enters a task or leaves a flow, before the task body starts or
+after the flow body returns. None of that work appears in Infrahub logs.
+
+- A flow's return value is walked recursively to find futures, one Python call per list, dict, set,
+  dataclass, or Pydantic model it contains. The task worker enables
+  `PREFECT_RESULTS_PERSIST_BY_DEFAULT`, so the value is then pickled and written to the Redis result
+  storage block unless the flow sets `persist_result=False`. On a large branch diff the walk alone
+  filled most of the gap between the flow's last log line and its completion, and every run stored a
+  copy of the whole diff that never expired.
+- Task arguments are walked twice before the task starts: once to collect upstream dependencies,
+  once to resolve futures. The default cache policy also hashes every argument to compute a cache
+  key, which is why every Infrahub task sets `cache_policy=NONE`. Wrapping a multi-megabyte GraphQL
+  response in `quote()` removed a per-call cost that grew with the response.
+- Parameters of a subflow called in-process are walked, re-validated against their annotations,
+  then JSON-encoded and stored with the flow run in the Prefect database. `quote()` does not prevent
+  this, and an object the encoder cannot handle becomes a placeholder string only after the encoder
+  has tried. A schema branch passed this way is encoded in full on every call.
+- `quote()` stops the walks. It does not stop result persistence or parameter encoding.
+
+Three symptoms point at a payload problem. A gap in the worker log between a flow's last line and
+Prefect's `Finished in state Completed()` with no database activity is the return walk and its
+persistence. A task that runs noticeably longer than its body, measured from the `Running` state, is
+paying for the argument walk. Result keys in the cache Redis database are 32-character hex strings
+whose value starts with `{"metadata":{"storage_key":`, and a large one names the flow that should
+stop persisting. The rules for each boundary are in
+[Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md).
 
 ## Naming Conventions
 
@@ -151,6 +199,14 @@ Workflows receive metadata tags for organization and filtering:
 | Workflow Type | `infrahub.app/workflow-type/{type}` | Categorize by type |
 | Database Change | `infrahub.app/database-change` | Flag database-modifying workflows |
 
+Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
+
+### Branch-tagged runs outlive their branch
+
+Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing (the deletion flow itself, for one) keep the tag and are left in place.
+
+Scoping the purge to terminal states, and running it as one reaction to the deletion event, has a limit: `BranchDeletedEvent` also triggers the schema-refresh setup flows (profile refresh, computed attributes, hfid, display labels), which tag themselves with the same branch and can complete after the purge has already run. Those runs linger and can surface on a same-named recreation. Removing the race means scoping the branch-filtered task query by the branch's stable UUID instead of its name, which touches tagging and UUID resolution at every submission site.
+
 ## Execution Flow
 
 1. **Registration**: Workflows defined in `catalogue.py` are registered on startup
@@ -170,6 +226,44 @@ Workflows can specify concurrency limits:
 
 Example: `GIT_REPOSITORIES_SYNC` uses `concurrency_limit=1` with `CANCEL_NEW` to prevent overlapping sync operations.
 
+## Priority Lanes
+
+Every workflow runs in one of three priority lanes, each backed by a Prefect work queue on the shared worker pool:
+
+| Lane | Queue name | Queue precedence |
+|------|------------|------------------|
+| High | `high` | 1 (served first) |
+| Medium | `medium` | 2 |
+| Low | `low` | 3 (served last) |
+
+The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only orders runs still waiting on the server — a lower number is served first, and nothing preempts a run that already started. How a worker claims runs, and why it claims only a few at a time, is in [Task Workers](task-workers.md).
+
+Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the resolved priority for that dispatch — and, because the value is stamped into an `InfrahubContext` when one is passed, re-roots the priority for the dispatched flow's whole subtree. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
+
+### Priority Inheritance
+
+Priority is a property of the whole task tree, not of individual workflows: a tree runs at its root's effective priority, and catalogue defaults only ever seed tree roots.
+
+**Context field.** `InfrahubContext` (`backend/infrahub/context.py`) carries an optional `priority: WorkflowPriority | None = None`. Because the context already travels from parent flow to child flow as a flow parameter, it is the vehicle that propagates the lane across dispatch hops. Context payloads serialized before the field existed deserialize with `priority=None`.
+
+**Resolution chain.** At every dispatch, the effective priority is resolved by a strict precedence chain, implemented once in `resolve_priority()` (`backend/infrahub/services/adapters/workflow/priority.py`) and shared by both adapters:
+
+1. The explicit `priority` argument at the call site, when given.
+2. The `priority` carried by the dispatched `InfrahubContext`, when set.
+3. The workflow's catalogue `default_priority`.
+
+Inheritance is exact — the resolved value is never floored, capped, or combined with the child workflow's catalogue default. A low-priority tree dispatching a catalogue-high child runs that child low; anything else would let bulk background trees elbow into the interactive lane.
+
+**Copy-and-stamp semantics.** The companion `prepare_dispatch()` helper stamps the resolved priority into a *copy* of the context (`context.model_copy(update={"priority": effective})`) and injects the copy into the child's flow parameters — the caller's context object is never mutated, so several sub-dispatches from the same context with different explicit overrides do not interfere. Stamping happens on every dispatch that carries an `InfrahubContext`, including when the value came from the catalogue default, so descendants at depth ≥ 2 inherit correctly. An explicit override mid-tree re-roots the priority for that subtree. The worker adapter routes the run explicitly (`work_queue_name`) only when the argument or the context supplied the value; when only the catalogue default applies, the run inherits its deployment's queue — same lane, no explicit routing instruction. The local (test) adapter applies the same resolution and stamping but performs no queue routing.
+
+**Where the chain stops.** Inheritance ends at any hop that cannot carry the context forward:
+
+- Flows that declare only an `EventContext` parameter: the context is converted via `to_event_context()`, which carries no priority. Events are a deliberate boundary — event-triggered workflows are new tree roots whose priority comes from their own classification, not from the emitting task's lane.
+- Flows that declare no context parameter at all: the flow itself is routed correctly (its dispatch site resolved and routed the priority), but it has no context to forward, so its own sub-dispatches fall back to catalogue defaults.
+- Cron-scheduled runs: created by the scheduler without passing through the dispatch path; their trees start at catalogue defaults.
+
+**Operator visibility.** The stamped priority is visible in the task manager: for flows that declare an `InfrahubContext` parameter, the flow run's parameters include the injected context, whose `priority` field shows the effective lane the dispatch resolved — alongside the queue the run actually landed on. Flows that declare only an `EventContext` parameter receive a converted, priority-less context, so only the queue reveals their lane.
+
 ## Dependency Injection
 
 Services are injected into flows using `fast-depends`:
@@ -187,6 +281,13 @@ Available dependencies:
 - `get_workflow()`: Workflow service for submitting child flows
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
+
+## Logging
+
+Prefect only surfaces logs from its own run logger plus the loggers named in the worker's task-logger set — `DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]` in `backend/infrahub/workers/infrahub_async.py`, extended by `config.SETTINGS.workflow.extra_loggers`. A bare `logging.getLogger(__name__)` sits outside that set, so its records never reach the task manager.
+
+- **Inside a `@flow` or `@task` body**, use Prefect's `get_run_logger()`.
+- **In a plain helper** that runs inside a flow but is not itself decorated — so it has no Prefect run context, and is typically also called directly from tests — use `infrahub.log.get_run_logger()`. It returns the `infrahub.tasks` stdlib logger, which the worker registers with Prefect and which is safe to call with no run context (Prefect's own `get_run_logger()` raises outside a run).
 
 ## Read Query Optimization in Prefect Tasks
 
@@ -244,16 +345,16 @@ nodes = q.parse_response(response=response)
 
 | Situation | Approach |
 |-----------|----------|
-| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.query.node_query` |
+| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.graphql_query.node_id_query` |
 | Need a few scalar/relationship fields, read-only | Standalone query model with `execute_graphql()` |
 | Need to mutate the fetched node afterwards | Keep `client.get()` / `client.filters()` with `include=[...]` to narrow fetched fields; use `do_full_update=False` on `.update()` |
 
 ### Existing query model base
 
-`NodeIDQuery` in `backend/infrahub/core/query/node_query.py` is the base class for queries that only need the `id` field. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
+`NodeIDQuery` in `backend/infrahub/core/graphql_query/node_id_query.py` is the base class for queries that only need the `id` field. It pages by offset with ordering disabled (`order: {disable: true}`), so pages follow the node uuid alone. A schema `order_by` field would break that: a fan-out whose flows rewrite the field while paging continues shifts nodes across page boundaries, repeating some and skipping others. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
 
 ```python
-from infrahub.core.query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 class DisplayLabelNodeIDQuery(NodeIDQuery):
     query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
@@ -275,6 +376,84 @@ A write whose only purpose is observability — persisting a Prefect artifact th
 
 Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
 
+The same holds for a single side effect inline in a request handler — a telemetry or notification event sent before the response — not only for per-item batch work. Confirm first that the call can fail in a way the caller cares about (see [Exception Handling](../../guidelines/backend/exceptions.md)); if it does need isolating, dispatch it as a background task that runs after the response instead of wrapping it in `try`/`except` in the handler.
+
+### Transient database errors are retried at the transaction layer, not by task retry
+
+A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
+
+## Recovery actions
+
+A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
+
+## Task typing (polymorphic)
+
+A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`.
+
+Because the discriminant is intrinsic to every run, historical runs type correctly with no backfill and no stored `task_type` field. A concrete type adds only its own fields (`WebhookDeliveryTask` adds `http_request` / `http_response`; see [Webhooks](webhooks.md)); shared capabilities stay on the interface.
+
+`TaskNodes.node` is the interface type, not a concrete object. The change is backward-compatible: `TaskNode` keeps its name, so existing selections of common fields, SDK usage, and `__typename` checks keep resolving. The deprecated `related_node` / `related_node_kind` accessors live on the interface rather than on `TaskNode`, because existing consumers select them directly on `node` without an inline fragment, and those selections must keep resolving.
+
+## Liveness and zombie detection
+
+A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events and marks a run `CRASHED` once its countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
+
+### An event either renews the countdown or ends the watch
+
+A Prefect proactive trigger has two event sets, and they do opposite things. This is the single most important thing to know before editing the trigger, because the two are easy to confuse and the failure mode is silent:
+
+- an event in **`after`** opens or restarts the per-run countdown;
+- an event that is only in **`expect`** *satisfies* the window instead. It pushes the bucket's count to the threshold, so at expiry the proactive `count < threshold` test fails, the action never fires, and the bucket is then deleted. The run is left unwatched until an `after` event opens a new one.
+
+So "expected" does not mean "renews". Ending the watch is the correct outcome only for the terminal states, where the run has finished and must stop being watched. Any other event the trigger expects means the run is still alive, so it must appear in **both** sets. A unit test asserts that the expected set only ever adds terminal states on top of the renewing ones, because getting this wrong disarms detection for the affected run rather than producing an obvious error.
+
+### Retry waits
+
+A run waiting out a retry backoff is silent for the whole wait: the flow engine tears down its heartbeat thread before it sleeps out the delay, and Prefect excludes in-process retries (`empirical_policy.retry_type == "in_process"`) from the worker scheduled-run query, so nothing else reports on the run either. Two consequences:
+
+- The retry-wait transition renews the countdown, anchoring it at the start of the silence it explains, so the whole window is available to the backoff. Were it merely expected, it would end the watch and a run whose process died inside the wait would never be crashed.
+- The window is sized above the longest configured retry backoff so a legitimate wait is not mistaken for a dead process. It is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes.
+
+Because a dead in-process retry wait is never re-submitted by a worker, crashing it has no false-positive path: the run has no way forward other than the process that just died. The cost of the widened window is detection latency, not correctness.
+
+Note when reasoning about which events fire: on resume, Prefect renames the state, so the event is `prefect.flow-run.Retrying`, not `...Running`. The client-side return value of a state proposal keeps the locally-proposed name, so it is not a reliable guide to the emitted event.
+
+### The worker liveness heartbeat runs on its own thread
+
+Separate from Prefect's flow-run heartbeat, every API server and task worker publishes its own
+liveness key, `workers:active:{component}:worker:{worker_id}`, with a 15-second expiry, refreshed
+every 5 seconds (`refresh_worker_heartbeat` in `services/component.py`). The workers holding a live
+key form the active-worker set (`InfrahubComponent.list_active_worker_ids`), and four things read
+it: the deadlock cleanup (`locks/tasks.py`) deletes any lock older than
+`clean_up_deadlocks_interval_mins` whose holder has left the set; the merge failure identifier flags
+a `MERGING` branch whose lock holder left the set, after its grace period; the stale lock cleaner in
+merge recovery; and `wait_for_schema_to_converge`, which waits only for active workers to report the
+new schema hash.
+
+The refresh runs on a dedicated thread with its own event loop and its own cache connection
+(`WorkerHeartbeat` in `services/heartbeat.py`, started and stopped by `InfrahubScheduler`), not as an
+asyncio schedule on the main loop. Flows run on the worker's main loop, and a CPU-bound stretch with
+no `await` starves every other task on that loop, the heartbeat included. This is not theoretical: a
+rebase of a 38k-node branch spent 93 seconds in pure-Python conflict merging, the key expired, the
+deadlock cleanup running on another worker deleted the diff-update locks the rebase still held, and
+the rebase failed on lock release with `LockNotOwnedError` after all of its work was done. A thread
+keeps beating through such a stall because a pure-Python loop releases the interpreter lock every few
+milliseconds; only a C extension holding it for longer than the key's expiry could starve the thread.
+The key therefore means "this process is alive", not "this process's event loop is idle", which is
+what every consumer above wants to know.
+
+The thread needs its own cache connection because the asyncio Redis client binds to the
+loop that created it. A failed beat closes that connection and the next beat reconnects through
+the factory after a short backoff, so a cache outage delays the heartbeat rather than ending it.
+Each beat carries its own deadline and the next one is scheduled from before the current one starts,
+so three beats fit in every expiry and one slow, failed or unanswered beat cannot push the next
+write past it. The deadline is the thread's own: the cache clients impose none, so a connection that
+stops answering without closing (an idle connection dropped by a load balancer, a failover without
+an RST) would otherwise block a beat indefinitely, and `stop` cannot end a thread sitting inside
+such a call. A blip between one worker and the cache while the cleanup's worker can still reach it
+remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
+the deadlock cleanup has no equivalent.
+
 ## Key Locations
 
 | Component | Location |
@@ -283,14 +462,23 @@ Work dispatched *after* an operation has already committed — the recompute and
 | Workflow models | `backend/infrahub/workflows/models.py` |
 | Constants & types | `backend/infrahub/workflows/constants.py` |
 | Initialization | `backend/infrahub/workflows/initialization.py` |
+| Result storage TTL | `backend/infrahub/workflows/models.py` |
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
+| Branch task purge | `backend/infrahub/task_manager/flow_run/branch_cleanup.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
+| System automations | `backend/infrahub/trigger/system.py` |
+| Worker liveness heartbeat | `backend/infrahub/services/heartbeat.py`, `backend/infrahub/services/component.py` |
+| Worker submission window | `backend/infrahub/workers/submission.py` |
+| Awaited child runs of a flow run | `backend/infrahub/services/adapters/workflow/run_follower.py`, `backend/infrahub/services/adapters/workflow/creation_slots.py` |
+| Deadlock cleanup | `backend/infrahub/locks/tasks.py` |
 
 ## See Also
 
 - [ADR-0003: Asynchronous Tasks](../../adr/0003-asynchronous-tasks.md) - Why we use Prefect
 - [Creating Workflows Guide](../../guides/backend/creating-async-tasks.md) - How to create a new workflow
+- [Prefect Flow and Task Payloads](../../guidelines/backend/prefect-payloads.md) - What flows may return and tasks may receive
+- [Task Workers](task-workers.md) - How workers claim and start flow runs
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure

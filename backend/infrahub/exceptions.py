@@ -411,7 +411,11 @@ class DiffError(Error):
         self.message = message
 
 
-class HFIDViolatedError(ValidationError):
+class UniquenessViolationError(ValidationError):
+    """Raised when a node's uniqueness constraint is violated."""
+
+
+class HFIDViolatedError(UniquenessViolationError):
     matching_nodes_ids: set[str]
 
     def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
@@ -485,6 +489,34 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 class BranchNeedsRebaseError(BranchStatusError): ...
 
 
+class MergeInProgressError(BranchStatusError):
+    """Write rejected because a merge is in progress on `merging_branch`."""
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
+
+
+class MergeRecoveryRequiredError(BranchStatusError):
+    """Write rejected because a failed merge needs operator recovery.
+
+    `merging_branch` is the source branch that was being merged (the one whose merge died);
+    `identifier` is the branch the rejected write targeted (the source branch itself or the
+    default branch).
+
+    Deliberately a sibling of MergeInProgressError, not a subclass: an in-progress merge is
+    transient and retryable, while this indicates recovery is required.
+    """
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
+
+
 class EnterpriseRequiredError(Error):
     """Raised when a community deployment invokes an Enterprise-gated feature.
 
@@ -538,4 +570,32 @@ class LDAPCollisionError(Error):
     def __init__(self, account_name: str, message: str | None = None) -> None:
         self.account_name = account_name
         self.message = message or self.DESCRIPTION
+        super().__init__(self.message)
+
+
+class ArtifactChecksumMismatchError(Error):
+    """The stored file of an artifact does not match the checksum recorded for it, so it must not be served."""
+
+    HTTP_CODE: int = 409
+
+    def __init__(self, storage_id: str) -> None:
+        self.storage_id = storage_id
+        self.message = (
+            f"The stored file of this artifact ({storage_id}) does not match its checksum, so it was not served. "
+            "It may have been modified outside of Infrahub. Regenerate the artifact to restore it."
+        )
+        super().__init__(self.message)
+
+
+class ArtifactChecksumMissingError(Error):
+    """An artifact records no checksum for its stored file, so the file cannot be checked and must not be served."""
+
+    HTTP_CODE: int = 409
+
+    def __init__(self, storage_id: str) -> None:
+        self.storage_id = storage_id
+        self.message = (
+            f"This artifact has no recorded checksum to check its stored file ({storage_id}) against, "
+            "so it was not served. Regenerate the artifact to restore it."
+        )
         super().__init__(self.message)

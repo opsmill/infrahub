@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
+from infrahub import config
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
@@ -13,10 +14,12 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.artifacts.content import ArtifactContentReader
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
@@ -58,10 +61,10 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    return Response(
-        content=registry.storage.retrieve(identifier=str(artifact.storage_id.value)),
-        headers={"Content-Type": artifact.content_type.value.value},
-    )
+    content = await ArtifactContentReader(
+        db=db, storage=registry.storage, verify_checksum=config.SETTINGS.storage.verify_artifact_checksum
+    ).read_artifact(storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value)
+    return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
 
 @router.post("/generate/{artifact_definition_id:str}")
@@ -78,7 +81,9 @@ async def generate_artifact(
     context: InfrahubContext = Depends(get_context),
 ) -> None:
     try:
-        BranchStatusChecker().check(branch=branch_params.branch)
+        await BranchStatusChecker(
+            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
+        ).check(branch=branch_params.branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 
@@ -109,6 +114,14 @@ async def generate_artifact(
         limit=payload.nodes,
     )
 
+    # No explicit priority: the fan-out inherits the catalogue default (MEDIUM), like the
+    # same generation triggered through the artifact-definition mutation. Dispatching at
+    # HIGH would stamp the whole task tree -- including every per-target /api/query call
+    # the workers make -- as X-Priority: high, making a user-triggered regeneration of
+    # thousands of artifacts unsheddable by the admission layer at the same class as
+    # interactive traffic.
     await service.workflow.submit_workflow(
-        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+        context=context,
+        parameters={"model": model},
     )

@@ -4,7 +4,7 @@ import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import {
   PROPOSED_CHANGE_APPROVALS_REVOKED,
   PROPOSED_CHANGE_THREAD,
-} from "@/entities/proposed-changes/constants";
+} from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 import { ProposedChangeThreadEvent } from "./proposed-change-thread-event";
 

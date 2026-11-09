@@ -11,11 +11,8 @@ export const INFRAHUB_SWAGGER_DOC_URL = `${INFRAHUB_API_SERVER_URL}/api/docs`;
 
 export const CONFIG = {
   GRAPHQL_URL: (branch?: string | null, date?: Date | null) => {
-    if (!date) {
-      return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}`;
-    } else {
-      return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}?at=${date.toISOString()}`;
-    }
+    const url = `${INFRAHUB_API_SERVER_URL}/graphql${branch ? `/${branch}` : ""}`;
+    return date ? `${url}?at=${date.toISOString()}` : url;
   },
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,

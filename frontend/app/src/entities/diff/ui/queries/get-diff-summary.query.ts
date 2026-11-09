@@ -2,7 +2,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { QueryConfig } from "@/shared/api/types";
 
-import { type GetDiffSummaryParams, getDiffSummary } from "@/entities/diff/domain/get-diff-summary";
+import {
+  type GetDiffSummaryParams,
+  getDiffSummary,
+} from "@/entities/diff/domain/use-cases/get-diff-summary";
 import { diffSummaryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getDiffSummaryQueryOptions({

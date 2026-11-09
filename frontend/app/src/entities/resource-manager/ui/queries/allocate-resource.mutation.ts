@@ -5,7 +5,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import {
   type AllocateResourceParams,
   allocateResource,
-} from "@/entities/resource-manager/domain/allocate-resource";
+} from "@/entities/resource-manager/domain/use-cases/allocate-resource";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 
 export function useAllocateResourceMutation() {

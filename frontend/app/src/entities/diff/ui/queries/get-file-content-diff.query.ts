@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type GetFileContentDiffParams,
   getFileContentDiff,
-} from "@/entities/diff/domain/get-file-content-diff";
+} from "@/entities/diff/domain/use-cases/get-file-content-diff";
 import { fileContentDiffKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getFileContentDiffQueryOptions(params: GetFileContentDiffParams) {

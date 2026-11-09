@@ -11,11 +11,16 @@ import { getFormFieldFromRelationship } from "@/shared/components/form/utils/get
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
@@ -23,6 +28,7 @@ interface GetFormFieldsFromSchema extends FormContextType {
   initialObject?: NodeFieldsWithMetadata;
   objectTemplate?: NodeObject | null;
   auth?: AuthContextType;
+  isDefaultBranch?: boolean;
   isFilterForm?: boolean;
   pools?: Array<NumberPool>;
   isUpdate?: boolean;
@@ -35,6 +41,7 @@ export const getFormFieldsFromSchema = ({
   initialObject,
   objectTemplate,
   auth,
+  isDefaultBranch,
   isFilterForm,
   pools = [],
   isUpdate,
@@ -55,7 +62,7 @@ export const getFormFieldsFromSchema = ({
   const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
-    if ("peer" in field) {
+    if (isRelationshipSchema(field)) {
       if (isBulkUpdate && field.cardinality === "many") {
         return [
           ...acc,
@@ -111,6 +118,7 @@ export const getFormFieldsFromSchema = ({
       ...acc,
       getFormFieldFromAttribute({
         auth,
+        isDefaultBranch,
         attributeSchema: field,
         currentObject: initialObject as Record<string, AttributeType> | undefined,
         objectTemplate,

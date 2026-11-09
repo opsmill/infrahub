@@ -20,9 +20,17 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
-## Imports
+## Module layout
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes:
+### Constants
+
+Follow [Constants and literals](../constants.md) when creating or reusing values that encode a rule.
+
+Keep `constants.py` limited to module-level values (plain literals, enums, frozen containers); do not put functions or other classes there. Prefer a constant over a function returning a fixed value. Put environment reads and runtime computation in a purpose-named module such as `settings.py` or `limits.py`, so importing constants has no behavioral side effects.
+
+### Imports
+
+All imports must be at the top of the file. Never import inside functions, methods, or classes; Ruff enforces this (`PLC0415`):
 
 ```python
 # ✅ Good - imports at module level
@@ -41,6 +49,8 @@ class NodeManager:
         if not node.name:
             raise ValidationError("Node name is required")
 ```
+
+A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
 
 All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
 
@@ -71,6 +81,38 @@ if TYPE_CHECKING:
 def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
+
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
+here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
+top-level backend import in any `tasks/*.py` file would load the full backend package on every
+`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
+deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
+"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
+imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
+function that needs them.
+
+The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
+needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
+task then imports once — put it there and the deferred imports mostly disappear with it.
+
+Import a singleton from the module that defines it, not from a package `__init__.py` that re-exports
+it under the same name as its submodule. `from infrahub.core import registry` names two things — the
+`infrahub.core.registry` module and the object it re-exports — and mypy binds whichever it resolves
+first. That order shifts when an import cycle elsewhere changes, so the errors (`Name "registry"
+already defined`, `Module has no attribute "schema"`) appear in files the change never touched
+(see [Package `__init__.py` files](../../knowledge/backend/package-init-files.md)):
+
+```python
+# ❌ Bad - names the submodule and the re-exported object at once
+from infrahub.core import registry
+
+# ✅ Good - one object, whatever order the cycle resolves in
+from infrahub.core.registry import registry
+```
+
+Fix the import where the checker flags it rather than sweeping existing call sites, and prefer not
+importing the registry into a new component at all — see
+[Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 ## Data Structures
 
@@ -123,24 +165,38 @@ class NodeDiffBuilder:
     changed_attributes: list[str]  # Will be appended to during processing
 ```
 
-**Document attributes with inline docstrings** below each attribute, not in the class docstring:
+**Don't store what you can derive.** A field whose value restates another field, or is cheaply
+computed from one (a boolean mirroring `other is not None`, a summary line cut from a message),
+goes out of sync the moment one is written without the other — expose it as a `property` instead.
+When only some combinations of field values are producible, reject the impossible ones in
+`__post_init__` (or a model validator) so an inconsistent instance fails at construction rather
+than surfacing as a downstream bug.
+
+**Document an attribute with an inline docstring below it**, not in the class docstring, and only
+when the name does not already say what the field holds:
 
 ```python
-# ✅ Good - Attribute docstrings below each field
+# ✅ Good - a docstring only where the name leaves a question
 @dataclass(frozen=True)
 class RelationshipPeerData:
     branch: str
+    source_id: UUID
+    peer_kind: str
+    rel_node_db_id: str | None = None
 
+    rels: list[RelData] | None = None
+    """Both relationships pointing at this Relationship Node."""
+
+# ❌ Bad - the docstring restates the field name
+@dataclass(frozen=True)
+class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
     peer_kind: str
     """Kind of the Peer Node."""
 
-    rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
-
-# ❌ Bad - Attributes documented in class docstring
+# ❌ Bad - attributes documented in the class docstring
 @dataclass(frozen=True)
 class RelationshipPeerData:
     """Data about a relationship peer.
@@ -163,26 +219,100 @@ Use `frozen=True` unless you have a specific reason to mutate instances (e.g., b
 
 ### Avoid Plain Dictionaries
 
-Regardless of which approach you use, avoid untyped dictionaries for structured data:
+Regardless of which approach you use, avoid untyped dictionaries for structured data: write
+`BranchCreateInput(name="feature-x")`, not `{"name": "feature-x", "description": None}`.
+
+### Optional and default values
+
+Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for a possibly-missing
+key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
+mutable object you build up.
+
+Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
+silently treats a legitimate `0` as unset:
 
 ```python
-# ❌ Bad - no type safety
-branch_data = {"name": "feature-x", "description": None}
+# ❌ Bad - offset=0 is dropped, so the first page renders a different query text
+if offset:
+    query += " SKIP $offset"
 
-# ✅ Good - use dataclass or Pydantic depending on context
-branch_data = BranchCreateInput(name="feature-x")
+# ✅ Good - zero is bound like any other value
+if offset is not None:
+    query += " SKIP $offset"
 ```
 
-## Docstrings (Google-style)
+When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
+a test, so the next pass at the line fails fast instead of shipping the inversion.
 
-All public functions and classes must have Google-style docstrings:
+## Configuration Settings
+
+`backend/infrahub/config.py` is the boundary where an operator's environment enters the process. Any value that gets past a `Field` is trusted by everything downstream, so constrain it here rather than defending against it in the logic that consumes it.
+
+### Bound every numeric field
+
+Give each numeric field the tightest bounds its *meaning* allows, not just `gt=0`. A multiplier that may only scale a value **up** is `ge=1`; one that may only scale it **down** is `gt=0, le=1`. A count that must leave room for at least one item is `ge=1`, not `ge=0`.
+
+Every `float` field also needs `allow_inf_nan=False`. Pydantic accepts `inf` and `nan` for floats by default, and both slip past `gt`/`ge`: `inf` produces a threshold that can never be reached, and `nan` makes every comparison against it `False`, so the feature quietly stops working somewhere far from the config file.
 
 ```python
-async def create_branch(
-    db: InfrahubDatabase,
-    name: str,
-    description: str | None = None,
-) -> Branch:
+retry_backoff_multiplier: float = Field(
+    default=2.0,
+    ge=1,
+    allow_inf_nan=False,
+    description="Factor applied to the delay after each failed attempt.",
+)
+```
+
+### Enforce cross-field invariants with a model validator
+
+Per-field bounds cannot express a relationship *between* settings. When one setting is only meaningful relative to another — an ordering, a window that must contain another, a ceiling that must sit above its floor — assert it in a `@model_validator(mode="after")`. A contradictory configuration then fails at startup with an explanation, instead of silently inverting the feature's behavior at runtime.
+
+```python
+@model_validator(mode="after")
+def validate_retry_delay_bounds_ordered(self) -> Self:
+    """Require the initial retry delay to fall within the configured ceiling.
+
+    Raises:
+        ValueError: If the initial delay exceeds the maximum.
+
+    """
+    if self.retry_initial_delay_seconds > self.retry_max_delay_seconds:
+        raise ValueError(
+            "'retry_initial_delay_seconds' must not exceed 'retry_max_delay_seconds', "
+            "otherwise the backoff ceiling is reached before the first retry"
+        )
+    return self
+```
+
+Name the validator after the invariant it enforces. Name the offending fields in full in the message so they are greppable, and state both the rule and its consequence — the operator reading it in a crash log has no other context.
+
+Testing note: don't test that Pydantic enforces `ge`/`le` (see [Testing Standards](./testing.md#what-not-to-test)), but *do* test the model validator and the shipped defaults — the invariant and the defaults are ours.
+
+## Docstrings
+
+A docstring states the contract in one line. Add a Google-style `Args`, `Returns` or `Raises`
+section only for what the signature does not already say. Write one on a public function or class
+that other modules call; a private helper whose name says what it does gets none. What belongs in
+a comment at all is in [Code Documentation Style](../code-doc-style.md).
+
+```python
+# ✅ Good - one line; the signature already documents the parameters
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
+    """Create a branch, raising ValidationError when the name is already taken."""
+
+
+# ✅ Good - a section for the one parameter the name does not explain
+def load_nodes(db: InfrahubDatabase, ids: list[str], *, strict: bool = False) -> list[Node]:
+    """Load the nodes behind the given ids.
+
+    Args:
+        strict: Raise on an unknown id instead of dropping it from the result.
+
+    """
+
+
+# ❌ Bad - every section restates the signature
+async def create_branch(db: InfrahubDatabase, name: str, description: str | None = None) -> Branch:
     """Create a new branch in the database.
 
     Args:
@@ -194,7 +324,7 @@ async def create_branch(
         The newly created Branch object.
 
     Raises:
-        BranchExistsError: If branch name already exists.
+        ValidationError: If branch name already exists.
     """
 ```
 
@@ -207,99 +337,50 @@ async def create_branch(
 
 ## Query Pattern
 
-Use the Query class pattern for database operations:
+Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
+conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
 
-```python
-from infrahub.core.query import Query
+## Methods stay on the instance
 
-class MyQuery(Query):
-    name: str = "my_query"
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
-        self.params["node_id"] = kwargs["node_id"]
-        self.add_to_query("MATCH (n:Node {uuid: $node_id}) RETURN n")
-```
+A private helper that happens to read no instance state is still an instance method. Do not demote
+it to a `@staticmethod`, a `@classmethod`, or a module-level function to satisfy a
+"method could be a function" hint — the repo suppresses ruff's `PLR6301` deliberately. The demotion
+rewrites call sites and tests for zero behavior change, and the next edit that needs `self`
+reverses it.
 
 ## Type Hints
 
-- All function parameters and return types must be type-hinted
-- Use `str | None` for optional strings (Python 3.10+)
-- Use `list[Type]` instead of `List[Type]` (Python 3.9+)
+Typing rules — enums over bare `str`, unions over flag structs, narrowing with `isinstance` rather
+than `getattr` or `cast()`, clearing a suppression — live in [Python Typing](typing.md).
 
-### Type a closed value set as an enum, not `str`
-
-When a field or argument accepts only a fixed set of values, don't type it as a bare `str` — a bare `str` lets a typo through silently and hides the valid set from readers and from the schema. Use one of:
-
-- **`Literal["a", "b"]`** — the lighter option for a small closed set used in a **single file**. Still type-checked, no class to declare.
-- **An enum** — when the set is shared across modules, needs a name, round-trips through the database, or is exposed over GraphQL. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
-
-```python
-# ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
-origin: str | None = None
-
-# ✅ Good - the valid set is discoverable and reusable; the owning model validates input
-class NodeMutationOrigin(StrEnum):
-    LIVE = "live"
-    MERGE = "merge"
-    REBASE = "rebase"
-
-origin: NodeMutationOrigin | None = None
-```
-
-The annotation alone does not reject a bad value at runtime — a validation layer enforces it (a Pydantic model, or an explicit `NodeMutationOrigin(value)` conversion at the boundary for plain dataclasses/adapters). For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
-
-### Do not narrow a type in an override (Liskov / `ty`)
-
-An override may not make a parameter type *narrower* (or a return type *wider*) than the base declaration — `ty` rejects it as a Liskov violation. When an abstract method and its implementations must accept a union, declare the full shared type on the abstract **and** on every implementation; do not tighten one adapter.
-
-```python
-# ❌ Bad - RedisCache narrows the abstract's `int` to `KVTTL`; ty errors
-class InfrahubCache(ABC):
-    async def set(self, key: str, value: str, expires: int | None = None) -> None: ...
-class RedisCache(InfrahubCache):
-    async def set(self, key: str, value: str, expires: KVTTL | None = None) -> None: ...
-
-# ✅ Good - the shared union on the base and all adapters
-async def set(self, key: str, value: str, expires: KVTTL | int | None = None) -> None: ...
-```
-
-### Prefer `isinstance` over `getattr` for narrowing
-
-To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
-
-### Deterministic serialization for hashes and cache keys
+## Deterministic serialization for hashes and cache keys
 
 When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
+
+## Path Matching
+
+When matching a request path (or any string) against an exclusion or allow-list, never rely on
+`path.startswith(prefix)` alone — it also matches unrelated paths that merely share the prefix as
+a substring, e.g. `/healthcheck` incorrectly matches an excluded `/health`. Require the prefix to
+be the whole path or a slash-delimited ancestor:
+
+```python
+# ❌ Bad - "/healthcheck" bypasses an exclusion meant for "/health"
+if any(path.startswith(excluded) for excluded in excluded_paths):
+    return True
+
+# ✅ Good - exact match or a genuine descendant
+if any(path == excluded or path.startswith(f"{excluded}/") for excluded in excluded_paths):
+    return True
+```
 
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
 
-### datetime.UTC (Python 3.11+)
+### Version-specific features
 
-The `datetime.UTC` constant was introduced in Python 3.11. For Python 3.10 compatibility, use `timezone.utc` instead:
-
-```python
-# ❌ Bad - Python 3.11+ only
-from datetime import UTC, datetime
-now = datetime.now(UTC)
-
-# ✅ Good - Works in Python 3.10+
-from datetime import datetime, timezone
-now = datetime.now(timezone.utc)
-```
-
-### Other Version-Specific Features
-
-When using newer Python features, verify they're available in the minimum supported version:
-
-| Feature | Minimum Version |
-|---------|-----------------|
-| `datetime.UTC` | 3.11 |
-| `str \| None` union syntax | 3.10 |
-| `list[Type]` generic syntax | 3.9 |
-| `match` statements | 3.10 |
-| `Self` type hint | 3.11 (use `typing_extensions.Self` for 3.10) |
+The backend targets modern Python, but code shared with `python_testcontainers` must run on 3.10: there, avoid `datetime.UTC` (use `datetime.now(timezone.utc)`), and import `Self` from `typing_extensions`.
 
 ## Function Call Style
 
@@ -325,15 +406,13 @@ Exceptions where positional arguments are acceptable:
 
 ## Testing
 
-- Unit tests: no external dependencies only file access
-- Component tests: Similar to unit tests with regards to small testing scope but can require database access
-- Integration tests: require Neo4j via testcontainers
-- Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
-- Async tests auto-configured via pytest-asyncio
-
-For additional information around testing patterns refer to [./testing.md](./testing.md)
+Test tiers, file layout, fixtures and assertion standards are in
+[Python Testing Standards](testing.md).
 
 ## See Also
 
+- [Python Typing](typing.md) - Type hints, narrowing without `cast()`, clearing suppressions
+- [Exception Handling](exceptions.md) - Catching, scoping, and suppressing exceptions
+- [ASGI Middleware](asgi-middleware.md) - Writing FastAPI/Starlette middleware
 - [Backend Architecture](../../knowledge/backend/architecture.md) - Backend architecture overview
 - [Git Workflow](../git-workflow.md) - Git workflow and commit conventions

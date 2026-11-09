@@ -58,5 +58,5 @@ class TestVerifyMultiSelectBehaviour:
         # Create a new tag directly on multi select
         await admin_page.get_by_role("button", name="+ Add new Tag").click()
         await admin_page.get_by_test_id("new-object-form").get_by_label("Name *").fill("new tag")
-        await admin_page.get_by_role("button", name="Save").click()
+        await admin_page.get_by_test_id("new-object-form").get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("new tag×")).to_be_visible()

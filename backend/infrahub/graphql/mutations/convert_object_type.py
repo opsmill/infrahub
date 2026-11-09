@@ -41,13 +41,14 @@ class ConvertObjectType(Mutation):
         """Convert an input node to a given compatible kind.
 
         Raises:
+            NodeNotFoundError: When no node matches the given `node_id`.
             ValidationError: When the fields mapping is malformed or when an attribute originates from a profile.
 
         """
         graphql_context: GraphqlContext = info.context
 
         node_to_convert = await NodeManager.get_one(
-            id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch
+            id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch, raise_on_error=True
         )
 
         source_schema = registry.get_node_schema(name=node_to_convert.get_kind(), branch=graphql_context.branch)
@@ -63,7 +64,7 @@ class ConvertObjectType(Mutation):
             fields_mapping[field_name] = ConversionFieldInput(**input_for_dest_field_str)
 
         node_to_convert = await NodeManager.get_one(
-            id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch
+            id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch, raise_on_error=True
         )
         for attribute_name in source_schema.attribute_names:
             attribute: BaseAttribute = getattr(node_to_convert, attribute_name)

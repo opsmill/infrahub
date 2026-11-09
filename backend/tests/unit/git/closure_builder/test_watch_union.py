@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from git import Repo
 from infrahub_sdk.schema.repository import (
+    InfrahubGeneratorDefinitionConfig,
     InfrahubPythonTransformConfig,
     InfrahubWatchConfig,
 )
@@ -44,6 +45,16 @@ def _config(*, watch: list[str] | None) -> InfrahubPythonTransformConfig:
     return InfrahubPythonTransformConfig(
         name="net",
         file_path=Path("transforms/network/main.py"),
+        watch=InfrahubWatchConfig(files=watch) if watch is not None else None,
+    )
+
+
+def _generator_config(*, watch: list[str] | None) -> InfrahubGeneratorDefinitionConfig:
+    return InfrahubGeneratorDefinitionConfig(
+        name="gen",
+        file_path=Path("generators/widget/main.py"),
+        query="some_query",
+        targets="some_group",
         watch=InfrahubWatchConfig(files=watch) if watch is not None else None,
     )
 
@@ -296,3 +307,50 @@ def test_empty_watch_files_list_returns_the_auto_detected_result_unchanged(tmp_p
 
     assert result is auto
     assert result.complete is False
+
+
+def test_generator_config_flows_through_watch_union(tmp_path: Path) -> None:
+    """A generator config is accepted by the watch union and drives the same closure behavior as a transform.
+
+    The union step reads `watch` off whichever config it is given, so the only generator-specific risk is
+    that the generator config is accepted at all; the recursion, artifact exclusion, and completeness rules
+    are the shared code exercised by the transform variants. This proves the generator path end-to-end: a
+    directory entry expands recursively while skipping `.pyc`/`__pycache__`/symlinks, and declaring a
+    non-empty `watch.files` flips an incomplete closure back to trusted.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "shared/util.py", "")
+    _write(tmp_path, "shared/nested/more.py", "")
+    _write(tmp_path, "shared/cached.pyc", "")
+    _write(tmp_path, "shared/__pycache__/util.cpython-313.pyc", "")
+    (tmp_path / "shared/alias.py").symlink_to(tmp_path / "shared/util.py")
+    _track(
+        repo,
+        "shared/util.py",
+        "shared/nested/more.py",
+        "shared/cached.pyc",
+        "shared/__pycache__/util.cpython-313.pyc",
+        "shared/alias.py",
+    )
+
+    incomplete = ClosureResult(
+        dependencies=("generators/widget/main.py",),
+        complete=False,
+        unresolved=(UnresolvedRef(file="generators/widget/main.py", location="git enumeration failed"),),
+    )
+
+    result = union_watch_files(
+        result=incomplete,
+        transform_config=_generator_config(watch=["shared/"]),
+        worktree_root=tmp_path,
+        logger=LOGGER,
+    )
+
+    assert result.complete is True
+    assert result.unresolved == incomplete.unresolved
+    assert "generators/widget/main.py" in result.dependencies
+    assert "shared/util.py" in result.dependencies
+    assert "shared/nested/more.py" in result.dependencies
+    assert "shared/cached.pyc" not in result.dependencies
+    assert not any("__pycache__" in entry for entry in result.dependencies)
+    assert "shared/alias.py" not in result.dependencies

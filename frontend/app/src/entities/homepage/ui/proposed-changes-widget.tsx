@@ -5,7 +5,7 @@ import { Row } from "@/shared/components/container";
 
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { ProposedChangesTableHomepage } from "@/entities/proposed-changes/ui/proposed-changes-table-homepage";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

@@ -43,8 +43,15 @@ Application data nodes. Labels: `Node`, `CoreNode`, `{kind}`, plus inherited sch
 | Property | Type | Description |
 |----------|------|-------------|
 | `uuid` | string | UUID |
-| `kind` | string | Node type (also in labels) |
+| `kind` | string | Concrete node kind (also in labels) |
 | `branch_support` | string | `"aware"`, `"local"`, or `"agnostic"` |
+
+The `kind` property always holds the *concrete* kind; generic kinds exist only as labels. A Cypher
+filter on `n.kind` therefore never matches a generic — it silently returns zero rows. Match
+generics via labels, and remember a label-based sum double-counts nodes that inherit several of the
+requested generics. When a query input must be concrete-only, accept `list[NodeSchema]` and derive
+the kind strings internally, so passing a `GenericSchema` fails type-checking instead of returning
+a silent zero at runtime.
 
 ### Relationship
 
@@ -235,6 +242,9 @@ Implementation: `Branch.get_query_filter_path()` in `backend/infrahub/core/branc
 
 Outbound on `n1`, inbound on `n2`.
 
+A node is never its own relationship peer: instance-level self-loops (`n1` = `n2`) are unsupported.
+Same-kind relationships between two distinct nodes are the supported case (the unidirectional form).
+
 ### Node Existence
 
 ```cypher
@@ -247,6 +257,8 @@ Outbound on `n1`, inbound on `n2`.
 
 - **Same branch**: Set `to` property to deletion time
 - **User branch deleting default branch data**: Add `status="deleted"` edge with `from` = deletion time
+
+These two mechanisms are exclusive. A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
 
 ### Branch Deletion
 
@@ -280,6 +292,18 @@ For any vertex pair:
 // Adds IS_PART_OF edge (sets to on existing active edge if same branch)
 {status: "deleted", from: $deletion_time, to: NULL}
 ```
+
+### Branch-agnostic fields on branch-aware Nodes
+
+A `branch_support="agnostic"` Attribute or Relationship writes all of its edges on the global branch, which every branch reads. If the field is on a branch-aware Node, then deletion requires special handling because we need to check if the field is still accessible on any branch. If and only if the field is completely inaccessible, we must close the branch-agnostic field's edges on the global branch.
+
+**Rule: every code path that can stop an object being readable must re-evaluate whether its branch-agnostic fields are still retained**, and close their global edges when they are not. This includes direct object deletion, attribute and field remove schema migrations, branch merge, branch rebase, and branch delete. If the branch-agnostic field is not reachable on any branch, then it must be closed. If the field is accessible from any branch, then it must be kept open to make sure that the object is still valid on that branch.
+
+The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. It reads the branches itself, so a query that evaluates candidates in batches (`CALL … IN TRANSACTIONS`) reads them once outside the batches into a `branch_windows` list and runs `UNRETAINED_AGNOSTIC_FIELD_EVALUATION` — the predicate without its branch read — inside each — otherwise every batch re-reads the branches, and collecting every candidate first to call the whole predicate once is what exhausted the transaction memory pool on a large branch delete. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
+
+Take a call site's candidates from the graph unless it applies a diff: merge re-evaluates the removals its own diff carries; rebase queries the nodes whose default-branch `IS_PART_OF` edge turned `deleted` between the branch's previous fork point and the rebase; branch delete queries the nodes live on the deleted branch, plus those it read from the default branch at its fork point whose existence edge has closed since. The base-branch diff is scoped to the fields the branch changed, so it omits the default-branch deletions of any node the branch did not touch.
+
+Every call site closes edges on the global branch — that is where the field's edges live. `DiffMerger.merge_graph` is the merge-specific call site: it re-evaluates fields for nodes whose deletions the merge carries to the target and closes their global edges at the merge's `$at`. Schema-removal migrations can make the same global-branch closures during the merge window. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
 
 ## Attribute Updates
 
@@ -356,7 +380,24 @@ CALL (peer, rl) {
 - **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
 - **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
 
+These filters apply to *any* query whose contract mentions "active" or "current" state — detection/audit queries and test helpers included; an unfiltered edge match silently counts tombstoned rows as live.
+
+## Transaction Retry
+
+Neo4j rejects some writes with errors that are safe to replay on a fresh transaction (a lock contention deadlock, or an entity that a concurrent transaction removed mid-statement). Infrahub retries these at the transaction layer with the `retry_db_transaction` decorator.
+
+`retry_db_transaction(name=...)` wraps an `async` method that owns its transaction. On a retriable error — `is_retriable_db_error` accepts `TransientError` (deadlock, lock timeout) and `ClientError` with code `Neo.ClientError.Statement.EntityNotFound`, nothing else — it re-runs the whole method after an exponential backoff with jitter, configured by the `INFRAHUB_DB_RETRY_*` settings; a non-retriable error propagates immediately.
+
+**A new session escapes the caller's transaction.** `start_transaction()` carries the current session forward, but `start_session()` builds a fresh session straight from the driver — writes made through it commit on their own, whatever transaction the caller holds, so a caller rollback keeps them. Code handed a `db` runs its queries on that `db`; a helper that opens per-task sessions for concurrency must fall back to running sequentially on the caller's `db` when `db.is_transaction`.
+
+**The retry must run at the transaction owner.** A method decorated with `retry_db_transaction` opens the transaction it retries. Code running *inside* that transaction (a query loop, a nested helper) must let a retriable error propagate to the owner rather than catching it and returning a failed result: a caught error still leaves the transaction poisoned, so the commit fails with a non-retryable `TransactionError` and the replay never happens. Only paths that run outside any transaction (they skip the transaction wrapper and have no owner to replay them) record the error as a failure instead. Gate that choice on `db.is_transaction`.
+
+The corollary for subclasses: the decorator is applied to a specific method, so overriding a decorated method discards it. A subclass that overrides the base's transaction-owning method and opens its own transaction has to reapply the decorator; one that delegates back to `super()` inherits the retry and must not.
+
+This transaction-layer retry is distinct from Prefect task retry (see [Async Tasks — Failure handling](async-tasks.md#failure-handling)): a task retry re-runs the failed task with no delay between attempts, so a batch of concurrent tasks that deadlock on the same nodes retry at the same time and deadlock again. Transient database errors belong to the transaction-layer retry, which spaces replays with backoff and jitter so contending writers separate.
+
 ## See Also
 
 - [Query Pattern](query-pattern.md) - How to write database queries
 - [Architecture](architecture.md) - Backend architecture overview
+- [Creating Graph Migrations](../../guides/backend/creating-migrations.md) - Transaction-owning migrations and retry

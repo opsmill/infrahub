@@ -27,6 +27,7 @@ export const PopoverContent = ({
   return (
     <Wrapper>
       <PopoverPrimitive.Content
+        data-react-aria-top-layer=""
         ref={ref}
         align={align}
         sideOffset={sideOffset}

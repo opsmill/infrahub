@@ -4,7 +4,8 @@ import { NodeForm } from "@/shared/components/form/node-form";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { pluralize } from "@/shared/utils/string";
 
-import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type { UpdateObjectParams } from "@/entities/nodes/object/domain/use-cases/update-object";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   GroupCard,
@@ -13,7 +14,6 @@ import {
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
 import { ProcessingBulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-bulk-edit-objects";
 import { NodeCard } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-mutate-object";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface BulkEditObjectsProps {
   selectedRows: Array<NodeCore>;
@@ -49,6 +49,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         <GroupPanelBody>
           <NodeForm
             isBulkUpdate
+            className="p-4"
             schema={selectedSchema}
             onSubmit={({ fields, formData }) => {
               const updatedObject = getUpdateMutationFromFormData({ formData, fields });

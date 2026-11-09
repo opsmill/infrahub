@@ -9,8 +9,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.component.conftest import _build_hierarchical_location_data
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 

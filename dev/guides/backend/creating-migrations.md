@@ -16,6 +16,12 @@ Create a migration when you need to:
 
 Schema definition changes that can be resolved by normal schema migrations (renames, type changes) do not need a graph migration.
 
+When a bug's root cause is a migration that failed to materialize or transform data (e.g. on an
+inheritance change), fix the migration layer — do not compensate by lazily repairing state in
+runtime paths like `Node.save()`, even when that is the smaller diff. A runtime repair leaves the
+stored data wrong for every path that doesn't go through it, and the repair code itself runs after
+validation hooks that the normal write path relies on.
+
 ## Migration Types
 
 Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
@@ -23,6 +29,12 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 - **`GraphMigration`** — Runs a fixed list of `Query` classes in sequence. Use when transformations can be expressed purely in Cypher.
 - **`ArbitraryMigration`** — Implements a custom `execute()` method. Use when you need Python logic (e.g., JSON parsing, conditional branching, batching decisions driven by fetched data).
 - **`InternalSchemaMigration`** — Modifies internal schema definitions. Rarely used directly.
+
+`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
+
+## Migrations run at the current timestamp
+
+Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
 
 ## Steps
 
@@ -65,6 +77,10 @@ class Migration070(ArbitraryMigration):
 ```
 
 Set `minimum_version` to the current `GRAPH_VERSION` (the migration runs when upgrading from that version).
+
+**Transient database errors.** `SchemaMigration` and `GraphMigration` own their transaction and carry `retry_db_transaction`, so a transient error (a deadlock, or an entity a concurrent migration removed) is replayed on a fresh transaction with backoff and jitter instead of failing the migration; their inner query loops let those errors propagate to the transaction owner. This matters when migrations of the same kind run concurrently (schema path migrations execute as a batch). The catch-all `except` shown above belongs to `ArbitraryMigration`/`execute` overrides that run serially during upgrade and record every error as a failed `MigrationResult`; if you override `execute` to own a transaction on a concurrent path, add `retry_db_transaction` and do not catch retriable errors inside the transaction. See [Database Schema — Transaction Retry](../../knowledge/backend/database-schema.md#transaction-retry).
+
+**Overriding `execute` discards the decorator.** A `SchemaMigration` subclass that overrides `execute` to open its own transaction must reapply `@retry_db_transaction(name="schema_migration")` — `node_relationship_remove.py` is the worked example. A subclass that only guards a condition and then delegates to `super().execute(...)` is already covered by the base and must not add it again, or the two retries nest.
 
 ### Step 2: Bump `GRAPH_VERSION`
 
@@ -111,6 +127,23 @@ CALL (n) {
 
 `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — move all matching up front.
 
+Size batches by the unit that actually bounds transaction memory. `IN TRANSACTIONS OF n ROWS`
+counts input rows, so when one row fans out to an unbounded set of edges or attributes (deleting a
+node deletes everything attached to it), the per-transaction cost is unbounded no matter how small
+`n` is. Batch over the fan-out unit where possible, and cap a fan-out-prone batch with
+`min(configured_size, ceiling)` rather than inheriting `query_size_limit` unchanged.
+
+**Pitfall — one bad item must not hide the rest.** An `ArbitraryMigration` that owns its `execute`
+and iterates independent items (branches, nodes, kinds) as auto-commit statements wraps each item in
+its own `try`, collects per-item failures into `MigrationResult.errors`, and keeps going —
+`m075_finish_deleting_branches.py` is the house example. A single `try` around the loop aborts on the
+first failure, reports one error, and leaves the state of every remaining item unknown — on re-run
+the operator cannot tell what was reclaimed and what was never attempted.
+
+This does not extend to `GraphMigration` and `SchemaMigration`: their `execute` wraps the work in
+`db.start_transaction()`, and a failed statement aborts that transaction, so catching per item and
+continuing inside it cannot work. There, let the error reach the transaction owner.
+
 ### Step 4: Beware of Shared Nodes
 
 Some nodes in the graph are de-duplicated via `MERGE` (e.g., `AttributeValue` on `value` + `is_default`). Multiple relationships from different parents can point to the same node. Before modifying a node's properties or labels, verify it isn't shared — or create a new node and transfer the relevant edges. See [Database Schema — AttributeValue](../../knowledge/backend/database-schema.md) for details.
@@ -139,6 +172,21 @@ uv run pytest backend/tests/unit/core/graph/test_graph_version.py
 ```
 
 This verifies `GRAPH_VERSION` matches the last migration number and that `minimum_version` is set correctly.
+
+## Renumbering a Migration After a Rebase
+
+If the base branch gained a migration with your number, keep the base branch's migration and move
+yours to the next free number. Git often merges the clash without a conflict, because the file
+names differ and an identical `GRAPH_VERSION` bump merges cleanly, so it shows up only as
+`ImportError: Duplicate migration number` when the migrations load.
+
+1. `git mv` the migration (file or package) and its component test to the new number.
+2. Rename the class to `Migration{NNN}`, update the number in its `name`, and set
+   `minimum_version` to the new number minus one.
+3. `git grep` the old number and update every hit: a package's `__init__.py` re-exports the
+   class, and tests and docs name the migration by its number.
+4. Set `GRAPH_VERSION` to the new number and rerun
+   `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
 
 ## See Also
 

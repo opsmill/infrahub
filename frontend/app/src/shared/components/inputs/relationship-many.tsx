@@ -9,10 +9,10 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/types";
 
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
@@ -62,6 +62,7 @@ export function RelationshipManyInput({
                   size="xs"
                   shape="circle"
                   variant="ghost"
+                  preventFocusOnPress
                   onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}

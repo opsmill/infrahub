@@ -9,12 +9,12 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import {
   type GetIpPrefixListParams,
   getIpPrefixList,
-} from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
+} from "@/entities/ipam/ip-prefixes/domain/use-cases/get-ip-prefix-list";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
@@ -50,10 +50,9 @@ export function useGetIpPrefixList(
     isSuccess: isCountSuccess,
     isError: isCountError,
   } = useObjectsCount({
-    objectKind:
-      params.filters && hasIncompatibleFiltersForIpAvailability(params.filters)
-        ? params.schema.kind!
-        : IP_PREFIX_GENERIC,
+    objectKind: shouldExcludeIpAvailability(params.filters ?? [], params.sort)
+      ? params.schema.kind!
+      : IP_PREFIX_GENERIC,
     filters: params.filters,
   });
 

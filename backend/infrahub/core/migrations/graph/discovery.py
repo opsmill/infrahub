@@ -9,14 +9,16 @@ if TYPE_CHECKING:
     from infrahub.core.migrations.shared import BaseMigration
 
 MIGRATION_FILE_PATTERN = re.compile(r"^m(\d{3})_.+\.py$")
+MIGRATION_PACKAGE_PATTERN = re.compile(r"^m(\d{3})_[^.]+$")
 
 
 def discover_migrations() -> list[type[BaseMigration]]:
-    """Scan the graph migrations directory for migration files and return sorted migration classes.
+    """Scan the graph migrations directory for migrations and return sorted migration classes.
 
-    Discovers files matching ``m{NNN}_{name}.py``, imports each module, extracts
-    the ``Migration{NNN}`` class, validates there are no duplicate numbers, and
-    returns the list sorted by migration number.
+    Discovers modules matching ``m{NNN}_{name}.py`` and packages matching
+    ``m{NNN}_{name}/`` (whose ``__init__.py`` must export the migration class),
+    imports each, extracts the ``Migration{NNN}`` class, validates there are no
+    duplicate numbers, and returns the list sorted by migration number.
 
     Raises:
         ImportError: If a migration module is missing its expected ``Migration{NNN}``
@@ -27,7 +29,12 @@ def discover_migrations() -> list[type[BaseMigration]]:
     migrations: list[tuple[int, type[BaseMigration]]] = []
 
     for path in sorted(migration_dir.iterdir()):
-        match = MIGRATION_FILE_PATTERN.match(path.name)
+        if path.is_file():
+            match = MIGRATION_FILE_PATTERN.match(path.name)
+        elif (path / "__init__.py").is_file():
+            match = MIGRATION_PACKAGE_PATTERN.match(path.name)
+        else:
+            match = None
         if not match:
             continue
         number = int(match.group(1))

@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 const TASKS_BRANCH_STATUS_COUNT = graphql(`
   query TASKS_BRANCH_STATUS_COUNT($branch: String!) {

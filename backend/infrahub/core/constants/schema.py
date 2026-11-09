@@ -1,7 +1,9 @@
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 
 PARENT_CHILD_IDENTIFIER = "parent__child"
 RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
+SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS = 2
+SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS = SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS + 1
 
 
 class FlagProperty(Enum):
@@ -19,6 +21,18 @@ class UpdateSupport(Enum):
     MIGRATION_REQUIRED = "migration_required"
     VALIDATE_CONSTRAINT = "validate_constraint"
     NOT_APPLICABLE = "not_applicable"
+
+
+class Visibility(IntEnum):
+    """Ordinal classification of who may see or set a schema field.
+
+    The ordering is meaningful: a field is included in a given model variant when the
+    variant's minimum level is at or below the field's visibility (write ⊆ read ⊆ internal).
+    """
+
+    INTERNAL = 0
+    READ = 1
+    WRITE = 2
 
 
 class UpdateValidationErrorType(Enum):

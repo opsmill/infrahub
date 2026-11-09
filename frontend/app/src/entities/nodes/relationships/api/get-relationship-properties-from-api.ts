@@ -1,7 +1,6 @@
-import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 
 type GenerateObjectRelationshipsQueryParams = {
   parentKind: string;
@@ -65,7 +64,7 @@ export const getRelationshipPropertiesFromApi = ({
   atDate,
   ...params
 }: GetObjectRelationshipsFromApiParams) => {
-  const query = gql(generateRelationshipPropertiesQuery(params));
+  const query = graphql(generateRelationshipPropertiesQuery(params));
 
   return graphqlClient.query({
     query,

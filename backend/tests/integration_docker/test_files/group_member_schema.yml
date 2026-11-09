@@ -1,0 +1,11 @@
+---
+version: "1.0"
+nodes:
+  - name: EventMember
+    namespace: Testing
+    label: "Event Member"
+    human_friendly_id: ['name__value']
+    attributes:
+      - name: name
+        kind: Text
+        unique: true

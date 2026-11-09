@@ -86,7 +86,65 @@ CALL (diff_roots) {
         return {"diff_root_list": diff_root_list}
 
 
+def _build_diff_node_properties(enriched_node: EnrichedDiffNode) -> dict[str, Any]:
+    return {
+        "uuid": enriched_node.uuid,
+        "kind": enriched_node.kind,
+        "db_id": enriched_node.identifier.db_id,
+        "is_node_kind_migration": enriched_node.is_node_kind_migration,
+        "label": enriched_node.label,
+        "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
+        "action": enriched_node.action.value,
+        "path_identifier": enriched_node.path_identifier,
+    }
+
+
+class EnrichedDiffNodesCreateQuery(Query):
+    """Create, with its node-level properties, the DiffNode of every listed node its root does not hold yet.
+
+    Writing the root takes its lock for the transaction, so overlapping saves of one diff create each node once.
+    A created node is readable before its batch writes its fields, so it carries every property a reader requires.
+    """
+
+    name = "enriched_diff_nodes_create"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, diff_root_uuid: str, diff_nodes: Iterable[EnrichedDiffNode], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.diff_root_uuid = diff_root_uuid
+        self.diff_nodes = diff_nodes
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "root_uuid": self.diff_root_uuid,
+            "node_properties_list": [_build_diff_node_properties(enriched_node=node) for node in self.diff_nodes],
+        }
+        query = """
+MERGE (diff_root:DiffRoot {uuid: $root_uuid})
+// this same-value write takes the root's lock, so a concurrent save waits and finds the node instead of creating it
+SET diff_root.uuid = $root_uuid
+WITH diff_root
+UNWIND $node_properties_list AS node_properties
+// USING INDEX keeps the lookup on the uuid index: the query must not walk the root's edge list
+OPTIONAL MATCH (existing_node:DiffNode {uuid: node_properties.uuid, db_id: node_properties.db_id})
+USING INDEX existing_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(existing_node)
+WITH diff_root, node_properties, existing_node
+WHERE existing_node IS NULL
+CREATE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
+SET diff_node = node_properties
+        """
+        self.add_to_query(query)
+
+
 class EnrichedNodeBatchCreateQuery(Query):
+    """Write the fields, conflicts and properties of a batch of diff nodes their roots already hold.
+
+    The query never writes the root and touches only the nodes of its batch, so batches of one save can run
+    in concurrent transactions.
+    """
+
     name = "enriched_nodes_create"
     type = QueryType.WRITE
     insert_return = False
@@ -105,8 +163,11 @@ WITH
     node_details.node_map AS node_map,
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
-MERGE (diff_root:DiffRoot {uuid: root_uuid})
-MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+MATCH (diff_root:DiffRoot {uuid: root_uuid})
+// USING INDEX keeps every node lookup in this query on the uuid index: a batch must not walk the root's edge list
+MATCH (diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+USING INDEX diff_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
 WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
 SET
     diff_node.kind = node_map.node_properties.kind,
@@ -161,7 +222,10 @@ WITH
     node_details.node_map AS node_map,
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
-MATCH (:DiffRoot {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+MATCH (diff_root:DiffRoot {uuid: root_uuid})
+MATCH (diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+USING INDEX diff_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
 WITH diff_node, node_map, %(attr_name_list_comp)s AS attr_names
 OPTIONAL MATCH (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(attr_to_delete:DiffAttribute)
 WHERE NOT (attr_to_delete.name IN attr_names)
@@ -217,7 +281,10 @@ WITH
     node_details.node_map AS node_map,
     toString(node_details.node_map.node_properties.uuid) AS node_uuid,
     node_details.node_map.node_properties.db_id AS node_db_id
-MATCH (:DiffRoot {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+MATCH (diff_root:DiffRoot {uuid: root_uuid})
+MATCH (diff_node:DiffNode {uuid: node_uuid, db_id: node_db_id})
+USING INDEX diff_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(diff_node)
 // -------------------------
 // remove stale relationships for this node
 // -------------------------
@@ -253,8 +320,26 @@ CALL (diff_relationship, node_relationship) {
 // -------------------------
 WITH diff_relationship, node_relationship
 UNWIND node_relationship.relationships as node_single_relationship
-MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+CALL (diff_relationship, node_single_relationship) {
+    // seek on (path_identifier, peer_id): a MERGE on the edge pattern walks every element of the group per row,
+    // and a peer_id seek alone returns every element of that peer across all diffs
+    OPTIONAL MATCH (existing_element:DiffRelationshipElement {
+        path_identifier: node_single_relationship.node_properties.path_identifier,
+        peer_id: node_single_relationship.node_properties.peer_id
+    })
+    WHERE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(existing_element)
+    CALL (diff_relationship, existing_element) {
+        WITH diff_relationship, existing_element
+        WHERE existing_element IS NULL
+        CREATE (diff_relationship)-[:DIFF_HAS_ELEMENT]->(new_element:DiffRelationshipElement)
+        RETURN new_element AS element
+        UNION
+        WITH existing_element
+        WHERE existing_element IS NOT NULL
+        RETURN existing_element AS element
+    }
+    RETURN element AS diff_relationship_element
+}
 SET diff_relationship_element = node_single_relationship.node_properties
 // -------------------------
 // add/remove conflict for this relationship element
@@ -435,16 +520,7 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
         if enriched_node.conflict:
             conflict_params = self._build_conflict_params(enriched_conflict=enriched_node.conflict)
         return {
-            "node_properties": {
-                "uuid": enriched_node.uuid,
-                "kind": enriched_node.kind,
-                "db_id": enriched_node.identifier.db_id,
-                "is_node_kind_migration": enriched_node.is_node_kind_migration,
-                "label": enriched_node.label,
-                "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
-                "action": enriched_node.action.value,
-                "path_identifier": enriched_node.path_identifier,
-            },
+            "node_properties": _build_diff_node_properties(enriched_node=enriched_node),
             "conflict_params": conflict_params,
             "attributes": attribute_props,
             "relationships": relationship_props,
@@ -482,17 +558,21 @@ class EnrichedNodesLinkQuery(Query):
                     parent_node_map[diff_node.uuid][relationship.name] = parent_node.uuid
         self.params = {"root_uuid": self.diff_root_uuid, "parent_node_map": parent_node_map}
         query = """
-WITH keys($parent_node_map) AS child_node_uuids
 MATCH (diff_root:DiffRoot {uuid: $root_uuid})
-MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode)
-WHERE child_node.uuid IN child_node_uuids
+// USING INDEX keeps the child and parent lookups on the uuid index: the query must not walk the root's edge list
+UNWIND keys($parent_node_map) AS child_uuid
+MATCH (child_node:DiffNode {uuid: child_uuid})
+USING INDEX child_node:DiffNode(uuid)
+WHERE (diff_root)-[:DIFF_HAS_NODE]->(child_node)
 CALL (diff_root, child_node) {
     WITH $parent_node_map[child_node.uuid] AS sub_map
     WITH sub_map, keys(sub_map) AS relationship_names
     MATCH (child_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship)
     WHERE diff_rel_group.name IN relationship_names
     WITH diff_root, diff_rel_group, toString(sub_map[diff_rel_group.name]) AS parent_uuid
-    MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
+    MATCH (parent_node:DiffNode {uuid: parent_uuid})
+    USING INDEX parent_node:DiffNode(uuid)
+    WHERE (diff_root)-[:DIFF_HAS_NODE]->(parent_node)
     MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(parent_node)
 }
         """

@@ -304,6 +304,22 @@ async def test_validate_human_friendly_id_uniqueness_success(
         schema.validate_human_friendly_id()
 
 
+async def test_validate_human_friendly_id_rejects_path_with_extra_segments(
+    animal_person_schema_dict: dict[str, Any],
+) -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
+    schema.process_inheritance()
+
+    # An attribute path may hold at most `attribute__property`; joining two attribute paths
+    # into one entry is malformed and must be rejected rather than silently truncated.
+    dog_schema = schema.get("TestDog", duplicate=False)
+    dog_schema.human_friendly_id = ["name__value__breed__value"]
+
+    with pytest.raises(ValueError, match=r"TestDog\.human_friendly_id:.*name__value__breed__value"):
+        schema.validate_human_friendly_id()
+
+
 async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict: dict[str, Any]) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
@@ -2902,6 +2918,7 @@ async def test_schema_branch_validate_check_missing(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,
@@ -3003,6 +3020,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
             {
                 "constraint_name": "node.relationship.add",
@@ -3013,6 +3031,7 @@ async def test_schema_branch_validate_add_node_relationships(
                     "schema_id": None,
                     "schema_kind": "TestingCriticality",
                 },
+                "node_uuids": None,
             },
         ],
         "enforce_update_support": True,

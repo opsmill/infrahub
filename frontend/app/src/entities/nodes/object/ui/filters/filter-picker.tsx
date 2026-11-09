@@ -1,27 +1,25 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Autocomplete, Button, ListBox, ListBoxItem, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
-import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
-import type { Filter } from "@/shared/hooks/useFilters";
+import { CountBadge } from "@/shared/components/buttons/count-badge";
 import { classNames } from "@/shared/utils/common";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import {
-  type FilterDefinition,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
-} from "@/entities/nodes/object/domain/filter-definition";
+} from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterPickerProps {
@@ -62,10 +60,10 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           if (!isOpen) setSelectedField(null);
         }}
       >
-        <Button variant="ghost" size="sm" className="rounded-xl border-gray-300">
+        <Button variant="input" size="sm">
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
-          {filterCount > 0 && <FilterCountBadge count={filterCount} />}
+          {filterCount > 0 && <CountBadge count={filterCount} />}
         </Button>
 
         <Popover
@@ -76,9 +74,10 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
             <ListBox
               aria-label="Filter fields"
               selectionMode="single"
+              selectionIndicator="highlight"
               selectedKeys={selectedField ? [selectedField] : []}
               onAction={handleAction}
-              className="max-h-72 p-1"
+              className="max-h-72"
             >
               {fields.map((field) => {
                 const name = getFilterDefinitionName(field);
@@ -127,13 +126,7 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
   const label = getFilterDefinitionLabel(definition);
 
   return (
-    <ListBoxItem
-      id={name}
-      textValue={label}
-      selectionIndicator="none"
-      className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
-      ref={ref}
-    >
+    <ListBoxItem id={name} textValue={label} ref={ref}>
       {definition.type === "relationship" ? (
         <FieldSchemaIcon fieldSchema={definition.schema} />
       ) : (
@@ -143,14 +136,6 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
       {hasActiveFilter && <ActiveFilterIndicator />}
       <ChevronRightIcon className={classNames("size-3.5")} />
     </ListBoxItem>
-  );
-}
-
-function FilterCountBadge({ count }: { count: number }) {
-  return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
-      {count}
-    </span>
   );
 }
 

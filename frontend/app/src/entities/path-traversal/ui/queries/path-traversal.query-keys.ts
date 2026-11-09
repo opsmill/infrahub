@@ -1,7 +1,7 @@
 import type {
   GetPathTraversalParams,
   GetReachableNodesParams,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 export const pathTraversalQueryKeys = {
   all: ["path-traversal"] as const,

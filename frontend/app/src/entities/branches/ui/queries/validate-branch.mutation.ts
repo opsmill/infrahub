@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { validateBranch } from "@/entities/branches/domain/validate-branch";
+import { validateBranch } from "@/entities/branches/domain/use-cases/validate-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 

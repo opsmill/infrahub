@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
 import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
@@ -16,7 +16,7 @@ import { EventAttributes } from "@/entities/events/ui/node-events/event-attribut
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 const EventContent = (props: EventType) => {
   const { pathname } = useLocation();

@@ -12,7 +12,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_foundation
@@ -46,8 +46,7 @@ class TestTemplateWithIpPool:
         await admin_page.get_by_label("Select an object type").click()
         await admin_page.get_by_role("option", name="Device Infra").click()
         await admin_page.get_by_label("Template Name *").fill("pool_device_template")
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Loopbacks pool").click()
+        await select_pool(admin_page, "Loopbacks pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
         await expect(admin_page.get_by_label("Primary_Address")).to_contain_text("Allocated by pool")
         await admin_page.get_by_role("button", name="Save").click()

@@ -4,5 +4,5 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 class DiffConflictsEnricherDependency(DependencyBuilder[ConflictsEnricher]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> ConflictsEnricher:  # noqa: ARG003
-        return ConflictsEnricher()
+    def build(cls, context: DependencyBuilderContext) -> ConflictsEnricher:
+        return ConflictsEnricher(db=context.db)

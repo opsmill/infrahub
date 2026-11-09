@@ -1,7 +1,7 @@
+import { Tooltip } from "@infrahub/ui";
 import { EyeIcon } from "lucide-react";
 import { Focusable } from "react-aria-components";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 export function ExtraFieldIndicator({ className }: { className?: string }) {

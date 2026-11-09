@@ -15,6 +15,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -279,10 +280,10 @@ async def test_migration_013_delete_username_password_schema(
 ) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
-    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
+    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
-    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
+    query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
     nbr_rels_after = await count_relationships(db=db)

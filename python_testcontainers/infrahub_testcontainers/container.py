@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import socket
 import time
 import urllib.request
 import uuid
@@ -12,10 +13,17 @@ from http import HTTPStatus
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
+from testcontainers.core.config import testcontainers_config
+from testcontainers.core.container import Reaper
 from testcontainers.core.exceptions import ContainerIsNotRunning
 from typing_extensions import Self
 
 from infrahub_testcontainers import __version__ as infrahub_version
+from infrahub_testcontainers.reaper import ComposeProjectReaper
+
+RYUK_PORT = 8080
+RYUK_CONNECTION_TIMEOUT_SECONDS = 10.0
+RYUK_ACKNOWLEDGEMENT_TIMEOUT_SECONDS = 10.0
 
 
 @dataclass
@@ -35,7 +43,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:4.2.1-management",
     "CACHE_DOCKER_IMAGE": "redis:8.4.0",
-    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-community",
+    "NEO4J_DOCKER_IMAGE": "neo4j:2026.05.0-community",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
@@ -67,7 +75,39 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
+    # Neo4j Bolt connector thread-pool ceiling. 400 matches Neo4j's own default, so this is a
+    # no-op for normal test runs; heavy dataset/perf runs override it via the environment to
+    # avoid Neo.TransientError.Request.NoThreadsAvailable under a wide recompute fan-out.
+    "INFRAHUB_TESTING_DB_BOLT_THREAD_POOL_MAX_SIZE": "400",
+    # Empty means Neo4j sizes its own memory — from the HOST's memory, so every stack claims
+    # ~25% of the machine. Runs that put several stacks on one host (CI runners, pytest-xdist)
+    # should set explicit bounds via the environment to avoid OOMing the host.
+    "INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE": "",
+    "INFRAHUB_TESTING_DB_HEAP_MAX_SIZE": "",
+    "INFRAHUB_TESTING_DB_PAGECACHE_SIZE": "",
+    # Shutdown grace period (seconds) passed to `docker compose down/stop`. Empty keeps
+    # compose's default (10s); throwaway CI stacks opt in to a short grace because their
+    # volumes are removed anyway and the database burns the whole grace on SIGTERM handling.
+    "INFRAHUB_TESTING_STOP_TIMEOUT": "",
 }
+
+
+def connect_to_ryuk() -> socket.socket:
+    """Open a connection to the Ryuk container of this process, starting Ryuk when it is not running yet."""
+    Reaper.get_instance()
+    # testcontainers>=4.8,<4.9 exposes the running Ryuk container only through this private attribute.
+    ryuk = Reaper._container
+    if ryuk is None:
+        raise ConnectionError("testcontainers returned a Reaper without a Ryuk container")
+    return socket.create_connection(
+        address=(ryuk.get_container_host_ip(), int(ryuk.get_exposed_port(RYUK_PORT))),
+        timeout=RYUK_CONNECTION_TIMEOUT_SECONDS,
+    )
+
+
+COMPOSE_PROJECT_REAPER = ComposeProjectReaper(
+    connect=connect_to_ryuk, acknowledgement_timeout=RYUK_ACKNOWLEDGEMENT_TIMEOUT_SECONDS
+)
 
 
 @dataclass
@@ -75,6 +115,7 @@ class InfrahubDockerCompose(DockerCompose):
     project_name: str | None = None
     env_vars: dict[str, str] = field(default_factory=dict)
     deployment_type: str | None = None
+    compose_project_reaper: ComposeProjectReaper = field(default=COMPOSE_PROJECT_REAPER, repr=False, compare=False)
 
     @classmethod
     def init(
@@ -156,7 +197,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.05.0-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):
@@ -182,6 +223,22 @@ class InfrahubDockerCompose(DockerCompose):
 
         return env_file.absolute()
 
+    def start(self) -> None:
+        """Start the stack after registering it with Ryuk, which removes it once this process exits."""
+        self._register_with_ryuk()
+        super().start()
+
+    def _register_with_ryuk(self) -> None:
+        if not self.project_name or testcontainers_config.ryuk_disabled:
+            return
+        try:
+            self.compose_project_reaper.register(project_name=self.project_name)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not register the compose project {self.project_name} with Ryuk, the testcontainers cleanup "
+                "container; set TESTCONTAINERS_RYUK_DISABLED=true to start the stack without it"
+            ) from exc
+
     def restart(self) -> None:
         """
         Restart the docker compose environment.
@@ -190,6 +247,26 @@ class InfrahubDockerCompose(DockerCompose):
         """
         cmd = self.compose_command_property[:]
         cmd += ["restart"]
+
+        if self.services:
+            cmd.extend(self.services)
+        self._run_command(cmd=cmd)
+
+    def stop(self, down: bool = True) -> None:
+        """Stop the stack, honoring the opt-in shutdown grace period.
+
+        When INFRAHUB_TESTING_STOP_TIMEOUT is set, it is passed to compose as the
+        shutdown timeout; otherwise compose's default grace period applies.
+        """
+        cmd = self.compose_command_property[:]
+        if down:
+            cmd += ["down", "--volumes"]
+        else:
+            cmd += ["stop"]
+
+        stop_timeout = self.env_vars.get("INFRAHUB_TESTING_STOP_TIMEOUT", "")
+        if stop_timeout:
+            cmd += ["--timeout", stop_timeout]
 
         if self.services:
             cmd.extend(self.services)
@@ -245,6 +322,7 @@ class InfrahubDockerCompose(DockerCompose):
 
         TODO Would be good to contribute this upstream
         """
+        self._register_with_ryuk()
         base_cmd = self.compose_command_property or []
 
         # pull means running a separate command before starting

@@ -7,7 +7,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
@@ -68,5 +68,4 @@ class TestSchemaLifecycleTemplateUpdate(TestSchemaLifecycleBase):
         assert physical_interface_template.uniqueness_constraints[0] == ["template_name__value", "device"]
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

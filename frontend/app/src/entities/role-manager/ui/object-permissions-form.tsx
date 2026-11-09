@@ -14,12 +14,13 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
-import { objectDecisionOptions } from "@/entities/role-manager/constants";
+import { OBJECT_PERMISSION_OBJECT } from "@/entities/permission/domain/model/permission";
+import { ACCOUNT_ROLE_OBJECT } from "@/entities/role-manager/domain/model/account";
+import { objectDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ObjectPermissionFormProps {
@@ -127,48 +128,46 @@ export const ObjectPermissionForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <NameSelect />
+    <Form form={form} onSubmit={handleSubmit}>
+      <NameSelect />
 
-        <DropdownField
-          name="action"
-          label="Action"
-          items={actionOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
+      <DropdownField
+        name="action"
+        label="Action"
+        items={actionOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
+      />
 
-        <DropdownField
-          name="decision"
-          label="Decision"
-          description={
-            schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
-          }
-          items={objectDecisionOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
+      <DropdownField
+        name="decision"
+        label="Decision"
+        description={
+          schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
+        }
+        items={objectDecisionOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
+      />
 
-        <RelationshipManyField
-          name="roles"
-          label="Roles"
-          relationship={{
-            name: "roles",
-            peer: ACCOUNT_ROLE_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={roles}
-        />
+      <RelationshipManyField
+        name="roles"
+        label="Roles"
+        relationship={{
+          name: "roles",
+          peer: ACCOUNT_ROLE_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={roles}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

@@ -1,18 +1,17 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import type { GroupData } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/model/group";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface AddGroupTriggerButtonProps {
   schema: ModelSchema;
@@ -44,19 +43,13 @@ export function AddGroupTriggerButton({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        offset={1}
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
-            title="Select group(s)"
-            subtitle="Select one or more groups to assign"
-          />
-        }
-        open={isAddGroupFormOpen}
-        setOpen={setIsAddGroupFormOpen}
-      >
+      <Sheet isOpen={isAddGroupFormOpen} onOpenChange={setIsAddGroupFormOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
+          title="Select group(s)"
+          subtitle="Select one or more groups to assign"
+        />
         <AddGroupForm
           objectId={objectId}
           defaultGroupIds={
@@ -72,14 +65,13 @@ export function AddGroupTriggerButton({
               : undefined
           }
           schema={schema}
-          className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsAddGroupFormOpen(false);
           }}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

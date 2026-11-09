@@ -25,6 +25,7 @@ class BranchListFilters:
     ids: list[str] | None = field(default=None)
     partial_match: bool = False
     status: BranchStatus | None = None
+    statuses: list[BranchStatus] | None = None
     created_by_id: str | None = None
     branched_from_after: datetime | None = None
     branched_from_before: datetime | None = None

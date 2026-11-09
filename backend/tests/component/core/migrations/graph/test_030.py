@@ -6,7 +6,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 
 
 async def _add_attribute(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
@@ -111,4 +111,4 @@ async def test_migration_030(
         intra_branch_delete.id: {default_branch.name},
     }
 
-    await verify_no_edges_added_after_node_delete(db=db)
+    await verify_graph(db=db)

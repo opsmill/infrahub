@@ -37,31 +37,33 @@ class AvailableActions(ObjectType):
         proposed_change_id: str,
     ) -> dict:
         graphql_context: GraphqlContext = info.context
-        proposed_change = await NodeManager.get_one(
-            kind=InfrahubKind.PROPOSEDCHANGE,
-            id=proposed_change_id,
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            raise_on_error=True,
-            include_metadata=MetadataOptions.CREATED_BY,
-        )
+        async with graphql_context.db.start_session(read_only=True) as db:
+            proposed_change = await NodeManager.get_one(
+                kind=InfrahubKind.PROPOSEDCHANGE,
+                id=proposed_change_id,
+                db=db,
+                branch=graphql_context.branch,
+                raise_on_error=True,
+                include_metadata=MetadataOptions.CREATED_BY,
+            )
 
-        author_id = proposed_change._get_created_by()
-        if not author_id:
-            raise ValueError("Proposed change author not found")
+            author_id = proposed_change._get_created_by()
+            if not author_id:
+                raise ValueError("Proposed change author not found")
 
-        proposed_change_author = await NodeManager.get_one(
-            db=graphql_context.db,
-            id=author_id,
-            kind=CoreGenericAccount,
-            raise_on_error=True,
-            branch=graphql_context.branch,
-        )
-        actions = await ActionRulesEvaluator(rules=ACTION_RULES).evaluate(
-            proposed_change=cast("CoreProposedChange", proposed_change),
-            graphql_context=graphql_context,
-            proposed_change_author=proposed_change_author,
-        )
+            proposed_change_author = await NodeManager.get_one(
+                db=db,
+                id=author_id,
+                kind=CoreGenericAccount,
+                raise_on_error=True,
+                branch=graphql_context.branch,
+            )
+            actions = await ActionRulesEvaluator(rules=ACTION_RULES).evaluate(
+                proposed_change=cast("CoreProposedChange", proposed_change),
+                db=db,
+                graphql_context=graphql_context,
+                proposed_change_author=proposed_change_author,
+            )
 
         fields = await extract_fields_first_node(info=info)
         response: dict[str, Any] = {}

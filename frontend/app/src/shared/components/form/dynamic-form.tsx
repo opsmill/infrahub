@@ -22,14 +22,13 @@ import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import { isHierarchicalSchema } from "@/entities/schema/domain/rules/is-hierarchical-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
-  onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
   ref?: React.Ref<FormRef>;
@@ -49,7 +48,7 @@ const DynamicForm = ({
   );
 
   return (
-    <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+    <Form ref={ref} {...props} onCancel={onCancel} defaultValues={formDefaultValues}>
       {fields.map((field) => (
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
@@ -110,6 +109,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.ID:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.MAC_ADDRESS:
     case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.URL: {

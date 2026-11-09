@@ -24,11 +24,15 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   // If data.node is a node object, use getNodeLabel
@@ -108,7 +112,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "DateTime" && row[attribute?.name]?.value) {
-    return <DateDisplay date={row[attribute?.name]?.value} />;
+    return <DateDisplay date={row[attribute?.name]?.value} fullTimestamp />;
   }
 
   const textValue = getTextValue(row[attribute?.name]);
@@ -204,6 +208,7 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:
@@ -216,7 +221,8 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.CHECKBOX:
       return attributeData.value ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />;
     case ATTRIBUTE_KIND.DATETIME:
-      return <DateDisplay date={getTextValue(attributeData)} />;
+      // User-authored data, not metadata: never the age-dependent compact/relative form.
+      return <DateDisplay date={getTextValue(attributeData)} fullTimestamp />;
     case ATTRIBUTE_KIND.TEXTAREA:
       return <MarkdownRender markdownText={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.PASSWORD:

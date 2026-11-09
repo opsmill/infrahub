@@ -7,6 +7,27 @@ class WorkflowType(InfrahubStringEnum):
     USER = "user"
 
 
+class WorkflowPriority(InfrahubStringEnum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+    @property
+    def queue_name(self) -> str:
+        return self.value
+
+    @property
+    def queue_priority(self) -> int:
+        """Prefect work-queue precedence integer, where a lower number means higher precedence."""
+        match self:
+            case WorkflowPriority.HIGH:
+                return 1
+            case WorkflowPriority.MEDIUM:
+                return 2
+            case WorkflowPriority.LOW:
+                return 3
+
+
 TAG_NAMESPACE = "infrahub.app"
 
 

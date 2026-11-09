@@ -25,7 +25,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
           <div
             className={cn(
               "h-2.5 overflow-hidden rounded-full bg-stone-200",
-              "inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-1 ring-stone-300 ring-inset",
+              "ring-1 inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-stone-300 ring-inset",
               "shadow-[0_1px_0_rgba(255,255,255,0.8)]",
               label ? "col-span-2 w-full" : "grow",
             )}
@@ -33,7 +33,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
             <div
               className={cn(
                 "h-full rounded-[inherit] transition-all",
-                "bg-linear-to-b from-cyan-800 to-cyan-600 border border-cyan-800",
+                "border border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600",
                 "inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",
               )}
               style={{ width: `${percentage}%` }}
@@ -46,7 +46,7 @@ export function Meter({ label, className, ...props }: MeterProps) {
         if (label) {
           return (
             <>
-              <span className="font-medium text-sm">{label}</span>
+              <span className="text-sm font-medium">{label}</span>
               {value}
               {track}
             </>

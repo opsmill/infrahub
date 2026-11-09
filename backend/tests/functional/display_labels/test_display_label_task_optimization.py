@@ -12,10 +12,11 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.display_labels.tasks import trigger_update_display_labels
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -58,7 +59,7 @@ class TestDisplayLabelTaskOptimization(TestInfrahubApp):
             tag_ids.append(tag.id)
         return tag_ids
 
-    async def test_trigger_update_display_labels_submits_all_node_ids(
+    async def test_trigger_update_display_labels_submits_bounded_batches_covering_all_nodes(
         self,
         db: InfrahubDatabase,
         tags_dataset: list[str],
@@ -66,16 +67,31 @@ class TestDisplayLabelTaskOptimization(TestInfrahubApp):
         client: InfrahubClient,
         context: EventContext,
         prefect_test_fixture: None,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """A kind-wide backfill submits one process flow per chunk of nodes, each carrying the branch tag.
+
+        Branch-filtered task queries match on that tag, and only creation tags reliably
+        survive in-flow tag updates.
+        """
+        # Limit 4 -> chunk size 2, so three nodes already split into [2, 1].
+        monkeypatch.setenv("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "4")
+        # The default pagination size would return all three ids in one page, leaving paging between chunks untested.
+        monkeypatch.setattr(client.config, "pagination_size", 2)
+
         recorder = WorkflowRecorder()
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(recorder, dependency_provider=dependency_provider):
             await trigger_update_display_labels(
                 branch_name=default_branch.name,
                 kind=InfrahubKind.TAG,
                 context=context,
             )
 
-        submitted_ids = {
-            call["parameters"]["object_id"] for call in recorder.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
-        }
-        assert submitted_ids == set(tags_dataset)
+        submissions = recorder.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
+        assert [len(call["parameters"]["object_ids"]) for call in submissions] == [2, 1]
+
+        submitted_ids = [oid for call in submissions for oid in call["parameters"]["object_ids"]]
+        assert sorted(submitted_ids) == sorted(tags_dataset)
+
+        branch_tag = WorkflowTag.BRANCH.render(identifier=default_branch.name)
+        assert all(branch_tag in call["tags"] for call in submissions)

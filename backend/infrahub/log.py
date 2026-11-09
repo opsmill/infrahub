@@ -10,8 +10,69 @@ from structlog.dev import plain_traceback
 if TYPE_CHECKING:
     from structlog.types import Processor
 
+# Any logger that may flow through the application: the structlog logger returned by get_logger, or a
+# stdlib logger / adapter (e.g. a Prefect flow-run logger). Used where a component accepts either.
+InfrahubLogger = logging.Logger | logging.LoggerAdapter[logging.Logger] | structlog.stdlib.BoundLogger
+
 INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB_PRODUCTION", "true"))
 INFRAHUB_LOG_LEVEL = os.environ.get("INFRAHUB_LOG_LEVEL", "INFO")
+
+
+PREFECT_RUN_LOGGERS = ("prefect.flow_runs", "prefect.task_runs")
+
+_TRACEBACK_SUPPRESSED_TYPES: set[type[BaseException]] = set()
+
+
+def suppress_traceback_in_logs[TException: type[BaseException]](exc_type: TException) -> TException:
+    """Register an exception type so the traceback suppression filter drops its records.
+
+    The registered type represents an expected operational outcome that is already reported as a
+    clean reason, so its raised traceback is redundant noise. Registration lives on the class it
+    applies to, so the two cannot drift apart, and matching is by exact type identity.
+    """
+    _TRACEBACK_SUPPRESSED_TYPES.add(exc_type)
+    return exc_type
+
+
+class TracebackSuppressionFilter(logging.Filter):
+    """Drop the log record for any exception whose type is in a registered set.
+
+    A logger that reports an exception attaches its traceback to the record. When the exception is an
+    expected outcome already reported elsewhere, that traceback is noise, so a record whose exception
+    type is registered is dropped before it reaches any handler. The set is read on each record, so a
+    type registered after the filter is installed still takes effect.
+    """
+
+    def __init__(self, suppressed_types: set[type[BaseException]]) -> None:
+        super().__init__()
+        self._suppressed_types = suppressed_types
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Return False to drop the record when its exception is a registered type, True otherwise.
+
+        Per the logging filter contract, returning False discards the whole record, not only its
+        traceback. A record carrying no exception, or one whose exception type is not registered, is
+        kept; matching is by exact type, so a subclass is not suppressed unless registered in its own
+        right.
+        """
+        exception = record.exc_info[1] if record.exc_info else None
+        return type(exception) not in self._suppressed_types
+
+
+def install_traceback_suppression_filter() -> TracebackSuppressionFilter:
+    """Install the traceback suppression filter on the Prefect run loggers and return it.
+
+    Prefect ships flow/task run logs to its API; drop tracebacks for failures that are reported as a
+    clean classified reason rather than a crash to debug. The filter reads the shared registry that
+    each expected-failure type opts into via suppress_traceback_in_logs.
+
+    The installed filter is returned so a caller that must leave logging state as it found it can
+    remove it again from every logger in PREFECT_RUN_LOGGERS.
+    """
+    traceback_filter = TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES)
+    for prefect_logger_name in PREFECT_RUN_LOGGERS:
+        logging.getLogger(prefect_logger_name).addFilter(traceback_filter)
+    return traceback_filter
 
 
 def clear_log_context() -> None:
@@ -40,6 +101,10 @@ def configure_logging(production: bool, log_level: str) -> None:
     # starts from a clean slate. After this has been imported once we can reinject
     # the infrahub logger
     importlib.import_module("prefect.main")
+
+    # Installed after the prefect.main import above so it survives Prefect's logging reset.
+    install_traceback_suppression_filter()
+
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.StackInfoRenderer(),

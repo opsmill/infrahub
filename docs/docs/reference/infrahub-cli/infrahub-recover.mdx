@@ -1,0 +1,46 @@
+# `infrahub recover`
+
+Recover from failed operations.
+
+**Usage**:
+
+```console
+$ infrahub recover [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `merge`: Recover a failed branch merge.
+
+## `infrahub recover merge`
+
+Recover a failed branch merge.
+
+Roll back the partial graph merge and reset the branch (and any associated proposed change) to
+OPEN, then lift the write protection so the default branch is writable again. Idempotent: a run
+with nothing to recover reports so and makes no changes. By default only a merge whose worker is
+confirmed dead is recovered; pass --force to also recover a merge stuck with an absent/ambiguous
+lock.
+
+**Usage**:
+
+```console
+$ infrahub recover merge [OPTIONS] [BRANCH] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[BRANCH]`: Name of the branch to recover; if omitted, the failed merge is auto-detected.
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `-y, --yes`: Skip the confirmation prompt.
+* `-f, --force`: Recover even when the merge lock is absent/ambiguous, not just when the worker is confirmed dead.
+* `--help`: Show this message and exit.

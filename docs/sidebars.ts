@@ -22,13 +22,13 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Get started',
+      label: 'Introduction',
       collapsible: false,
       collapsed: false,
       items: [
         {
           type: 'category',
-          label: 'Introduction',
+          label: 'Overview',
           collapsible: true,
           collapsed: true,
           items: [
@@ -40,13 +40,22 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Getting Started',
+          label: 'Get Started',
           collapsible: true,
           collapsed: true,
           items: [
             { type: 'doc', id: 'overview/quickstart', label: 'Quickstart' },
             { type: 'doc', id: 'overview/explore', label: 'Explore Infrahub' },
             { type: 'doc', id: 'overview/next-steps', label: 'Next Steps' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Build with AI',
+          link: { type: 'doc', id: 'overview/build-with-ai/index' }, // hub
+          items: [
+            { type: 'doc', id: 'overview/build-with-ai/setup', label: 'Set up your AI assistant' },
+            { type: 'doc', id: 'overview/build-with-ai/working-with-ai', label: 'Work with your assistant' },
           ],
         },
         'faq/faq',
@@ -59,28 +68,23 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       items: [
-        { type: 'doc', id: 'academy/academy', label: 'About Academy' },
-        {
-          type: 'category',
-          label: 'Getting Started',
-          link: { type: 'generated-index' },
-          items: [
-            'academy/getting-started/infrahub-introduction',
-            'academy/getting-started/deploy-first-configuration',
-          ],
-        },
+        // Every lab is described in full in the labs catalogue, which also
+        // covers labs outside this repository, so there are no per-lab pages
+        // here to list.
+        { type: 'link', label: 'Infrahub Labs', href: 'https://docs.infrahub.app/labs' },
         {
           type: 'category',
           label: 'Tutorials',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
-            'academy/tutorials/build-your-first-schema',
-            'academy/tutorials/groups',
-            'academy/tutorials/build-a-check',
-            'academy/tutorials/transformations/build-a-jinja2-transformation',
-            'academy/tutorials/transformations/build-a-python-transformation',
-            'academy/tutorials/generators/build-your-first-generator',
-            'academy/tutorials/generators/build-chained-generators',
+            'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/review-and-merge-a-change',
+            'learn/tutorials/groups',
+            'learn/tutorials/build-a-check',
+            'learn/tutorials/transformations/build-a-jinja2-transformation',
+            'learn/tutorials/transformations/build-a-python-transformation',
+            'learn/tutorials/generators/build-your-first-generator',
+            'learn/tutorials/generators/build-chained-generators',
           ],
         },
       ],
@@ -114,6 +118,7 @@ const sidebars: SidebarsConfig = {
           label: 'Schema operations',
           link: { type: 'generated-index' },
           items: [
+            { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
             { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
@@ -141,6 +146,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
             { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
+            { type: 'doc', id: 'menu/nested-menus', label: 'Nested menus' },
           ],
         },
         {
@@ -148,10 +154,12 @@ const sidebars: SidebarsConfig = {
           label: 'Objects',
           link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
-            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects from the command line' },
+            { type: 'doc', id: 'objects/create-objects', label: 'Create objects' },
+            { type: 'doc', id: 'objects/manage-from-cli', label: 'Manage objects with infrahubctl' },
+            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data using YAML file' },
+            { type: 'doc', id: 'objects/import-from-csv', label: 'Import data from CSV' },
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
-            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
           ],
         },
         {
@@ -159,9 +167,11 @@ const sidebars: SidebarsConfig = {
           label: 'IPAM',
           link: { type: 'doc', id: 'ipam/overview' },
           items: [
-            'ipam/ip-namespaces',
-            'ipam/building-your-schema',
-            'ipam/automate-with-resource-manager',
+            'ipam/build-your-ipam-schema',
+            'ipam/use-namespaces',
+            'ipam/allocate-ips-and-prefixes',
+            'ipam/query-ipam-data',
+            'ipam/plan-changes-on-a-branch',
           ],
         },
         {
@@ -207,6 +217,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'object-templates/overview' }, // hub
           items: [
             { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/import-from-netbox', label: 'Import from NetBox device types' },
             { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
@@ -221,6 +232,7 @@ const sidebars: SidebarsConfig = {
             'graph-traversal/query-with-graphql',
           ],
         },
+        { type: 'doc', id: 'schema/analyze-your-data', label: 'Analyze your data' },
       ],
     },
 
@@ -231,7 +243,12 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'branches-and-change-control' },
       items: [
-        { type: 'doc', id: 'immutable-history/overview', label: 'Immutable History' },
+        {
+          type: 'category',
+          label: 'Immutable History',
+          link: { type: 'doc', id: 'immutable-history/overview' }, // hub
+          items: ['immutable-history/query-historical-data'],
+        },
         {
           type: 'category',
           label: 'Branches',
@@ -242,6 +259,8 @@ const sidebars: SidebarsConfig = {
             'branches/rebase',
             'branches/delete',
             'branches/resolve-conflicts',
+            'branches/parallel-branches',
+            'branches/branch-agnostic-data',
           ],
         },
         {
@@ -383,6 +402,7 @@ const sidebars: SidebarsConfig = {
               link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/private-ca', label: 'Private CA' },
               ],
             },
             // Configure Infrahub (PR 4)
@@ -402,10 +422,11 @@ const sidebars: SidebarsConfig = {
           items: [
             // Tasks (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/tasks', label: 'Tasks' },
-            // Telemetry (PRs 5/6/7)
-            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             // Activity Log (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
+            // Telemetry (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
+            { type: 'doc', id: 'deploy-manage/run-observe/metrics', label: 'Metrics' },
             // Log Forwarding hub + spoke (PR 8)
             {
               type: 'category',
@@ -490,6 +511,7 @@ const sidebars: SidebarsConfig = {
             },
             // Managing API Tokens (PR 14)
             { type: 'doc', id: 'deploy-manage/user-management/managing-api-tokens', label: 'Managing API tokens' },
+            { type: 'doc', id: 'deploy-manage/user-management/managing-preferences', label: 'Managing preferences' },
           ],
         },
       ],
@@ -503,7 +525,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
-        { type: 'doc', id: 'development-resources/sbom', label: 'Software Bill of Materials (SBOM)' },
+        { type: 'doc', id: 'development-resources/sbom', label: 'Image signing and SBOM' },
         { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
@@ -572,6 +594,7 @@ const sidebars: SidebarsConfig = {
             'reference/infrahub-cli/infrahub-server',
             'reference/infrahub-cli/infrahub-dev',
             'reference/infrahub-cli/infrahub-upgrade',
+            'reference/infrahub-cli/infrahub-recover',
           ],
         },
         {
@@ -620,6 +643,7 @@ const sidebars: SidebarsConfig = {
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
+        { type: 'doc', id: 'reference/metrics', label: 'Prometheus Metrics' },
         { type: 'doc', id: 'reference/graph-traversal', label: 'Graph Traversal' },
       ],
     },
@@ -686,6 +710,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/schema-load-write-contract',
                 'release-notes/deprecation-guides/sso-account-name-fallback',
               ],
             },

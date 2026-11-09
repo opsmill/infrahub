@@ -12,7 +12,7 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import InitializationError
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
@@ -379,11 +379,25 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                     "parent__ids": [parent_id],
                 },
             )
-            if mutation_events["InfrahubEvent"]["count"] == 5:
+            if mutation_events["InfrahubEvent"]["count"] == 10:
                 break
             await asyncio.sleep(1)
 
-        assert mutation_events["InfrahubEvent"]["count"] == 5
+        assert mutation_events["InfrahubEvent"]["count"] == 10
+        # The branch's own changes are replayed, and the default branch's only for the kind whose schema changed
+        replayed_objects = {
+            edge["node"]["primary_node"]["id"]: edge["node"]["event"]
+            for edge in mutation_events["InfrahubEvent"]["edges"]
+            if not edge["node"]["primary_node"]["kind"].startswith("Schema")
+        }
+        assert replayed_objects == {
+            initial_dataset["john"]: "infrahub.node.updated",
+            initial_dataset["richard"]: "infrahub.node.created",
+            initial_dataset["mercedes"]: "infrahub.node.created",
+            initial_dataset["glc"]: "infrahub.node.created",
+            initial_dataset["green"]: "infrahub.node.created",
+            initial_dataset["jane"]: "infrahub.node.created",
+        }
 
         janes_events = [
             event["node"]
@@ -396,7 +410,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert {"name": "firstname", "value": "Jane"} in janes_event["attributes"]
         assert {"name": "description", "value": "The famous Jane Doe"} in janes_event["attributes"]
 
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
 
     async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset: dict[str, str]) -> None:
         branch = await client.branch.merge(branch_name=self.branch1.name)
@@ -420,8 +434,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not hasattr(jane, "name")
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
 
 
 QUERY_EVENT = """

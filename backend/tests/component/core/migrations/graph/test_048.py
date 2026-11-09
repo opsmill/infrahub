@@ -5,7 +5,7 @@ from infrahub.core.migrations.graph.m048_undelete_rel_props import Migration048
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_no_duplicate_paths
+from infrahub.database.validation import verify_graph
 
 
 class TestMigration048:
@@ -426,7 +426,7 @@ RETURN count(e) AS edge_count
         assert not execution_result.errors
 
         # Verify no duplicate paths remain
-        await verify_no_duplicate_paths(db=db)
+        await verify_graph(db=db)
 
         # Verify duplicate IS_RELATED edges were removed
         results = await db.execute_query(query=duplicate_edges_in_query)

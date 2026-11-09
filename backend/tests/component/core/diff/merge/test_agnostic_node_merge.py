@@ -25,8 +25,8 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
-from tests.helpers.db_validation import verify_graph
 
 from ..get_one_node import get_one_diff_node
 

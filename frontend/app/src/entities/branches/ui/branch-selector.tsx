@@ -1,22 +1,27 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, LinkButton } from "@infrahub/ui";
+import {
+  Autocomplete,
+  Button,
+  LinkButton,
+  ListBox,
+  ListBoxItem,
+  ListBoxLoadMoreItem,
+  Popover,
+  PopoverDialog,
+  PopoverTrigger,
+  Tooltip,
+} from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
-import { useQueryState } from "nuqs";
 import React from "react";
 import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
-import { Popover, PopoverDialog, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Separator } from "@/shared/components/aria/separator";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
-import { QSP } from "@/shared/config/qsp";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
@@ -95,7 +100,6 @@ interface BranchListProps {
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const { currentBranch, setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
@@ -106,7 +110,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const branches = data?.pages.flat() ?? [];
 
   function handleBranchChange(branch: BranchListItem) {
-    setBranchInQueryString(branch.is_default ? null : branch.name);
     setCurrentBranch(branch);
     closePopover();
   }
@@ -119,13 +122,10 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
         <ListBox
+          virtualized
           aria-label="branch list"
-          className="max-h-125 p-1"
-          renderEmptyState={() =>
-            !isPending && (
-              <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
-            )
-          }
+          className="max-h-125"
+          emptyMessage={isPending ? undefined : "No branch found"}
         >
           <Collection items={branches}>
             {(branch) => (

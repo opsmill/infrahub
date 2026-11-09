@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
 
+from infrahub.core.constants import INTERNAL_NAMESPACE
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import RelationshipNode
@@ -30,7 +31,8 @@ class Relationships(ObjectType):
         graphql_context: GraphqlContext = info.context
 
         fields = extract_graphql_fields(info)
-        excluded_namespaces = excluded_namespaces or []
+        # Internal nodes are bookkeeping and never part of the graph this API exposes.
+        excluded_namespaces = [*(excluded_namespaces or []), INTERNAL_NAMESPACE]
 
         response: dict[str, Any] = {"edges": [], "count": None}
 

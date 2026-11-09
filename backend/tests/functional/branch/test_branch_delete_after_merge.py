@@ -8,7 +8,9 @@ from infrahub_sdk.graphql import Mutation
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import BRANCH_DELETE
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -115,3 +117,53 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
                 context=ANY,
                 parameters={"branch": branch.name, "proposed_change_id": pc.id},
             )
+
+    async def test_branch_merge_returns_ok_with_object_requested_when_auto_delete_enabled(
+        self,
+        initial_dataset: None,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        delete_branch_after_merge_reset_config: None,
+    ) -> None:
+        config.SETTINGS.main.delete_branch_after_merge = True
+        branch = await client.branch.create(branch_name="auto_delete_returns_object")
+
+        tag = await client.create(kind="TestingTag", branch=branch.name, data={"name": {"value": "merge-marker"}})
+        await tag.save()
+
+        query = Mutation(
+            mutation="BranchMerge",
+            input_data={"data": {"name": branch.name}},
+            query={"ok": None, "object": {"status": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+
+        assert result["BranchMerge"]["ok"] is True
+        assert result["BranchMerge"]["object"]["status"] == "DELETING"
+
+        tags_on_default = await client.filters(
+            kind="TestingTag", name__value="merge-marker", branch=registry.default_branch
+        )
+        assert len(tags_on_default) == 1
+
+        with pytest.raises(BranchNotFoundError):
+            await Branch.get_by_name(db=db, name=branch.name, ignore_deleting=False)
+
+    async def test_branch_merge_returns_ok_without_object_when_auto_delete_enabled(
+        self,
+        initial_dataset: None,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        delete_branch_after_merge_reset_config: None,
+    ) -> None:
+        config.SETTINGS.main.delete_branch_after_merge = True
+        branch = await client.branch.create(branch_name="auto_delete_no_object")
+
+        query = Mutation(
+            mutation="BranchMerge",
+            input_data={"data": {"name": branch.name}},
+            query={"ok": None},
+        )
+        result = await client.execute_graphql(query=query.render())
+
+        assert result["BranchMerge"]["ok"] is True

@@ -8,10 +8,11 @@ data_sites: the asserted next-free address (172.16.0.31/16) assumes exactly the
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_sites_b
@@ -37,8 +38,7 @@ class TestAllocateIpAddressWithPool:
         await admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
         await admin_page.get_by_test_id("create-object-button").click()
 
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Management addresses pool").click()
+        await select_pool(admin_page, "Management addresses pool")
         await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
         await admin_page.get_by_label("Description").fill("address from pool")
@@ -51,3 +51,23 @@ class TestAllocateIpAddressWithPool:
             .fill("172.16.0.31/16")
         )
         await expect(admin_page.get_by_text("address from pool")).to_be_visible()
+
+    async def test_create_an_ip_address_using_a_pool_with_a_custom_prefix_length(
+        self, admin_page: Page, branch: str
+    ) -> None:
+        await admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+
+        await select_pool(admin_page, "Management addresses pool")
+        await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
+
+        # The pool's default prefix length is surfaced as a placeholder.
+        await expect(admin_page.get_by_test_id("pool-prefix-length-input")).to_have_attribute("placeholder", "16")
+
+        # Override the pool's default prefix length (/16) with a custom mask.
+        await admin_page.get_by_test_id("pool-prefix-length-input").fill("24")
+        await admin_page.get_by_label("Description").fill("address from pool with custom prefix")
+        await admin_page.get_by_role("button", name="Save").click()
+
+        # The allocation honours the typed prefix length rather than the pool default.
+        await expect(admin_page.get_by_text(re.compile(r"IP Address 172\.16\.0\.\d+/24 created"))).to_be_visible()

@@ -5,7 +5,7 @@ import type { MutationConfig } from "@/shared/api/types";
 import {
   type UpdateProposedChangeReviewParams,
   updateProposedChangeReview,
-} from "@/entities/proposed-changes/domain/update-proposed-change-review";
+} from "@/entities/proposed-changes/domain/use-cases/update-proposed-change-review";
 
 interface UseUpdateProposedChangeReviewParams
   extends MutationConfig<typeof updateProposedChangeReview> {}

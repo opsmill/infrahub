@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
@@ -46,7 +46,7 @@ export function DissociateRelationshipsModal({
   };
 
   return (
-    <ModalDelete
+    <ModalDanger
       title="Dissociate"
       description={
         <>
@@ -62,7 +62,7 @@ export function DissociateRelationshipsModal({
       }
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      onDelete={handleRemoveRelationships}
+      onConfirm={handleRemoveRelationships}
       isLoading={isPending}
     />
   );

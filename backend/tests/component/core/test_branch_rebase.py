@@ -1,3 +1,6 @@
+import asyncio
+import re
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
@@ -6,25 +9,43 @@ from fast_depends import Provider
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import MigrationError, ValidationError
+from infrahub.tasks.registry import refresh_branches
 from infrahub.workers.dependencies import build_database
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
+from tests.adapters.cache import MemoryCache
+from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
+from tests.helpers.paused_branch_list import PausedBranchList
+from tests.helpers.schema import load_schema
 
 
 async def test_rebase_graph(
     db: InfrahubDatabase, base_dataset_02: dict, register_core_models_schema: SchemaBranch
 ) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
+    cached_branched_from = registry.branch[branch1.name].branched_from
     await branch1.rebase(db=db)
+
+    # Rebasing mutates the instance it is given but must not publish it to the branch cache
+    assert branch1.branched_from != cached_branched_from
+    assert registry.branch[branch1.name].branched_from == cached_branched_from
 
     # Query all cars in MAIN, AFTER the rebase
     cars = sorted(await NodeManager.query(schema="TestCar", db=db), key=lambda c: c.id)
@@ -102,33 +123,242 @@ async def test_merge_relationship_many(
     assert len(await org1_branch.tags.get(db=db)) == 3
 
 
-async def test_branch_rebase_diff_conflict(
+async def _create_branch_with_conflicting_car(
+    db: InfrahubDatabase, car_id: str, field_names: list[str], main_person: Node, branch_person: Node
+) -> Branch:
+    if "driver" in field_names:
+        car_before_branch = await NodeManager.get_one(db=db, id=car_id)
+        await car_before_branch.driver.update(db=db, data=branch_person)
+        await car_before_branch.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_id)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_id)
+    if "name" in field_names:
+        car_main.name.value = "camry-main"
+        car_branch.name.value = "camry-branch"
+    if "owner" in field_names:
+        await car_main.owner.update(db=db, data=main_person)
+        await car_branch.owner.update(db=db, data=branch_person)
+    if "driver" in field_names:
+        await car_main.driver.update(db=db, data=None)
+        await car_branch.driver.update(db=db, data={"id": branch_person.id, "_relation__is_protected": True})
+    await car_main.save(db=db)
+    await car_branch.save(db=db)
+    return branch
+
+
+async def _select_every_conflict(
+    db: InfrahubDatabase, default_branch: Branch, branch: Branch, selection: ConflictSelection | None
+) -> list[str]:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    branch_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    conflicts = [
+        (conflict_path, conflict)
+        async for conflict_path, conflict in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=branch.name, diff_id=branch_diff.uuid
+        )
+    ]
+    if selection:
+        for _, conflict in conflicts:
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
+    return sorted(conflict_path for conflict_path, _ in conflicts)
+
+
+async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider) -> None:
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        await rebase_branch(branch=branch.name, context=context)
+
+
+async def _cached_branch_replaced(name: str, cached_branch: Branch) -> None:
+    while registry.branch[name] is cached_branch:  # noqa: ASYNC110
+        await asyncio.sleep(0.05)
+
+
+@dataclass
+class UnrebasableConflictCase:
+    name: str
+    field_names: list[str]
+    selection: ConflictSelection | None
+    conflict_paths: list[str]
+    """The conflicts of the branch, with `{car_id}` and `{driver_id}` standing for the ids of the car and its driver."""
+    expected_message: str
+    """The rebase error, with the same placeholders as the conflict paths."""
+
+
+NAME_CONFLICT_PATHS = [
+    "data/{car_id}/display_label/value",
+    "data/{car_id}/human_friendly_id/value",
+    "data/{car_id}/name/value",
+]
+UNREBASABLE_CONFLICT_MESSAGE_START = (
+    "Branch branch2 contains conflicts with the default branch that must be addressed before rebasing."
+)
+RESOLVE_NAME_CONFLICTS_INSTRUCTION = (
+    " Resolve these conflicts in favor of the branch, in a proposed change or with the ResolveDiffConflict mutation,"
+    " or update the data so that both branches agree: data/{car_id}/display_label/value,"
+    " data/{car_id}/human_friendly_id/value, data/{car_id}/name/value."
+)
+UPDATE_OWNER_CONFLICT_INSTRUCTION = (
+    " Update the data so that both branches agree on these conflicts: data/{car_id}/owner/peer."
+)
+UPDATE_DRIVER_CONFLICTS_INSTRUCTION = (
+    " Update the data so that both branches agree on these conflicts: data/{car_id}/driver/property/IS_PROTECTED,"
+    " data/{driver_id}/cars_driven/property/IS_PROTECTED."
+)
+UNREBASABLE_CONFLICT_CASES = [
+    UnrebasableConflictCase(
+        name="unresolved_attribute",
+        field_names=["name"],
+        selection=None,
+        conflict_paths=NAME_CONFLICT_PATHS,
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
+    ),
+    UnrebasableConflictCase(
+        name="attribute_resolved_for_the_default_branch",
+        field_names=["name"],
+        selection=ConflictSelection.BASE_BRANCH,
+        conflict_paths=NAME_CONFLICT_PATHS,
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + RESOLVE_NAME_CONFLICTS_INSTRUCTION,
+    ),
+    # the rebased branch would see the default branch's peer next to its own
+    UnrebasableConflictCase(
+        name="cardinality_one_peer_resolved_for_the_branch",
+        field_names=["owner"],
+        selection=ConflictSelection.DIFF_BRANCH,
+        conflict_paths=["data/{car_id}/owner/peer"],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + UPDATE_OWNER_CONFLICT_INSTRUCTION,
+    ),
+    UnrebasableConflictCase(
+        name="unresolved_attribute_and_cardinality_one_peer",
+        field_names=["name", "owner"],
+        selection=None,
+        conflict_paths=[*NAME_CONFLICT_PATHS, "data/{car_id}/owner/peer"],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START
+        + RESOLVE_NAME_CONFLICTS_INSTRUCTION
+        + UPDATE_OWNER_CONFLICT_INSTRUCTION,
+    ),
+    # the default branch removed the driver, which leaves the branch's property on a disconnected relationship
+    UnrebasableConflictCase(
+        name="relationship_property_resolved_for_the_branch",
+        field_names=["driver"],
+        selection=ConflictSelection.DIFF_BRANCH,
+        conflict_paths=[
+            "data/{car_id}/driver/property/IS_PROTECTED",
+            "data/{driver_id}/cars_driven/property/IS_PROTECTED",
+        ],
+        expected_message=UNREBASABLE_CONFLICT_MESSAGE_START + UPDATE_DRIVER_CONFLICTS_INSTRUCTION,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", UNREBASABLE_CONFLICT_CASES, ids=lambda case: case.name)
+async def test_branch_rebase_rejects_a_conflict_it_cannot_apply(
+    case: UnrebasableConflictCase,
     db: InfrahubDatabase,
     default_branch: Branch,
-    workflow_local: WorkflowLocalExecution,
     dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
     car_camry_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
 ) -> None:
-    # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
-        branch2 = await create_branch(db=db, branch_name="branch2")
-        car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
-        car_main.name.value += "-main"
-        await car_main.save(db=db)
-        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
-        car_branch.name.value += "-branch"
-        await car_branch.save(db=db)
+    branch2 = await _create_branch_with_conflicting_car(
+        db=db,
+        car_id=car_camry_main.id,
+        field_names=case.field_names,
+        main_person=person_albert_main,
+        branch_person=person_john_main,
+    )
+    conflict_paths = await _select_every_conflict(
+        db=db, default_branch=default_branch, branch=branch2, selection=case.selection
+    )
+    ids = {"car_id": car_camry_main.id, "driver_id": person_john_main.id}
+    assert conflict_paths == [path.format(**ids) for path in case.conflict_paths]
 
-        with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
-            await rebase_branch(
-                branch=branch2.name,
-                context=InfrahubContext.init(
-                    branch=default_branch,
-                    account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
-                ),
-            )
+    expected_message = case.expected_message.format(**ids)
+    with pytest.raises(ValidationError, match=f"^{re.escape(expected_message)}$"):
+        await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
+
+    rejected_branch = await Branch.get_by_name(db=db, name=branch2.name)
+    assert rejected_branch.branched_from == branch2.branched_from
+
+
+async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_albert_main: Node,
+) -> None:
+    branch2 = await _create_branch_with_conflicting_car(
+        db=db,
+        car_id=car_camry_main.id,
+        field_names=["name"],
+        main_person=person_albert_main,
+        branch_person=person_john_main,
+    )
+    conflict_paths = await _select_every_conflict(
+        db=db, default_branch=default_branch, branch=branch2, selection=ConflictSelection.DIFF_BRANCH
+    )
+    assert conflict_paths == [path.format(car_id=car_camry_main.id) for path in NAME_CONFLICT_PATHS]
+    # a branch an upgrade could not rebase keeps this status, which only a rebase clears
+    branch2.status = BranchStatus.NEED_UPGRADE_REBASE
+    await branch2.save(db=db)
+
+    await _rebase(db=db, default_branch=default_branch, branch=branch2, dependency_provider=dependency_provider)
+
+    rebased_branch = await Branch.get_by_name(db=db, name=branch2.name)
+    assert rebased_branch.status is BranchStatus.OPEN
+    assert rebased_branch.branched_from != branch2.branched_from
+    car_branch = await NodeManager.get_one(db=db, branch=branch2.name, id=car_camry_main.id)
+    assert car_branch.name.value == "camry-branch"
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    assert car_main.name.value == "camry-main"
+
+
+async def test_rebase_keeps_the_rebased_branch_cached_through_a_registry_refresh_that_read_it_earlier(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    paused_branch_list: PausedBranchList,
+) -> None:
+    branch = await create_branch(db=db, branch_name="rebased-during-refresh")
+    cached_branch = registry.branch[branch.name]
+
+    async with db.start_session() as refresh_db:
+        refresh = asyncio.create_task(refresh_branches(db=refresh_db))
+        await asyncio.wait_for(paused_branch_list.read.wait(), timeout=30)
+        rebase = asyncio.create_task(
+            _rebase(db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider)
+        )
+        try:
+            # A rebase that migrates the branch's schema waits for the refresh to finish once it has cached the branch.
+            await asyncio.wait_for(_cached_branch_replaced(name=branch.name, cached_branch=cached_branch), timeout=60)
+        finally:
+            paused_branch_list.resume.set()
+        await asyncio.wait_for(asyncio.gather(refresh, rebase), timeout=60)
+
+    rebased_branch = await Branch.get_by_name(db=db, name=branch.name)
+    assert rebased_branch.branched_from != branch.branched_from
+    assert registry.branch[branch.name].branched_from == rebased_branch.branched_from
 
 
 async def test_rebase_preserves_metadata(
@@ -294,3 +524,175 @@ async def test_rebase_preserves_metadata(
     assert owner_peer._get_created_by() == "person-create-user"
     assert before_car2_create < owner_peer._get_updated_at() < after_car2_create
     assert owner_peer._get_updated_by() == "car2-create-user"
+
+
+async def test_rebase_schemas_handed_to_the_update_coordinator(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """The rebase must migrate against the branch-creation schema and roll back to the branch's own.
+
+    Both cases share one fork-before-inheritance setup, which is the expensive part, but they need
+    separate branches: observing the migration baseline needs a rebase that succeeds, observing the
+    rollback needs one that fails.
+    """
+    widget_kind = "TestingWidget"
+    gadget_kind = "TestingGadget"
+    ownable_kind = "TestingOwnable"
+    ownable = GenericSchema(
+        name="Ownable",
+        namespace="Testing",
+        attributes=[AttributeSchema(name="owner_name", kind="Text", optional=True)],
+    )
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    gadget = NodeSchema(
+        name="Gadget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(generics=[ownable], nodes=[widget, gadget]), update_db=True)
+
+    baseline_branch = await create_branch(db=db, branch_name="baseline-branch")
+    rollback_branch = await create_branch(db=db, branch_name="rollback-branch")
+    fork_hash = baseline_branch.active_schema_hash.main
+
+    # A schema change that exists only on the branch being rolled back, on a kind the destination
+    # never touches so that the rebase does not report a conflict
+    branch_gadget = gadget.duplicate()
+    branch_gadget.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[branch_gadget]),
+        branch_name=rollback_branch.name,
+        update_db=True,
+        limit=[gadget_kind],
+    )
+    rollback_pre_rebase_hash = registry.schema.get_schema_branch(name=rollback_branch.name).get_hash()
+
+    # The destination branch adopts the generic only after both branches forked
+    inheriting_widget = widget.duplicate()
+    inheriting_widget.inherit_from = [ownable_kind]
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[inheriting_widget]),
+        update_db=True,
+        limit=[widget_kind, ownable_kind],
+    )
+    assert set(
+        registry.schema.get_schema_branch(name=default_branch.name).get_node(name=widget_kind).attribute_names
+    ) == {"name", "owner_name"}
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        await rebase_branch(branch=baseline_branch.name, context=context)
+
+        # The flow publishes the branch it rebased, so the cache stops holding the pre-rebase instance
+        rebased_baseline_branch = await Branch.get_by_name(db=db, name=baseline_branch.name)
+        assert rebased_baseline_branch.branched_from != baseline_branch.branched_from
+        published_baseline_branch = registry.branch[baseline_branch.name]
+        assert published_baseline_branch is not baseline_branch
+        assert published_baseline_branch.branched_from == rebased_baseline_branch.branched_from
+        assert published_baseline_branch.status is BranchStatus.OPEN
+
+        migration_calls = workflow_recorder.get_execute_calls_for(SCHEMA_APPLY_MIGRATION)
+        assert len(migration_calls) == 1
+        baseline_schema = migration_calls[0]["parameters"]["message"].previous_schema
+        assert isinstance(baseline_schema, SchemaBranch)
+
+        # The whole baseline, not just the widget, must be the schema as it stood at branch creation
+        assert baseline_schema.get_hash() == fork_hash
+        assert baseline_schema.get_hash() != registry.schema.get_schema_branch(name=default_branch.name).get_hash()
+        assert set(baseline_schema.get_node(name=widget_kind).attribute_names) == {"name"}
+
+        # Now make the migrations fail, on the branch that carries a schema change of its own
+        workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
+        with pytest.raises(MigrationError) as exc_info:
+            await rebase_branch(branch=rollback_branch.name, context=context)
+    assert exc_info.value.message == "migration failed on purpose"
+
+    # The rollback must keep the branch-only change and must not adopt the generic the destination
+    # picked up after the fork
+    restored_schema = registry.schema.get_schema_branch(name=rollback_branch.name)
+    assert set(restored_schema.get_node(name=gadget_kind).attribute_names) == {"name", "serial"}
+    assert set(restored_schema.get_node(name=widget_kind).attribute_names) == {"name"}
+    assert restored_schema.get_hash() == rollback_pre_rebase_hash
+
+    # The restored hash has to reach storage, not just the in-memory registry the rollback wrote
+    reloaded_branch = await Branch.get_by_name(db=db, name=rollback_branch.name)
+    assert reloaded_branch.active_schema_hash.main == rollback_pre_rebase_hash
+
+
+async def test_failed_rebase_keeps_the_branch_data(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A rollback after failed migrations must not take the branch's own data with it."""
+    widget_kind = "TestingWidget"
+    gadget_kind = "TestingGadget"
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    gadget = NodeSchema(
+        name="Gadget",
+        namespace="Testing",
+        default_filter="name__value",
+        attributes=[AttributeSchema(name="name", kind="Text")],
+    )
+    await load_schema(db=db, schema=SchemaRoot(nodes=[widget, gadget]), update_db=True)
+
+    branch = await create_branch(db=db, branch_name="failed-rebase-branch")
+
+    branch_widget = await Node.init(db=db, schema=widget_kind, branch=branch)
+    await branch_widget.new(db=db, name="widget-on-branch")
+    await branch_widget.save(db=db)
+
+    # A schema change of the branch's own, on a kind the destination never touches, so the rebase
+    # runs migrations at all without reporting a conflict
+    branch_gadget = gadget.duplicate()
+    branch_gadget.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    await load_schema(
+        db=db,
+        schema=SchemaRoot(nodes=[branch_gadget]),
+        branch_name=branch.name,
+        update_db=True,
+        limit=[gadget_kind],
+    )
+
+    # A node created on the destination after the fork, so the rebase has something to pull in
+    main_widget = await Node.init(db=db, schema=widget_kind)
+    await main_widget.new(db=db, name="widget-on-main")
+    await main_widget.save(db=db)
+
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        workflow_recorder.execute_results[SCHEMA_APPLY_MIGRATION.name] = ["migration failed on purpose"]
+        with pytest.raises(MigrationError):
+            await rebase_branch(branch=branch.name, context=context)
+
+    rolled_back_branch = await Branch.get_by_name(db=db, name=branch.name)
+    widgets = await NodeManager.query(db=db, schema=widget_kind, branch=rolled_back_branch)
+    assert sorted(str(node.get_attribute("name").value) for node in widgets) == ["widget-on-branch", "widget-on-main"]

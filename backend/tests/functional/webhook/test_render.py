@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
+from prefect.client.schemas.sorting import FlowRunSort
 from prefect.events.schemas.events import Event, Resource
 from prefect.types import DateTime
 
@@ -19,6 +20,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from prefect.client.orchestration import PrefectClient
+    from prefect.client.schemas.objects import FlowRun
 
     from infrahub.database import InfrahubDatabase
 
@@ -63,7 +65,22 @@ class TestWebhookRender(TestInfrahubApp):
 
         deployment = await prefect_client.read_deployment_by_name(f"{WEBHOOK_PROCESS.name}/{WEBHOOK_PROCESS.name}")
         deployment_filter = DeploymentFilter(id=DeploymentFilterId(any_=[deployment.id]))
-        runs_before = len(await prefect_client.read_flow_runs(deployment_filter=deployment_filter))
+
+        async def read_process_runs() -> list[FlowRun]:
+            # Earlier tests leave webhook-process runs behind and a read is capped at the server's
+            # 200-row page size, so run counts saturate and only a run's identity is a usable signal.
+            return await prefect_client.read_flow_runs(
+                deployment_filter=deployment_filter, sort=FlowRunSort.EXPECTED_START_TIME_DESC
+            )
+
+        runs_before = {run.id for run in await read_process_runs()}
+
+        async def read_new_runs() -> list[FlowRun]:
+            return [
+                run
+                for run in await read_process_runs()
+                if run.id not in runs_before and run.parameters.get("webhook_id") == webhook.id
+            ]
 
         # A branch-less event: the resource carries no infrahub.branch.name, the id is a UUID and the
         # occurred time a datetime -- all values the action parameters must render as plain strings.
@@ -76,10 +93,20 @@ class TestWebhookRender(TestInfrahubApp):
         )
         await prefect_client._client.post("/events", json=[event.model_dump(mode="json")])
 
-        runs_after = runs_before
+        new_runs: list[FlowRun] = []
         for _ in range(PREFECT_EVENT_WAIT_SECONDS):
-            runs_after = len(await prefect_client.read_flow_runs(deployment_filter=deployment_filter))
-            if runs_after > runs_before:
+            new_runs = await read_new_runs()
+            if new_runs:
                 break
             await asyncio.sleep(1)
-        assert runs_after > runs_before, "webhook-process deployment was not run; server-side parameter render failed"
+        assert new_runs, "webhook-process deployment was not run; server-side parameter render failed"
+
+        # Every value the deployment receives has to be a plain string, an absent branch included.
+        parameters = new_runs[0].parameters
+        assert parameters["event_id"] == str(event.id)
+        assert parameters["event_type"] == "infrahub.node.created"
+        assert parameters["event_occured_at"] == "2026-01-01 00:00:00+00:00"
+        branch_name = parameters["branch_name"]
+        assert isinstance(branch_name, str)
+        assert not branch_name
+        assert parameters["event_payload"] == {"data": {"node_id": "abc"}, "context": {}}

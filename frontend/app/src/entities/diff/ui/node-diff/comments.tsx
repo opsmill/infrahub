@@ -1,14 +1,13 @@
 import { useParams } from "react-router";
 
-import {
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/shared/config/constants";
-
 import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
 import { useGetDiffComments } from "@/entities/diff/ui/queries/get-diff-comments.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
+import {
+  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
@@ -109,11 +108,9 @@ export const DiffComments = (props: tDiffComments) => {
     return null;
   }
 
-  return (
-    <div className="flex-1 overflow-auto p-4">
-      {thread?.id && <Thread thread={thread} refetch={handleRefetch} />}
-
-      {!thread?.id && <AddComment onSubmit={handleSubmit} />}
-    </div>
+  return thread?.id ? (
+    <Thread thread={thread} refetch={handleRefetch} />
+  ) : (
+    <AddComment onSubmit={handleSubmit} />
   );
 };

@@ -65,7 +65,7 @@ async def _import_queries(
 
     rendered: dict[str, str] = {}
 
-    async def _capture(branch_name: str, name: str, query_string: str) -> None:
+    async def _capture(branch_name: str, name: str, query_string: str, fingerprint: str | None = None) -> None:
         rendered[name] = query_string
 
     with patch.object(InfrahubRepositoryIntegrator, "create_graphql_query", side_effect=_capture):

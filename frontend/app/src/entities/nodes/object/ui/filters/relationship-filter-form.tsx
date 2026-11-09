@@ -1,17 +1,20 @@
 import { useState } from "react";
 
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipLabel } from "@/entities/schema/domain/rules/get-relationship-label";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;
@@ -27,6 +30,7 @@ export function RelationshipFilterForm({
   onSuccess,
 }: RelationshipFilterFormProps) {
   const [filters, setFilters] = useFilters();
+  const { schema: peerSchema } = useSchema(relationshipSchema.peer);
   const currentFilter = filters.find((filter) => filter.name.startsWith(relationshipSchema.name));
   const [condition, setCondition] = useState<FilterCondition>(
     getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.IS_ANY_OF
@@ -78,7 +82,7 @@ export function RelationshipFilterForm({
   return (
     <FilterFormLayout
       filterType="relationship"
-      label={relationshipSchema.label}
+      label={getRelationshipLabel(relationshipSchema, peerSchema)}
       condition={condition}
       onConditionChange={setCondition}
       testId="relationship-filter-form"

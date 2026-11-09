@@ -11,12 +11,11 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { classNames } from "@/shared/utils/common";
 
-import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ui/ip-namespace-selector";
 import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
 
-const ipamTreeCollapsedAtom = atomWithStorage(IPAM_TREE_KEY, false);
+const ipamTreeCollapsedAtom = atomWithStorage("ipam_tree_collapsed", false);
 
 export const Component = () => {
   const ipamTreeCollapsed = useAtomValue(ipamTreeCollapsedAtom);

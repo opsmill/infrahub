@@ -145,3 +145,40 @@ function CheckConnectivity() {
 - 3+ returns with same wrapper structure
 - Wrapper has styling or layout logic
 - Structure is unlikely to diverge between states
+
+## Aria Overlay Open State
+
+Always pass the boolean to `isOpen`. Don't conditionally render the overlay — it needs to stay mounted to animate closed.
+
+```tsx
+// ❌ Bad: unmounts before exit animation
+{showConfirm && (
+  <Modal isOpen={true} onOpenChange={() => setShowConfirm(false)}>
+    {/* ... */}
+  </Modal>
+)}
+
+// ✅ Good: Modal stays mounted, animates open and close
+<Modal isOpen={showConfirm} onOpenChange={() => setShowConfirm(false)}>
+  {/* ... */}
+</Modal>
+```
+
+Applies to all react-aria overlays in `src/shared/components/aria/` (`Sheet`, `Modal`, `Popover`, `Tooltip`).
+
+## Comments
+
+Comment the non-obvious *why* — rationale, gotchas, invariants. Never narrate the *what*: the code already shows it, and a comment restating it is noise that rots as the code changes.
+
+```tsx
+// ❌ Bad: narrating what the next line does
+// compose the cards directly
+<Col>{cards}</Col>
+
+// ✅ Good: a why the reader can't see, or no comment at all
+// ObjectDetails owns the useTitle call; composing cards here bypasses it, so set the title explicitly
+useTitle(account.display_label);
+<Col>{cards}</Col>
+```
+
+This is the single most common review nit on agent-written PRs. If you catch yourself writing `// <verb> the <noun>`, delete it.

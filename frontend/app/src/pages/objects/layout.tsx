@@ -5,8 +5,8 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 
 import { ObjectHierarchyTreeWrapper } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree-wrapper";
+import { getGenericSchemaOfHierarchy } from "@/entities/schema/domain/rules/is-hierarchical-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getGenericSchemaOfHierarchy } from "@/entities/schema/utils/is-hierarchical-schema";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectId } = useParams();

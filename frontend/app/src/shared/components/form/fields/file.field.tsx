@@ -1,4 +1,4 @@
-import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
+import { FileInfoCard } from "@/shared/components/file/file-info-card";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";

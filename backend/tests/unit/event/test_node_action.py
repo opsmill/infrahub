@@ -11,7 +11,7 @@ from infrahub.core.changelog.models import (
     RelationshipPeerChangelog,
 )
 from infrahub.core.constants import DiffAction
-from infrahub.events.limits import get_prefect_max_related_resources
+from infrahub.events.limits import get_prefect_max_related_resources, get_related_resource_budget
 from infrahub.events.node_action import NodeCreatedEvent
 from tests.helpers.events import dummy_event_meta
 
@@ -84,7 +84,7 @@ def test_truncation_drops_peer_entries_not_node_scoped_entries() -> None:
 
     # Far more peers than remaining slots: the per-peer related-node entries are
     # all dropped (only the node's own remains) and every remaining slot goes to
-    # a relationship update, up to the maximum.
+    # a relationship update, up to the budget.
     related_node_ids = [
         item["prefect.resource.id"] for item in related if item["prefect.resource.role"] == "infrahub.related.node"
     ]
@@ -94,7 +94,7 @@ def test_truncation_drops_peer_entries_not_node_scoped_entries() -> None:
         item for item in related if item["prefect.resource.role"] == "infrahub.node.relationship_update"
     ]
     assert relationship_entries
-    assert len(related) == get_prefect_max_related_resources()
+    assert len(related) == get_related_resource_budget()
 
 
 def test_small_changelog_keeps_every_peer_entry() -> None:

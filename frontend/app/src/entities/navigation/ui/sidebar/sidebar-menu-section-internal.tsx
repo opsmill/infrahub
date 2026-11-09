@@ -16,7 +16,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
 
-import type { MenuItem } from "@/entities/navigation/types";
+import type { MenuItem } from "@/entities/navigation/domain/model/menu";
 import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
 import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 

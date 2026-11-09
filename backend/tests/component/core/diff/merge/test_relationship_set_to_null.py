@@ -15,8 +15,8 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from tests.component.core.diff.get_one_node import get_one_diff_node
-from tests.helpers.db_validation import verify_graph
 
 from .conftest import get_diff_coordinator, get_diff_merger
 
@@ -122,7 +122,7 @@ async def test_relationship_set_to_null(
     await verify_graph(db=db)
 
     # Rollback the merge
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     # Verify dog metadata after rollback
     rolled_back_dog = await NodeManager.get_one(

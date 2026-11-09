@@ -4,7 +4,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetTasksHomepageParams,
   getTasksHomepage,
-} from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";
+} from "@/entities/tasks/domain/use-cases/get-tasks-homepage";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function getTasksHomepageQueryOptions(params: GetTasksHomepageParams) {

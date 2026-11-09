@@ -5,8 +5,7 @@ from infrahub.core.diff.model.diff import ModifiedPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-
-from .factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedNodeFactory,
     EnrichedPropertyFactory,

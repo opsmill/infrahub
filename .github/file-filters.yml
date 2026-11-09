@@ -31,6 +31,10 @@ infrahub_uv_files: &infrahub_uv_files
 
 frontend_files: &frontend_files
   - "frontend/app/**"
+  - "frontend/packages/**"
+  - "frontend/package.json"
+  - "frontend/pnpm-workspace.yaml"
+  - "frontend/pnpm-lock.yaml"
 
 openapi_schema_files: &openapi_schema_files
   - "schema/openapi.json"
@@ -44,9 +48,6 @@ error_catalogue_files: &error_catalogue_files
   - "schema/error-catalogue.json"
   - "frontend/app/src/shared/api/errors/catalogue.generated.ts"
   - "frontend/app/scripts/generate-error-bindings.mjs"
-
-e2e_test_files:
-  - "frontend/app/tests/e2e/**"
 
 e2e_pytest_test_files: &e2e_pytest_test_files
   - "tests/e2e/**"

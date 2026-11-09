@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   type GetBranchActionStateParams,
   getBranchActionState,
-} from "@/entities/branches/domain/get-branch-action-state";
+} from "@/entities/branches/domain/use-cases/get-branch-action-state";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 
 export function getBranchActionStateQueryOptions(params: GetBranchActionStateParams) {

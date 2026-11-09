@@ -3,8 +3,8 @@ import { composeRenderProps, ListBoxItem, type ListBoxItemProps } from "react-ar
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface GroupItemProps extends ListBoxItemProps {
   group: RelationshipNode;

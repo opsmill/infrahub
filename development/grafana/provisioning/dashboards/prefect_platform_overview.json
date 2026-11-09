@@ -1090,7 +1090,7 @@
                         {
                           "targetBlank": false,
                           "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
+                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
                         }
                       ]
                     },
@@ -1132,7 +1132,8 @@
             "targets": [
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1144,7 +1145,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1156,7 +1158,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1168,7 +1171,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1180,7 +1184,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1379,7 +1384,8 @@
             "targets": [
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1396,7 +1402,7 @@
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "$datasource"
+              "uid": "${datasource_prometheus}"
             },
             "fieldConfig": {
               "defaults": {
@@ -1653,7 +1659,7 @@
                         {
                           "targetBlank": false,
                           "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
+                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
                         }
                       ]
                     },
@@ -1753,7 +1759,8 @@
             "targets": [
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
@@ -1765,7 +1772,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1777,7 +1785,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1789,7 +1798,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1801,7 +1811,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
@@ -1813,7 +1824,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
@@ -1825,7 +1837,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
@@ -1837,7 +1850,8 @@
               },
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
@@ -1872,7 +1886,7 @@
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "$datasource"
+              "uid": "${datasource_prometheus}"
             },
             "fieldConfig": {
               "defaults": {
@@ -2036,7 +2050,8 @@
             "targets": [
               {
                 "datasource": {
-                  "uid": "$datasource"
+                  "type": "prometheus",
+                  "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
                 "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
@@ -2365,7 +2380,7 @@
                     {
                       "targetBlank": false,
                       "title": "Drill down",
-                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
+                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
                     }
                   ]
                 },
@@ -2407,7 +2422,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -2419,7 +2435,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -2431,7 +2448,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -2443,7 +2461,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -2455,7 +2474,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -2654,7 +2674,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-agent.*\"}) by (pod)",
@@ -2671,7 +2692,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$datasource"
+          "uid": "${datasource_prometheus}"
         },
         "fieldConfig": {
           "defaults": {
@@ -2928,7 +2949,7 @@
                     {
                       "targetBlank": false,
                       "title": "Drill down",
-                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
+                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
                     }
                   ]
                 },
@@ -3028,7 +3049,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod)",
@@ -3040,7 +3062,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -3052,7 +3075,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -3064,7 +3088,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -3076,7 +3101,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
@@ -3088,7 +3114,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
@@ -3100,7 +3127,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
@@ -3112,7 +3140,8 @@
           },
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
@@ -3147,7 +3176,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$datasource"
+          "uid": "${datasource_prometheus}"
         },
         "fieldConfig": {
           "defaults": {
@@ -3311,7 +3340,8 @@
         "targets": [
           {
             "datasource": {
-              "uid": "$datasource"
+              "type": "prometheus",
+              "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
             "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-agent.*\", container!=\"\", image!=\"\"}) by (pod)",
@@ -4076,6 +4106,20 @@
           "name": "datasource_prometheus",
           "options": [],
           "query": "prometheus",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "type": "datasource"
+        },
+        {
+          "current": {},
+          "hide": 0,
+          "includeAll": false,
+          "label": "Loki",
+          "multi": false,
+          "name": "datasource_loki",
+          "options": [],
+          "query": "loki",
           "refresh": 1,
           "regex": "",
           "skipUrlSync": false,

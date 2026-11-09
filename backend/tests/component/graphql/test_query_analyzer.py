@@ -1,5 +1,7 @@
 from copy import deepcopy
+from dataclasses import dataclass
 
+import pytest
 from graphql import DocumentNode, GraphQLSchema
 
 from infrahub.core.branch import Branch
@@ -8,7 +10,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
+from infrahub.graphql.analyzer import GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
@@ -190,6 +192,273 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
+async def test_traversed_kinds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    query_01: str,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """Traversed kinds cover what the query reaches through a relationship, roots included when shared.
+
+    A caller mapping a data change back to the query's own targets needs the two apart, because a
+    kind read only by following a relationship is never one of those targets. The requested-read map
+    keys by kind alone, so a kind read on both paths has to count as traversed: once a change is in
+    hand there is no way to tell which path saw it.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    traversing = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert set(traversing.query_report.requested_read) == {"TestPerson", "TestCar", "TestElectricCar", "TestGazCar"}
+    assert traversing.query_report.traversed_kinds == {"TestCar", "TestElectricCar", "TestGazCar"}
+
+    generic_root_query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    name { value }
+                }
+            }
+        }
+    }
+    """
+    generic_root = InfrahubGraphQLQueryAnalyzer(
+        query=generic_root_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    assert generic_root.query_report.traversed_kinds == set()
+
+    shared_kind_query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name { value }
+                    cars { edges { node { owner { node { name { value } } } } } }
+                }
+            }
+        }
+    }
+    """
+    shared_kind = InfrahubGraphQLQueryAnalyzer(
+        query=shared_kind_query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    # TestPerson is the root and is reached again through cars -> owner. Reporting it as traversed is
+    # what stops a change on one of those owners from being narrowed away.
+    assert "TestPerson" in shared_kind.query_report.traversed_kinds
+
+
+@dataclass
+class RequestedReadCase:
+    name: str
+    query: str
+    expected_fields_by_kind: dict[str, set[str]]
+
+
+REQUESTED_READ_CASES = [
+    RequestedReadCase(
+        name="unread_members_of_a_traversed_generic_are_reported_empty",
+        # A caller cannot treat presence in the map as proof the query depends on the kind, it has
+        # to look at the fields. Reporting the members keeps a permission check able to see them.
+        query="""
+        query {
+            TestPerson {
+                edges {
+                    node {
+                        name { value }
+                        cars {
+                            edges {
+                                node {
+                                    ... on TestElectricCar {
+                                        nbr_engine { value }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"name", "cars"},
+            "TestCar": set(),
+            "TestElectricCar": {"nbr_engine"},
+            "TestGazCar": set(),
+        },
+    ),
+    RequestedReadCase(
+        name="node_properties_are_reported_under_their_schema_name",
+        # The query spells it hfid, everything downstream calls it human_friendly_id. Reporting the
+        # query spelling would leave each consumer to translate it, and silently match nothing.
+        query="""
+        query {
+            TestPerson {
+                edges {
+                    node {
+                        hfid
+                        display_label
+                        cars {
+                            edges {
+                                node {
+                                    hfid
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"human_friendly_id", "display_label", "cars"},
+            "TestCar": {"human_friendly_id"},
+            "TestElectricCar": {"human_friendly_id"},
+            "TestGazCar": {"human_friendly_id"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", REQUESTED_READ_CASES, ids=lambda case: case.name)
+async def test_requested_read(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, case: RequestedReadCase
+) -> None:
+    """Report every kind the query reaches, and the fields it reads from each."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert {
+        kind: access.fields for kind, access in analyzer.query_report.requested_read.items()
+    } == case.expected_fields_by_kind
+
+
+FILTERED_FIELDS_CASES = [
+    RequestedReadCase(
+        name="root_filters_on_an_attribute_and_a_relationship",
+        query="""
+        query {
+            TestCar(owner__name__value: "John", color__value: "red") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestCar": {"owner", "color"},
+            "TestElectricCar": {"owner", "color"},
+            "TestGazCar": {"owner", "color"},
+        },
+    ),
+    RequestedReadCase(
+        name="any_filter_selects_on_every_attribute",
+        query="""
+        query {
+            TestPerson(any__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"name", "height"}},
+    ),
+    RequestedReadCase(
+        name="display_label_filter_selects_on_display_label",
+        query="""
+        query {
+            TestPerson(display_label__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"display_label"}},
+    ),
+    RequestedReadCase(
+        name="arguments_that_select_no_field_are_left_out",
+        query="""
+        query {
+            TestPerson(ids: ["a"], limit: 1, offset: 0) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={},
+    ),
+    RequestedReadCase(
+        name="filters_on_a_traversed_relationship_apply_to_its_peer",
+        query="""
+        query {
+            TestPerson(name__value: "John") {
+                edges {
+                    node {
+                        cars(color__value: "red") {
+                            edges { node { name { value } } }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        expected_fields_by_kind={
+            "TestPerson": {"name"},
+            "TestCar": {"color"},
+            "TestElectricCar": {"color"},
+            "TestGazCar": {"color"},
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize("case", FILTERED_FIELDS_CASES, ids=lambda case: case.name)
+async def test_filtered_fields_by_kind(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, case: RequestedReadCase
+) -> None:
+    """Report, per kind, the attributes and relationships the query's filter arguments select on."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert analyzer.query_report.filtered_fields_by_kind == case.expected_fields_by_kind
+
+
+async def test_filtered_fields_by_kind_reports_the_hfid_filter(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """A filter on ``hfid`` selects on the kind's ``human_friendly_id``."""
+    tshirt_hfid = deepcopy(TSHIRT)
+    tshirt_hfid.name = "TShirtHfid"
+    tshirt_hfid.human_friendly_id = ["name__value"]
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[COLOR, tshirt_hfid]), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query="""
+        query {
+            TestingTShirtHfid(hfid: ["blue"]) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    assert analyzer.query_report.filtered_fields_by_kind == {"TestingTShirtHfid": {"human_friendly_id"}}
+
+
 async def test_query_report(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
 ) -> None:
@@ -225,17 +494,16 @@ async def test_query_report(
     assert gqa.query_report.requested_read["TestElectricCar"].relationships == set()
     assert len(gqa.query_report.queries) == 1
     assert len(gqa.query_report.queries[0].arguments) == 1
-    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
-        name="data",
-        value={
-            "name": {"value": "Accord"},
-            "nbr_seats": {"value": 5},
-            "is_electric": {"value": True},
-            "owner": {"id": "John"},
-        },
-        kind="object_value",
-    )
-    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
+    argument = gqa.query_report.queries[0].arguments[0]
+    assert argument.name == "data"
+    assert argument.kind == "object_value"
+    assert argument.value == {
+        "name": {"value": "Accord"},
+        "nbr_seats": {"value": 5},
+        "is_electric": {"value": True},
+        "owner": {"id": "John"},
+    }
+    assert argument.fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_return_data = """
     mutation CarCreator($car_name: String!) {
@@ -291,17 +559,17 @@ async def test_query_report(
     ]
     assert len(gqa.query_report.queries) == 1
     assert len(gqa.query_report.queries[0].arguments) == 1
-    assert gqa.query_report.queries[0].arguments[0] == GraphQLArgument(
-        name="data",
-        value={
-            "name": {"value": "$car_name"},
-            "nbr_seats": {"value": 5},
-            "is_electric": {"value": True},
-            "owner": {"id": "John"},
-        },
-        kind="object_value",
-    )
-    assert gqa.query_report.queries[0].arguments[0].fields == ["is_electric", "name", "nbr_seats", "owner"]
+    argument = gqa.query_report.queries[0].arguments[0]
+    assert argument.name == "data"
+    assert argument.kind == "object_value"
+    assert argument.contains_variable is True
+    assert argument.value == {
+        "name": {"value": "$car_name"},
+        "nbr_seats": {"value": 5},
+        "is_electric": {"value": True},
+        "owner": {"id": "John"},
+    }
+    assert argument.fields == ["is_electric", "name", "nbr_seats", "owner"]
 
     mutation_query_with_simple_return_data = """
     mutation {

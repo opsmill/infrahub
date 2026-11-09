@@ -32,6 +32,15 @@ Markdown formatting rules enforced by markdownlint and project conventions.
 - No trailing spaces
 - No multiple consecutive blank lines
 
+### Line Wrapping
+
+- Match the file's existing wrap style: most `dev/` and `.agents/` prose wraps near 100 characters;
+  break at the column, not at clause or sentence boundaries short of it
+- Never end a line early because a phrase ended — phrasing-shaped breaks read as generated output,
+  and every later edit re-breaks the paragraph
+- MD013 (line length) is disabled, so wrap style is a convention, not a lint gate — pick up whichever
+  style the file already uses instead of reflowing it
+
 ### Headings
 
 - Use sentence case (first word capitalized, rest lowercase)
@@ -86,6 +95,8 @@ from infrahub_sdk import InfrahubClient
 - Use descriptive link text
 - Use relative paths for internal documentation links
 - All documentation URLs should be relative (not absolute)
+- When referencing Infrahub source files (models, sample scripts), link the file on GitHub (`https://github.com/opsmill/infrahub/blob/stable/<path>`); never cite a bare repo path — docs readers have no checkout
+- Never route a relative link through a repo symlink (the root `specs` is a symlink to `dev/specs`) — GitHub's renderer does not follow symlinks, so the link 404s on the web UI even though it resolves in a checkout; link the real path
 
 ```markdown
 <!-- ✅ Good -->
@@ -115,6 +126,7 @@ https://example.com/page
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
 - Use American English for standard text
+- **Literal words**: much of the audience reads English as a second or third language. Avoid figurative phrasing — "carry" (for have), "lives on" (for is stored on), "walk" (for traverse), "reach for" (for use). Say the literal thing.
 
 ### Trailing Commas (Oxford Comma)
 
@@ -192,6 +204,8 @@ import TabItem from '@theme/TabItem';
 </Tabs>
 ````
 
+Only keep imports the page uses — no linter flags unused MDX imports, so check them manually when copying a page skeleton.
+
 ## General Tips
 
 - Avoid words like "easy", "simple", or "just" to describe tasks
@@ -204,5 +218,4 @@ import TabItem from '@theme/TabItem';
 ## See Also
 
 - [Documentation Guidelines](documentation.md) - Documentation writing guidelines
-- `docs/AGENTS.md` - Documentation-specific guidelines for user-facing docs
 - [Git Workflow](git-workflow.md) - Git workflow and commit conventions

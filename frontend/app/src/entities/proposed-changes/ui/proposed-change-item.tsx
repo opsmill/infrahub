@@ -1,29 +1,36 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
+import { ClockIcon } from "lucide-react";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { CHECK_OBJECT, TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
+import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
+import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { TASK_OBJECT } from "@/entities/tasks/domain/model/task";
 
 type ProposedChangesItemProps = {
   proposedChange: ProposedChangeItem;
 };
 
 export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps) => {
-  const { permission } = useObjectTableContext();
+  const { permission, selectedSchema } = useObjectTableContext();
+  const { appliedSort } = useSort(selectedSchema);
   const { node, metadata } = proposedChange;
+
+  const showUpdatedAt = appliedSort.some((sort) => sort.field === "node_metadata__updated_at");
 
   return (
     <ListBoxItem className="flex items-center p-2">
@@ -36,6 +43,7 @@ export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
           createdAt={metadata.created_at}
+          updatedAt={showUpdatedAt ? metadata.updated_at : null}
           branchName={node.source_branch?.value}
         />
 
@@ -64,6 +72,7 @@ type ProposedChangesInfoProps = {
   isDraft: boolean;
   isApproved: boolean;
   createdAt: string | null;
+  updatedAt?: string | null;
   branchName?: string;
 };
 
@@ -74,6 +83,7 @@ const ProposedChangesInfo = ({
   isDraft,
   isApproved,
   createdAt,
+  updatedAt,
   branchName,
 }: ProposedChangesInfoProps) => {
   return (
@@ -101,13 +111,18 @@ const ProposedChangesInfo = ({
             {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
           </div>
         </span>
-        <span className="flex items-center gap-1 text-xs">
+        <Row className="gap-1 text-xs">
           <span className="flex items-center gap-1 font-semibold">
             <Icon icon={"mdi:source-branch"} />
             {branchName}
           </span>
           Opened <DateDisplay date={createdAt} /> by {author}
-        </span>
+          {updatedAt && (
+            <>
+              <ClockIcon className="size-3" /> Updated <DateDisplay date={updatedAt} />
+            </>
+          )}
+        </Row>
       </div>
     </div>
   );
@@ -142,7 +157,7 @@ const ProposedChangesData = ({
 
 const ProposedChangesComments = ({ comments }: { comments: number }) => {
   return (
-    <Tooltip enabled content="Comments">
+    <Tooltip message="Comments" nonInteractiveTrigger>
       <span className="flex items-center gap-1">
         <Icon icon={"mdi:comment-outline"} /> {comments}
       </span>
@@ -154,7 +169,7 @@ const ProposedChangesChecks = ({ validations }: { validations: number }) => {
   const { schema } = useSchema(CHECK_OBJECT);
 
   return (
-    <Tooltip enabled content="Checks">
+    <Tooltip message="Checks" nonInteractiveTrigger>
       <span className="flex items-center">
         <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
       </span>
@@ -170,7 +185,7 @@ const ProposedChangesTasks = ({ id }: { id: string }) => {
   });
 
   return (
-    <Tooltip enabled content="Tasks">
+    <Tooltip message="Tasks" nonInteractiveTrigger>
       <span className="flex items-center gap-1">
         <Icon icon={schema?.icon ?? "mdi:subtasks"} /> {data ?? 0}
       </span>

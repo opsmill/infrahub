@@ -1,7 +1,5 @@
 # AGENTS.md - Backend
 
-> See [root AGENTS.md](../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
@@ -10,6 +8,7 @@ FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
 
 - `infrahub/` – Main application
   - `api/` – REST endpoints
+    - `api/admission/` – Priority-aware API backpressure (load shedding) — see [dev/knowledge/backend/api-backpressure.md](../dev/knowledge/backend/api-backpressure.md)
   - `auth/` – Authentication (password, SSO, LDAP) and auto-create groups (`auth/auth_groups/`)
   - `graphql/` – GraphQL schema, mutations, resolvers
   - `core/` – Domain logic (nodes, schemas, branches, diff)
@@ -31,14 +30,27 @@ uv run invoke backend.generate         # Regenerate schemas/protocols
 
 ## Coding Standards
 
-See `dev/guidelines/backend/python.md` for detailed coding standards including:
+See `dev/guidelines/backend/python.md` for detailed coding standards — load it before writing or
+reviewing backend Python, including:
 
 - Async-first patterns
+- Imports
 - Pydantic models
 - Docstring conventions
 - Naming conventions
 - Query patterns
-- Type hints
+
+Typing lives in `dev/guidelines/backend/typing.md` — load it when a type checker flags your change,
+when narrowing a union or an optional, when reviewing code that does, or when clearing a
+`pyproject.toml` suppression.
+
+Exception handling lives in `dev/guidelines/backend/exceptions.md` — load it when writing or
+reviewing a `try`/`except` or suppressing ruff's blind-except rule (catch the narrowest types the
+call path actually raises).
+
+When planning, implementing or reviewing a backend feature, also walk
+`dev/guidelines/backend/checklist.md` — migrations, query efficiency (set-based, no N+1),
+permissions, error handling.
 
 ### Neo4j/Cypher Queries
 
@@ -53,7 +65,13 @@ Also see `dev/knowledge/backend/query-pattern.md` for the Query class pattern us
 
 ## Testing
 
-See `dev/knowledge/backend/testing.md` for detailed testing infrastructure documentation.
+See `dev/knowledge/backend/testing.md` for the test infrastructure; read it before writing a
+class-scoped fixture, anything that touches Prefect (task manager setup, the two test servers), or
+a test that swaps in an adapter.
+
+Testing standards live in `dev/guidelines/backend/testing.md` — load it before adding, moving, or
+deleting a test: which tier the logic needs, what not to test, and how to find the coverage that
+already exists.
 
 ## Boundaries
 
@@ -64,12 +82,16 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - Use Pydantic models for data structures
 - Use Query class pattern for database operations
 - Create changelog fragments with `towncrier create` — never hand-write the file. Use the `creating-changelog-entries` skill.
+- Declare a new `INFRAHUB_*` environment setting in the `environment:` blocks of both `docker-compose.yml` and `development/docker-compose.yml` — compose forwards only declared variables, so a missing entry silently ignores the setting in that stack
 
 ### Ask First
 
 - New database indexes
 - Core schema definition changes
 - New GraphQL mutations/queries
+- New REST endpoints — serve SDK/client needs through existing GraphQL queries first; every REST
+  endpoint is a second public contract that ripples into `schema/openapi.json` and the generated
+  frontend REST types
 
 ### Never Do
 
@@ -81,7 +103,13 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 ### Guidelines
 
-- `dev/guidelines/backend/python.md` - Python coding standards
+- `dev/guidelines/backend/python.md` - Python coding standards — load before writing or reviewing backend Python (imports, data structures, docstrings)
+- `dev/guidelines/backend/typing.md` - Typing — load when a checker flags your change, when narrowing a union or reviewing code that does, or when clearing a mypy/ty suppression
+- `dev/guidelines/backend/exceptions.md` - Exception handling — load when adding, changing or reviewing a `try`/`except`, or when ruff flags a blind except
+- `dev/guidelines/backend/testing.md` - Testing standards — load before adding, moving, or deleting a test (tier choice, what not to test, finding the coverage that already exists)
+- `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding, changing or reviewing middleware in `server.py`
+- `dev/guidelines/backend/prefect-payloads.md` - Prefect payloads — load when adding, changing or reviewing a `@flow` or `@task`, or passing data across one (return values, task arguments, subflow parameters)
+- `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning, implementing or reviewing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
 ### Knowledge (How the system works)
@@ -92,24 +120,32 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
+- `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
+- `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
+- `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
+- `dev/knowledge/backend/task-workers.md` - How task workers poll, reserve, claim and start flow runs; read before changing the worker or diagnosing a run that waits before it starts
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
+- `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
+- `dev/knowledge/backend/git-sync.md` - Remote branch import/mapping and git error surfacing; read when touching repository sync or debugging branch-import behavior
 
 ### Guides (How to do X)
 
 - `dev/guides/backend/creating-events.md` - Creating new events
-- `dev/guides/backend/creating-async-tasks.md` - Creating async tasks
+- `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
+- `dev/guides/backend/creating-migrations.md` - Choosing a migration base class, `GRAPH_VERSION` bookkeeping, batching, transaction retry, and error handling. Load when adding a graph or schema migration, renumbering one after a rebase, or fixing data a migration got wrong.
+- `dev/guides/backend/creating-permission-checkers.md` - Adding a checker to the GraphQL permission pipeline: category, registration, permission report, denial message, tests. Load when enforcing a permission that object permissions cannot express.
 
 ### ADRs (Why we decided)
 

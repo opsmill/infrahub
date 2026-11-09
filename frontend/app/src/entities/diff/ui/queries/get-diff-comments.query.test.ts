@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getDiffCommentsQueryOptions } from "./get-diff-comments.query";
 
-vi.mock("@/entities/diff/domain/get-diff-comments", () => ({
+vi.mock("@/entities/diff/domain/use-cases/get-diff-comments", () => ({
   getDiffComments: vi.fn().mockResolvedValue({ thread: null }),
 }));
 

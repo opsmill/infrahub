@@ -100,7 +100,7 @@ async def test_run_generator_definition(
                             class_name=definition1.class_name.value,
                             file_path=definition1.file_path.value,
                             query_name=query.name.value,
-                            query_models=query.models.value,
+                            query_id=query.id,
                             query_payload=query.query.value,
                             repository_id=repository.id,
                             parameters=definition1.parameters.value,

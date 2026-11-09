@@ -1,27 +1,29 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
+import { Sheet } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver from "@/shared/components/display/slide-over";
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
-import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
-import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
-import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
-import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
-import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type {
   NodeAttributeWithMetadata,
   NodeObjectWithMetadata,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
-import type { Permission } from "@/entities/permission/types";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-detailed-view";
+import { isRelationshipVisibleInSummary } from "@/entities/nodes/object/domain/rules/is-relationship-visible-in-summary";
+import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
+import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadata-form";
+import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
+import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
@@ -40,7 +42,11 @@ export function ObjectDataDisplay({
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
-  const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
+  const [metaEditFieldDetails, setMetaEditFieldDetails] = useState<{
+    type: "attribute" | "relationship";
+    attributeOrRelationshipName: any;
+    label: string;
+  } | null>(null);
 
   const onClickAttributeMetadata = (attribute: AttributeSchema) => {
     setMetaEditFieldDetails({
@@ -79,7 +85,7 @@ export function ObjectDataDisplay({
 
         const objectKind = objectSchema.kind!;
 
-        if ("peer" in field) {
+        if (isRelationshipSchema(field)) {
           const relationshipData = resolveRelationshipData({
             relationshipName: fieldName,
             objectSchema,
@@ -131,24 +137,19 @@ export function ObjectDataDisplay({
         );
       })}
 
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex w-full items-center">
-              <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{currentBranch.name}</div>
-              </div>
+      <Sheet isOpen={showMetaEditModal} onOpenChange={setShowMetaEditModal}>
+        <div className="space-y-2">
+          <div className="flex w-full items-center">
+            <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
+            <div className="flex-1"></div>
+            <div className="flex items-center">
+              <Icon icon={"mdi:layers-triple"} />
+              <div className="ml-1.5 pb-1">{currentBranch.name}</div>
             </div>
-            <div className="text-gray-500">Metadata</div>
           </div>
-        }
-        open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}
-      >
-        <ObjectItemMetaEdit
+          <div className="text-gray-500">Metadata</div>
+        </div>
+        <FieldMetadataForm
           onCancel={() => setShowMetaEditModal(false)}
           onSuccess={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
@@ -160,7 +161,7 @@ export function ObjectDataDisplay({
           type={metaEditFieldDetails?.type!}
           row={objectData}
         />
-      </SlideOver>
+      </Sheet>
     </div>
   );
 }
@@ -171,10 +172,7 @@ function getRelationshipsVisibleInDataDisplay(
 ): RelationshipSchema[] {
   return relationships.filter(
     (rel) =>
-      isRelationshipVisibleInDetailedView(rel) &&
-      rel.name !== "member_of_groups" &&
-      !isFromResourcePoolRelationship(rel.name) &&
-      rel.kind !== "Profile" &&
+      isRelationshipVisibleInSummary(rel) &&
       (!excludeRelationships || !excludeRelationships.includes(rel.name))
   );
 }

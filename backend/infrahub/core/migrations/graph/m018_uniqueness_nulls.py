@@ -56,7 +56,9 @@ async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> Migr
         if not includes_optional_attr:
             continue
 
-        non_unique_nodes = await uniqueness_checker.check_one_schema(schema=schema)
+        non_unique_nodes = await uniqueness_checker.check_one_schema(
+            schema=schema, branch=default_branch, schema_branch=schema_branch
+        )
         if non_unique_nodes:
             non_unique_nodes_by_kind[schema_kind] = non_unique_nodes
 

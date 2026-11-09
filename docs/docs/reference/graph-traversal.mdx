@@ -35,7 +35,12 @@ Reference for the `InfrahubPathTraversal` and `InfrahubReachableNodes` GraphQL q
 Each `PathResultType` has `depth` (number of edges) and `hops` — an ordered list where each hop
 has a `node` and (except the first) a `relationship`. Each `node` (`PathNodeType`) exposes `id`,
 `kind`, `label`, `display_label`, and `hfid`. Each `relationship` (`PathRelationshipType`) exposes
-`from_rel`, `from_label`, `to_rel`, `to_label`, and `kind`.
+`from_rel`, `from_label`, `to_rel`, `to_label`, and `kind`. `from_rel` and `from_label` name the
+relationship the hop's source object holds; `to_rel` and `to_label` name the destination object's
+own side of the same edge — for a hierarchy hop, `parent` on the child and `children` on the parent.
+The ends are named exactly when the hierarchy pins its `parent` and `children` kinds; when a peer
+stays on the hierarchy generic, the schema may not tell the ends apart and the names are a
+consistent best guess.
 
 ---
 

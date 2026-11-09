@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getDiffThreadQueryOptions } from "./get-diff-thread.query";
 
-vi.mock("@/entities/diff/domain/get-diff-thread", () => ({
+vi.mock("@/entities/diff/domain/use-cases/get-diff-thread", () => ({
   getDiffThread: vi.fn().mockResolvedValue({ thread: null, permissions: null }),
 }));
 

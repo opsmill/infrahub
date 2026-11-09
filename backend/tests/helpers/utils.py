@@ -1,4 +1,7 @@
+import random
+import socket
 import time
+from contextlib import closing
 from pathlib import Path
 
 import httpx
@@ -12,7 +15,30 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_PREFECT,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+    PREFECT_TEST_SERVER_PORT_RANGE,
 )
+
+
+def find_available_prefect_port() -> int:
+    """Pick a free loopback port for an ephemeral Prefect test server.
+
+    Replaces prefect.testing.utilities._find_available_port, whose bind-port-0 reservation
+    draws from the kernel's ephemeral range and collides with other processes on a shared
+    CI runner (see PREFECT_TEST_SERVER_PORT_RANGE).
+
+    Raises:
+        RuntimeError: If no free port is found after 50 attempts.
+
+    """
+    for _ in range(50):
+        port = random.choice(PREFECT_TEST_SERVER_PORT_RANGE)
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+        return port
+    raise RuntimeError("Unable to find an available port for the Prefect test server")
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
@@ -53,7 +79,7 @@ def start_prefect_server_container(
 
     prefect_base = Path(Path(__file__).parent.resolve() / "./../../infrahub/prefect_server")
     container = (
-        DockerContainer(image="prefecthq/prefect:3.7.5-python3.13")
+        DockerContainer(image="prefecthq/prefect:3.8.6-python3.13")
         .with_command("uvicorn --host 0.0.0.0 --port 4200 --factory prefect_server.app:create_infrahub_prefect")
         .with_exposed_ports(PORT_PREFECT)
         .with_volume_mapping(host=str(prefect_base), container="/opt/prefect/prefect_server", mode="ro")

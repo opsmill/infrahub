@@ -10,7 +10,7 @@ import {
   type DefaultParentInput,
   type DefaultParentParams,
   getDefaultParent,
-} from "@/entities/nodes/relationships/domain/get-default-parent";
+} from "@/entities/nodes/relationships/domain/use-cases/get-default-parent";
 
 export function getDefaultParentQueryOptions(params: DefaultParentParams) {
   return queryOptions({

@@ -1,6 +1,4 @@
-import { graphql } from "gql.tada";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 const GET_IPAM_TREE_NODES = graphql(`

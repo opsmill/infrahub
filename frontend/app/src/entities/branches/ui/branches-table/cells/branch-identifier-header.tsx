@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Checkbox, type CheckboxProps } from "@infrahub/ui";
 
-import { Checkbox, type CheckboxProps } from "@/shared/components/aria/checkbox";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
 interface BranchIdentifierHeaderProps extends CheckboxProps {
   className?: string;

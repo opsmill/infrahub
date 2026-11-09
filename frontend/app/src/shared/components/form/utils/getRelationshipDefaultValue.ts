@@ -13,20 +13,21 @@ import type {
   RelationshipValueFromUser,
   TemplateSource,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import type {
   NodeFields,
   NodeObject,
   NodeRelationship,
   NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/domain/rules/is-node-relationship-many";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 type GetRelationshipDefaultValueParams = {
   objectData?: NodeFields | null;
@@ -104,12 +105,11 @@ const getRelationshipValueFromUser = (
 
     if (!resourceFromPoolRelationshipData?.node) return null;
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         label: getNodeLabel(resourceFromPoolRelationshipData.node),
         id: resourceFromPoolRelationshipData.node.id,
         kind: resourceFromPoolRelationshipData.node.__typename,
-      },
+      }),
       value: resourceFromPoolRelationshipData.node,
     };
   }
@@ -130,12 +130,11 @@ const getRelationshipValueFromUser = (
   // Handle pool sources
   if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         label: source.display_label ?? null,
         id: source.id as string,
         kind: source.__typename as string,
-      },
+      }),
       value: relationshipData.node,
     };
   }
@@ -154,15 +153,22 @@ const getRelationshipValueFromParent = (
 ): RelationshipValueFromUser | null => {
   if (!parentSchema || !parentData || !schema) return null;
 
-  const relationshipToParent = schema.relationships?.find((r) => {
-    return r.kind === "Parent" && r.name === relationshipName;
-  });
+  const childRelationship = schema.relationships?.find((r) => r.name === relationshipName);
+  if (!childRelationship) return null;
 
-  const relationshipFromParent = parentSchema.relationships?.find((r) => {
-    return r.kind === "Component" && isOfKind(r.peer, schema);
-  });
+  // The reverse Component side is optional, so check it exists and accepts this child.
+  const isFlatParent =
+    childRelationship.kind === "Parent" &&
+    !!parentSchema.relationships?.some((r) => r.kind === "Component" && isOfKind(r.peer, schema));
 
-  if (relationshipToParent && relationshipFromParent) {
+  // Hierarchy always exists on both sides. "one" is the parent side (children is "many"),
+  // and isOfKind checks parentData is a kind this parent field accepts.
+  const isHierarchyParent =
+    childRelationship.kind === "Hierarchy" &&
+    childRelationship.cardinality === "one" &&
+    isOfKind(childRelationship.peer, parentSchema);
+
+  if (isFlatParent || isHierarchyParent) {
     return {
       source: { type: "user" },
       value: {
@@ -220,13 +226,12 @@ export const getRelationshipDefaultValueFromTemplate = (
     if (!poolRelationship?.node) return null;
 
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         fromTemplate: true,
         label: getNodeLabel(poolRelationship.node),
         id: poolRelationship.node.id,
         kind: poolRelationship.node.__typename,
-      },
+      }),
       value: poolRelationship.node,
     };
   }

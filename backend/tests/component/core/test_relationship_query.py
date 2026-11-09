@@ -32,7 +32,7 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_validation import verify_no_duplicate_paths
+from infrahub.database.validation import verify_graph
 
 
 class DummyRelationshipQuery(RelationshipQuery):
@@ -337,7 +337,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
     )
     assert len(paths) == (1 if branch.name == default_branch.name else 0)
 
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_query_RelationshipDeleteQuery(
@@ -658,7 +658,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
         user_id="user1",
     )
     await query.execute(db=db)
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_query_RelationshipUpdatePropertyQuery_updates_node_metadata(
@@ -1164,7 +1164,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         user_id="user1",
     )
     await query2.execute(db=db)
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
     # migrate tag kind
     tag_schema = registry.schema.get("BuiltinTag", branch=branch)
@@ -1208,7 +1208,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         user_id="user1",
     )
     await query2.execute(db=db)
-    await verify_no_duplicate_paths(db=db)
+    await verify_graph(db=db)
 
 
 async def test_query_RelationshipCountPerNodeQuery(

@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+pytestmark = pytest.mark.shard_a
+
 # Must stay off "main" to cover repositories whose default branch is not the platform one.
 SECTION_GIT_DEFAULT_BRANCH = "production"
 

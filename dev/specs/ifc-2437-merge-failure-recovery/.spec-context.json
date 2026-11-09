@@ -1,0 +1,40 @@
+{
+  "workflow": "speckit",
+  "specName": "ifc-2437-merge-failure-recovery",
+  "branch": "ifc-2437-merge-failure-recovery",
+  "selectedAt": "2026-04-29T20:57:35.052Z",
+  "currentStep": "plan",
+  "status": "planning",
+  "stepHistory": {
+    "specify": {
+      "startedAt": "2026-04-29T22:05:24.757Z",
+      "completedAt": "2026-04-29T22:05:24.757Z"
+    },
+    "plan": {
+      "startedAt": "2026-04-29T22:05:24.763Z",
+      "completedAt": null
+    }
+  },
+  "transitions": [
+    {
+      "step": "specify",
+      "substep": null,
+      "from": {
+        "step": "specify",
+        "substep": null
+      },
+      "by": "extension",
+      "at": "2026-04-29T22:05:24.757Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "from": {
+        "step": "specify",
+        "substep": null
+      },
+      "by": "extension",
+      "at": "2026-04-29T22:05:24.763Z"
+    }
+  ]
+}

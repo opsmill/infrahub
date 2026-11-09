@@ -4,14 +4,21 @@ import { Col } from "@/shared/components/container";
 import type { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import type {
+  ConvertFieldMapping,
+  ConvertFormFieldValue,
+} from "@/entities/nodes/convert/domain/model/convert";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
 import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
 import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";
 import { ConvertSourceRelationshipOneInput } from "@/entities/nodes/convert/ui/convert-source-relationship-one-input";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 interface ConvertSourceFieldProps extends Omit<DynamicFieldProps, "defaultValue"> {
   objectDetailsData: NodeObject;

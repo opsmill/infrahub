@@ -6,12 +6,10 @@ import {
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { store } from "@/shared/stores";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
+import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { generateNodeAttributeWithMetadata } from "../../../../../tests/fake/node";
 import {
@@ -491,21 +489,8 @@ describe("getFormFieldsFromSchema", () => {
       }),
     };
 
-    store.set(currentBranchAtom, {
-      id: "18007869-b812-f080-2d60-c51d9e906226",
-      name: "mainnn",
-      description: "Default Branch",
-      status: "OPEN",
-      branched_from: "2024-10-21T12:44:12.365354Z",
-      created_at: "2024-10-21T12:44:12.365371Z",
-      sync_with_git: true,
-      is_default: true,
-      has_schema_changes: false,
-      __typename: "Branch",
-    });
-
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, isDefaultBranch: true });
 
     // THEN
     expect(fields.length).to.equal(1);
@@ -543,21 +528,8 @@ describe("getFormFieldsFromSchema", () => {
       }),
     };
 
-    store.set(currentBranchAtom, {
-      id: "18007869-b812-f080-2d60-c51d9e906226",
-      name: "other",
-      description: "other Branch",
-      status: "OPEN",
-      branched_from: "2024-10-21T12:44:12.365354Z",
-      created_at: "2024-10-21T12:44:12.365371Z",
-      sync_with_git: true,
-      is_default: false,
-      has_schema_changes: false,
-      __typename: "Branch",
-    });
-
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, isDefaultBranch: false });
 
     // THEN
     expect(fields.length).to.equal(1);
@@ -595,21 +567,8 @@ describe("getFormFieldsFromSchema", () => {
       }),
     };
 
-    store.set(currentBranchAtom, {
-      id: "18007869-b812-f080-2d60-c51d9e906226",
-      name: "main",
-      description: "Default Branch",
-      status: "OPEN",
-      branched_from: "2024-10-21T12:44:12.365354Z",
-      created_at: "2024-10-21T12:44:12.365371Z",
-      sync_with_git: true,
-      is_default: true,
-      has_schema_changes: false,
-      __typename: "Branch",
-    });
-
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, isDefaultBranch: true });
 
     // THEN
     expect(fields.length).to.equal(1);
@@ -647,21 +606,8 @@ describe("getFormFieldsFromSchema", () => {
       }),
     };
 
-    store.set(currentBranchAtom, {
-      id: "18007869-b812-f080-2d60-c51d9e906226",
-      name: "other",
-      description: "other Branch",
-      status: "OPEN",
-      branched_from: "2024-10-21T12:44:12.365354Z",
-      created_at: "2024-10-21T12:44:12.365371Z",
-      sync_with_git: true,
-      is_default: false,
-      has_schema_changes: false,
-      __typename: "Branch",
-    });
-
     // WHEN
-    const fields = getFormFieldsFromSchema({ schema, initialObject });
+    const fields = getFormFieldsFromSchema({ schema, initialObject, isDefaultBranch: false });
 
     // THEN
     expect(fields.length).to.equal(1);

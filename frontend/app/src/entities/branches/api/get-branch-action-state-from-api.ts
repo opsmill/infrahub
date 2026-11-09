@@ -1,7 +1,5 @@
-import { graphql } from "gql.tada";
-
+import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { StateType } from "@/shared/api/graphql/generated/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_BRANCH_ACTION_STATE = graphql(`
   query GET_BRANCH_ACTION_STATE($branch: String!, $workflow: [String], $state: [StateType]) {
@@ -25,6 +23,5 @@ export function getBranchActionStateFromApi(params: GetBranchActionStateFromApiP
       workflow: [...params.workflow],
       state: [...params.state],
     },
-    fetchPolicy: "no-cache",
   });
 }

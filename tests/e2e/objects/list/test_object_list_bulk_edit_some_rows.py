@@ -13,7 +13,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_sites_b
@@ -42,9 +42,9 @@ class TestBulkEditSomeRows:
     async def test_should_be_able_to_update_multiple_objects_at_once(self, admin_page: Page, branch: str) -> None:
         # navigate to objects page and select items
         await admin_page.goto(f"/objects/InfraDevice?branch={branch}")
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(0).click()
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(1).click()
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(2).click()
+        await admin_page.get_by_test_id("identifier-cell").nth(0).locator("label").click()
+        await admin_page.get_by_test_id("identifier-cell").nth(1).locator("label").click()
+        await admin_page.get_by_test_id("identifier-cell").nth(2).locator("label").click()
         await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Edit").click()
 
         # verify bulk edit panel is displayed correctly
@@ -67,8 +67,7 @@ class TestBulkEditSomeRows:
         await admin_page.get_by_role("option", name="Drained Temporarily taken out").click()
         await admin_page.get_by_label("Role").click()
         await admin_page.get_by_role("option", name="Leaf Switch Top of Rack part").click()
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Loopbacks pool").click()
+        await select_pool(admin_page, "Loopbacks pool")
         await admin_page.get_by_role("button", name="Save").click()
 
         # verify changes were applied successfully

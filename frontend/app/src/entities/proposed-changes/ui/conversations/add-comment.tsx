@@ -7,7 +7,7 @@ import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
 interface CommentFormData {
   comment: string;

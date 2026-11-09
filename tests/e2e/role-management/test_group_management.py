@@ -71,8 +71,8 @@ class TestGroupCrud:
         await expect(get_data_table_row(admin_page, "test group 2")).to_be_visible()
 
         # bulk edit both groups
-        await get_data_table_row(admin_page, "test group").get_by_test_id("identifier-checkbox-cell").click()
-        await get_data_table_row(admin_page, "test group 2").get_by_test_id("identifier-checkbox-cell").click()
+        await get_data_table_row(admin_page, "test group").locator("label").click()
+        await get_data_table_row(admin_page, "test group 2").locator("label").click()
         await admin_page.get_by_role("button", name="Edit").click()
         await admin_page.get_by_role("textbox", name="Description").fill("bulk edited")
         await admin_page.get_by_role("button", name="Save").click()

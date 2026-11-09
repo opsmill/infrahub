@@ -15,7 +15,7 @@ type LogsProps = {
 
 export const getSeverityBadge: { [key: string]: any } = {
   success: <Badge variant={"green"}>success</Badge>,
-  info: <Badge variant={"yellow"}>info</Badge>,
+  info: <Badge variant={"blue"}>info</Badge>,
   warning: <Badge variant={"yellow"}>warning</Badge>,
   error: <Badge variant={"red"}>error</Badge>,
   critical: <Badge variant={"red"}>critical</Badge>,
@@ -39,9 +39,18 @@ export const Logs = ({ logs }: LogsProps) => {
 
   const rows = logs.map((log: tLog) => ({
     values: {
-      ...log,
-      severity: getSeverityBadge[log.severity],
-      timestamp: <DateDisplay date={log.timestamp} />,
+      message: {
+        value: log.message,
+        display: <span className="whitespace-pre-wrap break-words">{log.message}</span>,
+      },
+      severity: {
+        value: log.severity,
+        display: getSeverityBadge[log.severity],
+      },
+      timestamp: {
+        value: log.timestamp,
+        display: <DateDisplay date={log.timestamp} />,
+      },
     },
   }));
 

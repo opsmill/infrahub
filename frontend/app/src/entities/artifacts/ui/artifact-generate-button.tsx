@@ -2,12 +2,11 @@ import { Button, type ButtonProps } from "@infrahub/ui";
 import { RefreshCwIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useGenerateArtifactMutation } from "@/entities/artifacts/ui/queries/generate-artifact.mutation";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
 type ArtifactGenerateButtonProps = {
   label?: string;
@@ -31,11 +30,7 @@ export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
         ...(artifactId ? { nodeIds: [artifactId] } : {}),
       },
       {
-        onSuccess: async () => {
-          await queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey.includes("is-task-running"),
-          });
-
+        onSuccess: () => {
           toast(
             <Alert
               message={artifactId ? "Artifact re-generated" : "Artifacts generated"}

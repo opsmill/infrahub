@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import ssl
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -14,9 +13,11 @@ from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
+    BeforeValidator,
     EmailStr,
     Field,
     PrivateAttr,
+    SecretStr,
     ValidationError,
     computed_field,
     field_validator,
@@ -28,7 +29,8 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
-from infrahub.tls.context_builder import TlsContextBuilder
+from infrahub.redis_connection import pool_size_from_url, validate_redis_url
+from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -48,11 +50,39 @@ def default_cors_allow_methods() -> list[str]:
 
 
 def default_cors_allow_headers() -> list[str]:
-    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with", "x-priority"]
 
 
 def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
+
+
+def _resolve_ca_bundle_setting(setting_name: str, value: str) -> str:
+    """Validate a CA bundle setting at startup and return the file every consumer can read.
+
+    The value is either the path of an existing PEM file or the PEM text itself. Text is written to a
+    file under the system temporary directory, so git, boto3, the Neo4j driver and redis-py, which only
+    take a path, can use it; once loaded, every CA setting therefore holds a path.
+
+    Raises:
+        ValueError: When the path does not exist or cannot be read, the content is not a PEM bundle, or
+            the text cannot be written to disk.
+
+    """
+    try:
+        return resolve_ca_bundle(value)
+    except ValueError as exc:
+        raise ValueError(f"{setting_name}: {exc}") from exc
+
+
+def _blank_setting_as_unset(value: Any) -> Any:
+    """Read an empty or whitespace-only setting as unset, since a blanked environment variable is one."""
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_setting_as_unset)]
 
 
 class EnterpriseFeatures(StrEnum):
@@ -127,42 +157,37 @@ class TraceTransportProtocol(StrEnum):
 
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
-    NATS = "nats"
 
     @property
     def driver_module_path(self) -> str:
         match self:
-            case BrokerDriver.NATS:
-                return "infrahub.services.adapters.message_bus.nats"
             case BrokerDriver.RabbitMQ:
                 return "infrahub.services.adapters.message_bus.rabbitmq"
 
     @property
     def driver_class_name(self) -> str:
         match self:
-            case BrokerDriver.NATS:
-                return "NATSMessageBus"
             case BrokerDriver.RabbitMQ:
                 return "RabbitMQMessageBus"
 
 
+class BrokerQueueType(StrEnum):
+    CLASSIC = "classic"
+    QUORUM = "quorum"
+
+
 class CacheDriver(StrEnum):
     Redis = "redis"
-    NATS = "nats"
 
     @property
     def driver_module_path(self) -> str:
         match self:
-            case CacheDriver.NATS:
-                return "infrahub.services.adapters.cache.nats"
             case CacheDriver.Redis:
                 return "infrahub.services.adapters.cache.redis"
 
     @property
     def driver_class_name(self) -> str:
         match self:
-            case CacheDriver.NATS:
-                return "NATSCache"
             case CacheDriver.Redis:
                 return "RedisCache"
 
@@ -215,6 +240,17 @@ class MainSettings(BaseSettings):
     delete_branch_after_merge: bool = Field(
         default=False,
         description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
+    selective_execution_after_merge: bool = Field(
+        default=True,
+        description="When enabled, only the generators and artifact definitions affected by a merge "
+        "are re-executed; when disabled, every generator and artifact definition is re-executed.",
+    )
+    merge_failure_grace_period_seconds: int = Field(
+        default=180,
+        ge=0,
+        description="How long a branch may stay in MERGING with a dead merge-lock holder before it is "
+        "flagged MERGE_FAILED.",
     )
 
     @field_validator("docs_index_path", mode="before")
@@ -284,6 +320,48 @@ class S3StorageSettings(BaseSettings):
         alias="AWS_S3_CUSTOM_DOMAIN",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        alias="AWS_CA_BUNDLE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_CA_FILE", "AWS_CA_BUNDLE"),
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of the S3 endpoint. Also accepted under the standard AWS name `AWS_CA_BUNDLE`. Falls back to "
+            "`tls.ca_bundle` when unset. Cannot be combined with `use_ssl=false`."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        alias="AWS_S3_TLS_INSECURE",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_TLS_INSECURE"),
+        description=(
+            "Skip TLS certificate validation of the S3 endpoint. Takes precedence over `tls_ca_file`, which may "
+            "stay configured. Cannot be combined with `use_ssl=false`. Test and development environments only; "
+            "never enable in production."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        """Reject TLS settings on a plaintext endpoint, where boto3 would silently ignore them.
+
+        Raises:
+            ValueError: If ``tls_ca_file`` or ``tls_insecure`` is set while ``use_ssl`` is disabled.
+
+        """
+        if self.tls_ca_file is not None and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_ca_file cannot be combined with storage.s3.use_ssl=false, because the CA bundle "
+                "would be silently ignored on a plaintext endpoint. Enable use_ssl or drop the CA setting."
+            )
+        if self.tls_insecure and not self.use_ssl:
+            raise ValueError(
+                "storage.s3.tls_insecure cannot be combined with storage.s3.use_ssl=false, because a plaintext "
+                "endpoint has no certificate to validate. Enable use_ssl or drop tls_insecure."
+            )
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("storage.s3.tls_ca_file", self.tls_ca_file)
+        return self
 
 
 class StorageSettings(BaseSettings):
@@ -292,6 +370,10 @@ class StorageSettings(BaseSettings):
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
+    verify_artifact_checksum: bool = Field(
+        default=True,
+        description="Refuse to serve an artifact file that does not match the checksum recorded for the artifact",
+    )
 
 
 class DatabaseSettings(BaseSettings):
@@ -312,7 +394,10 @@ class DatabaseSettings(BaseSettings):
     policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     query_size_limit: int = Field(
         default=5_000,
         ge=1,
@@ -341,6 +426,15 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    diff_save_concurrency: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Number of batches of diff nodes written at the same time when a diff is saved. Each batch is "
+            "its own transaction on its own connection, so a higher value uses more database cores and "
+            "connections from the pool."
+        ),
+    )
     path_traversal_query_timeout: float = Field(
         default=30,
         ge=1,
@@ -360,6 +454,38 @@ class DatabaseSettings(BaseSettings):
             "the query is aborted once it is exceeded."
         ),
     )
+    max_connection_pool_size: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of connections the driver keeps in its pool per remote address.",
+    )
+    max_connection_lifetime: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum age in seconds of a pooled connection before the driver discards it and dials a "
+            "fresh one. Unset by default, leaving the driver's own default (3600s) in charge. Set it "
+            "below the idle timeout of every firewall, NAT gateway or load balancer between Infrahub "
+            "and the database: such middleboxes silently evict idle flows, and a request sent on an "
+            "evicted connection hangs until TCP gives up instead of failing fast."
+        ),
+    )
+    liveness_check_timeout: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Idle time in seconds after which a pooled connection is ping-tested before reuse, so a "
+            "connection closed by the server (e.g. a database restart) is replaced transparently instead "
+            "of failing the request. Costs one extra round trip per reuse of a connection that was idle "
+            "this long. Unset by default, leaving the driver's own default in charge: no liveness check."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("database.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def address_members(self) -> list[str]:
@@ -425,7 +551,10 @@ class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
     username: str = "infrahub"
     password: str = "infrahub"
     address: str = "localhost"
@@ -439,29 +568,85 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
-    driver: BrokerDriver = BrokerDriver.RabbitMQ
+    driver: BrokerDriver = Field(
+        default=BrokerDriver.RabbitMQ,
+        description="Message bus implementation. RabbitMQ is the only supported value.",
+    )
+    queue_type: BrokerQueueType = Field(
+        default=BrokerQueueType.CLASSIC,
+        description=(
+            "RabbitMQ type of the durable queues. Use quorum on a RabbitMQ cluster to replicate these queues across "
+            "nodes; a classic queue is stored on a single node. RabbitMQ does not change the type of an existing "
+            "queue, so the durable queues must be deleted before this setting is changed."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("broker.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
         default_ports: dict[bool, int] = {True: 5671, False: 5672}
-        if self.driver == BrokerDriver.NATS:
-            return self.port or 4222
         return self.port or default_ports[self.tls_enabled]
 
 
+# tls_ca_file is absent because a TLS URL that names no CA bundle still verifies against it.
+CACHE_URL_SUPERSEDED_FIELDS = frozenset(
+    {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure"}
+)
+
+
 class CacheSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
+    # hide_input_in_errors keeps a connection URL (which may embed credentials) out of any
+    # ValidationError raised for this section.
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_", hide_input_in_errors=True)
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
-    driver: CacheDriver = CacheDriver.Redis
+    driver: CacheDriver = Field(
+        default=CacheDriver.Redis,
+        description="Cache implementation. Redis is the only supported value.",
+    )
     username: str = ""
     password: str = ""
+    url: Annotated[SecretStr | None, BeforeValidator(_blank_setting_as_unset)] = Field(
+        default=None,
+        description=(
+            "Full Redis connection URL, authoritative over the scalar connection settings when set. "
+            "Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the "
+            "Sentinel schemes accept a comma-separated list of members and a master group name, e.g. "
+            "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is enabled by the rediss:// "
+            "and rediss+sentinel:// schemes, not by a query parameter, and is then tuned with the redis-py "
+            "query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a rediss+sentinel:// "
+            "URL these ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or "
+            "?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. A TLS URL without "
+            "?ssl_ca_certs= verifies against cache.tls_ca_file, which the global tls.ca_bundle fills. "
+            "The Sentinel daemons "
+            "can be authenticated separately with the sentinel_username and sentinel_password query "
+            "parameters. See the high availability guide for details."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
-    tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
+    )
+    max_connections: int = Field(
+        default=1000,
+        ge=1,
+        description=(
+            "Maximum number of connections in each Redis connection pool that an Infrahub process opens for the "
+            "cache and the locks; with a Sentinel URL, the pools to the Sentinel daemons get the same size. A "
+            "command that finds every connection of its pool in use fails with MaxConnectionsError. A "
+            "max_connections query parameter in the cache URL takes precedence."
+        ),
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -472,17 +657,56 @@ class CacheSettings(BaseSettings):
         ge=1,
         description=(
             "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
-            "the lock auto-expires after this period so Infrahub can recover on its own. "
-            "Only enforced with the Redis cache driver."
+            "the lock auto-expires after this period so Infrahub can recover on its own."
         ),
     )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("cache.tls_ca_file", self.tls_ca_file)
+        return self
 
     @property
     def service_port(self) -> int:
         default_ports: int = 6379
-        if self.driver == CacheDriver.NATS:
-            return self.port or 4222
         return self.port or default_ports
+
+    @model_validator(mode="after")
+    def validate_url(self) -> Self:
+        url = self.url
+        if url is None:
+            return self
+
+        validate_redis_url(url.get_secret_value())
+
+        # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
+        fields = type(self).model_fields
+        superseded = {
+            name
+            for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
+            if getattr(self, name) != fields[name].get_default()
+        }
+        # The pool size is superseded only when the URL sets one, so the check reads the pool that redis-py builds.
+        if (
+            "max_connections" in self.model_fields_set
+            and self.max_connections != fields["max_connections"].get_default()
+            and pool_size_from_url(url.get_secret_value(), max_connections=self.max_connections) != self.max_connections
+        ):
+            superseded.add("max_connections")
+        if superseded:
+            log.warning(
+                "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
+                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in sorted(superseded)],
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_credentials(self) -> Self:
+        # A URL carries its own credentials, so only the scalar settings are checked.
+        if self.url is None and self.username and not self.password:
+            raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
+        return self
 
 
 class WorkflowSettings(BaseSettings):
@@ -533,6 +757,135 @@ class ApiSettings(BaseSettings):
     cors_allow_credentials: bool = Field(
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
     )
+    backpressure_enabled: bool = Field(
+        default=True,
+        description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
+    )
+    backpressure_codel_target_seconds: float = Field(
+        default=0.005,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel target sojourn in seconds before shedding is considered.",
+    )
+    backpressure_codel_interval_seconds: float = Field(
+        default=0.1,
+        gt=0,
+        allow_inf_nan=False,
+        description="CoDel interval in seconds the sojourn must stay above target before dropping.",
+    )
+    backpressure_high_target_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Multiplier applied to the CoDel target for the high-priority class.",
+    )
+    backpressure_backstop_max_waiters: int = Field(
+        default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
+    )
+    backpressure_retry_after_level1_seconds: int = Field(
+        default=1, ge=0, description="Retry-After (seconds) advised for a shed request at load level 1 (mild)."
+    )
+    backpressure_retry_after_level2_seconds: int = Field(
+        default=5, ge=0, description="Retry-After (seconds) advised for a shed request at load level 2 (moderate)."
+    )
+    backpressure_retry_after_level3_seconds: int = Field(
+        default=10, ge=0, description="Retry-After (seconds) advised for a shed request at load level 3 (severe)."
+    )
+    backpressure_retry_after_max_seconds: int = Field(
+        default=30,
+        ge=0,
+        description="Upper bound on the advised Retry-After after sustained-load escalation is applied.",
+    )
+    backpressure_significant_load_stress_ratio: float = Field(
+        default=20.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Stress ratio at or above which the server is counted as under significant sustained load.",
+    )
+    backpressure_sustained_load_warn_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated.",
+    )
+    backpressure_sustained_load_high_seconds: float = Field(
+        default=300.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Seconds of continuous significant load after which the advised Retry-After is escalated further.",
+    )
+    backpressure_max_concurrency_factor: float = Field(
+        default=0.5,
+        gt=0,
+        allow_inf_nan=False,
+        description="Scales the derived maximum admission concurrency.",
+    )
+    backpressure_stress_window_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        allow_inf_nan=False,
+        description="Rolling window, in seconds, over which the database-stress signal is measured.",
+    )
+    backpressure_stress_min_samples: int = Field(
+        default=5,
+        ge=1,
+        description="Reference-query samples required in the window before the stress signal gates shedding.",
+    )
+    backpressure_shed_low_stress_ratio: float = Field(
+        default=10.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_medium_stress_ratio: float = Field(
+        default=25.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_high_stress_ratio: float = Field(
+        default=100.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Database-stress ratio at or above which high-priority requests become eligible for shedding.",
+    )
+    backpressure_backstop_low_multiplier: float = Field(
+        default=0.5,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the low-priority class.",
+    )
+    backpressure_backstop_high_multiplier: float = Field(
+        default=4.0,
+        ge=1,
+        allow_inf_nan=False,
+        description="Scales the base backstop waiter cap for the high-priority class.",
+    )
+
+    @model_validator(mode="after")
+    def validate_shed_stress_ratios_ordered_by_priority(self) -> Self:
+        """Require each class to start shedding no earlier than the one below it.
+
+        A class sheds once the database-stress ratio reaches its own trigger, so the whole point of
+        the feature — interactive traffic surviving longest — inverts silently if a higher-priority
+        class is given a lower trigger.
+
+        Raises:
+            ValueError: If the triggers are not ordered from low to high priority.
+
+        """
+        if not (
+            self.backpressure_shed_low_stress_ratio
+            <= self.backpressure_shed_medium_stress_ratio
+            <= self.backpressure_shed_high_stress_ratio
+        ):
+            raise ValueError(
+                "'backpressure_shed_low_stress_ratio' must not exceed "
+                "'backpressure_shed_medium_stress_ratio', which must not exceed "
+                "'backpressure_shed_high_stress_ratio', so lower-priority traffic sheds first"
+            )
+        return self
 
 
 class GitSettings(BaseSettings):
@@ -584,6 +937,28 @@ class GitSettings(BaseSettings):
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
     )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to "
+            "false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. "
+            "Test and development environments only; never enable in production."
+        ),
+    )
+    tls_ca_file: CaBundleSetting = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate "
+            "of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to "
+            "`tls.ca_bundle` when unset."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if self.tls_ca_file is not None:
+            self.tls_ca_file = _resolve_ca_bundle_setting("git.tls_ca_file", self.tls_ca_file)
+        return self
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -597,6 +972,33 @@ class GitSettings(BaseSettings):
         return self
 
 
+class TLSSettings(BaseSettings):
+    """Global TLS defaults shared by every component that opens outbound TLS connections."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TLS_")
+    ca_bundle: CaBundleSetting = Field(
+        default=None,
+        description=(
+            "File path to a CA cert or bundle in PEM format, or the PEM text itself, trusted by every component "
+            "that opens outbound TLS connections: git, the HTTP client (webhooks, SSO, telemetry, task manager), the "
+            "database, the message broker, the cache, S3 object storage, the trace exporter, log forwarding and "
+            "LDAP. PEM text is written to a file under the system temporary directory at startup, so components "
+            "that only read a file can use it. A component with its "
+            "own `tls_ca_file` or `tls_ca_bundle` keeps that value, and a component with `tls_insecure` enabled or "
+            "a plaintext connection (S3 with `use_ssl` disabled, a trace exporter without TLS) is left alone. Git "
+            "and Redis trust the bundle in addition to the system trust store. Every other component trusts "
+            "only the bundle, so include the public root certificates in the file when one of them must reach "
+            "public services. When unset, each component uses the system trust store."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_ca_bundle(self) -> Self:
+        if self.ca_bundle is not None:
+            self.ca_bundle = _resolve_ca_bundle_setting("tls.ca_bundle", self.ca_bundle)
+        return self
+
+
 class HTTPSettings(BaseSettings):
     """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
@@ -604,24 +1006,21 @@ class HTTPSettings(BaseSettings):
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
     tls_insecure: bool = Field(
         default=False,
-        description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
+        description=(
+            "Indicates if Infrahub will validate server certificates or if the validation is ignored. Takes "
+            "precedence over `tls_ca_bundle`, which may stay configured."
+        ),
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
     )
 
     @model_validator(mode="after")
-    def set_tls_context(self) -> Self:
-        try:
-            # Validate that the context can be created, we want to raise this error during application start
-            # instead of running into issues later when we first try to use the tls context.
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
-
+    def validate_tls_configuration(self) -> Self:
+        # Resolve at startup so an unusable bundle fails the process instead of the first outbound request.
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("http.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
 
@@ -1050,7 +1449,29 @@ class TraceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_TRACE_")
     enable: bool = Field(default=False)
     insecure: bool = Field(
-        default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
+        default=True,
+        description=(
+            "Connect to the OTLP endpoint without TLS. Applies to the grpc protocol only; for "
+            "http/protobuf the endpoint URL scheme decides. Implied off when `tls_ca_bundle` is set."
+        ),
+    )
+    tls_ca_bundle: CaBundleSetting = Field(
+        default=None,
+        description=(
+            "Path to a PEM-encoded certificate authority bundle, or the PEM text itself, used to verify the OTLP "
+            "collector's TLS certificate, for a collector using a private or self-signed "
+            "certificate. Supported by both exporter protocols; with http/protobuf the "
+            "endpoint must use https://. Checked at startup."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation when exporting traces. Supported by the http/protobuf "
+            "protocol only, and only with an https:// endpoint; the grpc client cannot skip "
+            "validation, use `tls_ca_bundle` there. Test and development environments only; "
+            "never enable in production."
+        ),
     )
     exporter_type: TraceExporterType = Field(
         default=TraceExporterType.CONSOLE, description="Type of exporter to be used for tracing"
@@ -1059,6 +1480,52 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+
+    @property
+    def uses_tls(self) -> bool:
+        """Whether the OTLP exporter connection is encrypted, as decided by the protocol-specific setting.
+
+        With grpc the ``insecure`` flag decides, with http/protobuf the endpoint URL scheme does. A CA bundle
+        only makes sense on an encrypted connection: on grpc it would otherwise switch a plaintext exporter to TLS.
+        """
+        if self.exporter_type is not TraceExporterType.OTLP:
+            return False
+        if self.exporter_protocol is TraceTransportProtocol.GRPC:
+            return not self.insecure
+        return bool(self.exporter_endpoint and self.exporter_endpoint.startswith("https://"))
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        """Check the TLS settings are mutually consistent and that the CA bundle loads.
+
+        Raises:
+            ValueError: If the TLS settings conflict or the CA bundle cannot be loaded.
+
+        """
+        if self.tls_insecure and self.tls_ca_bundle is not None:
+            raise ValueError("trace.tls_insecure cannot be combined with trace.tls_ca_bundle; pick one.")
+        if self.tls_insecure and self.exporter_protocol is TraceTransportProtocol.GRPC:
+            raise ValueError(
+                "trace.tls_insecure is not supported with the grpc exporter protocol, because the gRPC client "
+                "cannot skip certificate validation. Set trace.tls_ca_bundle to the collector's CA instead, "
+                "or use the http/protobuf protocol."
+            )
+        tls_setting = "trace.tls_ca_bundle" if self.tls_ca_bundle is not None else "trace.tls_insecure"
+        if (
+            (self.tls_ca_bundle is not None or self.tls_insecure)
+            and self.exporter_type is TraceExporterType.OTLP
+            and self.exporter_protocol is TraceTransportProtocol.HTTP_PROTOBUF
+            and self.exporter_endpoint
+            and not self.exporter_endpoint.startswith("https://")
+        ):
+            raise ValueError(
+                f"{tls_setting} cannot be combined with a trace.exporter_endpoint that is not https://, because "
+                "the endpoint URL scheme decides whether the http/protobuf exporter uses TLS, and the setting "
+                f"would be silently ignored on a plaintext connection. Use an https:// endpoint, or drop {tls_setting}."
+            )
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("trace.tls_ca_bundle", self.tls_ca_bundle)
+        return self
 
 
 class SyslogProtocol(StrEnum):
@@ -1095,8 +1562,17 @@ class LogForwardingDestination(BaseModel):
         default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
     )
     tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
-    tls_ca_bundle: str | None = Field(
-        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    tls_ca_bundle: CaBundleSetting = Field(
+        default=None,
+        description="File path to a CA bundle in PEM format, or the PEM text itself, to validate the syslog server certificate.",
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation of the syslog server. Requires `tls_enabled`. Takes precedence over "
+            "`tls_ca_bundle`, which may stay configured. Test and development environments only; never enable in "
+            "production."
+        ),
     )
     queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
     max_reconnect_interval: int = Field(
@@ -1125,6 +1601,15 @@ class LogForwardingDestination(BaseModel):
     def validate_tls_protocol(self) -> Self:
         if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
             raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        if self.tls_insecure and not self.tls_enabled:
+            raise ValueError(
+                f"log_forwarding.destinations[{self.name}].tls_insecure requires tls_enabled, because a plaintext "
+                "destination has no certificate to validate. Enable tls_enabled or drop tls_insecure."
+            )
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting(
+                f"log_forwarding.destinations[{self.name}].tls_ca_bundle", self.tls_ca_bundle
+            )
         return self
 
 
@@ -1430,7 +1915,7 @@ class LDAPSettings(BaseSettings):
         default=False,
         description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
     )
-    tls_ca_bundle: str | None = Field(
+    tls_ca_bundle: CaBundleSetting = Field(
         default=None,
         description=(
             "PEM-encoded certificate authority bundle used to verify the LDAP "
@@ -1505,12 +1990,8 @@ class LDAPSettings(BaseSettings):
             return self
         if self.tls_insecure and self.tls_ca_bundle is not None:
             raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
-        try:
-            TlsContextBuilder.build(
-                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
-            )
-        except ssl.SSLError as exc:
-            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        if self.tls_ca_bundle is not None:
+            self.tls_ca_bundle = _resolve_ca_bundle_setting("ldap.tls_ca_bundle", self.tls_ca_bundle)
         return self
 
     @model_validator(mode="after")
@@ -1584,6 +2065,10 @@ class ConfiguredSettings:
     @property
     def main(self) -> MainSettings:
         return self.active_settings.main
+
+    @property
+    def tls(self) -> TLSSettings:
+        return self.active_settings.tls
 
     @property
     def api(self) -> ApiSettings:
@@ -1666,14 +2151,20 @@ class ConfiguredSettings:
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
+    # hide_input_in_errors keeps provided secrets (e.g. a cache connection URL) out of the
+    # input echoed by a ValidationError raised while loading any nested section.
+    model_config = SettingsConfigDict(hide_input_in_errors=True)
+
     main: MainSettings = MainSettings()
+    tls: TLSSettings = TLSSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
     dev: DevelopmentSettings = DevelopmentSettings()
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
-    cache: CacheSettings = CacheSettings()
+    # A factory so the URL is validated, and a superseded scalar reported, when the settings load rather than on import.
+    cache: CacheSettings = Field(default_factory=CacheSettings)
     workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
@@ -1691,6 +2182,43 @@ class Settings(BaseSettings):
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
         if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
             raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
+
+    @model_validator(mode="after")
+    def apply_global_tls_ca_bundle(self) -> Self:
+        """Resolve the CA bundle each component ends up trusting.
+
+        A component-specific CA setting always wins. The global ``tls.ca_bundle`` only fills the components
+        that left theirs unset, still verify certificates and connect over TLS (S3 with ``use_ssl`` disabled
+        and a plaintext trace exporter are left alone), so every adapter keeps reading its own setting and
+        the resolved values are what shows up when inspecting the settings.
+        """
+        ca_bundle = self.tls.ca_bundle
+        if ca_bundle is None:
+            return self
+
+        components: list[tuple[BaseModel, str]] = [
+            (self.git, "tls_ca_file"),
+            (self.http, "tls_ca_bundle"),
+            (self.database, "tls_ca_file"),
+            (self.broker, "tls_ca_file"),
+            (self.cache, "tls_ca_file"),
+            (self.ldap, "tls_ca_bundle"),
+            *((destination, "tls_ca_bundle") for destination in self.log_forwarding.destinations),
+        ]
+        if self.storage.s3.use_ssl:
+            components.append((self.storage.s3, "tls_ca_file"))
+        if self.trace.uses_tls:
+            components.append((self.trace, "tls_ca_bundle"))
+
+        for component, field_name in components:
+            if getattr(component, field_name) is not None:
+                continue
+            # A cache URL supersedes cache.tls_insecure, so only the URL's own ssl_cert_reqs turns verification off.
+            superseded = component is self.cache and self.cache.url is not None
+            if getattr(component, "tls_insecure", False) and not superseded:
+                continue
+            setattr(component, field_name, ca_bundle)
         return self
 
     @property

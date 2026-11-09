@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
+from rich import print as rprint
 from typing_extensions import Self
 
 from infrahub.core.constants import (
@@ -156,6 +157,11 @@ class SchemaUpdateConstraintInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     constraint_name: str
+    node_uuids: list[str] | None = None
+    """When set, restrict validation to these nodes; None means validate the full population.
+
+    node_uuids=None indicates that all possible matching objects must be checked
+    """
 
     @property
     def routing_key(self) -> str:
@@ -435,8 +441,6 @@ class HashableModel(BaseModel):
                 md5hash.update(item)
 
         if display_values:
-            from rich import print as rprint
-
             rprint(tuple(values))
 
         return md5hash.hexdigest()

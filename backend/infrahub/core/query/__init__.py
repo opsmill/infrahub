@@ -13,9 +13,12 @@ from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
+from rich import print as rprint
+from rich.console import Console
+from rich.table import Table
 
 from infrahub import config
-from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel, RelationshipDirection
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -91,16 +94,16 @@ class QueryElement:
         if not self.params:
             return ""
 
-        params_list = []
-        for key, value in self.params.items():
-            if isinstance(value, str) and not value.startswith("$"):
-                value_str = f'"{value}"'
-            else:
-                value_str = value
-
-            params_list.append(f"{key}: {value_str}")
+        params_list = [f"{key}: {self.render_param_value(value)}" for key, value in self.params.items()]
 
         return " { " + ",".join(params_list) + " }"
+
+    @staticmethod
+    def render_param_value(value: Any) -> str:
+        """Render a property value as Cypher: a string not starting with `$` is a literal, anything else is as is."""
+        if isinstance(value, str) and not value.startswith("$"):
+            return f'"{value}"'
+        return str(value)
 
 
 @dataclass
@@ -136,6 +139,36 @@ class QueryRel(QueryElement):
             return "-%s->" % main_str
 
         return "-%s-" % main_str
+
+
+@dataclass
+class QueryArrow:
+    start: str
+    end: str
+
+
+@dataclass
+class QueryArrowInbound(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrowOutbound(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+@dataclass
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+@dataclass
+class QueryArrows:
+    left: QueryArrow
+    right: QueryArrow
 
 
 class QueryType(Enum):
@@ -359,6 +392,18 @@ class QueryStat:
         return cls(**data)
 
 
+PAGINATION_LIMIT_PARAM = "query_limit"
+PAGINATION_OFFSET_PARAM = "query_offset"
+
+
+@dataclass(frozen=True)
+class RenderedQuery:
+    """A query's text together with every parameter that text refers to."""
+
+    text: str
+    params: dict[str, Any]
+
+
 class Query:
     name: str = "base-query"
     type: QueryType
@@ -444,6 +489,20 @@ class Query:
         return {}
 
     @staticmethod
+    def get_query_arrows(direction: RelationshipDirection) -> QueryArrows:
+        """Return the 2 arrows of the node→Relationship→peer path for a relationship direction.
+
+        The edges around a Relationship vertex are created in the direction of the relationship, so
+        a query must traverse them the same way to tell the two ends of the path apart.
+        """
+        if direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowOutbound())
+        if direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInbound(), right=QueryArrowInbound())
+
+        return QueryArrows(left=QueryArrowOutbound(), right=QueryArrowInbound())
+
+    @staticmethod
     @lru_cache(maxsize=1024)
     def _split_query_lines(query: str) -> list[str]:
         return [line.strip() for line in query.split("\n") if line.strip()]
@@ -467,17 +526,11 @@ class Query:
         if with_clause:
             self.add_to_query(f"WITH {with_clause}")
 
-    def get_query(
-        self,
-        var: bool = False,
-        inline: bool = False,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> str:
-        # Make a local copy of the _query_lines
-        limit = limit or self.limit
-        offset = offset or self.offset
+    def render(self, limit: int | None = None, offset: int | None = None) -> RenderedQuery:
+        limit = self.limit if limit is None else limit
+        offset = self.offset if offset is None else offset
         tmp_query_lines = self.query_lines.copy()
+        params = dict(self.params)
 
         if self.insert_return:
             tmp_query_lines.append("RETURN " + ",".join(self.return_labels))
@@ -485,20 +538,34 @@ class Query:
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset and self.insert_limit:
-            tmp_query_lines.append(f"SKIP {offset}")
+        # Bound as parameters rather than literals, a zero offset included, so every page of a
+        # paginated query shares one text, and with it one cached plan. A zero limit is no bound,
+        # the same reading `execute()` gives it when choosing how to run.
+        if offset is not None and self.insert_limit:
+            params[PAGINATION_OFFSET_PARAM] = offset
+            tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
 
         if limit and self.insert_limit:
-            tmp_query_lines.append(f"LIMIT {limit}")
+            params[PAGINATION_LIMIT_PARAM] = limit
+            tmp_query_lines.append(f"LIMIT ${PAGINATION_LIMIT_PARAM}")
 
-        query_str = "\n".join(tmp_query_lines)
+        return RenderedQuery(text="\n".join(tmp_query_lines), params=params)
+
+    def get_query(
+        self,
+        var: bool = False,
+        inline: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> str:
+        rendered = self.render(limit=limit, offset=offset)
 
         if var and not inline:
-            return "\n" + self.get_params_for_shell() + "\n\n" + query_str
+            return "\n" + self.get_params_for_shell(params=rendered.params) + "\n\n" + rendered.text
         if var and inline:
-            return self.insert_variables_in_query(query=query_str, variables=self.params)
+            return self.insert_variables_in_query(query=rendered.text, variables=rendered.params)
 
-        return query_str
+        return rendered.text
 
     def get_count_query(self, var: bool = False) -> str:
         tmp_query_lines = self.query_lines.copy()
@@ -537,28 +604,30 @@ class Query:
 
         return query
 
-    def get_params_for_shell(self) -> str:
+    def get_params_for_shell(self, params: dict[str, Any] | None = None) -> str:
+        params = self.params if params is None else params
         if config.SETTINGS.database.db_type.value == "memgraph":
-            return ujson.dumps(self.params)
+            return ujson.dumps(params)
 
-        return self._get_params_for_neo4j_shell()
+        return self._get_params_for_neo4j_shell(params=params)
 
-    def _get_params_for_neo4j_shell(self) -> str:
+    @staticmethod
+    def _get_params_for_neo4j_shell(params: dict[str, Any]) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
 
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-        params = []
+        rendered = []
 
-        for key, value in self.params.items():
+        for key, value in params.items():
             if isinstance(value, int | list):
-                params.append(f"{key}: {str(value)}")
+                rendered.append(f"{key}: {str(value)}")
             else:
-                params.append(f'{key}: "{value}"')
+                rendered.append(f'{key}: "{value}"')
 
-        return ":params { " + ", ".join(params) + " }"
+        return ":params { " + ", ".join(rendered) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
     async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
@@ -568,13 +637,13 @@ class Query:
         if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 
-        query_str = self.get_query()
+        rendered = self.render()
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str,
-                    params=self.params,
+                    query=rendered.text,
+                    params=rendered.params,
                     name=self.name,
                     context=self.get_context(),
                     type=self.type,
@@ -585,8 +654,8 @@ class Query:
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str,
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
@@ -598,7 +667,7 @@ class Query:
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query=query_str, params=self.params)
+            raise QueryError(query=rendered.text, params=rendered.params)
 
         clean_labels = cleanup_return_labels(self.return_labels)
         self.results = [QueryResult(data=result, labels=clean_labels) for result in results]
@@ -612,9 +681,10 @@ class Query:
         results: list[Record] = []
         remaining = True
         while remaining:
+            rendered = self.render(limit=query_limit, offset=offset)
             offset_results, metadata = await db.execute_query_with_metadata(
-                query=self.get_query(limit=query_limit, offset=offset),
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
@@ -719,9 +789,6 @@ class Query:
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        from rich.console import Console
-        from rich.table import Table
-
         console = Console()
 
         table = Table(title=f"Query {self.name} : params: {self.params}")
@@ -736,8 +803,6 @@ class Query:
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        from rich import print as rprint
-
         print("-------------------------------------------------------")
         print(self.get_query(var=include_var))
         if self.params:

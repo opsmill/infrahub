@@ -1,6 +1,6 @@
 import Accordion from "@/shared/components/display/accordion";
 
-import type { FileDiff } from "@/entities/diff/domain/get-files-diff";
+import type { FileDiff } from "@/entities/diff/domain/use-cases/get-files-diff";
 import { FileContentDiff } from "@/entities/diff/ui/file-diff/file-content-diff";
 
 interface FileRepoDiffProps {

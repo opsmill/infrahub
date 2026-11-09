@@ -8,7 +8,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 from tests.helpers.schema.device import LAG_INTERFACE
@@ -196,5 +196,4 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         assert {n.device.id for n in nodes} == {device1.id}
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

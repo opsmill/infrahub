@@ -8,7 +8,7 @@ import type {
   DeleteObjectsFromApiParams,
   ObjectParam,
 } from "@/entities/nodes/object/api/delete-objects-from-api";
-import { deleteObjects } from "@/entities/nodes/object/domain/delete-objects";
+import { deleteObjects } from "@/entities/nodes/object/domain/use-cases/delete-objects";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 interface DeleteObjectsProps {

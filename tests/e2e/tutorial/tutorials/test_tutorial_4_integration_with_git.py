@@ -35,7 +35,7 @@ class TestTutorial4GitIntegration:
         await admin_page.get_by_test_id("branch-selector-trigger").click()
         await admin_page.get_by_test_id("create-branch-button").click()
         await admin_page.get_by_label("New branch name").fill("update-ethernet1")
-        await admin_page.get_by_label("Sync with Git").click()
+        await admin_page.get_by_text("Sync with Git").click()
         await save_screenshot_for_docs(admin_page, "tutorial_6_branch_creation")
         await admin_page.get_by_role("button", name="Create").click()
         await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text("update-ethernet1")

@@ -7,7 +7,7 @@ import {
   GroupPanelHeader,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
 import { SelectedGroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-group-item";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface SelectedGroupsPanelProps {
   selectedGroups: RelationshipNode[];

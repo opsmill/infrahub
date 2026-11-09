@@ -13,17 +13,17 @@ import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-
 import {
   type GetRelationshipsParams,
   getRelationships,
-} from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 
 export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof PaginationParams>;
 
 export function getRelationshipsInfiniteQueryOptions(
-  { peer, search, branchName, atDate, filterQuery }: GetRelationshipsQueryParams,
+  { peer, search, branchName, atDate, filterQuery, additionalFields }: GetRelationshipsQueryParams,
   config?: OptimizedPageSizeConfig
 ) {
   return infiniteQueryOptionsWithOptimizedPageSize(
     {
-      queryKey: [branchName, atDate, "relationships", peer, search, filterQuery],
+      queryKey: [branchName, atDate, "relationships", peer, search, filterQuery, additionalFields],
       queryFn: ({ pageParam }) => {
         return getRelationships({
           peer,
@@ -31,6 +31,7 @@ export function getRelationshipsInfiniteQueryOptions(
           limit: pageParam.limit,
           search,
           filterQuery,
+          additionalFields,
           branchName,
           atDate,
         });
@@ -48,6 +49,7 @@ export function useRelationships(
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   const isEnabled = typeof config?.enabled === "boolean" ? config.enabled : undefined;
+  const search = params.search?.trim();
 
   const {
     data: totalCount,
@@ -56,7 +58,7 @@ export function useRelationships(
   } = useObjectsCount(
     {
       objectKind: params.peer,
-      filters: params.search ? [{ name: "any__value", value: params.search }] : undefined,
+      filters: search ? [{ name: "any__value", value: search }] : undefined,
     },
     { enabled: isEnabled }
   );
@@ -65,6 +67,7 @@ export function useRelationships(
     ...getRelationshipsInfiniteQueryOptions(
       {
         ...params,
+        search,
         branchName: currentBranch.name,
         atDate: timeMachineDate,
       },

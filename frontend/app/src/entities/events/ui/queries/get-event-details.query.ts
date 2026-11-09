@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   type GetEventDetailsParams,
   getEventDetails,
-} from "@/entities/events/domain/get-event-details";
+} from "@/entities/events/domain/use-cases/get-event-details";
 
 export function getEventDetailsQueryOptions(params: GetEventDetailsParams) {
   return queryOptions({

@@ -1,4 +1,4 @@
-import { CheckboxCard } from "@infrahub/ui/checkbox-card";
+import { CheckboxCard } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";

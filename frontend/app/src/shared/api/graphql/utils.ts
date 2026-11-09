@@ -1,8 +1,10 @@
-import type { Filter } from "@/shared/hooks/useFilters";
+import { EnumType } from "json-to-graphql-query";
 
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
@@ -162,6 +164,14 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
     },
     {} as Record<string, string | number | boolean | string[]>
   );
+};
+
+export const addOrderByToRequest = (sort: Sort[]) => {
+  return {
+    order: {
+      by: sort.map(({ field, direction }) => ({ field, direction: new EnumType(direction) })),
+    },
+  };
 };
 
 export const dropIncludeAvailableWhenFalse = (filters?: Filter[]) =>

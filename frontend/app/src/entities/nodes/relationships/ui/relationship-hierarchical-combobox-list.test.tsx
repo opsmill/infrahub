@@ -1,17 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../tests/components/render";
 import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("RelationshipHierarchicalComboboxList", () => {
   const hierarchyGenericSchema = generateGenericSchema({ hierarchical: true });
@@ -77,10 +77,6 @@ describe("RelationshipHierarchicalComboboxList", () => {
     store.set(genericSchemasAtom, [hierarchyGenericSchema]);
     store.set(nodeSchemasAtom, [rootSchema, parentSchema, childSchema]);
     vi.mocked(getRelationships).mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   it("displays message when schema is not hierarchical", async () => {

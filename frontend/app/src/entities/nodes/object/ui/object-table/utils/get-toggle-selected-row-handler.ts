@@ -1,7 +1,7 @@
 import type { CellContext } from "@tanstack/react-table";
 import type { PressEvent } from "react-aria-components";
 
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 const lastSelectedIndexByTable = new WeakMap<object, number>();
 

@@ -2,10 +2,11 @@ import { useState } from "react";
 import DateTimePicker from "react-datepicker";
 
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
-import type { MetadataDateFilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import type { MetadataDateFilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import {
   FILTER_CONDITION,
   type FilterCondition,

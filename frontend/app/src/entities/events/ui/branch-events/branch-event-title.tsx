@@ -8,7 +8,7 @@ import type {
 } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {

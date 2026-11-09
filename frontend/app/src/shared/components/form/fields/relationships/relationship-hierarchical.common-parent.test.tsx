@@ -30,7 +30,6 @@ describe("RelationshipHierarchicalField - common_parent", () => {
   afterEach(() => {
     lastFilterQuery = undefined;
     lastHideExplore = undefined;
-    vi.clearAllMocks();
   });
 
   test("filters by the sibling common_parent value", async () => {

@@ -65,8 +65,8 @@ class TestAccountCrud:
         await expect(get_data_table_row(admin_page, "Account Test 2")).to_be_visible()
 
         # bulk edit both accounts
-        await get_data_table_row(admin_page, "Account Test").get_by_test_id("identifier-checkbox-cell").click()
-        await get_data_table_row(admin_page, "Account Test 2").get_by_test_id("identifier-checkbox-cell").click()
+        await get_data_table_row(admin_page, "Account Test").locator("label").click()
+        await get_data_table_row(admin_page, "Account Test 2").locator("label").click()
         await admin_page.get_by_role("button", name="Edit").click()
         await admin_page.get_by_role("textbox", name="Description").fill("test bulk edit")
         await admin_page.get_by_role("button", name="Save").click()

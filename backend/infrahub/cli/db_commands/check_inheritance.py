@@ -252,20 +252,15 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> bool:
             migration_query = await NodeDuplicateQuery.init(
                 db=db,
                 branch=branches_by_name[branch_name],
-                previous_node=SchemaNodeInfo(
-                    name=node_schema.name,
-                    namespace=node_schema.namespace,
-                    branch_support=node_schema.branch.value,
-                    labels=list(kind_label_count.labels) + [kind_label_count.kind, InfrahubKind.NODE],
-                    kind=kind_label_count.kind,
-                ),
-                new_node=SchemaNodeInfo(
-                    name=node_schema.name,
-                    namespace=node_schema.namespace,
-                    branch_support=node_schema.branch.value,
-                    labels=list(node_schema.inherit_from) + [kind_label_count.kind, InfrahubKind.NODE],
-                    kind=kind_label_count.kind,
-                ),
+                kind_updates_map={
+                    kind_label_count.kind: SchemaNodeInfo(
+                        name=node_schema.name,
+                        namespace=node_schema.namespace,
+                        branch_support=node_schema.branch.value,
+                        labels=list(node_schema.inherit_from) + [kind_label_count.kind, InfrahubKind.NODE],
+                        kind=kind_label_count.kind,
+                    )
+                },
             )
             await migration_query.execute(db=db)
             rprint("done")

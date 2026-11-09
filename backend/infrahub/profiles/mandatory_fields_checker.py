@@ -96,7 +96,7 @@ class ProfilesMandatoryFieldGetter:
             branch=self.branch,
             profile_ids=profile_ids,
             attr_names=mandatory_attr_names,
-            relationship_filters=rel_filters,
+            include_relationships=rel_filters,
         )
         await query.execute(db=self.db)
         profile_data_list = query.get_profile_data()

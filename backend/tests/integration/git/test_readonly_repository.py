@@ -195,9 +195,6 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         context: InfrahubContext,
         service: InfrahubServices,
     ) -> None:
-        from infrahub.core import registry
-        from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
-
         await client.branch.create(branch_name="branch", sync_with_git=False)
         branch = await registry.get_branch(db=db, branch="branch")
 

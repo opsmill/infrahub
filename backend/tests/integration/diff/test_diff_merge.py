@@ -14,10 +14,10 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
 from tests.adapters.message_bus import BusSimulator
 from tests.constants import TestKind
-from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 

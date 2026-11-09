@@ -1,17 +1,18 @@
+import { Select, SelectItem, SelectList, SelectTrigger } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
-import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { DecisionOption } from "@/entities/role-manager/domain/use-cases/get-decision-options";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export interface DecisionFilterFormProps {
   attributeSchema: AttributeSchema;

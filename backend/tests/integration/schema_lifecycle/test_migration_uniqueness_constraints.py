@@ -13,7 +13,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 from tests.helpers.db_validation import assert_attribute_absent, assert_attribute_path_status
 from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
@@ -144,8 +144,7 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
         assert not hasattr(profiles[0], "nbr_seats")
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
         await assert_no_virtual_schema_relationships_in_db(db=db)
 
 
@@ -286,6 +285,5 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
         assert profile.nbr_seats.value == 87
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)
         await assert_no_virtual_schema_relationships_in_db(db=db)

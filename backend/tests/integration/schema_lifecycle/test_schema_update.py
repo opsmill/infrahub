@@ -4,7 +4,7 @@ import pytest
 from infrahub_sdk import InfrahubClient
 
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 
 from .shared import (
     TestSchemaLifecycleBase,
@@ -66,5 +66,4 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert intf1.id
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

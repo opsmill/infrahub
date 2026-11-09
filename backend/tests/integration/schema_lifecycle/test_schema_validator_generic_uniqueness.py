@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
+from infrahub.database.validation import verify_graph
 
 from ..shared import load_schema
 from .shared import (
@@ -449,5 +449,4 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                 assert expected_error_msg in exc.value.errors[0]["message"]
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
-        await verify_no_duplicate_relationships(db=db)
-        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_graph(db=db)

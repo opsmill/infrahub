@@ -8,6 +8,7 @@ from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.workers.dependencies import get_installation_type
 from infrahub.workflows import catalogue
 from infrahub.workflows.catalogue import get_workflows
+from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -23,6 +24,21 @@ def test_workflow_definition_matches(workflow: WorkflowDefinition) -> None:
     flow = workflow.load_function()
     assert hasattr(flow, "name")
     assert workflow.name == flow.name
+
+
+@pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in get_workflows()])
+def test_workflow_definition_default_priority(workflow: WorkflowDefinition) -> None:
+    """Validate that each workflow carries a valid default priority."""
+    assert isinstance(workflow.default_priority, WorkflowPriority)
+
+
+@pytest.mark.parametrize(
+    "workflow",
+    [pytest.param(workflow, id=workflow.name) for workflow in get_workflows() if workflow.cron == "* * * * *"],
+)
+def test_every_minute_workflow_does_not_persist_result(workflow: WorkflowDefinition) -> None:
+    """Validate that a workflow scheduled every minute does not store a result for each run."""
+    assert workflow.load_function().persist_result is False
 
 
 def test_workflow_definition_flow_names() -> None:

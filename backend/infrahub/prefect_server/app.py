@@ -16,14 +16,10 @@ router.include_router(events.router)
 
 async def _init_prefect() -> None:
     # Import there in case we are running Prefect within a testsuite using the original Prefect container
-    from infrahub import lock
-    from infrahub.lock import initialize_lock
-    from infrahub.services import InfrahubServices
-    from infrahub.workers.dependencies import get_cache
+    from infrahub import lock  # noqa: PLC0415
+    from infrahub.lock import initialize_lock  # noqa: PLC0415
 
-    cache = await get_cache()
-    service = await InfrahubServices.new(cache=cache)
-    initialize_lock(service=service)
+    initialize_lock()
 
     async with lock.registry.get(name=lock.GLOBAL_TASKMGR_INIT_LOCK):
         await init_prefect()
@@ -35,7 +31,7 @@ def create_infrahub_prefect() -> FastAPI:
         and os.getenv("PREFECT_API_DATABASE_MIGRATE_ON_START") == "false"
     ):
         # We are probably running distributed mode
-        from infrahub import config
+        from infrahub import config  # noqa: PLC0415
 
         config.SETTINGS.initialize_and_exit()
         asyncio.run(_init_prefect())

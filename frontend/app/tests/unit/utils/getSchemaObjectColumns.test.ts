@@ -4,7 +4,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
-} from "@/entities/nodes/object-items/getSchemaObjectColumns";
+} from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
 
 import {
   C_deviceAttributeListColumns,

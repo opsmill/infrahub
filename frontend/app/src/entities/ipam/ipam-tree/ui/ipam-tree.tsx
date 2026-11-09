@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
+import * as R from "remeda";
 
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -9,15 +10,15 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
-import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/types";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/domain/model/ipam-tree-node";
 import { useGetIpamTreeNodesByParent } from "@/entities/ipam/ipam-tree/ui/queries/get-ipam-tree-nodes-by-parent.query";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export interface IpamTreeProps {
   className?: string;
@@ -55,7 +56,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
     return <ErrorScreen message={error.message} />;
   }
 
-  const items = data.pages.flat();
+  const items = R.uniqueBy(data.pages.flat(), (node) => node.id);
 
   const defaultExpandedKeys = ancestorsData
     ? ancestorsData
@@ -120,7 +121,7 @@ function IpamTreeItem({
 
   const { schema: nodeSchema } = useSchema(node.__typename);
   const nodeLabel = getNodeLabel(node);
-  const childrenNodes = data?.pages.flat() ?? [];
+  const childrenNodes = R.uniqueBy(data?.pages.flat() ?? [], (childNode) => childNode.id);
 
   return (
     <TreeItem
