@@ -290,7 +290,6 @@ the new pool before its transaction commits, so no write can hold it.
   first allocation until the commit, so that no other allocation picks a number the migration drew but
   has not committed yet, and no range changes under it. When writes still hold the pool after
   `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails and the schema update is rolled back.
-  The repair of missing number pool rows runs while the system is down and takes no lock.
 - **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
 - **An allocation that returns its identifier's reservation does not hold the pool.** The reserved
