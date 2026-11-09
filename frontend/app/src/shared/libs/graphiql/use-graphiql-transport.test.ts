@@ -123,6 +123,20 @@ describe("GraphiQL sandbox fetch", () => {
       expect(response.status).toBe(401);
     });
 
+    it("keeps the user on the page when the query fails after a successful refresh", async () => {
+      // GIVEN
+      const networkError = new TypeError("Failed to fetch");
+      fetchSpy.mockResolvedValueOnce(tokenExpiredResponse()).mockRejectedValueOnce(networkError);
+      vi.mocked(refreshAccessToken).mockResolvedValue({ access_token: REFRESHED_TOKEN });
+
+      // WHEN
+      const response = send();
+
+      // THEN
+      await expect(response).rejects.toBe(networkError);
+      expect(redirectToLogin).not.toHaveBeenCalled();
+    });
+
     it("never refreshes a token typed in the Headers tab", async () => {
       // GIVEN
       fetchSpy.mockResolvedValueOnce(tokenExpiredResponse());

@@ -43,14 +43,13 @@ export const sandboxFetch: typeof fetch = async (input, init) => {
   const response = await send();
   if (response.status !== 401) return response;
 
-  try {
-    const { access_token } = await queryClient.query(refreshAccessTokenQueryOptions());
-    headers.set("authorization", `Bearer ${access_token}`);
-    return await send();
-  } catch {
+  const refreshed = await queryClient.query(refreshAccessTokenQueryOptions()).catch(() => null);
+  if (!refreshed) {
     redirectToLogin();
     return response;
   }
+  headers.set("authorization", `Bearer ${refreshed.access_token}`);
+  return send();
 };
 
 // Parallel-mode settings are read at send time, so changing them keeps the transport and GraphiQL does not re-run introspection.
