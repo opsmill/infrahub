@@ -8,22 +8,11 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
-<<<<<<< HEAD
-from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
-from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
-from infrahub.graphql.resolvers.object_by_id import ObjectByIdResolver
-from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
-||||||| 7f692f80d
-from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
-from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
-from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
-=======
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
->>>>>>> origin/stable
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -88,32 +77,7 @@ async def resolver_graphql_query(
             result = await execute_graphql_query(
                 schema=graphql_schema,
                 source=graphql_query.query.value,
-<<<<<<< HEAD
-                context_value=graphql_context.__class__(
-                    db=db,
-                    branch=graphql_context.branch,
-                    at=Timestamp(),
-                    related_node_ids=set(),
-                    types=graphql_context.types,
-                    single_relationship_resolver=SingleRelationshipResolver(),
-                    many_relationship_resolver=ManyRelationshipResolver(),
-                    account_metadata_resolver=AccountMetadataResolver(),
-                    object_by_id_resolver=ObjectByIdResolver(),
-                ),
-||||||| 7f692f80d
-                context_value=graphql_context.__class__(
-                    db=db,
-                    branch=graphql_context.branch,
-                    at=Timestamp(),
-                    related_node_ids=set(),
-                    types=graphql_context.types,
-                    single_relationship_resolver=SingleRelationshipResolver(),
-                    many_relationship_resolver=ManyRelationshipResolver(),
-                    account_metadata_resolver=AccountMetadataResolver(),
-                ),
-=======
                 context_value=graphql_params.context,
->>>>>>> origin/stable
                 root_value=None,
                 variable_values=params or {},
                 middleware=[raise_on_mutation_for_branch_status],
