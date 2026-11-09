@@ -68,6 +68,24 @@ API treats members and ancestors as related nodes (matching all three roles and
 deduplicating by id), which keeps its output stable across the consolidated
 format and any older events still carrying the duplicate related-node role.
 
+### Peer update events
+
+A mutation that changes a relationship emits the node's own event, then one
+child `infrahub.node.updated` event for each peer whose side of the relationship
+changed: the field is the reverse relationship, such as `member_of_groups` on a
+node added to a group. `RelationshipChangelogGetter` builds those peer
+changelogs for node mutations and for `RelationshipAdd` / `RelationshipRemove`.
+
+An internal `CoreGraphQLQueryGroup` (`group_type` `internal`) is the exception.
+Infrahub maintains one per stored query and parameters to record which nodes the
+query read, and updates it every time a transform or artifact runs that query.
+Changes to its `members`, `subscribers` and `query` emit no peer event
+(`groups/internal_query_group.py`), because no automation reads those reverse
+fields and the events would scale with every node a query reads. The group still
+emits its own node event and `infrahub.group.member_added` /
+`infrahub.group.member_removed`. A query group with `group_type` `default` keeps
+the peer events.
+
 ## Event Types
 
 Events are organized by domain in `backend/infrahub/events/`:
