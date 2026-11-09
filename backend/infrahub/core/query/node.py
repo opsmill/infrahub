@@ -42,7 +42,7 @@ from infrahub.core.query.subquery import (
     ranks_latest_value,
 )
 from infrahub.core.query.utils import find_node_schema
-from infrahub.core.query.vertex_metadata import build_vertex_updated_metadata_query
+from infrahub.core.query.vertex_metadata import build_vertex_updated_metadata_query, node_field_edges_pattern
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByMetadataField,
@@ -154,16 +154,6 @@ class PeerInfo:
     uuid: str
     kind: str
     db_id: str
-
-
-# Edges between the node and its fields record a field being added or removed; the peer side of a
-# relationship is excluded because it records changes to the peer, not to this node.
-_NODE_FIELD_EDGES_PATTERN = """
-    MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-    WITH DISTINCT n, field
-    MATCH (field)-[r]-(other)
-    WHERE other = n OR (startNode(r) = field AND NOT r:IS_RELATED)
-    """
 
 
 class NodeQuery(Query):
@@ -1527,7 +1517,7 @@ CALL (n) {
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
             last_update_query, metadata_params = build_vertex_updated_metadata_query(
-                vertex="n", edges_pattern=_NODE_FIELD_EDGES_PATTERN, at=self.at
+                vertex="n", edges_pattern=node_field_edges_pattern(node_alias="n"), at=self.at
             )
             self.params.update(metadata_params)
         else:
@@ -1929,7 +1919,7 @@ WITH %(tracked_vars)s, created_at, created_by
         if self.branch.is_default or self.branch.is_global:
             updated_query, metadata_params = build_vertex_updated_metadata_query(
                 vertex="n",
-                edges_pattern=_NODE_FIELD_EDGES_PATTERN,
+                edges_pattern=node_field_edges_pattern(node_alias="n"),
                 carry=tracked_vars,
                 at=self.at,
             )
@@ -2859,6 +2849,7 @@ class NodeGetHierarchyQuery(Query):
                     branch_agnostic=self.branch_agnostic,
                     node_alias="peer",
                     subquery_idx=order_cnt,
+                    at=self.at,
                 )
                 self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
                 self.params.update(subquery_params)

@@ -48,3 +48,17 @@ WITH {carry},
 """
     params = {_AT_PARAM: at.to_string(), _BRANCHES_PARAM: [registry.default_branch, GLOBAL_BRANCH_NAME]}
     return query, params
+
+
+def node_field_edges_pattern(node_alias: str) -> str:
+    """Return a pattern binding as `r` the edges whose changes are updates of the node `node_alias`.
+
+    Edges between the node and its fields record a field being added or removed; the peer side of a
+    relationship is excluded because it records changes to the peer, not to this node.
+    """
+    return f"""
+    MATCH ({node_alias})-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+    WITH DISTINCT {node_alias}, field
+    MATCH (field)-[r]-(other)
+    WHERE other = {node_alias} OR (startNode(r) = field AND NOT r:IS_RELATED)
+    """

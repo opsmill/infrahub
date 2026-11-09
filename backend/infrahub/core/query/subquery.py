@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
+from infrahub.core.query.vertex_metadata import build_vertex_updated_metadata_query, node_field_edges_pattern
+from infrahub.core.timestamp import Timestamp
 
 from .attribute import default_attribute_query_filter
 
@@ -296,15 +298,25 @@ def build_subquery_order_metadata(
     branch_agnostic: bool = False,
     node_alias: str = "n",
     subquery_idx: int = 1,
+    at: Timestamp | None = None,
 ) -> tuple[str, dict[str, Any], str]:
     if metadata_field not in (METADATA_CREATED_AT, METADATA_UPDATED_AT):
         raise ValueError(f"Unsupported metadata field for ordering: {metadata_field!r}")
 
     prefix = f"order_metadata_{metadata_field}_{subquery_idx}"
 
-    if branch.is_default or branch.is_global:
+    if (branch.is_default or branch.is_global) and metadata_field == METADATA_CREATED_AT:
         subquery = f"RETURN {node_alias}.{metadata_field} AS {prefix}"
         return subquery, {}, prefix
+
+    if branch.is_default or branch.is_global:
+        updated_query, updated_params = build_vertex_updated_metadata_query(
+            vertex=node_alias,
+            edges_pattern=node_field_edges_pattern(node_alias=node_alias),
+            at=Timestamp(at),
+            carry=node_alias,
+        )
+        return f"{updated_query}\nRETURN updated_at AS {prefix}", updated_params, prefix
 
     if metadata_field == METADATA_CREATED_AT:
         subquery = f"""

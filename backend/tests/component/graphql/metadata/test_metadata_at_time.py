@@ -145,3 +145,57 @@ async def test_node_updated_metadata_at_past_time_includes_removal_from_group(
     node_metadata = state["node_metadata"]
     assert node_metadata["updated_by"] == {"id": account_b.id}
     assert _parse_datetime(node_metadata["updated_at"]) == start.add(seconds=20).to_datetime()
+
+
+async def test_peers_ordered_by_updated_at_at_past_time(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Ordering peers by updated_at at a past time uses each peer's latest update as of that time."""
+    account_a = await _create_account(db=db, name="account-a")
+    start = Timestamp().add(seconds=-100)
+
+    tag_one = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag_one.new(db=db, name="tag-one", description="one")
+    await tag_one.save(db=db, user_id=account_a.id, at=start.add(seconds=10))
+
+    tag_two = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag_two.new(db=db, name="tag-two", description="one")
+    await tag_two.save(db=db, user_id=account_a.id, at=start.add(seconds=11))
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="group-order", members=[tag_one, tag_two])
+    await group.save(db=db, user_id=account_a.id, at=start.add(seconds=15))
+
+    tag_one.get_attribute("description").value = "two"
+    await tag_one.save(db=db, user_id=account_a.id, at=start.add(seconds=20))
+
+    tag_two.get_attribute("description").value = "two"
+    await tag_two.save(db=db, user_id=account_a.id, at=start.add(seconds=30))
+
+    query = """
+    query GetGroup($id: ID!) {
+        CoreStandardGroup(ids: [$id]) {
+            edges {
+                node {
+                    members(order: {node_metadata: {updated_at: DESC}}) {
+                        edges { node { id } }
+                    }
+                }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, at=start.add(seconds=25))
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": group.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    members = result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["edges"]
+    assert [member["node"]["id"] for member in members] == [tag_one.id, tag_two.id]

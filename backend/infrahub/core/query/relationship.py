@@ -874,6 +874,7 @@ RETURN updated_at, updated_by
                     branch_agnostic=self.branch_agnostic,
                     node_alias="peer",
                     subquery_idx=order_cnt,
+                    at=self.at,
                 )
                 self.order_by.append(f"{subquery_result_name} {direction.value}")
                 self.params.update(subquery_params)
@@ -906,6 +907,7 @@ RETURN updated_at, updated_by
                     branch_agnostic=self.branch_agnostic,
                     node_alias="peer",
                     subquery_idx=order_cnt,
+                    at=self.at,
                 )
                 self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
                 self.params.update(subquery_params)
