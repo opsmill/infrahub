@@ -11,7 +11,6 @@ const config: KnipConfig = {
 
   ignoreDependencies: [
     "@betterer/typescript", // for betterer typescript regressions
-    "monaco-graphql", // for graphiql,
     "ts-node", // for graphql autocompletion in Jetbrains IDE
   ],
 
