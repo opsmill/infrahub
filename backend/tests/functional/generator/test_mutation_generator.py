@@ -17,6 +17,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from infrahub.actions.tasks import _run_generators
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.constants import WorkflowTag
 
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from tests.adapters.message_bus import BusSimulator
 
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
 
 
@@ -170,7 +172,7 @@ class TestMutationGenerator(TestInfrahubApp):
         assert branch_tag in tags
 
     async def test_execute_generator_action(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, admin_account: CoreAccount
     ) -> None:
         generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
 
@@ -184,7 +186,7 @@ class TestMutationGenerator(TestInfrahubApp):
                 node_ids=[person_john.id],
                 generator_definition_id=generator.id,
                 client=client,
-                context=None,
+                context=EventContext(branch=EventBranchContext(name="branch1"), account_id=admin_account.id),
             )
 
         tags = await client.all(kind="TestingTag", branch="branch1")
