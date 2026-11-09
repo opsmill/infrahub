@@ -206,16 +206,7 @@ The message lists each overlapping pair of ranges by its bounds, for example `15
 - **Generics**: Infrahub compares only the pools created for the same kind. A pool created for a generic and a pool created for a kind that inherits from it are not compared.
 - **Schema changes**: Infrahub refuses a schema change that sets `unique: true` on the attribute while the ranges of two of its pools overlap, as described in [Schema migration](../schema/migration.mdx#number-pool).
 
-### Separate the ranges of pools that already overlap
-
-Infrahub checks ranges only when you save them, so pools whose ranges overlapped before an upgrade still overlap after it. When one of them allocates a number that the other pool tracks for an object, Infrahub refuses the save with a message that names both pools, as described in [When an allocation fails](#when-an-allocation-fails).
-
-To separate the two pools:
-
-1. Choose the pool that keeps the numbers in the overlap.
-2. List the numbers the other pool tracks in the overlap, in its allocations table or with `InfrahubNumberPoolAllocations`, as described in [View how much of a pool is in use](#view-how-much-of-a-pool-is-in-use).
-3. Attach each of those numbers to the pool you chose: update the object with the number as `value` and that pool as `from_pool`. Infrahub removes the number from the other pool, as described in [Move a number to another pool](./track-existing-numbers.mdx#move-a-number-to-another-pool).
-4. Change the ranges of the other pool so that they no longer overlap. Infrahub refuses this change while the pool still tracks a number outside its new ranges, as described in [Change the ranges of a pool](#change-the-ranges-of-a-pool).
+Infrahub checks ranges only when you save them, so pools whose ranges overlapped before Infrahub 1.12 still overlap. To separate them, see [Separate pools that overlap on a unique attribute](../release-notes/deprecation-guides/number-pool-ranges.mdx#separate-pools-that-overlap-on-a-unique-attribute).
 
 ## View how much of a pool is in use
 
@@ -280,7 +271,7 @@ Violates uniqueness constraint '<attribute>': the '<pool>' pool allocated <numbe
 
 The pool allocates the same number on every attempt until you attach that number to the pool, as described in [Track existing numbers in a number pool](./track-existing-numbers.mdx#attach-a-number-to-a-pool), or change the number on the object that holds it.
 
-When another pool tracks the number for that object, the ranges of the two pools overlap. The message then names that pool too, and tells you to attach the numbers in the overlap to one of the pools and change the ranges of the other pool, as described in [Separate the ranges of pools that already overlap](#separate-the-ranges-of-pools-that-already-overlap). When the uniqueness constraint has several fields that pools filled in the same save, the message names each field, its number and its pool.
+When another pool tracks the number for that object, the ranges of the two pools overlap, and the message names that pool too. See [Separate pools that overlap on a unique attribute](../release-notes/deprecation-guides/number-pool-ranges.mdx#separate-pools-that-overlap-on-a-unique-attribute). When the uniqueness constraint has several fields that pools filled in the same save, the message names each field, its number and its pool.
 
 ## Next
 
