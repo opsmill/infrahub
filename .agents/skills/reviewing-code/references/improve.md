@@ -19,16 +19,14 @@ draft, look in the log for the same target and the same change:
 - **A "Not violations" line** in a rule, for a finding declined because the rule did not mention
   the accepted pattern. When the declined pattern is debt rather than an accepted pattern,
   propose a cleanup task instead: a rule states the target, not exceptions for existing code.
-- **A new rule line** in `.agents/rules/`, for what cubic or a reviewer caught that no rule states.
+- **A new rule line** in `.agents/rules/`, for what a pull request reviewer caught that no rule states.
 - **A `paths:` glob or a new rule file**, for each changed area that no rule's globs cover.
 - **A better "load before" line** in an `AGENTS.md`, for each article a reviewer had to find on
   its own: say when the article applies, so the next agent is pointed to it.
 - **A narrower rule line**, for each finding the user rejected in Phase 3 because the rule asks
   for something they do not want. Quote the reason they gave.
 
-Keep each `cubic.yaml` entry under 9,000 characters (`wc -m`): cubic drops everything past
-10,000. A new rule file with new paths also goes in `cubic.yaml`. A new `dev/` article needs an
-`AGENTS.md` line, or `repo-context.py --check-index` fails in CI.
+A new `dev/` article needs an `AGENTS.md` line, or `repo-context.py --check-index` fails in CI.
 
 ## Knowledge and guideline articles
 
@@ -43,7 +41,6 @@ Keep each `cubic.yaml` entry under 9,000 characters (`wc -m`): cubic drops every
 
 Propose a change to `SKILL.md` or a file of `references/`, naming the step, when:
 
-- cubic failed, or returned a result the skill could not read
 - a reviewer's `READ:` list still missed a listed file after the second request
 - the user rejected or the skill declined every finding of one check
 - the user rejected a finding for a reason the skill could have checked itself

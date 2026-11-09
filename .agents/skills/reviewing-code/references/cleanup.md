@@ -93,5 +93,5 @@ Leave new layers, abstractions and options to the Design check.
 
 Merge them with the other findings and drop duplicates: a Design Simplicity finding and a
 Simpler code finding on the same lines are one finding. A rename or a removal that reaches a
-caller outside the manifest is Ask, as Phase 2 step 5 says. In Phase 3, show the cleanup findings
+caller outside the manifest is Ask, as Phase 2 step 4 says. In Phase 3, show the cleanup findings
 as one group, so the user can approve them together.

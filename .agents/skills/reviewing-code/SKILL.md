@@ -1,17 +1,17 @@
 ---
 name: reviewing-code
 description: >-
-  Reviews a branch before it is pushed, or a pull request after it opens, against the rules cubic and human reviewers apply. Runs cubic, `code-review`, and reviewers for the approach, the `.agents/rules/` files, the design, new files, cleanup and consistency (useless or stale comments, code earlier commits left behind, names and placement, simpler code), the architecture and its decisions, and the specs, changelog and PR claims. Verifies each finding, fixes the approved ones, and proposes changes to the rules, the docs and this skill. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, or fewer review comments on it, or says "review my changes", "pre-push review" or "cubic review"; this session has just opened a PR; the user asks for a review of a PR by URL or number; a hook reports large pushes to a PR; or the user asks "will cubic complain about this". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into docs → `harvesting-review`; a bug hunt only → `code-review`; watching CI → `monitoring-pull-requests`.
+  Reviews a branch before it is pushed, or a pull request after it opens, against the rules human reviewers apply. Runs `code-review` and reviewers for the approach, the `.agents/rules/` files, the design, new files, cleanup and consistency (useless or stale comments, code earlier commits left behind, names and placement, simpler code), the architecture and its decisions, and the specs, changelog and PR claims. Verifies each finding, fixes the approved ones, and proposes changes to the rules, the docs and this skill. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, or fewer review comments on it, or says "review my changes" or "pre-push review"; this session has just opened a PR; the user asks for a review of a PR by URL or number; or a hook reports large pushes to a PR. DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into docs → `harvesting-review`; a bug hunt only → `code-review`; watching CI → `monitoring-pull-requests`.
 argument-hint: "[<PR number or URL> | <base branch>] [report] | compare <PR number>"
-compatibility: A Claude Code or Codex session started at the repository root, with `origin` fetched. The `gh` CLI reads the pull request. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
+compatibility: A Claude Code or Codex session started at the repository root, with `origin` fetched. The `gh` CLI reads the pull request.
 metadata:
-  version: 4.1.0
+  version: 5.0.0
   author: OpsMill
 ---
 
 # Reviewing code
 
-Each comment that cubic or a reviewer leaves on a pull request costs a CI round and a reply. Most
+Each comment that a reviewer leaves on a pull request costs a CI round and a reply. Most
 cite a rule in `.agents/rules/` or a claim the diff does not support. This skill finds them
 first: before the push for a branch, or right after a pull request opens.
 
@@ -97,14 +97,14 @@ means its step ran without its instructions: read the file and run the step agai
 
    To review a checkout that does not have this tooling, or has an older copy, run the script
    from this checkout with `--repo <checkout>`. The rules then come from this checkout, and the
-   changed files and `AGENTS.md` files from the reviewed one. Never copy `.agents/`, `AGENTS.md`
-   or `cubic.yaml` into the reviewed checkout: the copies overwrite its newer files, and cubic
-   reviews them as part of the change.
+   changed files and `AGENTS.md` files from the reviewed one. Never copy `.agents/` or
+   `AGENTS.md` into the reviewed checkout: the copies overwrite its newer files, and the review
+   counts them as part of the change.
 3. **Decide on uncommitted files** outside the committed range, except in PR mode. Show them and
    ask, for each group:
    - **Review them** as part of the change.
    - **Leave them out**: rerun with `--committed`, or with `--exclude` for copied tooling such as
-     `.agents/**`, `AGENTS.md`, `CLAUDE.md`, `cubic.yaml` and `.claude/settings.json`.
+     `.agents/**`, `AGENTS.md`, `CLAUDE.md` and `.claude/settings.json`.
    - **Set them aside**, for local changes that must never be committed:
      `git stash push --include-untracked -m "reviewing-code <timestamp>" -- <paths>`. Record
      the SHA of the entry with that message from `git stash list --format='%H %gs'`. Do not use
@@ -129,28 +129,7 @@ means its step ran without its instructions: read the file and run the step agai
 
 ## Phase 1: Checks
 
-The checks below do not depend on each other: start them together. Start cubic first, because it
-takes the longest.
-
-### cubic
-
-If `command -v cubic` or `~/.cubic/bin/cubic` finds the CLI, run
-`<cubic> review --base <base> --json` with `run_in_background`. If the CLI is missing, write
-"cubic not installed" in the report and go on.
-
-cubic reviews the working tree as well as the commits, so run it where the tree holds only the
-change:
-
-- When the review includes uncommitted files, or in PR mode, run it in the reviewed checkout. In
-  PR mode that is the temporary worktree, which holds only the pull request.
-- Otherwise, run it in a temporary worktree at `HEAD`, so uncommitted and untracked files stay
-  out of its review:
-
-  ```bash
-  git -C <checkout> worktree add --detach <scratchpad>/cubic-<branch> HEAD
-  # run cubic from <scratchpad>/cubic-<branch>, then:
-  git -C <checkout> worktree remove --force <scratchpad>/cubic-<branch>
-  ```
+The checks below do not depend on each other: start them together.
 
 ### Bugs
 
@@ -280,25 +259,20 @@ makes with the alternative the codebase uses and where the reason is written.
 
 ## Phase 2: One verified list
 
-1. **Read cubic's result** from the exit code, stderr and JSON together:
-   - `error` is set: the run failed, and `issues` means nothing. Report the error.
-   - Exit code 1 with `error` null: cubic found issues. Take them.
-   - Any other non-zero exit, or an empty result without a clear success: report the exit code
-     and stderr. Never present such a run as clean.
-2. **Merge** the findings of every check and remove duplicates. Move findings on paths outside
+1. **Merge** the findings of every check and remove duplicates. Move findings on paths outside
    the manifest to "Out of scope". Mark a finding on a line the change did not touch as
    pre-existing: it is Defer, listed apart from the findings the change introduces. Drop the
    findings that the "Do not report" list of `REVIEW.md` names.
-3. **Verify each finding** by reading the code at the line and its callers.
+2. **Verify each finding** by reading the code at the line and its callers.
    - When the finding depends on how a library behaves, read the installed source
      (`frontend/node_modules/...`, `.venv/lib/.../site-packages/...`) before deciding.
    - When it depends on framework behaviour the repository already handles, such as React
-     Compiler memoization or generic schema kinds, check the rules and `AGENTS.md` first. Record
-     such a cubic comment as "wrong because cubic lacks the rule", and propose the matching
-     `cubic.yaml` entry.
+     Compiler memoization or generic schema kinds, check the rules and `AGENTS.md` first.
+     Decline a finding they already settle, citing the line. When no rule states it, note it for
+     Phase 4.
    - When the code you read contradicts a `dev/` article, or you had to find a fact in the code
      that no article states, note it for Phase 4.
-4. **Classify** each finding:
+3. **Classify** each finding:
    - **Fix**: real, and part of this change.
    - **Decline**: contradicts a "Not violations" list (cite that line as `path:line`), or does
      not survive the source. Give a one-sentence reason.
@@ -309,7 +283,7 @@ makes with the alternative the codebase uses and where the reason is written.
    A finding that cites a rule the manifest marks "not on origin/<base>" is advisory (P3),
    whatever its grade, because the author could not have read that rule. Say so in the finding,
    for example "frontend-components.md is not on develop".
-5. **Turn a Fix into Ask** in these cases:
+4. **Turn a Fix into Ask** in these cases:
    - **The approach.** An Approach or architecture finding would change the approach rather than
      one line. The approach is the author's decision. Handle the other architecture findings as
      the end of `references/architecture.md` says.
@@ -322,7 +296,7 @@ makes with the alternative the codebase uses and where the reason is written.
      local to the change instead: a new function, or a parameter only the changed code passes.
      For example, adding thousands separators to the app-wide `pluralize` changes every count it
      formats.
-6. **Limit the small findings.** Keep at most five P3 findings among those still open, as
+5. **Limit the small findings.** Keep at most five P3 findings among those still open, as
    `REVIEW.md` asks, and list the rest in one line at the end of the report.
 
 ## Phase 3: Fix and review the fixes

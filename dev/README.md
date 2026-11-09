@@ -135,7 +135,7 @@ folder, which is not a command.
 The `/reviewing-code` skill in [../.agents/skills/](../.agents/skills/) reviews the current
 branch before it is pushed. `/reviewing-code <PR>` reviews a pull request without changing
 files or asking questions. Both apply the `.agents/rules/` files, the rules in
-[REVIEW.md](../REVIEW.md) and cubic when it is installed, and give reviewers only the diff and the
+[REVIEW.md](../REVIEW.md), and give reviewers only the diff and the
 file paths, not the conversation. Claude Code also runs it on its own after opening a pull
 request, though not every time.
 

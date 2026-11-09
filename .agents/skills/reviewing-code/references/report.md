@@ -15,7 +15,6 @@ Skill files read: <each file of references/ read during this run>
 P1: <n> | P2: <n> | P3: <n>; fixed: <n>, declined: <n>, deferred: <n>, asked: <n>, rounds: <n>
 Ask First changes: <each change an "Ask First" list in an AGENTS.md names: schema or migration, GraphQL schema, dependency, CI workflow, authentication or permissions | "none">
 Fixes outside the manifest: <paths, each with the approved Ask | "none">
-cubic: <exit code and number of findings | error: <message> | not installed>
 
 ### Context
 | File | Kind | Why it applies | Read by |

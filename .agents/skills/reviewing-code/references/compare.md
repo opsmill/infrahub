@@ -1,6 +1,6 @@
 # Compare with the pull request review
 
-Run this after cubic and reviewers have commented on the pull request, to find what the local
+Run this after reviewers, people or bots, have commented on the pull request, to find what the local
 review missed.
 
 1. Read the saved report for the pull request's head branch
@@ -18,7 +18,7 @@ review missed.
      separately as "introduced by a fix".
 4. For each real miss, name the part of the review that should have caught it (a rule, an
    article, the Approach, Design, New files or Architecture and decisions check, the claims check, the bug
-   review, cubic) and why it did not:
+   review) and why it did not:
    - the rule is missing
    - the article was not loaded
    - the file was out of scope
