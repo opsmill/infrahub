@@ -1125,10 +1125,26 @@ class RelationshipGetByIdentifierQuery(Query):
         identifiers: list[str] | None = None,
         full_identifiers: list[FullRelationshipIdentifier] | None = None,
         excluded_namespaces: list[str] | None = None,
+        node_ids: list[str] | None = None,
+        excluded_node_ids: list[str] | None = None,
         **kwargs,
     ) -> None:
+        """Read the active relationships with the given identifiers, at most one row per Relationship vertex.
+
+        Args:
+            node_ids: Keep only the Relationship vertices linked to one of these node uuids by an edge of any
+                branch or time; the row of each one is unchanged.
+            excluded_node_ids: Leave out the Relationship vertices linked the same way to one of these node uuids.
+
+        Raises:
+            ValueError: When neither or both of `identifiers` and `full_identifiers` are given, or when
+                `excluded_node_ids` is given without `node_ids`.
+
+        """
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
             raise ValueError("one and only one of identifiers or full_identifiers is required")
+        if excluded_node_ids and node_ids is None:
+            raise ValueError("excluded_node_ids requires node_ids")
 
         if full_identifiers:
             self.identifiers = list({i.identifier for i in full_identifiers})
@@ -1137,6 +1153,8 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
+        self.node_ids = node_ids
+        self.excluded_node_ids = excluded_node_ids or []
 
         super().__init__(**kwargs)
 
@@ -1154,9 +1172,29 @@ class RelationshipGetByIdentifierQuery(Query):
         )
         self.params.update(rels_params)
 
-        query = """
+        if self.node_ids is None:
+            start_query = """
         MATCH (rl:Relationship)
+        WHERE rl.name IN $identifiers"""
+        else:
+            # Not filtered by branch or time, so that every Relationship vertex a full read would return for
+            # these nodes is kept and the subquery below selects its row as it does without the limit.
+            self.params["node_ids"] = self.node_ids
+            start_query = """
+        MATCH (start:Node)
+        WHERE start.uuid IN $node_ids
+        MATCH (start)-[:IS_RELATED]-(rl:Relationship)
         WHERE rl.name IN $identifiers
+        WITH DISTINCT rl"""
+            if self.excluded_node_ids:
+                self.params["excluded_node_ids"] = self.excluded_node_ids
+                start_query += """
+        WHERE NOT EXISTS {
+            MATCH (rl)-[:IS_RELATED]-(excluded:Node)
+            WHERE excluded.uuid IN $excluded_node_ids
+        }"""
+
+        query = """%s
         CALL (rl) {
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
             WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
@@ -1169,7 +1207,7 @@ class RelationshipGetByIdentifierQuery(Query):
         }
         WITH src, dst, r1, r2, rl1 as rl
         WHERE r1.status = "active" AND r2.status = "active"
-        """ % ("\n AND ".join(rels_filter),)
+        """ % (start_query, "\n AND ".join(rels_filter))
 
         self.add_to_query(query)
         self.return_labels = ["src", "dst", "rl"]
