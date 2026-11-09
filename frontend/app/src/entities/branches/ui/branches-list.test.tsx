@@ -90,7 +90,7 @@ describe("BranchesList", () => {
     );
 
     // WHEN
-    client?.prefetchQuery({
+    client?.query({
       queryKey: [...branchGitStatusQueryKeys.all, "background"],
       queryFn: () => new Promise<never>(() => {}),
     });

@@ -13,36 +13,29 @@ allowBuilds:
 # Single source of truth for cross-workspace versions. Reference from package.json
 # with `"<dep>": "catalog:"`. Add a dep here only if it's used by more than one workspace member.
 catalog:
-  "@tailwindcss/vite": ^4.3.3
-  "@types/node": ^26.6.5
+  "@tailwindcss/vite": ^4.3.4
+  "@types/node": ^26.6.6
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
-  "@vitejs/plugin-react": ^6.1.2
+  "@vitejs/plugin-react": ^6.2.1
   babel-plugin-react-compiler: ^1.0.0
-  lucide-react: ^1.61.0
+  lucide-react: ^1.70.0
   react: ^19.3.1
   react-aria-components: ^1.22.1
   react-dom: ^19.3.1
-  tailwind-merge: ^3.7.0
-  tailwindcss: ^4.3.3
+  tailwindcss: ^4.3.4
   typescript: ^6.0.3
-  vite: ^8.3.5
+  vite: ^8.3.6
 
 overrides:
   playwright: 1.60.0
   playwright-core: 1.60.0
   # Security fixes that the parent packages do not accept yet.
   "@betterer/betterer>simple-git": ^4.0.2
-  "@fastify/busboy@<3.2.2": ^3.2.2
-  "dompurify@<3.4.17": ^3.4.17
-  "markdown-it@<14.3.3": ^14.3.3
-  "shell-quote@<1.11.0": ^1.11.0
-  "simple-git@<4.0.1": ^4.0.2
-  "tinypool@<2.1.2": ^2.1.2
+  "monaco-editor>dompurify": ^3.4.17
+  "glob@>=9.0.0 <14.0.2": ^14.0.2
+  "minimatch@>=7.0.0 <11.0.1": ^11.0.1
 
 peerDependencyRules:
   allowedVersions:
-    graphiql-explorer>graphql: ^17.0.0
-    graphiql-explorer>react: ^19.0.0
-    graphiql-explorer>react-dom: ^19.0.0
     openapi-typescript>typescript: ^6.0.0
