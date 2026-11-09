@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.workflow import WorkflowRecorder
 
 
 @pytest.fixture
@@ -135,6 +136,44 @@ async def test_query_endpoint_group_params(
             call(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model}, context=context),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
+
+
+async def test_query_endpoint_returns_the_group_update_instead_of_submitting_it(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
+    workflow_recorder: WorkflowRecorder,
+) -> None:
+    """A caller that asks for the group update gets it in the response, and only the plain request submits it."""
+    expected_group_update = {
+        "branch": "main",
+        "query_name": "query01",
+        "query_id": car_person_data["q1"].id,
+        "related_node_ids": sorted(car_person_data[name].id for name in ("p1", "p2", "c1", "c2", "c3")),
+        "subscribers": ["AAAAAA"],
+        "params": {},
+    }
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        returned = client.post(
+            "/api/query/query01?update_group=true&return_group_update=true&subscribers=AAAAAA", headers=admin_headers
+        )
+        submissions_after_returned = len(workflow_recorder.get_submit_calls_for(GRAPHQL_QUERY_GROUP_UPDATE))
+        submitted = client.post("/api/query/query01?update_group=true&subscribers=AAAAAA", headers=admin_headers)
+
+    assert returned.status_code == 200
+    assert returned.json()["group_update"] == expected_group_update
+    assert submissions_after_returned == 0
+    assert submitted.status_code == 200
+    assert "group_update" not in submitted.json()
+    assert [
+        call["parameters"]["model"].model_dump(mode="json")
+        for call in workflow_recorder.get_submit_calls_for(GRAPHQL_QUERY_GROUP_UPDATE)
+    ] == [expected_group_update]
 
 
 async def test_query_endpoint_get_default_branch(

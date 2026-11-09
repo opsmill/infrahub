@@ -1,0 +1,1 @@
+Recomputing Python computed attributes no longer starts a separate `graphql-query-group-update` flow run for every recomputed node. Each batch now updates the query groups of its nodes itself. The `/api/query/{query_id}` endpoint accepts a new `return_group_update` parameter: together with `update_group`, it returns the group update in the response instead of applying it.

@@ -4322,6 +4322,8 @@ export interface operations {
                 subscribers?: string[];
                 /** @description When True create or update a CoreGraphQLQueryGroup with all nodes related to this query. */
                 update_group?: boolean;
+                /** @description When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together. */
+                return_group_update?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
                 /** @description Time to use for the query, in absolute or relative format */
@@ -4365,6 +4367,8 @@ export interface operations {
                 subscribers?: string[];
                 /** @description When True create or update a CoreGraphQLQueryGroup with all nodes related to this query. */
                 update_group?: boolean;
+                /** @description When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together. */
+                return_group_update?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
                 /** @description Time to use for the query, in absolute or relative format */
