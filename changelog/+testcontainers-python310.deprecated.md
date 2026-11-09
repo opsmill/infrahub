@@ -1,1 +1,0 @@
-Deprecated support for Python 3.10 in the `infrahub-testcontainers` package. Infrahub 1.12.0 is the last release of `infrahub-testcontainers` that supports Python 3.10, and the next release removes that support.
