@@ -31,8 +31,8 @@ export default defineConfig({
     svgr(),
   ],
   optimizeDeps: {
-    // Pre-bundling would hide their `?worker` imports from Vite, so the Monaco workers would not be emitted.
-    exclude: ["graphiql/setup-workers/vite", "@graphiql/react/setup-workers/vite"],
+    // Dev pre-bundling cannot load the `?worker` imports in this module, so the dev server would fail to start.
+    exclude: ["graphiql/setup-workers/vite"],
   },
   resolve: {
     tsconfigPaths: true,
