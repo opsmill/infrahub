@@ -147,6 +147,15 @@ renders two model families from them by filtering each field on its visibility l
 Because both families are generated from the same definitions, a field's classification is
 declared once and both the write contract and the read shape follow automatically.
 
+Item models nested in a schema list get their own family. `ContainerSchema{suffix}` (the items of
+`containers`) is built from `SdkSchemaGenerator.container_schema_fields`, not from `internal.py`:
+`name`, `label`, `description`, `order_weight` and `collapsed` through `_field`, and `state` as an
+explicit `SchemaAttribute` because `_field` takes no `enum_class`. Without that `state` entry the
+write contract drops `state: absent` and a reload cannot remove a container. `inherited` is in the
+list with read visibility: the API returns it, and a payload that sends it gets a read-only warning.
+`SchemaManager` stores only the containers whose `inherited` is false, as it stores only a node's own
+attributes and relationships; processing rebuilds the inherited copies from the generics.
+
 ### Reporting the fields a payload sets but the contract drops
 
 `extra="ignore"` decides that a non-write field has no effect; it does not decide whether the
@@ -232,6 +241,8 @@ change; CI fails if the generated artifact is stale.
 | AttributeSchema class | `backend/infrahub/core/schema/attribute_schema.py` |
 | GenericSchema class | `backend/infrahub/core/schema/generic_schema.py` |
 | NodeSchema class | `backend/infrahub/core/schema/node_schema.py` |
+| ContainerSchema class (a fixed-type family of `_external_internal_kind`) | `backend/infrahub/core/schema/container.py` |
+| `ContainerValidator` (plug-in registered in `SchemaBranch.validators`) | `backend/infrahub/core/validators/schema_branch/container_validator.py` |
 
 ## See Also
 

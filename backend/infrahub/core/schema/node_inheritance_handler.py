@@ -1,8 +1,14 @@
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_RELATIONSHIP_NAME
 
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .order_by import is_metadata_order_by_entry
+
+if TYPE_CHECKING:
+    from .container import ContainerSchema
 
 
 class NodeInheritanceHandler:
@@ -93,6 +99,23 @@ class NodeInheritanceHandler:
             self._update_order_by_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_default_filters_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
             self._update_display_labels_for_renamed_attributes(node=node, renamed_attrs=renamed_attrs)
+
+    def inherit_containers(self, node: NodeSchema, interfaces: Sequence[GenericSchema]) -> None:
+        """Rebuild the node's containers: the generics' containers in `inherit_from` order, then the node's own.
+
+        A node container named like a generic container replaces it in place; the first generic declaring a name wins.
+        """
+        own_containers = node.local_containers
+        inherited_containers: dict[str, ContainerSchema] = {}
+        for interface in interfaces:
+            for container in interface.containers:
+                inherited_containers.setdefault(container.name, container.model_copy(update={"inherited": True}))
+        for name in inherited_containers:
+            # Only the first own declaration moves, so a duplicate stays in the list and is refused on validation.
+            own_index = next((index for index, own in enumerate(own_containers) if own.name == name), None)
+            if own_index is not None:
+                inherited_containers[name] = own_containers.pop(own_index)
+        node.containers = [*inherited_containers.values(), *own_containers]
 
     def _update_default_filters_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.default_filter:

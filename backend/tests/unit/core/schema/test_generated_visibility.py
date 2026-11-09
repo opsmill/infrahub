@@ -61,9 +61,9 @@ def _allowed_values(annotation: typing.Any) -> tuple[typing.Any, ...] | None:
 # Core user-settable fields that must remain writable; a settable field silently defaulting to a
 # non-write visibility would drop out of the write model and break loading a hand-authored schema.
 REQUIRED_WRITE_FIELDS = {
-    "node": {"name", "namespace", "description"},
-    "attribute": {"name", "kind", "optional", "read_only"},
-    "relationship": {"name", "peer", "kind", "cardinality", "optional"},
+    "node": {"name", "namespace", "description", "containers"},
+    "attribute": {"name", "kind", "optional", "read_only", "container"},
+    "relationship": {"name", "peer", "kind", "cardinality", "optional", "container"},
 }
 
 
@@ -164,6 +164,17 @@ def test_read_only_table_matches_the_read_write_delta(case: ReadOnlyDeltaCase) -
     read_names = set(case.read_model.model_fields) | set(case.read_model.model_computed_fields)
 
     assert READ_ONLY_FIELDS[case.write_model.__name__] == read_names - set(case.write_model.model_fields)
+
+
+def test_container_read_model_adds_only_inherited_over_write_model() -> None:
+    """`state` stays settable so that a reload can remove a container with `state: absent`."""
+    write_names = set(sdk_write.ContainerSchemaWrite.model_fields)
+    read_names = set(sdk_read.ContainerSchemaRead.model_fields)
+
+    assert read_names == write_names | {"inherited"}
+    assert "state" in write_names
+    assert "state" not in READ_ONLY_FIELDS["ContainerSchemaWrite"]
+    assert "inherited" in READ_ONLY_FIELDS["ContainerSchemaWrite"]
 
 
 def test_read_only_table_entries_are_fully_resolved() -> None:

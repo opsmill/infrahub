@@ -7,6 +7,7 @@ from pydantic import Field
 from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TC001
+from infrahub.core.schema.container import ContainerSchema  # noqa: TC001
 from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TC001
 
 
@@ -86,6 +87,11 @@ class GeneratedBaseNodeSchema(HashableModel):
     order_by: list[str] | None = Field(
         default=None,
         description="List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
+        json_schema_extra={"update": "allowed"},
+    )
+    containers: list[ContainerSchema] = Field(
+        default_factory=list,
+        description="Named sections that group the attributes and relationships of this node in the UI; a field joins one through 'container'.",
         json_schema_extra={"update": "allowed"},
     )
     uniqueness_constraints: list[list[str]] | None = Field(

@@ -26,6 +26,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.container import ContainerSchema
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.schema import load_schema
@@ -84,6 +85,19 @@ async def _set_status_choices(db: InfrahubDatabase, branch: Branch, choice_names
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     widget = schema_branch.get(name=WIDGET_KIND, duplicate=True)
     widget.get_attribute("status").choices = [DropdownChoice(name=name) for name in choice_names]
+    schema_branch.set(name=WIDGET_KIND, schema=widget)
+    schema_branch.process()
+    await registry.schema.update_schema_branch(
+        schema=schema_branch, db=db, branch=branch, limit=[WIDGET_KIND], update_db=True
+    )
+    branch.update_schema_hash()
+    await branch.save(db=db)
+
+
+async def _set_container_order(db: InfrahubDatabase, branch: Branch, container_names: list[str]) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    widget = schema_branch.get(name=WIDGET_KIND, duplicate=True)
+    widget.containers = [ContainerSchema(name=name, label=name.title()) for name in container_names]
     schema_branch.set(name=WIDGET_KIND, schema=widget)
     schema_branch.process()
     await registry.schema.update_schema_branch(
@@ -230,3 +244,19 @@ async def test_dropdown_choices_conflicts_cleared_on_recompute_paths(
             db=db, branch=recalc_branch, node_id=_status_attr_id(recalc_branch), attribute_name="choices"
         )
     ) is None
+
+
+async def test_containers_reordered_differently_on_two_branches_conflict(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=_base_schema(), update_db=True)
+    await _set_container_order(db=db, branch=default_branch, container_names=["lacp", "layer2", "layer3"])
+    branch = await create_branch(db=db, branch_name="containers-reorder")
+    coordinator = await _get_diff_coordinator(db=db, branch=branch)
+    widget_id = registry.schema.get(name=WIDGET_KIND, branch=default_branch.name, duplicate=False).get_id()
+
+    await _set_container_order(db=db, branch=default_branch, container_names=["layer3", "lacp", "layer2"])
+    await _set_container_order(db=db, branch=branch, container_names=["layer2", "layer3", "lacp"])
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+    assert await _node_value_conflict(db=db, branch=branch, node_id=widget_id, attribute_name="containers") is not None

@@ -532,6 +532,13 @@ class SchemaManager(NodeManager):
             user_id=user_id,
         )
 
+    @staticmethod
+    def _dump_node_properties(node: NodeSchema | GenericSchema) -> dict[str, Any]:
+        """Return the properties stored on the schema node; inherited containers are rebuilt on load, like inherited fields."""
+        properties = node.model_dump(exclude=IGNORE_FOR_NODE)
+        properties["containers"] = [container.model_dump() for container in node.local_containers]
+        return properties
+
     async def _create_node_in_db(
         self,
         node: NodeSchema | GenericSchema,
@@ -553,7 +560,7 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Create the node first
-        schema_dict = node.model_dump(exclude={"id", "state", "filters", "relationships", "attributes"})
+        schema_dict = self._dump_node_properties(node=node)
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
         await obj.save(db=db, at=at, user_id=user_id)
@@ -628,7 +635,7 @@ class SchemaManager(NodeManager):
             SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
 
         """
-        schema_dict = schema.model_dump(exclude=IGNORE_FOR_NODE)
+        schema_dict = self._dump_node_properties(node=schema)
         for key, value in schema_dict.items():
             if obj_attr := getattr(existing_schema_object, key, None):
                 obj_attr.value = value
@@ -742,7 +749,7 @@ class SchemaManager(NodeManager):
         properties_to_update = set(list(diff.added.keys()) + list(diff.changed.keys())) - IGNORE_FOR_NODE
 
         if properties_to_update:
-            schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
+            schema_dict = self._dump_node_properties(node=node)
             for key, value in schema_dict.items():
                 getattr(obj, key).value = value
 

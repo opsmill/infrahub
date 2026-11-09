@@ -110,20 +110,37 @@ generics:
     namespace: Infra
     description: "Generic Lag Interface"
     include_in_menu: false
+    containers:
+      - name: lacp
+        label: LACP
+        description: Link aggregation settings
+        order_weight: 100
+      - name: layer2
+        label: Layer 2
+        description: Switching settings of the bundle
+        order_weight: 200
+      - name: layer3
+        label: Layer 3
+        description: Addressing and MTU
+        order_weight: 300
+        collapsed: true
     attributes:
       - name: lacp
         label: LACP
         kind: Text
         enum: ["Active", "Passive", "Disabled"]
+        container: lacp
       - name: minimum_links
-        label: Mimimum links
+        label: Minimum links
         kind: Number
         default_value: 1
         optional: false
+        container: lacp
       - name: max_bundle
         label: MaxBundle
         kind: Number
         optional: true
+        container: advanced
     relationships:
       - name: mlag
         peer: InfraMlagInterface
@@ -131,6 +148,7 @@ generics:
         optional: true
         kind: Attribute
         identifier: mlag_member_lag_interface
+        container: lacp
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together"
@@ -337,6 +355,12 @@ nodes:
       - "InfraInterface"
       - "InfraLagInterface"
       - "CoreArtifactTarget"
+    attributes:
+      - name: mtu
+        label: MTU
+        kind: Number
+        default_value: 1500
+        container: layer3
     relationships:
       - name: members
         label: Members
@@ -350,6 +374,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+        container: layer3
   - name: InterfaceL2
     namespace: Infra
     description: "Network Layer 2 Interface"
@@ -417,6 +442,7 @@ nodes:
         label: Layer2 Mode
         kind: Text
         enum: ["Access", "Trunk", "Trunk (ALL)"]
+        container: layer2
     relationships:
       - name: members
         label: Members
@@ -432,6 +458,7 @@ nodes:
         cardinality: one
         kind: Component
         identifier: interface_l2__untagged_vlan
+        container: layer2
       - name: tagged_vlan
         label: Tagged VLANs
         peer: InfraVLAN
@@ -439,6 +466,7 @@ nodes:
         cardinality: many
         kind: Attribute
         identifier: interface_l2__tagged_vlan
+        container: layer2
   - name: Platform
     namespace: Infra
     description: "A Platform represents the type of software running on a device"

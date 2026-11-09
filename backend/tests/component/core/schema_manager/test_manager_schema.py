@@ -38,6 +38,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.container import ContainerSchema
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -49,8 +50,21 @@ from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, CHILD, DEVICE, DEVICE_SCHEMA, THING
 from tests.helpers.schema.device import LAG_INTERFACE
+from tests.helpers.schema.lag_interface import LAG_INTERFACE_L2, LAG_SCHEMA
 
 from .conftest import _get_schema_by_kind
+
+GRADING_CONTAINER = {"name": "grading", "label": "Grading", "order_weight": 100}
+DISPLAY_CONTAINER = {"name": "display", "label": "Display", "collapsed": True}
+
+
+def _schema_with_grading_container(schema_all_in_one: dict[str, Any]) -> dict[str, Any]:
+    schema = copy.deepcopy(schema_all_in_one)
+    criticality = _get_schema_by_kind(schema, kind="TestingCriticality")
+    criticality["containers"] = [copy.deepcopy(GRADING_CONTAINER)]
+    level = next(attribute for attribute in criticality["attributes"] if attribute["name"] == "level")
+    level["container"] = "grading"
+    return schema
 
 
 async def test_schema_branch_set() -> None:
@@ -886,6 +900,9 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any]) -> None:
+    schema_all_in_one = _schema_with_grading_container(schema_all_in_one)
+    criticality = _get_schema_by_kind(schema_all_in_one, kind="TestingCriticality")
+    criticality["relationships"][0]["container"] = "grading"
     core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
 
@@ -897,6 +914,10 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any
     node_profile = schema.get(name="ProfileTestingCriticality", duplicate=False)
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
+    assert node_profile.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
+    assert node_profile.containers[0].inherited is False
+    assert node_profile.get_attribute("level").container == "grading"
+    assert node_profile.get_relationship("tags").container == "grading"
     assert set(node_profile.attribute_names) == {
         "profile_name",
         "profile_priority",
@@ -3313,6 +3334,179 @@ async def test_clean_diff_after_reload_from_db(
     assert not schema_pre.diff(other=schema_branch).all
 
 
+def _load_criticality_twice(
+    schema_all_in_one: dict[str, Any], containers_on_reload: list[dict[str, Any]]
+) -> NodeSchema:
+    schema_with_grading = _schema_with_grading_container(schema_all_in_one)
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_with_grading))
+
+    reloaded = copy.deepcopy(_get_schema_by_kind(schema_with_grading, kind="TestingCriticality"))
+    reloaded["containers"] = containers_on_reload
+    schema.load_schema(schema=SchemaRoot(nodes=[reloaded]))
+
+    return schema.get_node(name="TestingCriticality", duplicate=False)
+
+
+@pytest.mark.parametrize(
+    ("containers_on_reload", "expected_containers"),
+    [
+        pytest.param(
+            [GRADING_CONTAINER, DISPLAY_CONTAINER],
+            [GRADING_CONTAINER, DISPLAY_CONTAINER],
+            id="appends_a_container",
+        ),
+        pytest.param(
+            [{**GRADING_CONTAINER, "label": "Grading level"}],
+            [{**GRADING_CONTAINER, "label": "Grading level"}],
+            id="updates_a_container_label",
+        ),
+        pytest.param([DISPLAY_CONTAINER], [DISPLAY_CONTAINER, GRADING_CONTAINER], id="keeps_a_left_out_container"),
+        pytest.param(
+            [{**GRADING_CONTAINER, "state": HashableModelState.ABSENT.value}], [], id="removes_an_absent_container"
+        ),
+    ],
+)
+async def test_reload_merges_the_containers(
+    schema_all_in_one: dict[str, Any],
+    containers_on_reload: list[dict[str, Any]],
+    expected_containers: list[dict[str, Any]],
+) -> None:
+    criticality = _load_criticality_twice(schema_all_in_one, containers_on_reload=copy.deepcopy(containers_on_reload))
+
+    assert criticality.containers == [ContainerSchema(**container) for container in expected_containers]
+    if expected_containers:
+        assert criticality.get_attribute("level").container == "grading"
+
+
+async def test_reload_node_redeclaring_an_inherited_container_matches_a_fresh_load() -> None:
+    override = {"name": "layer2", "label": "Switching"}
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)))
+    schema.process()
+    reloaded = copy.deepcopy(LAG_INTERFACE_L2)
+    reloaded["containers"] = [copy.deepcopy(override)]
+    schema.load_schema(schema=SchemaRoot(version="1.0", nodes=[reloaded]))
+    schema.process()
+    fresh_schema = copy.deepcopy(LAG_SCHEMA)
+    fresh_schema["nodes"][0]["containers"] = [copy.deepcopy(override)]
+    fresh = SchemaBranch(cache={}, name="fresh")
+    fresh.load_schema(schema=SchemaRoot(**fresh_schema))
+    fresh.process()
+
+    node = schema.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    fresh_node = fresh.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    assert node.containers == fresh_node.containers
+    layer2 = next(container for container in node.containers if container.name == "layer2")
+    assert layer2 == ContainerSchema(name="layer2", label="Switching")
+
+
+def _lag_schema_with_containers(container_names: list[str]) -> dict[str, Any]:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["generics"][0]["containers"] = [{"name": name, "label": name.capitalize()} for name in container_names]
+    return schema
+
+
+def _container_names(schema: NodeSchema | GenericSchema) -> list[str]:
+    return [container.name for container in schema.containers]
+
+
+async def test_reload_keeps_the_declaration_order_of_containers() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**_lag_schema_with_containers(["lacp", "layer2", "layer3"])))
+    schema.process()
+
+    reloaded = _lag_schema_with_containers(["layer2", "layer4", "lacp"])
+    schema.load_schema(schema=SchemaRoot(version="1.0", generics=reloaded["generics"]))
+    schema.process()
+
+    expected = ["layer2", "layer4", "lacp", "layer3"]
+    assert _container_names(schema.get_generic(name="InfraLagInterface", duplicate=False)) == expected
+    assert _container_names(schema.get_node(name="InfraLagInterfaceL2", duplicate=False)) == expected
+
+
+async def test_database_round_trip_keeps_the_declaration_order_of_containers(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(
+        schema=SchemaRoot(**_lag_schema_with_containers(["layer3", "lacp", "layer2"])), branch=default_branch.name
+    )
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch)
+
+    reordered = _lag_schema_with_containers(["layer2", "layer3", "lacp"])
+    candidate = schema.duplicate()
+    candidate.load_schema(schema=SchemaRoot(version="1.0", generics=reordered["generics"]))
+    candidate.process()
+    await registry.schema.update_schema_branch(
+        schema=candidate, db=db, branch=default_branch.name, diff=schema.diff(other=candidate)
+    )
+
+    loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+
+    expected = ["layer2", "layer3", "lacp"]
+    assert _container_names(loaded.get_generic(name="InfraLagInterface", duplicate=False)) == expected
+    assert _container_names(loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)) == expected
+
+
+async def _stored_containers(db: InfrahubDatabase, branch: Branch, name: str) -> list[str]:
+    schema_nodes = await NodeManager.query(
+        db=db, schema="SchemaNode", filters={"namespace__value": "Infra", "name__value": name}, branch=branch
+    )
+    return [container["name"] for container in schema_nodes[0].containers.value]
+
+
+async def test_saving_a_node_stores_only_its_own_containers(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)), branch=default_branch.name)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch)
+    relabelled = copy.deepcopy(LAG_SCHEMA)
+    relabelled["generics"][0]["containers"][0]["label"] = "Link aggregation"
+    candidate = schema.duplicate()
+    candidate.load_schema(schema=SchemaRoot(version="1.0", generics=relabelled["generics"]))
+    candidate.process()
+    await registry.schema.update_schema_branch(
+        schema=candidate, db=db, branch=default_branch.name, diff=schema.diff(other=candidate)
+    )
+
+    assert await _stored_containers(db=db, branch=default_branch, name="LagInterfaceL2") == []
+    assert await _stored_containers(db=db, branch=default_branch, name="LagInterfaceL3") == ["layer3"]
+    loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    l2_containers = loaded.get_node(name="InfraLagInterfaceL2", duplicate=False).containers
+    assert [(container.label, container.inherited) for container in l2_containers] == [
+        ("Link aggregation", True),
+        ("Layer 2", True),
+        ("Layer 3", True),
+    ]
+
+
+async def test_load_schema_from_db_accepts_a_schema_stored_without_containers(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**copy.deepcopy(LAG_SCHEMA)), branch=default_branch.name)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, db=db, branch=default_branch)
+    # A schema stored by an earlier version has neither the containers nor the container property.
+    await db.execute_query(
+        query="""
+        MATCH (:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+        WHERE attr.name IN ["containers", "container"]
+        DETACH DELETE attr
+        """
+    )
+
+    loaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+
+    generic = loaded.get_generic(name="InfraLagInterface", duplicate=False)
+    node = loaded.get_node(name="InfraLagInterfaceL2", duplicate=False)
+    assert generic.containers == []
+    assert node.containers == []
+    assert generic.get_attribute(name="lacp_rate").container is None
+    assert generic.get_relationship(name="sub_interfaces").container is None
+
+
 async def test_load_schema_to_db_simple_01(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -4639,6 +4833,9 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     THING_WITH_TEMPLATE = copy.deepcopy(THING)
     THING_WITH_TEMPLATE.generate_template = True
     THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
+    THING_WITH_TEMPLATE.containers = [ContainerSchema(name="grading", label="Grading", order_weight=100)]
+    THING_WITH_TEMPLATE.get_attribute(name="color").container = "grading"
+    THING_WITH_TEMPLATE.relationships[0].container = "grading"
     schema_branch.load_schema(
         schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
     )
@@ -4655,6 +4852,10 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
     assert test_object_template_thing.human_friendly_id == ["template_name__value"]
     assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
+    assert test_object_template_thing.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
+    assert test_object_template_thing.containers[0].inherited is False
+    assert test_object_template_thing.get_attribute("color").container == "grading"
+    assert test_object_template_thing.get_relationship(THING_WITH_TEMPLATE.relationships[0].name).container == "grading"
     assert sorted(
         [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
     ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique and not a.read_only])

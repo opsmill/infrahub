@@ -20,6 +20,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**cardinality**](#cardinality) | Attribute | Defines how many objects are expected on the other side of the relationship. | False |
 | [**common_parent**](#common_parent) | Attribute | Name of a parent relationship on the peer schema that must share the same related object with the object's parent. | False |
 | [**common_relatives**](#common_relatives) | Attribute | List of relationship names on the peer schema for which all objects must share the same set of peers. | False |
+| [**container**](#container) | Attribute | Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section. | False |
 | [**deprecation**](#deprecation) | Attribute | Mark relationship as deprecated and provide a user-friendly message to display | False |
 | [**description**](#description) | Attribute | Short description of the relationship. | False |
 | [**direction**](#direction) | Attribute | Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side. | False |
@@ -94,6 +95,17 @@ Below is the list of all available options to define a Relationship in the schem
 | **Name** | common_relatives |
 | **Kind** | `List` |
 | **Description** | List of relationship names on the peer schema for which all objects must share the same set of peers. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### container
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | container |
+| **Kind** | `Text` |
+| **Description** | Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
