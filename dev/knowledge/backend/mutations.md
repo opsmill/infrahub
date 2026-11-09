@@ -201,10 +201,11 @@ object locks, because the IPAM reconciliation that follows rewrites parent relat
 - A prefix mutation locks its namespace, on every branch. Reconciling a prefix can move other
   prefixes and addresses under it.
 - An IP address mutation on the default branch locks each address value it touches: one lock per
-  namespace and host address, covering every prefix length of that host. An update locks both the
-  stored and the requested address. Reconciling an address writes only that address's own parent
-  relationship, so mutations of different addresses do not wait for each other. On other branches
-  an IP address mutation takes no IPAM lock, because reconciliation runs again at merge.
+  namespace and host address, covering every prefix length of that host. An update locks the stored
+  address and the address it has after the update, whose namespace and host each default to the
+  stored ones. Reconciling an address writes only that address's own parent relationship, so
+  mutations of different addresses do not wait for each other. On other branches an IP address
+  mutation takes no IPAM lock, because reconciliation runs again at merge.
 
 ## Key Files
 

@@ -82,6 +82,21 @@ def get_ip_address_lock_names(addresses: Iterable[tuple[str, IPv4Interface | IPv
     )
 
 
+def get_locked_addresses_on_ip_address_update(
+    stored_namespace_id: str,
+    stored_address: str,
+    namespace_id: str,
+    requested_address: str | None,
+) -> list[tuple[str, IPv4Interface | IPv6Interface]]:
+    """Return the (namespace ID, address) pairs an update locks: the stored address and the address after the update.
+
+    The address after the update keeps the stored host when the update sets no new address value.
+    """
+    stored = ipaddress.ip_interface(stored_address)
+    updated = ipaddress.ip_interface(requested_address) if requested_address else stored
+    return [(stored_namespace_id, stored), (namespace_id, updated)]
+
+
 class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
@@ -241,9 +256,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
-        locked_addresses = [(namespace.id, ipaddress.ip_interface(address.address.value))]
-        if (requested_address := data.get("address")) and requested_address.get("value"):
-            locked_addresses.append((namespace_id, ipaddress.ip_interface(requested_address["value"])))
+        locked_addresses = get_locked_addresses_on_ip_address_update(
+            stored_namespace_id=namespace.id,
+            stored_address=address.address.value,
+            namespace_id=namespace_id,
+            requested_address=(data.get("address") or {}).get("value"),
+        )
         address_lock_names = cls._get_lock_names(branch=branch, addresses=locked_addresses)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=address_lock_names, metrics=False):
             # FIXME: do not lock when data does not contain uniqueness constraint fields or resource pool allocations
