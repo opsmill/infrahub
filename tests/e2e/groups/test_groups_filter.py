@@ -2,7 +2,7 @@
 
 CoreGroup list: toggling the "internal groups" filter shows/hides internal
 (e.g. computed_) groups while regular groups (Engineering Team) stay visible.
-Depends on data_sites: the Engineering Team account group comes via its rbac
+Depends on data_site_atl1: the Engineering Team account group comes via its rbac
 dependency, and the internal computed_* groups only appear once devices with
 computed attributes exist.
 """
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class TestCoreGroupFiltering:
-    async def test_toggles_visibility_of_internal_groups(self, page: Page, data_sites: SitesHandle) -> None:
+    async def test_toggles_visibility_of_internal_groups(self, page: Page, data_site_atl1: SitesHandle) -> None:
         await page.goto("/objects/CoreGroup")
 
         show_internal_groups_filter = page.get_by_role("row", name="internal groups is hidden")

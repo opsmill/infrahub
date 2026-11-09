@@ -4,8 +4,8 @@ A merged branch is read-only: create + create/edit/delete and add-relationship
 actions are disabled with an explanatory tooltip. The branch is created and
 merged once for the whole class (beforeAll/afterAll -> class-scoped fixture).
 Operates on demo objects (BuiltinTag blue and InfraPlatform Cisco IOS come
-transitively via org_registry; the platform's 10 devices are the site leaves),
-so it depends on data_sites.
+transitively via org_registry; the platform's 4 devices are the site leaves
+(2 kept sites x 2 leaves), so it depends on data_sites.
 
 The TS spec marked this `test.slow()`; Playwright's own action/expect timeouts
 cover the extra latency here.
@@ -90,8 +90,8 @@ class TestMergedBranchDisabledActions:
         await admin_page.goto(f"/objects/InfraPlatform?branch={merged_branch}")
         await expect(admin_page.get_by_role("link", name="Cisco IOS", exact=True)).to_be_visible()
         await admin_page.get_by_role("link", name="Cisco IOS", exact=True).click()
-        await expect(admin_page.get_by_role("link", name="Devices 10")).to_be_visible()
-        await admin_page.get_by_role("link", name="Devices 10").click()
+        await expect(admin_page.get_by_role("link", name="Devices 4")).to_be_visible()
+        await admin_page.get_by_role("link", name="Devices 4").click()
 
         # add relationship button is disabled with tooltip
         await expect(admin_page.get_by_test_id("open-relationship-form-button")).to_be_visible()
