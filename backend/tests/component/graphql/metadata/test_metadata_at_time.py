@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
@@ -82,3 +83,35 @@ async def test_updated_metadata_at_past_time_on_default_branch(
     state_at_past_time = await _query_tag(db=db, branch=default_branch, tag_id=tag.id, at=time_between_updates)
 
     assert state_at_past_time == state_after_a
+
+
+def _parse_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+
+async def test_attribute_updated_metadata_at_past_time_includes_cleared_source(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Clearing an attribute's source counts as its latest update for a query at a later past time."""
+    account_a = await _create_account(db=db, name="account-a")
+    account_b = await _create_account(db=db, name="account-b")
+    account_c = await _create_account(db=db, name="account-c")
+    start = Timestamp()
+
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag.new(db=db, name="tag-source", description="one")
+    tag.get_attribute("description").set_source(account_a.id)
+    await tag.save(db=db, user_id=account_a.id, at=start.add(seconds=10))
+
+    tag.get_attribute("description").clear_source()
+    await tag.save(db=db, user_id=account_b.id, at=start.add(seconds=20))
+
+    tag.get_attribute("description").value = "two"
+    await tag.save(db=db, user_id=account_c.id, at=start.add(seconds=30))
+
+    state = await _query_tag(db=db, branch=default_branch, tag_id=tag.id, at=start.add(seconds=25))
+
+    description = state["node"]["description"]
+    assert description["value"] == "one"
+    assert description["updated_by"] == {"id": account_b.id}
+    assert _parse_datetime(description["updated_at"]) == start.add(seconds=20).to_datetime()

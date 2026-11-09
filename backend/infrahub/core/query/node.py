@@ -164,7 +164,6 @@ def _node_field_edges_query(branch_filter: str) -> str:
         RETURN DISTINCT field
     }
     MATCH (field)-[r]-(property)
-    WHERE %(branch_filter)s
     """ % {"branch_filter": branch_filter}
 
 
@@ -825,7 +824,7 @@ CALL (a) {
             return
         if self.branch.is_default or self.branch.is_global:
             last_updated_query, metadata_params = build_vertex_updated_metadata_query(
-                vertex="a", edges_query=f"MATCH (a)-[r]->(property)\n    WHERE {branch_filter_str}", at=self.at
+                vertex="a", edges_pattern="MATCH (a)-[r]->(property)", at=self.at
             )
             self.params.update(metadata_params)
         else:
@@ -1128,7 +1127,7 @@ WITH *, created_details[0] AS created_at, created_details[1] AS created_by
         if self.branch.is_default or self.branch.is_global:
             last_updated_query, metadata_params = build_vertex_updated_metadata_query(
                 vertex="rel",
-                edges_query=f"MATCH (rel)-[r:!IS_RELATED]->(property)\n    WHERE {branch_filter_str}",
+                edges_pattern="MATCH (rel)-[r:!IS_RELATED]->(property)",
                 at=self.at,
             )
             self.params.update(metadata_params)
@@ -1529,7 +1528,7 @@ CALL (n) {
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
             last_update_query, metadata_params = build_vertex_updated_metadata_query(
-                vertex="n", edges_query=_node_field_edges_query(branch_filter=branch_filter_str), at=self.at
+                vertex="n", edges_pattern=_node_field_edges_query(branch_filter=branch_filter_str), at=self.at
             )
             self.params.update(metadata_params)
         else:
@@ -1931,7 +1930,7 @@ WITH %(tracked_vars)s, created_at, created_by
         if self.branch.is_default or self.branch.is_global:
             updated_query, metadata_params = build_vertex_updated_metadata_query(
                 vertex="n",
-                edges_query=_node_field_edges_query(branch_filter=branch_filter),
+                edges_pattern=_node_field_edges_query(branch_filter=branch_filter),
                 carry=tracked_vars,
                 at=self.at,
             )

@@ -792,7 +792,7 @@ CALL (rels) {
         self.update_return_labels(["updated_at", "updated_by"])
         if self.branch.is_default or self.branch.is_global:
             last_updated_query, metadata_params = build_vertex_updated_metadata_query(
-                vertex="rl", edges_query=f"MATCH (rl)-[r]-(property)\n    WHERE {branch_filter_str}", at=self.at
+                vertex="rl", edges_pattern="MATCH (rl)-[r]-(property)", at=self.at
             )
             self.params.update(metadata_params)
             self.add_to_query(last_updated_query)
