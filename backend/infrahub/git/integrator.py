@@ -2137,11 +2137,39 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         convert_query_response: bool,
         data: dict | None = None,
     ) -> Any:
-        """Execute A Python Transform stored in the repository.
+        """Execute A Python Transform stored in the repository, recorded as its own task run.
 
         Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
         task argument twice before the task starts, which costs seconds on a large query response.
         The task body always receives the plain value.
+
+        Raises:
+            ValueError: When ``location`` does not contain the expected ``module::class`` separator.
+            TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
+
+        """
+        return await self.run_python_transform(
+            branch_name=branch_name,
+            commit=commit,
+            location=location,
+            client=client,
+            convert_query_response=convert_query_response,
+            data=data,
+        )
+
+    async def run_python_transform(
+        self,
+        branch_name: str,
+        commit: str,
+        location: str,
+        client: InfrahubClient,
+        convert_query_response: bool,
+        data: dict | None = None,
+    ) -> Any:
+        """Execute A Python Transform stored in the repository, within the calling flow or task run.
+
+        A flow that runs the same transform for many nodes calls this directly, because a task run per
+        node adds its own state changes and events to the task manager.
 
         Raises:
             ValueError: When ``location`` does not contain the expected ``module::class`` separator.
