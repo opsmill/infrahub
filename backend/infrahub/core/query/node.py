@@ -156,15 +156,14 @@ class PeerInfo:
     db_id: str
 
 
-def _node_field_edges_query(branch_filter: str) -> str:
-    return """
-    CALL (n) {
-        MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-        WHERE %(branch_filter)s
-        RETURN DISTINCT field
-    }
-    MATCH (field)-[r]-(property)
-    """ % {"branch_filter": branch_filter}
+# Edges between the node and its fields record a field being added or removed; the peer side of a
+# relationship is excluded because it records changes to the peer, not to this node.
+_NODE_FIELD_EDGES_PATTERN = """
+    MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+    WITH DISTINCT n, field
+    MATCH (field)-[r]-(other)
+    WHERE other = n OR (startNode(r) = field AND NOT r:IS_RELATED)
+    """
 
 
 class NodeQuery(Query):
@@ -1528,7 +1527,7 @@ CALL (n) {
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
             last_update_query, metadata_params = build_vertex_updated_metadata_query(
-                vertex="n", edges_pattern=_node_field_edges_query(branch_filter=branch_filter_str), at=self.at
+                vertex="n", edges_pattern=_NODE_FIELD_EDGES_PATTERN, at=self.at
             )
             self.params.update(metadata_params)
         else:
@@ -1930,7 +1929,7 @@ WITH %(tracked_vars)s, created_at, created_by
         if self.branch.is_default or self.branch.is_global:
             updated_query, metadata_params = build_vertex_updated_metadata_query(
                 vertex="n",
-                edges_pattern=_node_field_edges_query(branch_filter=branch_filter),
+                edges_pattern=_NODE_FIELD_EDGES_PATTERN,
                 carry=tracked_vars,
                 at=self.at,
             )

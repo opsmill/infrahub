@@ -115,3 +115,33 @@ async def test_attribute_updated_metadata_at_past_time_includes_cleared_source(
     assert description["value"] == "one"
     assert description["updated_by"] == {"id": account_b.id}
     assert _parse_datetime(description["updated_at"]) == start.add(seconds=20).to_datetime()
+
+
+async def test_node_updated_metadata_at_past_time_includes_removal_from_group(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Removing a node from a group counts as the node's latest update for a query at a later past time."""
+    account_a = await _create_account(db=db, name="account-a")
+    account_b = await _create_account(db=db, name="account-b")
+    account_c = await _create_account(db=db, name="account-c")
+    start = Timestamp().add(seconds=-100)
+
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await tag.new(db=db, name="tag-group", description="one")
+    await tag.save(db=db, user_id=account_a.id, at=start.add(seconds=10))
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="group-history", members=[tag])
+    await group.save(db=db, user_id=account_a.id, at=start.add(seconds=15))
+
+    await group.get_relationship("members").update(db=db, data=[])
+    await group.save(db=db, user_id=account_b.id, at=start.add(seconds=20))
+
+    tag.get_attribute("description").value = "two"
+    await tag.save(db=db, user_id=account_c.id, at=start.add(seconds=30))
+
+    state = await _query_tag(db=db, branch=default_branch, tag_id=tag.id, at=start.add(seconds=25))
+
+    node_metadata = state["node_metadata"]
+    assert node_metadata["updated_by"] == {"id": account_b.id}
+    assert _parse_datetime(node_metadata["updated_at"]) == start.add(seconds=20).to_datetime()

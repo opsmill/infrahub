@@ -26,6 +26,7 @@ OPTIONAL CALL ({vertex}) {{
     WITH {vertex}
     WHERE {vertex}.updated_at > ${_AT_PARAM}
     {edges_pattern}
+    WITH r
     WHERE r.branch IN ${_BRANCHES_PARAM} AND r.from <= ${_AT_PARAM}
     UNWIND CASE
         WHEN r.to IS NOT NULL AND r.to <= ${_AT_PARAM} THEN [[r.from, r.from_user_id], [r.to, r.to_user_id]]
