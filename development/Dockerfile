@@ -158,22 +158,26 @@ RUN apt-get update && \
 # `FROM` this one can install extra Python packages into /.venv when extending Infrahub.
 COPY --from=base /root/.local/bin/uv /root/.local/bin/uvx /usr/local/bin/
 
-# Group 0 gets the owner's permissions so the image also runs as a non-root user, including an arbitrary uid in group 0.
+# One home for every user, so a uid without a passwd entry does not get HOME=/.
+ENV HOME="/home/infrahub"
+
 RUN mkdir /prom_shared /remote && \
     mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow /opt/infrahub/prefect-ui && \
-    useradd --uid 1000 --gid 0 --home-dir /home/infrahub --create-home --shell /usr/sbin/nologin infrahub && \
-    chgrp -R 0 /prom_shared /remote /opt/infrahub /home/infrahub && \
-    chmod -R g=u /prom_shared /remote /opt/infrahub /home/infrahub
+    useradd --uid 1000 --gid 0 --home-dir /home/infrahub --create-home --shell /usr/sbin/nologin infrahub
 
 # --------------------------------------------
 # Configure Git
 # --------------------------------------------
-# System-wide so the settings apply to whichever user runs the container.
-RUN git config --system user.name "Infrahub" && \
-    git config --system user.email "infrahub@opsmill.com" && \
-    git config --system --add safe.directory '*' && \
-    git config --system credential.usehttppath true && \
-    git config --system credential.helper "/usr/bin/env infrahub-git-credential"
+# In $HOME/.gitconfig, which the task worker replaces with its own file at startup (git.global_config_file).
+RUN git config --global user.name "Infrahub" && \
+    git config --global user.email "infrahub@opsmill.com" && \
+    git config --global --add safe.directory '*' && \
+    git config --global credential.usehttppath true && \
+    git config --global credential.helper "/usr/bin/env infrahub-git-credential"
+
+# Owned by uid 1000, and group 0 gets the owner's permissions so an arbitrary uid in group 0 can write too.
+RUN chown -R infrahub:0 /prom_shared /remote /opt/infrahub /home/infrahub && \
+    chmod -R g=u /prom_shared /remote /opt/infrahub /home/infrahub
 
 WORKDIR /source
 

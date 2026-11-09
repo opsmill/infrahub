@@ -5,7 +5,12 @@ title: Run Infrahub as a non-root user
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide explains how to run the Infrahub server, the task workers and the task manager as a non-root user. The Infrahub Docker image runs as root by default. It also contains an `infrahub` user (user ID `1000`, group ID `0`), and every directory Infrahub writes to at runtime is writable by group `0`. You can therefore run the containers as user ID `1000`, or as any other user ID in group `0`, for example on platforms that assign a random user ID.
+This guide explains how to run the Infrahub server, the task workers and the task manager as a non-root user. The Infrahub Docker image runs as root by default. It also contains an `infrahub` user (user ID `1000`, group ID `0`, home directory `/home/infrahub`), which owns every directory Infrahub writes to at runtime, and group `0` has the same permissions on them. You can therefore run the containers as:
+
+- user ID `1000`, with any group ID
+- any other user ID with group ID `0`, for example on platforms that assign a random user ID, such as OpenShift
+
+Any other combination, such as a random user ID with a group ID other than `0`, cannot write to these directories.
 
 ## What you'll accomplish
 
@@ -25,7 +30,7 @@ Before starting, ensure you have:
 
 ## Step 1: Make existing volumes writable
 
-New volumes need no preparation. On an existing deployment, the files in the storage and workflow volumes belong to root and are not writable for group `0`. Give group `0` the same permissions as the owner before you switch users.
+New volumes need no preparation. On an existing deployment, the files in the storage and workflow volumes belong to root. Give them to the `infrahub` user and give group `0` the same permissions as the owner before you switch users.
 
 <Tabs groupId="installation-method" queryString>
 <TabItem value="docker-compose" label="Docker Compose" default>
@@ -34,7 +39,7 @@ Run a one-off container as root that mounts the same volumes as the server:
 
 ```shell
 docker compose run --rm --no-deps --user 0 infrahub-server \
-  sh -c 'chgrp -R 0 /opt/infrahub/storage /opt/infrahub/workflow && chmod -R g=u /opt/infrahub/storage /opt/infrahub/workflow'
+  sh -c 'chown -R 1000:0 /opt/infrahub/storage /opt/infrahub/workflow && chmod -R g=u /opt/infrahub/storage /opt/infrahub/workflow'
 ```
 
 </TabItem>
@@ -45,7 +50,7 @@ Set the pod security context group to `0` in the next step. For volume types tha
 Some volume types, such as NFS, ignore the pod security context group. On such a volume, change the permissions of the existing files once, from a pod that runs as root and mounts the volume:
 
 ```shell
-chgrp -R 0 /opt/infrahub/storage && chmod -R g=u /opt/infrahub/storage
+chown -R 1000:0 /opt/infrahub/storage && chmod -R g=u /opt/infrahub/storage
 ```
 
 </TabItem>
@@ -72,6 +77,33 @@ Restart Infrahub:
 
 ```shell
 docker compose up -d
+```
+
+</TabItem>
+<TabItem value="podman" label="Podman">
+
+With named volumes, use the same `docker-compose.override.yml` as for Docker Compose.
+
+With directories of the host bind-mounted into the containers, map your host user to user ID `1000` instead, so that the containers can write to the files you own. Create a `docker-compose.override.yml` file next to `docker-compose.yml`:
+
+```yaml
+x-podman:
+  in_pod: false
+services:
+  infrahub-server:
+    userns_mode: "keep-id:uid=1000"
+  task-worker:
+    userns_mode: "keep-id:uid=1000"
+  task-manager:
+    userns_mode: "keep-id:uid=1000"
+```
+
+`podman-compose` runs the services in a pod by default, and a container in a pod cannot have its own user namespace, so `in_pod: false` turns the pod off. Without `podman-compose`, pass `--userns=keep-id:uid=1000` to `podman run`. Plain `--userns=keep-id` runs the containers as your host user ID, which cannot write to the runtime directories unless it is `1000`.
+
+Restart Infrahub:
+
+```shell
+podman-compose up -d
 ```
 
 </TabItem>
