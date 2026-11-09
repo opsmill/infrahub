@@ -403,9 +403,9 @@ A running flow emits a `prefect.flow-run.heartbeat` event on the interval set by
 Keep zombie detection a scheduled check of the runs' current states (`task_manager/flow_run/zombie.py::ZombieFlowRunReaper`); don't move it back into a Prefect automation. Prefect's triggers service can run hours behind its event stream under load. A proactive trigger then judges each run long after the fact, so it fires a crash for runs that already finished, which Prefect refuses, and could crash a long run that is still alive. Each tick:
 
 - crashes a run in `RUNNING` once its running state started more than the window ago and its last heartbeat is older than the window;
-- leaves a run that never sent a heartbeat alone, so turning heartbeats off turns detection off instead of crashing every long run;
+- leaves a run in `RUNNING` that never sent a heartbeat alone, so turning heartbeats off turns detection off instead of crashing every long run;
 - measures the window back from the newest stored event rather than from the current time, so a delay in storing events does not make a live run look silent, and judges nothing when no event was stored within the window;
-- requests the crash without `force`, so orchestration refuses it for a run that finished in the meantime. Two overlapping ticks are therefore harmless, and the flow has no concurrency limit, which a run stuck holding the only slot would otherwise turn off for good.
+- requests the crash without `force`, so orchestration refuses it for a run that finished in the meantime. Two overlapping ticks are therefore harmless. The flow has no concurrency limit: a tick that hangs while its process stays alive keeps renewing the lease on its slot, so a limit would block every later tick for as long as it hangs.
 
 The window is six heartbeat intervals and at least three minutes (`zombie.py::heartbeat_window`). Heartbeats are read through the events API, which the event persister keeps close to real time even when the triggers service lags.
 
