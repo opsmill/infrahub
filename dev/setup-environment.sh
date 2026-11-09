@@ -115,13 +115,7 @@ echo "Installing frontend dependencies with pnpm..."
 if command -v pnpm &> /dev/null; then
     if [ -d "$PROJECT_DIR/frontend/app" ]; then
         cd "$PROJECT_DIR/frontend/app"
-<<<<<<< HEAD
-        pnpm install --frozen-lockfile || echo "Warning: pnpm install failed (continuing)"
-||||||| 7f692f80d
-        pnpm install
-=======
         pnpm install --frozen-lockfile
->>>>>>> origin/stable
         echo "Frontend dependencies installed"
         cd "$PROJECT_DIR"
     else
