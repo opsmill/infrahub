@@ -42,6 +42,7 @@ from infrahub.core.query.subquery import (
     ranks_latest_value,
 )
 from infrahub.core.query.utils import find_node_schema
+from infrahub.core.query.vertex_metadata import build_vertex_updated_metadata_query
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByMetadataField,
@@ -153,6 +154,18 @@ class PeerInfo:
     uuid: str
     kind: str
     db_id: str
+
+
+def _node_field_edges_query(branch_filter: str) -> str:
+    return """
+    CALL (n) {
+        MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+        WHERE %(branch_filter)s
+        RETURN DISTINCT field
+    }
+    MATCH (field)-[r]-(property)
+    WHERE %(branch_filter)s
+    """ % {"branch_filter": branch_filter}
 
 
 class NodeQuery(Query):
@@ -811,9 +824,10 @@ CALL (a) {
         if not self._include_updated_metadata:
             return
         if self.branch.is_default or self.branch.is_global:
-            last_updated_query = """
-WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
-            """
+            last_updated_query, metadata_params = build_vertex_updated_metadata_query(
+                vertex="a", edges_query=f"MATCH (a)-[r]->(property)\n    WHERE {branch_filter_str}", at=self.at
+            )
+            self.params.update(metadata_params)
         else:
             if self.branch_agnostic:
                 time_details = """
@@ -1112,9 +1126,12 @@ WITH *, created_details[0] AS created_at, created_details[1] AS created_by
         if not (self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY)):
             return
         if self.branch.is_default or self.branch.is_global:
-            last_updated_query = """
-WITH *, rel.updated_at AS updated_at, rel.updated_by AS updated_by
-            """
+            last_updated_query, metadata_params = build_vertex_updated_metadata_query(
+                vertex="rel",
+                edges_query=f"MATCH (rel)-[r:!IS_RELATED]->(property)\n    WHERE {branch_filter_str}",
+                at=self.at,
+            )
+            self.params.update(metadata_params)
         else:
             if self.branch_agnostic:
                 time_details = """
@@ -1511,9 +1528,10 @@ CALL (n) {
 
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
-            last_update_query = """
-WITH *, n.updated_at AS updated_at, n.updated_by AS updated_by
-            """
+            last_update_query, metadata_params = build_vertex_updated_metadata_query(
+                vertex="n", edges_query=_node_field_edges_query(branch_filter=branch_filter_str), at=self.at
+            )
+            self.params.update(metadata_params)
         else:
             if self.branch_agnostic:
                 time_details = """
@@ -1911,7 +1929,13 @@ WITH %(tracked_vars)s, created_at, created_by
         tracked_vars = ", ".join(self._get_tracked_variables())
 
         if self.branch.is_default or self.branch.is_global:
-            updated_query = f"WITH {tracked_vars}, n.updated_at AS updated_at, n.updated_by AS updated_by"
+            updated_query, metadata_params = build_vertex_updated_metadata_query(
+                vertex="n",
+                edges_query=_node_field_edges_query(branch_filter=branch_filter),
+                carry=tracked_vars,
+                at=self.at,
+            )
+            self.params.update(metadata_params)
         else:
             if self.branch_agnostic:
                 time_details = """

@@ -17,6 +17,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
+from infrahub.core.query.vertex_metadata import build_vertex_updated_metadata_query
 from infrahub.core.schema.order_by import (
     OrderByTargetKind,
     ParsedOrderByEntry,
@@ -790,9 +791,10 @@ CALL (rels) {
             return
         self.update_return_labels(["updated_at", "updated_by"])
         if self.branch.is_default or self.branch.is_global:
-            last_updated_query = """
-WITH *, rl.updated_at AS updated_at, rl.updated_by AS updated_by
-            """
+            last_updated_query, metadata_params = build_vertex_updated_metadata_query(
+                vertex="rl", edges_query=f"MATCH (rl)-[r]-(property)\n    WHERE {branch_filter_str}", at=self.at
+            )
+            self.params.update(metadata_params)
             self.add_to_query(last_updated_query)
             return
 
