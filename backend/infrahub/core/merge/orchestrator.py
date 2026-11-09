@@ -216,7 +216,7 @@ class BranchMergeOrchestrator:
         # Point of no return: merge fully succeeded. Advance to MERGED.
         self.source_branch.status = BranchStatus.MERGED
         await self.source_branch.save(db=self.db, user_id=user_id)
-        registry.branch[self.source_branch.name] = self.source_branch
+        self._cache_source_branch()
 
         # Lift the write protection now that the merge has fully succeeded.
         await self.merge_write_blocker.delete()
@@ -286,7 +286,11 @@ class BranchMergeOrchestrator:
         self.source_branch.merge_started_at = merge_at.to_string()
         self.source_branch.pre_merge_destination_schema_changed_at = self.destination_branch.schema_changed_at
         await self.source_branch.save(db=self.db, user_id=user_id)
-        registry.branch[self.source_branch.name] = self.source_branch
+        self._cache_source_branch()
+
+    def _cache_source_branch(self) -> None:
+        """Cache a copy of the source branch as just saved, since the merge goes on changing its own object."""
+        registry.refresh_cached_branch(self.source_branch.model_copy(deep=True))
 
     async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
         """Serialize the merge diff and persist its summary to the cache, returning the cache key.

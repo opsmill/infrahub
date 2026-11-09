@@ -164,9 +164,11 @@ class Registry:
         raise BranchNotFoundError(identifier=branch)
 
     def refresh_cached_branch(self, branch: Branch) -> None:
-        """Replace this worker's cached copy of a branch, when it already holds one.
+        """Replace this worker's cached copy of a branch just saved to the database, when it already holds one.
 
-        Do not create, which requires schema loading.
+        Do not create, which requires schema loading. The cache keeps the object passed in, and a registry refresh in
+        flight keeps a branch only when its cached object was replaced, so pass a copy of a branch that changes
+        afterwards.
         """
         if branch.name in self.branch:
             self.branch[branch.name] = branch
