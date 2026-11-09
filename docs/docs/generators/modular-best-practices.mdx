@@ -103,7 +103,7 @@ for pod in pods:
         await pod.save(allow_upsert=True, update_group_context=False)
 ```
 
-If an earlier run already saved the targets without `update_group_context=False`, they are members of the Generator group, and the first run that saves them with the flag deletes them. Remove them from the Generator group before that run.
+If an earlier run already saved the targets without `update_group_context=False`, they are members of the Generator group, and the next run deletes them, whether it saves them with the flag or skips the save. Remove them from the Generator group before the Generator runs again.
 
 The same rule applies to any object that a Generator updates but does not create. When the object's kind is branch-agnostic, a delete on a branch also removes it from the default branch (see [Deletes on a branch](./overview#deletes-on-a-branch)).
 

@@ -254,7 +254,7 @@ for pod in pods:
 
 The SDK does not add the object to the Generator group, so the cleanup does not delete it when a later run skips the save.
 
-An object that an earlier run already added to the Generator group is deleted on the first run that saves it with `update_group_context=False`: the run compares the group's members with the objects it saved into the group, and that object is not among them. Remove the object from the Generator group before that run.
+An object that an earlier run already added to the Generator group stays in the group until a run does not save it into the group. That run deletes the object, whether it saves the object with `update_group_context=False` or skips the save: the run compares the group's members with the objects it saved into the group, and that object is not among them. Remove the object from the Generator group before the Generator runs again.
 
 ### When a run fails
 
