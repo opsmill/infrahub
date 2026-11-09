@@ -1,0 +1,1 @@
+Upgraded the GraphQL sandbox to GraphiQL 6, which replaces the Explorer pane with a query builder, adds operation collections, response views (JSON, tree and table) and display settings, and shows the HTTP status, duration and size of each response.
