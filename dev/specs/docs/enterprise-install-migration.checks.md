@@ -1,6 +1,6 @@
 # Prose checks: Enterprise install and Community-to-Enterprise migration
 
-Pages: `install/enterprise.mdx` (new "Before you start" section), `install/migrate-to-enterprise.mdx` (rewritten sentences only), `faq/faq.mdx` (one answer), `changelog/+enterprise-migration-docs.added.md`.
+Pages: `install/enterprise.mdx` (new "Before you start" section), `upgrade/community-to-enterprise.mdx` (moved from another branch; the prose walk below covers the earlier draft, not the moved page), `faq/faq.mdx` (one answer), `changelog/+enterprise-migration-docs.added.md`.
 
 ## Subject walk (32 sentences)
 

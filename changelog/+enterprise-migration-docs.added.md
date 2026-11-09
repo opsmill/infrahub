@@ -1,1 +1,1 @@
-Added a Community-to-Enterprise migration guide covering Docker Compose, Helm, and bare-metal deployments, and a "Before you start" section on the Enterprise installation page that covers access, license agreements, and hardware requirements.
+Added a Community-to-Enterprise migration guide covering Docker Compose and Helm deployments, and a "Before you start" section on the Enterprise installation page that covers access, license agreements, and hardware requirements.

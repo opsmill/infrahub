@@ -392,7 +392,6 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
-                { type: 'doc', id: 'deploy-manage/install-configure/install/migrate-to-enterprise', label: 'Migrate to Enterprise' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/observability-stack', label: 'Observability stack' },
               ],
             },
@@ -465,6 +464,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community-to-enterprise', label: 'Community to Enterprise' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/observability-stack', label: 'Observability stack' },
               ],
             },
