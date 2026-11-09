@@ -28,4 +28,4 @@ async def crash_zombie_flow_runs() -> None:
     if not check.events_stored:
         log.warning(f"Judged no flow run: no event was stored in the last {window.total_seconds():.0f} seconds")
     if check.crashed:
-        log.info(f"Crashed {len(check.crashed)} flow runs that stopped sending heartbeats: {check.crashed}")
+        log.info(f"Crashed {len(check.crashed)} zombie flow runs: {check.crashed}")
