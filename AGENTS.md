@@ -8,24 +8,12 @@ Style: be direct and substantive. Challenge flawed approaches and ask before gue
 
 ## Tech Stack
 
-<<<<<<< HEAD
-- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.4), Pydantic 2.12
-- **Frontend:** TypeScript 6.0, React 19.3, Vite 8.3, Tailwind CSS 4.3
-- **Testing:** pytest 9.0, Vitest 5.1, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
-||||||| 7f692f80d
-- **Backend:** Python 3.14, FastAPI 0.131.0, Neo4j 2026.05 (driver 6.4), Pydantic 2.12
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 5.0, Playwright 1.60
-- **Linting:** ruff 0.15, mypy 2.3, Biome 2.4
-=======
-Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/app/package.json` (frontend).
+Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/package.json` / `frontend/app/package.json` (frontend).
 
 - **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
-- **Frontend:** TypeScript 5, React 19, Vite 8, Tailwind CSS 4
+- **Frontend:** TypeScript 6, React 19, Vite 8, Tailwind CSS 4
 - **Testing:** pytest 9, Vitest 5, Playwright
 - **Linting:** ruff, mypy 2, Biome 2
->>>>>>> origin/stable
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2
 
@@ -111,19 +99,9 @@ See `tests/e2e/README.md` for the suite architecture and data fixtures.
 ### Linting & Formatting
 
 ```bash
-<<<<<<< HEAD
-uv run invoke format                  # Format all Python code
-uv run invoke lint                    # Lint all Python code
-cd frontend && pnpm biome:fix         # Format/lint frontend (app + packages/*)
-||||||| 7f692f80d
-uv run invoke format                  # Format all Python code
-uv run invoke lint                    # Lint all Python code
-cd frontend/app && pnpm biome:fix     # Format/lint frontend
-=======
 uv run invoke format                  # ruff format + fix on all Python code except python_sdk and .specify (same scope as CI)
 uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk and .specify (same scope as CI); mypy on backend
-cd frontend/app && pnpm biome:fix     # Format/lint frontend
->>>>>>> origin/stable
+cd frontend && pnpm biome:fix         # Format/lint frontend (app + packages/*)
 uv run invoke docs.lint               # Lint documentation
 ```
 
@@ -200,16 +178,8 @@ CI validates that all generated files are committed — the `validate-generated-
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
-<<<<<<< HEAD
-- Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed, the whole-repo `uv run ruff check . --exclude python_sdk` and `uv run ruff format --check --exclude python_sdk .`, and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
-- Before writing a changelog fragment, PR description, ADR, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
-||||||| 7f692f80d
-- Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed, the whole-repo `uv run ruff check . --exclude python_sdk` and `uv run ruff format --check --exclude python_sdk .`, and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
-- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
-=======
 - Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
-- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
->>>>>>> origin/stable
+- Before writing a changelog fragment, PR description, ADR, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
 
