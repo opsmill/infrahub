@@ -36,6 +36,7 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
+from infrahub.health import build_health_checker
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
@@ -131,6 +132,13 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
+    application.state.health_checker = build_health_checker(
+        database=database,
+        message_bus=message_bus,
+        cache=cache,
+        workflow=workflow,
+        check_timeout=config.SETTINGS.health.check_timeout,
+    )
 
     if enable_scheduler:
         await service.scheduler.start_schedule()
@@ -158,13 +166,17 @@ app = FastAPI(
 )
 
 
+TRACING_EXCLUDED_URLS = ".*/metrics,^[a-z]+://[^/]+/api/health$"
+"""Patterns matched against the full URL of a request; the health pattern matches only the path `/api/health`."""
+
+
 def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
         mask_recording_span_attributes(span=span)
 
 
-FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
+FastAPIInstrumentor().instrument_app(app, excluded_urls=TRACING_EXCLUDED_URLS, server_request_hook=server_request_hook)
 
 FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
 FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
@@ -225,7 +237,7 @@ app.add_middleware(
     group_paths=True,
     prefix="infrahub",
     buckets=REQUEST_DURATION_BUCKETS,
-    skip_paths=["/health"],
+    skip_paths=["/health", "/api/health"],
 )
 app.add_middleware(
     ConditionalGZipMiddleware,

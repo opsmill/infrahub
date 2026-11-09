@@ -39,6 +39,8 @@ class BusRecorder(InfrahubMessageBus):
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
 
+    async def check_health(self) -> None: ...
+
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("BusRecorder.reply should not be called")
 
@@ -91,6 +93,8 @@ class BusSimulator(InfrahubMessageBus):
 
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
+
+    async def check_health(self) -> None: ...
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False

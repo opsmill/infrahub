@@ -1,0 +1,112 @@
+---
+title: Check the health of an API server
+---
+
+# Check the health of an API server
+
+Each Infrahub API server answers `GET /api/health` with the state of the services it needs to serve requests: the database, the message broker, the cache, the task manager and the database of the task manager. Use this endpoint in a load balancer, in a Kubernetes readiness probe or in your monitoring system, so that requests go only to API servers that can serve them, and so that you know which service to repair.
+
+The endpoint requires no authentication. Its answer contains no address, version or error message, only the state of each service and a category of error.
+
+## Read the answer
+
+The API server answers with HTTP status `200` when every service is up, and with `503` when at least one service is down. The body is the same JSON document in both cases:
+
+```json
+{
+  "status": "unhealthy",
+  "dependencies": [
+    {"name": "database", "status": "up", "error": "none"},
+    {"name": "message_bus", "status": "up", "error": "none"},
+    {"name": "cache", "status": "down", "error": "timeout"},
+    {"name": "task_manager", "status": "up", "error": "none"},
+    {"name": "task_manager_db", "status": "up", "error": "none"}
+  ],
+  "timestamp": "2026-11-06T13:25:06.954253Z"
+}
+```
+
+| Field | Value |
+|---|---|
+| `status` | `healthy` when every service is up, `unhealthy` otherwise |
+| `dependencies[].name` | The service: `database`, `message_bus`, `cache`, `task_manager` or `task_manager_db` |
+| `dependencies[].status` | `up` or `down` |
+| `dependencies[].error` | Why the service is down, or `none` when it is up |
+| `timestamp` | When the API server ran the checks, in UTC |
+
+## What each check does
+
+Each check makes the service do the work that the API server needs from it. A service that answers but cannot do that work is reported as down.
+
+| Service | Check |
+|---|---|
+| `database` | Runs a query on the database server that accepts writes, which is the leader in a cluster. |
+| `message_bus` | Publishes a message that the broker must confirm. The broker blocks publishers while it has a memory or disk alarm, so the check then reports `timeout`. |
+| `cache` | Writes a key that expires after one minute. The write fails when the cache answers but refuses writes, for example when it reached its memory limit or cannot save its data to disk. |
+| `task_manager` | Requests `/api/health` from the task manager. |
+| `task_manager_db` | Requests `/api/ready` from the task manager, which answers `200` only when it can open a connection to its database. The API server does not connect to this database, so it needs no credentials for it. |
+
+When the task manager is down, both `task_manager` and `task_manager_db` are reported as down. With `INFRAHUB_WORKFLOW_DRIVER=local`, the API server does not check the task manager or its database and always reports both as up, even when it uses a task manager.
+
+## Errors
+
+| `error` | Meaning |
+|---|---|
+| `none` | The service is up. |
+| `timeout` | The service did not answer within the check timeout. |
+| `connection_refused` | Nothing accepts connections at the address of the service. |
+| `connection_closed` | The connection to the service closed and is not restored yet. |
+| `name_resolution_failed` | The name of the service does not resolve to an address. In Docker Compose, this is the case when the container of the service is stopped. |
+| `unavailable` | The service answered, but cannot serve requests: the cache refused a write, or the task manager reported that it cannot connect to its database. |
+| `unknown_error` | The check failed for another reason. |
+
+For each failed check, the API server writes a `Health check failed` log line with the name of the service, the category and the error message. Use this line to find the cause of an `unknown_error`.
+
+## Timeout and frequency
+
+Each check has `INFRAHUB_HEALTH_CHECK_TIMEOUT` seconds to answer, `3` by default. The checks run at the same time, so the endpoint answers within about this time even when several services hang. Set the timeout of your probe or load balancer health check above this value, for example to 5 seconds.
+
+Each API server process runs the checks at most once per second. Requests in between receive the answer of the last checks, and the `timestamp` field shows when they ran. Because an API server runs several processes, two requests close together can receive answers from different processes: after a service recovers, one request can report it as up while the next one still reports it as down for a few seconds.
+
+Under sustained overload, the API server rejects requests with `429 Too Many Requests`. It never rejects requests to `/api/health` this way. The database check uses a connection from the same pool as the other requests of the API server process, so a process whose database connections all stay in use for longer than the check timeout reports `database` as `timeout`. Requests to `/api/health` are not recorded in the request metrics or in traces.
+
+## Use it as a Kubernetes readiness probe
+
+A failed readiness probe removes the pod from the Kubernetes service until the probe passes again. With the `infrahub` Helm chart, set the readiness probe of the API server in your `values.yaml`:
+
+```yaml title="values.yaml"
+infrahubServer:
+  infrahubServer:
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: 8000
+        scheme: HTTP
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 3
+```
+
+All API server pods use the same database, message broker, cache and task manager. When one of these services is down, every pod fails its readiness probe, and the Kubernetes service has no pod to send requests to until the service is back. This includes an outage of the task manager database alone.
+
+Keep the liveness probe on `/api/config`. A failed liveness probe restarts the container, and restarting every API server does not repair a database or a cache that is down.
+
+## Use it in a load balancer
+
+Configure the health check of your load balancer to send `GET /api/health` to each API server and to expect the status `200`. For example, with HAProxy:
+
+```text title="haproxy.cfg"
+backend infrahub_api
+    option httpchk GET /api/health
+    http-check expect status 200
+    server infrahub-server-1 infrahub-server-1:8000 check inter 5s
+    server infrahub-server-2 infrahub-server-2:8000 check inter 5s
+```
+
+All API servers use the same database, message broker, cache and task manager. When one of these services is down, every API server fails its health check, and the load balancer has no API server to send requests to.
+
+## Related resources
+
+- [Metrics](./metrics.mdx): where Infrahub exposes metrics, how to scrape them, and which ones to watch
+- [Send Infrahub telemetry to your own monitoring](./own-monitoring.mdx): metrics, traces and logs in your own monitoring system
+- [Configuration reference](../../reference/configuration.mdx#health): the `INFRAHUB_HEALTH_CHECK_TIMEOUT` setting

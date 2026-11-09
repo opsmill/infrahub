@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, MutableMapping, Type
 
 import aio_pika
 import ujson
+from aio_pika.exceptions import ChannelInvalidStateError, ConnectionClosed
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.exceptions import WorkerTimeoutError
+from infrahub.exceptions import DependencyConnectionClosedError, WorkerTimeoutError
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+HEALTH_CHECK_ROUTING_KEY = "infrahub.health-check"
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -98,6 +101,16 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def shutdown(self) -> None:
         await self.connection.close()
+
+    async def check_health(self) -> None:
+        # A confirmed publish, because the broker blocks publishers on a memory or disk alarm while it keeps answering
+        # other commands; no queue has this name, so the broker drops the message.
+        try:
+            await self.channel.default_exchange.publish(
+                aio_pika.Message(body=b""), routing_key=HEALTH_CHECK_ROUTING_KEY, mandatory=False
+            )
+        except (ChannelInvalidStateError, ConnectionClosed) as exc:
+            raise DependencyConnectionClosedError(message="The connection to the message broker is closed") from exc
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id:

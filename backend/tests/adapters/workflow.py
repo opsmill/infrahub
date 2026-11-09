@@ -30,6 +30,10 @@ class WorkflowRecorder(InfrahubWorkflow):
     def __repr__(self) -> str:
         return f"<{type(self).__name__} created during {self.created_during}>"
 
+    async def check_health(self) -> None: ...
+
+    async def check_database_health(self) -> None: ...
+
     def reset(self) -> None:
         # execute_calls/submit_calls are derived views, so clearing them leaves the backing store
         # untouched; reset the store itself to isolate one test's recorded calls from the next.

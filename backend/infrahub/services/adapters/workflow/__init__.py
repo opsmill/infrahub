@@ -16,6 +16,16 @@ FuncType = Callable[Params, Return]
 
 
 class InfrahubWorkflow(ABC):
+    @abstractmethod
+    async def check_health(self) -> None:
+        """Reach the task manager, raising when it does not answer."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def check_database_health(self) -> None:
+        """Ask the task manager whether it can reach its database, raising when it cannot."""
+        raise NotImplementedError()
+
     @overload
     async def execute_workflow(
         self,

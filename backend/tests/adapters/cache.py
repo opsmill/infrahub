@@ -33,6 +33,8 @@ class MemoryCache(InfrahubCache):
 
     async def close_connection(self) -> None: ...
 
+    async def check_health(self) -> None: ...
+
 
 class ClaimAwareCache(InfrahubCache):
     """In-memory cache that honours ``not_exists`` and records the expiry each key was written with."""
@@ -66,6 +68,8 @@ class ClaimAwareCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None: ...
+
+    async def check_health(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -109,3 +113,6 @@ class UnreachableCache(InfrahubCache):
         raise ConnectionError("cache unreachable")
 
     async def close_connection(self) -> None: ...
+
+    async def check_health(self) -> None:
+        raise ConnectionError("cache unreachable")

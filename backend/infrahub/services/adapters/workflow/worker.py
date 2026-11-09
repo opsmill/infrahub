@@ -8,9 +8,10 @@ from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 from prefect.exceptions import ObjectNotFound
+from prefect.settings import get_current_settings
 
 from infrahub import config, lock
-from infrahub.exceptions import WorkflowOrchestrationError
+from infrahub.exceptions import DependencyUnhealthyError, WorkflowOrchestrationError
 from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
@@ -66,6 +67,32 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def _setup_task_manager() -> None:
         async with lock.registry.get(name=lock.GLOBAL_WORKER_TASKMGR_INIT_LOCK):
             await setup_task_manager()
+
+    async def check_health(self) -> None:
+        await self._get_task_manager_probe(path="/health")
+
+    async def check_database_health(self) -> None:
+        # The task manager answers its readiness probe only when it can reach its database, so this process needs
+        # no credentials for that database.
+        await self._get_task_manager_probe(path="/ready")
+
+    async def _get_task_manager_probe(self, path: str) -> None:
+        # The Prefect client retries a 503 after a back-off, which would turn the answer into a timeout; the task
+        # manager serves both probes without authentication, so a plain HTTP client is enough.
+        api_url = get_current_settings().api.url
+        if api_url is None:
+            raise DependencyUnhealthyError(message="The task manager address is not configured")
+
+        tls_context = self._tls_registry.get(
+            insecure=config.SETTINGS.http.tls_insecure, ca_bundle=config.SETTINGS.http.tls_ca_bundle
+        )
+        # A client timeout no shorter than any health check timeout, so the configured one applies in full.
+        async with httpx.AsyncClient(verify=tls_context, timeout=config.HEALTH_CHECK_TIMEOUT_MAX_SECONDS) as client:
+            response = await client.get(f"{api_url.rstrip('/')}{path}")
+        if response.is_error:
+            raise DependencyUnhealthyError(
+                message=f"The task manager answered {path} with HTTP status {response.status_code}"
+            )
 
     @overload
     async def execute_workflow(
