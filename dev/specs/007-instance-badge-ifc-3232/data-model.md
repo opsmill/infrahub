@@ -22,9 +22,9 @@ The enum, the constant and the label validator were first written in `backend/in
 
 ## Validation (`backend/infrahub/instance_identity.py`)
 
-`validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None`: strips surrounding whitespace; an empty result becomes `None`; a control character (Unicode category Cc or a bidirectional text control) or a length over 32 raises `ValidationError` whose message starts with `field_name` and names the rule. The mutation uses the default; `InstanceSettings` passes `"INFRAHUB_INSTANCE_LABEL"`. It runs on the write path and when the deployment settings load, never on the model, so a stored value never breaks a read.
+`validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None`: strips surrounding whitespace; an empty result becomes `None`; a control character (Unicode category Cc, the line and paragraph separators U+2028 and U+2029 in categories Zl and Zp, or a bidirectional text control) or a length over 32 raises `ValidationError` whose message starts with `field_name` and names the rule. The mutation uses the default; `InstanceSettings` passes `"INFRAHUB_INSTANCE_LABEL"`. It runs on the write path and when the deployment settings load, never on the model, so a stored value never breaks a read.
 
-The color needs no validator: the GraphQL enum rejects unknown members with a message listing the allowed values, and Pydantic does the same on the REST model.
+The color needs no validator on the write path: the GraphQL enum rejects an unknown member with the graphql-core message `Variable '$instance_color' got invalid value '<x>'; Value '<x>' does not exist in 'InstanceColor' enum.`, followed by a "Did you mean" hint when the value is close to a member, which does not list the allowed values (the schema does). The deployment setting validates the color in `InstanceSettings` with its own message (see below).
 
 ## `InstanceSettings` (`backend/infrahub/config.py`, added 2026-11-10, IFC-3588)
 

@@ -28,7 +28,7 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 
 **Constraints**: No inline styles or arbitrary Tailwind values (theme tokens only); no `cast`, `any` or `type: ignore`; generated files regenerated, never edited; the E2E test is the last task and the feature is not complete until it passes
 
-**Scale/Scope**: 12 tasks for IFC-3232; about 10 backend files, about 20 frontend files, 1 E2E file, 2 docs files. IFC-3588 adds 9 done tasks and 1 open task (T013 to T022) over 36 committed files, tests and generated files included, plus the review fixes of T021.
+**Scale/Scope**: 12 tasks for IFC-3232; about 10 backend files, about 20 frontend files, 1 E2E file, 2 docs files. IFC-3588 adds 12 tasks (T013 to T024): 11 done, including the review fixes of T021, T023 and T024, and 1 open (T022).
 
 ## Decisions
 
@@ -36,7 +36,7 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 |---|---|---|
 | Mutation arguments | Two flat arguments `instance_label: String`, `instance_color: InstanceColor` with the existing `_UNSET` sentinel | Follows the `date_format` / `timezone` pattern; an input object pays off only for fields that are out of scope |
 | Keeping the fields off per-user preferences | `GlobalPreferencesType(RawPreferencesType)` subclass used only by `InfrahubGlobalPreferences`; the mutation raises `ValidationError` when `scope != GLOBAL` and either argument is provided, before any read | FR-008; the only way to make the fields unselectable on the user and effective queries |
-| Color wire format | `InstanceColor(InfrahubStringEnum)` with name == value, uppercase (`RED = "RED"`, …) | graphene puts member names on the GraphQL wire and Pydantic serialises values on REST; equality keeps `schema.graphql`, `openapi.json` and both generated TypeScript types consistent. Docs write the names in lowercase |
+| Color wire format | `InstanceColor(InfrahubStringEnum)` with name == value, uppercase (`RED = "RED"`, …) | graphene puts member names on the GraphQL wire and Pydantic serialises values on REST; equality keeps `schema.graphql`, `openapi.json` and both generated TypeScript types consistent. The user docs write the names as the color picker shows them (Red, Amber, Green, Blue, Indigo, Purple, Gray) |
 | Public read path | `ConfigAPI.instance: InstanceIdentityAPI` read from `PreferenceRepository(db).get_for_owner(GLOBAL_OWNER_ID)`; missing row → both `None` (since IFC-3588: each `None` field falls back to the deployment default) | Every client loads `/api/config` before first render, including the login page (FR-009, FR-010) |
 | Tab title | `useTitle` registers the page title in an atom; one `DocumentTitle` owner in `entities/preferences/ui/` writes `<label> · <page title>`, or `<label> · Infrahub` when no page registers a title | A single writer reads the label and the latest registered title at every render, so leaving a page always lands on a title that carries the current label (US2-4) |
 | Frontend location | `entities/preferences/` for the badge, bar, color rules and form; the one cross-entity import is `useConfig` | The setting is a global preference and the form lives there |
@@ -47,7 +47,7 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 
 - **I. Schema-driven integrity**: no core schema change; `Preference` is a StandardNode. Generated files (`schema/schema.graphql`, `schema/openapi.json`, `frontend/app/src/shared/api/**`) are regenerated in T4 and T7, never edited. PASS.
 - **II. Branch-safe**: the row is read and written without branch filters, like the existing date and timezone fields; the setting belongs to the instance, not to a branch (FR-002), and `dev/knowledge/backend/preferences.md` states it (T11). PASS.
-- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceAPI`, generated TypeScript); `Optional[X]` on the two new model fields matches the two adjacent fields of `Preference` for consistency; no `cast`, `any` or `type: ignore`. PASS.
+- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceIdentityAPI`, generated TypeScript); `Optional[X]` on the two new model fields matches the two adjacent fields of `Preference` for consistency; no `cast`, `any` or `type: ignore`. PASS.
 - **IV. Test discipline**: validation in `tests/unit/`; repository, mutation, query and REST in `tests/component/`; Vitest for rules, hooks and components; `tests/e2e/preferences/test_instance_identity.py` last. PASS.
 - **V. Query performance**: the only Cypher change adds two return columns to `_RETURN_LABELS`; user input reaches the database only through `StandardNode.save`, which binds parameters. PASS.
 - **VI. Security**: the write is gated by `raise_for_permission` before any read; the public read exposes only the label and color, which are meant for every visitor. PASS.
@@ -73,12 +73,13 @@ specs/007-instance-badge-ifc-3232/
 
 ```text
 backend/infrahub/
-├── core/preferences/{constants,models,validation}.py
+├── instance_identity.py                  # enum, length limit, label validator (moved here in T013)
+├── core/preferences/models.py
 ├── core/query/preference.py
 ├── graphql/{types,queries,mutations}/preferences.py
 └── api/internal.py
 backend/tests/
-├── unit/core/test_preference_validation.py
+├── unit/test_instance_identity.py
 ├── component/core/test_preference_repository.py
 ├── component/graphql/{mutations,queries}/test_preferences.py
 └── component/api/test_50_internals.py
@@ -122,7 +123,7 @@ changelog/+ifc-3232-instance-badge.added.md
 - Database read on `/api/config`: one read-only call, no row created, asserted by the REST test. Any exception on that read is logged and the identity is served as unset, so the login page still renders during an outage. IFC-3588 keeps this behavior and does not serve the deployment defaults in this case. No caching is added on purpose: the row is tiny and a cache would delay propagation to other sessions.
 - The return type of `InfrahubGlobalPreferences` changes from `RawPreferencesType` to `GlobalPreferencesType` (a superset); the frontend query uses no fragment, so no client breaks. This GraphQL schema change and the `/api/config` contract change were approved by the tech owner on 2026-11-04 as part of the "new global setting" decision.
 - Hand-written USER-scope guard: runs before any read; the mutation and query tests pin the error and the absence of the fields on user types.
-- Two generated `InstanceColor` types agree only because name == value; the form passes the REST-derived type into the gql.tada variable, so drift fails type checking.
+- Two generated `InstanceColor` types agree only because name == value; the form imports `InstanceColor` from the generated GraphQL types and narrows the REST string with `isInstanceColor`, so a REST value that the GraphQL enum does not know is treated as no color.
 
 ## Extension: deployment defaults and colored tab icon (IFC-3588)
 
@@ -150,7 +151,7 @@ The first commit of the extension moves `InstanceColor`, `INSTANCE_LABEL_MAX_LEN
 - `build_instance_identity_resolver(db = Depends(get_db))` builds an `InstanceIdentityResolver` from a `PreferenceRepository` and `get_instance_defaults()`. Its `resolve()` reads the global row through `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)`. With no row it returns a copy of the defaults; otherwise each field is the saved value when it is not `None`, else the default. Any exception on the read is logged ("Instance identity unavailable, serving it as unset") and both fields are returned as `None`, because a default could name a different stage than the saved value it stands in for (changed during review, T021).
 - `get_config(instance_resolver = Depends(build_instance_identity_resolver))` puts `await instance_resolver.resolve()` and `instance_resolver.defaults` into `ConfigAPI`. This shape follows the review on the PR: the dependency builds the component, and the endpoint calls it.
 
-Both values arrive as parameters, so `get_config` can be called directly with explicit values, as the LDAP unit tests in `backend/tests/unit/api/test_internal_config_ldap.py` do.
+`get_config` takes one parameter, `instance_resolver`, so a test can call it directly with its own resolver, as the LDAP unit tests in `backend/tests/unit/api/test_internal_config_ldap.py` do with `UnsetInstanceIdentityResolver`.
 
 ### Form hints
 
@@ -172,13 +173,14 @@ backend/infrahub/
 ├── instance_identity.py                  # new: enum, length limit, label validator
 ├── config.py                             # InstanceSettings, Settings.instance, ConfiguredSettings.instance
 ├── api/internal.py                       # per-field resolution, instance_defaults
-└── core/preferences/{constants,models,validation}.py, core/query/preference.py,
-    graphql/{types,mutations}/preferences.py  # imports moved
+└── core/preferences/models.py, core/query/preference.py,
+    graphql/{types,mutations}/preferences.py  # import from instance_identity.py
 backend/tests/
 ├── unit/test_instance_identity.py        # new: label rules, moved from test_preference_validation.py
 ├── unit/config/test_instance_settings.py # new: accepted and rejected defaults
 ├── unit/api/test_internal_config_ldap.py
-└── component/api/test_50_internals.py    # per-field resolution, read failure, reset
+├── unit/api/test_internal.py               # read failure
+└── component/api/test_50_internals.py    # per-field resolution, reset
 
 frontend/app/src/
 ├── app/app.tsx
@@ -191,14 +193,14 @@ docs/docs/reference/configuration.mdx, docker-compose.yml, development/docker-co
 tasks/docs.py                             # renders the enum values of an optional enum setting
 docs/docs/deploy-manage/user-management/managing-preferences.mdx
 dev/knowledge/backend/preferences.md
-changelog/+ifc-3588-instance-env-defaults.added.md
+changelog/+ifc-3232-instance-badge.added.md   # extended; the IFC-3588 fragment was merged into it
 ```
 
 ### Constitution check for the extension
 
 - **I. Schema-driven integrity**: no core schema change and no GraphQL schema change. `schema/openapi.json`, the REST types, the configuration reference and the compose environment blocks are regenerated. PASS.
 - **III. Type safety**: `InstanceColor | None` on the settings, the REST model and the generated TypeScript type; no `cast`, `any` or `type: ignore`. PASS.
-- **IV. Test discipline**: settings and label rules in `tests/unit/`; resolution, read failure and reset in `tests/component/api/test_50_internals.py`; Vitest for the form hints, the recolor rule and `InstanceFavicon`. No E2E covers the defaults or the tab icon (see T022). PARTIAL.
+- **IV. Test discipline**: settings and label rules in `tests/unit/`; read failure in `tests/unit/api/test_internal.py`; resolution and reset in `tests/component/api/test_50_internals.py`; Vitest for the form hints, the recolor rule and `InstanceFavicon`. No E2E covers the defaults or the tab icon (see T022). PARTIAL.
 - **VII. Simplicity**: one new module and one settings section; no new package or dependency. PASS.
 
 ### Surviving risks of the extension

@@ -30,6 +30,7 @@ Scope extension [IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588), shipp
 - Q: Can the deployment configuration set the label and the color? → A: Yes. Two environment variables, `INFRAHUB_INSTANCE_LABEL` and `INFRAHUB_INSTANCE_COLOR`, or the `[instance]` section of `infrahub.toml`, set a default label and a default color for the instance.
 - Q: When the deployment sets a default, can an administrator still change the value in the web UI? → A: Yes. The tech owner chose that a value saved in the web UI overrides the deployment default, rather than locking the fields. Resetting the saved value applies the default again.
 - Q: Does the browser tab icon change with the instance color? → A: Yes. The tech owner asked for the colored tab icon after the original scope was written: the outline variant of the Infrahub mark, recolored to the preset color. Only favicon upload and login logo upload stay out of scope.
+- Correction (2026-11-10): FR-007 and the edge case on an unknown color said the error lists the allowed values. The GraphQL enum rejects an unknown color with `Value '<x>' does not exist in 'InstanceColor' enum.`, which does not list them; the wording now matches. User Story 5 scenarios 6 and 7 said the startup message starts with the variable name. The configuration loader prints `<field> | Value error, <message>`, and the message after "Value error, " starts with the variable name; the wording now matches.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -128,8 +129,8 @@ Added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588)).
 3. **Given** the same defaults, **When** an administrator saves only the label "us-east-1 PROD", **Then** every page shows the saved label in the default amber color: each value is resolved on its own.
 4. **Given** saved values that override the defaults, **When** the administrator clears the label, resets the color and saves, **Then** every page shows the default label "staging" and the default color amber again.
 5. **Given** the same defaults and nothing saved, **When** an administrator opens the Global preferences page, **Then** the empty label field shows "staging" as its placeholder with the line "Leave empty to use the deployment default: staging.", the color picker reads "Deployment default: Amber", and both fields stay editable.
-6. **Given** `INFRAHUB_INSTANCE_LABEL` is longer than 32 characters or contains a control character, **When** Infrahub starts, **Then** it stops with a message that starts with "INFRAHUB_INSTANCE_LABEL" and states the rule, for example "INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters".
-7. **Given** `INFRAHUB_INSTANCE_COLOR` is not one of the preset names in any letter case (for example `PINK`), **When** Infrahub starts, **Then** it stops with the message "INFRAHUB_INSTANCE_COLOR must be one of RED, AMBER, GREEN, BLUE, INDIGO, PURPLE, GRAY".
+6. **Given** `INFRAHUB_INSTANCE_LABEL` is longer than 32 characters or contains a control character, **When** Infrahub starts, **Then** it stops and prints a line of the form `<field> | Value error, <message> (value_error)`, where the message starts with "INFRAHUB_INSTANCE_LABEL" and states the rule, for example "Value error, INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters".
+7. **Given** `INFRAHUB_INSTANCE_COLOR` is not one of the preset names in any letter case (for example `PINK`), **When** Infrahub starts, **Then** it stops and prints a line of the same form whose message after "Value error, " is "INFRAHUB_INSTANCE_COLOR must be one of RED, AMBER, GREEN, BLUE, INDIGO, PURPLE, GRAY".
 8. **Given** `INFRAHUB_INSTANCE_COLOR` is `red` or ` Red `, **When** Infrahub starts, **Then** the default color is red: the value is trimmed and the letter case is ignored.
 9. **Given** `INFRAHUB_INSTANCE_LABEL` or `INFRAHUB_INSTANCE_COLOR` is set to an empty or whitespace-only value, **When** Infrahub starts, **Then** it starts, and that default counts as not set.
 10. **Given** the deployment sets defaults, **When** an API client reads the global preferences through GraphQL, **Then** the response contains the saved values only, with `null` for a value that is not saved.
@@ -138,7 +139,7 @@ Added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588)).
 
 ### Edge Cases
 
-- The color value is not in the preset list (for example, a hand-written API call sends "pink"): the write is rejected with a validation error naming the allowed values, and nothing is stored.
+- The color value is not in the preset list (for example, a hand-written API call sends "pink"): the write is rejected with the GraphQL enum error `Variable '$instance_color' got invalid value 'pink'; Value 'pink' does not exist in 'InstanceColor' enum.`, which does not list the allowed values (the GraphQL schema lists them), and nothing is stored.
 - The label contains a line break, another control character (tab, NUL) or a bidirectional text control: the write is rejected.
 - The label contains non-ASCII characters (for example "Zürich PROD"): accepted and shown as entered.
 - The settings are read before an administrator ever saved anything: the public read returns the deployment defaults, or "no label, no color" when the deployment sets none, without creating a stored record.
@@ -168,7 +169,7 @@ Added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588)).
 - **FR-004**: The two values MUST be editable on the existing Global preferences page, in a section of their own next to the date and time settings, with the same save and confirmation behaviour as the existing settings.
 - **FR-005**: A save MUST allow changing one value without touching the other, and MUST allow resetting each value independently.
 - **FR-006**: The label MUST be trimmed of leading and trailing whitespace before validation. An empty or whitespace-only label MUST be treated as a reset. A label longer than 32 characters (counted in code points, as the server counts), or containing a line break, another control character or a bidirectional text control, MUST be rejected with a message that states the rule. Any other character, including non-ASCII, MUST be accepted.
-- **FR-007**: A color outside the preset list MUST be rejected with a validation error that lists the allowed values.
+- **FR-007**: A color outside the preset list MUST be rejected with a validation error, and nothing MUST be stored. Through a GraphQL variable the error is the enum coercion error `Variable '$instance_color' got invalid value '<x>'; Value '<x>' does not exist in 'InstanceColor' enum.`, followed by a "Did you mean" hint when the value is close to a member, and it does not list the allowed values, which the GraphQL schema lists.
 - **FR-008**: The instance label and color MUST NOT be settable as personal (per-user) preferences and MUST NOT appear in a user's own preferences; a per-user write of either value MUST be rejected.
 - **FR-009**: Every visitor, including an anonymous visitor on the login page, MUST be able to read the current label and color, without holding any permission, so that the indicator is shown on every page.
 - **FR-010**: A read of the instance settings MUST NOT create a stored record; before the first save, the read returns the deployment defaults (FR-020), or no label and no color when the deployment sets none.
