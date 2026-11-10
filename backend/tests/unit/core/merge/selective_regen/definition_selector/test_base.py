@@ -165,7 +165,9 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
     ) -> list[str]:
         return self._member_ids
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: Collection[str]
+    ) -> bool:
         # Production code behavior
         return run_generator(
             instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
