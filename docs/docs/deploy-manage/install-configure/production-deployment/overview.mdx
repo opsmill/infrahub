@@ -129,7 +129,19 @@ CREATE USER infrahub IF NOT EXISTS SET PLAINTEXT PASSWORD '<strong-database-pass
 GRANT ROLE infrahub TO infrahub;
 ```
 
-Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you use a dedicated database. Infrahub creates that database on first start if it does not exist, which requires the `CREATE DATABASE` privilege, so pre-create it as an administrator to keep the application user restricted. If you collect telemetry, also `GRANT SHOW SERVERS ON DBMS` and `GRANT EXECUTE PROCEDURE dbms.queryJmx ON DBMS`, otherwise telemetry logs a harmless permission error.
+Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you use a dedicated database. Infrahub creates that database on first start if it does not exist, which requires the `CREATE DATABASE` privilege, so pre-create it as an administrator to keep the application user restricted.
+
+Infrahub records a daily [telemetry snapshot](../../run-observe/telemetry.mdx) in the database, including when you opt out of sending telemetry. For the snapshot to describe the Neo4j servers, also grant these privileges:
+
+```cypher
+GRANT SHOW SERVERS ON DBMS TO infrahub;
+GRANT EXECUTE PROCEDURE dbms.queryJmx ON DBMS TO infrahub;
+GRANT SHOW SETTING server.cypher.parallel.worker_limit, server.memory.heap.max_size, server.memory.pagecache.size ON DBMS TO infrahub;
+```
+
+- `SHOW SERVERS` reads the version of each Neo4j server. Without it, the snapshot reports the database as Neo4j Community and lists no servers.
+- `EXECUTE PROCEDURE dbms.queryJmx` reads the number of CPU cores and the memory of the database host. The built-in `PUBLIC` role grants it unless an administrator has revoked that default. Without it, the snapshot has neither the host values nor the setting values below, and Infrahub logs a warning.
+- `SHOW SETTING` reads the worker limit of the parallel runtime and the heap and page cache sizes from the Neo4j configuration. Without it, the snapshot leaves these three values empty and Infrahub logs no error.
 
 ### Redis
 
