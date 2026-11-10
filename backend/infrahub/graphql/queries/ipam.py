@@ -84,9 +84,7 @@ class IPPrefixGetNextAvailable(ObjectType):
 
             # Build available pool by removing existing subnets from parent prefix
             subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
-        available_pool = IPSet([str(ip_prefix)])
-        for subnet in subnets:
-            available_pool.remove(str(subnet.prefix))
+        available_pool = IPSet([str(ip_prefix)]) - IPSet([str(subnet.prefix) for subnet in subnets])
 
         if prefix_length is not None and not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:
             raise ValidationError(input_value="Invalid prefix length for current selected prefix")

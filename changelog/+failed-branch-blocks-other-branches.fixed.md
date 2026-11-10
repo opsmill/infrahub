@@ -1,1 +1,0 @@
-Fixed one Git branch that failed to synchronize preventing the other branches of the same repository from updating on the other workers, and one failing repository stopping the synchronization of the repositories after it.

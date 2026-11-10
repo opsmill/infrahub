@@ -3,9 +3,9 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Literal
 
-from netaddr import IPSet
-
 if TYPE_CHECKING:
+    from netaddr import IPSet
+
     from infrahub.core.ipam.constants import IPNetworkType
 
 
@@ -23,14 +23,10 @@ def get_next_available_prefix(
         ValueError: If there are no available subnets in the pool
 
     """
-    prefix_ver_map = {4: ipaddress.IPv4Network, 6: ipaddress.IPv6Network}
+    for cidr in pool.iter_cidrs():
+        if cidr.version != prefix_ver:
+            continue
 
-    filtered_pool = IPSet([])
-    for subnet in pool.iter_cidrs():
-        if isinstance(ipaddress.ip_network(str(subnet)), prefix_ver_map[prefix_ver]):
-            filtered_pool.add(subnet)
-
-    for cidr in filtered_pool.iter_cidrs():
         if prefix_length is None:
             return cidr
 
