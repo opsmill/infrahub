@@ -156,8 +156,9 @@ is the only way an anonymous visitor reads the instance label and color. The res
   else the deployment default, else `null`.
 
 The read goes through the repository, so it never creates the global row. Any exception on that
-read is logged and the deployment defaults are served, because the config response bootstraps every
-page and the login page must not fail with the identity. Only these fields are exposed;
+read is logged and `instance` is served with a null label and color, because the config response
+bootstraps every page and the login page must not fail with the identity. The defaults are not
+served in that case: a default can name another stage than the saved value it would stand in for. Only these fields are exposed;
 `date_format` and `timezone` stay behind the authenticated GraphQL queries.
 
 The deployment defaults never reach the GraphQL surface: `InfrahubGlobalPreferences` returns the
@@ -166,7 +167,8 @@ explicit `null` in the set mutation) makes the default apply again.
 
 The settings validate both values when they load: the label goes through `validate_instance_label`,
 and an empty color counts as unset because a deployment tool can pass an unset variable as an empty
-string. An invalid value stops the process at startup. The enum, the length limit and the label
+string. The color is also uppercased, so `red` is accepted. An invalid value stops the process at
+startup with a message that names the environment variable. The enum, the length limit and the label
 validator live in `infrahub/instance_identity.py`, not under `core/preferences/`, because
 `config.py` imports them and anything under `infrahub.core` imports `config.py` back through
 `core.registry`.
