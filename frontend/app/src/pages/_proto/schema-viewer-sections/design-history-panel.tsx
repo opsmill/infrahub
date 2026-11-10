@@ -608,6 +608,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
         {open && knobsOpen && knobs.length > 0 && (
           <div className="djh-knobs">
             {knobs.map((k, i) => (
+              // biome-ignore lint/a11y/noLabelWithoutControl: every knob type renders its input inside the label, in branches the rule cannot follow
               <label
                 key={k.key}
                 className={
