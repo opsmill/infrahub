@@ -52,6 +52,8 @@ describe("instanceLabelError", () => {
     { name: "a line feed", value: "QA\nstaging" },
     { name: "a carriage return", value: "QA\rstaging" },
     { name: "a tab", value: "Q\tA" },
+    { name: "a Unicode line separator", value: "QA\u2028staging" },
+    { name: "a Unicode paragraph separator", value: "QA\u2029staging" },
     { name: "a NUL character", value: "QA\u0000staging" },
     { name: "a right-to-left override", value: "QA\u202Estaging" },
     { name: "an isolate terminator", value: "QA\u2069staging" },
