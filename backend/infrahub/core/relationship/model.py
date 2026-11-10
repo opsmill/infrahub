@@ -1599,13 +1599,15 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
+        peer_ids_local_only = set(details.peer_ids_present_local_only)
+        peer_ids_both = set(details.peer_ids_present_both)
         for rel in await self.get_relationships(db=db, branch_agnostic=branch_agnostic):
-            if rel.peer_id in details.peer_ids_present_local_only:
+            if rel.peer_id in peer_ids_local_only:
                 await rel.save(db=db, user_id=user_id, at=save_at)
 
                 relationship_mapper.add_peer_from_relationship(relationship=rel)
 
-            elif rel.peer_id in details.peer_ids_present_both:
+            elif rel.peer_id in peer_ids_both:
                 if properties_not_matching := rel.compare_properties_with_data(
                     data=details.peers_database[rel.peer_id]
                 ):

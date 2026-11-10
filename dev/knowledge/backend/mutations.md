@@ -236,6 +236,18 @@ The update path builds its preview by reading the node and applying the payload 
 come from the peers the payload sets. The node itself is still read, because the uniqueness
 constraint hashes cover attributes the payload may not carry.
 
+IP prefix and IP address mutations (`graphql/mutations/ipam.py`) take an IPAM lock before the
+object locks, because the IPAM reconciliation that follows rewrites parent relationships:
+
+- A prefix mutation locks its namespace, on every branch. Reconciling a prefix can move other
+  prefixes and addresses under it.
+- An IP address mutation on the default branch locks each address value it touches: one lock per
+  namespace and host address, covering every prefix length of that host. An update locks the stored
+  address and the address it has after the update, whose namespace and host each default to the
+  stored ones. Reconciling an address writes only that address's own parent relationship, so
+  mutations of different addresses do not wait for each other. On other branches an IP address
+  mutation takes no IPAM lock, because reconciliation runs again at merge.
+
 ## Key Files
 
 | File | What |
