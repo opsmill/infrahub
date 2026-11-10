@@ -28,6 +28,8 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.exceptions import ValidationError as InfrahubValidationError
+from infrahub.instance_identity import InstanceColor, validate_instance_label
 from infrahub.log import get_logger
 from infrahub.redis_connection import validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
@@ -1243,6 +1245,35 @@ class ExperimentalFeaturesSettings(BaseSettings):
     )
 
 
+class InstanceSettings(BaseSettings):
+    """Default instance label and color, used when no value is saved in the global preferences."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_INSTANCE_")
+    label: str | None = Field(
+        default=None,
+        description="Default instance label, shown when no label is saved in the global preferences.",
+    )
+    color: InstanceColor | None = Field(
+        default=None,
+        description="Default instance color, used when no color is saved in the global preferences.",
+    )
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str | None) -> str | None:
+        try:
+            return validate_instance_label(value)
+        except InfrahubValidationError as exc:
+            raise ValueError(exc.message) from exc
+
+    @field_validator("color", mode="before")
+    @classmethod
+    def empty_color_is_unset(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+
 class SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_SECURITY_")
     access_token_lifetime: int = Field(default=3600, description="Lifetime of access token in seconds")
@@ -2158,6 +2189,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def instance(self) -> InstanceSettings:
+        return self.active_settings.instance
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2193,6 +2228,8 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    # A factory so an invalid label or color is reported when the settings load rather than on import.
+    instance: InstanceSettings = Field(default_factory=InstanceSettings)
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
