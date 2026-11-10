@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
+import { useConfig } from "@/entities/config/ui/config-provider";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import { getGlobalPreferences } from "@/entities/preferences/domain/use-cases/get-global-preferences";
 import { updateGlobalPreference } from "@/entities/preferences/domain/use-cases/update-global-preference";
 
 import { render } from "../../../../tests/components/render";
+import { generateConfig, generateConfigWithInstanceDefaults } from "../../../../tests/fake/config";
 import { InstanceIdentityForm } from "./instance-identity-form";
 
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
+vi.mock("@/entities/config/ui/config-provider");
 
 const baseGlobal: GlobalPreferences = {
   dateFormat: "ISO_DATETIME",
@@ -20,11 +23,13 @@ const baseGlobal: GlobalPreferences = {
 
 const TOO_LONG_LABEL = "a".repeat(33);
 const LENGTH_RULE = "The instance label cannot be longer than 32 characters.";
+const DEFAULT_LABEL_HELP = "Leave empty to use the deployment default: staging.";
 
 describe("InstanceIdentityForm", () => {
   beforeEach(() => {
     vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
     vi.mocked(updateGlobalPreference).mockResolvedValue();
+    vi.mocked(useConfig).mockReturnValue(generateConfig());
   });
 
   afterEach(() => {
@@ -210,5 +215,75 @@ describe("InstanceIdentityForm", () => {
     await vi.waitFor(() => {
       expect(vi.mocked(updateGlobalPreference).mock.calls).toStrictEqual([[{}]]);
     });
+  });
+
+  test("shows the deployment defaults when nothing is saved", async () => {
+    // GIVEN
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstanceDefaults("staging", "AMBER"));
+    vi.mocked(getGlobalPreferences).mockResolvedValue({
+      ...baseGlobal,
+      instanceLabel: null,
+      instanceColor: null,
+    });
+
+    // WHEN
+    const component = await render(<InstanceIdentityForm />);
+
+    // THEN
+    await expect
+      .element(component.getByLabelText("Instance label"))
+      .toHaveAttribute("placeholder", "staging");
+    await expect.element(component.getByText(DEFAULT_LABEL_HELP)).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Instance color" }))
+      .toHaveTextContent("Deployment default: Amber");
+  });
+
+  test("shows the saved values instead of the deployment defaults", async () => {
+    // GIVEN
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstanceDefaults("staging", "AMBER"));
+
+    // WHEN
+    const component = await render(<InstanceIdentityForm />);
+
+    // THEN
+    await expect.element(component.getByLabelText("Instance label")).toHaveValue("us-east-1");
+    await expect
+      .element(component.getByRole("button", { name: "Instance color" }))
+      .toHaveTextContent("Red");
+    expect(component.getByText(DEFAULT_LABEL_HELP).query()).toBeNull();
+  });
+
+  test("names the deployment default once the saved label is cleared", async () => {
+    // GIVEN
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstanceDefaults("staging", "AMBER"));
+    const component = await render(<InstanceIdentityForm />);
+
+    // WHEN
+    await component.getByLabelText("Instance label").fill("");
+
+    // THEN
+    await expect.element(component.getByText(DEFAULT_LABEL_HELP)).toBeVisible();
+  });
+
+  test("shows no deployment default when the deployment sets none", async () => {
+    // GIVEN
+    vi.mocked(getGlobalPreferences).mockResolvedValue({
+      ...baseGlobal,
+      instanceLabel: null,
+      instanceColor: null,
+    });
+
+    // WHEN
+    const component = await render(<InstanceIdentityForm />);
+
+    // THEN
+    await expect
+      .element(component.getByLabelText("Instance label"))
+      .not.toHaveAttribute("placeholder");
+    expect(component.getByText(/deployment default/).query()).toBeNull();
+    await expect
+      .element(component.getByRole("button", { name: "Instance color" }))
+      .toHaveTextContent("No color");
   });
 });
