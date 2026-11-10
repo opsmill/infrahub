@@ -19,7 +19,8 @@ class ChangelogHfidResolver:
     """Fill the HFID of changed nodes and their relationship peers on already-built changelogs.
 
     The diff carries display labels but not HFIDs, so they are resolved here through batched loads
-    once the changelog structure exists.
+    once the changelog structure exists. A peer display label the diff could not give is filled in
+    the same pass, so a peer never carries an HFID without its display label.
     """
 
     def __init__(self, label_loader: NodeLabelLoader) -> None:
@@ -32,6 +33,9 @@ class ChangelogHfidResolver:
         is_resolvable_kind: Callable[[str], bool],
     ) -> None:
         """Set the HFID of each changed node and of every relationship peer across the changelogs.
+
+        A peer the diff left without a display label takes the one of its own changelog when the peer
+        changed too, and is otherwise loaded with its HFID.
 
         ``resolvable_ids`` are the changed nodes whose HFID can be loaded; a peer outside that set is
         loaded on its own so a peer's HFID does not depend on whether the peer also changed.
@@ -61,8 +65,12 @@ class ChangelogHfidResolver:
                     # A removed node is gone when the batch load runs, but the diff still records its HFID.
                     node_hfids[changelog.node_id] = previous_hfid
                 changelog.hfid = node_hfids.get(changelog.node_id)
+            node_display_labels = {changelog.node_id: changelog.display_label for _, changelog in changelogs}
             external_count = await self._fill_peer_hfids(
-                changelogs=changelogs, node_hfids=node_hfids, is_resolvable_kind=is_resolvable_kind
+                changelogs=changelogs,
+                node_hfids=node_hfids,
+                node_display_labels=node_display_labels,
+                is_resolvable_kind=is_resolvable_kind,
             )
             span.set_attribute("changelog.external_peer_count", external_count)
 
@@ -70,9 +78,13 @@ class ChangelogHfidResolver:
         self,
         changelogs: Sequence[tuple[DiffAction, NodeChangelog]],
         node_hfids: dict[str, list[str] | None],
+        node_display_labels: dict[str, str],
         is_resolvable_kind: Callable[[str], bool],
     ) -> int:
-        """Fill the HFID of every relationship peer; return how many were loaded on their own."""
+        """Fill the HFID and any missing display label of every relationship peer.
+
+        Return how many peers were loaded on their own.
+        """
         peers = [
             peer
             for _, changelog in changelogs
@@ -80,23 +92,37 @@ class ChangelogHfidResolver:
             for peer in relationship.peer_entries()
         ]
         external_ids: list[str] = []
+        unlabeled_external_ids: set[str] = set()
         for peer in peers:
             if not peer.peer_id:
                 continue
             if peer.peer_id in node_hfids:
                 peer.peer_hfid = node_hfids[peer.peer_id]
+                if peer.peer_display_label is None:
+                    peer.peer_display_label = node_display_labels.get(peer.peer_id)
             elif peer.peer_kind is not None and not is_resolvable_kind(peer.peer_kind):
                 # The peer's kind is gone from the schema; leave its HFID unresolved so it never
                 # fails the batch load that the other external peers share.
                 continue
             else:
                 external_ids.append(peer.peer_id)
+                if peer.peer_display_label is None:
+                    unlabeled_external_ids.add(peer.peer_id)
         if not external_ids:
             return 0
-        peer_hfids = await self._label_loader.load_hfids(external_ids)
+        peer_hfids = await self._label_loader.load_hfids(
+            [peer_id for peer_id in external_ids if peer_id not in unlabeled_external_ids]
+        )
+        peer_labels = await self._label_loader.load_labels(
+            [peer_id for peer_id in external_ids if peer_id in unlabeled_external_ids]
+        )
+        peer_hfids.update({peer_id: labels.hfid for peer_id, labels in peer_labels.items()})
+        peer_display_labels = {peer_id: labels.display_label for peer_id, labels in peer_labels.items()}
         for peer in peers:
             if peer.peer_hfid is None and peer.peer_id in peer_hfids:
                 peer.peer_hfid = peer_hfids[peer.peer_id]
+            if peer.peer_display_label is None and peer.peer_id in peer_display_labels:
+                peer.peer_display_label = peer_display_labels[peer.peer_id]
         return len(peer_hfids)
 
 

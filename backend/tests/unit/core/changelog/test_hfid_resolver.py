@@ -19,14 +19,21 @@ from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 
 
 class RecordingReader:
-    """Test double for NodeLabelReader: returns preset HFIDs and records the IDs of each load in order."""
+    """Test double for NodeLabelReader: returns preset labels and records the IDs of each load in order."""
 
-    def __init__(self, hfids: dict[str, list[str] | None]) -> None:
+    def __init__(self, hfids: dict[str, list[str] | None], display_labels: dict[str, str] | None = None) -> None:
         self._hfids = hfids
+        self._display_labels = display_labels or {}
         self.hfid_calls: list[list[str]] = []
+        self.label_calls: list[list[str]] = []
 
     async def load_labels(self, node_ids: list[str]) -> dict[str, NodeLabels]:
-        raise AssertionError("the resolver only loads HFIDs")
+        self.label_calls.append(node_ids)
+        return {
+            node_id: NodeLabels(display_label=self._display_labels[node_id], hfid=self._hfids.get(node_id))
+            for node_id in node_ids
+            if node_id in self._display_labels
+        }
 
     async def load_hfids(self, node_ids: list[str]) -> dict[str, list[str] | None]:
         self.hfid_calls.append(node_ids)
@@ -47,8 +54,10 @@ def _any_kind_resolvable(_kind: str) -> bool:
     return True
 
 
-def _resolver(hfids: dict[str, list[str] | None]) -> tuple[ChangelogHfidResolver, RecordingReader]:
-    reader = RecordingReader(hfids)
+def _resolver(
+    hfids: dict[str, list[str] | None], display_labels: dict[str, str] | None = None
+) -> tuple[ChangelogHfidResolver, RecordingReader]:
+    reader = RecordingReader(hfids, display_labels)
     return ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=reader)), reader
 
 
@@ -220,7 +229,9 @@ async def test_enrich_internal_peer_resolved_from_batch_without_extra_load() -> 
 async def test_enrich_external_peer_loaded_separately() -> None:
     resolver, reader = _resolver({"n1": ["A"], "ext": ["E"]})
     node = _node("n1")
-    node.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id="ext")
+    node.relationships["owner"] = RelationshipCardinalityOneChangelog(
+        name="owner", peer_id="ext", peer_display_label="External"
+    )
 
     await resolver.enrich(
         changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
@@ -271,8 +282,12 @@ async def test_enrich_excludes_external_peer_whose_kind_is_gone_from_the_batch()
     node.relationships["members"] = RelationshipCardinalityManyChangelog(
         name="members",
         peers=[
-            RelationshipPeerChangelog(peer_id="ext_ok", peer_kind="TestCar", peer_status=DiffAction.ADDED),
-            RelationshipPeerChangelog(peer_id="ext_gone", peer_kind="Dropped", peer_status=DiffAction.ADDED),
+            RelationshipPeerChangelog(
+                peer_id="ext_ok", peer_kind="TestCar", peer_display_label="OK", peer_status=DiffAction.ADDED
+            ),
+            RelationshipPeerChangelog(
+                peer_id="ext_gone", peer_kind="Dropped", peer_display_label="Gone", peer_status=DiffAction.ADDED
+            ),
         ],
     )
 
@@ -334,3 +349,77 @@ async def test_enrich_removed_dropped_kind_node_is_not_read_from_the_diff() -> N
 
     assert node.hfid is None
     assert reader.hfid_calls == []
+
+
+async def test_enrich_unlabeled_peer_that_changed_takes_its_changelog_display_label() -> None:
+    resolver, reader = _resolver({"n1": ["A"]})
+    created = NodeChangelog(node_id="n2", node_kind="TestCar", display_label="Created on branch")
+    created.add_attribute(attribute=_hfid_attribute(value='["Created"]'))
+    node = _node("n1")
+    node.relationships["members"] = RelationshipCardinalityManyChangelog(
+        name="members",
+        peers=[RelationshipPeerChangelog(peer_id="n2", peer_kind="TestCar", peer_status=DiffAction.REMOVED)],
+    )
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node), (DiffAction.ADDED, created)],
+        resolvable_ids=["n1", "n2"],
+        is_resolvable_kind=_any_kind_resolvable,
+    )
+
+    members = node.relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    assert members.peers[0].peer_display_label == "Created on branch"
+    assert members.peers[0].peer_hfid == ["Created"]
+    assert reader.label_calls == []
+
+
+async def test_enrich_labeled_peer_that_changed_keeps_the_diff_display_label() -> None:
+    resolver, _ = _resolver({"n1": ["A"], "n2": ["B"]})
+    node = _node("n1")
+    node.relationships["members"] = RelationshipCardinalityManyChangelog(
+        name="members",
+        peers=[
+            RelationshipPeerChangelog(
+                peer_id="n2", peer_kind="TestCar", peer_display_label="Before", peer_status=DiffAction.REMOVED
+            )
+        ],
+    )
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node), (DiffAction.UPDATED, _node("n2"))],
+        resolvable_ids=["n1", "n2"],
+        is_resolvable_kind=_any_kind_resolvable,
+    )
+
+    members = node.relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    assert members.peers[0].peer_display_label == "Before"
+
+
+async def test_enrich_unlabeled_external_peer_is_loaded_with_its_display_label() -> None:
+    resolver, reader = _resolver({"n1": ["A"], "ext": ["E"], "ext_labeled": ["L"]}, display_labels={"ext": "External"})
+    node = _node("n1")
+    node.relationships["members"] = RelationshipCardinalityManyChangelog(
+        name="members",
+        peers=[
+            RelationshipPeerChangelog(peer_id="ext", peer_kind="TestCar", peer_status=DiffAction.REMOVED),
+            RelationshipPeerChangelog(
+                peer_id="ext_labeled", peer_kind="TestCar", peer_display_label="Labeled", peer_status=DiffAction.ADDED
+            ),
+        ],
+    )
+
+    await resolver.enrich(
+        changelogs=[(DiffAction.UPDATED, node)], resolvable_ids=["n1"], is_resolvable_kind=_any_kind_resolvable
+    )
+
+    members = node.relationships["members"]
+    assert isinstance(members, RelationshipCardinalityManyChangelog)
+    assert {peer.peer_id: (peer.peer_display_label, peer.peer_hfid) for peer in members.peers} == {
+        "ext": ("External", ["E"]),
+        "ext_labeled": ("Labeled", ["L"]),
+    }
+    # Only the peer the diff left without a display label is loaded with it.
+    assert reader.hfid_calls == [["n1"], ["ext_labeled"]]
+    assert reader.label_calls == [["ext"]]
