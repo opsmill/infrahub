@@ -37,6 +37,32 @@ describe("useUpdateGlobalPreferences", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: preferencesQueryKeys.all() });
   });
 
+  test("refreshes the config when only the color is saved", async () => {
+    // GIVEN
+    vi.mocked(updateGlobalPreference).mockResolvedValue();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = await renderHook(() => useUpdateGlobalPreferences(), { wrapper });
+
+    // WHEN
+    await result.current.mutateAsync({ instanceColor: "RED" });
+
+    // THEN
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: getConfigQueryOptions().queryKey });
+  });
+
+  test("leaves the config alone when only the date and time defaults are saved", async () => {
+    // GIVEN
+    vi.mocked(updateGlobalPreference).mockResolvedValue();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = await renderHook(() => useUpdateGlobalPreferences(), { wrapper });
+
+    // WHEN
+    await result.current.mutateAsync({ dateFormat: "ISO_DATETIME", timezone: "UTC" });
+
+    // THEN
+    expect(invalidateSpy.mock.calls).toStrictEqual([[{ queryKey: preferencesQueryKeys.all() }]]);
+  });
+
   test("resolves the save only once the refetches have finished", async () => {
     // GIVEN
     vi.mocked(updateGlobalPreference).mockResolvedValue();

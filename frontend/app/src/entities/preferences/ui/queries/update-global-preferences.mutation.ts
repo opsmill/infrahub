@@ -12,11 +12,12 @@ export function useUpdateGlobalPreferences() {
 
   return useMutation({
     mutationFn: (params: UpdateGlobalPreferenceParams) => updateGlobalPreference(params),
-    // Returning the refetches makes a save resolve only once the forms compare against the saved values.
-    onSuccess: () =>
+    // Returning the refetches keeps a save pending until the page shows the saved values.
+    onSuccess: (_data, params) =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() }),
-        queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey }),
+        ("instanceLabel" in params || "instanceColor" in params) &&
+          queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey }),
       ]),
   });
 }
