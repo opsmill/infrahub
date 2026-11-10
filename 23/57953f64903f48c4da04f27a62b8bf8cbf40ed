@@ -1,0 +1,19 @@
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_4b45edc0abca8d::t_22d1cd7f265536 29-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2357953f64903f48c4da04f27a62b8bf8cbf40ed",
+  "prompts": {},
+  "sessions": {
+    "s_4b45edc0abca8d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ac19-394c-7802-a2cb-e2df140b6b16",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
