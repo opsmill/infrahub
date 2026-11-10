@@ -29,7 +29,7 @@ Fields:
 | `owner_id` | `str` | plain string, not a graph relationship |
 | `date_format` | `DateFormat` enum, nullable | a semantic key (e.g. `ISO_DATETIME`), not a render pattern; each client maps the key to its own formatter |
 | `timezone` | `str` (IANA name), nullable | validated at write, not on the model (see below) |
-| `instance_label` | `str`, nullable | global row only; trimmed, at most `INSTANCE_LABEL_MAX_LENGTH` (32) characters, no control character; validated at write only |
+| `instance_label` | `str`, nullable | global row only; trimmed, at most `INSTANCE_LABEL_MAX_LENGTH` (32) characters, no control character; validated on the write path and when the deployment settings load, never on a read |
 | `instance_color` | `InstanceColor` enum, nullable | global row only; one of `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, `GRAY` |
 
 `date_format` is enum-typed, so an unknown key is rejected at construction, including when a row is
@@ -43,15 +43,19 @@ The set mutation validates a provided timezone by resolving it against the runti
 accepted) and normalizes an empty value to unset so the write reply agrees with later reads. Reads
 stay lenient, so any value stored before this validation existed is still returned as-is.
 
-`instance_label` follows the same rule: `validate_instance_label` runs in the set mutation only. It
-strips surrounding whitespace, turns an empty result into unset, and rejects a control character
+`instance_label` follows the same rule: `validate_instance_label` runs on the write path and when the
+deployment settings load, never on a read. It strips surrounding whitespace, turns an empty result
+into unset, and rejects a control character
 (Unicode category `Cc`, which covers line breaks, tabs and NUL; the Unicode line and paragraph
 separators U+2028 and U+2029; and the bidirectional controls U+061C, U+200E, U+200F, U+202A–U+202E
 and U+2066–U+2069) or more than 32 characters with a `ValidationError` that names the
 rule. A stored value never breaks a read.
 
-`instance_color` needs no validator of its own: the GraphQL enum rejects an unknown member with a
-message that lists the allowed ones, and Pydantic does the same on the REST model. Each member's name
+`instance_color` needs no validator of its own on the write path: the GraphQL enum rejects an unknown
+member with the graphql-core message `Value '<x>' does not exist in 'InstanceColor' enum.`, which
+does not list the allowed members (the schema does) and adds a "Did you mean" hint only for a
+close member. The deployment setting validates the color in
+`InstanceSettings` with its own message that lists the allowed values. Each member's name
 equals its value (`RED = "RED"`) on purpose: graphene puts member *names* on the GraphQL wire while
 Pydantic serialises *values* on REST, so the equality keeps `schema.graphql`, `openapi.json` and the
 two generated TypeScript types in agreement. Renaming a member later needs a data migration, because

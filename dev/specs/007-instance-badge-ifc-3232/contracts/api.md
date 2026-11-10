@@ -14,12 +14,12 @@ type GlobalPreferencesType {
 }
 
 type Query {
-  InfrahubGlobalPreferences: GlobalPreferencesType   # was RawPreferencesType
+  InfrahubGlobalPreferences: GlobalPreferencesType!   # was RawPreferencesType!
 }
 
 type Mutation {
   InfrahubSetPreferences(
-    scope: PreferenceScope!
+    scope: PreferenceWriteScope!
     date_format: DateFormat
     timezone: String
     instance_label: String        # new; omitted = unchanged, null = reset
@@ -38,8 +38,8 @@ type InfrahubSetPreferences {
 
 Errors:
 - `scope: USER` with `instance_label` or `instance_color` provided → `ValidationError` "instance_label and instance_color can only be set with scope GLOBAL" before any read.
-- `instance_label` longer than 32 characters after trimming, or containing a control character (line break, tab, NUL, bidirectional text control) → `ValidationError` naming the rule; nothing stored.
-- A color outside the enum → the GraphQL enum coercion error listing the members; nothing stored.
+- `instance_label` longer than 32 characters after trimming, or containing a control character (line break, tab, NUL, the line and paragraph separators U+2028 and U+2029, bidirectional text control) → `ValidationError` naming the rule; nothing stored.
+- A color outside the enum → the graphql-core enum coercion error `Variable '$instance_color' got invalid value '<x>'; Value '<x>' does not exist in 'InstanceColor' enum.`, followed by a "Did you mean" hint when the value is close to a member, which does not list the members; nothing stored.
 - Missing `manage_global_preferences` on `scope: GLOBAL` → the existing permission error; nothing stored.
 
 ## REST `GET /api/config` (public)
@@ -77,7 +77,7 @@ Both keys have the schema `InstanceIdentityAPI` (`label: string | null`, `color:
 
 Validation, run when the settings load:
 
-- `label` goes through `validate_instance_label(value, field_name="INFRAHUB_INSTANCE_LABEL")`: surrounding whitespace is stripped; an empty or whitespace-only value becomes `None`; a control character or a bidirectional text control, or more than 32 characters, is rejected with "INFRAHUB_INSTANCE_LABEL cannot contain control characters" or "INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters". The mutation keeps the field name `instance_label` in its messages.
+- `label` goes through `validate_instance_label(value, field_name="INFRAHUB_INSTANCE_LABEL")`: surrounding whitespace is stripped; an empty or whitespace-only value becomes `None`; a control character (including U+2028 and U+2029) or a bidirectional text control, or more than 32 characters, is rejected with "INFRAHUB_INSTANCE_LABEL cannot contain control characters" or "INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters". The mutation keeps the field name `instance_label` in its messages.
 - `color` is stripped and uppercased; an empty or whitespace-only value becomes `None`; `red` and ` Red ` become `RED`. Any other value is rejected with "INFRAHUB_INSTANCE_COLOR must be one of RED, AMBER, GREEN, BLUE, INDIGO, PURPLE, GRAY".
 - The messages name the environment variable also when the value comes from the `[instance]` section of `infrahub.toml`.
 - An invalid value stops the process at startup: the configuration loader prints "Configuration not valid, found N error(s)" followed by the field name and the message (for example `color | Value error, INFRAHUB_INSTANCE_COLOR must be one of ...`), and exits with code 1.
