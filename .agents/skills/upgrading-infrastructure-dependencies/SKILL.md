@@ -155,9 +155,9 @@ that does not have it.
 
 ## 8. Mark the Infrahub pull request ready
 
-It is ready for review when the CI of the three pull requests and the `opsmill/infrahub-private`
-smoke tests pass and, for Neo4j and Prefect, the runs of step 7 pass. Write the link of each run
-in the description. Once the user agrees, mark it ready.
+It is ready for review when the CI of each pull request you opened and the
+`opsmill/infrahub-private` smoke tests pass and, for Neo4j and Prefect, the runs of step 7 pass.
+Write the link of each run in the description. Once the user agrees, mark it ready.
 
 Before you mark it ready, merge the latest `develop` into the branch and run the searches of step 4
 and of the service notes again. A pin that reaches `develop` while the branch is open is not in your
