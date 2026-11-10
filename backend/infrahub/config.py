@@ -1262,16 +1262,21 @@ class InstanceSettings(BaseSettings):
     @classmethod
     def validate_label(cls, value: str | None) -> str | None:
         try:
-            return validate_instance_label(value)
+            return validate_instance_label(value, field_name="INFRAHUB_INSTANCE_LABEL")
         except InfrahubValidationError as exc:
             raise ValueError(exc.message) from exc
 
     @field_validator("color", mode="before")
     @classmethod
-    def empty_color_is_unset(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip() or None
-        return value
+    def normalize_color(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        color = value.strip().upper()
+        if not color:
+            return None
+        if color not in InstanceColor.available_types():
+            raise ValueError(f"INFRAHUB_INSTANCE_COLOR must be one of {', '.join(InstanceColor.available_types())}")
+        return color
 
 
 class SecuritySettings(BaseSettings):

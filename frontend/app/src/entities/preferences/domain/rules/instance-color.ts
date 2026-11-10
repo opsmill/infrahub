@@ -19,7 +19,7 @@ interface InstanceColorPreset {
 
 // The order is the one the color picker lists the presets in.
 const INSTANCE_COLOR_PRESETS: Record<InstanceColor, InstanceColorPreset> = {
-  RED: { badgeVariant: "red", barClassName: "bg-danger", faviconColor: "#e11d48", label: "Red" },
+  RED: { badgeVariant: "red", barClassName: "bg-danger", faviconColor: "#be123c", label: "Red" },
   AMBER: {
     badgeVariant: "warning",
     barClassName: "bg-warning-strong",
@@ -29,14 +29,14 @@ const INSTANCE_COLOR_PRESETS: Record<InstanceColor, InstanceColorPreset> = {
   GREEN: {
     badgeVariant: "green",
     barClassName: "bg-success",
-    faviconColor: "#16a34a",
+    faviconColor: "#15803d",
     label: "Green",
   },
-  BLUE: { badgeVariant: "blue", barClassName: "bg-info", faviconColor: "#0284c7", label: "Blue" },
+  BLUE: { badgeVariant: "blue", barClassName: "bg-info", faviconColor: "#0369a1", label: "Blue" },
   INDIGO: {
     badgeVariant: "indigo",
     barClassName: "bg-active",
-    faviconColor: "#4f46e5",
+    faviconColor: "#4338ca",
     label: "Indigo",
   },
   PURPLE: {
