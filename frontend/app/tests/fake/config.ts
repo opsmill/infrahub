@@ -51,6 +51,10 @@ export const generateConfig = (overrides: Partial<Config> = {}): Config => ({
     label: null,
     color: null,
   },
+  instance_defaults: {
+    label: null,
+    color: null,
+  },
   ...overrides,
 });
 
@@ -58,3 +62,8 @@ export const generateConfigWithInstance = (
   label: Config["instance"]["label"],
   color: Config["instance"]["color"]
 ): Config => generateConfig({ instance: { label, color } });
+
+export const generateConfigWithInstanceDefaults = (
+  label: Config["instance_defaults"]["label"],
+  color: Config["instance_defaults"]["color"]
+): Config => generateConfig({ instance_defaults: { label, color } });

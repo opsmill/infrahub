@@ -46,14 +46,14 @@ def _set_ldap(ldap_settings: LDAPSettings) -> None:
 
 class TestConfigAPILdapShape:
     async def test_default_response_on_community_returns_false_enabled(self, reset_settings: None) -> None:
-        cfg = await get_config(instance=UNSET_INSTANCE)
+        cfg = await get_config(instance=UNSET_INSTANCE, instance_defaults=UNSET_INSTANCE)
         assert cfg.ldap.enabled is False
 
     async def test_enterprise_runtime_alone_does_not_flip_enabled(
         self, reset_settings: None, enterprise_installation_type: None
     ) -> None:
         # Enterprise runtime active but admin has not provided/enabled LDAP
-        cfg = await get_config(instance=UNSET_INSTANCE)
+        cfg = await get_config(instance=UNSET_INSTANCE, instance_defaults=UNSET_INSTANCE)
         assert cfg.ldap.enabled is False
 
     async def test_enabled_is_true_when_both_conditions_hold(
@@ -68,7 +68,7 @@ class TestConfigAPILdapShape:
                 user_search_base="ou=Users,dc=example,dc=com",
             )
         )
-        cfg = await get_config(instance=UNSET_INSTANCE)
+        cfg = await get_config(instance=UNSET_INSTANCE, instance_defaults=UNSET_INSTANCE)
         assert cfg.ldap.enabled is True
 
     async def test_display_label_and_icon_carry_through_resolved_settings(
@@ -85,6 +85,6 @@ class TestConfigAPILdapShape:
                 icon="mdi:microsoft-active-directory",
             )
         )
-        cfg = await get_config(instance=UNSET_INSTANCE)
+        cfg = await get_config(instance=UNSET_INSTANCE, instance_defaults=UNSET_INSTANCE)
         assert cfg.ldap.display_label == "Sign in with Corp AD"
         assert cfg.ldap.icon == "mdi:microsoft-active-directory"
