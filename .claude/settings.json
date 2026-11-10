@@ -15,6 +15,16 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.agents/scripts/repo-context.py\" --hook"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash",
@@ -28,6 +38,15 @@
             "type": "command",
             "if": "Bash(*git push*)",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh push"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.agents/scripts/repo-context.py\" --hook"
           }
         ]
       }
