@@ -1,3 +1,5 @@
+"""Instance identity rules, kept free of `infrahub.core` imports to avoid an import cycle."""
+
 from __future__ import annotations
 
 import unicodedata
@@ -26,9 +28,13 @@ INSTANCE_LABEL_MAX_LENGTH = 32
 # label carrying one is rendered with its characters reordered.
 _BIDI_CONTROL_CHARACTERS = frozenset(map(chr, (0x061C, 0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x206A))))
 
+# Cc covers the C0 and C1 controls, line breaks and tabs included; Zl and Zp are the Unicode line
+# and paragraph separators.
+_CONTROL_CATEGORIES = frozenset({"Cc", "Zl", "Zp"})
+
 
 def _contains_control_character(value: str) -> bool:
-    return any(unicodedata.category(char) == "Cc" or char in _BIDI_CONTROL_CHARACTERS for char in value)
+    return any(unicodedata.category(char) in _CONTROL_CATEGORIES or char in _BIDI_CONTROL_CHARACTERS for char in value)
 
 
 def validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None:

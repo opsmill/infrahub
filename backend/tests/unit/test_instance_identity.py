@@ -68,6 +68,16 @@ LABEL_REJECT_CASES: list[LabelRejectCase] = [
         expected_message="instance_label cannot contain control characters",
     ),
     LabelRejectCase(
+        name="unicode_line_separator",
+        value="a\u2028b",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="unicode_paragraph_separator",
+        value="a\u2029b",
+        expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
         name="bidi_override",
         value="a\u202eb",
         expected_message="instance_label cannot contain control characters",
