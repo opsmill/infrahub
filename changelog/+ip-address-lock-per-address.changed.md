@@ -1,1 +1,0 @@
-Creating or updating IP addresses on the default branch no longer waits for every other IP address change in the same namespace. Only changes to the same address value wait for each other, so loading many IP addresses at once is faster.

@@ -1,0 +1,35 @@
+---
+title: Release 1.11.12
+release_date: 2026-11-10
+release_type: patch
+description: "Infrahub 1.11.12 reduces the load on the task manager and its database, and shortens the time to load many IP addresses on the default branch and to save an object with many peers on a relationship. It also fixes the memory use of API servers growing until a restart, uniqueness checks that slowed down as more objects shared an attribute value, and zombie flow-run detection acting on flow runs that had already finished."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.12</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 10th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.12](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.12)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Changed
+
+- Changed the task manager to keep its database connections open between requests instead of reconnecting under load, which reduces database CPU and speeds up background tasks on smaller deployments.
+- Creating or updating IP addresses on the default branch no longer waits for every other IP address change in the same namespace. Only changes to the same address value wait for each other, so loading many IP addresses at once is faster.
+- Reduced the load on the task manager by no longer requesting a CSRF token for every task; if you enable CSRF protection on the task manager, also set `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` on the Infrahub server and task workers.
+- Reduced the time to save a node with many peers on a relationship, which grew with the square of the number of peers.
+
+### Fixed
+
+- Creating or updating nodes whose uniqueness constraint combines a relationship and an attribute, such as an interface unique per device and name, no longer slows down as more nodes share the attribute value. The check now reads only the nodes linked to the same peer.
+- Fixed the memory use of API servers growing with every node created or updated until the server restarted.
+- Fixed zombie flow-run detection acting on flow runs that had already finished, and adding load to the task manager, whenever the task manager fell behind on processing events.
