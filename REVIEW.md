@@ -17,6 +17,7 @@ Report at most five Nits. Put any further small points in one list at the end of
 ## Always check
 
 - Name in the summary any change that `AGENTS.md` says needs agreement first: database schema or migrations, the GraphQL schema, new dependencies, CI workflows, and authentication or permissions.
+- Name in the summary a change to `.github/workflows/bug-agent-*` or `.github/aw/actions-lock.json` whose description has no sandbox report for the pull request's latest commit. The `testing-bug-pipeline-changes` skill produces that report.
 
 ## Product and user impact
 
