@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   instanceBadgeVariant,
   instanceBarClassName,
+  instanceFaviconColor,
 } from "@/entities/preferences/domain/rules/instance-color";
 
 describe("instance color presets", () => {
@@ -12,5 +13,6 @@ describe("instance color presets", () => {
   ])("renders $name as unset", ({ color }) => {
     expect(instanceBadgeVariant(color)).toBe("gray");
     expect(instanceBarClassName(color)).toBeNull();
+    expect(instanceFaviconColor(color)).toBeNull();
   });
 });

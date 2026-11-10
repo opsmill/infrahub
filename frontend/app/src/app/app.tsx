@@ -18,6 +18,7 @@ import { ConfigProvider } from "@/entities/config/ui/config-provider";
 import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 import { DocumentTitle } from "@/entities/preferences/ui/document-title";
+import { InstanceFavicon } from "@/entities/preferences/ui/instance-favicon";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -35,6 +36,7 @@ export function App() {
               <AuthProvider>
                 <ConfigProvider>
                   <DocumentTitle />
+                  <InstanceFavicon />
                   <DatePreferencesProvider>
                     <RouterProvider router={router} />
                   </DatePreferencesProvider>
