@@ -61,12 +61,13 @@ class TestGlobalActivities:
 
         # Open event details and verify children are displayed
         await admin_page.get_by_role("link", name="View details").first.click()
+        await expect(admin_page.get_by_text("Sub activities", exact=True)).to_be_visible()
 
-        deadline = Deadline("the event details activity log to be populated")
-        while await admin_page.get_by_text("No activity found for this object.").is_visible():
+        # The page fetches the sub activities once, so it shows none until a reload after the child events are stored.
+        view_more_button = admin_page.get_by_role("button", name="View more").first
+        deadline = Deadline("the sub activities of the event to be listed")
+        while await view_more_button.is_hidden():
             await deadline.tick()
-            await admin_page.reload()
-            await expect(admin_page.get_by_test_id("activities-container").get_by_text("Loading...")).to_be_hidden()
-        # Check that at least one "View more." button is present in the details page
-        await expect(admin_page.get_by_role("button", name="View more").first).to_be_visible()
+            if await admin_page.get_by_text("No activity found for this object.").is_visible():
+                await admin_page.reload()
         await save_screenshot_for_docs(admin_page, "topics/activity-logs/activity_log_global_details_children")
