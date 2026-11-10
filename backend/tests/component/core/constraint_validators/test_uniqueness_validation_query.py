@@ -1,6 +1,7 @@
 from typing import Any
 
 from infrahub.core.branch import Branch
+from infrahub.core.graph.schema import GraphAttributeValueIndexedNode
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -358,31 +359,30 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
     assert set(violation_nodes) == {(jane_dog.id, "TestDog"), (joes_dog.id, "TestDog"), (johns_dog.id, "TestDog")}
 
 
-SHARED_NUMBER = 7
-OTHER_HOLDERS = 20
+def _plan_operators(plan: dict[str, Any]) -> list[str]:
+    operator = f"{plan.get('operatorType', '')}: {plan.get('args', {}).get('Details', '')}"
+    return [operator] + [
+        child_operator for child in plan.get("children", []) for child_operator in _plan_operators(child)
+    ]
 
 
-def _sum_database_hits(plan: dict[str, Any]) -> int:
-    return int(plan.get("dbHits", 0)) + sum(_sum_database_hits(child) for child in plan.get("children", []))
-
-
-async def _database_hits(db: InfrahubDatabase, query: UniquenessValidationQuery) -> int:
-    rendered = query.render()
-    _, metadata = await db.execute_query_with_metadata(
-        query="PROFILE\n" + rendered.text, params=rendered.params, name="profile_uniqueness_validation"
-    )
-    return _sum_database_hits(metadata["profile"])
-
-
-async def test_query_relationship_then_attribute_reads_do_not_grow_with_attributes_sharing_the_value(
+async def test_query_relationship_then_attribute_checks_the_attribute_from_the_nodes_found(
     db: InfrahubDatabase,
     default_branch: Branch,
     person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
-    """Once the peer has narrowed the nodes, the attribute check reads only those nodes, whatever else holds the value."""
-    johns_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await johns_car.new(db=db, name="johns-car", nbr_seats=SHARED_NUMBER, is_electric=False, owner=person_john_main.id)
-    await johns_car.save(db=db)
+    """The attribute check after the peer starts from the cars the peer found, not from the shared value vertex."""
+    cars = {}
+    for name, nbr_seats, owner in [
+        ("johns-car", 7, person_john_main),
+        ("johns-other-car", 5, person_john_main),
+        ("janes-car", 7, person_jane_main),
+    ]:
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car.new(db=db, name=name, nbr_seats=nbr_seats, is_electric=False, owner=owner.id)
+        await car.save(db=db)
+        cars[name] = car
     owner_rel_schema = db.schema.get("TestCar", branch=default_branch, duplicate=False).get_relationship(name="owner")
     query_request = NodeUniquenessQueryRequestValued(
         kind="TestCar",
@@ -393,20 +393,17 @@ async def test_query_relationship_then_attribute_reads_do_not_grow_with_attribut
                 attribute_name=None,
                 attribute_value=None,
             ),
-            QueryAttributePathValued(attribute_name="nbr_seats", value=SHARED_NUMBER),
+            QueryAttributePathValued(attribute_name="nbr_seats", value=7),
         ],
     )
     query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
-    hits_with_one_holder = await _database_hits(db=db, query=query)
-
-    # Every attribute holding the number links to one shared value vertex; these add no car or owner link.
-    for index in range(OTHER_HOLDERS):
-        other_holder = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-        await other_holder.new(db=db, name=f"person-{index}", height=SHARED_NUMBER)
-        await other_holder.save(db=db)
-    query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
     await query.execute(db=db)
-    hits_with_many_holders = await _database_hits(db=db, query=query)
+    rendered = query.render()
+    _, metadata = await db.execute_query_with_metadata(
+        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_uniqueness_validation"
+    )
 
-    assert query.get_violation_nodes() == [(johns_car.id, "TestCar")]
-    assert hits_with_many_holders == hits_with_one_holder
+    assert query.get_violation_nodes() == [(cars["johns-car"].id, "TestCar")]
+    # Every attribute holding the value links to one value vertex, so a seek on it reads all of them.
+    value_index = f"{GraphAttributeValueIndexedNode.get_default_label()}(value)"
+    assert [operator for operator in _plan_operators(metadata["plan"]) if value_index in operator] == []
