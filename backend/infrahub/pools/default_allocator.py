@@ -42,7 +42,7 @@ class DefaultPoolAllocator(PoolAllocator):
         if not pool:
             return None
 
-        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)  # type: ignore
+        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)
         if allocated:
             NodeMutationContext.record_if_active(node=allocated, action=MutationAction.CREATED)
         return allocated

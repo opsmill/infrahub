@@ -155,10 +155,36 @@ a separate change, and say so in the PR.
 
 ## A change that makes a type real retires its suppressions
 
-CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore` that no longer suppresses
-anything stays, and later hides a real error on the same line. When a change lets the checker see a
-type it could not before, run `uv run mypy --warn-unused-ignores backend` and delete every ignore it
-reports as unused, including in files the change does not otherwise touch.
+CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore[code]` that no longer suppresses
+anything stays, and later hides a real error on the same line. ty checks only the ignores it reads
+(a bare `# type: ignore`, a `ty:` code, a `# ty: ignore`), and counts only the rules enabled for the
+file, so a rule that a `[[tool.ty.overrides]]` block turns off does not keep an ignore in use. When a
+change lets the checker see a type it could not before, run
+`uv run mypy --warn-unused-ignores backend` and delete every ignore it reports as unused, including
+in files the change does not otherwise touch. Then run `uv run ty check .`: a bare ignore, or one
+that carries a `ty:` code, can still suppress a ty error, so restore any deletion that ty fails on.
+
+## Name the mypy error code in every `# type: ignore`
+
+Never write a bare `# type: ignore`: ty reads it as its own blanket ignore, so it also hides every ty
+error on that line. ty skips a `# type: ignore[code]` whose codes have no `ty:` prefix, so the coded
+form acts on mypy only. A line that needs both checkers silenced takes a separate `# ty: ignore[rule]`
+comment, placed after the mypy one: mypy reads `# type: ignore` only when it is the first comment on
+the line. mypy reports a `ty:` code inside its own brackets as unused when `--warn-unused-ignores` is on.
+
+```python
+# ❌ Bad - hides every mypy and ty error on the line
+result = build()  # type: ignore
+
+# ❌ Bad - mypy reports ty:missing-argument as an unused ignore code
+result = build()  # type: ignore[call-arg, ty:missing-argument]
+
+# ❌ Bad - mypy skips a type: ignore that follows another comment and reports call-arg
+result = build()  # ty: ignore[missing-argument]  # type: ignore[call-arg]
+
+# ✅ Good - each checker reads only its own comment
+result = build()  # type: ignore[call-arg]  # ty: ignore[missing-argument]
+```
 
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 

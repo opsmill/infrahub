@@ -117,7 +117,7 @@ async def convert_repository_type(
         # after having updating other branches status to NEEDS_REBASE.
         await repository_post_creator.post_create(
             branch=branch,
-            obj=new_repository,  # type: ignore
+            obj=new_repository,  # type: ignore[arg-type]
             db=db,
             delete_on_connectivity_failure=False,
         )

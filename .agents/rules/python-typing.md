@@ -20,6 +20,8 @@ Two narrow exceptions:
 - A linter/type-checker **version upgrade** introduces new rules the codebase has not yet met. Grandfather those as a scoped, commented step, then burn them down.
 - Re-enabling a previously-disabled rule for a module, where a scoped `# type: ignore[code]  # reason` grandfathers unrelated pre-existing violations (a net reduction, per `typing.md`). This never applies to a new violation.
 
+Never write a bare `# type: ignore`: ty reads it as its own blanket ignore and hides every ty error on the line. Name the mypy code (`# type: ignore[code]`), which ty skips when no code has a `ty:` prefix; a ty violation on the same line takes a separate `# ty: ignore[rule]` comment after the mypy one, not a `ty:` code inside mypy's brackets. See `dev/guidelines/backend/typing.md`.
+
 ## Fix the type, don't discard it
 
 When the checker warns, find the approach that is actually correct — a Pydantic-native shape, a proper model/field type, or `isinstance` narrowing — rather than defeating the check.

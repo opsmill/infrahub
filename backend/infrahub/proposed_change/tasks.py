@@ -251,10 +251,10 @@ async def _merge_branch_for_proposed_change(
     flow_run_name="Merge propose change: {proposed_change_name} ",
     description="Merge a given proposed change.",
     # TODO need to investigate why these function are not working as expected
-    # on_completion=[proposed_change_transition_merged],  # type: ignore
-    # on_failure=[proposed_change_transition_open],  # type: ignore
-    # on_crashed=[proposed_change_transition_open],  # type: ignore
-    # on_cancellation=[proposed_change_transition_open],  # type: ignore
+    # on_completion=[proposed_change_transition_merged],
+    # on_failure=[proposed_change_transition_open],
+    # on_crashed=[proposed_change_transition_open],
+    # on_cancellation=[proposed_change_transition_open],
 )
 async def merge_proposed_change(
     proposed_change_id: str,
