@@ -88,6 +88,7 @@ from tests.helpers.constants import (
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.git import clone_repository
+from tests.helpers.paused_branch_list import PausedBranchList
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.schema import SHARED_NUMBER_TICKET, TICKET, load_schema
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
@@ -3223,6 +3224,14 @@ def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, 
     cache = MemoryCache()
     with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
         yield cache
+
+
+@pytest.fixture
+def paused_branch_list(monkeypatch: pytest.MonkeyPatch) -> PausedBranchList:
+    """Serve the registry's branch lookups from one whose first list read waits after reading the database."""
+    branch_list = PausedBranchList()
+    monkeypatch.setattr(registry, "branch_object", branch_list)
+    return branch_list
 
 
 @pytest.fixture
