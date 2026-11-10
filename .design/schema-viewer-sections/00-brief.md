@@ -61,14 +61,14 @@ need to keep the current ux".
 
 ## Test
 
-Two people who did not build it (a frontend engineer and a schema author) get
-InfraLagInterfaceL2 and answer from the viewer alone, without opening an accordion:
+No named testers: Paul said "no need to bother about the testers". Each direction is judged
+against these questions on InfraLagInterfaceL2, answered from the viewer alone, without opening
+an accordion:
 
 - Which section is `minimum_links` in, and where does that section come from?
 - Which other field shares it?
 
-A direction passes if both answer all three correctly within 30 seconds. The two people are
-not named yet.
+A direction passes if the answers can be read within 30 seconds.
 
 ## Skipped passes
 
