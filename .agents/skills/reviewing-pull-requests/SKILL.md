@@ -15,8 +15,8 @@ Review a pull request with the code review built into the tool you are running i
 conversation that wrote the change. The pull request is `$ARGUMENTS`; in Codex, take it from the
 request that started this skill, or use the pull request of the current branch.
 
-1. Read `REVIEW.md` at the root of the repository. Its rules decide what to report and how to rate
-   it.
+1. Read `REVIEW.md` at the root of the repository, and every file it includes with a line that holds
+   only `@` and a file name. Their rules decide what to report and how to rate it.
 2. Run the built-in review:
    - **Claude Code:** run the `code-review` skill with the arguments `xhigh <pull request>`.
    - **Codex:** find the base branch with `gh pr view <pull request> --json baseRefName`, or use the
@@ -27,12 +27,13 @@ request that started this skill, or use the pull request of the current branch.
      result. Codex does not offer that skill by name, so the subagent reads the file. The pull
      request's branch must be checked out, as it is when this session opened the pull request.
 3. If the pull request changes `docs/` or user-facing behavior, start a separate subagent without
-   this conversation. Give it the diff and relevant docs/source paths, and ask it to apply
-   `opsmill-docs:opsmill-docs-writing-infrahub-docs` and its required rule files to a read-only
-   review: identify missing docs updates, check language, and suggest concrete corrections with
-   file/line evidence. Return findings only; the authoring, approval, and shipping workflow is out
-   of scope. Wait for its result.
+   this conversation. Give it the diff and relevant docs/source paths, and ask it to apply the
+   checks in `review-docs.md` at the root of the repository to a read-only review: identify missing
+   docs updates, check language, and suggest concrete corrections with file/line evidence. When
+   `opsmill-product:opsmill-product-writing-infrahub-docs` is installed, it also applies that skill
+   and its required rule files. Return findings only; the authoring, approval, and shipping workflow
+   is out of scope. Wait for its result.
 4. Combine and deduplicate the findings with the rules in `REVIEW.md` applied, separating the
-   issues this pull request introduces from older ones. Leave accepted docs findings as inline
-   comments on the relevant changed docs lines, including suggested corrections. Report gaps
-   without a docs diff location in the summary with the target docs path. Change no files.
+   issues this pull request introduces from older ones. Give each docs finding its suggested
+   correction, and give a missing docs update the path of the page to change. Return the findings
+   to this session: post nothing on the pull request and change no files.
