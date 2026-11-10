@@ -14,9 +14,9 @@ are left out.
   node container with the same name as an inherited one takes its position.
 - `inherited` is `true` on a copy taken from a generic and `false` on a container the kind
   declares. Profiles and templates return the containers of their node with `inherited: false`.
-- `details` and `advanced` are never listed.
-- Attributes and relationships carry `container`: the container name, `"advanced"`, or `null` for
-  the Details section.
+- `details` is never listed. A container named `advanced` is listed like any other container.
+- Attributes and relationships carry `container`: the container name, or `null` for the Details
+  section.
 - Clients order sections by `order_weight`, then by list order for items without a weight.
 - Both fields are returned on every branch, with the values stored on that branch.
 
@@ -33,7 +33,7 @@ Example `GET /api/schema/InfraLagInterface` (abridged):
   "attributes": [
     {"name": "lacp", "kind": "Text", "container": "lacp"},
     {"name": "minimum_links", "kind": "Number", "container": "lacp"},
-    {"name": "max_bundle", "kind": "Number", "container": "advanced"}
+    {"name": "max_bundle", "kind": "Number", "container": null}
   ],
   "relationships": [
     {"name": "mlag", "peer": "InfraMlagInterface", "container": "lacp"}
@@ -78,7 +78,7 @@ Example request body (abridged):
           ],
           "attributes": [
             {"name": "lacp", "kind": "Text", "container": "lacp"},
-            {"name": "max_bundle", "kind": "Number", "optional": true, "container": "advanced"}
+            {"name": "max_bundle", "kind": "Number", "optional": true}
           ]
         }
       ]
@@ -92,14 +92,15 @@ Example request body (abridged):
 Each rejection is a 422 with the body
 `{"data": null, "errors": [{"message": "<message>", "extensions": {"code": 422}}]}`:
 
-- A field references a container the kind does not have after inheritance, or `details`:
+- A field references a container the kind does not have after inheritance, `details`, or
+  `advanced` on a kind without a container of that name:
   `InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2`.
   A relationship gives `relationships.<name>.container`. For a field declared on a generic, the
   message names the generic.
 - A kind declares the same container name twice:
   `InfraLagInterface.containers: container names must be unique, duplicate 'lacp'`.
-- A container is named `details` or `advanced`:
-  `InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared`.
+- A container is named `details`:
+  `InfraLagInterface.containers: 'details' is a built-in container and cannot be declared`.
 
 A container item without `label`, or with a `name` outside the attribute name rules, fails the
 write contract's Pydantic validation with the standard FastAPI `detail` body, before the validator

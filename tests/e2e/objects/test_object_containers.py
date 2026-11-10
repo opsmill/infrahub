@@ -57,7 +57,7 @@ class TestObjectContainers:
         await expect(lacp_card).to_be_visible()
         await expect(lacp_card.get_by_text("Minimum links1")).to_be_visible()
         await expect(admin_page.get_by_role("region", name="Layer 2", exact=True)).to_be_visible()
-        await expect(admin_page.get_by_role("button", name="Advanced", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Advanced", exact=True)).to_have_count(0)
         await expect(admin_page.get_by_role("region", name="Layer 3", exact=True)).to_have_count(0)
 
         await admin_page.get_by_test_id("edit-button").click()
@@ -80,7 +80,7 @@ class TestObjectContainers:
         await expect(admin_page.get_by_role("region", name="LACP", exact=True)).to_be_visible()
         layer3_card = admin_page.get_by_role("region", name="Layer 3", exact=True)
         await expect(layer3_card).to_be_visible()
-        await expect(admin_page.get_by_role("button", name="Advanced", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Advanced", exact=True)).to_have_count(0)
         await expect(admin_page.get_by_role("region", name="Layer 2", exact=True)).to_have_count(0)
 
         await layer3_card.get_by_role("button", name="Layer 3", exact=True).click()

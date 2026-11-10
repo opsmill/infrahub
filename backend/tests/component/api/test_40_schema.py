@@ -622,7 +622,7 @@ async def test_schema_kind_endpoint_returns_containers_and_field_containers(
     relationship_containers = {
         relationship["name"]: relationship["container"] for relationship in schema["relationships"]
     }
-    assert relationship_containers == dict.fromkeys(relationship_containers) | {"sub_interfaces": "advanced"}
+    assert relationship_containers == dict.fromkeys(relationship_containers) | {"sub_interfaces": "layer2"}
 
 
 async def test_schema_kind_endpoint_returns_empty_containers_for_a_node_without_sections(

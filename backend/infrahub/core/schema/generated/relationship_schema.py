@@ -147,6 +147,6 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     container: str | None = Field(
         default=None,
-        description="Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.",
+        description="Section that shows this relationship: a name from the node's 'containers'. Unset, it shows in the main section.",
         json_schema_extra={"update": "allowed"},
     )

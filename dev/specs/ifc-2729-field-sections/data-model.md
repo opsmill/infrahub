@@ -11,7 +11,7 @@ internal schema definitions and stored with the schema of each branch.
 
 | Field | Type | Default | Rule |
 |---|---|---|---|
-| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details` or `advanced` |
+| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details` |
 | `label` | `str` | required | Section title |
 | `description` | `str \| None` | `None` | Muted text under the title |
 | `order_weight` | `int \| None` | `None` | Lowest first; containers without a weight follow, in declaration order; the backend does not fill it |
@@ -20,7 +20,7 @@ internal schema definitions and stored with the schema of each branch.
 | `inherited` | `bool` | `False` | `True` on a copy taken from a generic; read-only in the write contract |
 
 - `_sort_by = ["name"]`, so the name identifies the item in a diff.
-- Name format and required fields are Pydantic constraints; uniqueness and the reserved names are
+- Name format and required fields are Pydantic constraints; uniqueness and the reserved name are
   validator rules (below).
 - A container name and an attribute name are separate namespaces.
 
@@ -40,9 +40,9 @@ constraint check (FR-005).
 - `container` on `attribute_schema` and on `relationship_schema`: kind `Text`, optional, `None` by
   default.
 
-Valid `container` values: a container of the kind after inheritance, or `advanced`
-(`ADVANCED_CONTAINER_NAME` in `backend/infrahub/core/constants/__init__.py`). `None` means the
-Details section. `details` (`DETAILS_CONTAINER_NAME`) is not valid.
+Valid `container` values: a container of the kind after inheritance. `None` means the Details
+section. `details` (`DETAILS_CONTAINER_NAME` in `backend/infrahub/core/constants/__init__.py`) is
+not valid. `advanced` is valid only when the kind declares or inherits a container of that name.
 
 The SDK generator in `tasks/backend.py` lists `container_schema_fields`: `name`, `label`,
 `description`, `order_weight`, `collapsed`, `state` (`Visibility.WRITE`, enum class `SchemaState`,
@@ -88,12 +88,13 @@ inheritance. For each node and generic, in this order, it raises `ValueError` wi
 
 1. A name declared twice among the kind's own containers:
    `<Kind>.containers: container names must be unique, duplicate '<x>'`
-2. A declared container named `details` or `advanced` (`BUILT_IN_CONTAINER_NAMES`):
-   `<Kind>.containers: '<name>' is a built-in container and cannot be declared`
+2. A declared container named `details` (`DETAILS_CONTAINER_NAME`):
+   `<Kind>.containers: 'details' is a built-in container and cannot be declared`
 3. A field that references a container the kind does not have:
    `<Kind>.attributes.<name>.container: container '<x>' is not declared on <Kind>`, or the same with
    `relationships`. Inherited fields are skipped, so a wrong reference on a generic's field names
-   the generic. `container: details` fails this rule.
+   the generic. `container: details` fails this rule, and so does `container: advanced` on a kind
+   without a container of that name.
 
 `evaluate_candidate_schemas` in `backend/infrahub/api/schema.py` turns the `ValueError` into a
 422; the bodies are in [contracts/schema-api.md](contracts/schema-api.md).
@@ -136,7 +137,6 @@ hash ignores item order. A reload that only reorders containers is therefore a s
 
 ```typescript
 export const DETAILS_SECTION = { name: "details", label: "Details", collapsed: false } as const;
-export const ADVANCED_SECTION = { name: "advanced", label: "Advanced", collapsed: true } as const;
 
 export type FieldSection<T> = {
   container: Pick<ContainerSchema, "name" | "label" | "collapsed"> &
@@ -154,10 +154,9 @@ export type FieldSection<T> = {
 1. Details first, with every item whose container is unset or names no declared container (the
    backend rejects the second case; the rule keeps the field visible).
 2. One section per declared container: containers with an `order_weight` by ascending weight, then
-   the others in declaration order. A declared container named `details` or `advanced` is ignored.
-   Items keep their input order; callers sort them by `order_weight`.
-3. Advanced last, with the items whose container is `advanced`.
-4. Sections without an item are dropped.
+   the others in declaration order. A declared container named `details` is ignored. Items keep
+   their input order; callers sort them by `order_weight`.
+3. Sections without an item are dropped.
 
 The rule does not filter or sort items. The detail view passes the fields its visibility rules
 show; the form passes the fields `getFormFieldsFromSchema` built.

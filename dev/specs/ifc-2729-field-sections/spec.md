@@ -27,8 +27,11 @@ other clients can group fields the same way. The schema and the API use `contain
 - The form uses bordered panels with the same header as the detail card (mockup option B). The
   container description is muted text under the section title.
 - Fields without a container form the Details section, first on the page and in the form.
-- The Advanced section is implicit: never stored, never returned in `containers`, always accepted
-  as a `container` value. `details` and `advanced` cannot be declared.
+- Details is the only built-in section: `details` cannot be declared or referenced. The original
+  decision also made an Advanced section implicit (never stored, never returned in `containers`,
+  always accepted as a `container` value, shown last and collapsed). The product owner reversed it
+  on 2026-11-10: `advanced` is an ordinary container name, and a field can reference it only when
+  the node declares or inherits a container of that name.
 - `collapsed` applies to the detail view only; form panels are always expanded.
 - The Extra toggle is per section.
 - Containers inherited from a generic merge by name; the node's definition wins, then the first
@@ -55,10 +58,11 @@ a container name, the load fails with a message that names the node, the field a
    `relationships.<name>` for a relationship).
 3. **Given** two containers with the same name on one node, **When** it is loaded, **Then** the
    load is rejected with `<Kind>.containers: container names must be unique, duplicate '<x>'`.
-4. **Given** a container named `advanced` or `details`, **When** it is loaded, **Then** the load is
-   rejected with `<Kind>.containers: '<name>' is a built-in container and cannot be declared`.
+4. **Given** a container named `details`, **When** it is loaded, **Then** the load is rejected
+   with `<Kind>.containers: 'details' is a built-in container and cannot be declared`.
 5. **Given** a field with `container: advanced` and no declared container of that name, **When**
-   it is loaded, **Then** the load succeeds.
+   it is loaded, **Then** the load is rejected with the unknown container error of scenario 2. With
+   a declared `advanced` container, the load succeeds.
 6. **Given** a loaded schema, **When** it is loaded again with a container left out of the list,
    **Then** the container stays; removing it needs `state: absent` on the item.
 7. **Given** a schema with containers, **When** a container label changes or a field moves to
@@ -88,12 +92,12 @@ interface nodes show the same sections.
 ### User Story 3 - View a node by section (P1)
 
 An operator opens the detail page of LAG interface `bond0`. They view a Details card, then LACP,
-Layer 2 and Layer 3 cards, then a collapsed Advanced card. They collapse Layer 2. The MAC address
+Layer 2 and Layer 3 cards. They collapse Layer 2. The MAC address
 is an extra field of Layer 2, so it appears only after they switch on Extra in that card.
 
 1. **Given** a node with containers, **When** the detail page opens, **Then** it shows a Details
    card with the fields without a container, then one card per container in order weight order,
-   each listing its fields in order weight order, then an Advanced card.
+   each listing its fields in order weight order.
 2. **Given** a container with `collapsed: true`, **When** the page opens, **Then** that card shows
    only its header, and selecting the header expands it.
 3. **Given** a section with fields marked `display: extra`, **When** the page opens, **Then** those
@@ -139,7 +143,7 @@ portal form with the same containers.
 ### User Story 6 - Read how sections work (P3)
 
 A schema designer reads the schema reference and a schema guide and finds the container
-properties, the Details and Advanced sections, the order rules, the inheritance rules and the
+properties, the Details section, the order rules, the inheritance rules and the
 errors.
 
 1. **Given** the schema reference, **When** the designer opens the node, generic, attribute and
@@ -175,11 +179,10 @@ errors.
   Unset, the field belongs to Details. A reload that leaves `container` out keeps the stored
   value; `container: ""` moves the field back to Details.
 - **FR-003**: A container `name` MUST follow the attribute name format and length rules, MUST be
-  unique among the containers a node declares, and MUST NOT be `advanced` or `details`. A field
-  MUST NOT reference `details`.
-- **FR-004**: Schema loading MUST reject a field whose `container` is neither a container of the
-  node after inheritance nor `advanced`. For a field declared on a generic, the message names the
-  generic.
+  unique among the containers a node declares, and MUST NOT be `details`. A field MUST NOT
+  reference `details`.
+- **FR-004**: Schema loading MUST reject a field whose `container` is not a container of the node
+  after inheritance. For a field declared on a generic, the message names the generic.
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
   constraint check.
 - **FR-006**: Containers and assignments MUST be stored with the schema of each branch, returned
@@ -204,7 +207,7 @@ errors.
 - **FR-012**: The schema API MUST return `containers` on nodes, generics, profiles and templates
   (empty list when none) and `container` on attributes and relationships (`null` when unset),
   after inheritance, with `inherited: true` on each container a node takes from a generic.
-  `advanced` and `details` MUST NOT be listed. Infrahub stores only the containers a node
+  `details` MUST NOT be listed. Infrahub stores only the containers a node
   declares and rebuilds the inherited ones on load.
 - **FR-013**: The schema load endpoint and the SDK offline validation MUST accept both properties.
   The SDK formatter MUST place them in a fixed position, and the SDK export MUST leave out
@@ -214,12 +217,11 @@ errors.
 ### Detail view
 
 - **FR-015**: The detail page MUST show the Details card first, then one card per container by
-  `order_weight`, then the Advanced card, and MUST omit a card without a visible field.
+  `order_weight`, and MUST omit a card without a visible field.
 - **FR-016**: Each section card MUST use the rows of the Details card, titled with the container
   label, with its fields ordered by `order_weight`.
-- **FR-017**: Each container card and the Advanced card MUST be collapsible from its header and
-  start collapsed when its container says so; Advanced starts collapsed. Details is not
-  collapsible.
+- **FR-017**: Each container card MUST be collapsible from its header and start collapsed when its
+  container says so. Details is not collapsible.
 - **FR-018**: Each section card MUST have its own Extra control, shown only when the section has a
   `display: extra` field.
 - **FR-019**: A node without sectioned fields MUST render the single Details card as before. The
@@ -234,7 +236,8 @@ errors.
   bordered panels, one per container by `order_weight`, with the same header as the detail card.
 - **FR-022**: In a form with at least one section, fields without a container MUST be shown in a
   Details panel placed first.
-- **FR-023**: Form panels MUST always be expanded, including Advanced.
+- **FR-023**: Form panels MUST always be expanded, including those of containers with
+  `collapsed: true`.
 - **FR-024**: A panel with no field left after the form's own filtering MUST be omitted.
 - **FR-025**: Grouping MUST NOT change the data the form sends; a form without sections MUST remain
   the flat list.
@@ -247,8 +250,8 @@ errors.
 
 ## Success criteria
 
-- **SC-001**: On the demo, an operator views the L2 LAG interface as Details, LACP, Layer 2 and
-  Advanced cards and the L3 LAG interface as Details, LACP, Layer 3 and Advanced cards.
+- **SC-001**: On the demo, an operator views the L2 LAG interface as Details, LACP and Layer 2
+  cards and the L3 LAG interface as Details, LACP and Layer 3 cards.
 - **SC-002**: Every schema that loads today still loads, and every detail page and form of a node
   without containers renders as before.
 - **SC-003**: A schema API or SDK client reads the same containers and assignments as the web

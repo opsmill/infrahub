@@ -24,8 +24,8 @@ and the form both call it, so both show the same sections in the same order.
 the props of the plain card (`objectSchema`, `objectData`, `permission`, `excludeRelationships`).
 It partitions the fields that `getDataDisplayFields` returns (the detail view's visibility rules,
 sorted by order weight) and renders one `ObjectDetailsCard` per section with the full schema and
-`fieldNames` set to the section's field names. The Details card gets no `section`; the Advanced
-card and each declared container get their container as `section`. With no visible field, it
+`fieldNames` set to the section's field names. The Details card gets no `section`; each
+declared container's card gets that container as `section`. With no visible field, it
 renders the plain card.
 
 Callers: `ObjectDetails` (the object detail page) and the IPAM detail page. The repository,
@@ -99,8 +99,7 @@ and `children`, and renders a `Card` with `variant="panel"`, `role="region"`, a 
 ## Accessibility
 
 - Each detail card and each form panel is a `region` labelled by its `h2`, so tests find it by
-  name: `Details`, the container label (`LACP`) or `Advanced`. The description is not part of the
-  name.
+  name: `Details` or the container label (`LACP`). The description is not part of the name.
 - A collapsible card's trigger button is named by the container label and has `aria-expanded`.
   A non-collapsible card and a form panel have no button in the title.
 - The Extra control is a button named `Extra`.

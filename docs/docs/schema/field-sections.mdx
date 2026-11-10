@@ -33,7 +33,6 @@ A section name and an attribute name are separate: a node can have both a sectio
 Set `container` on an attribute or a relationship to the name of a section of the node. The value is one of:
 
 - The name of a section that the node declares or inherits from a generic.
-- `advanced`, for the built-in Advanced section.
 - Nothing, to keep the field in the Details section.
 - An empty string (`container: ""`), to move a field that has a section back to the Details section when you load the schema again.
 
@@ -42,14 +41,11 @@ Set `container` on an attribute or a relationship to the name of a section of th
 
 Changing `containers` or `container` requires no data migration: load the new schema and the web interface arranges the fields again.
 
-## The built-in Details and Advanced sections
+## The built-in Details section
 
-Two sections exist without being declared:
+The **Details** section exists without being declared. It holds every field without a `container` and is always the first section. A node without sections shows a single **Details** card, as before. Infrahub refuses a section named `details` in `containers` and a field with `container: details`: leave `container` unset instead.
 
-- **Details**: holds every field without a `container`. It is always the first section. A node without sections shows a single **Details** card, as before. Infrahub refuses a section named `details` in `containers` and a field with `container: details`: leave `container` unset instead.
-- **Advanced**: holds every field with `container: advanced`. It is always the last section, and its card starts collapsed. Infrahub refuses a section named `advanced` in `containers`, and accepts `container: advanced` on any node.
-
-A section that holds no field is not shown, including Details and Advanced.
+A section that holds no field is not shown, including Details.
 
 ## Section order
 
@@ -58,7 +54,6 @@ The detail page and the forms order the sections as follows:
 1. **Details**.
 2. The sections with an `order_weight`, lowest weight first.
 3. The sections without an `order_weight`, in declaration order.
-4. **Advanced**.
 
 Sections with the same `order_weight` keep their declaration order. On a node that inherits from generics, the declaration order lists the sections of the generics first, in `inherit_from` order, then the sections of the node itself.
 
@@ -69,13 +64,13 @@ Within a section, fields keep their [order weight](./order-weight) order.
 On the detail page of an object:
 
 - Each section is a card with the section `label` as its title and the `description` under it. The **Details** card has no description.
-- You can collapse and expand every card except **Details**, which is always expanded. A section with `collapsed: true` starts collapsed, and **Advanced** always starts collapsed.
+- You can collapse and expand every card except **Details**, which is always expanded. A section with `collapsed: true` starts collapsed.
 - Each card has its own **Extra** toggle when the section contains a field with `display: extra`. Selecting **Extra** in one card shows the extra fields of that card only. A collapsed card does not show its **Extra** toggle. See [field visibility](./field-visibility).
 - A relationship that has its own tab, such as a `Component` relationship with `cardinality: many`, stays in its tab. Its `container` has no effect on the detail page.
 
 In the create and edit forms:
 
-- Each section is a panel with the section `label` and `description`, and every panel is expanded, including **Advanced** and sections with `collapsed: true`.
+- Each section is a panel with the section `label` and `description`, and every panel is expanded, including sections with `collapsed: true`.
 - **Details** comes first, with the same section order as the detail page.
 - When every field of the form is in **Details**, the form shows the fields without a panel.
 
@@ -121,7 +116,6 @@ generics:
         label: MaxBundle
         kind: Number
         optional: true
-        container: advanced
     relationships:
       - name: mlag
         peer: InfraMlagInterface
@@ -183,10 +177,9 @@ nodes:
 
 With this schema, the detail page of an `InfraLagInterfaceL2` object shows these cards in this order:
 
-1. **Details**, with the fields that have no `container`, such as the name and the description of the interface.
+1. **Details**, with the fields that have no `container`, such as the name and the description of the interface and **MaxBundle**.
 2. **LACP**, with **LACP**, **Minimum links** and the `mlag` relationship.
 3. **Layer 2**, with **Layer2 Mode**, **Untagged VLAN** and **Tagged VLANs**.
-4. **Advanced**, collapsed, with **MaxBundle**.
 
 The **Layer 3** section holds no field of `InfraLagInterfaceL2`, so the page does not show it.
 
@@ -253,10 +246,10 @@ Infrahub rejects a schema with a section error and returns one of these messages
   InfraLagInterface.containers: container names must be unique, duplicate 'lacp'
   ```
 
-- A section is named `details` or `advanced`:
+- A section is named `details`:
 
   ```text
-  InfraLagInterface.containers: 'advanced' is a built-in container and cannot be declared
+  InfraLagInterface.containers: 'details' is a built-in container and cannot be declared
   ```
 
 A section without `label`, or with a `name` that breaks the naming rules, fails the schema validation before these checks.

@@ -42,7 +42,7 @@ LAG_INTERFACE: dict[str, Any] = {
             "kind": RelationshipKind.GENERIC.value,
             "cardinality": RelationshipCardinality.MANY.value,
             "optional": True,
-            "container": "advanced",
+            "container": "layer2",
             "order_weight": 8000,
         },
     ],

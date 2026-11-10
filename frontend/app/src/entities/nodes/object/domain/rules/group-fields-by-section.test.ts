@@ -58,11 +58,19 @@ describe("groupFieldsBySection", () => {
     ]);
   });
 
-  it("places the Advanced section last with collapsed true", () => {
+  it("groups items under a declared container named advanced like any other container", () => {
     // GIVEN
-    const containers = [generateContainerSchema({ name: "lacp" })];
+    const containers = [
+      generateContainerSchema({
+        name: "advanced",
+        label: "Tuning",
+        collapsed: false,
+        order_weight: 1000,
+      }),
+      generateContainerSchema({ name: "lacp", label: "LACP", order_weight: 2000 }),
+    ];
     const items: Item[] = [
-      { name: "internal_id", container: "advanced" },
+      { name: "max_bundle", container: "advanced" },
       { name: "lag_mode", container: "lacp" },
       { name: "name", container: null },
     ];
@@ -71,11 +79,25 @@ describe("groupFieldsBySection", () => {
     const sections = groupFieldsBySection(containers, items, getContainer);
 
     // THEN
-    expect(sectionNames(sections)).toEqual(["details", "lacp", "advanced"]);
-    expect(sections.at(-1)).toEqual({
-      container: { name: "advanced", label: "Advanced", collapsed: true },
-      items: [items[0]],
-    });
+    expect(sectionNames(sections)).toEqual(["details", "advanced", "lacp"]);
+    expect(sections[1]?.container).toMatchObject({ label: "Tuning", collapsed: false });
+    expect(sections[1]?.items).toEqual([items[0]]);
+  });
+
+  it("places an item with container advanced in Details when no such container is declared", () => {
+    // GIVEN
+    const containers = [generateContainerSchema({ name: "lacp" })];
+    const items: Item[] = [
+      { name: "max_bundle", container: "advanced" },
+      { name: "lag_mode", container: "lacp" },
+    ];
+
+    // WHEN
+    const sections = groupFieldsBySection(containers, items, getContainer);
+
+    // THEN
+    expect(sectionNames(sections)).toEqual(["details", "lacp"]);
+    expect(sections[0]?.items).toEqual([items[0]]);
   });
 
   it("drops a container with no item", () => {
@@ -136,30 +158,24 @@ describe("groupFieldsBySection", () => {
     expect(sections[0]?.items).toEqual(items);
   });
 
-  it("ignores a declared container that takes the name of a built-in section", () => {
-    // GIVEN containers named like the built-in sections, which the schema API refuses
+  it("ignores a declared container named details", () => {
+    // GIVEN a container named like the Details section, which the schema API refuses
     const containers = [
       generateContainerSchema({ name: "details", label: "General", collapsed: true }),
-      generateContainerSchema({ name: "advanced", label: "Other", collapsed: false }),
       generateContainerSchema({ name: "lacp", label: "LACP" }),
     ];
     const items: Item[] = [
       { name: "name", container: null },
       { name: "description", container: "details" },
       { name: "lag_mode", container: "lacp" },
-      { name: "internal_id", container: "advanced" },
     ];
 
     // WHEN
     const sections = groupFieldsBySection(containers, items, getContainer);
 
     // THEN
-    expect(sections.map((section) => section.container.label)).toEqual([
-      "Details",
-      "LACP",
-      "Advanced",
-    ]);
+    expect(sections.map((section) => section.container.label)).toEqual(["Details", "LACP"]);
     expect(sections[0]?.items).toEqual([items[0], items[1]]);
-    expect(sections[2]?.container.collapsed).toBe(true);
+    expect(sections[0]?.container.collapsed).toBe(false);
   });
 });

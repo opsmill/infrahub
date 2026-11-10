@@ -105,7 +105,7 @@ class TestSchemaLifecycleContainersBranchMerge(TestSchemaLifecycleBase):
             "l2_mode": "layer2",
             "mac_address": "layer2",
             "mtu": "layer3",
-            "sub_interfaces": "advanced",
+            "sub_interfaces": "layer2",
             "member_of_groups": None,
             "subscriber_of_groups": None,
             "profiles": None,
@@ -129,13 +129,13 @@ class TestSchemaLifecycleContainersBranchMerge(TestSchemaLifecycleBase):
         l2 = await client.schema.get(kind=L2_KIND, branch=default_branch.name, refresh=True)
         assert _containers(l2) == L2_CONTAINERS
         assert _field_containers(l2)["mtu"] == "layer3"
-        assert _field_containers(l2)["sub_interfaces"] == "advanced"
+        assert _field_containers(l2)["sub_interfaces"] == "layer2"
 
         stored_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         stored_l2 = stored_schema.get_node(name=L2_KIND, duplicate=False)
         assert [container.name for container in stored_l2.containers] == ["lacp", "layer2", "layer3"]
         assert stored_l2.get_attribute(name="mtu").container == "layer3"
-        assert stored_l2.get_relationship(name="sub_interfaces").container == "advanced"
+        assert stored_l2.get_relationship(name="sub_interfaces").container == "layer2"
 
     async def test_a_label_change_on_the_branch_needs_no_migration(
         self, client: InfrahubClient, default_branch: Branch, schema_lag_relabelled: dict[str, Any]

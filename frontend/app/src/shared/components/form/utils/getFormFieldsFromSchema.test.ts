@@ -741,7 +741,7 @@ describe("getFormFieldsFromSchema", () => {
     const schema = {
       attributes: [
         generateAttributeSchema({ name: "mode", container: "lacp", order_weight: 1 }),
-        generateAttributeSchema({ name: "rate", container: "advanced", order_weight: 2 }),
+        generateAttributeSchema({ name: "rate", container: "layer2", order_weight: 2 }),
       ],
     } as ModelSchema;
 
@@ -749,7 +749,7 @@ describe("getFormFieldsFromSchema", () => {
 
     expect(
       fields.map((field) => ("attribute" in field ? field.attribute?.container : null))
-    ).toEqual(["lacp", "advanced"]);
+    ).toEqual(["lacp", "layer2"]);
   });
 
   it("attaches its relationship schema to both fields of a bulk relationship pair", () => {

@@ -17,18 +17,17 @@ The schema and the demo data load without error.
 
 1. Open an `InfraLagInterfaceL2` object, for example `port-channel1` of `atl1-leaf1`. The detail
    page shows, in this order:
-   - Details, with the fields without a container.
+   - Details, with the fields without a container, including MaxBundle.
    - LACP (LACP, Minimum links and the `mlag` relationship), with "Link aggregation settings"
      under the title.
    - Layer 2 (Layer2 Mode, Untagged VLAN, Tagged VLANs).
-   - Advanced (MaxBundle), collapsed.
 
    No Layer 3 card is shown, because this node has no field in Layer 3.
 2. Select the Layer 2 header: the card collapses. Select it again: it expands.
-3. Select Edit: the form shows Details, LACP, Layer 2 and Advanced panels, all expanded. Change
+3. Select Edit: the form shows Details, LACP and Layer 2 panels, all expanded. Change
    Minimum links and save: the LACP card shows the new value.
-4. Open the `InfraLagInterfaceL3` list and select New: the form shows Details, LACP, Layer 3 (MTU)
-   and Advanced panels. Save an object and open it: the Layer 3 card starts collapsed and shows MTU
+4. Open the `InfraLagInterfaceL3` list and select New: the form shows Details, LACP and Layer 3 (MTU)
+   panels. Save an object and open it: the Layer 3 card starts collapsed and shows MTU
    `1500`; no Layer 2 card is shown.
 5. Open Schema in the sidebar and select `InfraLagInterface`: the Containers block lists `lacp`,
    `layer2` and `layer3`, and the `lacp` attribute shows `Container: lacp`.

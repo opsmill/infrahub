@@ -856,7 +856,7 @@ attribute_schema = SchemaNode(
             name="container",
             kind="Text",
             description=(
-                "Section that shows this attribute: a name from the node's 'containers' or 'advanced'. "
+                "Section that shows this attribute: a name from the node's 'containers'. "
                 "Unset, it shows in the main section."
             ),
             optional=True,
@@ -1117,7 +1117,7 @@ relationship_schema = SchemaNode(
             name="container",
             kind="Text",
             description=(
-                "Section that shows this relationship: a name from the node's 'containers' or 'advanced'. "
+                "Section that shows this relationship: a name from the node's 'containers'. "
                 "Unset, it shows in the main section."
             ),
             optional=True,

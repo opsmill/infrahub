@@ -146,7 +146,7 @@ const sectionedAttributes = [
     name: "internal_id",
     label: "Internal ID",
     order_weight: 5000,
-    container: "advanced",
+    container: "management",
   }),
 ];
 
@@ -180,6 +180,12 @@ const sectionContainers = [
     description: "Where the interface sits on the network",
   }),
   generateContainerSchema({ name: "membership", label: "Membership", order_weight: 3000 }),
+  generateContainerSchema({
+    name: "management",
+    label: "Management",
+    order_weight: 4000,
+    collapsed: true,
+  }),
 ];
 
 const sectionedSchema: ModelSchema = generateNodeSchema({
@@ -208,7 +214,7 @@ const sectionedData: NodeObjectWithMetadata = {
   member_of_groups: { edges: [] },
 };
 
-const SECTION_ORDER = ["Details", "Addressing", "LACP", "Advanced"];
+const SECTION_ORDER = ["Details", "Addressing", "LACP", "Management"];
 
 async function expectSectionsInOrder(component: Awaited<ReturnType<typeof render>>) {
   const regions = [];
@@ -228,12 +234,12 @@ async function expectSectionsInOrder(component: Awaited<ReturnType<typeof render
       .getByTestId("object-details-section")
       .elements()
       .map((card) => card.getAttribute("data-section"))
-  ).toEqual(["addressing", "lacp", "advanced"]);
+  ).toEqual(["addressing", "lacp", "management"]);
   expect(component.getByRole("region", { name: "Membership" }).elements()).toHaveLength(0);
 }
 
 describe("ObjectDetails sections", () => {
-  it("renders Details then the containers by order weight then Advanced", async () => {
+  it("renders Details then the containers by order weight", async () => {
     const component = await render(
       <ObjectDetails
         objectSchema={sectionedSchema}
@@ -254,7 +260,7 @@ describe("ObjectDetails sections", () => {
       />
     );
 
-    await component.getByRole("button", { name: "Advanced" }).click();
+    await component.getByRole("button", { name: "Management" }).click();
 
     for (const label of ["Name", "LAG mode", "IP address", "Site", "Internal ID"]) {
       await expect.element(component.getByText(label, { exact: true })).toBeVisible();
@@ -290,7 +296,7 @@ describe("ObjectDetails sections", () => {
     await expect.element(lacp.getByText("LACP rate", { exact: true })).toBeVisible();
   });
 
-  it("starts the Advanced card collapsed", async () => {
+  it("starts a card collapsed when its container is collapsed", async () => {
     const component = await render(
       <ObjectDetails
         objectSchema={sectionedSchema}
@@ -300,7 +306,7 @@ describe("ObjectDetails sections", () => {
     );
 
     await expect
-      .element(component.getByRole("button", { name: "Advanced" }))
+      .element(component.getByRole("button", { name: "Management" }))
       .toHaveAttribute("aria-expanded", "false");
     await expect
       .element(component.getByRole("button", { name: "LACP" }))

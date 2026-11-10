@@ -136,9 +136,9 @@ describe("DynamicForm", () => {
       <DynamicForm
         fields={[
           buildAttributeField("mode", { container: "details" }),
-          buildAttributeField("internal_id", { container: "advanced" }),
+          buildAttributeField("lag_mode", { container: "lacp" }),
         ]}
-        sections={[details]}
+        sections={[details, lacp]}
       />
     );
 

@@ -12,7 +12,7 @@ sections. The inheritance handler merges a node's containers with its generics' 
 schema-branch validator checks names and references, and generated profiles and templates copy the
 containers. The backend, SDK, OpenAPI, REST type and reference doc files are regenerated. In the
 frontend, one partition rule feeds the detail page (one card per section) and the forms (one panel
-per section). The Advanced section is implicit and the GraphQL schema does not change.
+per section). Details is the only built-in section, and the GraphQL schema does not change.
 
 ## Design decisions
 
@@ -35,9 +35,12 @@ removes. The node hash and diff include the container order, and `ordered=True` 
 branches that reorder differently conflict on merge. Rejected: replacing the whole list on reload,
 which differs from every other item list in the schema.
 
-**Advanced is implicit.** `advanced` is never stored or returned and is always accepted as a
-reference, and `details` and `advanced` cannot be declared. Rejected: a derived read-only container
-in the API, which the write contract and the formatter would have to strip.
+**Details is the only built-in section.** Fields without a `container` form Details, and
+`details` cannot be declared or referenced. The first version of this plan also made `advanced`
+implicit: never stored or returned, always accepted as a reference, and not declarable (rejected
+alternative: a derived read-only container in the API, which the write contract and the formatter
+would have to strip). The product owner reversed that decision on 2026-11-10: `advanced` is an
+ordinary container name, and the frontend has no Advanced section.
 
 **No migration.** The three properties use `UpdateSupport.ALLOWED` and `Visibility.WRITE`, as
 `display` and `order_weight` do: sections only affect rendering. A schema stored before the change
@@ -126,3 +129,6 @@ Demo, end-to-end and documentation:
   `InfraLagInterfaceL3` does for `mtu`. The redeclaration must keep the generic's `kind`.
 - The end-to-end test `tests/e2e/objects/test_object_containers.py` has not been run locally; it
   runs in CI.
+- A database that loaded the demo schema of this branch before 2026-11-10 stores `max_bundle` with
+  `container: advanced`. Schema loading validates the stored schema, so that database no longer
+  loads; recreate it. No released version stores `container`.

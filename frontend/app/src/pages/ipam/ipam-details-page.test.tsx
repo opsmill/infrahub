@@ -49,12 +49,6 @@ const prefixSchema = generateNodeSchema({
       order_weight: 2000,
       container: "routing",
     }),
-    generateAttributeSchema({
-      name: "internal_id",
-      label: "Internal ID",
-      order_weight: 3000,
-      container: "advanced",
-    }),
   ],
   relationships: [
     generateRelationshipSchema({
@@ -75,7 +69,6 @@ const prefixData: NodeObjectWithMetadata = {
   __typename: "IpamIPPrefix",
   prefix: generateNodeAttributeWithMetadata({ value: "10.0.0.0/8" }),
   vrf_target: generateNodeAttributeWithMetadata({ value: "65000:1" }),
-  internal_id: generateNodeAttributeWithMetadata({ value: "int-42" }),
   children: generateRelationshipNodeWithMetadata({
     node: { id: "prefix-2", display_label: "10.1.0.0/16", __typename: "IpamIPPrefix" },
   }),
@@ -105,9 +98,6 @@ describe("IPAM details page", () => {
     const routing = component.getByRole("region", { name: "Routing" });
     await expect.element(details.getByText("Prefix", { exact: true })).toBeVisible();
     await expect.element(routing.getByText("VRF target", { exact: true })).toBeVisible();
-    await expect
-      .element(component.getByRole("button", { name: "Advanced" }))
-      .toHaveAttribute("aria-expanded", "false");
     expect(details.getByText("VRF target", { exact: true }).elements()).toHaveLength(0);
     expect(component.getByText("Children", { exact: true }).elements()).toHaveLength(0);
   });

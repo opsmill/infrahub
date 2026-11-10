@@ -1,11 +1,8 @@
 import {
-  ADVANCED_SECTION,
   DETAILS_SECTION,
   type FieldSection,
 } from "@/entities/nodes/object/domain/model/field-section";
 import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
-
-const BUILT_IN_SECTION_NAMES: string[] = [DETAILS_SECTION.name, ADVANCED_SECTION.name];
 
 function orderContainers(containers: ContainerSchema[]): ContainerSchema[] {
   const weightOf = (container: ContainerSchema) =>
@@ -20,19 +17,16 @@ export function groupFieldsBySection<T>(
   getContainer: (item: T) => string | null | undefined
 ): FieldSection<T>[] {
   const declaredContainers = orderContainers(
-    (containers ?? []).filter((container) => !BUILT_IN_SECTION_NAMES.includes(container.name))
+    (containers ?? []).filter((container) => container.name !== DETAILS_SECTION.name)
   );
   const itemsByContainer = new Map<string, T[]>();
   const declaredNames = new Set(declaredContainers.map((container) => container.name));
   const detailsItems: T[] = [];
-  const advancedItems: T[] = [];
 
   for (const item of items) {
     const containerName = getContainer(item);
 
-    if (containerName === ADVANCED_SECTION.name) {
-      advancedItems.push(item);
-    } else if (containerName && declaredNames.has(containerName)) {
+    if (containerName && declaredNames.has(containerName)) {
       const containerItems = itemsByContainer.get(containerName) ?? [];
       containerItems.push(item);
       itemsByContainer.set(containerName, containerItems);
@@ -47,7 +41,6 @@ export function groupFieldsBySection<T>(
       container,
       items: itemsByContainer.get(container.name) ?? [],
     })),
-    { container: ADVANCED_SECTION, items: advancedItems },
   ];
 
   return sections.filter((section) => section.items.length > 0);

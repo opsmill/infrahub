@@ -140,7 +140,6 @@ generics:
         label: MaxBundle
         kind: Number
         optional: true
-        container: advanced
     relationships:
       - name: mlag
         peer: InfraMlagInterface

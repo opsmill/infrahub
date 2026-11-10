@@ -219,7 +219,7 @@ describe("ObjectDetailsCard", () => {
           permission={permission}
         />
         <ObjectDetailsCard
-          section={{ name: "advanced", label: "Advanced", collapsed: false }}
+          section={{ name: "layer2", label: "Layer 2", collapsed: false }}
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}
@@ -228,9 +228,9 @@ describe("ObjectDetailsCard", () => {
     );
 
     const lacp = component.getByRole("region", { name: "LACP" });
-    const advanced = component.getByRole("region", { name: "Advanced" });
+    const layer2 = component.getByRole("region", { name: "Layer 2" });
     await expect.element(lacp.getByRole("button", { name: "Extra" })).toBeVisible();
-    expect(advanced.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
+    expect(layer2.getByRole("button", { name: "Extra" }).elements()).toHaveLength(0);
 
     // WHEN
     await lacp.getByRole("button", { name: "Extra" }).click();

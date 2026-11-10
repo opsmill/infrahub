@@ -1080,7 +1080,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -1201,7 +1201,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -1721,7 +1721,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -1842,7 +1842,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -2460,7 +2460,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -2581,7 +2581,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -2708,7 +2708,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -2829,7 +2829,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -3215,7 +3215,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this relationship: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
         };
@@ -3331,7 +3331,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this relationship: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this relationship: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
         };
@@ -3825,7 +3825,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */
@@ -3946,7 +3946,7 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /**
              * Container
-             * @description Section that shows this attribute: a name from the node's 'containers' or 'advanced'. Unset, it shows in the main section.
+             * @description Section that shows this attribute: a name from the node's 'containers'. Unset, it shows in the main section.
              */
             container?: string | null;
             /** @description Extra parameters specific to this kind of attribute */

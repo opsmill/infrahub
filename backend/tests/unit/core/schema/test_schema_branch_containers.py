@@ -121,9 +121,9 @@ REFUSED_CONTAINER_CASES = [
         message=f"{L2_KIND}.containers: container names must be unique, duplicate 'extra'",
     ),
     RefusedContainerCase(
-        name="declaring_the_advanced_container",
-        schema=_lag_schema_with_generic_containers([{"name": "advanced", "label": "Advanced"}]),
-        message=f"{GENERIC_KIND}.containers: 'advanced' is a built-in container and cannot be declared",
+        name="attribute_referencing_an_undeclared_advanced_container",
+        schema=_lag_schema_with_generic_attribute_container(attribute_name="lacp_rate", container="advanced"),
+        message=f"{GENERIC_KIND}.attributes.lacp_rate.container: container 'advanced' is not declared on {GENERIC_KIND}",
     ),
     RefusedContainerCase(
         name="declaring_the_details_container",
@@ -176,12 +176,14 @@ def test_container_declaration_is_accepted(case: AcceptedContainerCase) -> None:
     assert [container.name for container in node.containers] == case.container_names
 
 
-def test_advanced_reference_without_a_declaration_is_accepted() -> None:
-    schema_branch = _processed_branch(schema=copy.deepcopy(LAG_SCHEMA))
+def test_reference_to_a_declared_advanced_container_is_accepted() -> None:
+    schema_branch = _processed_branch(
+        schema=_lag_schema_with_unweighted_container({"name": "advanced", "label": "Advanced"})
+    )
 
     node = schema_branch.get(name=L2_KIND, duplicate=False)
-    assert node.get_relationship(name="sub_interfaces").container == "advanced"
-    assert [container.name for container in node.containers] == ["lacp", "layer2", "layer3"]
+    assert node.get_attribute(name="lacp_mode").container == "advanced"
+    assert [container.name for container in node.containers] == ["lacp", "layer2", "layer3", "advanced"]
 
 
 def test_reference_resolved_through_an_inherited_container_is_accepted() -> None:
@@ -224,7 +226,7 @@ def _generic_with_field_container(field_list: str, field_name: str, container: s
     return generic
 
 
-FIELDS_IN_A_SECTION = [("attributes", "lacp_rate", "lacp"), ("relationships", "sub_interfaces", "advanced")]
+FIELDS_IN_A_SECTION = [("attributes", "lacp_rate", "lacp"), ("relationships", "sub_interfaces", "layer2")]
 
 
 @pytest.mark.parametrize(("field_list", "field_name", "container"), FIELDS_IN_A_SECTION)
