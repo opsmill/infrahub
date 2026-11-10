@@ -14,7 +14,7 @@ allowed-tools:
 compatibility: >-
   Requires the gh CLI with write access on opsmill/infrahub-pipeline-sandbox and the workflow scope,
   git able to push to that repository, and the gh aw extension at the version named in the lock-file
-  headers. Python 3.11 or later (stdlib only).
+  headers. Python 3.12 or later, as the project requires (stdlib only).
 metadata:
   version: 0.1.0
   author: OpsMill

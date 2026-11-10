@@ -12,7 +12,7 @@ opens an issue for it, and posts each command as the person running it. After ea
 
 It does not judge the quality of the analysis, the test or the fix.
 
-Only stdlib (Python 3.11 or later) and the `gh` CLI, logged in with write access on the sandbox and the
+Only stdlib (Python 3.12 or later, as the project requires) and the `gh` CLI, logged in with write access on the sandbox and the
 `workflow` scope. The lock-file check also needs the `gh aw` extension at the version the lock files name.
 
 Usage:
@@ -80,6 +80,7 @@ MERGEABILITY_ATTEMPTS = 10
 MERGEABILITY_WAIT_SECONDS = 5
 GH_ATTEMPTS = 3
 RUN_START_TIMEOUT = dt.timedelta(minutes=5)
+CANCEL_TIMEOUT = dt.timedelta(minutes=5)
 REVIEW_TIMEOUT = dt.timedelta(minutes=45)
 # A workflow's time limit covers only its agent job; queueing and the jobs around it need room as well.
 RUN_TIMEOUT_MARGIN = dt.timedelta(minutes=15)
@@ -293,6 +294,8 @@ def check_lock_files(root: Path, head_sha: str) -> None:
 
 
 def compiler_version(checkout: Path, lock_paths: Sequence[str]) -> str:
+    if missing := [path for path in lock_paths if not (checkout / path).is_file()]:
+        raise CheckFailedError(f"The pull request has no {', '.join(missing)}.")
     versions = set()
     for path in lock_paths:
         found = COMPILER_VERSION_RE.search((checkout / path).read_text(encoding="utf-8"))
@@ -355,15 +358,29 @@ def tested_pull_request() -> tuple[int, str]:
     return int(found.group(1)), found.group(2)
 
 
+def active_runs() -> list[dict[str, Any]]:
+    fields = "databaseId,workflowName"
+    return [
+        run
+        for status in ACTIVE_RUN_STATUSES
+        for run in gh_list("run", "list", "-R", SANDBOX, "--status", status, "--limit", "50", "--json", fields)
+    ]
+
+
 def cancel_active_runs() -> None:
-    for status in ACTIVE_RUN_STATUSES:
-        fields = "databaseId,workflowName"
-        for run in gh_list("run", "list", "-R", SANDBOX, "--status", status, "--limit", "50", "--json", fields):
-            log(f"Cancelling sandbox run {run['databaseId']} ({run['workflowName']})")
-            try:
-                gh("run", "cancel", str(run["databaseId"]), "-R", SANDBOX)
-            except GhError as error:
-                log(f"Could not cancel run {run['databaseId']}, which may have finished: {error}")
+    for run in active_runs():
+        log(f"Cancelling sandbox run {run['databaseId']} ({run['workflowName']})")
+        try:
+            gh("run", "cancel", str(run["databaseId"]), "-R", SANDBOX)
+        except GhError as error:
+            log(f"Could not cancel run {run['databaseId']}, which may have finished: {error}")
+    # A run still stopping can post a comment or push after the reset, so the new test starts once none is left.
+    deadline = now() + CANCEL_TIMEOUT
+    while runs := active_runs():
+        if now() > deadline:
+            raise CheckFailedError(f"{len(runs)} cancelled sandbox runs have not stopped; try again in a few minutes.")
+        log(f"Waiting for {len(runs)} cancelled sandbox runs to stop")
+        time.sleep(POLL_SECONDS)
 
 
 def script_issues() -> list[dict[str, Any]]:
