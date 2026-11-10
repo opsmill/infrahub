@@ -10,7 +10,7 @@ from ..models import DefinitionModel
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
@@ -110,7 +110,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 definition=definition, target_branch=target_branch
             )
             member_ids = await self._fetch_member_ids(definition=definition, target_branch=target_branch)
-            impacted: list[str] = []
+            impacted: Collection[str] = ()
             if not regenerate_all_members:
                 # The merge target branch is the branch the definition's query is analysed against.
                 selection = await self.impacted_resolver.resolve(
@@ -120,7 +120,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     subscriber_kind=self.subscriber_kind,
                     every_target=list(subscriber_by_member.values()),
                 )
-                impacted = selection.ids
+                impacted = set(selection.ids)
                 if selection.widening is not None:
                     self.log.info(
                         f"{definition.definition_name}: {selection.widening.detail}. "
@@ -185,7 +185,9 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         """Return the ids of the members of the definition's live target group on the merge target branch."""
 
     @abstractmethod
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: Collection[str]
+    ) -> bool:
         """Whether a single member's subscriber must be regenerated."""
 
     @abstractmethod
