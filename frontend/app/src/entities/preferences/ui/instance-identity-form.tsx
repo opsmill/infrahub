@@ -15,6 +15,7 @@ import { Form, FormField, FormInput, FormMessage } from "@/shared/components/ui/
 import { Input } from "@/shared/components/ui/input";
 import { classNames } from "@/shared/utils/common";
 
+import { useConfig } from "@/entities/config/ui/config-provider";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import {
   INSTANCE_COLORS,
@@ -74,12 +75,15 @@ function changedFields(
   return params;
 }
 
-function InstanceLabelField() {
+function InstanceLabelField({ defaultLabel }: { defaultLabel: string | null }) {
   const countId = React.useId();
+  const defaultHelpId = React.useId();
   const fieldValue = useWatch<InstanceIdentityFormValues, "instance_label">({
     name: "instance_label",
   });
-  const count = instanceLabelLength(labelText(fieldValue));
+  const text = labelText(fieldValue);
+  const count = instanceLabelLength(text);
+  const showsDefaultHelp = defaultLabel !== null && normalizeInstanceLabel(text) === null;
 
   return (
     <DetailRow icon="mdi:tag-text-outline" label="Instance label">
@@ -98,7 +102,8 @@ function InstanceLabelField() {
                 <Input
                   {...field}
                   aria-label="Instance label"
-                  aria-describedby={countId}
+                  aria-describedby={showsDefaultHelp ? `${countId} ${defaultHelpId}` : countId}
+                  placeholder={defaultLabel ?? undefined}
                   value={labelText(fieldData)}
                   onChange={(event) => field.onChange(toFieldValue(event.target.value))}
                 />
@@ -106,6 +111,11 @@ function InstanceLabelField() {
               <p id={countId} className="mt-1 text-foreground-muted text-xs tabular-nums">
                 {count}/{INSTANCE_LABEL_MAX_LENGTH}
               </p>
+              {showsDefaultHelp && (
+                <p id={defaultHelpId} className="mt-1 text-foreground-muted text-xs">
+                  Leave empty to use the deployment default: {defaultLabel}.
+                </p>
+              )}
               <FormMessage className="mt-1" />
             </div>
           );
@@ -115,7 +125,7 @@ function InstanceLabelField() {
   );
 }
 
-function InstanceColorField() {
+function InstanceColorField({ defaultColor }: { defaultColor: InstanceColor | null }) {
   return (
     <DetailRow icon="mdi:palette-outline" label="Instance color">
       <div className="w-64 shrink-0">
@@ -131,7 +141,11 @@ function InstanceColorField() {
                 onChange={(newValue) => field.onChange(toFieldValue(newValue))}
                 items={INSTANCE_COLOR_ITEMS}
                 label="Instance color"
-                placeholder="No color"
+                placeholder={
+                  defaultColor
+                    ? `Deployment default: ${instanceColorLabel(defaultColor)}`
+                    : "No color"
+                }
                 emptyMessage="No color found."
               />
             );
@@ -143,6 +157,7 @@ function InstanceColorField() {
 }
 
 export function InstanceIdentityForm() {
+  const { instance_defaults: instanceDefaults } = useConfig();
   const { isPending, error, data: global } = useGlobalPreferences();
   const updatePreferences = useUpdateGlobalPreferences();
 
@@ -181,8 +196,10 @@ export function InstanceIdentityForm() {
       }}
       className="space-y-0 divide-y"
     >
-      <InstanceLabelField />
-      <InstanceColorField />
+      <InstanceLabelField defaultLabel={instanceDefaults.label} />
+      <InstanceColorField
+        defaultColor={isInstanceColor(instanceDefaults.color) ? instanceDefaults.color : null}
+      />
 
       <Row className="justify-end p-2">
         <SaveButton isPending={updatePreferences.isPending}>Save instance identity</SaveButton>
