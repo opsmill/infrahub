@@ -669,6 +669,15 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     default_priority=WorkflowPriority.HIGH,
 )
 
+CRASH_ZOMBIE_FLOW_RUNS = WorkflowDefinition(
+    name="crash-zombie-flow-runs",
+    type=WorkflowType.INTERNAL,
+    cron="*/5 * * * *",
+    module="infrahub.tasks.zombie_flow_runs",
+    function="crash_zombie_flow_runs",
+    default_priority=WorkflowPriority.HIGH,
+)
+
 MERGE_WATCHER = WorkflowDefinition(
     name="merge-watcher",
     type=WorkflowType.INTERNAL,
@@ -705,6 +714,7 @@ WORKFLOWS = [
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     CONFIGURE_ACTION_RULES,
+    CRASH_ZOMBIE_FLOW_RUNS,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
