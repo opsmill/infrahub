@@ -1,0 +1,19 @@
+.agents/skills/testing-bug-pipeline-changes/scripts/sandbox_run.py
+  s_18c6d23cb9ead4::t_dea7daac2d7284 694
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8117172987957a5a021d18e8115e793e6e9fb03e",
+  "prompts": {},
+  "sessions": {
+    "s_18c6d23cb9ead4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "feb4525a-a50a-497b-b2cf-da8e14f8e83a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
