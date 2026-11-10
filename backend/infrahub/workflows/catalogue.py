@@ -231,6 +231,29 @@ GIT_REPOSITORIES_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_DELIVERY_RETRY = WorkflowDefinition(
+    name="git-repository-delivery-retry",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="retry_repository_delivery",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+GIT_REPOSITORY_DELIVERY_ABANDON = WorkflowDefinition(
+    name="git-repository-delivery-abandon",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="abandon_repository_delivery",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+GIT_REPOSITORY_WARM_UP = WorkflowDefinition(
+    name="git-repository-warm-up",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="warm_up_git_repository",
+)
+
 BRANCH_REBASE = WorkflowDefinition(
     name="branch-rebase",
     type=WorkflowType.CORE,
@@ -480,6 +503,23 @@ GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_READ_ONLY_REPOSITORIES_CHECK_REFS = WorkflowDefinition(
+    name="git-read-only-repositories-check-refs",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="check_read_only_repositories_refs",
+    cron="* * * * *",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+
+GIT_READ_ONLY_REPOSITORY_CHECK_REFS = WorkflowDefinition(
+    name="git-read-only-repository-check-refs",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="check_read_only_repository_refs",
+)
+
 GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT = WorkflowDefinition(
     name="git-read-only-repository-import-last-commit",
     type=WorkflowType.USER,
@@ -584,6 +624,13 @@ GIT_REPOSITORY_USER_CHECKS_TRIGGER = WorkflowDefinition(
     function="trigger_user_checks",
 )
 
+GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN = WorkflowDefinition(
+    name="git-repository-check-import-status",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_check_repository_import_status",
+)
+
 GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER = WorkflowDefinition(
     name="git-repository-trigger-internal-checks",
     type=WorkflowType.USER,
@@ -669,6 +716,15 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     default_priority=WorkflowPriority.HIGH,
 )
 
+CRASH_ZOMBIE_FLOW_RUNS = WorkflowDefinition(
+    name="crash-zombie-flow-runs",
+    type=WorkflowType.INTERNAL,
+    cron="*/5 * * * *",
+    module="infrahub.tasks.zombie_flow_runs",
+    function="crash_zombie_flow_runs",
+    default_priority=WorkflowPriority.HIGH,
+)
+
 MERGE_WATCHER = WorkflowDefinition(
     name="merge-watcher",
     type=WorkflowType.INTERNAL,
@@ -705,11 +761,14 @@ WORKFLOWS = [
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     CONFIGURE_ACTION_RULES,
+    CRASH_ZOMBIE_FLOW_RUNS,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
+    GIT_READ_ONLY_REPOSITORIES_CHECK_REFS,
+    GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
@@ -721,11 +780,15 @@ WORKFLOWS = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_DELIVERY_ABANDON,
+    GIT_REPOSITORY_DELIVERY_RETRY,
+    GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECK_RUN,
+    GIT_REPOSITORY_WARM_UP,
     GRAPHQL_QUERY_GROUP_UPDATE,
     HFID_PROCESS,
     HFID_SETUP,

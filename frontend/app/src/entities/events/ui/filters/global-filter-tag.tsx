@@ -15,10 +15,10 @@ export const FilterTag = ({ children, label, currentFilter, ...props }: FilterTa
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 text-sm",
-        currentFilter?.value && "cursor-pointer bg-neutral-100 pl-1 text-gray-600",
-        !currentFilter?.value && "cursor-pointer border-dashed px-1 text-gray-400",
-        "data-hovered:border-gray-600 data-hovered:bg-gray-100 data-hovered:text-gray-600"
+        "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border-strong text-sm",
+        currentFilter?.value && "cursor-pointer bg-background pl-1 text-subtle",
+        !currentFilter?.value && "cursor-pointer border-dashed px-1 text-subtle-muted",
+        "data-hovered:border-subtle data-hovered:bg-highlight data-hovered:text-subtle"
       )}
       aria-label={`${label} contains ${currentFilter?.value}`}
       textValue={`${label} contains ${currentFilter?.value}`}

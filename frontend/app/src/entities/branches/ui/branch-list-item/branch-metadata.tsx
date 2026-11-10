@@ -8,7 +8,7 @@ interface BranchMetadataProps {
 export function BranchMetadata({ label, value }: BranchMetadataProps) {
   return (
     <Row className="min-w-0 whitespace-nowrap text-xs">
-      <span className="shrink-0 text-gray-500">{label}:</span>
+      <span className="shrink-0 text-foreground-muted">{label}:</span>
       <span className="min-w-0 truncate">{value ?? "-"}</span>
     </Row>
   );

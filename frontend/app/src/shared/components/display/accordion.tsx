@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { type CSSProperties, type Ref, useState } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 export type AccordionProps = {

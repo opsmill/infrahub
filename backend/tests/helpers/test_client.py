@@ -6,12 +6,51 @@ import ujson
 from fastapi import FastAPI
 from infrahub_sdk.types import HTTPMethod
 
+from infrahub.core.registry import registry
+
 
 async def dummy_async_request(
     url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
 ) -> httpx.Response:
     """Return an empty response and to pretend that the git commit was updated successfully."""
     return httpx.Response(status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock"))
+
+
+async def registered_branches_async_request(
+    url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
+) -> httpx.Response:
+    """Answer the branch listing with the branches of the registry, and every other request like the dummy requester."""
+    if payload and "GetAllBranch" in payload.get("query", ""):
+        data: dict[str, Any] = {
+            "Branch": [
+                {
+                    "id": str(branch.uuid),
+                    "name": name,
+                    "sync_with_git": branch.sync_with_git,
+                    "is_default": branch.is_default,
+                    "has_schema_changes": False,
+                    "branched_from": str(branch.branched_from),
+                }
+                for name, branch in registry.branch.items()
+            ]
+        }
+    else:
+        data = {}
+    return httpx.Response(status_code=200, json={"data": data}, request=httpx.Request(method="POST", url="http://mock"))
+
+
+REJECTED_REQUEST_MESSAGE = "The request was rejected"
+
+
+async def rejected_async_request(
+    url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
+) -> httpx.Response:
+    """Return a GraphQL error for every request, as the server does when it rejects a mutation."""
+    return httpx.Response(
+        status_code=200,
+        json={"errors": [{"message": REJECTED_REQUEST_MESSAGE}]},
+        request=httpx.Request(method="POST", url="http://mock"),
+    )
 
 
 class InfrahubTestClient(httpx.AsyncClient):

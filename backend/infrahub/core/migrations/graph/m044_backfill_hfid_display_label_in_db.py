@@ -53,7 +53,7 @@ class UpdateAttributeValuesQuery(Query):
         self.is_branch_agnostic = attribute_schema.get_branch() is BranchSupportType.AGNOSTIC
         self.values_by_id_map = values_by_id_map
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "node_uuids": list(self.values_by_id_map.keys()),
             "attribute_name": self.attribute_name,
@@ -379,7 +379,8 @@ class Migration044(MigrationRequiringRebase):
                         update_task=update_task,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
@@ -511,6 +512,7 @@ class Migration044(MigrationRequiringRebase):
                         at=at,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()

@@ -25,8 +25,10 @@ operations_without_flows = [
     "refresh.registry.branches",
     "refresh.registry.rebased_branch",
     "refresh.settings.response_delay",
+    "refresh.settings.trace_sample_ratio",
     "trigger.webhook.actions",
     "git.file.get",
+    "git.commit_log.get",
 ]
 
 

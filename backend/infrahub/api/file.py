@@ -46,16 +46,13 @@ async def get_file(
         at=branch_params.at,
     )
 
-    # `commit` is defined on CoreRepository/CoreReadOnlyRepository but not on
-    # CoreGenericRepository; arguably it belongs on the generic since every concrete
-    # repository kind carries one. Until that's lifted, the runtime kind here is always
-    # one of the subclasses, so the access is safe.
-    commit = commit or repo.commit.value  # type: ignore[attr-defined]
+    commit = commit or repo.commit.value
 
     if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
     message = GitFileGet(
+        branch_name=branch_params.branch.name,
         repository_id=repo.id,
         repository_name=str(repo.name.value),
         repository_kind=repo.get_kind(),

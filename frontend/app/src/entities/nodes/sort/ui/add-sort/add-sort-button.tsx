@@ -19,7 +19,7 @@ export function AddSortButton(props: AddSortProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="justify-start text-stone-600"
+          className="justify-start text-foreground-muted"
           isDisabledAndFocusable={noFieldsLeft}
         >
           <PlusIcon />

@@ -9,6 +9,7 @@ import httpx
 import ujson
 from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
 from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
+from opentelemetry import trace
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
@@ -89,7 +90,8 @@ async def _record_http_capture(capture: CapturedHttp) -> None:
                 data=capture.to_artifact_data(),
                 flow_run_id=UUID(flow_run.id),
             )
-    except Exception as exc:
+    # Best-effort capture: an artifact write failure must never alter or mask the delivery outcome
+    except Exception as exc:  # noqa: BLE001
         get_run_logger().warning(f"Could not record the delivery capture: {exc}")
 
 
@@ -129,7 +131,12 @@ async def webhook_post(
         )
         log.debug(get_webhook_log_formatter().full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
         started = time.monotonic()
-        response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
+        with trace.get_tracer(__name__).start_as_current_span("webhook.post") as span:
+            span.set_attribute("webhook.id", webhook_id)
+            span.set_attribute("webhook.kind", webhook_kind)
+            response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
+            span.set_attribute("http.status_code", response.status_code)
+            span.set_attribute("webhook.request_body_bytes", len(response.request.content))
         latency_ms = (time.monotonic() - started) * 1_000
         response.raise_for_status()
     except EXPECTED_DELIVERY_ERRORS as cause:

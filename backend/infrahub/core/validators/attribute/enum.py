@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_enum_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if self.attribute_schema.enum is None:
             return
 

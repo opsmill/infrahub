@@ -6,9 +6,12 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch.models import Branch
 from infrahub.core.registry import registry
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
+from infrahub.exceptions import ValidationError
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 
@@ -26,11 +29,16 @@ async def validate_schema_number_pools(
     async with service.database.start_session() as db:
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
+            scope_reader=ScopedNumberPoolReader(db=db),
             schema_manager=registry.schema,
-            upserter=SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema),
+            upserter=SchemaNumberPoolUpserter(
+                db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+            ),
             log=log,
+            range_store_factory=NumberPoolRepository,
         )
-        updated_branches = await synchronizer.run(user_id=context.account_id)
+        result = await synchronizer.run(user_id=context.account_id)
+        updated_branches = result.updated_branches
 
         if updated_branches:
             for updated_branch_name in updated_branches:
@@ -41,5 +49,9 @@ async def validate_schema_number_pools(
 
             await service.component.refresh_schema_hash(branches=list(updated_branches))
             await service.message_bus.send(RefreshRegistryBranches())
+
+    # The other pools are provisioned first, so one declaration that cannot be resolved does not block them.
+    if result.refused_pools:
+        raise ValidationError(f"Number pools not created: {'; '.join(result.refused_pools)}")
 
     return updated_branches

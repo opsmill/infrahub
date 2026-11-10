@@ -1,11 +1,12 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 export const PcPlaceholderButton = () => {
   return (
     <>
       <Button
-        className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+        className="flex h-full grow flex-wrap gap-2 rounded-r-none"
         variant={"primary"}
         isDisabled
       >

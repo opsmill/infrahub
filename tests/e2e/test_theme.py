@@ -1,0 +1,131 @@
+"""Theme choice and first paint in the web interface.
+
+A fresh visitor follows the desktop color scheme, including a desktop that
+changes appearance between visits, and an explicit choice from the theme
+submenu applies instantly and survives a reload without flashing (the
+pre-paint script).
+
+Every test is a fresh anonymous visitor (the plain ``page`` fixture, no storage
+state): the coldest cache the pre-paint script can meet and the least
+privileged surface the switch must still be reachable on.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_foundation
+
+if TYPE_CHECKING:
+    from playwright.async_api import Locator, Page
+
+
+async def _html_theme(page: Page) -> str:
+    """Sample the document theme once — no retry, for the earliest-observable checks."""
+    return await page.evaluate('() => (document.documentElement.classList.contains("dark") ? "dark" : "light")')
+
+
+# The dark class lands in a layout effect, so it is applied in the same commit the markup arrives
+# in, but a visibility wait can still return between the two. Assert through the auto-retrying
+# locator matchers everywhere except the earliest-observable checks, which must sample once
+# (via _html_theme) to mean anything.
+def _html(page: Page) -> Locator:
+    return page.locator("html")
+
+
+async def _open_account_menu(page: Page) -> None:
+    await page.get_by_test_id("unauthenticated-menu-trigger").click()
+
+
+async def _open_theme_submenu(page: Page) -> Locator:
+    """Open the account menu's theme submenu and return its "Theme" trigger item."""
+    await _open_account_menu(page)
+    theme_item = page.get_by_role("menuitem", name="Theme", exact=True)
+    await theme_item.click()
+    return theme_item
+
+
+class TestTheme:
+    async def test_fresh_visitor_on_dark_desktop_lands_dark_without_flashing(self, page: Page) -> None:
+        await page.emulate_media(color_scheme="dark")
+
+        # Sampled once on purpose: a visitor who never chose must already be dark before the app boots.
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "dark"
+
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+
+        await expect(_html(page)).to_contain_class("dark")
+
+        # The dark page comes from following the desktop, not from a choice of dark, and the menu
+        # says so. Only the pre-release theme is tagged.
+        theme_item = await _open_theme_submenu(page)
+        await expect(theme_item).to_contain_text("System")
+        await expect(page.get_by_role("menuitemradio", name="System")).to_have_attribute("aria-checked", "true")
+        await expect(page.get_by_role("menuitemradio", name="Light")).not_to_contain_text("alpha")
+        await expect(page.get_by_role("menuitemradio", name="Dark")).to_contain_text("alpha")
+
+    async def test_fresh_visitor_on_light_desktop_stays_light_with_system_selected(self, page: Page) -> None:
+        await page.emulate_media(color_scheme="light")
+
+        await page.goto("/")
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+
+        await expect(_html(page)).not_to_contain_class("dark")
+
+        await _open_theme_submenu(page)
+        await expect(page.get_by_role("menuitemradio", name="System")).to_have_attribute("aria-checked", "true")
+
+    async def test_switching_to_light_applies_instantly_and_survives_a_reload_without_flashing(
+        self, page: Page
+    ) -> None:
+        await page.emulate_media(color_scheme="dark")
+
+        await page.goto("/")
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+
+        await _open_theme_submenu(page)
+        await page.get_by_role("menuitemradio", name="Light").click()
+        await expect(_html(page)).not_to_contain_class("dark")
+
+        # The pre-paint script must deliver the choice before the app boots, so the document is
+        # already light at the earliest observable moment of the next load — on a desktop still
+        # asking for dark, which is what makes this a test of the choice rather than of the
+        # default. Sampled once on purpose: retrying here would also accept the class arriving
+        # later from React, which is the very regression this asserts against.
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "light"
+
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+        await expect(_html(page)).not_to_contain_class("dark")
+
+        theme_item = await _open_theme_submenu(page)
+        await expect(theme_item).to_contain_text("Light")
+        await expect(page.get_by_role("menuitemradio", name="Light")).to_have_attribute("aria-checked", "true")
+
+    async def test_following_the_desktop_tracks_it_live_and_across_visits_without_flashing(self, page: Page) -> None:
+        await page.emulate_media(color_scheme="dark")
+
+        await page.goto("/")
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+        await expect(_html(page)).to_contain_class("dark")
+
+        # A desktop flipped while the page is open is followed without a reload.
+        await page.emulate_media(color_scheme="light")
+        await expect(_html(page)).not_to_contain_class("dark")
+        await page.emulate_media(color_scheme="dark")
+        await expect(_html(page)).to_contain_class("dark")
+
+        # Each reload below is sampled once on purpose: only the pre-paint script can have set the
+        # class this early, and it has to ask the desktop to resolve "system". A desktop still dark
+        # reloads dark...
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "dark"
+
+        # ...and one that turned light since the last visit must not reload into that stale dark.
+        await page.emulate_media(color_scheme="light")
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "light"

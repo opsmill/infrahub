@@ -31,7 +31,7 @@ export function UserProfilePage() {
             <div className="ml-2">
               <h3>{account.display_label}</h3>
 
-              <p className="text-gray-500 text-sm">{account.description?.value ?? "-"}</p>
+              <p className="text-foreground-muted text-sm">{account.description?.value ?? "-"}</p>
             </div>
           </div>
         }

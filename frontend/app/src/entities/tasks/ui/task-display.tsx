@@ -9,20 +9,23 @@ import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.
 
 import { getSeverityBadge, type tLog } from "./logs";
 
+const blueBackground = "bg-custom-blue-700/10 dark:bg-custom-blue-400/15";
+const dangerBackground = "bg-danger-surface";
+
 const background = {
   // Blue
-  SCHEDULED: "bg-custom-blue-700/10",
-  PENDING: "bg-custom-blue-700/10",
-  RUNNING: "bg-custom-blue-700/10",
-  PAUSED: "bg-custom-blue-700/10",
-  CANCELLING: "bg-custom-blue-700/10",
+  SCHEDULED: blueBackground,
+  PENDING: blueBackground,
+  RUNNING: blueBackground,
+  PAUSED: blueBackground,
+  CANCELLING: blueBackground,
   // Green
-  COMPLETED: "bg-green-700/10",
+  COMPLETED: "bg-green-700/10 dark:bg-green-400/15",
   // Yellow
-  CANCELLED: "bg-yellow-100",
+  CANCELLED: "bg-yellow-100 dark:bg-yellow-400/15",
   // Red
-  FAILED: "bg-red-100",
-  CRASHED: "bg-red-100",
+  FAILED: dangerBackground,
+  CRASHED: dangerBackground,
 };
 
 export const getLogBadge: { [key: string]: any } = {
@@ -47,7 +50,7 @@ function Task({ task }) {
       <div
         className={classNames(
           "m-auto flex flex-col gap-4 rounded-md p-4",
-          "bg-gray-100",
+          "bg-content-strong",
           background[task.state]
         )}
       >
@@ -102,7 +105,9 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
   if (tasks.length === 0) {
     return (
-      <span className="m-auto flex flex-col gap-4 rounded-md bg-gray-100 p-4 text-sm">No task</span>
+      <span className="m-auto flex flex-col gap-4 rounded-md bg-content-strong p-4 text-sm">
+        No task
+      </span>
     );
   }
 
@@ -117,7 +122,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
 function Log({ message, severity, timestamp }: tLog) {
   return (
-    <div className="flex flex-col gap-2 rounded-md bg-white p-2">
+    <div className="flex flex-col gap-2 rounded-md bg-content p-2 dark:bg-black/40">
       <div className="flex items-center justify-between">
         {getSeverityBadge[severity]}
         <DateDisplay date={timestamp} />

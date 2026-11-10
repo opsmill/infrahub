@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRightIcon } from "lucide-react";
@@ -8,6 +7,7 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

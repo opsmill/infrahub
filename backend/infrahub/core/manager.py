@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 
+from infrahub import config
 from infrahub.core.constants import (
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     MetadataOptions,
     RelationshipCardinality,
@@ -25,6 +27,8 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+    NodeStoredLabels,
     NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
@@ -41,6 +45,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -383,13 +388,13 @@ class NodeManager:
         direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.LINKED_NODES,
         fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
         order: OrderModel | None = None,
-        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.LINKED_NODES,
     ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -463,7 +468,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -474,7 +479,7 @@ class NodeManager:
                 hfid=hfid,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -485,7 +490,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -1092,6 +1097,21 @@ class NodeManager:
 
         return node
 
+    @staticmethod
+    def _pool_tracked_attribute_names(
+        schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema], fields: dict | None
+    ) -> frozenset[str]:
+        """The attributes a number pool can track among those the read returns, across the nodes' schemas."""
+        names = {
+            attribute.name
+            for schema in schemas
+            for attribute in schema.attributes
+            if attribute.kind in POOL_TRACKED_ATTRIBUTE_KINDS
+        }
+        if fields:
+            names &= set(fields.keys())
+        return frozenset(names)
+
     @classmethod
     async def get_many(
         cls,
@@ -1135,12 +1155,18 @@ class NodeManager:
         attribute_metadata_options = (
             include_metadata.attribute_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
         )
+        tracking_pool_attribute_names: frozenset[str] | None = None
+        if attribute_metadata_options & MetadataOptions.TRACKING_POOL:
+            tracking_pool_attribute_names = cls._pool_tracked_attribute_names(
+                schemas=[node.schema for node in nodes_info_by_id.values() if node.schema is not None], fields=fields
+            )
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_metadata=attribute_metadata_options,
+            tracking_pool_attribute_names=tracking_pool_attribute_names,
             at=at,
             branch_agnostic=branch_agnostic,
         )
@@ -1170,8 +1196,7 @@ class NodeManager:
             # Attributes
             # --------------------------------------------------------
             if node_id in node_attributes:
-                for attr_name, attr in node_attributes[node_id].attrs.items():
-                    new_node_data[attr_name] = attr
+                new_node_data.update(node_attributes[node_id].attrs)
 
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
@@ -1202,6 +1227,25 @@ class NodeManager:
         )
 
         return nodes
+
+    @classmethod
+    async def get_stored_labels(
+        cls, db: InfrahubDatabase, ids: list[str], branch: Branch | str | None, label_names: list[str]
+    ) -> dict[str, NodeStoredLabels]:
+        """Return the labels stored on these nodes, keyed by node id, without instantiating them.
+
+        Only the requested label attributes are read, in batches of ``query_size_limit`` ids. A node
+        that is not active on the branch is absent from the result.
+        """
+        branch = await registry.get_branch(branch=branch, db=db)
+        stored_labels: dict[str, NodeStoredLabels] = {}
+        for ids_batch in chunked(ids, config.SETTINGS.database.query_size_limit):
+            query = await NodeListGetStoredLabelsQuery.init(
+                db=db, branch=branch, ids=ids_batch, label_names=label_names
+            )
+            await query.execute(db=db)
+            stored_labels.update(query.get_stored_labels())
+        return stored_labels
 
     @classmethod
     async def prefetch_relationships(
@@ -1267,6 +1311,9 @@ class NodeManager:
                     for identifier, direction in identifier_direction_map.items()
                 )
             )
+            if not any(identifiers_by_direction.values()):
+                # The requested fields name no relationship, so there is no edge to read.
+                return
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
@@ -1329,10 +1376,13 @@ class NodeManager:
 
         node_schema = node.get_schema()
         for rel_schema in node_schema.relationships:
-            if insert_peer_node and prefetch_relationship_names is not None:
-                if rel_schema.name not in prefetch_relationship_names:
-                    # The query did not cover this relationship, leave it to be read on demand.
-                    continue
+            if (
+                insert_peer_node
+                and prefetch_relationship_names is not None
+                and rel_schema.name not in prefetch_relationship_names
+            ):
+                # The query did not cover this relationship, leave it to be read on demand.
+                continue
             peer_ids = grouped_peer_nodes.get_peer_ids(
                 node_id=node.get_id(),
                 rel_name=rel_schema.get_identifier(),
@@ -1390,8 +1440,7 @@ class NodeManager:
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
-            # invariant list parameter; update() only reads data, so the narrower element type is safe
-            await rel_manager.update(db=db, data=rel_peers_with_metadata)  # type: ignore[arg-type]
+            await rel_manager.update(db=db, data=rel_peers_with_metadata)
 
     @classmethod
     async def delete(
@@ -1471,7 +1520,7 @@ def _get_cardinality_one_identifiers_by_kind(
         if node_schema.kind in cardinality_one_fields_by_kind:
             continue
         cardinality_one_rel_identifiers_in_fields = {
-            rel_schema.identifier: rel_schema.direction
+            rel_schema.get_identifier(): rel_schema.direction
             for rel_schema in node_schema.relationships
             if rel_schema.cardinality is RelationshipCardinality.ONE and rel_schema.name in field_names_set
         }

@@ -96,4 +96,49 @@ describe("getAttributesVisibleInListView", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.kind).toBe("Text");
   });
+
+  it("should keep excluding 'extra' attributes when called without revealed names", () => {
+    // GIVEN
+    const attributes: AttributeSchema[] = [
+      generateAttributeSchema({ name: "visible", kind: "Text", display: "default" }),
+      generateAttributeSchema({ name: "hidden", kind: "Text", display: "extra" }),
+      generateAttributeSchema({ name: "json_hidden", kind: "JSON", display: "extra" }),
+    ];
+
+    // WHEN
+    const result = getAttributesVisibleInListView(attributes);
+
+    // THEN
+    expect(result.map((attribute) => attribute.name)).toEqual(["visible"]);
+  });
+
+  it("should return an 'extra' attribute when its name is revealed", () => {
+    // GIVEN
+    const attributes: AttributeSchema[] = [
+      generateAttributeSchema({ name: "visible", kind: "Text", display: "default" }),
+      generateAttributeSchema({ name: "internal_note", kind: "Text", display: "extra" }),
+      generateAttributeSchema({ name: "other_note", kind: "Text", display: "extra" }),
+    ];
+
+    // WHEN
+    const result = getAttributesVisibleInListView(attributes, new Set(["internal_note"]));
+
+    // THEN
+    expect(result.map((attribute) => attribute.name)).toEqual(["visible", "internal_note"]);
+  });
+
+  it("should still exclude an attribute whose kind is not renderable even when revealed", () => {
+    // GIVEN
+    const attributes: AttributeSchema[] = [
+      generateAttributeSchema({ name: "visible", kind: "Text", display: "default" }),
+      generateAttributeSchema({ name: "payload", kind: "JSON", display: "extra" }),
+      generateAttributeSchema({ name: "secret", kind: "Password", display: "default" }),
+    ];
+
+    // WHEN
+    const result = getAttributesVisibleInListView(attributes, new Set(["payload", "secret"]));
+
+    // THEN
+    expect(result.map((attribute) => attribute.name)).toEqual(["visible"]);
+  });
 });

@@ -610,7 +610,7 @@ DETACH DELETE attr
     ) -> None:
         await branch.rebase(db=db)
         async with db.start_session() as dbs:
-            migration = Migration043(migrations=[])
+            migration = Migration043()
             execution_result = await migration.execute_against_branch(
                 migration_input=MigrationInput(db=dbs), branch=branch
             )
@@ -676,7 +676,7 @@ DETACH DELETE attr
 
         # test adding display label and HFID attributes on default branch
         async with db.start_session() as dbs:
-            migration = Migration043(migrations=[])
+            migration = Migration043()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors
 

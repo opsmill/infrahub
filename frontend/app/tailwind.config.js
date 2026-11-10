@@ -6,9 +6,6 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      fontSize: {
-        xxs: "0.625rem",
-      },
       colors: {
         "custom-blue": {
           1: "#E4F3F7",
@@ -27,8 +24,6 @@ export default {
         "custom-blue-green": "#0B6581",
         "custom-blue-gray": "#0D3F54",
         "custom-gray": "#0B1829",
-        "custom-black": "#000000",
-        "custom-white": "#FFFFFF",
       },
     },
   },

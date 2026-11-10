@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -8,6 +9,7 @@ import typer
 from anyio.abc import TaskStatus
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
+from prefect import Flow
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
 from prefect.context import AsyncClientContext
@@ -43,9 +45,10 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.metrics import observe_start_delay, track_flow_run
 from infrahub.workers.reservations import CacheFlowRunReservations
 from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY, SubmissionWindow
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
+from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 if TYPE_CHECKING:
@@ -54,6 +57,22 @@ if TYPE_CHECKING:
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"{RedisDatabase.get_block_type_slug()}/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
+
+
+def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
+    """Inject the worker's service into ``parameters`` if the flow declares one.
+
+    The service holds this worker's connections (database, cache, ...), so it never travels in the
+    server payload. This mutates ``parameters``.
+
+    Raises:
+        ValueError: When ``parameters`` already contains an ``InfrahubServices`` instance.
+
+    """
+    if service_parameter_name := get_parameter_name(func=func, types=[InfrahubServices.__name__, InfrahubServices]):
+        if any(isinstance(param_value, InfrahubServices) for param_value in parameters.values()):
+            raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
+        parameters[service_parameter_name] = service
 
 
 def build_worker_client_config(log: Any | None = None) -> Config:
@@ -108,7 +127,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         client: InfrahubClient | None = None,
         metric_port: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         logging.getLogger("websockets").setLevel(logging.ERROR)
         logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -133,6 +152,7 @@ class InfrahubWorkerAsync(BaseWorker):
                 service="infrahub-task-worker",
                 version=infrahub_version,
                 exporter_type=config.SETTINGS.trace.exporter_type,
+                sample_ratio=config.SETTINGS.trace.sample_ratio,
                 exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
                 exporter_protocol=config.SETTINGS.trace.exporter_protocol,
                 insecure=config.SETTINGS.trace.insecure,
@@ -146,17 +166,19 @@ class InfrahubWorkerAsync(BaseWorker):
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
-        await super().setup(**kwargs)
-
+        # Entered before the base setup so that the polling client it creates also skips the CSRF token request,
+        # which the task manager refuses since it runs without CSRF protection.
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
                 updates={
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
                     prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
-                }
+                },
+                set_defaults={prefect_settings.PREFECT_CLIENT_CSRF_SUPPORT_ENABLED: False},
             )
         )
+        await super().setup(**kwargs)
 
         set_component_type(component_type=self.component_type)
         await self.set_git_global_config()
@@ -202,9 +224,16 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
-            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
-            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        observe_start_delay(
+            flow=flow_func.name,
+            queue=flow_run.work_queue_name,
+            expected_start_time=flow_run.expected_start_time,
+            started_at=datetime.now(UTC),
+        )
+        with track_flow_run(flow=flow_func.name, queue=flow_run.work_queue_name):
+            async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+                ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+                await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 

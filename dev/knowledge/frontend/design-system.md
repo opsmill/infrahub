@@ -29,7 +29,7 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 | `Tree` (`TreeItem`, `TreeItemContent`, `TreeItemLoader`) | Expandable tree with lazy loading. |
 | `SortableList` / `SortableItem` | Drag-and-drop reorderable list (react-aria `useDragAndDrop`). |
 | `ResizablePanelGroup` / `ResizablePanel` / `ResizableHandle` | Split panes built on `react-resizable-panels`. |
-| `ScrollArea` | Styled scroll container. |
+| `ScrollArea` | Styled scroll container. Without `scrollX`, its content is never wider than the area, so long text has to truncate or wrap. |
 | `Meter` | Progress/utilization bar. |
 | `Spinner` | Loading indicator. |
 | `DismissGuardContext` / `useDismissGuard` | Hook + context to block overlay dismissal (used by `Sheet`; consumers such as dirty forms mark themselves undismissable). |
@@ -71,9 +71,11 @@ If a component needs a slot the package doesn't expose yet, **extend the package
 
 ## When to consume from `shared/components/ui/`
 
-`frontend/app/src/shared/components/ui/` contains primitives that have not yet been migrated. They are still the canonical implementation for now. Examples: `combobox`, `popover`, `dropdown-menu`, `badge`, `alert`, `accordion`, `pagination`, `command` (`tooltip` and `resizable` have already moved to `@infrahub/ui`).
+`frontend/app/src/shared/components/ui/` contains primitives that have not yet been migrated. They are still the canonical implementation for now. Examples: `combobox`, `popover`, `badge`, `alert`, `accordion`, `pagination`, `command` (`tooltip` and `resizable` have already moved to `@infrahub/ui`).
 
 **Popover exists in both places.** `shared/components/ui/popover.tsx` is Radix-based (`@radix-ui/react-popover`), adds `PopoverAnchor` and `PopoverTabs*` subcomponents, and marks its content with `data-react-aria-top-layer` so clicking inside it does not count as an outside interaction for an enclosing react-aria overlay such as the package `Sheet`. `@infrahub/ui` exports a separate react-aria `Popover` / `PopoverDialog` / `PopoverTrigger`. Both are actively used in the app (roughly 23 vs 26 importing files); the dismiss guard itself lives in `@infrahub/ui` (`Sheet` + `useDismissGuard`), not in either popover.
+
+**`PopoverDialog` gotcha: don't wrap content that auto-opens a nested combobox/dropdown.** `PopoverDialog` wraps react-aria's `Dialog`, which invokes `useDialog` and focuses itself on mount. If the popover's content renders a `defaultOpen` combobox or dropdown (e.g. an enum/relationship filter field), `useDialog`'s focus-on-mount can steal focus from that nested control and close it immediately. For content shaped like that, skip `PopoverDialog` and render the plain `Popover` instead — accepting the reduced dialog semantics for that one case.
 
 When you touch one of these and notice it could be a generic primitive, consider migrating it to `@infrahub/ui` as part of the change.
 
@@ -95,6 +97,39 @@ Each migrated component ships with a `*.stories.tsx`. Run Storybook from `fronte
 | Wrapping `Button` from `@infrahub/ui` to add a single class | Use `className` prop or extend variants in the package. |
 | Importing `Button` / `Card` / `Modal` / `Spinner` from anywhere except `@infrahub/ui` | The shared packages are deduplicated for a reason — bundle size and styling consistency. |
 | Adding a one-off `<dialog>` because Modal feels heavy | Use `Modal` — it handles focus trap, escape, and overlay. |
+
+## Formatting and linting
+
+One toolchain covers the whole `frontend/` pnpm workspace: **Biome**, configured once at
+`frontend/biome.jsonc` (the root config) with thin per-member configs that inherit it via
+`"extends": "//"`:
+
+| Config | Role |
+|---|---|
+| `frontend/biome.jsonc` | Shared formatter, import sorting, and lint rules; extends the `ultracite` presets |
+| `frontend/app/biome.jsonc` | App-relative ignores (generated GraphQL/REST types, Playwright output) and the app-only `noTailwindArbitraryValue` rule |
+| `frontend/packages/{ui,graph}/biome.jsonc` | `noBarrelFile` off — `src/index.ts` is each package's public API |
+
+Run it from the workspace root, never from a single member:
+
+```bash
+cd frontend && pnpm biome:fix   # or: pnpm exec biome ci .  (what CI runs)
+```
+
+Two things to know:
+
+- **Run Biome from `frontend/`, not `frontend/app`.** Biome discovers its config by walking up from
+  the current directory, so invoking it inside `frontend/app` silently leaves `packages/*`
+  unchecked, and invoking it in a worktree with no config in the tree walks up past the repo
+  entirely and applies a *different* checkout's config.
+- The per-package configs are what make each package its own Biome project. Without them,
+  `noUndeclaredDependencies` cannot find the package's own `package.json` and reports every import
+  as undeclared.
+
+`packages/ui` and `packages/graph` previously used `oxlint` + `oxfmt`, which nothing in CI ever ran.
+That split has since been removed; `packages/plugins/template` is a standalone published scaffold and
+still ships its own ESLint setup, and `packages/schema-visualizer` is a git submodule with its own
+Biome config. Both are excluded from the root config.
 
 ## Discovery commands
 

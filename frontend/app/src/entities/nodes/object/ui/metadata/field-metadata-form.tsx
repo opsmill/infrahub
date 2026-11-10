@@ -58,7 +58,7 @@ export default function FieldMetadataForm({
   }
 
   return (
-    <div className="flex flex-1 bg-white">
+    <div className="flex flex-1 bg-content">
       <DynamicForm
         fields={[
           {

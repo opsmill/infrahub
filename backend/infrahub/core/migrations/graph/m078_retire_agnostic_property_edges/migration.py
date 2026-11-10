@@ -33,9 +33,9 @@ class Migration078(ArbitraryMigration):
     Retention is judged across every branch, so a value any branch can still read is left open and
     released later by the runtime enforcement points. Each close is stamped with the time the field
     stopped being reachable rather than with the upgrade's own time, which keeps it out of the fork
-    window of every branch older than the upgrade. Where the graph records no such time it also
-    records no owner departure, so no branch resolves the owner as live and the upgrade's own time
-    closes the field without shifting any branch's view. A second run reports zero repairs.
+    window of every branch older than the upgrade. Where the graph records no such time the
+    upgrade's own time is the fallback, which shifts no branch's view either: a field only reaches
+    the stamp once no branch retains it. A second run reports zero repairs.
     """
 
     name: str = "078_retire_agnostic_property_edges"
@@ -61,7 +61,8 @@ class Migration078(ArbitraryMigration):
                 db=db, at=migration_input.at, batch_size=self.batch_size, user_id=migration_input.user_id
             )
             await close_query.execute(db=db)
-        except Exception as exc:
+        # don't kill the migration on one query failure. it's idempotent so it can just go again.
+        except Exception as exc:  # noqa: BLE001
             console.log(f"Unable to close the unretained branch-agnostic edges: {exc}")
             result.errors.append(f"closing unretained branch-agnostic edges: {exc}")
         else:
@@ -72,7 +73,8 @@ class Migration078(ArbitraryMigration):
         try:
             delete_query = await DeleteDetachedAgnosticFieldsQuery.init(db=db, batch_size=self.batch_size)
             await delete_query.execute(db=db)
-        except Exception as exc:
+        # don't kill the migration on one query failure. it's idempotent so it can just go again.
+        except Exception as exc:  # noqa: BLE001
             console.log(f"Unable to remove the detached branch-agnostic vertices: {exc}")
             result.errors.append(f"removing detached branch-agnostic vertices: {exc}")
         else:

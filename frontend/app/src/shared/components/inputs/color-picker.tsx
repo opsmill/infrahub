@@ -52,7 +52,7 @@ export const ColorPicker = (props: any & { ref?: React.Ref<HTMLInputElement> }) 
           size="xxs"
           className={classNames(
             focusVisibleStyle,
-            "bg-linear-to-br from-custom-white via-custom-blue-50 to-custom-gray"
+            "bg-linear-to-br from-white via-custom-blue-50 to-custom-gray"
           )}
         />
 

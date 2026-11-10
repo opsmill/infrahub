@@ -19,7 +19,7 @@ import { Button } from "../button/button";
 function reorderItems<T>(
   items: T[],
   event: DroppableCollectionReorderEvent,
-  getId: (item: T) => Key,
+  getId: (item: T) => Key
 ): T[] {
   const { keys, target } = event;
   const moved = items.filter((item) => keys.has(getId(item)));
@@ -35,10 +35,8 @@ function reorderItems<T>(
   return [...rest.slice(0, insertIndex), ...moved, ...rest.slice(insertIndex)];
 }
 
-export interface SortableListProps<T extends object> extends Omit<
-  AriaGridListProps<T>,
-  "items" | "children" | "dragAndDropHooks"
-> {
+export interface SortableListProps<T extends object>
+  extends Omit<AriaGridListProps<T>, "items" | "children" | "dragAndDropHooks"> {
   items: T[];
   onReorder: (items: T[]) => void;
   children: (item: T) => React.ReactNode;
@@ -83,9 +81,9 @@ export function SortableList<T extends object>({
 
 const sortableItemStyles = tv({
   base: [
-    "flex cursor-grab items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-stone-600 outline-hidden select-none",
-    "data-focus-visible:bg-stone-700/10 data-focus-visible:text-stone-800",
-    "data-selected:bg-stone-700/10 data-selected:text-stone-800",
+    "flex cursor-grab select-none items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-subtle outline-hidden",
+    "data-focus-visible:bg-highlight data-focus-visible:text-foreground",
+    "data-selected:bg-selected data-selected:text-foreground",
     "data-dragging:cursor-grabbing",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
   ],
@@ -103,7 +101,7 @@ export function SortableItem({ children, className, ref, ...props }: SortableIte
     <AriaGridListItem
       ref={ref}
       className={composeAriaClassName(className, ({ isDragging }) =>
-        sortableItemStyles({ isDragging }),
+        sortableItemStyles({ isDragging })
       )}
       {...props}
     >
@@ -115,7 +113,7 @@ export function SortableItem({ children, className, ref, ...props }: SortableIte
             shape="square"
             size="xxs"
             aria-label="Reorder"
-            className="text-stone-400"
+            className="text-subtle-muted"
           >
             <GripVerticalIcon className="size-4" />
           </Button>

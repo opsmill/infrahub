@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class LockAction(StrEnum):
+    WAIT = "wait"
+    ABANDON = "abandon"
     ACQUIRE = "acquire"
     RELEASE = "release"
     CHECKPOINT = "checkpoint"
@@ -61,6 +63,11 @@ class LockTimeline:
             elif event.action == LockAction.RELEASE:
                 held.discard(event.name)
         return held
+
+    def waiting(self, name: str) -> int:
+        """Return how many callers wait for the lock ``name``, have not acquired it and have not stopped waiting."""
+        actions = [event.action for event in self.events if event.name == name]
+        return actions.count(LockAction.WAIT) - actions.count(LockAction.ACQUIRE) - actions.count(LockAction.ABANDON)
 
     def acquire_sequence(self, prefix: str | None = None) -> list[str]:
         """Return the lock names in the order they were acquired, optionally filtered by name prefix."""

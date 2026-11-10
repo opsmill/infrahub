@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "react-toastify";
 
+import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
@@ -66,7 +66,7 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
         role="toolbar"
         className={classNames(
           "fixed bottom-10 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap",
-          "text rounded-xl border border-neutral-300 px-1.5 text-sm shadow-lg backdrop-blur-lg",
+          "text rounded-xl border border-border-strong px-1.5 text-sm shadow-lg backdrop-blur-lg",
           "fade-in-0 zoom-in-95 slide-in-from-bottom-1/2 animate-in",
           "flex items-center gap-1.5 outline-none"
         )}

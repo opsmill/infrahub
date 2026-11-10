@@ -36,7 +36,8 @@ class Migration014(GraphMigration):
             index_manager = IndexManagerNeo4j(db=db)
             index_manager.init(nodes=[INDEX_TO_DELETE], rels=[])
             await index_manager.drop()
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             result.errors.append(str(exc))
             return result
 

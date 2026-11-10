@@ -40,6 +40,7 @@ from infrahub.workers.dependencies import (
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.adapters.workflow import HoldingWorkflowExecution
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
@@ -286,10 +287,8 @@ class TestInfrahubAppBase(TestInfrahub):
             db=db, admin_accounts=[admin_account, bot_account], accounts=[unprivileged_account]
         )
 
-        # The graphql registry is deliberately NOT cleared between classes: entries are keyed
-        # by schema content hash, so the pristine core-schema manager (~1s and ~40MB to build)
-        # is reused across classes, while activation-based eviction drops the hashes a branch
-        # leaves behind when its schema changes.
+        # GraphQL schema entries are keyed by schema content hash and evicted when a branch's schema
+        # changes, so the core schema is reused across test classes instead of cleared and rebuilt.
         await initialization(db=db)
 
     async def assert_event(self, prefect_client: PrefectClient, event_name: str, resource_id: str) -> None:
@@ -323,6 +322,19 @@ class TestInfrahubApp(TestInfrahubAppBase):
         self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
     ) -> InfrahubServices:
         return app.state.service
+
+
+class TestInfrahubAppHoldingWorkflows(TestInfrahubApp):
+    """Runs submitted workflows in process, except those a test holds to run them in an order of its own."""
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[HoldingWorkflowExecution, None]:
+        workflow = HoldingWorkflowExecution()
+        await setup_task_manager_once()
+        with override_workflow(workflow, dependency_provider=dependency_provider):
+            yield workflow
 
 
 class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):

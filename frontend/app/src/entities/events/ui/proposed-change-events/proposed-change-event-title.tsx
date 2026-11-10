@@ -10,22 +10,22 @@ import { ProposedChangeThreadEvent } from "./proposed-change-thread-event";
 
 export const PROPOSED_CHANGE_EVENTS_MAPPING: Record<string, () => ReactNode> = {
   "infrahub.proposed_change.merged": () => {
-    return <div className="text-gray-600">merged the proposed change</div>;
+    return <div className="text-foreground-muted">merged the proposed change</div>;
   },
   "infrahub.proposed_change.review_requested": () => {
-    return <div className="text-gray-600">requested a review</div>;
+    return <div className="text-foreground-muted">requested a review</div>;
   },
   "infrahub.proposed_change.approved": () => {
-    return <div className="text-gray-600">approved the proposed change</div>;
+    return <div className="text-foreground-muted">approved the proposed change</div>;
   },
   "infrahub.proposed_change.rejected": () => {
-    return <div className="text-gray-600">rejected the proposed change</div>;
+    return <div className="text-foreground-muted">rejected the proposed change</div>;
   },
   "infrahub.proposed_change.approval_revoked": () => {
-    return <div className="text-gray-600">canceled the approval</div>;
+    return <div className="text-foreground-muted">canceled the approval</div>;
   },
   "infrahub.proposed_change.rejection_revoked": () => {
-    return <div className="text-gray-600">canceled the rejection</div>;
+    return <div className="text-foreground-muted">canceled the rejection</div>;
   },
 };
 
@@ -43,7 +43,9 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
 
   if (event === PROPOSED_CHANGE_APPROVALS_REVOKED) {
     return (
-      <div className="text-gray-600">Changes occurred in the source branch, approval revoked</div>
+      <div className="text-foreground-muted">
+        Changes occurred in the source branch, approval revoked
+      </div>
     );
   }
 
@@ -52,7 +54,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-sm">
           <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />{" "}
-          <span className="text-gray-600">created a thread</span>
+          <span className="text-foreground-muted">created a thread</span>
         </div>
 
         <ProposedChangeThreadEvent id={props.related_nodes?.[0].id} />

@@ -10,6 +10,7 @@ from infrahub.core.path import SchemaPath
 
 from ..schema.node_attribute_add import NodeAttributeAddMigration
 from ..shared import InternalSchemaMigration
+from .load_schema_branch import build_internal_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -21,8 +22,8 @@ class Migration004(InternalSchemaMigration):
     minimum_version: int = 3
 
     @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        internal_schema = cls.get_internal_schema()
+    def init(cls, **kwargs: Any) -> Self:
+        internal_schema = build_internal_schema_branch()
         schema_node = internal_schema.get_node(name="SchemaNode")
         schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
@@ -42,7 +43,7 @@ class Migration004(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
+        return cls(migrations=migrations, **kwargs)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

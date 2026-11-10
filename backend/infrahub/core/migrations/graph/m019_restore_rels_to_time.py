@@ -19,7 +19,7 @@ class FixBranchAwareEdgesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         """Between a Node and a Relationship, if Relationship.branch_support=aware, replace any global edge.
 
         to the branch of a non-global edge leaving out of the Relationship node. Note that there can't
@@ -49,7 +49,7 @@ class SetMissingToTimeQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         """If both a deleted edge and an active edge with no time exist between 2 nodes on the same branch,.
 
         set `to` time of active edge using `from` time of the deleted one. This would typically happen after having
@@ -71,7 +71,7 @@ class DeleteNodesRelsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         """Some nodes may have been incorrectly deleted, typically, while these nodes edges connected to Root.
 
         are correctly deleted, edges connected to other `Node` through a `Relationship` node may still be active.

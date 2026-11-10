@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Card, CardContent } from "@infrahub/ui";
 import { useEffect, useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import Kbd from "@/shared/components/ui/kbd";
 
 interface ErrorFallbackProps {
@@ -40,7 +40,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
   };
 
   return (
-    <Col className="h-screen items-center justify-center bg-gray-100">
+    <Col className="h-screen items-center justify-center bg-background text-foreground">
       <Card className="mb-4">
         <CardContent>
           <Col className="items-center gap-4">
@@ -84,7 +84,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
               </p>
             </Col>
 
-            <p className="text-gray-600 text-xs">
+            <p className="text-foreground-muted text-xs">
               If this was unexpected, please reach out to us on{" "}
               <a
                 className="underline"
@@ -109,8 +109,8 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
       </Card>
 
       {error?.stack && (
-        <Accordion className="text-gray-600 text-sm" title="View error stack">
-          <pre className="rounded-sm bg-red-50 p-2 text-red-800">{error.stack}</pre>
+        <Accordion className="text-foreground-muted text-sm" title="View error stack">
+          <pre className="rounded-sm bg-danger-surface p-2 text-danger">{error.stack}</pre>
         </Accordion>
       )}
     </Col>

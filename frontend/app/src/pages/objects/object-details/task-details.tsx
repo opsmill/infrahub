@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
@@ -16,7 +16,7 @@ export function Component() {
 
   return (
     <>
-      <div className="flex items-center bg-white text-sm">
+      <div className="flex items-center bg-content text-sm">
         <Link
           to={getObjectDetailsUrl(objectData.__typename, objectData.id, undefined, "tasks")}
           className="flex items-center p-2"

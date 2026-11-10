@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, cast
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, Self, Sequence, cast
 
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
@@ -10,13 +9,7 @@ from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
-    from infrahub.core.branch import Branch
-    from infrahub.core.manager import RelationshipSchema
-    from infrahub.core.query.relationship import RelationshipPeerData
     from infrahub.core.relationship.model import Relationship
-    from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.database import InfrahubDatabase
 
 log = get_logger()
 
@@ -120,6 +113,8 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     peer_kind_previous: str | None = Field(default=None, description="The node kind of the previous peer")
     peer_id: str | None = Field(default=None, description="The current peer of this relationship")
     peer_kind: str | None = Field(default=None, description="The node kind of the current peer")
+    peer_display_label: str | None = Field(default=None, description="The display label of the current peer")
+    peer_hfid: list[str] | None = Field(default=None, description="The HFID of the current peer")
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="Changes to properties of this relationship if any were made"
     )
@@ -128,6 +123,10 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     @property
     def parent(self) -> ChangelogRelatedNode | None:
         return self._parent
+
+    def peer_entries(self) -> Sequence[RelationshipCardinalityOneChangelog | RelationshipPeerChangelog]:
+        """Return the peer-carrying entries this relationship holds."""
+        return [self]
 
     @computed_field
     def cardinality(self) -> str:
@@ -169,6 +168,8 @@ class RelationshipCardinalityOneChangelog(BaseModel):
 class RelationshipPeerChangelog(BaseModel):
     peer_id: str = Field(..., description="The ID of the peer")
     peer_kind: str = Field(..., description="The node kind of the peer")
+    peer_display_label: str | None = Field(default=None, description="The display label of the peer")
+    peer_hfid: list[str] | None = Field(default=None, description="The HFID of the peer")
     peer_status: DiffAction = Field(
         ..., description="Indicate how the relationship to this peer was changed in this update"
     )
@@ -187,6 +188,10 @@ class RelationshipCardinalityManyChangelog(BaseModel):
     @computed_field
     def cardinality(self) -> str:
         return "many"
+
+    def peer_entries(self) -> Sequence[RelationshipCardinalityOneChangelog | RelationshipPeerChangelog]:
+        """Return the peer-carrying entries this relationship holds."""
+        return self.peers
 
     def add_new_peer(self, relationship: Relationship) -> None:
         properties: dict[str, PropertyChangelog] = {}
@@ -221,6 +226,15 @@ class RelationshipCardinalityManyChangelog(BaseModel):
         return not self.peers
 
 
+def record_new_edge_metadata(changelog: RelationshipCardinalityOneChangelog, relationship: Relationship) -> None:
+    """Record a new one-cardinality edge's source, owner and is_protected metadata on its changelog."""
+    if source_id := getattr(relationship, "source_id", None):
+        changelog.add_property(name="source", value_current=source_id, value_previous=None)
+    if owner_id := getattr(relationship, "owner_id", None):
+        changelog.add_property(name="owner", value_current=owner_id, value_previous=None)
+    changelog.add_property(name="is_protected", value_current=relationship.is_protected, value_previous=None)
+
+
 class ChangelogRelatedNode(BaseModel):
     node_id: str
     node_kind: str
@@ -232,6 +246,7 @@ class NodeChangelog(BaseModel):
     node_id: str
     node_kind: str
     display_label: str
+    hfid: list[str] | None = None
 
     attributes: dict[str, AttributeChangelog] = Field(default_factory=dict)
     relationships: dict[str, RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog] = Field(
@@ -277,13 +292,7 @@ class NodeChangelog(BaseModel):
                 peer_id=peer_id,
                 peer_kind=peer_kind,
             )
-            if source_id := getattr(relationship, "source_id", None):
-                changelog_relationship.add_property(name="source", value_current=source_id, value_previous=None)
-            if owner_id := getattr(relationship, "owner_id", None):
-                changelog_relationship.add_property(name="owner", value_current=owner_id, value_previous=None)
-            changelog_relationship.add_property(
-                name="is_protected", value_current=relationship.is_protected, value_previous=None
-            )
+            record_new_edge_metadata(changelog=changelog_relationship, relationship=relationship)
             self.relationships[changelog_relationship.name] = changelog_relationship
         elif relationship.schema.cardinality == RelationshipCardinality.MANY:
             if relationship.schema.name not in self.relationships:
@@ -363,309 +372,3 @@ class NodeChangelog(BaseModel):
             related_nodes[self.parent.node_id] = self.parent
 
         return list(related_nodes.values())
-
-
-class ChangelogRelationshipMapper:
-    def __init__(self, schema: RelationshipSchema) -> None:
-        self.schema = schema
-        self._cardinality_one_relationship: RelationshipCardinalityOneChangelog | None = None
-        self._cardinality_many_relationship: RelationshipCardinalityManyChangelog | None = None
-
-    @property
-    def cardinality_one_relationship(self) -> RelationshipCardinalityOneChangelog:
-        if not self._cardinality_one_relationship:
-            self._cardinality_one_relationship = RelationshipCardinalityOneChangelog(name=self.schema.name)
-
-        return self._cardinality_one_relationship
-
-    @property
-    def cardinality_many_relationship(self) -> RelationshipCardinalityManyChangelog:
-        if not self._cardinality_many_relationship:
-            self._cardinality_many_relationship = RelationshipCardinalityManyChangelog(name=self.schema.name)
-
-        return self._cardinality_many_relationship
-
-    def remove_peer(self, peer_data: RelationshipPeerData) -> None:
-        if self.schema.cardinality == RelationshipCardinality.ONE:
-            self.cardinality_one_relationship.peer_id_previous = str(peer_data.peer_id)
-            self.cardinality_one_relationship.peer_kind_previous = peer_data.peer_kind
-        elif self.schema.cardinality == RelationshipCardinality.MANY:
-            self.cardinality_many_relationship.remove_peer(
-                peer_id=str(peer_data.peer_id), peer_kind=peer_data.peer_kind
-            )
-
-    def _set_cardinality_one_peer(self, relationship: Relationship) -> None:
-        self.cardinality_one_relationship.peer_id = relationship.peer_id
-        self.cardinality_one_relationship.peer_kind = relationship.get_peer_kind()
-        self.cardinality_one_relationship.set_parent_from_relationship(rel_kind=relationship.schema.kind)
-
-    def add_parent_from_relationship(self, relationship: Relationship) -> None:
-        if self.schema.cardinality == RelationshipCardinality.ONE:
-            self.cardinality_one_relationship.set_parent(
-                parent_id=relationship.get_peer_id(), parent_kind=relationship.get_peer_kind()
-            )
-
-    def add_peer_from_relationship(self, relationship: Relationship) -> None:
-        if self.schema.cardinality == RelationshipCardinality.ONE:
-            self._set_cardinality_one_peer(relationship=relationship)
-        elif self.schema.cardinality == RelationshipCardinality.MANY:
-            self.cardinality_many_relationship.add_new_peer(relationship=relationship)
-
-    def add_updated_relationship(
-        self, relationship: Relationship, old_data: RelationshipPeerData, properties_to_update: list[str]
-    ) -> None:
-        if self.schema.cardinality == RelationshipCardinality.ONE:
-            self._set_cardinality_one_peer(relationship=relationship)
-            self.cardinality_one_relationship.peer_id_previous = self.cardinality_one_relationship.peer_id
-            self.cardinality_one_relationship.peer_kind_previous = self.cardinality_one_relationship.peer_kind
-            for property_to_update in properties_to_update:
-                previous_property = old_data.properties.get(property_to_update)
-                previous_value: str | bool | None = None
-                if previous_property:
-                    if isinstance(previous_property.value, UUID):
-                        previous_value = str(previous_property.value)
-                    else:
-                        previous_value = previous_property.value
-                property_name = (
-                    property_to_update if property_to_update not in ["source", "owner"] else f"{property_to_update}_id"
-                )
-                self.cardinality_one_relationship.add_property(
-                    name=property_to_update,
-                    value_current=getattr(relationship, property_name),
-                    value_previous=previous_value,
-                )
-            self.cardinality_one_relationship.set_parent_from_relationship(rel_kind=relationship.schema.kind)
-
-    def delete_relationship(self, peer_id: str, peer_kind: str, rel_schema: RelationshipSchema) -> None:
-        if self.schema.cardinality == RelationshipCardinality.ONE:
-            self.cardinality_one_relationship.peer_id_previous = peer_id
-            self.cardinality_one_relationship.peer_kind_previous = peer_kind
-            self.cardinality_one_relationship.set_parent_from_relationship(rel_kind=rel_schema.kind)
-
-        elif self.schema.cardinality == RelationshipCardinality.MANY:
-            self.cardinality_many_relationship.remove_peer(peer_id=peer_id, peer_kind=peer_kind)
-
-    @property
-    def changelog(self) -> RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog:
-        match self.schema.cardinality:
-            case RelationshipCardinality.ONE:
-                return self.cardinality_one_relationship
-            case RelationshipCardinality.MANY:
-                return self.cardinality_many_relationship
-
-
-def peer_relationships(peer_schema: MainSchemaTypes, rel_schema: RelationshipSchema) -> list[RelationshipSchema]:
-    """Return the peer's side of ``rel_schema``.
-
-    A hierarchy declares ``parent`` and ``children`` under one identifier, so only the mirrored
-    direction tells them apart. When no candidate mirrors the direction the whole set is returned
-    and logged: the answer is a guess, but dropping it would hide a change that did happen.
-    """
-    candidates = peer_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
-    mirrored = [candidate for candidate in candidates if candidate.mirrors(rel_schema)]
-    if mirrored:
-        return mirrored
-
-    if candidates:
-        log.warning(
-            "No peer relationship mirrors the direction, reporting every candidate",
-            peer_kind=peer_schema.kind,
-            identifier=rel_schema.get_identifier(),
-            direction=rel_schema.direction.value,
-            candidates=[candidate.name for candidate in candidates],
-        )
-
-    return candidates
-
-
-class RelationshipChangelogGetter:
-    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
-        self._db = db
-        self._branch = branch
-
-    async def get_changelogs(self, primary_changelog: NodeChangelog) -> list[NodeChangelog]:
-        """Return secondary changelogs based on this update.
-
-        These will typically include updates to relationships on other nodes.
-        """
-        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
-        node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
-        secondaries: list[NodeChangelog] = []
-
-        for relationship in primary_changelog.relationships.values():
-            if isinstance(relationship, RelationshipCardinalityOneChangelog):
-                secondaries.extend(
-                    self._parse_cardinality_one_relationship(
-                        relationship=relationship,
-                        node_schema=node_schema,
-                        primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
-                    )
-                )
-            elif isinstance(relationship, RelationshipCardinalityManyChangelog):
-                secondaries.extend(
-                    self._parse_cardinality_many_relationship(
-                        relationship=relationship,
-                        node_schema=node_schema,
-                        primary_changelog=primary_changelog,
-                        schema_branch=schema_branch,
-                    )
-                )
-
-        return secondaries
-
-    def _parse_cardinality_one_relationship(
-        self,
-        relationship: RelationshipCardinalityOneChangelog,
-        node_schema: MainSchemaTypes,
-        primary_changelog: NodeChangelog,
-        schema_branch: SchemaBranch,
-    ) -> list[NodeChangelog]:
-        secondaries: list[NodeChangelog] = []
-        rel_schema = node_schema.get_relationship(name=relationship.name)
-
-        if relationship.peer_status == DiffAction.ADDED:
-            peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
-            secondaries.extend(
-                self._process_added_peers(
-                    peer_id=str(relationship.peer_id),
-                    peer_kind=str(relationship.peer_kind),
-                    peer_schema=peer_schema,
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                )
-            )
-
-        elif relationship.peer_status == DiffAction.UPDATED:
-            peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
-            secondaries.extend(
-                self._process_added_peers(
-                    peer_id=str(relationship.peer_id),
-                    peer_kind=str(relationship.peer_kind),
-                    peer_schema=peer_schema,
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                )
-            )
-            previous_peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
-            secondaries.extend(
-                self._process_removed_peers(
-                    peer_schema=previous_peer_schema,
-                    peer_id=str(relationship.peer_id_previous),
-                    peer_kind=str(relationship.peer_kind_previous),
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                )
-            )
-
-        elif relationship.peer_status == DiffAction.REMOVED:
-            peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
-
-            secondaries.extend(
-                self._process_removed_peers(
-                    peer_id=str(relationship.peer_id_previous),
-                    peer_kind=str(relationship.peer_kind_previous),
-                    peer_schema=peer_schema,
-                    rel_schema=rel_schema,
-                    primary_changelog=primary_changelog,
-                )
-            )
-
-        return secondaries
-
-    def _parse_cardinality_many_relationship(
-        self,
-        relationship: RelationshipCardinalityManyChangelog,
-        node_schema: MainSchemaTypes,
-        primary_changelog: NodeChangelog,
-        schema_branch: SchemaBranch,
-    ) -> list[NodeChangelog]:
-        secondaries: list[NodeChangelog] = []
-        rel_schema = node_schema.get_relationship(name=relationship.name)
-
-        for peer in relationship.peers:
-            if peer.peer_status == DiffAction.ADDED:
-                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
-                secondaries.extend(
-                    self._process_added_peers(
-                        peer_id=peer.peer_id,
-                        peer_kind=peer.peer_kind,
-                        peer_schema=peer_schema,
-                        rel_schema=rel_schema,
-                        primary_changelog=primary_changelog,
-                    )
-                )
-
-            elif peer.peer_status == DiffAction.REMOVED:
-                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
-                secondaries.extend(
-                    self._process_removed_peers(
-                        peer_id=peer.peer_id,
-                        peer_kind=peer.peer_kind,
-                        peer_schema=peer_schema,
-                        rel_schema=rel_schema,
-                        primary_changelog=primary_changelog,
-                    )
-                )
-
-        return secondaries
-
-    def _process_added_peers(
-        self,
-        peer_id: str,
-        peer_kind: str,
-        peer_schema: MainSchemaTypes,
-        rel_schema: RelationshipSchema,
-        primary_changelog: NodeChangelog,
-    ) -> list[NodeChangelog]:
-        node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
-        for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
-            if peer_relation.cardinality == RelationshipCardinality.ONE:
-                node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
-                    name=peer_relation.name,
-                    peer_id=primary_changelog.node_id,
-                    peer_kind=primary_changelog.node_kind,
-                )
-            elif peer_relation.cardinality == RelationshipCardinality.MANY:
-                node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
-                    name=peer_relation.name,
-                    peers=[
-                        RelationshipPeerChangelog(
-                            peer_id=primary_changelog.node_id,
-                            peer_kind=primary_changelog.node_kind,
-                            peer_status=DiffAction.ADDED,
-                        )
-                    ],
-                )
-
-        return [node_changelog] if node_changelog.relationships else []
-
-    def _process_removed_peers(
-        self,
-        peer_id: str,
-        peer_kind: str,
-        peer_schema: MainSchemaTypes,
-        rel_schema: RelationshipSchema,
-        primary_changelog: NodeChangelog,
-    ) -> list[NodeChangelog]:
-        node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
-        for peer_relation in peer_relationships(peer_schema=peer_schema, rel_schema=rel_schema):
-            if peer_relation.cardinality == RelationshipCardinality.ONE:
-                node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
-                    name=peer_relation.name,
-                    peer_id_previous=primary_changelog.node_id,
-                    peer_kind_previous=primary_changelog.node_kind,
-                )
-            elif peer_relation.cardinality == RelationshipCardinality.MANY:
-                node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
-                    name=peer_relation.name,
-                    peers=[
-                        RelationshipPeerChangelog(
-                            peer_id=primary_changelog.node_id,
-                            peer_kind=primary_changelog.node_kind,
-                            peer_status=DiffAction.REMOVED,
-                        )
-                    ],
-                )
-
-        return [node_changelog] if node_changelog.relationships else []

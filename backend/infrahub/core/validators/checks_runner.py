@@ -37,7 +37,7 @@ async def run_checks_and_update_validator(
         # One check run that fails or times out must fail the validator, not leave it in progress.
         try:
             result = await earliest_task
-        except Exception:
+        except Exception:  # noqa: BLE001
             get_logger().exception("A check run failed", validator_id=validator.id)
             result = ValidatorConclusion.FAILURE
         if validator.conclusion.value != ValidatorConclusion.FAILURE.value and result == ValidatorConclusion.FAILURE:

@@ -13,6 +13,9 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import HFIDViolatedError, ValidationError
+from infrahub.pools.number_pool_conflict import NumberPoolConflictFinder
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_usage_nodes import NumberHolderNodeReader
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.node_creation import create_and_save
 
@@ -26,6 +29,9 @@ class TestNodeGroupedUniquenessConstraint:
             branch=branch,
             message_builder=UniquenessViolationMessageBuilder(
                 schema_branch=registry.schema.get_schema_branch(branch.name)
+            ),
+            number_pool_conflict_finder=NumberPoolConflictFinder(
+                pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
             ),
         )
         await constraint.check(node=node, filters=filters)
@@ -363,8 +369,11 @@ class TestNodeGroupedUniquenessConstraint:
         _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
         car_mercedes_2 = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
 
-        with pytest.raises(HFIDViolatedError, match="Violates uniqueness constraint 'name-owner'"):
+        with pytest.raises(HFIDViolatedError, match=r"^Violates uniqueness constraint 'name-owner'$") as exc_info:
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_2)
+
+        assert exc_info.value.node_kind == "TestCar"
+        assert exc_info.value.fields == ["name", "owner"]
 
     async def test_subset_hfid_violated(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid: SchemaRoot
@@ -374,6 +383,8 @@ class TestNodeGroupedUniquenessConstraint:
         _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
         car_mercedes_of_maria = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_maria)
 
-        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'") as exc_info:
+        with pytest.raises(ValidationError, match=r"^Violates uniqueness constraint 'name'$") as exc_info:
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_of_maria)
         assert not isinstance(exc_info.value, HFIDViolatedError), "HFIDViolatedError should not be raised here"
+        assert exc_info.value.node_kind == "TestCar"
+        assert exc_info.value.fields == ["name"]

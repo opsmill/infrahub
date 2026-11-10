@@ -60,7 +60,7 @@ def _stub_existing_automation(client: PrefectClient, automation: Automation) -> 
 
 
 def _stub_deployment(client: PrefectClient) -> None:
-    deployment = DeploymentResponse.model_construct(id=uuid4())
+    deployment = DeploymentResponse.model_construct(id=uuid4(), name="stub", flow_id=uuid4(), labels={})
     client.read_deployment_by_name.return_value = deployment  # type: ignore[attr-defined]
 
 

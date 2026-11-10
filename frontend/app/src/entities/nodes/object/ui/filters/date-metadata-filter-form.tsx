@@ -89,7 +89,7 @@ export function DateMetadataFilterForm({ definition, onSuccess }: DateMetadataFi
             defaultValue={afterFilter?.value ?? undefined}
             render={({ field }) => (
               <div className="flex flex-col gap-1">
-                {isBetween && <span className="text-gray-600 text-xs">After</span>}
+                {isBetween && <span className="text-foreground-muted text-xs">After</span>}
                 <DateTimePicker
                   selected={field.value ? new Date(field.value as string) : null}
                   onChange={field.onChange}
@@ -111,7 +111,7 @@ export function DateMetadataFilterForm({ definition, onSuccess }: DateMetadataFi
             defaultValue={beforeFilter?.value ?? undefined}
             render={({ field }) => (
               <div className="flex flex-col gap-1">
-                {isBetween && <span className="text-gray-600 text-xs">Before</span>}
+                {isBetween && <span className="text-foreground-muted text-xs">Before</span>}
                 <DateTimePicker
                   selected={field.value ? new Date(field.value as string) : null}
                   onChange={field.onChange}

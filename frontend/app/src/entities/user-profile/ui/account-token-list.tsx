@@ -16,7 +16,7 @@ export function AccountTokenList({ className, ...props }: AccountTokenListProps)
   if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <Card className={classNames("divide-y divide-neutral-200", className)} {...props}>
+    <Card className={classNames("divide-y", className)} {...props}>
       {data.map((token) => (
         <AccountTokenItem key={token.id} token={token} />
       ))}

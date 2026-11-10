@@ -14,15 +14,19 @@ export const WIDE_COLUMN_MAX_WIDTH = "25rem";
 // `min-w-0` lets the cell shrink below its content's intrinsic width, which is what
 // makes the `truncate` classes on cell contents actually clip instead of growing the
 // column.
-export const cellsStyle =
-  "flex min-w-0 items-center gap-1.5 p-2 text-sm h-10 bg-white disabled:bg-white";
+export const cellsStyle = "flex min-w-0 items-center gap-1.5 p-2 text-sm h-10";
+
+// The numeric twin of the `h-10` above.
+export const CELL_HEIGHT_PX = 40;
 
 export const cellHeaderStyle =
-  "z-1 sticky top-0 border-r border-y border-gray-200 hover:bg-gray-100 font-medium";
+  "z-1 sticky top-0 border-r border-y bg-table-cell-pinned disabled:bg-table-cell-pinned font-medium dark:backdrop-blur-md";
 
-export const cellBodyStyle = "bg-gray-50 border-r border-b border-gray-200";
+export const cellHeaderInteractiveStyle = "hover:bg-highlight";
+
+export const cellBodyStyle = "bg-table-cell border-r border-b dark:group-hover:bg-stone-900";
 
 export const cellFooterStyle =
-  "sticky bottom-0 -mt-px h-9 border-gray-200 px-2.5 border-t border-r";
+  "sticky bottom-0 -mt-px h-9 px-2.5 border-t border-r bg-table-cell-pinned";
 
-export const cellMutedStyle = "bg-gray-50 text-gray-400";
+export const cellMutedStyle = "bg-table-cell text-subtle-muted";

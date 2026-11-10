@@ -1,5 +1,4 @@
 import type React from "react";
-
 import {
   Tooltip as AriaTooltip,
   type TooltipProps as AriaTooltipProps,
@@ -22,13 +21,13 @@ export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
 }
 
 const tooltipStyles = tv({
-  base: "group box-border rounded-xl border border-neutral-800 bg-neutral-700 px-2 py-1 font-sans text-xs text-white drop-shadow-lg will-change-transform",
+  base: "group box-border rounded-xl border border-stone-700 bg-stone-800 px-2 py-1 font-sans text-white text-xs drop-shadow-lg will-change-transform",
   variants: {
     isEntering: {
-      true: "data-[placement=bottom]:slide-in-from-top-0.5 data-[placement=top]:slide-in-from-bottom-0.5 data-[placement=left]:slide-in-from-right-0.5 data-[placement=right]:slide-in-from-left-0.5 animate-in duration-200 ease-out fade-in",
+      true: "data-[placement=bottom]:slide-in-from-top-0.5 data-[placement=top]:slide-in-from-bottom-0.5 data-[placement=left]:slide-in-from-right-0.5 data-[placement=right]:slide-in-from-left-0.5 fade-in animate-in duration-200 ease-out",
     },
     isExiting: {
-      true: "data-[placement=bottom]:slide-out-to-top-0.5 data-[placement=top]:slide-out-to-bottom-0.5 data-[placement=left]:slide-out-to-right-0.5 data-[placement=right]:slide-out-to-left-0.5 animate-out duration-150 ease-in fade-out",
+      true: "data-[placement=bottom]:slide-out-to-top-0.5 data-[placement=top]:slide-out-to-bottom-0.5 data-[placement=left]:slide-out-to-right-0.5 data-[placement=right]:slide-out-to-left-0.5 fade-out animate-out duration-150 ease-in",
     },
   },
 });
@@ -42,7 +41,8 @@ export function Tooltip({
   nonInteractiveTrigger,
   ...props
 }: TooltipProps) {
-  if (!message && message !== 0) {
+  const hasMessage = !!message || message === 0;
+  if (!hasMessage && nonInteractiveTrigger) {
     return children;
   }
 
@@ -51,6 +51,7 @@ export function Tooltip({
       delay={200}
       closeDelay={300}
       shouldCloseOnPress={false}
+      isDisabled={!hasMessage}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >
@@ -66,7 +67,7 @@ export function Tooltip({
         offset={10}
         {...props}
         className={composeRenderProps(className, (resolvedClassName, renderProps) =>
-          tooltipStyles({ ...renderProps, className: resolvedClassName }),
+          tooltipStyles({ ...renderProps, className: resolvedClassName })
         )}
       >
         <OverlayArrow>
@@ -74,7 +75,7 @@ export function Tooltip({
             width={8}
             height={8}
             viewBox="0 0 8 8"
-            className="block fill-neutral-700 stroke-neutral-800 group-data-[placement=bottom]:rotate-180 group-data-[placement=left]:-rotate-90 group-data-[placement=right]:rotate-90"
+            className="block fill-stone-800 stroke-stone-700 group-data-[placement=bottom]:rotate-180 group-data-[placement=left]:-rotate-90 group-data-[placement=right]:rotate-90"
           >
             <path d="M0 0 L4 4 L8 0" />
           </svg>

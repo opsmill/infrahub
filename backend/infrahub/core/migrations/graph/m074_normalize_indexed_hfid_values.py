@@ -153,7 +153,8 @@ class Migration074(ArbitraryMigration):
         db = migration_input.db
         try:
             await self._normalize_hfid_values(db=db)
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
 
         return MigrationResult()

@@ -1,5 +1,6 @@
 import ipaddress
-from ipaddress import IPv4Interface
+from collections.abc import Iterable
+from ipaddress import IPv4Interface, IPv6Interface
 from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
@@ -68,6 +69,34 @@ async def validate_namespace(
     return namespace_id
 
 
+def get_ip_address_lock_names(addresses: Iterable[tuple[str, IPv4Interface | IPv6Interface]]) -> list[str]:
+    """Return the lock names for these (namespace ID, address) pairs, sorted so that every caller acquires them in one order.
+
+    One name covers every prefix length of a host address.
+    """
+    return sorted(
+        {
+            build_object_lock_name(f"{InfrahubKind.IPADDRESS}_{namespace_id}_{address.ip}")
+            for namespace_id, address in addresses
+        }
+    )
+
+
+def get_locked_addresses_on_ip_address_update(
+    stored_namespace_id: str,
+    stored_address: str,
+    namespace_id: str,
+    requested_address: str | None,
+) -> list[tuple[str, IPv4Interface | IPv6Interface]]:
+    """Return the (namespace ID, address) pairs an update locks: the stored address and the address after the update.
+
+    The address after the update keeps the stored host when the update sets no new address value.
+    """
+    stored = ipaddress.ip_interface(stored_address)
+    updated = ipaddress.ip_interface(requested_address) if requested_address else stored
+    return [(stored_namespace_id, stored), (namespace_id, updated)]
+
+
 class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
@@ -118,11 +147,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @staticmethod
-    def _get_lock_names(namespace_id: str, branch: Branch) -> list[str]:
+    def _get_lock_names(branch: Branch, addresses: Iterable[tuple[str, IPv4Interface | IPv6Interface]]) -> list[str]:
         if not branch.is_default:
             # Do not lock on other branches as reconciliation will be performed at least when merging in main branch.
             return []
-        return [build_object_lock_name(InfrahubKind.IPADDRESS + "_" + namespace_id)]
+        # Reconciling an address writes only its own parent relationship, so mutations of different addresses cannot conflict.
+        return get_ip_address_lock_names(addresses)
 
     @classmethod
     async def _mutate_create_object_and_reconcile(
@@ -163,8 +193,9 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         object_lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
-        namespace_lock_names = cls._get_lock_names(namespace_id, branch)
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
+        address_lock_names = cls._get_lock_names(branch=branch, addresses=[(namespace_id, ip_address)])
+        # Lock metrics are labelled by lock name, and a name per address would make that label set unbounded.
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=address_lock_names, metrics=False):
             # The uniqueness check reads committed data only, so the object locks must outlive the commit.
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=object_lock_names, metrics=False):
                 async with db.start_transaction() as dbt:
@@ -208,7 +239,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         namespace = await address.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
@@ -225,8 +256,14 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
-        namespace_lock_names = cls._get_lock_names(namespace_id, branch)
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
+        locked_addresses = get_locked_addresses_on_ip_address_update(
+            stored_namespace_id=namespace.id,
+            stored_address=address.address.value,
+            namespace_id=namespace_id,
+            requested_address=(data.get("address") or {}).get("value"),
+        )
+        address_lock_names = cls._get_lock_names(branch=branch, addresses=locked_addresses)
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=address_lock_names, metrics=False):
             # FIXME: do not lock when data does not contain uniqueness constraint fields or resource pool allocations
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
                 async with db.start_transaction() as dbt:
@@ -371,7 +408,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         namespace = await prefix.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)

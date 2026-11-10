@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type Ref, useEffect, useRef } from "react";
 import {
   type LinkProps,
   NavLink,
@@ -29,9 +29,16 @@ interface LinkTabProps extends Omit<NavLinkProps, "to" | "className"> {
   to: string;
   className?: string;
   scrollIntoViewOnActive?: boolean;
+  ref?: Ref<HTMLAnchorElement>;
 }
 
-export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: LinkTabProps) {
+export function LinkTab({
+  to,
+  className,
+  scrollIntoViewOnActive,
+  ref: forwardedRef,
+  ...props
+}: LinkTabProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const isActive = !!useMatch({ path: to, end: true });
 
@@ -43,16 +50,20 @@ export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: Lin
 
   return (
     <NavLink
-      ref={ref}
+      ref={(node) => {
+        ref.current = node;
+        if (typeof forwardedRef === "function") return forwardedRef(node);
+        if (forwardedRef) forwardedRef.current = node;
+      }}
       to={to}
       end
       className={({ isActive }) =>
         classNames(
-          "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
+          "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring-halo",
           "inline-flex h-11 scroll-m-10 items-center gap-2 truncate border-transparent border-b-2 px-3 py-2 font-medium text-sm",
           isActive
             ? "border-custom-blue-600 text-custom-blue-600"
-            : "text-gray-500 hover:border-gray-300 hover:text-gray-700",
+            : "text-foreground-muted hover:border-border-strong hover:text-foreground",
           className
         )
       }

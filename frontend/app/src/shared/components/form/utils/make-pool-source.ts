@@ -6,19 +6,21 @@ import {
   NUMBER_POOL_KIND,
 } from "@/entities/resource-manager/domain/model/pool";
 
-/** Build a discriminated PoolSource, narrowing the raw pool `__typename` to a PoolKind. */
+/** Build a discriminated PoolSource, narrowing the raw pool `__typename` to a known pool kind. */
 export const makePoolSource = ({
   id,
   kind,
   label,
   fromTemplate,
   defaultPrefixLength,
+  defaultAllocatedKind,
 }: {
   id: string;
   kind: string;
   label: string | null;
   fromTemplate?: boolean;
   defaultPrefixLength?: number | null;
+  defaultAllocatedKind?: string | null;
 }): PoolSource => {
   if (kind === NUMBER_POOL_KIND) {
     const source: NumberPoolSource = { type: "pool", id, label, kind };
@@ -26,11 +28,11 @@ export const makePoolSource = ({
     return source;
   }
 
-  // Address and prefix pools both support the prefix-length override; the from-pool list
-  // only ever surfaces these three kinds, so anything else falls back to IP address.
+  // Only the three pool kinds ever reach here, so anything else falls back to IP address.
   const ipKind = kind === IP_PREFIX_POOL ? IP_PREFIX_POOL : IP_ADDRESS_POOL;
   const source: IpPoolSource = { type: "pool", id, label, kind: ipKind };
   if (fromTemplate) source.fromTemplate = true;
   if (defaultPrefixLength !== undefined) source.defaultPrefixLength = defaultPrefixLength;
+  if (defaultAllocatedKind !== undefined) source.defaultAllocatedKind = defaultAllocatedKind;
   return source;
 };

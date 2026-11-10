@@ -550,7 +550,8 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
         session_id = payload["session_id"]
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
-    except Exception:
+    # Fail closed: any undecodable or malformed token must map to a 401 auth error, never a 500
+    except Exception:  # noqa: BLE001
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
@@ -566,7 +567,8 @@ async def validate_jwt_refresh_token(db: InfrahubDatabase, token: str) -> models
         session_id = payload["session_id"]
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
-    except Exception:
+    # Fail closed: any undecodable or malformed refresh token must map to a 401, never a 500
+    except Exception:  # noqa: BLE001
         raise AuthorizationError("Invalid token") from None
 
     await validate_active_account(db=db, account_id=str(account_id))
@@ -598,16 +600,15 @@ async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> bool:
 async def get_groups_from_provider(
     provider: SecurityOAuth2Settings | SecurityOIDCSettings, service: InfrahubServices, payload: dict, user_info: dict
 ) -> list[str]:
-    if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)):
-        # Poor man's workaround to fetch user groups from Google
-        if provider.fetch_groups:
-            groups_response = await service.http.get(
-                f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
-                headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
-            )
-            group_memberships = groups_response.json()
-            if "memberships" in group_memberships:
-                return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
+    # Poor man's workaround to fetch user groups from Google
+    if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)) and provider.fetch_groups:
+        groups_response = await service.http.get(
+            f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+            headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
+        )
+        group_memberships = groups_response.json()
+        if "memberships" in group_memberships:
+            return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     return []
 
@@ -676,7 +677,8 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
     # Try to parse as JSON first
     try:
         return response.json()
-    except Exception as json_error:
+    # Providers may return non-JSON bodies: fall back to text or fail closed with GatewayError (502)
+    except Exception as json_error:  # noqa: BLE001
         try:
             # Try to get as text
             text_body = response.text
@@ -687,7 +689,8 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
                     status_code=response.status_code,
                 )
                 raise GatewayError(message="Authentication provider returned an empty response") from json_error
-        except Exception:
+        # If the body cannot be read at all, fail closed with GatewayError (502) rather than a 500
+        except Exception:  # noqa: BLE001
             log.error(
                 "Unable to read response body from authentication provider",
                 url=str(response.url),

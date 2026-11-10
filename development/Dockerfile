@@ -138,13 +138,16 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
     PREFECT_API_DATABASE_TIMEOUT=60 \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30 \
-    PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0
+    PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0 \
+    PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_SIZE=15 \
+    PREFECT_SERVER_DATABASE_SQLALCHEMY_MAX_OVERFLOW=0
 
-# Runtime-only OS packages: tini (init/entrypoint), git (repository sync), curl (healthcheck).
+# Runtime-only OS packages: tini (init/entrypoint), git (repository sync), curl (healthcheck),
+# procps (GitPython runs `ps --ppid` to stop a Git command at its time limit).
 # No build-essential/pkg-config — the compiler toolchain exists only in the builder stage.
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y tini git curl ca-certificates && \
+    apt-get install --no-install-recommends -y tini git curl ca-certificates procps && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*

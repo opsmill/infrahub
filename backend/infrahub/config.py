@@ -33,6 +33,7 @@ from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
+    from infrahub.git.state.reader import RepositoryGitStateReader
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -568,6 +569,9 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    rpc_timeout: int = Field(
+        default=120, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+    )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
         description="Message bus implementation. RabbitMQ is the only supported value.",
@@ -936,6 +940,12 @@ class GitSettings(BaseSettings):
         default=False,
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
+    )
+    read_only_refs_check_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        description="Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs.",
     )
     tls_insecure: bool = Field(
         default=False,
@@ -1349,14 +1359,25 @@ class SecuritySettings(BaseSettings):
         return len(self._auto_create_groups_filter_patterns) > 0
 
     sso_account_name_fallback: bool = Field(
-        default=True,
+        default=False,
         description=(
             "When enabled, an SSO login that has no linked identity and matches an existing account by "
             "display name claims that account, as long as it has not already been linked to another "
             "identity. When disabled, such a login always provisions a separate account instead of "
-            "reusing an existing one."
+            "reusing an existing one. Deprecated: this setting will be removed in Infrahub 1.13."
         ),
     )
+
+    @model_validator(mode="after")
+    def warn_when_sso_account_name_fallback_enabled(self) -> Self:
+        if self.sso_account_name_fallback:
+            log.warning(
+                "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+                "a first SSO login can claim an existing "
+                "unlinked account whose name matches the display name sent by the identity provider. "
+                "This setting is deprecated and will be removed in Infrahub 1.13."
+            )
+        return self
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -1480,6 +1501,16 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+    sample_ratio: float = Field(
+        default=0.1,
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "Share of new traces to record, from 0 (none) to 1 (all). A request or task that arrives with a trace "
+            "context follows the sampling decision of its caller."
+        ),
+    )
 
     @property
     def uses_tls(self) -> bool:
@@ -2028,6 +2059,7 @@ class Override:
     message_bus: InfrahubMessageBus | None = None
     cache: InfrahubCache | None = None
     workflow: InfrahubWorkflow | None = None
+    repository_git_state_reader: RepositoryGitStateReader | None = None
 
 
 @dataclass
@@ -2171,7 +2203,8 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
-    security: SecuritySettings = SecuritySettings()
+    # A factory so the account-name fallback warning reflects the loaded settings rather than the environment at import.
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
     ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()

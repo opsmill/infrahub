@@ -22,7 +22,7 @@ export const LoginMethodPicker = () => {
   const [active, setActive] = useLastUsedMethod(methods, preferredDefault(methods));
 
   if (methods.length === 0 || !active) {
-    return <p className="text-red-500 text-sm">No authentication method available.</p>;
+    return <p className="text-danger text-sm">No authentication method available.</p>;
   }
 
   const others = methods.filter((m) => m.kind !== active.kind);

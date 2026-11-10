@@ -34,22 +34,21 @@ class UnresolvedRelationshipError(Exception):
 
 def parse_trigger_rule_response(data: dict[str, Any]) -> list[CoreTriggerRule]:
     rules: list[CoreTriggerRule] = []
-    if kind := data.get(InfrahubKind.TRIGGERRULE):
-        if edges := kind.get("edges"):
-            for edge in edges:
-                node = edge["node"]
-                try:
-                    rule = _parse_graphql_node(node)
-                except UnresolvedRelationshipError as exc:
-                    log.warning(
-                        "Skipping trigger rule with an unresolved relationship",
-                        trigger_rule=node.get("name", {}).get("value"),
-                        trigger_rule_id=node.get("id"),
-                        relationship=exc.relationship_name,
-                    )
-                    continue
-                if rule:
-                    rules.append(rule)
+    if (kind := data.get(InfrahubKind.TRIGGERRULE)) and (edges := kind.get("edges")):
+        for edge in edges:
+            node = edge["node"]
+            try:
+                rule = _parse_graphql_node(node)
+            except UnresolvedRelationshipError as exc:
+                log.warning(
+                    "Skipping trigger rule with an unresolved relationship",
+                    trigger_rule=node.get("name", {}).get("value"),
+                    trigger_rule_id=node.get("id"),
+                    relationship=exc.relationship_name,
+                )
+                continue
+            if rule:
+                rules.append(rule)
 
     return rules
 

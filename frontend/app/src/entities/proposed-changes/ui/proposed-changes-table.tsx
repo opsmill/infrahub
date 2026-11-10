@@ -47,10 +47,7 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
       <ListBox
         aria-label="Branches list"
         items={flatData}
-        className={classNames(
-          "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
-          className
-        )}
+        className={classNames("m-2 flex flex-col divide-y rounded-lg border", className)}
       >
         {(proposedChange) => (
           <ProposedChangesItem key={proposedChange.id} proposedChange={proposedChange} />

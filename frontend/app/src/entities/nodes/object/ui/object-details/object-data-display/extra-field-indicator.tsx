@@ -11,7 +11,7 @@ export function ExtraFieldIndicator({ className }: { className?: string }) {
         <EyeIcon
           data-testid="extra-field-indicator"
           onMouseDown={(e) => e.preventDefault()}
-          className={classNames("size-3.5 shrink-0 text-gray-400", className)}
+          className={classNames("size-3.5 shrink-0 text-foreground-muted", className)}
         />
       </Focusable>
     </Tooltip>

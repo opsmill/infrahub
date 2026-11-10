@@ -6,7 +6,11 @@ import pytest
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.regeneration.classifier_builder import QueryClassifierBuilder
-from infrahub.core.regeneration.derived_dependencies import DerivedFieldDependencies, PeerDependency
+from infrahub.core.regeneration.derived_dependencies import (
+    DerivedFieldDependencies,
+    PeerDependency,
+    SchemaDerivedFieldDependencyResolver,
+)
 from infrahub.core.regeneration.impact_classifier import QueryImpactClassifier
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributeSchema, GenericSchema, MainSchemaTypes, NodeSchema, RelationshipSchema
@@ -75,7 +79,8 @@ def _builder() -> QueryClassifierBuilder:
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
-    return QueryClassifierBuilder(query_branch=QUERY_BRANCH, schema_branch=branch)
+    resolver = SchemaDerivedFieldDependencyResolver(schema_branch=branch)
+    return QueryClassifierBuilder(query_branch=QUERY_BRANCH, schema_branch=branch, dependency_resolver=resolver)
 
 
 def test_build_folds_a_derived_peer_into_the_classifier() -> None:
@@ -219,7 +224,11 @@ def _rack_builder() -> QueryClassifierBuilder:
     branch = SchemaBranch(cache={}, name="test")
     for kind, schema in schemas.items():
         branch.set(name=kind, schema=schema)
-    return QueryClassifierBuilder(query_branch=QUERY_BRANCH, schema_branch=branch)
+    return QueryClassifierBuilder(
+        query_branch=QUERY_BRANCH,
+        schema_branch=branch,
+        dependency_resolver=SchemaDerivedFieldDependencyResolver(schema_branch=branch),
+    )
 
 
 def test_build_extends_a_derived_read_on_a_traversed_generic_through_each_implementation_to_the_root() -> None:

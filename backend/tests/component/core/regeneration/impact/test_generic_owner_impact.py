@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
@@ -158,6 +158,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
 
     async def test_generic_owner_reached_change_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -168,7 +169,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         traversal keyed on the generic slot label reaches only the slot holding the changed card, and
         through it only the owning rack, so a single subscriber comes back.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_RACK_WITH_CARD, default_branch),
             diff_summary=[
                 node_diff(
@@ -181,12 +182,12 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_change_to_a_field_read_through_a_fragment_on_a_generic_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -197,7 +198,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         concrete ``TestingPowerSlot`` kind: the change is a read of the implementation, mapped back to
         the rack holding the slot.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_RACK_WITH_SLOT_NAMES_ON_THE_GENERIC, default_branch),
             diff_summary=[
                 node_diff(
@@ -210,12 +211,12 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_change_reached_through_a_fragment_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -225,7 +226,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
         The fragment narrows the slot's type without reaching another node, so the reverse traversal
         walks the card back through the slot to the rack holding it, as it does without the fragment.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_RACK_WITH_CARD_THROUGH_A_FRAGMENT, default_branch),
             diff_summary=[
                 node_diff(
@@ -238,6 +239,5 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])

@@ -1,5 +1,6 @@
 import { Spinner } from "@infrahub/ui";
 
+import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
 export interface ProposedChangeTabProps {
@@ -15,7 +16,7 @@ export function ProposedChangeTab({ to, label, count, isCountLoading }: Proposed
       {label}
       {isCountLoading && <Spinner className="mx-1" />}
       {!isCountLoading && count !== undefined && (
-        <div className="rounded-md bg-gray-100 px-2 py-0.5 text-xs">{count}</div>
+        <Badge className="rounded-full font-medium text-foreground-muted">{count}</Badge>
       )}
     </LinkTab>
   );

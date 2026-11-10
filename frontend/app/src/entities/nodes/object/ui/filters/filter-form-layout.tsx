@@ -11,6 +11,7 @@ import {
 
 interface FilterFormLayoutProps {
   filterType: FilterConditionSelectProps["filterType"];
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   condition: FilterCondition;
   onConditionChange: (condition: FilterCondition) => void;
   testId: string;
@@ -21,6 +22,7 @@ interface FilterFormLayoutProps {
 
 export function FilterFormLayout({
   filterType,
+  filterConditions,
   condition,
   onConditionChange,
   testId,
@@ -29,11 +31,13 @@ export function FilterFormLayout({
   label,
 }: FilterFormLayoutProps) {
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
     <Col className="max-h-[inherit] overflow-hidden p-2">
       <Row className="shrink-0 gap-0">
         <span className="font-semibold text-sm">{label}</span>
         <FilterConditionSelect
           filterType={filterType}
+          filterConditions={filterConditions}
           value={condition}
           onChange={(key) => onConditionChange(key as FilterCondition)}
         />

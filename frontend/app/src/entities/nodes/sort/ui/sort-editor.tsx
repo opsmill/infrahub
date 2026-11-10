@@ -1,6 +1,7 @@
 import {
   Autocomplete,
   Button,
+  Card,
   ListBox,
   Popover,
   Select,
@@ -26,13 +27,17 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface SortEditorProps {
   schema: ModelSchema;
+  /** How many sort keys the surface can honour; unlimited when absent. */
+  maxSorts?: number;
 }
-export function SortEditor({ schema }: SortEditorProps) {
+export function SortEditor({ schema, maxSorts }: SortEditorProps) {
   const { appliedSort, setCustomSort } = useSort(schema);
 
   const addSort = (newSort: Sort) => {
     const withoutField = appliedSort.filter((existing) => existing.field !== newSort.field);
-    setCustomSort([...withoutField, newSort]);
+    const next = [...withoutField, newSort];
+
+    setCustomSort(maxSorts === undefined ? next : next.slice(-maxSorts));
   };
 
   if (appliedSort.length === 0) {
@@ -47,11 +52,13 @@ export function SortEditor({ schema }: SortEditorProps) {
         </SortableList>
       </SortListContainer>
 
-      <AddSortButton
-        schema={schema}
-        activeFields={new Set(appliedSort.map((sort) => sort.field))}
-        onSelect={addSort}
-      />
+      {(maxSorts === undefined || appliedSort.length < maxSorts) && (
+        <AddSortButton
+          schema={schema}
+          activeFields={new Set(appliedSort.map((sort) => sort.field))}
+          onSelect={addSort}
+        />
+      )}
     </Col>
   );
 }
@@ -68,25 +75,25 @@ function SortListContainer({ schema, children }: SortListContainerProps) {
 
   if (isDefaultOrder) {
     return (
-      <div className="inset-shadow-[0_1px_2px_rgb(255,255,255),0_1px_4px_rgba(0,0,0,0.1)] rounded-lg border border-stone-200 bg-stone-200/50 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
-        <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+      <Card variant="secondary" className="rounded-lg">
+        <Row className="h-6 pl-2 font-medium text-subtle text-xs">
           <CheckIcon className="size-3.5 text-cyan-600" />
           Default order · applied now
         </Row>
         {children}
-      </div>
+      </Card>
     );
   }
 
   return (
     <div className="border border-transparent">
-      <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+      <Row className="h-6 pl-2 font-medium text-subtle text-xs">
         <SlidersHorizontalIcon className="size-3.5" />
         Custom order
         <Button
           variant="ghost"
           size="xxs"
-          className="ml-auto text-stone-500"
+          className="ml-auto text-subtle"
           onPress={() => setCustomSort([])}
         >
           {defaultSort ? (
@@ -191,7 +198,7 @@ function SortDirectionSelect({ value, onChange }: SortDirectionSelectProps) {
     >
       <SelectTrigger size="sm" />
 
-      <SelectList items={DIRECTION_OPTIONS} matchTriggerWidth={false}>
+      <SelectList items={DIRECTION_OPTIONS} width="content">
         {(option) => <SelectItem>{option.label}</SelectItem>}
       </SelectList>
     </Select>

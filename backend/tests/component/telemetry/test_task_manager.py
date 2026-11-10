@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime, timedelta
@@ -21,6 +22,7 @@ from infrahub.telemetry.task_manager import (
     gather_activity_24h,
     gather_prefect_events,
     gather_prefect_information,
+    gather_task_manager_database,
 )
 from infrahub.telemetry.utils import floor_to_midnight_utc, get_activity_window
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
@@ -295,3 +297,10 @@ async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, se
 async def test_gather_prefect_information(prefect_test_fixture: Generator) -> None:
     data = await gather_prefect_information()
     assert data
+
+
+async def test_gather_task_manager_database(prefect_client: PrefectClient) -> None:
+    data = await gather_task_manager_database.fn(client=prefect_client)
+    # The test task manager runs on this interpreter and stores its data in SQLite.
+    assert data.type == "sqlite"
+    assert data.version == sqlite3.sqlite_version

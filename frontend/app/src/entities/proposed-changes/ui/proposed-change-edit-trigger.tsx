@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Icon } from "@/shared/components/display/icon";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";

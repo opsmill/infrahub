@@ -1,8 +1,9 @@
-import { Icon } from "@iconify-icon/react";
-import type React from "react";
+import { Tooltip } from "@infrahub/ui";
+import React from "react";
 import { Button, DialogTrigger } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
@@ -23,6 +24,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
   const { schema } = useSchema(objectKind);
   const isRelationship = isRelationshipSchema(fieldSchema);
   const { schema: peerSchema } = useSchema(isRelationship ? fieldSchema.peer : undefined);
+  const { labelRef, tooltipProps } = useTruncationTooltip();
 
   const fieldName = isRelationship
     ? getRelationshipLabel(fieldSchema, peerSchema)
@@ -30,15 +32,19 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
   return (
-    <div className={classNames("grid grid-cols-[200px_auto] gap-4 px-3 py-2 text-sm", className)}>
-      <dt className="flex h-8 items-center font-medium text-gray-500">
+    <div className={classNames("grid grid-cols-detail-row gap-4 px-3 py-2 text-sm", className)}>
+      <dt className="flex h-8 min-w-0 items-center font-medium text-foreground-muted">
         {schema ? (
           <DialogTrigger>
-            <Button className="group flex cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">
-              <FieldSchemaIcon fieldSchema={fieldSchema} />
-              {fieldName}
-              <Icon icon="mdi:code-json" className="hidden group-hover:inline-block" />
-            </Button>
+            <Tooltip message={fieldName} {...tooltipProps}>
+              <Button className="group flex min-w-0 cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">
+                <FieldSchemaIcon fieldSchema={fieldSchema} />
+                <span ref={labelRef} className="truncate">
+                  {fieldName}
+                </span>
+                <Icon icon="mdi:code-json" className="invisible shrink-0 group-hover:visible" />
+              </Button>
+            </Tooltip>
 
             <SchemaViewerModal
               schema={schema}
@@ -47,13 +53,25 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
             />
           </DialogTrigger>
         ) : (
-          <Row className="gap-1.5">
+          <Row className="min-w-0 gap-1.5">
             <FieldSchemaIcon fieldSchema={fieldSchema} />
-            {fieldName}
+            <span className="truncate">{fieldName}</span>
           </Row>
         )}
       </dt>
-      <dd className="flex items-center gap-2">{value}</dd>
+      <dd className="flex items-center gap-2 text-foreground">{value}</dd>
     </div>
   );
+}
+
+function useTruncationTooltip() {
+  const labelRef = React.useRef<HTMLSpanElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  const onOpenChange = (open: boolean) => {
+    const label = labelRef.current;
+    setIsOpen(open && !!label && label.scrollWidth > label.clientWidth);
+  };
+
+  return { labelRef, tooltipProps: { isOpen, onOpenChange } };
 }
