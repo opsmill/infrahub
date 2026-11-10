@@ -26,5 +26,10 @@ const UPDATE_GLOBAL_PREFERENCE = graphql(`
 export type UpdateGlobalPreferenceVariables = VariablesOf<typeof UPDATE_GLOBAL_PREFERENCE>;
 
 export function updateGlobalPreferenceFromApi(variables: UpdateGlobalPreferenceVariables) {
-  return graphqlClient.mutate({ mutation: UPDATE_GLOBAL_PREFERENCE, variables });
+  // A failed save is reported where the save is made, not by the client.
+  return graphqlClient.mutate({
+    mutation: UPDATE_GLOBAL_PREFERENCE,
+    variables,
+    context: { processErrorMessage: () => {} },
+  });
 }
