@@ -83,6 +83,7 @@ from infrahub.git.constants import (
 from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
 from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.profiles.submission import submit_profile_refresh
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
@@ -95,7 +96,6 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
-    PROFILE_REFRESH_MULTIPLE,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -166,7 +166,8 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         if obj.status != BranchStatus.NEED_UPGRADE_REBASE:
             obj.status = BranchStatus.NEED_UPGRADE_REBASE
             await obj.save(db=db)
-            registry.refresh_cached_branch(obj)
+            # The migration goes on changing this object, so the cache gets a copy.
+            registry.refresh_cached_branch(obj.model_copy(deep=True))
 
         try:
             log.info(f"Running migrations for branch '{obj.name}'")
@@ -351,33 +352,36 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
             # Only update registry after txn commit. Otherwise, branch status and branched_from
             # could diverge between registry and database during a failed txn commit.
-            registry.branch[user_branch.name] = user_branch
+            # The cache holds this object itself, since the schema update below changes its hash with the cached schema.
+            registry.refresh_cached_branch(user_branch)
 
             if migration_baseline_schema is not None and pre_rebase_schema is not None:
-                # Update the registry and run migrations after the rebase, with rollback on failure.
-                # Schema nodes were already written by the rebase, so load that schema and apply only
-                # the migrations it implies.
-                log.info("Running migrations")
-                rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
-                migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
-                # The schema migrations need a unique timestamp so that a rollback on failure will
-                # not try to erase changes made during the graph rebase and destroy the branch.
-                migration_at = rebase_at.add(microseconds=1)
-                await schema_update_coordinator.execute(
-                    branch=user_branch,
-                    origin_schema=migration_baseline_schema,
-                    rollback_schema=pre_rebase_schema,
-                    candidate_schema=rebased_schema,
-                    at=migration_at,
-                    context=context,
-                    migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
-                    migrations=migrations,
-                    update_db=False,
-                    update_registry=True,
-                    user_id=user_id,
-                    manage_rollback=True,
-                )
-                log.info("Migrations completed")
+                # A registry refresh also writes this process's schema registry, so it must not run alongside.
+                async with lock.registry.local_schema_lock():
+                    # Update the registry and run migrations after the rebase, with rollback on failure.
+                    # Schema nodes were already written by the rebase, so load that schema and apply only
+                    # the migrations it implies.
+                    log.info("Running migrations")
+                    rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
+                    migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
+                    # The schema migrations need a unique timestamp so that a rollback on failure will
+                    # not try to erase changes made during the graph rebase and destroy the branch.
+                    migration_at = rebase_at.add(microseconds=1)
+                    await schema_update_coordinator.execute(
+                        branch=user_branch,
+                        origin_schema=migration_baseline_schema,
+                        rollback_schema=pre_rebase_schema,
+                        candidate_schema=rebased_schema,
+                        at=migration_at,
+                        context=context,
+                        migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
+                        migrations=migrations,
+                        update_db=False,
+                        update_registry=True,
+                        user_id=user_id,
+                        manage_rollback=True,
+                    )
+                    log.info("Migrations completed")
 
         # Replay the default branch's changes to the kinds whose schema this branch changed, so their derived values
         # are computed again with the branch's schema.
@@ -500,10 +504,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     if profile_refresh_node_ids:
         with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
-            await workflow.submit_workflow(
-                workflow=PROFILE_REFRESH_MULTIPLE,
-                context=low_context,
-                parameters={"branch_name": user_branch.name, "node_ids": profile_refresh_node_ids},
+            await submit_profile_refresh(
+                workflow=workflow,
+                branch_name=user_branch.name,
+                node_ids=profile_refresh_node_ids,
+                context=low_context.to_event_context(),
             )
 
 

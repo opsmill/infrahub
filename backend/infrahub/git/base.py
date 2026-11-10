@@ -1078,10 +1078,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 and branch_name in local_branches
                 and remote_branches[branch_name].commit != local_branches[branch_name].commit
             ):
-                log.info("New commit detected", repository=self.name, branch=branch_name)
                 updated_branches.append(branch_name)
 
         return sorted(new_branches), sorted(updated_branches)
+
+    def _report_import(self, branch_name: str, new_branch: bool) -> None:
+        log.info(
+            "New branch detected" if new_branch else "New commit detected", repository=self.name, branch=branch_name
+        )
+
+    def _report_skipped_imports(self, branch_names: list[str], reason: str) -> None:
+        if branch_names:
+            log.debug("Not importing branches", repository=self.name, branches=sorted(branch_names), reason=reason)
 
     def _get_branch_worktree(self, branch_name: str) -> Repo | None:
         """Return the existing worktree for a branch, or None when it has none yet."""

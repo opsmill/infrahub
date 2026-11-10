@@ -39,7 +39,7 @@ distinction that matters operationally is each category's **temporal model** (be
 | Schema | node/generic kind counts, last schema change |
 | Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …) |
 | Database | database type, node/relationship counts, server versions, the CPU and memory Neo4j can use |
-| Prefect | event tally, automation counts, work-pool state |
+| Prefect | event tally, automation counts, work-pool state, task manager database type and version |
 | Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
 
 ### Activity (24h) field semantics
@@ -184,7 +184,9 @@ of the payload is still built, stored, and sent. A source that succeeds with not
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
 The new CPU and memory figures for the API server and the task workers, and the database's
-`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`, are protected this way. Several older parts are not,
+`processor_assigned`, `memory_heap_max_size` and `memory_pagecache_size`, are protected this way. So is
+`prefect.database`, the task manager database type and version, which is also `null` while the task manager is older than
+the task worker during an upgrade, because an older task manager does not serve the route that reports them. Several older parts are not,
 among them the list of workers and the database block, including its CPU and memory figures: a
 failure in any of them stops the whole report.
 
@@ -206,7 +208,8 @@ both gated on the `READ_TELEMETRY` global permission.
 | Path | Purpose |
 |------|---------|
 | `backend/infrahub/telemetry/tasks.py` | Daily flow, payload assembly, remote send |
-| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters |
+| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters, task manager database version |
+| `backend/infrahub/prefect_server/database_version.py` | Task manager route that reports its database type and version; the task worker has no connection to that database |
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |

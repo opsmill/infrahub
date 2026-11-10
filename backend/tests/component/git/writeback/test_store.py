@@ -63,6 +63,7 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
     from infrahub.git.writeback.models import PendingMerge
+    from infrahub.lock import InfrahubLock
 
     from .conftest import StoreUnderTest
 
@@ -841,13 +842,23 @@ async def test_transition_refuses_a_database_already_in_a_transaction(subject: S
     assert await subject.read() == _empty_intent(subject.repository_id)
 
 
-async def test_state_lock_has_its_time_to_live(subject: StoreUnderTest) -> None:
+async def test_state_lock_has_its_time_to_live(subject: StoreUnderTest, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The registry forgets a lock once nothing references it, so the test keeps every lock it creates.
+    created: dict[str, InfrahubLock] = {}
+    create_lock = subject.lock_registry._create_lock
+
+    def create_and_keep(name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        created[name] = create_lock(name=name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        return created[name]
+
+    monkeypatch.setattr(subject.lock_registry, "_create_lock", create_and_keep)
+
     await _enqueue(subject, pending_merge("e1"))
 
-    lock = subject.lock_registry.get_existing(name=subject.repository_id, namespace=STATE_LOCK_NAMESPACE)
-
-    assert lock is not None
-    assert lock.ttl == STATE_LOCK_TTL_SECONDS
+    lock_name = subject.lock_registry.name_generator.generate_name(
+        name=subject.repository_id, namespace=STATE_LOCK_NAMESPACE
+    )
+    assert created[lock_name].ttl == STATE_LOCK_TTL_SECONDS
 
 
 async def test_timed_out_acquire_raises_and_writes_nothing(subject: StoreUnderTest) -> None:

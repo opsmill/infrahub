@@ -32,8 +32,6 @@ For more information, see our [Infrahub overview](../overview/overview.mdx).
 
 If you're new to infrastructure automation, Infrahub is a great place to start. It lets you store the intended state of your infrastructure, this is a crucial foundation for any automation you build later. From this intended state, you can generate configurations directly within Infrahub, and also use the data for resource planning, service deployment, invoicing, and more.
 
-Check out the [blog section on our website](https://opsmill.com/blog/) to learn more about our vision and dive deeper into infrastructure automation.
-
 ### How can I see Infrahub in action?
 
 You have many options to quickly try out Infrahub, please refer to the [Explore Infrahub](../overview/explore.mdx) page for more details.
@@ -233,7 +231,7 @@ The following information is included in telemetry:
 - Infrahub version, deployment type, and platform (Python / OS / architecture)
 - Anonymous counters about the graph, schema, and features in use
 - Adoption counts: active accounts, account groups, and open branches
-- Database, worker, and infrastructure statistics
+- Database, worker, and infrastructure statistics, including the type and version of the task manager database
 - CPU cores and memory that the database, API server, and workers can use, plus:
   - For the API server and workers, the CPU limit set on their container, once one is set
   - For the database, the number of cores it can use for parallel queries, once that number is configured

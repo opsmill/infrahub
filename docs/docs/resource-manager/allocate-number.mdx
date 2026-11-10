@@ -88,7 +88,7 @@ Save the pool ID for allocation operations!
   </TabItem>
 </Tabs>
 
-Ranges in one pool must not overlap. Infrahub refuses an overlapping range with `Range <range> overlaps <range> (<id>)`, and a range whose end is below its start with `Range end (<end>) cannot be lower than start (<start>)`.
+Ranges in one pool must not overlap. Infrahub refuses an overlapping range with `Range <range> overlaps <range> (<id>)`, and a range whose end is below its start with `Range end (<end>) cannot be lower than start (<start>)`. When the attribute is unique, the ranges must not overlap the ranges of another pool for the same attribute either, as described in [Pools for the same unique attribute](#pools-on-a-unique-attribute).
 
 ## Step 2: Allocate a VLAN ID
 
@@ -189,6 +189,25 @@ The ranges of a pool that a schema declares can only be changed in the schema, a
 
 While the pool exists, Infrahub refuses a schema change that renames its kind or the attribute it allocates, as described in [Schema migration](../schema/migration.mdx#number-pool).
 
+## Pools for the same unique attribute {#pools-on-a-unique-attribute}
+
+Several pools can allocate numbers for the same attribute of the same kind. Each pool skips only the numbers it tracks, not the numbers another pool tracks. On a unique attribute, two pools with overlapping ranges would therefore each allocate numbers the other pool has already allocated, and Infrahub would refuse each of those saves on the uniqueness constraint.
+
+When the attribute is unique, Infrahub therefore refuses a range that overlaps a range of another pool for the same kind and attribute. It checks the ranges when you create a pool, change the ranges of a pool, and create a range or change its bounds:
+
+```text
+The '<pool>' pool cannot share numbers with another pool on the unique attribute '<attribute>': <range> overlaps <range> of the '<other-pool>' pool. Choose ranges that no other pool on '<attribute>' uses.
+```
+
+The message lists each overlapping pair of ranges by its bounds, for example `150 - 250 overlaps 100 - 199 of the 'My VLAN ID Pool' pool`. For a range without a start or an end, it shows the bound calculated from the attribute, as described in [Ranges without a start or an end](#open-ranges).
+
+- **Attributes that are not unique**: the ranges of their pools can overlap, and each of those pools can allocate a number that another one has already allocated.
+- **Branches**: a pool allocates numbers on every branch, so Infrahub treats the attribute as unique when it is unique in the schema of the branch you work on or in the schema of the default branch.
+- **Generics**: Infrahub compares only the pools created for the same kind. A pool created for a generic and a pool created for a kind that inherits from it are not compared.
+- **Schema changes**: Infrahub refuses a schema change that sets `unique: true` on the attribute while the ranges of two of its pools overlap, as described in [Schema migration](../schema/migration.mdx#number-pool).
+
+Infrahub checks ranges only when you save them, so pools whose ranges overlapped before Infrahub 1.12 still overlap. To separate them, see [Separate pools that overlap on a unique attribute](../release-notes/deprecation-guides/number-pool-ranges.mdx#separate-pools-that-overlap-on-a-unique-attribute).
+
 ## View how much of a pool is in use
 
 Open the pool from **Resource Managers**. The pool page shows:
@@ -241,6 +260,18 @@ In `used`, a number in use on several branches counts once. `used_branches` is t
 | `Pool <pool> (<id>) has no number the attribute accepts in its ranges.` | The pool has no range, or its ranges hold only numbers outside the attribute's `min_value`, `max_value` and `excluded_values` | Add a range inside the attribute's limits |
 | `The '<pool>' pool can't be used for '<attribute>'.` | The pool's **Node** and **Attribute** name another kind or attribute | Choose the pool created for that attribute. You can use a pool created for a generic for every kind that inherits from it. |
 | `'from_pool' is not supported on template attributes.` | `from_pool` was sent on an object template | Set the `<attribute>_from_resource_pool` relationship on the template instead |
+
+### The pool allocated a number that another object holds
+
+On a unique attribute, the pool can allocate a number that another object already holds and that the pool does not track, such as a number set in the **Value** tab. Infrahub then refuses the save. The message names the pool, the number, and the object that holds it, by its display label, or by its human-friendly ID when its kind has no display label:
+
+```text
+Violates uniqueness constraint '<attribute>': the '<pool>' pool allocated <number>, which object '<label>' ('<id>') already holds. Attach that number to the pool by updating object '<id>' with value <number> and from_pool '<pool>', or change its number, then retry.
+```
+
+The pool allocates the same number on every attempt until you attach that number to the pool, as described in [Track existing numbers in a number pool](./track-existing-numbers.mdx#attach-a-number-to-a-pool), or change the number on the object that holds it.
+
+When another pool tracks the number for that object, the ranges of the two pools overlap, and the message names that pool too. See [Separate pools that overlap on a unique attribute](../release-notes/deprecation-guides/number-pool-ranges.mdx#separate-pools-that-overlap-on-a-unique-attribute). When the uniqueness constraint has several fields that pools filled in the same save, the message names each field, its number and its pool.
 
 ## Next
 

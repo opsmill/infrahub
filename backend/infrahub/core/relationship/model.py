@@ -765,7 +765,13 @@ class RelationshipValidatorList:
         self.max_count: int = max_count
         self.name = name
 
-        self._relationships: list[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
+        self._relationships: list[Relationship] = []
+        # Identity, as the list checks it: the hash of a relationship changes with its peer and its properties.
+        self._relationship_ids: set[int] = set()
+        for rel in relationships:
+            if isinstance(rel, Relationship) and id(rel) not in self._relationship_ids:
+                self._relationships.append(rel)
+                self._relationship_ids.add(id(rel))
         self._relationships_count: int = len(self._relationships)
 
         # Validate the initial relationships count is within the min and max count if relationships were provided
@@ -777,7 +783,7 @@ class RelationshipValidatorList:
                 self._raise_too_few()
 
     def __contains__(self, item: Relationship) -> bool:
-        return item in self._relationships
+        return id(item) in self._relationship_ids
 
     def __hash__(self) -> int:
         return hash(self._relationships)
@@ -789,16 +795,20 @@ class RelationshipValidatorList:
         return self._relationships[index]
 
     def __setitem__(self, index: int, value: Relationship) -> None:
-        if value in self._relationships:
+        if value in self:
             raise ValidationError({value.name: "Relationship already exists in the list"})
         if not isinstance(value, Relationship):
             raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+        self._relationship_ids.discard(id(self._relationships[index]))
         self._relationships[index] = value
+        self._relationship_ids.add(id(value))
 
     def __delitem__(self, index: int) -> None:
         if self._relationships_count - 1 < self.min_count:
             self._raise_too_few()
+        self._relationship_ids.discard(id(self._relationships[index]))
         del self._relationships[index]
+        self._relationships_count -= 1
 
     def __len__(self) -> int:
         length = len(self._relationships)
@@ -811,7 +821,7 @@ class RelationshipValidatorList:
 
     def append(self, rel: Relationship) -> None:
         # Do not do anything if the relationship is already present
-        if rel in self._relationships:
+        if rel in self:
             return
         if not isinstance(rel, Relationship):
             raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
@@ -821,21 +831,29 @@ class RelationshipValidatorList:
             self._raise_too_many()
 
         self._relationships.append(rel)
+        self._relationship_ids.add(id(rel))
         self._relationships_count += 1
 
     def clear(self) -> None:
         self._relationships.clear()
+        self._relationship_ids.clear()
         self._relationships_count = len(self._relationships)
 
     def extend(self, iterable: Iterable[Relationship]) -> None:
         # Filter down to only Relationship objects and remove duplicates
-        relationships = [rel for rel in iterable if isinstance(rel, Relationship) and rel not in self._relationships]
+        relationships: list[Relationship] = []
+        new_ids: set[int] = set()
+        for rel in iterable:
+            if isinstance(rel, Relationship) and rel not in self and id(rel) not in new_ids:
+                relationships.append(rel)
+                new_ids.add(id(rel))
         rel_len = len(relationships)
         # If the max_count is greater than 0 then validate
         if self.max_count and self._relationships_count + rel_len > self.max_count:
             self._raise_too_many()
 
         self._relationships.extend(relationships)
+        self._relationship_ids.update(new_ids)
         self._relationships_count += rel_len
 
     def get(self, index: int) -> Relationship:
@@ -845,13 +863,14 @@ class RelationshipValidatorList:
         return self._relationships.index(value, start, stop)
 
     def insert(self, index: int, value: Relationship) -> None:
-        if value in self._relationships:
+        if value in self:
             return
         if not isinstance(value, Relationship):
             raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
         if self.max_count and self._relationships_count + 1 > self.max_count:
             self._raise_too_many()
         self._relationships.insert(index, value)
+        self._relationship_ids.add(id(value))
         self._relationships_count += 1
 
     def pop(self, idx: int = -1) -> Relationship:
@@ -859,20 +878,28 @@ class RelationshipValidatorList:
             self._raise_too_few()
 
         result = self._relationships.pop(idx)
+        self._relationship_ids.discard(id(result))
         self._relationships_count -= 1
         return result
 
     def replace(self, rel_to_insert: Relationship, rel_to_remove: Relationship) -> None:
+        # A replace of a relationship by itself must not lower the count.
+        if rel_to_insert is not rel_to_remove and rel_to_insert in self:
+            self.remove(rel_to_remove)
+            return
         self._relationships.remove(rel_to_remove)
+        self._relationship_ids.discard(id(rel_to_remove))
         self._relationships.append(rel_to_insert)
+        self._relationship_ids.add(id(rel_to_insert))
 
     def remove(self, value: Relationship) -> None:
         if self.min_count and self._relationships_count - 1 < self.min_count:
             self._raise_too_few()
         self._relationships.remove(value)
+        self._relationship_ids.discard(id(value))
         self._relationships_count -= 1
 
-    def as_list(self) -> list[Relationship]:
+    def as_list(self) -> Sequence[Relationship]:
         return self._relationships
 
     def _raise_too_few(self) -> None:
@@ -1290,7 +1317,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove_locally(peer_id=peer_id, db=db)
 
-    async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
+    async def get(self, db: InfrahubDatabase) -> Relationship | Sequence[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
         if self.schema.cardinality == RelationshipCardinality.ONE and rels:
@@ -1315,7 +1342,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
-    ) -> list[Relationship]:
+    ) -> Sequence[Relationship]:
         # Use lock to avoid concurrent mutations on this object. This may typically happen while querying two nodes
         # having the same parent, with the parent having another extra relationship. Concurrent coroutines will try to
         # add this relationship to this object, and the second one will fail. See https://github.com/opsmill/infrahub/issues/5474.
@@ -1572,13 +1599,15 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
+        peer_ids_local_only = set(details.peer_ids_present_local_only)
+        peer_ids_both = set(details.peer_ids_present_both)
         for rel in await self.get_relationships(db=db, branch_agnostic=branch_agnostic):
-            if rel.peer_id in details.peer_ids_present_local_only:
+            if rel.peer_id in peer_ids_local_only:
                 await rel.save(db=db, user_id=user_id, at=save_at)
 
                 relationship_mapper.add_peer_from_relationship(relationship=rel)
 
-            elif rel.peer_id in details.peer_ids_present_both:
+            elif rel.peer_id in peer_ids_both:
                 if properties_not_matching := rel.compare_properties_with_data(
                     data=details.peers_database[rel.peer_id]
                 ):

@@ -10,6 +10,7 @@ import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import {
   getDocumentationUrl,
+  getObjectDetailsTabSegment,
   getObjectDetailsUrl,
   getObjectGraphqlSandboxUrl,
   getObjectTasksUrl,
@@ -38,6 +39,42 @@ describe("getObjectDetailsUrl for a resource pool", () => {
 
     // THEN
     expect(url).toBe("/resource-manager/pool-id/ranges/range-id");
+  });
+});
+
+describe("getObjectDetailsTabSegment", () => {
+  it("returns the tab segment after the object id", () => {
+    // WHEN
+    const tabSegment = getObjectDetailsTabSegment(
+      "/objects/InfraDevice/device-1/interfaces",
+      "device-1"
+    );
+
+    // THEN
+    expect(tabSegment).toBe("interfaces");
+  });
+
+  it("returns only the tab when the path goes deeper than the tab", () => {
+    // WHEN
+    const tabSegment = getObjectDetailsTabSegment(
+      "/objects/InfraDevice/device-1/tasks/task-1",
+      "device-1"
+    );
+
+    // THEN
+    expect(tabSegment).toBe("tasks");
+  });
+
+  it.each([
+    "/objects/InfraDevice/device-1/",
+    "/objects/InfraDevice/device-1/convert",
+    "/objects/InfraDevice/device-1/convert/",
+  ])("returns undefined on %s, which is not a tab", (pathname) => {
+    // WHEN
+    const tabSegment = getObjectDetailsTabSegment(pathname, "device-1");
+
+    // THEN
+    expect(tabSegment).toBeUndefined();
   });
 });
 

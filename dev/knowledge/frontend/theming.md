@@ -128,23 +128,20 @@ Two things manage the class, and one way reads it:
 
 ## Content that carries its own colours
 
-Three renderers bake colours into their output and cannot be themed by CSS tokens:
+Two renderers bake colours into their output and cannot be themed by CSS tokens:
 
-- **Mermaid diagrams** — themed through `mermaid.initialize({ theme })`, called from a small rehype
-  plugin sequenced before the rendering plugin
-  (`shared/components/editor/markdown/markdown-with-mermaid.tsx`). The rendering plugin's own
-  `mermaidConfig` option is silently ignored by its browser build; its documentation says to call
-  `initialize` manually, and the browser build renders against that same global config. Two traps
-  worth knowing: the `mermaid` version range must stay compatible with the one `mermaid-isomorphic`
-  declares (two instances in the tree would mean configuring the wrong one), and the call must live
-  *inside* the pipeline — a render-phase call is dropped by the React Compiler, and an effect races
-  the child's async processing. A diagram's own `%%{init}%%` directive still wins, by mermaid's own
-  precedence.
 - **GraphiQL** — has its own theme; the sandbox page passes the app's resolved theme through
   `forcedTheme` so it can never disagree with the app around it.
 - **Schema visualizer** — takes a `theme` prop, passed from `pages/schema/graph.tsx`. It is a git
   submodule (`opsmill/infrahub-schema-visualizer`), so a fix to its palette lands upstream first and
   arrives here as a pointer bump; nothing about its styling is editable in this repository.
+
+Mermaid diagrams are not among them. Change a diagram colour in the `.pele` rule in
+`shared/components/editor/markdown/mermaid-diagram.css`, which maps Pele's base palette
+(background, text, lines, node fills, borders, accent) to theme tokens. A theme flip therefore
+recolours a mounted diagram without redrawing it, and a diagram's own `%%{init}%%` theme or
+`themeVariables` has no effect. The chart series colours (`--pele-series-1` to `-8`) and
+`--pele-critical` keep Pele's mid-tone defaults, which stay readable on both themes' backgrounds.
 
 Schema-defined colours (role badges, kind palettes, user-picked hex values) are data, not style:
 they render as-is in both themes and are out of scope for tokens.
@@ -171,8 +168,8 @@ once. The two legitimate exceptions, both from
   dynamically in a devtools probe (`bg-${hue}-400/15`) silently resolves to nothing and reads as
   transparent — probe with the exact class strings the component ships.
 - **Both themes, always**: switch through the Theme submenu in the account menu. Toggling the
-  class from the console re-themes the CSS but not Mermaid, GraphiQL or the schema visualizer,
-  which read the provider. The light theme is the shipped default; a dark fix must not move light
+  class from the console re-themes the CSS, Mermaid diagrams included, but not GraphiQL or the
+  schema visualizer, which read the provider. The light theme is the shipped default; a dark fix must not move light
   pixels unless that is the intent.
 
 ## Test coverage
@@ -181,7 +178,7 @@ once. The two legitimate exceptions, both from
 |---|---|
 | Choice, desktop tracking, cross-tab sync, transition freeze, pre-paint script | `entities/config/ui/theme-provider.test.tsx` |
 | The Theme submenu in the account menu, alpha tag | `entities/user-profile/ui/account-menu.test.tsx` |
-| Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
+| Mermaid renders in the active theme, recolours in place on a flip | `shared/components/editor/markdown/mermaid-diagram.test.tsx` (asserts the colours painted on a real node) |
 | First paint in both palettes, persistence | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 

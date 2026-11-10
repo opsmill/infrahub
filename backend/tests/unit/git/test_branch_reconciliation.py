@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError, ServerNotReachableError
 from infrahub_sdk.uuidt import UUIDT
+from structlog.testing import capture_logs
 
 from infrahub import config
 from infrahub.core.constants import RepositoryInternalStatus
@@ -33,6 +34,8 @@ from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repositor
 from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 if TYPE_CHECKING:
+    from structlog.typing import EventDict
+
     from infrahub.git.repository import InfrahubRepository
 
 SYNC_LOGGER = "infrahub.tasks"
@@ -1640,3 +1643,205 @@ async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and
     ]
     logged_error = failure_logs[0].exc_info[1] if failure_logs[0].exc_info else None
     assert logged_error is (test_case.error if test_case.keeps_traceback else None)
+
+
+def detected_imports(records: list[EventDict]) -> list[tuple[str, str]]:
+    """The info-level lines that announce a branch import, as (event, branch) pairs."""
+    return [
+        (str(record["event"]), str(record["branch"]))
+        for record in records
+        if record["log_level"] == "info" and record["event"] in {"New commit detected", "New branch detected"}
+    ]
+
+
+def skipped_imports(records: list[EventDict]) -> list[tuple[list[str], str]]:
+    """The debug-level lines that name the branches the sync does not import, as (branches, reason) pairs."""
+    return [
+        (list(record["branches"]), str(record["reason"]))
+        for record in records
+        if record["log_level"] == "debug" and record["event"] == "Not importing branches"
+    ]
+
+
+async def test_a_staging_repository_logs_no_new_commit_for_a_branch_it_does_not_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    state = build_idle_delivery_state(repository_id=str(tracked.repository.id))
+
+    with capture_logs() as records:
+        cycles = [
+            await tracked.repository.collect_pending_imports(
+                state=state, staging_branch=STAGING, graph_commits=tracked.graph_commits()
+            )
+            for _ in range(2)
+        ]
+
+    assert detected_imports(records) == []
+    assert [cycle.imports for cycle in cycles] == [[], []]
+    assert (
+        skipped_imports(records)
+        == [([TRACKED], "the repository is staging, which imports only its default branch")] * 2
+    )
+
+
+async def test_a_staging_repository_without_a_staging_branch_logs_that_it_imports_no_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            staging_branch=None,
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == []
+    assert collected.imports == []
+    assert skipped_imports(records) == [
+        ([TRACKED, "main"], "the repository is staging but has no staging branch, so it imports no branch")
+    ]
+
+
+async def test_a_staging_repository_logs_the_new_commit_of_its_default_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    trunk_head = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            staging_branch=STAGING,
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == [("New commit detected", "main")]
+    assert [(pending.infrahub_branch_name, pending.commit) for pending in collected.imports] == [(STAGING, trunk_head)]
+    assert skipped_imports(records) == [([TRACKED], "the repository is staging, which imports only its default branch")]
+
+
+async def test_an_inactive_repository_logs_no_new_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.INACTIVE
+    )
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == []
+    assert collected.imports == []
+    assert skipped_imports(records) == [([TRACKED, "main"], "the repository is inactive")]
+
+
+async def test_an_active_repository_logs_each_new_commit_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    state = build_idle_delivery_state(repository_id=str(tracked.repository.id))
+
+    with capture_logs() as records:
+        first = await tracked.repository.collect_pending_imports(state=state, graph_commits=tracked.graph_commits())
+        second = await tracked.repository.collect_pending_imports(
+            state=state, graph_commits=tracked.graph_commits(**{TRACKED: pushed})
+        )
+
+    assert detected_imports(records) == [("New commit detected", TRACKED)]
+    assert [pending.commit for pending in first.imports] == [pushed]
+    assert second.imports == []
+
+
+async def test_an_active_repository_logs_a_new_branch_it_imports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == [("New branch detected", TRACKED)]
+    assert [pending.commit for pending in collected.imports] == [tracked.imported_commits[TRACKED]]
+
+
+async def test_a_new_branch_whose_infrahub_branch_appears_without_git_sync_is_not_logged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Infrahub branch is created with `sync_with_git` off after the sync listed the branches."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+    tracked.client.branch_names = ("main", STAGING)
+    tracked.client.unsynced_branches = frozenset({TRACKED})
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == []
+    assert collected.imports == []
+
+
+async def test_an_active_repository_logs_no_new_commit_for_a_branch_whose_infrahub_branch_refuses_commits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    tracked.client.branch_statuses = {TRACKED: "NEED_REBASE"}
+
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(
+            state=build_idle_delivery_state(repository_id=str(tracked.repository.id)),
+            graph_commits=tracked.graph_commits(),
+        )
+
+    assert detected_imports(records) == []
+    assert collected.imports == []
+    assert skipped_imports(records) == [
+        (
+            [TRACKED],
+            "their Infrahub branch does not sync with Git or does not accept a commit, such as a merged branch",
+        )
+    ]
+
+
+async def test_a_branch_that_moved_while_staging_is_logged_and_imported_once_the_repository_is_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    imported = tracked.imported_commits[TRACKED]
+    pushed = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    state = build_idle_delivery_state(repository_id=str(tracked.repository.id))
+    await tracked.repository.collect_pending_imports(
+        state=state, staging_branch=STAGING, graph_commits=tracked.graph_commits()
+    )
+
+    tracked.repository.internal_status = RepositoryInternalStatus.ACTIVE
+    with capture_logs() as records:
+        collected = await tracked.repository.collect_pending_imports(state=state, graph_commits=tracked.graph_commits())
+
+    assert detected_imports(records) == [("New commit detected", TRACKED)]
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(commit=pushed, divergence=divergence(imported, pushed, RefClassification.FAST_FORWARD))
+    ]
+    assert tracked.client.recorded_commits == [(TRACKED, pushed)]

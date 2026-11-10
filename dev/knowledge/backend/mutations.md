@@ -148,6 +148,10 @@ A relationship's peers are all-or-nothing with respect to Profile sourcing: eith
 
 `NodeProfilesApplier` then treats such a relationship as user-defined and does not re-apply Profile peers to it.
 
+On the Profile side, `RelationshipAdd` and `RelationshipRemove` on `related_nodes` or `related_templates` apply no Profile value in the request. Before the transaction, `RelationshipRemove` on `related_nodes` runs `RelationshipProfileRemovalConstraint`, as a Profile update or delete does: it refuses to remove a node that inherits a required attribute or relationship from the Profile, because the refresh flow could not clear that value. After the transaction commits, they submit the chunked profile refresh for the peers they added or removed, so the values arrive with the refresh flows and their readers recompute. A failed submission is logged and the mutation still returns `ok`: the change is committed, and a retry would add or remove no peer, so it would submit nothing.
+
+The Profile update and upsert mutations also submit the refresh for the peers that a `related_nodes` or `related_templates` payload adds or removes. The refresh automation of a Profile does not trigger on these two relationships, so without it the peers that the payload adds would not get the Profile values. As for `RelationshipAdd` and `RelationshipRemove`, a failed submission is logged and the mutation still returns `ok`.
+
 ### UUID vs HFID References
 
 This distinction matters for display_label/HFID computation:
@@ -233,6 +237,18 @@ The update path builds its preview by reading the node and applying the payload 
 `apply_payload_for_lock_names()`, which leaves the stored peers unread: the relationship lock names
 come from the peers the payload sets. The node itself is still read, because the uniqueness
 constraint hashes cover attributes the payload may not carry.
+
+IP prefix and IP address mutations (`graphql/mutations/ipam.py`) take an IPAM lock before the
+object locks, because the IPAM reconciliation that follows rewrites parent relationships:
+
+- A prefix mutation locks its namespace, on every branch. Reconciling a prefix can move other
+  prefixes and addresses under it.
+- An IP address mutation on the default branch locks each address value it touches: one lock per
+  namespace and host address, covering every prefix length of that host. An update locks the stored
+  address and the address it has after the update, whose namespace and host each default to the
+  stored ones. Reconciling an address writes only that address's own parent relationship, so
+  mutations of different addresses do not wait for each other. On other branches an IP address
+  mutation takes no IPAM lock, because reconciliation runs again at merge.
 
 ## Key Files
 

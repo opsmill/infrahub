@@ -18,18 +18,9 @@ NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
 # (event persistence, triggered automations, computed attribute rendering).
 PREFECT_EVENT_WAIT_SECONDS = 60
 
-# The crash-zombie-flows automation crashes flow runs whose heartbeats stop arriving within
-# its no-heartbeat window, and the flow engine always emits an initial heartbeat when a flow
-# starts regardless of the configured frequency. The frequency must therefore stay well
-# below that window (production uses 30s); stretching it to "disable" heartbeats only
-# silences the follow-up beats and gets healthy long-running flows crashed.
+# Matches production: the zombie flow-run check crashes a running flow run that sent no heartbeat within
+# its window, so stretching the frequency to "disable" heartbeats gets healthy long-running flows crashed.
 PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS = "30"
-
-# The server evaluates proactive automations (the crash-zombie-flows detector) on this cadence,
-# given as an ISO 8601 duration (one second). The tests scale the detection window down to
-# Prefect's 10s minimum, so evaluation must be finer than that window for a scaled run to be
-# judged promptly and predictably.
-PREFECT_EVENTS_PROACTIVE_GRANULARITY = "PT1S"
 
 # Ephemeral Prefect test servers get a random loopback port from this pool. It must stay
 # clear of the kernel's ephemeral range (32768+ by default): the harness reserves its port

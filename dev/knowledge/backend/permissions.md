@@ -79,6 +79,8 @@ PermissionLoader  →  PermissionResolver  →  PermissionManager
 
 A factory wires them together: `PermissionManager.load_for_account(db, branch, account_session)`.
 
+Global permissions, and the account-group members and roles that grant them, are read from the default branch, whatever branch the request targets. Reading them from the request branch, or with `branch_agnostic=True` (which returns the latest change on any branch), lets an account add itself to a super-admin group on a branch and then edit the default branch. The `members` and `roles` relationships are branch-aware, so pass the default branch instead of the agnostic flag.
+
 ### PermissionLoader (`permissions/loader.py`)
 
 Loads permissions for an account session by orchestrating registered backends. Owns the `registry.permission_backends` dependency.

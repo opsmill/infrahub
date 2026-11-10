@@ -360,7 +360,18 @@ class DisplayLabelNodeIDQuery(NodeIDQuery):
     query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
 ```
 
-Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
+To read only part of a kind, override `extra_filters()`. The query adds the filters it returns to its `@filters`, and the base returns none. Filter on a field that the flows these ids feed do not write: a write that changes which nodes match moves the later pages in the same way.
+
+```python
+class ProfileNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "ProfileFetchNodeIDs"
+    profile_id: str
+
+    def extra_filters(self) -> dict[str, Any]:
+        return {"profiles__ids": [self.profile_id]}
+```
+
+Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `ProfileNodeIDQuery` (the nodes and templates linked to one profile, read for the profile refresh); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
 
 ## Failure handling
 
@@ -396,27 +407,22 @@ Because the discriminant is intrinsic to every run, historical runs type correct
 
 ## Liveness and zombie detection
 
-A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events and marks a run `CRASHED` once its countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
+A running flow emits a `prefect.flow-run.heartbeat` event on the interval set by `PREFECT_FLOWS_HEARTBEAT_FREQUENCY` (30 seconds in the image). The `crash-zombie-flow-runs` flow (`tasks/zombie_flow_runs.py`), run every 5 minutes, marks a run `CRASHED` when its worker died without recording a final state, which would otherwise leave the run waiting indefinitely. A dead run is therefore crashed up to 5 minutes after it has been silent for longer than the detection window described below.
 
-### An event either renews the countdown or ends the watch
+### Judge the current state of each run, not the event stream
 
-A Prefect proactive trigger has two event sets, and they do opposite things. This is the single most important thing to know before editing the trigger, because the two are easy to confuse and the failure mode is silent:
+Keep zombie detection a scheduled check of the runs' current states (`task_manager/flow_run/zombie.py::ZombieFlowRunReaper`); don't move it back into a Prefect automation. Prefect's triggers service can run hours behind its event stream under load. A proactive trigger then judges each run long after the fact, so it fires a crash for runs that already finished, which Prefect refuses, and could crash a long run that is still alive. Each tick:
 
-- an event in **`after`** opens or restarts the per-run countdown;
-- an event that is only in **`expect`** *satisfies* the window instead. It pushes the bucket's count to the threshold, so at expiry the proactive `count < threshold` test fails, the action never fires, and the bucket is then deleted. The run is left unwatched until an `after` event opens a new one.
+- crashes a run in `RUNNING` once its running state started more than the window ago and its last heartbeat is older than the window;
+- leaves a run in `RUNNING` that never sent a heartbeat alone, so turning heartbeats off turns detection off instead of crashing every long run;
+- measures the window back from the newest stored event rather than from the current time, so a delay in storing events does not make a live run look silent, and judges nothing when no event was stored within the window;
+- requests the crash without `force`, so orchestration refuses it for a run that finished in the meantime. Two overlapping ticks are therefore harmless. The flow has no concurrency limit: a tick that hangs while its process stays alive keeps renewing the lease on its slot, so a limit would block every later tick for as long as it hangs.
 
-So "expected" does not mean "renews". Ending the watch is the correct outcome only for the terminal states, where the run has finished and must stop being watched. Any other event the trigger expects means the run is still alive, so it must appear in **both** sets. A unit test asserts that the expected set only ever adds terminal states on top of the renewing ones, because getting this wrong disarms detection for the affected run rather than producing an obvious error.
+The window is six heartbeat intervals and at least three minutes (`zombie.py::heartbeat_window`). Heartbeats are read through the events API, which the event persister keeps close to real time even when the triggers service lags.
 
 ### Retry waits
 
-A run waiting out a retry backoff is silent for the whole wait: the flow engine tears down its heartbeat thread before it sleeps out the delay, and Prefect excludes in-process retries (`empirical_policy.retry_type == "in_process"`) from the worker scheduled-run query, so nothing else reports on the run either. Two consequences:
-
-- The retry-wait transition renews the countdown, anchoring it at the start of the silence it explains, so the whole window is available to the backoff. Were it merely expected, it would end the watch and a run whose process died inside the wait would never be crashed.
-- The window is sized above the longest configured retry backoff so a legitimate wait is not mistaken for a dead process. It is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes.
-
-Because a dead in-process retry wait is never re-submitted by a worker, crashing it has no false-positive path: the run has no way forward other than the process that just died. The cost of the widened window is detection latency, not correctness.
-
-Note when reasoning about which events fire: on resume, Prefect renames the state, so the event is `prefect.flow-run.Retrying`, not `...Running`. The client-side return value of a state proposal keeps the locally-proposed name, so it is not a reliable guide to the emitted event.
+A run waiting out an in-process retry is silent for the whole wait: the flow engine tears down its heartbeat thread before it sleeps out the delay, and Prefect excludes in-process retries (`empirical_policy.retry_type == "in_process"`) from the worker scheduled-run query, so nothing else reports on the run either. Its state is `AwaitingRetry`, a scheduled state carrying the time the retry is due. The check crashes such a run once its retry was due more than the window ago: the process sleeping out the delay is the only one that can resume it, so a wait long past its due time has no way forward. The window therefore does not depend on how long the retry backoff is. A rescheduled retry waits for a worker to pick it up instead, so the check leaves it alone.
 
 ### The worker liveness heartbeat runs on its own thread
 

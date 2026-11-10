@@ -22,7 +22,9 @@ In GraphQL and the Python SDK, the pool's `pool_type` is `Schema` for a schema p
 user pool.
 
 For both kinds of pools, [upgrade infrahubctl and the Python SDK](#upgrade-infrahubctl-and-the-python-sdk)
-and [update the scripts that read pools](#update-scripts-that-read-pools).
+and [update the scripts that read pools](#update-scripts-that-read-pools). If two pools for the same
+unique attribute have overlapping ranges, also
+[separate their ranges](#separate-pools-that-overlap-on-a-unique-attribute).
 
 :::info
 
@@ -37,6 +39,8 @@ What the upgrade changes:
 - **Schema pools:** The first schema load after the upgrade reports a change on each
   `NumberPool` attribute that declares only `start_range` or only `end_range`. The change is
   expected, and the pool allocates from the same numbers.
+- **Pools on a unique attribute:** Infrahub refuses a range that overlaps a range of another
+  pool for the same unique attribute. Pools whose ranges already overlap keep their ranges.
 
 :::
 
@@ -444,6 +448,34 @@ for pool_range in pool.ranges.peers:
 ```
 
 `start.value` and `end.value` are `None` for a range without that bound.
+
+## Separate pools that overlap on a unique attribute
+
+With Infrahub version 1.12, Infrahub refuses a range that overlaps a range of another pool for the
+same kind and unique attribute, as described in
+[Pools for the same unique attribute](../../resource-manager/allocate-number#pools-on-a-unique-attribute).
+Infrahub checks ranges only when you save them, so pools whose ranges overlapped before the upgrade
+still overlap after it.
+
+When one of those pools allocates a number that the other pool tracks for an object, Infrahub
+refuses the save. The message names the pool, the number, the object that holds the number and the
+other pool, and tells you to attach the numbers in the overlap to one of the pools and change the
+ranges of the other pool.
+
+To separate the two pools:
+
+1. Choose the pool that keeps the numbers in the overlap.
+2. List the numbers the other pool tracks in the overlap, in its allocations table or with
+   `InfrahubNumberPoolAllocations`, as described in
+   [View how much of a pool is in use](../../resource-manager/allocate-number#view-how-much-of-a-pool-is-in-use).
+3. Attach each of those numbers to the pool you chose: update the object with the number as `value`
+   and that pool as `from_pool`. Infrahub removes the number from the other pool, as described in
+   [Move a number to another pool](../../resource-manager/track-existing-numbers#move-a-number-to-another-pool).
+4. Change the ranges of the other pool so that they no longer overlap. Infrahub refuses this change
+   while the pool still tracks a number outside its new ranges, as described in
+   [Change the ranges of a pool](../../resource-manager/allocate-number#change-the-ranges-of-a-pool).
+   For a schema pool, change the ranges in the schema, as described in
+   [Update schema files](#update-schema-files).
 
 ## Related resources
 

@@ -333,10 +333,10 @@ class TestNumberPoolAllocationScope:
             for event in recording_lock_timeline.events
             if event.name in {local_lock, global_lock} and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
         ] == [
-            (local_lock, LockAction.ACQUIRE),
             (global_lock, LockAction.ACQUIRE),
-            (global_lock, LockAction.RELEASE),
+            (local_lock, LockAction.ACQUIRE),
             (local_lock, LockAction.RELEASE),
+            (global_lock, LockAction.RELEASE),
         ]
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
             kind=SCOPED_DEVICE_KIND, names=["site"]

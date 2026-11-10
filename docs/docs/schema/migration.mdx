@@ -110,6 +110,14 @@ Infrahub also refuses a schema change that makes the kind inherit from another g
 pool <pool> allocates numbers for <kind>.<attribute>; a kind cannot inherit from another generic while a number pool allocates numbers for it
 ```
 
+Infrahub refuses a schema change that sets `unique: true` on an attribute while the ranges of two pools for that attribute overlap, because each of those pools would allocate numbers the other has already allocated. The error names each pool whose ranges overlap another pool's:
+
+```text
+The '<pool>' pool cannot share numbers with another pool on the unique attribute '<attribute>': <range> overlaps <range> of the '<other-pool>' pool. Choose ranges that no other pool on '<attribute>' uses.
+```
+
+To make the change, first separate the ranges of the pools, as described in [Separate pools that overlap on a unique attribute](../release-notes/deprecation-guides/number-pool-ranges.mdx#separate-pools-that-overlap-on-a-unique-attribute).
+
 Infrahub checks these rules when it loads a schema and when it validates a proposed change. A merge or a rebase started directly with `BranchMerge` or `BranchRebase` does not check them, so a branch that made one of these changes before the pool existed can still be merged that way.
 
 ## Restrictions

@@ -12,6 +12,8 @@ Handle the objects first, then the definition and its query, then the Generator 
 
 A Generator removes its own obsolete objects only when it runs, through the [SDK tracking feature]($(base_url)python-sdk/topics/tracking). Once the definition is gone the Generator never runs again, so it can no longer remove the objects it created. Delete or reassign those objects — through the UI, GraphQL, or the SDK — while the definition still exists.
 
+To have the Generator delete the objects, change its `generate()` method so that it saves no objects, and run it once for each target while the definition still exists. A run that saves no objects deletes every object in the Generator group for the target's current parameter values (see [Objects a run deletes](./overview#objects-a-run-deletes)). A Generator group from earlier parameter values keeps its objects, for example the group from before a target was renamed when the definition's `parameters` use the target's name. Delete those objects yourself, as described in the next paragraph. Infrahub runs a Generator only for the members of its target group, so do this before you remove targets from the group. On a branch, the run also deletes objects of a branch-agnostic kind from the default branch (see [Deletes on a branch](./overview#deletes-on-a-branch)).
+
 To identify what a Generator created, list the members of its Generator groups. See [Delete the groups the Generator leaves behind](#delete-the-groups-the-generator-leaves-behind) to find the groups. A Generator instance records a run for one target object and does not link to the objects the run created.
 
 ## Remove the definition from `.infrahub.yml`

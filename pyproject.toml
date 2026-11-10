@@ -422,6 +422,7 @@ exclude = [
     "build",
     "dist",
     "examples",
+    ".specify",
 ]
 
 
@@ -1145,6 +1146,7 @@ python-version = "3.12"
 [tool.ty.src]
 exclude = [
     "python_sdk/**",
+    ".specify/**",
 ]
 
 [[tool.ty.overrides]]

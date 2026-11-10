@@ -1,4 +1,7 @@
+from typing import Any
+
 from infrahub.core.branch import Branch
+from infrahub.core.graph.schema import GraphAttributeValueIndexedNode
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -354,3 +357,53 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
     await query.execute(db=db)
     violation_nodes = query.get_violation_nodes()
     assert set(violation_nodes) == {(jane_dog.id, "TestDog"), (joes_dog.id, "TestDog"), (johns_dog.id, "TestDog")}
+
+
+def _plan_operators(plan: dict[str, Any]) -> list[str]:
+    operator = f"{plan.get('operatorType', '')}: {plan.get('args', {}).get('Details', '')}"
+    return [operator] + [
+        child_operator for child in plan.get("children", []) for child_operator in _plan_operators(child)
+    ]
+
+
+async def test_query_relationship_then_attribute_checks_the_attribute_from_the_nodes_found(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    """The attribute check after the peer starts from the cars the peer found, not from the shared value vertex."""
+    cars = {}
+    for name, nbr_seats, owner in [
+        ("johns-car", 7, person_john_main),
+        ("johns-other-car", 5, person_john_main),
+        ("janes-car", 7, person_jane_main),
+    ]:
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car.new(db=db, name=name, nbr_seats=nbr_seats, is_electric=False, owner=owner.id)
+        await car.save(db=db)
+        cars[name] = car
+    owner_rel_schema = db.schema.get("TestCar", branch=default_branch, duplicate=False).get_relationship(name="owner")
+    query_request = NodeUniquenessQueryRequestValued(
+        kind="TestCar",
+        unique_valued_paths=[
+            QueryRelationshipPathValued(
+                relationship_schema=owner_rel_schema,
+                peer_id=person_john_main.id,
+                attribute_name=None,
+                attribute_value=None,
+            ),
+            QueryAttributePathValued(attribute_name="nbr_seats", value=7),
+        ],
+    )
+    query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
+    await query.execute(db=db)
+    rendered = query.render()
+    _, metadata = await db.execute_query_with_metadata(
+        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_uniqueness_validation"
+    )
+
+    assert query.get_violation_nodes() == [(cars["johns-car"].id, "TestCar")]
+    # Every attribute holding the value links to one value vertex, so a seek on it reads all of them.
+    value_index = f"{GraphAttributeValueIndexedNode.get_default_label()}(value)"
+    assert [operator for operator in _plan_operators(metadata["plan"]) if value_index in operator] == []

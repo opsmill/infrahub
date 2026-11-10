@@ -61,6 +61,9 @@ if TYPE_CHECKING:
 
 log = get_run_logger()
 
+STAGING_SKIP_REASON = "the repository is staging, which imports only its default branch"
+STAGING_WITHOUT_BRANCH_SKIP_REASON = "the repository is staging but has no staging branch, so it imports no branch"
+
 
 def _describe_push_rejection(summary: str) -> str:
     """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
@@ -528,8 +531,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if not new_branches and not updated_branches:
             return collected
 
-        log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
-
         # Listing the branches costs a query, which a repository with nothing to import would pay every cycle.
         stages_trunk = (
             self.internal_status == RepositoryInternalStatus.STAGING
@@ -537,8 +538,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             and self.default_branch in updated_branches
         )
         if self.internal_status != RepositoryInternalStatus.ACTIVE and not stages_trunk:
+            self._report_skipped_imports(
+                branch_names=[*new_branches, *updated_branches],
+                reason=self._get_not_active_skip_reason(staging_branch=staging_branch),
+            )
             return collected
 
+        log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
         remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
         graph_branches = await self.sdk.branch.all()
 
@@ -564,6 +570,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
             for branch_name in updated_branches:
                 if self.validate_remote_branch(branch_name=branch_name):
+                    self._report_import(branch_name=branch_name, new_branch=False)
                     await self._collect_updated_branch(
                         collected=collected,
                         branch_name=branch_name,
@@ -575,6 +582,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     )
 
         elif staging_branch:
+            self._report_skipped_imports(
+                branch_names=[name for name in [*new_branches, *updated_branches] if name != self.default_branch],
+                reason=STAGING_SKIP_REASON,
+            )
+            self._report_import(branch_name=self.default_branch, new_branch=False)
             await self._collect_updated_branch(
                 collected=collected,
                 branch_name=self.default_branch,
@@ -664,6 +676,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     )
                     return
 
+            self._report_import(branch_name=branch_name, new_branch=True)
             await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
 
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
@@ -1090,6 +1103,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         advanced = [colliding_branch] if head_after_fetch != head_before_fetch else []
         return [colliding_branch], advanced
 
+    def _get_not_active_skip_reason(self, staging_branch: str | None) -> str:
+        if self.internal_status != RepositoryInternalStatus.STAGING:
+            return f"the repository is {self.internal_status.value}"
+        if staging_branch:
+            return STAGING_SKIP_REASON
+        return STAGING_WITHOUT_BRANCH_SKIP_REASON
+
     def _exclude_unimportable_branches(
         self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
@@ -1117,13 +1137,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         ]
         if orphaned:
             log.debug("Ignoring branches %s of repository %s, which have no Infrahub branch", orphaned, self.name)
+        skipped = {
+            name
+            for name in [*new_branches, *updated_branches]
+            if self._get_mapped_target_branch(branch_name=name) in excluded
+        }
+        self._report_skipped_imports(
+            branch_names=list(skipped),
+            reason="their Infrahub branch does not sync with Git or does not accept a commit, such as a merged branch",
+        )
         return (
-            [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in excluded],
-            [
-                name
-                for name in updated_branches
-                if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in excluded
-            ],
+            [name for name in new_branches if name not in skipped],
+            [name for name in updated_branches if name not in skipped and name not in orphaned],
         )
 
     async def _exclude_pending_delivery_branches(

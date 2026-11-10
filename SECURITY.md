@@ -63,3 +63,9 @@ At every severity, we publish the security advisory and request a CVE as describ
 Code that ships only in Infrahub Enterprise is not public, so we fix vulnerabilities in it in a private repository at every severity. The fix ships in an Infrahub Enterprise release.
 
 When a vulnerability in a third-party package that Infrahub depends on is already published, we update that package in a public pull request whatever its severity.
+
+***
+
+## How We Credit Reporters
+
+We credit the reporter of a vulnerability in its security advisory, unless they ask us not to. The reporter can be a person or an organization, including an organization that found the vulnerability with an automated tool. If the report has an ID from the reporter's own system, we add that ID to the advisory.
