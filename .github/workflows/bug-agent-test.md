@@ -58,7 +58,7 @@ steps:
         fi
 
         REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
             and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
@@ -67,7 +67,7 @@ steps:
       fi
 
       ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
           and (.body | gsub("\\\\_"; "_") | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."

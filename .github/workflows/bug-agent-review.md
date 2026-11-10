@@ -94,7 +94,7 @@ jobs:
           export MARKER
           APPROVALS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
             --jq '.[] | .body |= (. // "" | gsub("\\\\_"; "_"))
-              | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+              | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
                 and (.body | contains($ENV.MARKER)))
               | ((.body | capture("AGENT_REVIEW_SHA: (?<s>[0-9a-f]{40})") | .s) // "none")')
 

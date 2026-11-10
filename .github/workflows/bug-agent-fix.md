@@ -52,7 +52,7 @@ steps:
 
       if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
         REQ=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
             and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-fix: fix already complete and no FIX_CHANGES_REQUESTED verdict from reviewer."
@@ -65,7 +65,7 @@ steps:
       fi
 
       APPROVED=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
           and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
       if [ "$APPROVED" = "0" ]; then
         fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
