@@ -1,0 +1,26 @@
+docs/docs/deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore.mdx
+  s_265b4067790ccd::t_3bfcf3d9d7d255 109
+docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx
+  s_265b4067790ccd::t_5a37c10587058f 228
+  s_265b4067790ccd::t_606dd86543c8e1 56
+  s_265b4067790ccd::t_bcc4f8a36c955f 170,172,176
+  s_265b4067790ccd::t_42e26868f0a22c 179,181-194,203,210,212
+docs/docs/deploy-manage/maintain-upgrade/upgrade/enterprise.mdx
+  s_265b4067790ccd::t_d1949fb1fc2036 56-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e15015eaa895b0df05ec6c73647a84ef4b19e29",
+  "prompts": {},
+  "sessions": {
+    "s_265b4067790ccd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7143ba8-b161-4d10-bc2b-60dd8c4c6758",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
