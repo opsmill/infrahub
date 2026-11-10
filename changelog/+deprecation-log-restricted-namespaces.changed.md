@@ -1,1 +1,0 @@
-Deprecated attributes and relationships of the nodes that Infrahub provides no longer produce a warning in the server logs each time the schema is processed, including at startup. Deprecated attributes and relationships of your own schema nodes still produce this warning.
