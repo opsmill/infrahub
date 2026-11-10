@@ -18,7 +18,7 @@ describe("Combobox", () => {
     // THEN
     const option = component.getByRole("option", { name: "Red", exact: true });
     await expect.element(option).toBeVisible();
-    await expect.element(option.getByTestId("red-swatch")).toBeInTheDocument();
+    expect(option.element().firstElementChild).toBe(option.getByTestId("red-swatch").element());
   });
 
   test("shows the selected item's icon next to its label on the closed trigger", async () => {
