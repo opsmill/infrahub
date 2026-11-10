@@ -12,9 +12,11 @@ export function useUpdateGlobalPreferences() {
 
   return useMutation({
     mutationFn: (params: UpdateGlobalPreferenceParams) => updateGlobalPreference(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() });
-      queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey });
-    },
+    // Returning the refetches makes a save resolve only once the forms compare against the saved values.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() }),
+        queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey }),
+      ]),
   });
 }

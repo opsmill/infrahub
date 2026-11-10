@@ -37,6 +37,27 @@ describe("useUpdateGlobalPreferences", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: preferencesQueryKeys.all() });
   });
 
+  test("resolves the save only once the refetches have finished", async () => {
+    // GIVEN
+    vi.mocked(updateGlobalPreference).mockResolvedValue();
+    const refetch = Promise.withResolvers<void>();
+    vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(refetch.promise);
+    const { result } = await renderHook(() => useUpdateGlobalPreferences(), { wrapper });
+    let saved = false;
+
+    // WHEN
+    const save = result.current.mutateAsync({ instanceLabel: "QA" }).then(() => {
+      saved = true;
+    });
+    await expect.poll(() => vi.mocked(queryClient.invalidateQueries).mock.calls.length).toBe(2);
+
+    // THEN
+    expect(saved).toBe(false);
+    refetch.resolve();
+    await save;
+    expect(saved).toBe(true);
+  });
+
   test("invalidates nothing when the save fails", async () => {
     // GIVEN
     vi.mocked(updateGlobalPreference).mockRejectedValue(new Error("Not allowed"));
