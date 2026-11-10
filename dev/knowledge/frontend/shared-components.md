@@ -148,7 +148,7 @@ More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `
 | Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
 | Copy to clipboard outside a component, or once for many rows | `copyTextToClipboard` (resolves to whether the copy worked) | `shared/utils/clipboard.ts` |
 | Announce a copy to screen readers | `CopiedAnnouncement` | `shared/components/a11y/copied-announcement.tsx` |
-| Page title | `useTitle` (registers the page title; a single `DocumentTitle` owner in `entities/preferences/ui/document-title.tsx` writes `document.title` as `<instance label> · <page title>`) | `shared/hooks/useTitle.ts` |
+| Page title | `useTitle` (registers the page title; a single `DocumentTitle` owner in `entities/preferences/ui/document-title.tsx` writes `document.title` as `<instance label> · <page title>` when a label is set, otherwise `<page title>`) | `shared/hooks/useTitle.ts` |
 | Branch context | `useCurrentBranch` | (entity hook) |
 | Date context | `useAtomValue(datetimeAtom)` | `shared/stores/` |
 

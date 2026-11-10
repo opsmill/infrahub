@@ -6,7 +6,8 @@ Preferences store per-user and organisation-wide client settings: `date_format` 
 both layers, `instance_label` and `instance_color` on the global layer only. They are internal
 `StandardNode` objects, not schema nodes: they are not versioned by branch, not exposed through the
 generic node API, and carry no schema relationships. All access goes through a small backend module
-(`backend/infrahub/core/preferences/`) and a dedicated GraphQL surface.
+(`backend/infrahub/core/preferences/`), a dedicated GraphQL surface, and, for the instance label
+and color only, the public `GET /api/config` endpoint.
 
 ## Data model
 
@@ -44,8 +45,9 @@ stay lenient, so any value stored before this validation existed is still return
 
 `instance_label` follows the same rule: `validate_instance_label` runs in the set mutation only. It
 strips surrounding whitespace, turns an empty result into unset, and rejects a control character
-(Unicode category `Cc`, which covers line breaks, tabs and NUL, plus the bidirectional controls
-U+202A–U+202E and U+2066–U+2069) or more than 32 characters with a `ValidationError` that names the
+(Unicode category `Cc`, which covers line breaks, tabs and NUL; the Unicode line and paragraph
+separators U+2028 and U+2029; and the bidirectional controls U+061C, U+200E, U+200F, U+202A–U+202E
+and U+2066–U+2069) or more than 32 characters with a `ValidationError` that names the
 rule. A stored value never breaks a read.
 
 `instance_color` needs no validator of its own: the GraphQL enum rejects an unknown member with a
@@ -151,7 +153,7 @@ is the only way an anonymous visitor reads the instance label and color. The res
 
 - `instance_defaults`: the deployment defaults from `InstanceSettings` (`INFRAHUB_INSTANCE_LABEL`,
   `INFRAHUB_INSTANCE_COLOR`, or the `[instance]` section of `infrahub.toml`).
-- `instance`: the effective identity, built in `get_instance_identity`. Each field is resolved on its
+- `instance`: the effective identity, built by `InstanceIdentityResolver.resolve`. Each field is resolved on its
   own: the value of the global row from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)` if set,
   else the deployment default, else `null`.
 
@@ -169,9 +171,7 @@ The settings validate both values when they load: the label goes through `valida
 and an empty color counts as unset because a deployment tool can pass an unset variable as an empty
 string. The color is also uppercased, so `red` is accepted. An invalid value stops the process at
 startup with a message that names the environment variable. The enum, the length limit and the label
-validator live in `infrahub/instance_identity.py`, not under `core/preferences/`, because
-`config.py` imports them and anything under `infrahub.core` imports `config.py` back through
-`core.registry`.
+validator live in `infrahub/instance_identity.py`, which the settings import.
 
 ## Caveats
 
