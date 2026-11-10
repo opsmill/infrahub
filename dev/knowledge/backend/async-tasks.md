@@ -396,7 +396,7 @@ Because the discriminant is intrinsic to every run, historical runs type correct
 
 ## Liveness and zombie detection
 
-A running flow emits a `prefect.flow-run.heartbeat` event on the interval set by `PREFECT_FLOWS_HEARTBEAT_FREQUENCY` (30 seconds in the image). The `crash-zombie-flow-runs` flow (`tasks/zombie_flow_runs.py`), run every minute, marks a run `CRASHED` when its worker died without recording a final state, which would otherwise leave the run waiting indefinitely.
+A running flow emits a `prefect.flow-run.heartbeat` event on the interval set by `PREFECT_FLOWS_HEARTBEAT_FREQUENCY` (30 seconds in the image). The `crash-zombie-flow-runs` flow (`tasks/zombie_flow_runs.py`), run every 5 minutes, marks a run `CRASHED` when its worker died without recording a final state, which would otherwise leave the run waiting indefinitely. A dead run is therefore crashed up to 5 minutes after it has been silent for longer than the detection window described below.
 
 ### Judge the current state of each run, not the event stream
 

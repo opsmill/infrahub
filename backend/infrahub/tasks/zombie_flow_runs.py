@@ -16,7 +16,7 @@ from infrahub.task_manager.flow_run.zombie import ZombieFlowRunReaper, heartbeat
 async def crash_zombie_flow_runs() -> None:
     """Crash flow runs whose worker died without recording a final state.
 
-    Runs on a one-minute cron. It reads the current state of each flow run and the stored heartbeats, so a delay in
+    Runs every 5 minutes. It reads the current state of each flow run and the stored heartbeats, so a delay in
     Prefect's triggers service cannot crash a run that is still alive or act on one that already finished.
     """
     window = heartbeat_window(get_current_settings().flows.heartbeat_frequency)
