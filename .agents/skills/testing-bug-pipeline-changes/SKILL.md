@@ -13,7 +13,8 @@ allowed-tools:
   - Bash(uv run --no-sync python .agents/skills/testing-bug-pipeline-changes/scripts/sandbox_run.py:*)
 compatibility: >-
   Requires the gh CLI with write access on opsmill/infrahub-pipeline-sandbox and the workflow scope,
-  and the gh aw extension at the version named in the lock-file headers. Python 3 (stdlib only).
+  git able to push to that repository, and the gh aw extension at the version named in the lock-file
+  headers. Python 3.11 or later (stdlib only).
 metadata:
   version: 0.1.0
   author: OpsMill
@@ -28,16 +29,19 @@ pipeline; the sandbox fork `opsmill/infrahub-pipeline-sandbox` can.
 
 ## What a run does
 
-The bundled script resets the sandbox's `stable` to GitHub's merge commit for the pull request,
-deletes every workflow except the four `bug-agent-*.lock.yml` files, and adds a planted bug. It then
-opens an issue for that bug and posts each slash command as you, in the order a person would:
-`/bug-analyze`, `/bug-tdd`, a `/bug-tdd` revision when the reviewer asks for changes, `/bug-fix`.
-The reviewer starts by itself on every push to the test pull request.
+The bundled script builds a commit on GitHub's merge commit for the pull request and force-pushes it
+to the sandbox's `stable`. The commit deletes every workflow except the four `bug-agent-*.lock.yml`
+files, removes this skill's folder so the agents cannot read about the planted bug, and adds the
+planted bug. The script then opens an issue for that bug and posts each slash command as you, in the
+order a person would: `/bug-analyze`, `/bug-tdd`, `/bug-fix`, and the same command again on the test
+pull request when the reviewer asks for changes to the test or the fix. The reviewer is not a
+command: it starts on the agents' pushes to the test pull request, and its own gate decides whether
+to review.
 
 After every run it checks:
 
 - The run succeeded and its agent job ran
-- The step's marker reached the issue or the pull request
+- The step's marker reached the issue or the pull request, inside a code span
 - The review covered the pull request's latest commit
 - The agent read comments through the MCP gateway, and the gateway hid none of them
 
@@ -54,7 +58,8 @@ test inside their container, which has no Docker.
 - Push the branch and open the pull request, as a draft if you like. The script tests GitHub's merge
   commit, so the pull request must not conflict with its base branch.
 - Check that your `gh` login has write access on the sandbox. If the script reports a missing
-  `workflow` scope, run `gh auth refresh -s workflow`.
+  `workflow` scope, run `gh auth refresh -s workflow`; if git cannot push to the sandbox, run
+  `gh auth setup-git`.
 - Install the `gh aw` extension at the version in the lock-file header (`compiler_version`):
   `gh extension install github/gh-aw --pin <version>`. The script recompiles the four workflows and
   stops if a lock file does not match its `.md` source.
@@ -85,19 +90,28 @@ Markdown report goes to stdout and to the `--report` file.
   - "Cannot verify comment access": the agent artifact or the gateway log changed shape, usually
     after a gh-aw upgrade. Update the `GATEWAY_*` constants in the script.
   - A missing marker: the step's agent did not finish its job. Read its comment in the sandbox.
-- Exit status 2: the reviewer kept asking for changes past the script's limit. Read the last review
-  in the sandbox pull request. To keep going, post the command it names on that pull request
-  yourself, then resume:
+  - A marker "posted with escaped underscores": the agent wrote it outside a code span, so gh-aw
+    escaped it and a gate that matches the exact text cannot find it.
+- Exit status 2: the reviewer kept asking for changes, and the report says which case applies:
+  - It reached its own limit of three reviews of the test or of the fix: it will not review again.
+    Read its reviews to decide whether the pipeline change caused this, then clean up.
+  - It reached the script's limit, which is lower: read its last review, post the command the
+    report names on the sandbox pull request yourself, then resume. The resumed run checks the run
+    of your command and the review after it:
 
-  ```bash
-  uv run --no-sync python .agents/skills/testing-bug-pipeline-changes/scripts/sandbox_run.py run --pr <number> --resume-issue <sandbox issue>
-  ```
+    ```bash
+    uv run --no-sync python .agents/skills/testing-bug-pipeline-changes/scripts/sandbox_run.py run --pr <number> --resume-issue <sandbox issue>
+    ```
 
-  A resumed run reports only the steps it ran, so paste both reports into the pull request.
+    A resumed run reports only the steps it ran, so paste both reports into the pull request.
 
-A warning does not fail the run. The gateway hides the pull request's diff each time an agent asks
-for it, and the agent then reads the diff from git; the script fails when the gateway hides anything
-else.
+A warning does not fail the run. Two hidden items are warnings, and the script fails when the
+gateway hides anything else:
+
+- The pull request's diff, which the gateway hides each time an agent asks for it; the agent then
+  reads the diff from git.
+- An item named `#unknown`, which the gateway cannot identify, such as an issue requested with its
+  number sent as text. Check in the gateway log that the agent asked again and got it.
 
 ## Clean up
 

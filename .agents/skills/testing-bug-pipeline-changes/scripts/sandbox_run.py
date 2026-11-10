@@ -6,14 +6,14 @@ The slash-command workflows always run from the default branch, so the script re
 opens an issue for it, and posts each command as the person running it. After each run it checks that:
 
 - the run succeeded and its agent job ran;
-- the step's marker reached the issue or pull request;
+- the step's marker reached the issue or pull request, inside a code span;
 - the review started by itself and reviewed the latest commit;
 - the agent read comments through the MCP gateway, and the gateway hid none of them.
 
 It does not judge the quality of the analysis, the test or the fix.
 
-Only stdlib and the `gh` CLI, logged in with write access on the sandbox and the `workflow` scope.
-The lock-file check also needs the `gh aw` extension at the version the lock files were compiled with.
+Only stdlib (Python 3.11 or later) and the `gh` CLI, logged in with write access on the sandbox and the
+`workflow` scope. The lock-file check also needs the `gh aw` extension at the version the lock files name.
 
 Usage:
   sandbox_run.py run --pr NUMBER [--resume-issue NUMBER] [--skip-lock-check] [--report FILE]
@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import subprocess  # noqa: S404
 import sys
@@ -38,10 +39,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
 SANDBOX = "opsmill/infrahub-pipeline-sandbox"
 SANDBOX_URL = f"https://github.com/{SANDBOX}"
+SANDBOX_GIT_URL = f"{SANDBOX_URL}.git"
 SANDBOX_BRANCH = "stable"
 UPSTREAM = "opsmill/infrahub"
 UPSTREAM_URL = f"https://github.com/{UPSTREAM}.git"
@@ -49,13 +51,14 @@ BOT_LOGIN = "opsmill-bug-pipeline[bot]"
 BUG_LABEL = "type/bug"
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
+SKILL_PATH = f".agents/skills/{SKILL_DIR.name}"
 PLANTED_SOURCE = SKILL_DIR / "fixture" / "sandbox_pagination.py"
 # The issue text names this path, so change both together.
 PLANTED_DIR = "backend/infrahub"
 PLANTED_NAME = "sandbox_pagination.py"
 ISSUE_BODY = SKILL_DIR / "fixture" / "issue.md"
 ISSUE_TITLE = "count_pages returns one page too few"
-# Hidden in the issue body so cleanup closes only the issues this script opened.
+# Hidden in the issue body so a later run closes only the issues this script opened.
 RUN_MARKER = "<!-- bug-pipeline-sandbox-test -->"
 PIPELINE_BRANCH_PREFIX = "ai-bug-pipeline-"
 # A plain "pull request N" instead of a link, so each run does not add a cross-reference to the upstream pull request.
@@ -68,7 +71,9 @@ COMPILER_VERSION_RE = re.compile(r'"compiler_version":"(v[^"]+)"')
 
 MAX_TEST_REVISIONS = 2
 MAX_FIX_REVISIONS = 1
-MAX_STEPS = 2 + 2 * (1 + MAX_TEST_REVISIONS) + 2 * (1 + MAX_FIX_REVISIONS)
+# The reviewer hands the pull request to a person instead of reviewing a fourth time in the same mode.
+REVIEW_ITERATION_LIMIT = 3
+MAX_STEPS = 2 + 2 * REVIEW_ITERATION_LIMIT * 2
 
 POLL_SECONDS = 30
 MERGEABILITY_ATTEMPTS = 10
@@ -97,6 +102,8 @@ GATEWAY_CALL = "github→tools/call"
 GATEWAY_COMMENT_READ = '"method":"get_comments"'
 GATEWAY_DIFF_READ = '"method":"get_diff"'
 GATEWAY_HIDDEN_DIFF = "pull-request-content"
+# The gateway names an item this way when it cannot tell which item a call asked for, such as a number sent as text.
+GATEWAY_UNIDENTIFIED = "#unknown"
 GATEWAY_LABEL_LINE = "[difc]"
 GATEWAY_FILTERED = "[DIFC-FILTERED] "
 
@@ -111,6 +118,7 @@ class Workflow:
 ANALYST = Workflow("bug-agent-analyst.lock.yml", "/bug-analyze", dt.timedelta(minutes=40))
 TEST_WRITER = Workflow("bug-agent-test.lock.yml", "/bug-tdd", dt.timedelta(minutes=60))
 FIXER = Workflow("bug-agent-fix.lock.yml", "/bug-fix", dt.timedelta(minutes=60))
+COMMANDS = {workflow.command: workflow for workflow in (ANALYST, TEST_WRITER, FIXER)}
 REVIEWER_FILE = "bug-agent-review.lock.yml"
 
 
@@ -145,6 +153,15 @@ class Session:
     steps: list[StepResult] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class Verdict:
+    value: str
+    reviewed_sha: str | None
+    iteration: str | None
+    body: str
+    posted: dt.datetime
+
+
 @dataclass
 class PipelineState:
     analysis_done: bool
@@ -162,14 +179,14 @@ def now() -> dt.datetime:
     return dt.datetime.now(dt.UTC)
 
 
-def gh(*args: str, stdin: str | None = None, cwd: Path | None = None) -> str:
+def gh(*args: str, stdin: str | None = None, cwd: Path | None = None, retry: bool = True) -> str:
     attempt = 1
     while True:
         result = subprocess.run(["gh", *args], input=stdin, cwd=cwd, capture_output=True, text=True, check=False)  # noqa: S603, S607
         if result.returncode == 0:
             return result.stdout
-        # GitHub sometimes answers with a 5xx while busy, and a retry gets through.
-        if "HTTP 5" not in result.stderr or attempt >= GH_ATTEMPTS:
+        # GitHub sometimes answers with a 5xx while busy, and a retry gets through; a write may have landed anyway.
+        if not retry or "HTTP 5" not in result.stderr or attempt >= GH_ATTEMPTS:
             raise GhError(f"gh {' '.join(args)}: {result.stderr.strip()}")
         attempt += 1
         time.sleep(POLL_SECONDS)
@@ -185,8 +202,8 @@ def gh_list(*args: str) -> list[dict[str, Any]]:
 
 def api(path: str, method: str = "GET", body: dict[str, Any] | None = None) -> dict[str, Any]:
     if body is None:
-        return gh_dict("api", "--method", method, path)
-    return json.loads(gh("api", "--method", method, path, "--input", "-", stdin=json.dumps(body)))
+        return json.loads(gh("api", "--method", method, path, retry=method == "GET"))
+    return json.loads(gh("api", "--method", method, path, "--input", "-", stdin=json.dumps(body), retry=False))
 
 
 def api_list(path: str) -> list[dict[str, Any]]:
@@ -194,8 +211,8 @@ def api_list(path: str) -> list[dict[str, Any]]:
     return [item for page in pages for item in page]
 
 
-def git(*args: str, cwd: Path) -> str:
-    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)  # noqa: S603, S607
+def git(*args: str, cwd: Path, env: dict[str, str] | None = None) -> str:
+    result = subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=False)  # noqa: S603, S607
     if result.returncode != 0:
         raise CheckFailedError(f"git {' '.join(args)}: {result.stderr.strip()}")
     return result.stdout
@@ -213,15 +230,17 @@ def unescape(text: str) -> str:
 def check_access() -> str:
     if not api(f"repos/{SANDBOX}").get("permissions", {}).get("push"):
         raise CheckFailedError(f"Your gh login has no write access on {SANDBOX}, which posting slash commands needs.")
-    headers = gh("api", "--include", "user").splitlines()
-    scopes = next((line.split(":", 1)[1] for line in headers if line.lower().startswith("x-oauth-scopes:")), None)
+    head, _, body = gh("api", "--include", "user").partition("\n\n")
+    scopes = next(
+        (line.split(":", 1)[1] for line in head.splitlines() if line.lower().startswith("x-oauth-scopes:")), None
+    )
     # Fine-grained and app tokens report no scopes, so only a classic token can be checked here.
     if scopes is not None and "workflow" not in scopes:
         raise CheckFailedError(
             "Your gh token lacks the workflow scope, which resetting the sandbox's workflow files needs. "
             "Run: gh auth refresh -s workflow"
         )
-    return api("user")["login"]
+    return json.loads(body)["login"]
 
 
 def pull_request_commits(pr_number: int) -> tuple[str, str]:
@@ -239,39 +258,33 @@ def pull_request_commits(pr_number: int) -> tuple[str, str]:
             f"Pull request {pr_number} conflicts with {pr['base']['ref']}, so GitHub has no merge commit to test. "
             "Rebase it first."
         )
-    head_sha, merge_sha = pr["head"]["sha"], pr["merge_commit_sha"]
-    parents = [parent["sha"] for parent in api(f"repos/{SANDBOX}/git/commits/{merge_sha}")["parents"]]
-    if head_sha not in parents:
+    return pr["head"]["sha"], pr["merge_commit_sha"]
+
+
+def repository_root() -> Path:
+    return Path(git("rev-parse", "--show-toplevel", cwd=SKILL_DIR).strip())
+
+
+def fetch_merge_commit(root: Path, pr_number: int, head_sha: str, merge_sha: str) -> None:
+    git("fetch", "--quiet", UPSTREAM_URL, f"pull/{pr_number}/merge", cwd=root)
+    if git("rev-parse", "FETCH_HEAD", cwd=root).strip() != merge_sha:
+        raise CheckFailedError(f"GitHub rebuilt the merge commit for pull request {pr_number} meanwhile; try again.")
+    if head_sha not in git("rev-list", "--parents", "--max-count=1", merge_sha, cwd=root).split()[1:]:
         raise CheckFailedError(f"GitHub's merge commit for pull request {pr_number} is older than its head; try again.")
-    return head_sha, merge_sha
 
 
-def check_lock_files(pr_number: int, head_sha: str) -> None:
-    repo_root = Path(git("rev-parse", "--show-toplevel", cwd=SKILL_DIR).strip())
-    git("fetch", "--quiet", UPSTREAM_URL, f"pull/{pr_number}/head", cwd=repo_root)
+def check_lock_files(root: Path, head_sha: str) -> None:
     lock_paths = [f".github/workflows/{name}.lock.yml" for name in LOCK_SOURCES]
     with tempfile.TemporaryDirectory() as tmp:
         checkout = Path(tmp) / "checkout"
-        git("worktree", "add", "--quiet", "--detach", str(checkout), head_sha, cwd=repo_root)
+        git("worktree", "add", "--quiet", "--detach", str(checkout), head_sha, cwd=root)
         try:
-            found = COMPILER_VERSION_RE.search((checkout / lock_paths[0]).read_text(encoding="utf-8"))
-            if found is None:
-                raise CheckFailedError(f"{lock_paths[0]} names no gh-aw compiler version.")
-            version = found.group(1)
-            try:
-                installed = gh("aw", "version")
-            except GhError as error:
-                raise CheckFailedError(f"The gh aw extension is not installed ({error}).") from error
-            if version not in installed.split():
-                raise CheckFailedError(
-                    f"The lock files were compiled with gh-aw {version}, but `gh aw version` says {installed.strip()}. "
-                    f"Install it with: gh extension remove gh-aw && gh extension install github/gh-aw --pin {version}"
-                )
+            version = compiler_version(checkout, lock_paths)
             log(f"Recompiling the bug-pipeline workflows with gh-aw {version}")
             gh("aw", "compile", *LOCK_SOURCES, cwd=checkout)
             changed = git("diff", "--name-only", "--", *lock_paths, cwd=checkout).split()
         finally:
-            git("worktree", "remove", "--force", str(checkout), cwd=repo_root)
+            git("worktree", "remove", "--force", str(checkout), cwd=root)
     if changed:
         raise CheckFailedError(
             f"These lock files do not match their .md sources: {', '.join(changed)}. "
@@ -279,38 +292,59 @@ def check_lock_files(pr_number: int, head_sha: str) -> None:
         )
 
 
-def subtree(tree_sha: str, path: str) -> list[dict[str, Any]] | None:
-    entries = api(f"repos/{SANDBOX}/git/trees/{tree_sha}")["tree"]
-    for part in path.split("/"):
-        entry = next((item for item in entries if item["path"] == part and item["type"] == "tree"), None)
-        if entry is None:
-            return None
-        entries = api(f"repos/{SANDBOX}/git/trees/{entry['sha']}")["tree"]
-    return entries
+def compiler_version(checkout: Path, lock_paths: Sequence[str]) -> str:
+    versions = set()
+    for path in lock_paths:
+        found = COMPILER_VERSION_RE.search((checkout / path).read_text(encoding="utf-8"))
+        if found is None:
+            raise CheckFailedError(f"{path} names no gh-aw compiler version.")
+        versions.add(found.group(1))
+    if len(versions) > 1:
+        raise CheckFailedError(f"The lock files name different gh-aw versions: {', '.join(sorted(versions))}.")
+    version = versions.pop()
+    try:
+        installed = gh("aw", "version")
+    except GhError as error:
+        raise CheckFailedError(f"The gh aw extension is not installed ({error}).") from error
+    if version not in installed.split():
+        raise CheckFailedError(
+            f"The lock files were compiled with gh-aw {version}, but `gh aw version` says {installed.strip()}. "
+            f"Install it with: gh extension remove gh-aw && gh extension install github/gh-aw --pin {version}"
+        )
+    return version
 
 
-def reset_sandbox(pr_number: int, head_sha: str, merge_sha: str) -> None:
-    base_tree = api(f"repos/{SANDBOX}/git/commits/{merge_sha}")["tree"]["sha"]
-    workflows = {item["path"] for item in subtree(base_tree, ".github/workflows") or [] if item["type"] == "blob"}
+def reset_sandbox(root: Path, pr_number: int, head_sha: str, merge_sha: str, login: str) -> None:
+    workflows = set(git("ls-tree", "--name-only", f"{merge_sha}:.github/workflows", cwd=root).split())
     if missing := KEPT_WORKFLOWS - workflows:
         raise CheckFailedError(f"The pull request has no {', '.join(sorted(missing))}.")
-    if PLANTED_NAME in {item["path"] for item in subtree(base_tree, PLANTED_DIR) or []}:
-        raise CheckFailedError(f"{PLANTED_DIR}/{PLANTED_NAME} now exists upstream; give the planted file another name.")
-    removals = [
-        {"path": f".github/workflows/{name}", "mode": "100644", "type": "blob", "sha": None}
-        for name in sorted(workflows - KEPT_WORKFLOWS)
-        if name.endswith((".yml", ".yaml"))
+    planted_path = f"{PLANTED_DIR}/{PLANTED_NAME}"
+    if git("ls-tree", "--name-only", merge_sha, "--", planted_path, cwd=root).strip():
+        raise CheckFailedError(f"{planted_path} now exists upstream; give the planted file another name.")
+    removed = [
+        f".github/workflows/{name}" for name in sorted(workflows - KEPT_WORKFLOWS) if name.endswith((".yml", ".yaml"))
     ]
-    blob = api(f"repos/{SANDBOX}/git/blobs", "POST", {"content": PLANTED_SOURCE.read_text(encoding="utf-8")})
-    planted = {"path": f"{PLANTED_DIR}/{PLANTED_NAME}", "mode": "100644", "type": "blob", "sha": blob["sha"]}
-    tree = api(f"repos/{SANDBOX}/git/trees", "POST", {"base_tree": base_tree, "tree": [*removals, planted]})
+    with tempfile.TemporaryDirectory() as tmp:
+        # A separate index builds the commit without touching the checkout, its index or its hooks.
+        index_env = {**os.environ, "GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        git("read-tree", merge_sha, cwd=root, env=index_env)
+        # The agents must not find this skill's description of the planted bug, or a second copy of it.
+        removed += git("ls-tree", "-r", "--name-only", merge_sha, "--", SKILL_PATH, cwd=root).split()
+        git("update-index", "--force-remove", "--", *removed, cwd=root, env=index_env)
+        blob = git("hash-object", "-w", str(PLANTED_SOURCE), cwd=root).strip()
+        git("update-index", "--add", "--cacheinfo", f"100644,{blob},{planted_path}", cwd=root, env=index_env)
+        tree = git("write-tree", cwd=root, env=index_env).strip()
+    email = f"{login}@users.noreply.github.com"
+    identity = {**os.environ, "GIT_AUTHOR_NAME": login, "GIT_AUTHOR_EMAIL": email, "GIT_COMMITTER_NAME": login}
+    identity["GIT_COMMITTER_EMAIL"] = email
     message = TESTED_COMMIT_MESSAGE.format(number=pr_number, sha=head_sha)
-    message += "\n\nKeeps only the bug-pipeline workflows and adds the planted bug."
-    commit = api(
-        f"repos/{SANDBOX}/git/commits", "POST", {"message": message, "tree": tree["sha"], "parents": [merge_sha]}
+    message += (
+        "\n\nKeeps only the bug-pipeline workflows, removes the sandbox test's own skill and adds the planted bug."
     )
-    api(f"repos/{SANDBOX}/git/refs/heads/{SANDBOX_BRANCH}", "PATCH", {"sha": commit["sha"], "force": True})
-    log(f"Reset the sandbox's {SANDBOX_BRANCH} to {commit['sha'][:10]} (pull request {pr_number} at {head_sha[:10]})")
+    commit = git("commit-tree", tree, "-p", merge_sha, "-m", message, cwd=root, env=identity).strip()
+    # A push, unlike the API, carries objects the fork network has not shared with the sandbox yet.
+    git("push", "--force", "--quiet", SANDBOX_GIT_URL, f"{commit}:refs/heads/{SANDBOX_BRANCH}", cwd=root)
+    log(f"Reset the sandbox's {SANDBOX_BRANCH} to {commit[:10]} (pull request {pr_number} at {head_sha[:10]})")
 
 
 def tested_pull_request() -> tuple[int, str]:
@@ -321,31 +355,15 @@ def tested_pull_request() -> tuple[int, str]:
     return int(found.group(1)), found.group(2)
 
 
-def active_runs() -> list[dict[str, Any]]:
-    runs: list[dict[str, Any]] = []
-    for status in ACTIVE_RUN_STATUSES:
-        runs += gh_list(
-            "run", "list", "-R", SANDBOX, "--status", status, "--limit", "50", "--json", "databaseId,workflowName"
-        )
-    return runs
-
-
 def cancel_active_runs() -> None:
-    for run in active_runs():
-        log(f"Cancelling sandbox run {run['databaseId']} ({run['workflowName']})")
-        try:
-            gh("run", "cancel", str(run["databaseId"]), "-R", SANDBOX)
-        except GhError as error:
-            log(f"Could not cancel run {run['databaseId']}, which may have finished: {error}")
-
-
-def wait_for_active_runs() -> None:
-    deadline = now() + FIXER.timeout + RUN_TIMEOUT_MARGIN
-    while runs := active_runs():
-        if now() > deadline:
-            raise CheckFailedError(f"{len(runs)} sandbox runs are still active; cancel them or wait.")
-        log(f"Waiting for {len(runs)} active sandbox runs to finish")
-        time.sleep(POLL_SECONDS)
+    for status in ACTIVE_RUN_STATUSES:
+        fields = "databaseId,workflowName"
+        for run in gh_list("run", "list", "-R", SANDBOX, "--status", status, "--limit", "50", "--json", fields):
+            log(f"Cancelling sandbox run {run['databaseId']} ({run['workflowName']})")
+            try:
+                gh("run", "cancel", str(run["databaseId"]), "-R", SANDBOX)
+            except GhError as error:
+                log(f"Could not cancel run {run['databaseId']}, which may have finished: {error}")
 
 
 def script_issues() -> list[dict[str, Any]]:
@@ -378,27 +396,50 @@ def open_issue() -> int:
     return issue["number"]
 
 
+def comments(number: int) -> list[dict[str, Any]]:
+    return api_list(f"repos/{SANDBOX}/issues/{number}/comments?per_page=100")
+
+
 def bot_comments(number: int) -> list[dict[str, Any]]:
-    comments = api_list(f"repos/{SANDBOX}/issues/{number}/comments?per_page=100")
-    return [comment for comment in comments if comment["user"]["login"] == BOT_LOGIN]
+    return [comment for comment in comments(number) if comment["user"]["login"] == BOT_LOGIN]
+
+
+def verdicts(pr_number: int) -> list[Verdict]:
+    found = []
+    for comment in bot_comments(pr_number):
+        body = unescape(comment["body"])
+        if (verdict := VERDICT_RE.search(body)) is None:
+            continue
+        reviewed, iteration = REVIEWED_SHA_RE.search(body), ITERATION_RE.search(body)
+        found.append(
+            Verdict(
+                value=verdict.group(1),
+                reviewed_sha=reviewed.group(1) if reviewed else None,
+                iteration=iteration.group(1) if iteration else None,
+                body=comment["body"],
+                posted=parse_time(comment["created_at"]),
+            )
+        )
+    return found
+
+
+def verdict_for(reviews: list[Verdict], head_sha: str) -> Verdict | None:
+    return next((review for review in reversed(reviews) if review.reviewed_sha == head_sha), None)
 
 
 def read_state(issue: int) -> PipelineState:
     analysis_done = any(ANALYSIS_MARKER in unescape(comment["body"]) for comment in bot_comments(issue))
     pull_requests = pipeline_pull_requests(issue)
     pr = pull_requests[0] if pull_requests else None
-    verdict, test_requests, fix_requests = None, 0, 0
-    for comment in bot_comments(pr["number"]) if pr else []:
-        body = unescape(comment["body"])
-        found = VERDICT_RE.search(body)
-        if found is None:
-            continue
-        test_requests += found.group(1) == "TEST_CHANGES_REQUESTED"
-        fix_requests += found.group(1) == "FIX_CHANGES_REQUESTED"
-        reviewed = REVIEWED_SHA_RE.search(body)
-        if reviewed and pr and reviewed.group(1) == pr["headRefOid"]:
-            verdict = found.group(1)
-    return PipelineState(analysis_done, pr, verdict, test_requests, fix_requests)
+    reviews = verdicts(pr["number"]) if pr else []
+    current = verdict_for(reviews, pr["headRefOid"]) if pr else None
+    return PipelineState(
+        analysis_done=analysis_done,
+        pull_request=pr,
+        verdict=current.value if current else None,
+        test_change_requests=sum(review.value == "TEST_CHANGES_REQUESTED" for review in reviews),
+        fix_change_requests=sum(review.value == "FIX_CHANGES_REQUESTED" for review in reviews),
+    )
 
 
 def find_command_run(workflow_file: str, *, actor: str, created_after: dt.datetime) -> int:
@@ -476,9 +517,11 @@ def hidden_items(lines: list[str]) -> list[str]:
             continue
         raw = line.split(GATEWAY_FILTERED, 1)[1]
         try:
-            items.append(json.loads(raw).get("description", raw))
+            parsed = json.loads(raw)
         except json.JSONDecodeError:
-            items.append(raw)
+            parsed = None
+        description = parsed.get("description") if isinstance(parsed, dict) else None
+        items.append(description if isinstance(description, str) else raw)
     return items
 
 
@@ -509,7 +552,8 @@ def gateway_notes(lines: list[str], *, needs_comment_reads: bool) -> list[str]:
             f"The MCP gateway hid {GATEWAY_HIDDEN_DIFF} {hidden_diffs} times but the agent asked for the diff only "
             f"{diff_reads} times, so it also hid the pull request itself."
         )
-    if others := [item for item in hidden if item != GATEWAY_HIDDEN_DIFF]:
+    unidentified = [item for item in hidden if item.endswith(GATEWAY_UNIDENTIFIED)]
+    if others := [item for item in hidden if item != GATEWAY_HIDDEN_DIFF and item not in unidentified]:
         raise CheckFailedError(f"The MCP gateway hid content the agent may need: {', '.join(others)}.")
     if needs_comment_reads and reads == 0:
         raise CheckFailedError(
@@ -522,6 +566,7 @@ def gateway_notes(lines: list[str], *, needs_comment_reads: bool) -> list[str]:
             f"warning: the gateway hid the pull request diff on {hidden_diffs} of {diff_reads} requests, "
             "so the agent read it from git"
         )
+    notes += [f"warning: the gateway hid {item}; check that the agent asked again and got it" for item in unidentified]
     return notes
 
 
@@ -529,7 +574,10 @@ def marker_note(text: str, marker: str) -> str:
     if marker in text:
         return f"{marker} present"
     if marker in unescape(text):
-        return f"warning: {marker} posted with escaped underscores, which the gates still read"
+        raise CheckFailedError(
+            f"{marker} was posted with escaped underscores, which a gate that matches the exact text cannot find; "
+            "the agent wrote it outside a code span."
+        )
     raise CheckFailedError(f"{marker} is missing.")
 
 
@@ -544,10 +592,19 @@ def record_step(
     try:
         check_run(run)
         step.notes += checks(run_id)
-    except CheckFailedError as error:
+    except (CheckFailedError, GhError) as error:
         step.failure = str(error)
         raise
     log(f"{name}: passed ({'; '.join(step.notes)})")
+
+
+def record_command_run(
+    session: Session, name: str, workflow: Workflow, run_id: int, after_run: Callable[[], list[str]]
+) -> None:
+    def checks(finished_run_id: int) -> list[str]:
+        return [*check_gateway(finished_run_id, needs_comment_reads=workflow != ANALYST), *after_run()]
+
+    record_step(session, name, run_id, workflow.timeout, checks)
 
 
 def run_command(
@@ -556,14 +613,10 @@ def run_command(
     log(f"{name}: posting {workflow.command} on #{target}")
     comment = api(f"repos/{SANDBOX}/issues/{target}/comments", "POST", {"body": workflow.command})
     run_id = find_command_run(workflow.file, actor=session.login, created_after=parse_time(comment["created_at"]))
-
-    def checks(finished_run_id: int) -> list[str]:
-        return [*check_gateway(finished_run_id, needs_comment_reads=workflow != ANALYST), *after_run()]
-
-    record_step(session, name, run_id, workflow.timeout, checks)
+    record_command_run(session, name, workflow, run_id, after_run)
 
 
-def analyze(session: Session, issue: int) -> None:
+def analysis_checks(issue: int) -> Callable[[], list[str]]:
     def after_run() -> list[str]:
         for comment in bot_comments(issue):
             if ANALYSIS_MARKER in unescape(comment["body"]):
@@ -573,30 +626,30 @@ def analyze(session: Session, issue: int) -> None:
             "Read its comment on the issue."
         )
 
-    run_command(session, "Analysis", ANALYST, issue, after_run)
+    return after_run
 
 
-def write_test(session: Session, issue: int) -> None:
+def test_pull_request_checks(issue: int) -> Callable[[], list[str]]:
     def after_run() -> list[str]:
         pull_requests = pipeline_pull_requests(issue)
         if not pull_requests:
             raise CheckFailedError(f"No pull request from a {PIPELINE_BRANCH_PREFIX}{issue}- branch was opened.")
         return [f"opened {pull_requests[0]['url']}", marker_note(pull_requests[0]["body"], TEST_MARKER)]
 
-    run_command(session, "Failing test", TEST_WRITER, issue, after_run)
+    return after_run
 
 
-def push_to_pull_request(session: Session, name: str, workflow: Workflow, pr: dict[str, Any]) -> None:
+def push_checks(pr_number: int, old_head: str | None, workflow: Workflow) -> Callable[[], list[str]]:
     def after_run() -> list[str]:
-        current = gh_dict("pr", "view", str(pr["number"]), "-R", SANDBOX, "--json", "headRefOid,body")
-        if current["headRefOid"] == pr["headRefOid"]:
+        current = gh_dict("pr", "view", str(pr_number), "-R", SANDBOX, "--json", "headRefOid,body")
+        if current["headRefOid"] == old_head:
             raise CheckFailedError("The agent pushed no commit, so no review will start.")
         notes = [f"pushed {current['headRefOid'][:10]}"]
         if workflow == FIXER:
             notes.append(marker_note(current["body"], FIX_MARKER))
         return notes
 
-    run_command(session, name, workflow, pr["number"], after_run)
+    return after_run
 
 
 def review(session: Session, pr: dict[str, Any]) -> None:
@@ -607,19 +660,46 @@ def review(session: Session, pr: dict[str, Any]) -> None:
 
     def checks(finished_run_id: int) -> list[str]:
         notes = check_gateway(finished_run_id, needs_comment_reads=True)
-        for comment in reversed(bot_comments(pr["number"])):
-            body = unescape(comment["body"])
-            verdict, reviewed = VERDICT_RE.search(body), REVIEWED_SHA_RE.search(body)
-            if verdict and reviewed and reviewed.group(1) == head_sha:
-                iteration = ITERATION_RE.search(body)
-                notes.insert(0, f"{verdict.group(1)} ({iteration.group(1) if iteration else 'no iteration marker'})")
-                return [*notes, marker_note(comment["body"], VERDICT_MARKER)]
-        raise CheckFailedError(f"The review finished but posted no verdict for {head_sha[:10]}.")
+        current = verdict_for(verdicts(pr["number"]), head_sha)
+        if current is None:
+            raise CheckFailedError(f"The review finished but posted no verdict for {head_sha[:10]}.")
+        notes.insert(0, f"{current.value} ({current.iteration or 'no iteration marker'})")
+        return [*notes, marker_note(current.body, VERDICT_MARKER)]
 
     record_step(session, name, run_id, REVIEW_TIMEOUT, checks)
 
 
-def ask_person(pr: dict[str, Any], requests: int, workflow: Workflow, session: Session) -> NeedsPersonError:
+def check_command_posted_by_hand(session: Session, issue: int) -> None:
+    pull_requests = pipeline_pull_requests(issue)
+    pr = pull_requests[0] if pull_requests else None
+    posted = [
+        (parse_time(comment["created_at"]), target, COMMANDS[comment["body"].strip()])
+        for target in [issue, *([pr["number"]] if pr else [])]
+        for comment in comments(target)
+        if comment["user"]["login"] == session.login and comment["body"].strip() in COMMANDS
+    ]
+    reviews = verdicts(pr["number"]) if pr else []
+    if not posted:
+        return
+    when, target, workflow = max(posted, key=itemgetter(0))
+    if reviews and reviews[-1].posted > when:
+        return
+    if workflow == ANALYST:
+        after_run = analysis_checks(issue)
+    elif target == issue:
+        after_run = test_pull_request_checks(issue)
+    else:
+        after_run = push_checks(target, reviews[-1].reviewed_sha if reviews else None, workflow)
+    run_id = find_command_run(workflow.file, actor=session.login, created_after=when)
+    record_command_run(session, f"{workflow.command} posted by hand", workflow, run_id, after_run)
+
+
+def ask_person(session: Session, pr: dict[str, Any], requests: int, workflow: Workflow) -> NeedsPersonError:
+    if requests >= REVIEW_ITERATION_LIMIT:
+        return NeedsPersonError(
+            f"The reviewer asked for changes {requests} times on {pr['url']}, its own limit, so it will not review "
+            "again. Read its reviews to decide whether the pipeline change caused this, then run `cleanup`."
+        )
     return NeedsPersonError(
         f"The reviewer asked for changes {requests} times on {pr['url']}. Read its last review, then either post "
         f"{workflow.command} on the pull request yourself and continue with "
@@ -632,21 +712,25 @@ def drive(session: Session, issue: int) -> None:
         state = read_state(issue)
         pr = state.pull_request
         if not state.analysis_done:
-            analyze(session, issue)
+            run_command(session, "Analysis", ANALYST, issue, analysis_checks(issue))
         elif pr is None:
-            write_test(session, issue)
+            run_command(session, "Failing test", TEST_WRITER, issue, test_pull_request_checks(issue))
         elif state.verdict is None:
             review(session, pr)
         elif state.verdict == "TEST_CHANGES_REQUESTED":
             if state.test_change_requests > MAX_TEST_REVISIONS:
-                raise ask_person(pr, state.test_change_requests, TEST_WRITER, session)
-            push_to_pull_request(session, f"Test revision {state.test_change_requests}", TEST_WRITER, pr)
+                raise ask_person(session, pr, state.test_change_requests, TEST_WRITER)
+            name = f"Test revision {state.test_change_requests}"
+            run_command(
+                session, name, TEST_WRITER, pr["number"], push_checks(pr["number"], pr["headRefOid"], TEST_WRITER)
+            )
         elif state.verdict == "TEST_APPROVED":
-            push_to_pull_request(session, "Fix", FIXER, pr)
+            run_command(session, "Fix", FIXER, pr["number"], push_checks(pr["number"], pr["headRefOid"], FIXER))
         elif state.verdict == "FIX_CHANGES_REQUESTED":
             if state.fix_change_requests > MAX_FIX_REVISIONS:
-                raise ask_person(pr, state.fix_change_requests, FIXER, session)
-            push_to_pull_request(session, f"Fix revision {state.fix_change_requests}", FIXER, pr)
+                raise ask_person(session, pr, state.fix_change_requests, FIXER)
+            name = f"Fix revision {state.fix_change_requests}"
+            run_command(session, name, FIXER, pr["number"], push_checks(pr["number"], pr["headRefOid"], FIXER))
         else:
             return
     raise CheckFailedError(f"The pipeline did not reach FIX_APPROVED within {MAX_STEPS} steps.")
@@ -680,14 +764,16 @@ def start_or_resume(session: Session, args: argparse.Namespace) -> int:
         tested_number, session.head_sha = tested_pull_request()
         if tested_number != args.pr:
             raise CheckFailedError(f"The sandbox is set up for pull request {tested_number}, not {args.pr}.")
-        wait_for_active_runs()
+        check_command_posted_by_hand(session, args.resume_issue)
         return args.resume_issue
     session.head_sha, merge_sha = pull_request_commits(args.pr)
+    root = repository_root()
+    fetch_merge_commit(root, args.pr, session.head_sha, merge_sha)
     if not args.skip_lock_check:
-        check_lock_files(args.pr, session.head_sha)
+        check_lock_files(root, session.head_sha)
     cleanup()
     cancel_active_runs()
-    reset_sandbox(args.pr, session.head_sha, merge_sha)
+    reset_sandbox(root, args.pr, session.head_sha, merge_sha, session.login)
     return open_issue()
 
 
@@ -695,8 +781,15 @@ def run(args: argparse.Namespace) -> int:
     session = Session(pr_number=args.pr)
     outcome, status = "passed", 0
     try:
+        if args.resume_issue is not None:
+            session.issue = args.resume_issue
         session.issue = start_or_resume(session, args)
         drive(session, session.issue)
+        if not session.steps:
+            raise CheckFailedError(
+                "This run checked no step, because the pipeline had already finished; use the report of the run "
+                "that checked it."
+            )
     except (CheckFailedError, GhError) as error:
         outcome, status = f"failed: {error}", 1
     except NeedsPersonError as error:
@@ -714,7 +807,9 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     run_parser = commands.add_parser("run", help="Reset the sandbox to a pull request and run its bug pipeline")
     run_parser.add_argument("--pr", type=int, required=True, help="Infrahub pull request number")
-    run_parser.add_argument("--resume-issue", type=int, help="Continue an earlier run on this sandbox issue")
+    run_parser.add_argument(
+        "--resume-issue", type=int, help="Continue an earlier run on this sandbox issue, after posting a command"
+    )
     run_parser.add_argument("--skip-lock-check", action="store_true", help="Do not recompile the lock files first")
     run_parser.add_argument("--report", type=Path, help="Also write the Markdown report to this file")
     commands.add_parser("cleanup", help="Close the issues and pull requests that earlier runs left open")
