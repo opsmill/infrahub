@@ -12,22 +12,45 @@ export type InstanceBadgeVariant =
 interface InstanceColorPreset {
   badgeVariant: InstanceBadgeVariant;
   barClassName: string;
+  // A favicon is rendered outside the page, so it cannot read the theme tokens.
+  faviconColor: string;
   label: string;
 }
 
 // The order is the one the color picker lists the presets in.
 const INSTANCE_COLOR_PRESETS: Record<InstanceColor, InstanceColorPreset> = {
-  RED: { badgeVariant: "red", barClassName: "bg-danger", label: "Red" },
-  AMBER: { badgeVariant: "warning", barClassName: "bg-warning-strong", label: "Amber" },
-  GREEN: { badgeVariant: "green", barClassName: "bg-success", label: "Green" },
-  BLUE: { badgeVariant: "blue", barClassName: "bg-info", label: "Blue" },
-  INDIGO: { badgeVariant: "indigo", barClassName: "bg-active", label: "Indigo" },
+  RED: { badgeVariant: "red", barClassName: "bg-danger", faviconColor: "#e11d48", label: "Red" },
+  AMBER: {
+    badgeVariant: "warning",
+    barClassName: "bg-warning-strong",
+    faviconColor: "#f59e0b",
+    label: "Amber",
+  },
+  GREEN: {
+    badgeVariant: "green",
+    barClassName: "bg-success",
+    faviconColor: "#16a34a",
+    label: "Green",
+  },
+  BLUE: { badgeVariant: "blue", barClassName: "bg-info", faviconColor: "#0284c7", label: "Blue" },
+  INDIGO: {
+    badgeVariant: "indigo",
+    barClassName: "bg-active",
+    faviconColor: "#4f46e5",
+    label: "Indigo",
+  },
   PURPLE: {
     badgeVariant: "purple",
     barClassName: "bg-purple-600 dark:bg-purple-400",
+    faviconColor: "#9333ea",
     label: "Purple",
   },
-  GRAY: { badgeVariant: "gray", barClassName: "bg-foreground-muted", label: "Gray" },
+  GRAY: {
+    badgeVariant: "gray",
+    barClassName: "bg-foreground-muted",
+    faviconColor: "#57534e",
+    label: "Gray",
+  },
 };
 
 const UNSET_INSTANCE_BADGE_VARIANT: InstanceBadgeVariant = "gray";
@@ -53,4 +76,8 @@ export function instanceBadgeVariant(color: string | null): InstanceBadgeVariant
 
 export function instanceBarClassName(color: string | null): string | null {
   return isInstanceColor(color) ? INSTANCE_COLOR_PRESETS[color].barClassName : null;
+}
+
+export function instanceFaviconColor(color: string | null): string | null {
+  return isInstanceColor(color) ? INSTANCE_COLOR_PRESETS[color].faviconColor : null;
 }
