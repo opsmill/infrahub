@@ -5,12 +5,15 @@ import { DesignHistory, type Knob, type Variant } from "./design-history-panel";
 import { FilterRev01 } from "./directions/filter-rev-01";
 import { FilterRev02 } from "./directions/filter-rev-02";
 import { FilterRev03 } from "./directions/filter-rev-03";
+import { FilterRev04 } from "./directions/filter-rev-04";
 import { GroupedRev01 } from "./directions/grouped-rev-01";
 import { GroupedRev02 } from "./directions/grouped-rev-02";
 import { GroupedRev03 } from "./directions/grouped-rev-03";
+import { GroupedRev04 } from "./directions/grouped-rev-04";
 import { LayoutRev01 } from "./directions/layout-rev-01";
 import { LayoutRev02 } from "./directions/layout-rev-02";
 import { LayoutRev03 } from "./directions/layout-rev-03";
+import { LayoutRev04 } from "./directions/layout-rev-04";
 import { TodayRev01 } from "./directions/today-rev-01";
 
 const DATE = "2026-11-10";
@@ -62,6 +65,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <GroupedRev03 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 4,
+        note: "Titled property groups on Properties; Sections renamed Containers",
+        date: DATE,
+        render: (k) => <GroupedRev04 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -88,6 +97,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <LayoutRev03 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 4,
+        note: "Titled property groups on Properties; Sections renamed Containers",
+        date: DATE,
+        render: (k) => <LayoutRev04 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -113,6 +128,12 @@ const VARIANTS: Variant[] = [
         note: "Built-in Advanced section removed; Sections rows restyled as property rows",
         date: DATE,
         render: (k) => <FilterRev03 showFieldSource={showSource(k)} />,
+      },
+      {
+        rev: 4,
+        note: "Titled property groups on Properties; Sections renamed Containers",
+        date: DATE,
+        render: (k) => <FilterRev04 showFieldSource={showSource(k)} />,
       },
     ],
   },
