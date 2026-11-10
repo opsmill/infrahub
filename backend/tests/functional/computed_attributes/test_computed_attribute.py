@@ -3,16 +3,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from prefect.client.orchestration import get_client as get_prefect_client
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_python
-from infrahub.computed_attribute.tasks import query_transform_targets
+from infrahub.computed_attribute.tasks import process_transform, query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
+from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -21,6 +24,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
+    from prefect.client.orchestration import PrefectClient
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -34,6 +38,25 @@ mutation Recompute($kind: String!, $attribute: String!, $node_ids: [String!]) {
   }
 }
 """
+
+
+SUBSCRIBED_QUERY_GROUPS = """
+query SubscribedQueryGroups($ids: [ID]) {
+  CoreGraphQLQueryGroup(subscribers__ids: $ids) {
+    edges {
+      node {
+        subscribers { edges { node { id } } }
+        members { edges { node { id } } }
+      }
+    }
+  }
+}
+"""
+
+
+async def _count_flow_runs(prefect_client: PrefectClient, flow_name: str) -> int:
+    flow_runs = await prefect_client.read_flow_runs(flow_filter=FlowFilter(name=FlowFilterName(any_=[flow_name])))
+    return len(flow_runs)
 
 
 class TestComputedAttribute(TestInfrahubApp):
@@ -203,3 +226,36 @@ class TestComputedAttribute(TestInfrahubApp):
             tshirt_altered_pitch_allocation.pitch.value
             == "Buy your Rouge t-shirt today. Look great in a soft off-white, smooth and timeless."
         )
+
+    async def test_process_transform_records_query_groups_without_a_flow_run_per_node(
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+        context: InfrahubContext,
+    ) -> None:
+        """A batch keeps every node subscribed to its query group without one group-update flow run per node."""
+        tshirt_ids = [data["t1"].id, data["t2"].id]
+
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            runs_before = await _count_flow_runs(prefect_client, flow_name=GRAPHQL_QUERY_GROUP_UPDATE.name)
+            await process_transform(
+                branch_name=default_branch.name,
+                node_kind=TSHIRT.kind,
+                computed_attribute_name="pitch",
+                computed_attribute_kind=TSHIRT.kind,
+                context=context.to_event_context(),
+                object_ids=tshirt_ids,
+            )
+            runs_after = await _count_flow_runs(prefect_client, flow_name=GRAPHQL_QUERY_GROUP_UPDATE.name)
+
+        response = await client.execute_graphql(query=SUBSCRIBED_QUERY_GROUPS, variables={"ids": tshirt_ids})
+        members_by_subscriber = {
+            subscriber["node"]["id"]: {member["node"]["id"] for member in group["node"]["members"]["edges"]}
+            for group in response[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]
+            for subscriber in group["node"]["subscribers"]["edges"]
+        }
+        # An earlier test in this class changes a t-shirt's color, so the expected member is read back.
+        tshirts = [await client.get(kind=TSHIRT.kind, id=tshirt_id) for tshirt_id in tshirt_ids]
+        assert runs_after == runs_before
+        assert members_by_subscriber == {tshirt.id: {tshirt.id, tshirt.color.id} for tshirt in tshirts}

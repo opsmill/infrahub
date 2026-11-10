@@ -1,3 +1,4 @@
+from infrahub_sdk import InfrahubClient
 from infrahub_sdk.groups import group_add_subscriber
 from infrahub_sdk.utils import dict_hash
 from prefect import flow
@@ -8,19 +9,8 @@ from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
 
 
-@flow(name="graphql-query-group-update", flow_run_name="Update GraphQLQuery Group '{model.query_name}'")
-async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> None:
-    """Create or Update a GraphQLQueryGroup."""
-    client = get_client()
-
-    # If there is only one subscriber, associate the task to it
-    # If there are more than one, for now we can't associate all of them
-    related_nodes = []
-    if len(model.subscribers) == 1:
-        related_nodes.append(model.subscribers[0])
-
-    await add_tags(branches=[model.branch], nodes=related_nodes, namespace=False)
-
+async def apply_graphql_query_group_update(client: InfrahubClient, model: RequestGraphQLQueryGroupUpdate) -> None:
+    """Create or update the GraphQLQueryGroup of one query and parameter set, and add its subscribers."""
     params_hash = dict_hash(model.params)
     group_name = f"{model.query_name}__{params_hash}"
     group_label = f"Query {model.query_name} Hash({params_hash[:8]})"
@@ -38,3 +28,17 @@ async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> N
 
     if model.subscribers:
         await group_add_subscriber(client=client, group=group, subscribers=model.subscribers, branch=model.branch)
+
+
+@flow(name="graphql-query-group-update", flow_run_name="Update GraphQLQuery Group '{model.query_name}'")
+async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> None:
+    """Create or Update a GraphQLQueryGroup."""
+    # If there is only one subscriber, associate the task to it
+    # If there are more than one, for now we can't associate all of them
+    related_nodes = []
+    if len(model.subscribers) == 1:
+        related_nodes.append(model.subscribers[0])
+
+    await add_tags(branches=[model.branch], nodes=related_nodes, namespace=False)
+
+    await apply_graphql_query_group_update(client=get_client(), model=model)

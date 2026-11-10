@@ -25,6 +25,8 @@ from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
+from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
+from infrahub.groups.tasks import apply_graphql_query_group_update
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
 from infrahub.utilities.chunks import chunked
@@ -57,6 +59,8 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -150,34 +154,55 @@ async def _transform_value_for_node(
     convert_query_response: bool,
     context: EventContext,
     repo: InfrahubReadOnlyRepository | InfrahubRepository,
+    group_updates: list[RequestGraphQLQueryGroupUpdate],
 ) -> AttributeValueWrite:
     """Compute one node's value against a shared, pre-initialized repository.
 
     ``update_group`` keeps the node subscribed to the transform's query group, which is
-    what routes future source changes back to this node. ``context`` is reapplied here
-    because ``get_client()`` builds a fresh client per call rather than inheriting one.
+    what routes future source changes back to this node. The query returns that group
+    update instead of starting a flow run for it, and it is added to ``group_updates``
+    before the transform runs, so it is applied whether or not the transform succeeds.
+    ``context`` is reapplied here because ``get_client()`` builds a fresh client per call
+    rather than inheriting one.
     """
     client = get_client()
     client.request_context = context.to_request_context()
 
-    data = await client.query_gql_query(
+    response = await client.query_gql_query(
         name=query_id,
         branch_name=branch_name,
         variables={"id": object_id},
         update_group=True,
         subscribers=[object_id],
+        params={"return_group_update": "true"},
     )
+    if (group_update := response.pop("group_update", None)) is not None:
+        group_updates.append(RequestGraphQLQueryGroupUpdate.model_validate(group_update))
 
     value = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
         client=client,
         branch_name=branch_name,
         commit=commit,
         location=f"{file_path}::{class_name}",
-        data=quote(data),
+        data=quote(response),
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 
     return AttributeValueWrite(node_id=object_id, field=attribute_name, value=value)
+
+
+async def _apply_query_group_updates(
+    client: InfrahubClient, group_updates: list[RequestGraphQLQueryGroupUpdate]
+) -> list[tuple[RequestGraphQLQueryGroupUpdate, Exception]]:
+    """Apply a batch's query-group updates and return the ones that failed, so a failure leaves the values in place."""
+    failures: list[tuple[RequestGraphQLQueryGroupUpdate, Exception]] = []
+    batch = await client.create_batch(return_exceptions=True)
+    for group_update in group_updates:
+        batch.add(task=apply_graphql_query_group_update, node=group_update, client=client, model=group_update)
+    async for group_update, result in batch.execute():
+        if isinstance(result, Exception):
+            failures.append((group_update, result))
+    return failures
 
 
 def _partition_transform_results(
@@ -216,9 +241,9 @@ async def process_transform(
 ) -> None:
     """Recompute Python computed attributes for a batch of nodes.
 
-    One repository init and one bulk write per batch; unchanged values emit no events
-    and fan out no further recompute; a failing node keeps its previous value without
-    blocking its siblings.
+    One repository init, one bulk write and one pass of query-group updates per batch;
+    unchanged values emit no events and fan out no further recompute; a failing node keeps
+    its previous value without blocking its siblings.
 
     Raises:
         ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
@@ -267,6 +292,7 @@ async def process_transform(
         )
 
         # One failing node must not abort the batch and drop its siblings' writes.
+        group_updates: list[RequestGraphQLQueryGroupUpdate] = []
         batch = await client.create_batch(return_exceptions=True)
         for oid in all_ids:
             batch.add(
@@ -283,6 +309,7 @@ async def process_transform(
                 convert_query_response=transform.convert_query_response,
                 context=context,
                 repo=repo,
+                group_updates=group_updates,
             )
         results: list[tuple[str, AttributeValueWrite | Exception]] = [
             (oid, result) async for oid, result in batch.execute()
@@ -299,9 +326,14 @@ async def process_transform(
             coalesced=False,
             recompute_depth=0,
         )
+        for group_update, error in await _apply_query_group_updates(client=client, group_updates=group_updates):
+            log.warning(
+                f"Unable to update the query group of '{group_update.query_name}' "
+                f"for subscribers {group_update.subscribers}: {error!r}"
+            )
         log.info(
             f"Recompute of '{attribute_name}' complete: submitted={len(results)} "
-            f"written={len(writes)} skipped={len(skipped)}"
+            f"written={len(writes)} skipped={len(skipped)} query_groups={len(group_updates)}"
         )
 
 

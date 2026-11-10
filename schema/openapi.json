@@ -1004,6 +1004,18 @@
                         "description": "When True create or update a CoreGraphQLQueryGroup with all nodes related to this query."
                     },
                     {
+                        "name": "return_group_update",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together.",
+                            "default": false,
+                            "title": "Return Group Update"
+                        },
+                        "description": "When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together."
+                    },
+                    {
                         "name": "branch",
                         "in": "query",
                         "required": false,
@@ -1127,6 +1139,18 @@
                             "title": "Update Group"
                         },
                         "description": "When True create or update a CoreGraphQLQueryGroup with all nodes related to this query."
+                    },
+                    {
+                        "name": "return_group_update",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together.",
+                            "default": false,
+                            "title": "Return Group Update"
+                        },
+                        "description": "When True together with update_group, return the group update in the response under `group_update` instead of applying it. The caller must then apply it, which lets a caller that runs many queries apply their group updates together."
                     },
                     {
                         "name": "branch",

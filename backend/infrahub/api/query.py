@@ -39,6 +39,16 @@ if TYPE_CHECKING:
 log = get_logger()
 router = APIRouter(prefix="/query")
 
+RESERVED_QUERY_PARAMETERS = ("branch", "at", "update_group", "return_group_update", "subscribers")
+UPDATE_GROUP_DESCRIPTION = (
+    f"When True create or update a {InfrahubKind.GRAPHQLQUERYGROUP} with all nodes related to this query."
+)
+RETURN_GROUP_UPDATE_DESCRIPTION = (
+    "When True together with update_group, return the group update in the response under `group_update` "
+    "instead of applying it. The caller must then apply it, which lets a caller that runs many queries "
+    "apply their group updates together."
+)
+
 
 class QueryPayload(BaseModel):
     variables: dict[str, Any] = Field(default_factory=dict)
@@ -51,6 +61,7 @@ async def execute_query(
     query_id: str,
     params: dict[str, Any],
     update_group: bool,
+    return_group_update: bool,
     subscribers: list[str],
     permission_checker: GraphQLQueryPermissionChecker,
     account_session: AccountSession,
@@ -117,7 +128,6 @@ async def execute_query(
     related_node_ids = gql_params.context.related_node_ids or set()
 
     if update_group:
-        service: InfrahubServices = request.app.state.service
         model = RequestGraphQLQueryGroupUpdate(
             branch=branch_params.branch.name,
             query_id=gql_query.id,
@@ -126,9 +136,13 @@ async def execute_query(
             subscribers=sorted(subscribers),
             params=params,
         )
-        await service.workflow.submit_workflow(
-            workflow=GRAPHQL_QUERY_GROUP_UPDATE, context=context, parameters={"model": model}
-        )
+        if return_group_update:
+            response_payload["group_update"] = model.model_dump(mode="json")
+        else:
+            service: InfrahubServices = request.app.state.service
+            await service.workflow.submit_workflow(
+                workflow=GRAPHQL_QUERY_GROUP_UPDATE, context=context, parameters={"model": model}
+            )
 
     return response_payload
 
@@ -144,10 +158,8 @@ async def graphql_query_post(
     subscribers: list[str] = Query(
         [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
     ),
-    update_group: bool = Query(
-        False,
-        description=f"When True create or update a {InfrahubKind.GRAPHQLQUERYGROUP} with all nodes related to this query.",
-    ),
+    update_group: bool = Query(False, description=UPDATE_GROUP_DESCRIPTION),
+    return_group_update: bool = Query(False, description=RETURN_GROUP_UPDATE_DESCRIPTION),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     account_session: AccountSession = Depends(get_current_user),
@@ -160,6 +172,7 @@ async def graphql_query_post(
         query_id=query_id,
         params=payload.variables,
         update_group=update_group,
+        return_group_update=return_group_update,
         subscribers=subscribers,
         permission_checker=permission_checker,
         account_session=account_session,
@@ -173,20 +186,14 @@ async def graphql_query_get(
     subscribers: list[str] = Query(
         [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
     ),
-    update_group: bool = Query(
-        False,
-        description=f"When True create or update a {InfrahubKind.GRAPHQLQUERYGROUP} with all nodes related to this query.",
-    ),
+    update_group: bool = Query(False, description=UPDATE_GROUP_DESCRIPTION),
+    return_group_update: bool = Query(False, description=RETURN_GROUP_UPDATE_DESCRIPTION),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     account_session: AccountSession = Depends(get_current_user),
     permission_checker: GraphQLQueryPermissionChecker = Depends(build_graphql_query_permission_checker),
 ) -> dict:
-    params = {
-        key: value
-        for key, value in request.query_params.items()
-        if key not in ["branch", "at", "update_group", "subscribers"]
-    }
+    params = {key: value for key, value in request.query_params.items() if key not in RESERVED_QUERY_PARAMETERS}
 
     return await execute_query(
         db=db,
@@ -195,6 +202,7 @@ async def graphql_query_get(
         query_id=query_id,
         params=params,
         update_group=update_group,
+        return_group_update=return_group_update,
         subscribers=subscribers,
         permission_checker=permission_checker,
         account_session=account_session,
