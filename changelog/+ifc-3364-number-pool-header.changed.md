@@ -1,1 +1,0 @@
-Added a header to the number pool details page. It shows whether the schema manages the pool and what the pool allocates to. Its Actions menu disables Edit, Groups and Delete on pools that the schema created.
