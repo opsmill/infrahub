@@ -691,7 +691,7 @@ def check_command_posted_by_hand(session: Session, issue: int) -> None:
     else:
         after_run = push_checks(target, reviews[-1].reviewed_sha if reviews else None, workflow)
     run_id = find_command_run(workflow.file, actor=session.login, created_after=when)
-    record_command_run(session, f"{workflow.command} posted by hand", workflow, run_id, after_run)
+    record_command_run(session, f"{workflow.command}, checked on resume", workflow, run_id, after_run)
 
 
 def ask_person(session: Session, pr: dict[str, Any], requests: int, workflow: Workflow) -> NeedsPersonError:
