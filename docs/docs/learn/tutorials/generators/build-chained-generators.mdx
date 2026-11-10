@@ -115,12 +115,13 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
         for pod in pods:
             if pod.checksum.value != checksum:
                 pod.checksum.value = checksum
-                await pod.save(allow_upsert=True)
+                await pod.save(allow_upsert=True, update_group_context=False)
 ```
 
 **Key points:**
 
 - The `if pod.checksum.value != checksum` guard prevents unnecessary saves — and unnecessary triggers — when the Generator is re-run with the same result.
+- Saving with `update_group_context=False` leaves the pods out of the fabric Generator's group. Each run deletes the objects in its group that it did not save again. Without the flag, the first save adds each pod to the group, and the first re-run that skips the save deletes the pod (see [Objects a run deletes](../../../generators/overview#objects-a-run-deletes)).
 - `update_checksum()` must be the **last step** in `generate()`. Only signal downstream after all work is complete.
 - The checksum naturally reflects everything the Generator touched, because it's derived from the SDK tracking context.
 
