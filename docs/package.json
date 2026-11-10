@@ -40,7 +40,7 @@
     "baseline-browser-mapping": "^2.11.34",
     "eslint": "^10.13.0",
     "markdownlint-cli2": "^0.24.0",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "browserslist": {
     "production": [
