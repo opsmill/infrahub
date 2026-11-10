@@ -4,10 +4,13 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 import { DesignHistory, type Knob, type Variant } from "./design-history-panel";
 import { FilterRev01 } from "./directions/filter-rev-01";
 import { FilterRev02 } from "./directions/filter-rev-02";
+import { FilterRev03 } from "./directions/filter-rev-03";
 import { GroupedRev01 } from "./directions/grouped-rev-01";
 import { GroupedRev02 } from "./directions/grouped-rev-02";
+import { GroupedRev03 } from "./directions/grouped-rev-03";
 import { LayoutRev01 } from "./directions/layout-rev-01";
 import { LayoutRev02 } from "./directions/layout-rev-02";
+import { LayoutRev03 } from "./directions/layout-rev-03";
 import { TodayRev01 } from "./directions/today-rev-01";
 
 const DATE = "2026-11-10";
@@ -53,6 +56,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <GroupedRev02 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 3,
+        note: "Built-in Advanced section removed; Sections rows restyled as property rows",
+        date: DATE,
+        render: (k) => <GroupedRev03 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -73,6 +82,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <LayoutRev02 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 3,
+        note: "Built-in Advanced section removed; quieter row hover; Sections rows restyled",
+        date: DATE,
+        render: (k) => <LayoutRev03 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -92,6 +107,12 @@ const VARIANTS: Variant[] = [
         note: "Compact section rows on Properties; a row filters to that section",
         date: DATE,
         render: (k) => <FilterRev02 showFieldSource={showSource(k)} />,
+      },
+      {
+        rev: 3,
+        note: "Built-in Advanced section removed; Sections rows restyled as property rows",
+        date: DATE,
+        render: (k) => <FilterRev03 showFieldSource={showSource(k)} />,
       },
     ],
   },
