@@ -38,7 +38,7 @@ router = APIRouter()
 
 
 class InstanceIdentityAPI(BaseModel):
-    """The label and color an administrator gave this instance, shown to every visitor."""
+    """A label and a color that identify this instance to every visitor."""
 
     label: str | None = Field(description="Instance label shown in the header badge and the tab title")
     color: InstanceColor | None = Field(description="Preset color of the instance badge and bar")
@@ -53,7 +53,12 @@ class ConfigAPI(BaseModel):
     ldap: config.LDAPInfo
     installation_type: str
     policy: config.PolicySettings
-    instance: InstanceIdentityAPI = Field(description="Instance identity read from the global preferences")
+    instance: InstanceIdentityAPI = Field(
+        description="Instance identity: each field is the value saved in the global preferences, else the deployment default"
+    )
+    instance_defaults: InstanceIdentityAPI = Field(
+        description="Instance identity set by the deployment configuration, used for a field with no saved value"
+    )
 
 
 class InfoAPI(BaseModel):
@@ -61,20 +66,35 @@ class InfoAPI(BaseModel):
     version: str
 
 
-async def get_instance_identity(db: InfrahubDatabase = Depends(get_db)) -> InstanceIdentityAPI:
-    """Read the instance label and color, served as unset when the read fails for any reason."""
+def get_instance_defaults() -> InstanceIdentityAPI:
+    return InstanceIdentityAPI(label=config.SETTINGS.instance.label, color=config.SETTINGS.instance.color)
+
+
+async def get_instance_identity(
+    db: InfrahubDatabase = Depends(get_db),
+    defaults: InstanceIdentityAPI = Depends(get_instance_defaults),
+) -> InstanceIdentityAPI:
+    """Resolve each field to its saved value, else the deployment default; a failed read serves the defaults."""
     try:
         global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     except Exception:
-        log.exception("Instance identity unavailable, serving it as unset")
+        log.exception("Saved instance identity unavailable, serving the deployment defaults")
         global_preference = None
     if global_preference is None:
-        return InstanceIdentityAPI(label=None, color=None)
-    return InstanceIdentityAPI(label=global_preference.instance_label, color=global_preference.instance_color)
+        return defaults
+    label = global_preference.instance_label
+    color = global_preference.instance_color
+    return InstanceIdentityAPI(
+        label=label if label is not None else defaults.label,
+        color=color if color is not None else defaults.color,
+    )
 
 
 @router.get("/config")
-async def get_config(instance: InstanceIdentityAPI = Depends(get_instance_identity)) -> ConfigAPI:
+async def get_config(
+    instance: InstanceIdentityAPI = Depends(get_instance_identity),
+    instance_defaults: InstanceIdentityAPI = Depends(get_instance_defaults),
+) -> ConfigAPI:
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
@@ -89,6 +109,7 @@ async def get_config(instance: InstanceIdentityAPI = Depends(get_instance_identi
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
         instance=instance,
+        instance_defaults=instance_defaults,
     )
 
 

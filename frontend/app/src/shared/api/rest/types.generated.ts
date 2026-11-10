@@ -807,8 +807,10 @@ export interface components {
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
-            /** @description Instance identity read from the global preferences */
+            /** @description Instance identity: each field is the value saved in the global preferences, else the deployment default */
             instance: components["schemas"]["InstanceIdentityAPI"];
+            /** @description Instance identity set by the deployment configuration, used for a field with no saved value */
+            instance_defaults: components["schemas"]["InstanceIdentityAPI"];
         };
         /**
          * DiffAction
@@ -1402,7 +1404,7 @@ export interface components {
         InstanceColor: "RED" | "AMBER" | "GREEN" | "BLUE" | "INDIGO" | "PURPLE" | "GRAY";
         /**
          * InstanceIdentityAPI
-         * @description The label and color an administrator gave this instance, shown to every visitor.
+         * @description A label and a color that identify this instance to every visitor.
          */
         InstanceIdentityAPI: {
             /**

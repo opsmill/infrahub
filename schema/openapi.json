@@ -3090,7 +3090,11 @@
                     },
                     "instance": {
                         "$ref": "#/components/schemas/InstanceIdentityAPI",
-                        "description": "Instance identity read from the global preferences"
+                        "description": "Instance identity: each field is the value saved in the global preferences, else the deployment default"
+                    },
+                    "instance_defaults": {
+                        "$ref": "#/components/schemas/InstanceIdentityAPI",
+                        "description": "Instance identity set by the deployment configuration, used for a field with no saved value"
                     }
                 },
                 "type": "object",
@@ -3103,7 +3107,8 @@
                     "ldap",
                     "installation_type",
                     "policy",
-                    "instance"
+                    "instance",
+                    "instance_defaults"
                 ],
                 "title": "ConfigAPI"
             },
@@ -4560,7 +4565,7 @@
                     "color"
                 ],
                 "title": "InstanceIdentityAPI",
-                "description": "The label and color an administrator gave this instance, shown to every visitor."
+                "description": "A label and a color that identify this instance to every visitor."
             },
             "JSONSchema": {
                 "properties": {
