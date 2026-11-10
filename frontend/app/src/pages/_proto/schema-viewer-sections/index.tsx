@@ -95,7 +95,14 @@ function SchemaViewerSectionsPrototype() {
 
   return (
     <div ref={area} className="min-h-0 grow">
-      {frame && <DesignHistory slug="schema-viewer-sections" variants={VARIANTS} frame={frame} />}
+      {frame && (
+        <DesignHistory
+          slug="schema-viewer-sections"
+          variants={VARIANTS}
+          frame={frame}
+          prUrl="https://github.com/opsmill/infrahub/pull/11519"
+        />
+      )}
     </div>
   );
 }
