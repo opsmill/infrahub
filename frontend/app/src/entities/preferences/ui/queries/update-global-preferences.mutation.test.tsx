@@ -66,8 +66,11 @@ describe("useUpdateGlobalPreferences", () => {
   test("resolves the save only once the refetches have finished", async () => {
     // GIVEN
     vi.mocked(updateGlobalPreference).mockResolvedValue();
-    const refetch = Promise.withResolvers<void>();
-    vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(refetch.promise);
+    let finishRefetch = () => {};
+    const refetch = new Promise<void>((resolve) => {
+      finishRefetch = resolve;
+    });
+    vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(refetch);
     const { result } = await renderHook(() => useUpdateGlobalPreferences(), { wrapper });
     let saved = false;
 
@@ -79,7 +82,7 @@ describe("useUpdateGlobalPreferences", () => {
 
     // THEN
     expect(saved).toBe(false);
-    refetch.resolve();
+    finishRefetch();
     await save;
     expect(saved).toBe(true);
   });
