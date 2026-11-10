@@ -76,7 +76,7 @@ A passing lint is not the review. Before handing off, confirm four things, whate
 - The [Step 10](step-10-pr-description.md) body was approved, and its verification part carries those counts and the rules-read list.
 - The lint line in that body now holds the results from this step. The body was approved at Step 10 with the lint line marked as pending, so filling it in is the one edit allowed after approval. If a tool failed or did not run, show the user the updated line before handing off.
 
-When the user asked to skip the gates ([skipping the process](../../SKILL.md#when-the-user-asks-you-to-skip-the-process-or-the-rules)), the Step 9 gate and the Step 10 approval are in the one message at the end that combines the skipped gates. Once the user approves that message, the first and third items are met. Do not ask for the skipped gates again.
+When the user asked to skip the gates ([skipping the process](../01-principles/skip-requests.md)), the Step 9 gate and the Step 10 approval are in the one message at the end that combines the skipped gates. Once the user approves that message, the first and third items are met. Do not ask for the skipped gates again.
 
 If any of the four is missing, go back to that step. Do not report the page as verified on the strength of Vale, markdownlint and the build.
 
