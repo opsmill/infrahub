@@ -473,6 +473,26 @@ async def test_relationship_validate_many_less_than_min_raise(
         del result[0]
 
 
+async def test_relationship_validate_remove_peers(person_jack_main: Node, branch: Branch) -> None:
+    rel_schema = registry.schema.get(name="TestPerson").get_relationship("tags")
+    rels = []
+    for peer_id in ("peer-a", "peer-b", "peer-c"):
+        rel = Relationship(
+            schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+        )
+        rel.set_peer(value=peer_id)
+        rels.append(rel)
+
+    result = RelationshipValidatorList(*rels, name="name", min_count=2, max_count=None)
+    with pytest.raises(infra_execs.ValidationError, match=r"Too few relationships, min 2"):
+        result.remove_peers(peer_ids={"peer-a", "peer-c"})
+    assert [rel.peer_id for rel in result] == ["peer-a", "peer-b", "peer-c"]
+
+    result.remove_peers(peer_ids={"peer-a"})
+    assert [rel.peer_id for rel in result] == ["peer-b", "peer-c"]
+    assert len(result) == 2
+
+
 async def test_relationship_assign_from_pool(
     db: InfrahubDatabase,
     default_branch: Branch,
