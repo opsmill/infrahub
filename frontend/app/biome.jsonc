@@ -55,7 +55,8 @@
         "useSortedAttributes": "off",
         "useSortedInterfaceMembers": "off",
         "useSortedKeys": "off",
-        "useSortedProperties": "off"
+        "useSortedProperties": "off",
+        "useSortedPackageJson": "off"
       }
     }
   },
@@ -72,6 +73,7 @@
         "noStaticElementInteractions": "off"
       },
       "complexity": {
+        "noUselessReturn": "off",
         "noBannedTypes": "off",
         "noExcessiveCognitiveComplexity": "off",
         "noForEach": "off",
@@ -107,12 +109,17 @@
         "useExhaustiveSwitchCases": "off"
       },
       "performance": {
+        "noJsxPropsBind": "off",
+        "noAwaitInLoops": "off",
         "noAccumulatingSpread": "off",
         "noImgElement": "off",
         "useTopLevelRegex": "off",
         "noNamespaceImport": "off"
       },
       "style": {
+        "useDestructuring": "off",
+        "noIncrementDecrement": "off",
+        "useConsistentMethodSignatures": "off",
         "noDefaultExport": "off",
         "noEnum": "off",
         "noExportedImports": "off",
@@ -142,6 +149,9 @@
         "useTemplate": "off"
       },
       "suspicious": {
+        "noLeakedRender": "off",
+        "noReturnAssign": "off",
+        "noEqualsToNull": "off",
         "noArrayIndexKey": "off",
         "noAssignInExpressions": "off",
         "noConsole": {

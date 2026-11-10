@@ -16,6 +16,9 @@ const config: KnipConfig = {
   ],
 
   ignoreExportsUsedInFile: true,
+
+  // The pnpm catalog lives in the workspace root, one level above this package, which knip does not resolve.
+  rules: { catalogReferences: "off" },
 };
 
 export default config;
