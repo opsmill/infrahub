@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
+from infrahub.instance_identity import InstanceColor
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.instance_identity import InstanceColor
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:

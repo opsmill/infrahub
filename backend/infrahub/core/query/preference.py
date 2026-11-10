@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from infrahub.core.constants import NULL_VALUE
-from infrahub.core.preferences.constants import DateFormat, InstanceColor
+from infrahub.core.preferences.constants import DateFormat
 from infrahub.core.preferences.models import Preference
 from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.query.standard_node import StandardNodeQuery
+from infrahub.instance_identity import InstanceColor
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
