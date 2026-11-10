@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from functools import cached_property
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -66,11 +67,19 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
         is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
         """
-        if self.members and member_id not in self.members:
+        if self.members and member_id not in self._member_ids:
             return False
-        if self.limit and artifact_id not in self.limit:
+        if self.limit and artifact_id not in self._limit_ids:
             return False
         return True
+
+    @cached_property
+    def _member_ids(self) -> frozenset[str]:
+        return frozenset(self.members)
+
+    @cached_property
+    def _limit_ids(self) -> frozenset[str]:
+        return frozenset(self.limit)
 
 
 class RequestArtifactGenerate(BaseModel):
