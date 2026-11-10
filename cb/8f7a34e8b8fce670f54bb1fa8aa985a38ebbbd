@@ -1,0 +1,24 @@
+REVIEW.md
+  s_74f6c0ffbad205::t_38f812e7809409 28-29
+review-docs.md
+  s_74f6c0ffbad205::t_fd63895ae179d5 1-54
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_74f6c0ffbad205::t_c187de73c70191 30-35,37-39
+  s_74f6c0ffbad205::t_db68e9a08c06b7 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb8f7a34e8b8fce670f54bb1fa8aa985a38ebbbd",
+  "prompts": {},
+  "sessions": {
+    "s_74f6c0ffbad205": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9e0eaec-e8aa-4add-8a24-18283b255902",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
