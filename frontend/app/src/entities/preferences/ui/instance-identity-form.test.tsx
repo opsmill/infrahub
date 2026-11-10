@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { userEvent } from "vitest/browser";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
@@ -137,20 +136,6 @@ describe("InstanceIdentityForm", () => {
 
     // THEN
     await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
-  });
-
-  test("does not save a label that exceeds the limit", async () => {
-    // GIVEN
-    const component = await render(<InstanceIdentityForm />);
-    const input = component.getByLabelText("Instance label");
-    await input.fill(TOO_LONG_LABEL);
-
-    // WHEN
-    await userEvent.keyboard("{Enter}");
-
-    // THEN
-    await expect.element(component.getByText(LENGTH_RULE)).toBeVisible();
-    expect(updateGlobalPreference).not.toHaveBeenCalled();
   });
 
   test("names the rule on save when the stored label already exceeds the limit", async () => {

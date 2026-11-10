@@ -364,9 +364,6 @@ async def test_global_preserves_other_field(
     assert global_pref.timezone == "UTC"
 
 
-# --------------------------------------------------------------------------------------------
-# instance_label / instance_color — GLOBAL scope only; trimmed label; enum-checked color.
-# --------------------------------------------------------------------------------------------
 async def test_global_sets_instance_label_and_color(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -471,8 +468,9 @@ async def test_global_rejects_unknown_instance_color(
     )
     assert result.errors is not None
     assert len(result.errors) == 1
-    # The coercion message is graphql-core's wording; only the enum it names is ours to pin.
-    assert "InstanceColor" in result.errors[0].message
+    assert result.errors[0].message == (
+        "Variable '$instance_color' got invalid value 'pink'; Value 'pink' does not exist in 'InstanceColor' enum."
+    )
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 

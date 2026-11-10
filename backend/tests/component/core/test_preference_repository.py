@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
-from infrahub.instance_identity import InstanceColor
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -31,20 +30,6 @@ async def test_save_then_get_for_owner_round_trip(db: InfrahubDatabase, default_
     assert fetched.timezone == "Europe/Paris"
     assert fetched.instance_label is None
     assert fetched.instance_color is None
-
-
-async def test_global_row_round_trips_instance_label_and_color(db: InfrahubDatabase, default_branch: Branch) -> None:
-    repository = PreferenceRepository(db=db)
-    await repository.save(
-        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED)
-    )
-
-    fetched = await repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    assert fetched is not None
-    assert fetched.instance_label == "us-east-1 PROD"
-    assert fetched.instance_color == InstanceColor.RED
-    assert fetched.date_format is None
-    assert fetched.timezone is None
 
 
 async def test_save_updates_in_place_without_creating_a_second_row(

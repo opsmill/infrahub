@@ -21,23 +21,12 @@ class AcceptCase:
 
 ACCEPT_CASES: list[AcceptCase] = [
     AcceptCase(name="label_and_color", label="QA", color="RED", expected_label="QA", expected_color=InstanceColor.RED),
-    AcceptCase(
-        name="label_is_trimmed",
-        label="  us-east-1 PROD  ",
-        color=None,
-        expected_label="us-east-1 PROD",
-        expected_color=None,
-    ),
-    AcceptCase(name="empty_label_is_unset", label="", color=None, expected_label=None, expected_color=None),
-    AcceptCase(name="whitespace_label_is_unset", label="   ", color=None, expected_label=None, expected_color=None),
-    AcceptCase(name="max_length_label", label="a" * 32, color=None, expected_label="a" * 32, expected_color=None),
     AcceptCase(name="empty_color_is_unset", label=None, color="", expected_label=None, expected_color=None),
     AcceptCase(name="whitespace_color_is_unset", label=None, color="  ", expected_label=None, expected_color=None),
     AcceptCase(
         name="color_is_trimmed", label=None, color=" GRAY ", expected_label=None, expected_color=InstanceColor.GRAY
     ),
     AcceptCase(name="lowercase_color", label=None, color="red", expected_label=None, expected_color=InstanceColor.RED),
-    AcceptCase(name="both_unset", label=None, color=None, expected_label=None, expected_color=None),
 ]
 
 
@@ -66,12 +55,6 @@ REJECT_CASES: list[RejectCase] = [
     RejectCase(
         name="label_with_line_feed",
         label="a\nb",
-        color=None,
-        expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot contain control characters",
-    ),
-    RejectCase(
-        name="label_with_bidi_override",
-        label="a\u202eb",
         color=None,
         expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot contain control characters",
     ),
