@@ -3,8 +3,11 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 import { DesignHistory, type Knob, type Variant } from "./design-history-panel";
 import { FilterRev01 } from "./directions/filter-rev-01";
+import { FilterRev02 } from "./directions/filter-rev-02";
 import { GroupedRev01 } from "./directions/grouped-rev-01";
+import { GroupedRev02 } from "./directions/grouped-rev-02";
 import { LayoutRev01 } from "./directions/layout-rev-01";
+import { LayoutRev02 } from "./directions/layout-rev-02";
 import { TodayRev01 } from "./directions/today-rev-01";
 
 const DATE = "2026-11-10";
@@ -13,7 +16,7 @@ const SOURCE_KNOB: Knob = {
   key: "fieldSource",
   label: "Show where each field comes from",
   type: "toggle",
-  value: true,
+  value: false,
 };
 
 const showSource = (k: Record<string, unknown>) => k.fieldSource as boolean;
@@ -44,6 +47,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <GroupedRev01 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 2,
+        note: "Compact section rows on Properties; field sources off by default",
+        date: DATE,
+        render: (k) => <GroupedRev02 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -58,6 +67,12 @@ const VARIANTS: Variant[] = [
         date: DATE,
         render: (k) => <LayoutRev01 showFieldSource={showSource(k)} />,
       },
+      {
+        rev: 2,
+        note: "Cards restyled as viewer accordions; compact section rows on Properties",
+        date: DATE,
+        render: (k) => <LayoutRev02 showFieldSource={showSource(k)} />,
+      },
     ],
   },
   {
@@ -71,6 +86,12 @@ const VARIANTS: Variant[] = [
         note: "Section chips over Attributes and Relationships, shared selection",
         date: DATE,
         render: (k) => <FilterRev01 showFieldSource={showSource(k)} />,
+      },
+      {
+        rev: 2,
+        note: "Compact section rows on Properties; a row filters to that section",
+        date: DATE,
+        render: (k) => <FilterRev02 showFieldSource={showSource(k)} />,
       },
     ],
   },
