@@ -1,0 +1,25 @@
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_74f6c0ffbad205::t_c187de73c70191 30-35,37-39
+  s_74f6c0ffbad205::t_bb0c167db952bf 18-19
+review-docs.md
+  s_74f6c0ffbad205::t_d286b05a0ac07c 36
+  s_74f6c0ffbad205::t_fd63895ae179d5 1-35,37-54
+REVIEW.md
+  s_74f6c0ffbad205::t_be6739904954ce 31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9fd8b3c49b8d9344a750e03d03a44f1f812b9de",
+  "prompts": {},
+  "sessions": {
+    "s_74f6c0ffbad205": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9e0eaec-e8aa-4add-8a24-18283b255902",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
