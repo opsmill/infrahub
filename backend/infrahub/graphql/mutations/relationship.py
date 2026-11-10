@@ -31,6 +31,7 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.groups.ancestors import collect_ancestors
+from infrahub.groups.internal_query_group import changelog_for_peer_events
 from infrahub.permissions import get_global_permission_for_kind
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
@@ -140,7 +141,9 @@ async def _emit_relationship_add_events(
         meta=EventMeta(branch=graphql_context.branch, context=event_context),
     )
     relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
-    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
+    node_changelogs = await relationship_changelogs.get_changelogs(
+        primary_changelog=changelog_for_peer_events(node=source, changelog=node_changelog)
+    )
 
     events: list[NodeUpdatedEvent] = [main_event]
     for downstream_changelog in node_changelogs:
@@ -376,7 +379,9 @@ class RelationshipRemove(Mutation):
                 relationship_changelogs = RelationshipChangelogGetter(
                     db=graphql_context.db, branch=graphql_context.branch
                 )
-                node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
+                node_changelogs = await relationship_changelogs.get_changelogs(
+                    primary_changelog=changelog_for_peer_events(node=source, changelog=node_changelog)
+                )
 
                 events = [main_event]
 

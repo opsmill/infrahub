@@ -15,6 +15,7 @@ from infrahub.events.node_action import (
     NodeUpdatedEvent,
     get_node_event,
 )
+from infrahub.groups.internal_query_group import changelog_for_peer_events
 from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.worker import WORKER_IDENTITY
 
@@ -48,7 +49,9 @@ async def generate_node_mutation_events(
         meta=meta,
     )
     relationship_changelogs = RelationshipChangelogGetter(db=db, branch=branch)
-    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node.node_changelog)
+    node_changelogs = await relationship_changelogs.get_changelogs(
+        primary_changelog=changelog_for_peer_events(node=node, changelog=node.node_changelog)
+    )
 
     events: list[NodeMutatedEvent] = [main_event]
 
