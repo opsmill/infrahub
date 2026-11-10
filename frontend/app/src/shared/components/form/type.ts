@@ -6,11 +6,7 @@ import type { FormField } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
-import type {
-  IpPoolKind,
-  NumberPoolKind,
-  PoolKind,
-} from "@/entities/resource-manager/domain/model/pool";
+import type { IpPoolKind, NumberPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import type {
   AttributeKind,
   AttributeSchema,
@@ -24,8 +20,6 @@ export type EmptyFieldValue = {
   source: null;
   value: null;
 };
-
-export type { PoolKind };
 
 type PoolSourceBase = {
   type: "pool";
