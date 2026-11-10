@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import React from "react";
 import { useWatch } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
 import { DetailRow } from "@/shared/components/display/detail-row";
+import { Icon } from "@/shared/components/display/icon";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
@@ -67,7 +67,7 @@ function SourceInfo({ message }: { message: string }) {
         shape="square"
         size="xs"
         aria-label="Where this value comes from"
-        className="shrink-0 text-gray-400"
+        className="shrink-0 text-subtle-muted"
       >
         <Icon icon="mdi:information-outline" />
       </Button>
@@ -133,7 +133,7 @@ export function DateFormatField({
           />
         </div>
         <div className="min-w-0 flex-1 truncate">
-          <p id={exampleId} className="truncate text-gray-500 text-xs">
+          <p id={exampleId} className="truncate text-foreground-muted text-xs">
             Example: {example}
           </p>
         </div>

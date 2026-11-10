@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from infrahub.core.attribute import String
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
 from infrahub.exceptions import ValidationError
@@ -20,6 +21,25 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+def configured_default_branch(obj: CoreGenericRepository) -> str | None:
+    """Return the repository's configured default branch, or None when its kind configures none.
+
+    A read-only repository tracks a ref, which may be a tag or a commit hash and so cannot be
+    confirmed from a branch listing.
+
+    Raises:
+        TypeError: When default_branch is not held as a string attribute.
+
+    """
+    if obj.get_kind() != REPOSITORY:
+        return None
+
+    attribute = obj.get_attribute("default_branch")
+    if not isinstance(attribute, String):
+        raise TypeError(f"expected default_branch as a string attribute, got {type(attribute).__name__}")
+    return attribute.value
 
 
 class RepositoryFinalizer:
@@ -46,6 +66,9 @@ class RepositoryFinalizer:
 
         Raises:
             ValidationError: When connectivity to the remote repository cannot be established.
+            WorkerTimeoutError: When no worker answered the connectivity check in time.
+            Exception: Whatever the connectivity check itself failed with, such as a broker that is
+                unreachable. The repository is removed before any of these are re-raised.
             ValueError: When the repository kind is neither a regular nor a read-only repository.
 
         """
@@ -54,10 +77,27 @@ class RepositoryFinalizer:
             message = messages.GitRepositoryConnectivity(
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
+                default_branch=configured_default_branch(obj),
+                # A read-write repository must be push-able; a read-only one never pushes.
+                requires_write=obj.get_kind() == REPOSITORY,
             )
-            response = await self.services.message_bus.rpc(
-                message=message, response_class=GitRepositoryConnectivityResponse
-            )
+            try:
+                response = await self.services.message_bus.rpc(
+                    message=message, response_class=GitRepositoryConnectivityResponse
+                )
+            # The creating mutation runs outside a transaction, so an unverified repository would
+            # otherwise survive with its name taken and no way to retry.
+            except Exception:
+                log.warning("repository_removal_after_connectivity_check_failed", name=obj.name.value, id=obj.id)
+                try:
+                    await obj.delete(db=db)
+                except Exception:
+                    # Surfaced here rather than raised, so a failed cleanup cannot replace the
+                    # failure the caller needs to see.
+                    log.exception("repository_removal_failed", name=obj.name.value, id=obj.id)
+                else:
+                    log.warning("repository_removed", name=obj.name.value, id=obj.id)
+                raise
 
             if response.data.success is False:
                 await obj.delete(db=db)
@@ -101,7 +141,6 @@ class RepositoryFinalizer:
                 repository_id=obj.id,
                 repository_name=obj.name.value,
                 location=obj.location.value,
-                default_branch_name=obj.default_branch.value,
                 infrahub_branch_name=branch.name,
                 infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,

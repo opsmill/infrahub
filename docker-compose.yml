@@ -53,6 +53,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_BROKER_PORT:
   INFRAHUB_BROKER_QUEUE_TYPE: ${INFRAHUB_BROKER_QUEUE_TYPE:-classic}
   INFRAHUB_BROKER_RABBITMQ_HTTP_PORT:
+  INFRAHUB_BROKER_RPC_TIMEOUT: ${INFRAHUB_BROKER_RPC_TIMEOUT:-120}
   INFRAHUB_BROKER_TLS_CA_FILE:
   INFRAHUB_BROKER_TLS_ENABLED: ${INFRAHUB_BROKER_TLS_ENABLED:-false}
   INFRAHUB_BROKER_TLS_INSECURE: ${INFRAHUB_BROKER_TLS_INSECURE:-false}
@@ -106,6 +107,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE: ${INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE:-false}
   INFRAHUB_GIT_GLOBAL_CONFIG_FILE: ${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}
   INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES:
+  INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS: ${INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS:-15}
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
   INFRAHUB_GIT_TLS_CA_FILE:
@@ -171,7 +173,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:-2592000}
   INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS: ${INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS:-true}
   INFRAHUB_SECURITY_SECRET_KEY:
-  INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK: ${INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK:-true}
+  INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK: ${INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK:-false}
   INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE: ${INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE:-true}
   INFRAHUB_STORAGE_BUCKET_NAME:
   INFRAHUB_STORAGE_CUSTOM_DOMAIN:
@@ -195,6 +197,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
   INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
   INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+  INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}
   INFRAHUB_TRACE_TLS_CA_BUNDLE:
   INFRAHUB_TRACE_TLS_INSECURE: ${INFRAHUB_TRACE_TLS_INSECURE:-false}
   INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-localhost}
@@ -282,7 +285,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.12}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.0}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -315,7 +318,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.12}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -361,7 +364,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.12}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

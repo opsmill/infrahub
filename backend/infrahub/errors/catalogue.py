@@ -13,6 +13,8 @@ from infrahub.exceptions import (
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
+    UniquenessViolationError,
+    WorkerTimeoutError,
 )
 
 from .exceptions import (
@@ -35,6 +37,8 @@ from .payloads import (
     SchemaNotFoundData,
     TokenExpiredData,
     UndefinedErrorData,
+    UniquenessViolationData,
+    WorkerTimeoutData,
 )
 
 
@@ -121,6 +125,19 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             ),
         ),
         (
+            "UNIQUENESS_VIOLATION",
+            CatalogueEntry(
+                description=(
+                    "The submitted values collide with an existing object on a uniqueness constraint. "
+                    "The constraint members may be relationships as well as attributes."
+                ),
+                stability="evolving",
+                http_status=422,
+                payload_model=UniquenessViolationData,
+                exception_class=UniquenessViolationError,
+            ),
+        ),
+        (
             "BRANCH_NOT_FOUND",
             CatalogueEntry(
                 description="The requested branch does not exist.",
@@ -185,6 +202,19 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=423,
                 payload_model=MergeRecoveryRequiredData,
                 exception_class=MergeRecoveryRequiredError,
+            ),
+        ),
+        (
+            "WORKER_TIMEOUT",
+            CatalogueEntry(
+                description=(
+                    "No worker answered the request within the time allowed. "
+                    "The failure is transient; retry after the number of seconds the payload reports."
+                ),
+                stability="evolving",
+                http_status=504,
+                payload_model=WorkerTimeoutData,
+                exception_class=WorkerTimeoutError,
             ),
         ),
         (

@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardHeader } from "@infrahub/ui";
 import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 

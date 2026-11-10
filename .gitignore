@@ -37,6 +37,9 @@ python_sdk/dist/*
 **/*.csv
 !backend/tests/unit/**/data_export/*.csv
 
+# Screenshots from utilities/branch_details_scenarios/verify.mjs
+utilities/branch_details_scenarios/screenshots/
+
 # Generated files
 /.generated/
 # hatch-vcs version file (written at build time; must not be tracked)

@@ -3,15 +3,11 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Any, Generator
 
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.changelog.models import (
-    ChangelogRelationshipMapper,
-    RelationshipCardinalityManyChangelog,
-    RelationshipCardinalityOneChangelog,
-)
+from infrahub.core.changelog.relationship_mapper import ChangelogRelationshipMapper
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
@@ -34,6 +30,10 @@ if TYPE_CHECKING:
 
     from infrahub.constants.enums import OrderDirection
     from infrahub.core.branch import Branch
+    from infrahub.core.changelog.models import (
+        RelationshipCardinalityManyChangelog,
+        RelationshipCardinalityOneChangelog,
+    )
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
@@ -147,7 +147,7 @@ class RelationshipQuery(Query):
         schema: RelationshipSchema | None = None,
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if not source and not source_id:
             raise ValueError("Either source or source_id must be provided.")
@@ -172,7 +172,7 @@ class RelationshipQuery(Query):
 
         self.rel = rel
         self.rel_id = rel_id
-        self.schema = schema or self.rel.schema
+        self.schema = schema or self.rel.schema  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -264,16 +264,16 @@ class RelationshipCreateQuery(RelationshipQuery):
 
     def __init__(
         self,
-        destination: Node = None,
+        destination: Node | None = None,
         destination_id: UUID | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if not destination and not destination_id:
             raise ValueError("Either destination or destination_id must be provided.")
 
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["name"] = self.schema.identifier
         self.params["branch_support"] = self.schema.branch.value
 
@@ -387,7 +387,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self,
         flag_properties_to_update: dict[str, bool],
         node_properties_to_update: dict[str, str],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if not flag_properties_to_update and not node_properties_to_update:
             raise ValueError("Either flag_properties_to_update or node_properties_to_update must be set")
@@ -395,8 +395,8 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self.node_properties_to_update = node_properties_to_update
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -546,7 +546,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
     insert_return = False
     raise_error_if_empty = False
 
-    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs) -> None:
+    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs: Any) -> None:
         self.source_branch = source_branch
         self.destination_branch = destination_branch
         super().__init__(**kwargs)
@@ -556,9 +556,9 @@ class RelationshipDeleteQuery(RelationshipQuery):
                 "An instance of Relationship or a relationship ID must be provided to RelationshipDeleteQuery"
             )
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["rel_id"] = self.rel_id or self.rel.id
+        self.params["rel_id"] = self.rel_id or self.rel.id  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.DELETED, user_id=self.user_id
@@ -679,7 +679,7 @@ class RelationshipGetPeerQuery(Query):
         at: Timestamp | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         requested_order: OrderModel | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if not source and not source_ids:
             raise ValueError("Either source or source_ids must be provided.")
@@ -933,7 +933,7 @@ RETURN updated_at, updated_by
             self.params.update(subquery_params)
             self.add_subquery(subquery=subquery, node_alias="peer")
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -1125,7 +1125,7 @@ class RelationshipGetByIdentifierQuery(Query):
         identifiers: list[str] | None = None,
         full_identifiers: list[FullRelationshipIdentifier] | None = None,
         excluded_namespaces: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
             raise ValueError("one and only one of identifiers or full_identifiers is required")
@@ -1140,7 +1140,7 @@ class RelationshipGetByIdentifierQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["identifiers"] = self.identifiers
         self.params["full_identifiers"] = [
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
@@ -1215,7 +1215,7 @@ class RelationshipCountPerNodeQuery(Query):
         node_ids: list[str],
         identifier: str,
         direction: RelationshipDirection,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.node_ids = node_ids
         self.identifier = identifier
@@ -1223,7 +1223,7 @@ class RelationshipCountPerNodeQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -1318,11 +1318,11 @@ class RelationshipDeleteAllQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, node_id: str, **kwargs) -> None:
+    def __init__(self, node_id: str, **kwargs: Any) -> None:
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params["source_id"] = kwargs["node_id"]
         self.params["branch"] = self.branch.name
         self.params["user_id"] = self.user_id
@@ -1502,12 +1502,12 @@ class GetAllPeersIds(Query):
     type: QueryType = QueryType.READ
     insert_return = False
 
-    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs) -> None:
+    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs: Any) -> None:
         self.node_id = node_id
         self.exclude_identifiers = exclude_identifiers
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["source_id"] = kwargs["node_id"]
         self.params["branch"] = self.branch.name
         self.params["exclude_identifiers"] = self.exclude_identifiers

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="h-full">
   <head>
     <meta charset="utf-8">
@@ -9,6 +9,21 @@
     <link rel="apple-touch-icon" href="/favicons/logo192.png">
     <link rel="manifest" href="/manifest.json">
     <title>Infrahub</title>
+    <script>
+    "use strict";
+    {
+      let theme = null;
+      try {
+        theme = localStorage.getItem("infrahub.theme.choice");
+      } catch {
+        // Handle when site data is blocked
+      }
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (theme === "dark" || (theme !== "light" && prefersDark)) {
+        document.documentElement.classList.add("dark");
+      }
+    }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

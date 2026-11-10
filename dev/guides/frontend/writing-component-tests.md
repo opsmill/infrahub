@@ -110,6 +110,27 @@ component.getByTestId("element-id"); // Last resort
 - More resilient to refactoring
 - Encourages better component design
 
+### `name:` and adjacent `sr-only` spans: use a chained locator
+
+Playwright's accessible-name computation (which browser-mode `getByRole` uses) concatenates inline
+descendants **without inserting a space**. So a menu item rendering `<span>Description</span>` next
+to `<span class="sr-only">visible</span>` has the accessible name `Descriptionvisible`, and
+
+```tsx
+component.getByRole("menuitem", { name: "Description visible" }); // never matches
+```
+
+silently never matches — a false negative that looks like the state assertion failing. Assert the
+marker with a chained locator instead:
+
+```tsx
+await expect
+  .element(component.getByRole("menuitem", { name: "Description" }).getByText("visible"))
+  .toBeVisible();
+```
+
+Example: `src/entities/nodes/columns/ui/columns-editor.test.tsx`.
+
 ## What to Test
 
 Focus on testing component-specific behavior:
@@ -239,6 +260,21 @@ await expect
   .toBeVisible();
 ```
 
+### `locator.click` timeouts under a full-suite run are contention, not failures
+
+The browser-mode suite runs files in parallel against shared browser instances, and under load
+Playwright's actionability checks can time out on an element that is perfectly present. A
+`locator.click: Timeout` (or `hover`) that appears only in `pnpm test` and passes when the file is
+run alone is almost always contention. Re-run the file on its own before treating it as a real
+failure — and do not "fix" it by loosening the assertion:
+
+```bash
+cd frontend/app && pnpm test src/entities/nodes/columns/ui/columns-editor.test.tsx
+```
+
+If a timeout reproduces solo, it is real — start with the tooltip/pointer note above, then test
+isolation.
+
 ## When to Mock
 
 Mock external dependencies that have side effects:
@@ -275,6 +311,8 @@ describe("TaskStatus", () => {
 ```
 
 ## Test Isolation
+
+Isolation is each file's own job: do not register a global `setupFiles` hook in `vitest.config.ts` to reset state for everyone — a test that needs an initial condition sets it up and restores it in its own file, as below.
 
 If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
 
@@ -373,6 +411,78 @@ describe("List Component", () => {
   });
 });
 ```
+
+## The suite runs as a dev build
+
+Vitest serves the app through Vite in dev mode, so `import.meta.env.DEV` is `true` in every
+component test — including tests of a production build's behaviour. Any code branching on it takes
+the dev branch here and cannot be exercised the other way from a component test. E2E is the layer
+that runs a real build (the docker stack), so that is where the production branch is observable.
+
+Put policy that depends on the environment in a pure function under `domain/rules/` and unit-test
+its branches directly; leave the component test to prove the wiring. When a component test can
+only reach one branch, say which one and why in the test, and state the precondition rather than
+assuming it:
+
+```ts
+// Vitest serves through Vite in dev mode, so the dev branch is the only one reachable here.
+expect(import.meta.env.DEV).toBe(true); // stated, so a passing assertion cannot be a coincidence
+```
+
+## Troubleshooting
+
+### `mockClear is not a function` in CI
+
+Symptom: `frontend-tests` fails with `TypeError: vi.mocked(...).mockClear is not
+a function` (or `.mockReturnValue` / `.mockResolvedValue`), in a test file you
+did not touch, and passes on re-run. The file it lands on is random.
+
+Cause: Vite discovered a dependency part-way through the run, re-optimized, and
+reloaded the page. The reload drops every `vi.mock()` registration made before
+it, so `vi.mocked(...)` hands back the real function. Look just above the
+failures for the fingerprint — `dependencies optimized: …` followed by
+`optimized dependencies changed. reloading` and `[vitest] Vite unexpectedly
+reloaded a test`. **This is not your breakage**; re-run the job on the same SHA
+to confirm.
+
+`frontend/app/vitest.config.ts` guards against this in two layers, and the
+comment above `optimizeDeps` there is the authority — read it before changing
+anything:
+
+- `optimizeDeps.entries` widens Vite's initial scan to all of `src`. Browser
+  mode otherwise seeds the scan with the test files only, so a dependency is
+  missed whenever no test imports its module. This layer covers anything
+  statically reachable, so a new component pulling in a new dependency needs no
+  config change at all.
+- `optimizeDeps.include` pre-bundles the remainder: imports whose specifier is
+  not a literal. Every entry here resolves from `frontend/app`, so a dependency
+  owned by a workspace package (`@infrahub/ui`, `@infrahub/graph`,
+  `infrahub-schema-visualizer`) needs the nested `"<owner> > <dep>"` form. A
+  bare specifier that does not resolve is dropped with a `Failed to resolve
+  dependency` warning and protects nothing.
+
+If a reload still happens, add the dependencies named in the log line to
+`include` — but check first whether widening the scan is the better answer,
+since that scales and the list does not.
+
+Reproduce and verify locally with CI's own command and a cold optimizer cache —
+plain `vitest run` does not reload, which makes this look CI-only:
+
+```bash
+cd frontend/app && rm -rf node_modules/.vite && pnpm test:coverage 2>&1 | tee /tmp/vitest.log
+```
+
+All three of these must be `0`:
+
+```bash
+grep -c 'Failed to resolve dependency' /tmp/vitest.log
+grep -c 'dependencies optimized' /tmp/vitest.log
+grep -c 'unexpectedly reloaded' /tmp/vitest.log
+```
+
+Nested entries land in `node_modules/.vite/vitest/<hash>/deps/` as
+`owner_n_dep.js` (for example `infrahub-schema-visualizer_n_@dagrejs_dagre.js`),
+so looking there for a bare package name gives a false negative.
 
 ## Quality Checklist
 

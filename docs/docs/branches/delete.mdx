@@ -19,7 +19,7 @@ Infrahub can automatically delete a branch after it is successfully merged, keep
 
 The branch is deleted immediately after a successful merge, whether initiated through a direct branch merge or a Proposed Change. This behavior is opt-in: set `delete_branch_after_merge = true` (or `INFRAHUB_DELETE_BRANCH_AFTER_MERGE=true`) to enable it.
 
-To also remove the linked Git branch, set `delete_git_branch_after_merge = true` (`INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE=true`). This has no effect unless Infrahub branch deletion is also enabled.
+To also remove the linked Git branch, set `delete_git_branch_after_merge = true` (`INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE=true`). This has no effect unless Infrahub branch deletion is also enabled. While the merge waits to be pushed to the remote, Infrahub keeps the Git branch and deletes it after the push, as described in [the source branch is kept until its merge is pushed](../git-integration/branch-synchronization.mdx#the-source-branch-is-kept-until-its-merge-is-pushed).
 
 ## What happens after deletion
 

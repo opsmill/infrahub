@@ -1,5 +1,4 @@
 import type { RefAttributes } from "react";
-
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
@@ -23,46 +22,50 @@ const buttonVariants = tv({
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
     "data-pending:cursor-default data-pending:select-none",
     "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+    "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   ],
   variants: {
     variant: {
       primary: [
-        "border-cyan-800 bg-gradient-to-b from-cyan-800 to-cyan-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-cyan-800 bg-gradient-to-b from-cyan-900 to-cyan-900/80 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "primary-outline": [
-        "border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-700 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-800 dark:text-cyan-600",
         "data-hovered:from-neutral-100",
+        "dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)] dark:from-stone-500/15 dark:to-stone-500/5",
+        "dark:data-hovered:from-stone-500/25",
       ],
       danger: [
-        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-600 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
-        "border-rose-200 bg-gradient-to-b from-stone-100 to-white text-rose-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-danger-surface bg-gradient-to-b from-stone-100 to-white text-danger",
         "data-hovered:from-rose-50",
+        "dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)] dark:from-stone-500/15 dark:to-stone-500/5",
+        "dark:data-hovered:from-rose-500/15",
       ],
       warning: [
-        "border-amber-600 bg-gradient-to-b from-amber-600 to-amber-500 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-amber-600 bg-gradient-to-b from-amber-600 to-amber-700/70 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       active: [
-        "border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-800/70 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       outline: [
-        "border-neutral-200 bg-gradient-to-b from-stone-100 to-white text-stone-800 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
-        "data-hovered:from-neutral-100",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] bg-gradient-to-b from-stone-100 to-white text-foreground",
+        "dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.07)] dark:border-stone-700 dark:from-stone-700/70 dark:to-stone-900",
+        "data-hovered:from-neutral-100 dark:data-hovered:from-stone-700",
       ],
       ghost: [
-        "border-transparent text-stone-800 shadow-none",
-        "data-hovered:bg-neutral-600/10",
-        "data-pressed:bg-neutral-200",
+        "border-transparent text-foreground shadow-none",
+        "data-hovered:bg-border",
+        "data-pressed:bg-border",
       ],
       input: [
-        "border-neutral-200 bg-white text-stone-800",
-        "shadow-[0_2px_4px_rgba(0,0,0,0.04)]",
+        "border-input-border bg-input text-foreground shadow-input",
         "data-pressed:scale-100",
       ],
     },
@@ -94,7 +97,9 @@ const buttonVariants = tv({
 });
 
 export interface ButtonProps
-  extends AriaButtonProps, VariantProps<typeof buttonVariants>, RefAttributes<HTMLButtonElement> {
+  extends AriaButtonProps,
+    VariantProps<typeof buttonVariants>,
+    RefAttributes<HTMLButtonElement> {
   /** Uses isPending internally to keep the button hoverable/focusable while appearing disabled. Useful for tooltip triggers. */
   isDisabledAndFocusable?: boolean;
 }
@@ -109,8 +114,8 @@ export function Button({ variant, size, shape, isDisabledAndFocusable, ...props 
         cn(
           buttonVariants({ variant, size, shape }),
           isPending && !isDisabledAndFocusable && "text-transparent",
-          isDisabledAndFocusable && "opacity-60 shadow-none",
-        ),
+          isDisabledAndFocusable && "opacity-60 shadow-none"
+        )
       )}
     >
       {composeRenderProps(props.children, (children, { isPending }) => (

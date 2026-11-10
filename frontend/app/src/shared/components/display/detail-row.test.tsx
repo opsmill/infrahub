@@ -16,7 +16,7 @@ describe("DetailRow", () => {
     await expect.element(component.getByText("2026-06-30")).toBeVisible();
 
     const row = component.container.querySelector("dl.grid");
-    expect(row?.className).toContain("grid-cols-[200px_auto]");
+    expect(row?.className).toContain("grid-cols-detail-row");
     expect(component.container.querySelector("dt iconify-icon")).not.toBeNull();
   });
 

@@ -5,7 +5,6 @@ import { Text } from "react-aria-components";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -18,6 +17,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
@@ -51,7 +51,7 @@ export function GeneratorDefinitionRunButton({
           const url =
             objectKind && objectId
               ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
-              : constructPath(`/tasks/${taskId}`);
+              : getTaskDetailsUrl(taskId);
 
           toast(
             <Alert
@@ -87,7 +87,7 @@ export function GeneratorDefinitionRunButton({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="min-w-[200px] max-w-sm p-1" align="end">
+      <PopoverContent className="min-w-50 max-w-sm p-1" align="end">
         {showTargetForm ? (
           <GeneratorTargetSelectionForm
             generatorId={generatorId}
@@ -101,7 +101,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 All targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Generate for all members in the target group
               </Text>
             </MenuItem>
@@ -112,7 +112,7 @@ export function GeneratorDefinitionRunButton({
               <Text slot="label" className="font-semibold">
                 Selected targets
               </Text>
-              <Text slot="description" className="text-gray-600 text-xs">
+              <Text slot="description" className="text-foreground-muted text-xs">
                 Choose specific members of target group
               </Text>
             </MenuItem>
@@ -155,13 +155,13 @@ export function GeneratorTargetSelectionForm({
           variant="ghost"
           size="xs"
           onPress={onCancel}
-          className="h-5 p-1 text-gray-500 text-xs data-hovered:text-gray-700"
+          className="h-5 p-1 text-subtle-muted text-xs data-hovered:text-subtle"
         >
           Back
         </Button>
       </div>
 
-      <div className="rounded-sm border border-gray-200 p-2">
+      <div className="rounded-sm border p-2">
         {selectedTargetNodes.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {selectedTargetNodes.map((node) => {
@@ -175,7 +175,7 @@ export function GeneratorTargetSelectionForm({
                     onClick={() => handleRemoveTarget(node.id)}
                     className={classNames(
                       focusVisibleStyle,
-                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-gray-900"
+                      "flex size-3.5 items-center justify-center rounded-full border border-transparent text-xs hover:text-foreground"
                     )}
                     aria-label={`Remove ${label}`}
                   >
@@ -186,7 +186,7 @@ export function GeneratorTargetSelectionForm({
             })}
           </div>
         ) : (
-          <span className="text-gray-400">No targets selected</span>
+          <span className="text-subtle-muted">No targets selected</span>
         )}
       </div>
 

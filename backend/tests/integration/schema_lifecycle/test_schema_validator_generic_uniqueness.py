@@ -290,6 +290,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_01_generic_uniqueness_failure])
 
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -347,6 +348,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_03_generic_and_node_uniqueness_failure])
 
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]

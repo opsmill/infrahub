@@ -19,8 +19,20 @@ export type GetObjectsParams = ContextParams &
     schema: ModelSchema;
     filters?: Array<Filter>;
     sort?: Array<Sort> | null;
-    getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
-    getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+    /**
+     * Names of fields the user revealed in the list view. They are `display: "extra"` fields that
+     * the default list-view rules exclude, so they must be opted back into the GraphQL selection
+     * set or their columns would render empty cells.
+     */
+    revealedFields?: readonly string[];
+    getAttributesVisible?: (
+      attributes: AttributeSchema[],
+      revealedNames?: ReadonlySet<string>
+    ) => AttributeSchema[];
+    getRelationshipsVisible?: (
+      relationships: RelationshipSchema[],
+      revealedNames?: ReadonlySet<string>
+    ) => RelationshipSchema[];
     attributesOptions?: AddAttributesToRequestOptions;
     relationshipsOptions?: AddAttributesToRequestOptions;
   };
@@ -35,13 +47,16 @@ export const getObjects: GetObjects = async ({
   atDate,
   filters,
   sort,
+  revealedFields,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
   attributesOptions,
   relationshipsOptions,
 }) => {
-  const attributesVisible = getAttributesVisible(schema.attributes ?? []);
-  const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
+  // `new Set(undefined)` is the empty set, which is exactly "reveal nothing" — no need to branch.
+  const revealed = new Set(revealedFields);
+  const attributesVisible = getAttributesVisible(schema.attributes ?? [], revealed);
+  const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? [], revealed);
 
   const schemaKind = schema.kind as string;
 

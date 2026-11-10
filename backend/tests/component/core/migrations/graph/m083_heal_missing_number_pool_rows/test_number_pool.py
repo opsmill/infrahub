@@ -1,0 +1,529 @@
+from collections.abc import Generator
+from dataclasses import dataclass
+
+import pytest
+
+from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, MetadataOptions, RelationshipCardinality
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
+from infrahub.core.migrations.graph.m076_heal_missing_attribute_rows import Migration076
+from infrahub.core.migrations.graph.m083_heal_missing_number_pool_rows import Migration083
+from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
+from tests.db_snapshot import DbSnapshotter
+from tests.helpers.agnostic_edges import pool_reservation_edges
+from tests.helpers.attribute_rows import (
+    build_generic,
+    build_inheriting_kind,
+    build_rack_unit_attribute,
+    create_damaged_node,
+    create_schema_number_pool,
+    delete_attribute_rows,
+    get_active_attribute_edge_details,
+    get_pool_attribute_row_shape,
+    get_schema_pools,
+    load_server_schema,
+    recording_console,
+    simulate_rebase,
+)
+from tests.helpers.number_pool import (
+    SCOPED_ATTRIBUTE_NAME,
+    SCOPED_SITE,
+    provision_schema_number_pools,
+    save_schema_kinds,
+    scoped_site,
+)
+
+
+@dataclass(frozen=True)
+class PoolSeed:
+    pool_uuid: str
+    runtime_server_uuid: str
+    damaged_uuids: tuple[str, str, str]
+    switch_pool_uuid: str
+    switch_uuids: dict[str, str]
+
+
+@dataclass(frozen=True)
+class PoolHealRun:
+    errors: list[str]
+    nbr_migrations_executed: int
+    console_output: str
+
+
+class TestNumberPoolHeal:
+    """Two kinds healed in one run, each from its own schema pool.
+
+    An unscoped pool serves one runtime-written server and three damaged ones; a pool scoped by site serves four
+    switches over two sites, one damaged in each site.
+    """
+
+    @pytest.fixture(scope="class")
+    def number_pool_node_class(self, default_branch_scope_class: Branch) -> Generator[None]:
+        previous = registry.node.get(InfrahubKind.NUMBERPOOL)
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        yield
+        if previous is None:
+            registry.node.pop(InfrahubKind.NUMBERPOOL, None)
+        else:
+            registry.node[InfrahubKind.NUMBERPOOL] = previous
+
+    @pytest.fixture(scope="class")
+    async def seeded(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, number_pool_node_class: None
+    ) -> PoolSeed:
+        default = default_branch_scope_class
+        registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default.name)
+        registry.schema.register_schema(schema=SchemaRoot(**core_models), branch=default.name)
+
+        pool = await create_schema_number_pool(db=db, node="TestAsset", node_attribute="rack_unit")
+        await load_server_schema(db=db, default_branch=default, number_pool_id=pool.get_id())
+
+        # One node gets its pool row through the regular write path, the others through the heal
+        runtime_server = await Node.init(db=db, schema="TestServer", branch=default)
+        await runtime_server.new(db=db, name="runtime")
+        await runtime_server.save(db=db)
+
+        damaged: list[str] = []
+        for _ in range(3):
+            damaged.append(
+                await create_damaged_node(
+                    db=db,
+                    branch=default,
+                    labels="TestServer:TestAsset",
+                    kind="TestServer",
+                    created_at=Timestamp().subtract(seconds=240),
+                )
+            )
+
+        switch_uuids = await _seed_switches_and_damage(
+            db=db, branch=default, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]
+        )
+        switch_pools = [
+            schema_pool
+            for schema_pool in await get_schema_pools(db=db)
+            if schema_pool.get_attribute(name="node").value == "ScopeEquipment"
+        ]
+        assert len(switch_pools) == 1
+        return PoolSeed(
+            pool_uuid=pool.get_id(),
+            runtime_server_uuid=runtime_server.get_id(),
+            damaged_uuids=(damaged[0], damaged[1], damaged[2]),
+            switch_pool_uuid=switch_pools[0].get_id(),
+            switch_uuids=switch_uuids,
+        )
+
+    @pytest.fixture(scope="class")
+    async def healed(self, db: InfrahubDatabase, seeded: PoolSeed) -> PoolHealRun:
+        console = recording_console()
+        result = await Migration083.init().execute(migration_input=MigrationInput(db=db, console=console))
+        return PoolHealRun(
+            errors=result.errors,
+            nbr_migrations_executed=result.nbr_migrations_executed,
+            console_output=console.export_text(),
+        )
+
+    async def test_result_counts_and_console(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
+        assert healed.errors == []
+        # 3 damaged servers and 2 damaged switches x 1 pool-backed inherited attribute
+        assert healed.nbr_migrations_executed == 5
+        assert "TestServer: 3 missing attribute row(s) across 3 node(s); repairing" in healed.console_output
+        assert "TestServer.rack_unit: allocated 3 pool value(s)" in healed.console_output
+        assert "ScopeSwitch: 2 missing attribute row(s) across 2 node(s); repairing" in healed.console_output
+        assert "ScopeSwitch.vlan_id: allocated 2 pool value(s)" in healed.console_output
+
+        validation_result = await Migration083.init().validate_migration(db=db)
+        assert validation_result.errors == []
+
+    async def test_each_kind_was_served_by_its_existing_pool(
+        self, db: InfrahubDatabase, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        pools = await get_schema_pools(db=db)
+        assert {
+            (pool.get_attribute(name="node").value, pool.get_attribute(name="node_attribute").value): pool.get_id()
+            for pool in pools
+        } == {
+            ("TestAsset", "rack_unit"): seeded.pool_uuid,
+            ("ScopeEquipment", SCOPED_ATTRIBUTE_NAME): seeded.switch_pool_uuid,
+        }
+        assert len(pools) == 2
+
+    async def test_scoped_pool_repair_gives_each_node_the_lowest_free_number_of_its_site(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
+
+    async def test_distinct_values_sourced_from_the_pool(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        nodes = await NodeManager.get_many(
+            db=db,
+            branch=default_branch_scope_class,
+            ids=[*seeded.damaged_uuids, seeded.runtime_server_uuid],
+            include_metadata=MetadataQueryOptions(
+                attribute_level=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL
+            ),
+        )
+        rack_units = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes.items()}
+        assert set(rack_units) == {*seeded.damaged_uuids, seeded.runtime_server_uuid}
+        assert all(isinstance(value, int) and 1 <= value <= 100 for value in rack_units.values())
+        assert len(set(rack_units.values())) == 4
+        assert rack_units[seeded.runtime_server_uuid] == 1
+        assert {rack_units[uuid] for uuid in seeded.damaged_uuids} == {2, 3, 4}
+        for node in nodes.values():
+            rack_unit = node.get_attribute(name="rack_unit")
+            assert rack_unit.source_id is None
+            tracking_pool = rack_unit.tracking_pool
+            assert tracking_pool is not None
+            assert tracking_pool.pool_id == seeded.pool_uuid
+
+    async def test_every_allocation_left_a_reservation_record(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        """A healed attribute carries an open reservation record from the pool that supplied its number.
+
+        The record is what the pool accounts for the number by, so a heal that wrote a value without
+        it would hand the same number out again.
+        """
+        nodes = await NodeManager.get_many(
+            db=db,
+            branch=default_branch_scope_class,
+            ids=[*seeded.damaged_uuids, seeded.runtime_server_uuid],
+        )
+        for node_id, node in nodes.items():
+            attribute = node.get_attribute(name="rack_unit")
+            records = await pool_reservation_edges(db=db, pool_id=seeded.pool_uuid, attribute_id=attribute.id)
+            assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in records] == [
+                ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", None)
+            ], f"{node_id} holds rack_unit={attribute.value} with no record accounting for it"
+
+    async def test_healed_row_matches_runtime_row_shape(
+        self, db: InfrahubDatabase, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        runtime_shape, runtime_value = await get_pool_attribute_row_shape(
+            db=db, node_uuid=seeded.runtime_server_uuid, attribute_name="rack_unit"
+        )
+        healed_shape, healed_value = await get_pool_attribute_row_shape(
+            db=db, node_uuid=seeded.damaged_uuids[0], attribute_name="rack_unit"
+        )
+
+        # The healed row is structurally identical to the runtime-written row,
+        # differing only in its allocated number
+        assert healed_shape == runtime_shape
+        # The pool is not stored as the attribute's source on either row; it is derived from the
+        # reservation record, which `test_distinct_values_sourced_from_the_pool` reads back.
+        assert healed_shape.edge_types == {"HAS_VALUE", "IS_PROTECTED"}
+        assert healed_shape.edge("HAS_VALUE").peer[1] is False
+        assert healed_value != runtime_value
+
+    async def test_second_run_allocates_nothing_new(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun
+    ) -> None:
+        nodes_before = await NodeManager.get_many(
+            db=db, branch=default_branch_scope_class, ids=list(seeded.damaged_uuids)
+        )
+        values_before = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_before.items()}
+
+        second_result = await Migration083.init().execute(migration_input=MigrationInput(db=db))
+        assert second_result.errors == []
+        assert second_result.nbr_migrations_executed == 0
+
+        assert len(await get_schema_pools(db=db)) == 2
+        nodes_after = await NodeManager.get_many(
+            db=db, branch=default_branch_scope_class, ids=list(seeded.damaged_uuids)
+        )
+        values_after = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes_after.items()}
+        assert values_after == values_before
+        assert await _vlan_ids_by_name(db=db, branch=default_branch_scope_class, switches=seeded.switch_uuids) == {
+            "s1-a": 1,
+            "s1-b": 2,
+            "s1-c": 3,
+            "s2-a": 1,
+        }
+
+    async def test_graph_left_valid(self, db: InfrahubDatabase, healed: PoolHealRun) -> None:
+        await verify_graph(db=db)
+
+
+async def test_numberpool_missing_pool_upserted_and_healed(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_server_schema(db=db, default_branch=default_branch)
+
+    damaged = await create_damaged_node(
+        db=db,
+        branch=default_branch,
+        labels="TestServer:TestAsset",
+        kind="TestServer",
+        created_at=Timestamp().subtract(seconds=240),
+    )
+
+    assert await get_schema_pools(db=db) == []
+
+    migration = Migration083.init()
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert execution_result.errors == []
+    assert execution_result.nbr_migrations_executed == 1
+
+    validation_result = await migration.validate_migration(db=db)
+    assert validation_result.errors == []
+
+    # The pool was upserted the same way the schema change provisions it:
+    # once, registered against the generic's kind
+    pools = await get_schema_pools(db=db)
+    assert len(pools) == 1
+    assert pools[0].get_attribute(name="node").value == "TestAsset"
+    assert pools[0].get_attribute(name="node_attribute").value == "rack_unit"
+
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=damaged)
+    assert node is not None
+    rack_unit_attr = node.get_attribute(name="rack_unit")
+    assert rack_unit_attr.id is not None
+    assert isinstance(rack_unit_attr.value, int)
+    assert 1 <= rack_unit_attr.value <= 100
+
+    # A rerun reuses the upserted pool
+    second_result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert second_result.errors == []
+    assert second_result.nbr_migrations_executed == 0
+    assert len(await get_schema_pools(db=db)) == 1
+
+    await verify_graph(db=db)
+
+
+async def test_branch_pool_allocations_follow_default_branch_allocations(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    await create_schema_number_pool(db=db, node="TestAsset", node_attribute="rack_unit")
+
+    default_schema = SchemaRoot(
+        generics=[build_generic(name="Asset", attributes=[build_rack_unit_attribute()])],
+        nodes=[
+            build_inheriting_kind(name="Server", inherit_from=["TestAsset"]),
+            build_inheriting_kind(name="Car", inherit_from=[]),
+        ],
+    )
+    default_schema_branch = registry.schema.register_schema(schema=default_schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(
+        schema=default_schema_branch,
+        branch=default_branch,
+        db=db,
+        at=Timestamp().subtract(seconds=300),
+        limit=["TestAsset", "TestServer", "TestCar"],
+    )
+    default_branch.update_schema_hash()
+
+    damaged_servers = [
+        await create_damaged_node(
+            db=db,
+            branch=default_branch,
+            labels="TestServer:TestAsset",
+            kind="TestServer",
+            created_at=Timestamp().subtract(seconds=240),
+        )
+        for _ in range(2)
+    ]
+
+    branch = await create_branch(db=db, branch_name="pool-follows-default")
+
+    # On the branch, the other kind starts inheriting the same generic, so its
+    # damage draws from the same pool as the default-branch damage
+    car_with_inheritance = SchemaRoot(nodes=[build_inheriting_kind(name="Car", inherit_from=["TestAsset"])])
+    branch_schema = registry.schema.register_schema(schema=car_with_inheritance, branch=branch.name)
+    await registry.schema.load_schema_to_db(
+        schema=branch_schema, branch=branch, db=db, at=Timestamp().subtract(seconds=60), limit=["TestCar"]
+    )
+    branch.update_schema_hash()
+    await branch.save(db=db)
+
+    damaged_car = await create_damaged_node(
+        db=db, branch=branch, labels="TestCar:TestAsset", kind="TestCar", created_at=Timestamp().subtract(seconds=30)
+    )
+
+    migration = Migration083.init()
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert execution_result.errors == []
+    assert execution_result.nbr_migrations_executed == 2
+    assert await get_active_attribute_edge_details(db=db, node_uuid=damaged_car) == {}
+
+    validation_result = await migration.validate_migration(db=db)
+    assert validation_result.errors == []
+
+    await simulate_rebase(db=db, branch=branch)
+
+    branch_result = await migration.execute_against_branch(migration_input=MigrationInput(db=db), branch=branch)
+    assert branch_result.errors == []
+    assert branch_result.nbr_migrations_executed == 1
+
+    servers = await NodeManager.get_many(db=db, branch=default_branch, ids=damaged_servers)
+    allocated = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in servers.items()}
+    assert set(allocated) == set(damaged_servers)
+    healed_car = await NodeManager.get_one(db=db, branch=branch, id=damaged_car)
+    assert healed_car is not None
+    allocated[damaged_car] = healed_car.get_attribute(name="rack_unit").value
+
+    # The branch allocation follows the default-branch ones: three values from
+    # one pool, no overlap
+    assert all(isinstance(value, int) and 1 <= value <= 100 for value in allocated.values())
+    assert len(set(allocated.values())) == 3
+
+    snapshotter = DbSnapshotter(db)
+    before_second_run = await snapshotter.snapshot()
+    second_result = await migration.execute_against_branch(migration_input=MigrationInput(db=db), branch=branch)
+    assert second_result.errors == []
+    assert second_result.nbr_migrations_executed == 0
+    assert await snapshotter.snapshot() == before_second_run
+
+    await verify_graph(db=db)
+
+
+async def test_pool_rows_are_left_to_this_migration_by_the_default_value_heal(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A kind inheriting both a default-backed and a pool-backed attribute is healed in two steps.
+
+    The earlier heal creates the default-backed row, reports no error for the pool-backed row it
+    leaves behind, and validates clean; this migration then allocates the pool-backed row.
+    """
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    pool = await create_schema_number_pool(db=db, node="TestAsset", node_attribute="rack_unit")
+    schema = SchemaRoot(
+        generics=[
+            build_generic(
+                name="Asset",
+                attributes=[
+                    build_rack_unit_attribute(number_pool_id=pool.get_id()),
+                    AttributeSchema(name="status", kind="Text", default_value="active", optional=True),
+                ],
+            )
+        ],
+        nodes=[build_inheriting_kind(name="Server", inherit_from=["TestAsset"])],
+    )
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(
+        schema=schema_branch,
+        branch=default_branch,
+        db=db,
+        at=Timestamp().subtract(seconds=120),
+        limit=["TestAsset", "TestServer"],
+    )
+    default_branch.update_schema_hash()
+    damaged = await create_damaged_node(
+        db=db,
+        branch=default_branch,
+        labels="TestServer:TestAsset",
+        kind="TestServer",
+        created_at=Timestamp().subtract(seconds=240),
+    )
+
+    default_value_heal = Migration076.init()
+    earlier_result = await default_value_heal.execute(migration_input=MigrationInput(db=db))
+    assert earlier_result.errors == []
+    assert earlier_result.nbr_migrations_executed == 1
+    assert set(
+        await get_active_attribute_edge_details(db=db, node_uuid=damaged, attribute_names=("status", "rack_unit"))
+    ) == {"status"}
+    assert (await default_value_heal.validate_migration(db=db)).errors == []
+
+    migration = Migration083.init()
+    result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 1
+    assert set(
+        await get_active_attribute_edge_details(db=db, node_uuid=damaged, attribute_names=("status", "rack_unit"))
+    ) == {
+        "status",
+        "rack_unit",
+    }
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=damaged, raise_on_error=True)
+    assert node.get_attribute(name="status").value == "active"
+    assert node.get_attribute(name="rack_unit").value == 1
+    assert (await migration.validate_migration(db=db)).errors == []
+
+    await verify_graph(db=db)
+
+
+def _equipment_schema(allocation_scope: list[str] | None) -> SchemaRoot:
+    """Switches inheriting a pooled `vlan_id` and a mandatory site from a generic, with the pool scoped as given."""
+    equipment = GenericSchema(
+        name="Equipment",
+        namespace="Scope",
+        label="Equipment",
+        attributes=[
+            AttributeSchema(
+                name=SCOPED_ATTRIBUTE_NAME,
+                kind="NumberPool",
+                optional=False,
+                read_only=True,
+                parameters=NumberPoolParameters(start_range=1, end_range=10, allocation_scope=allocation_scope),
+            )
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="site",
+                peer=SCOPED_SITE.kind,
+                identifier="scope_equipment__site",
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+    switch = NodeSchema(
+        name="Switch",
+        namespace="Scope",
+        label="Switch",
+        inherit_from=["ScopeEquipment"],
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    return SchemaRoot(generics=[equipment], nodes=[SCOPED_SITE, switch])
+
+
+async def _seed_switches_and_damage(
+    db: InfrahubDatabase, branch: Branch, allocation_scope: list[str] | None, damaged_names: list[str]
+) -> dict[str, str]:
+    """Create switches through the write path, then remove the `vlan_id` rows of the named ones; return {name: uuid}."""
+    await save_schema_kinds(db=db, schema=_equipment_schema(allocation_scope=allocation_scope))
+    await provision_schema_number_pools(db=db)
+
+    sites = {name: await scoped_site(db=db, branch=branch, name=name) for name in ("site-1", "site-2")}
+    placement = {"s1-a": "site-1", "s1-b": "site-1", "s1-c": "site-1", "s2-a": "site-2"}
+    switches: dict[str, str] = {}
+    for name, site_name in placement.items():
+        switch = await Node.init(db=db, schema="ScopeSwitch", branch=branch)
+        await switch.new(db=db, name=name, site=sites[site_name])
+        await switch.save(db=db)
+        switches[name] = switch.get_id()
+
+    for name in damaged_names:
+        await delete_attribute_rows(db=db, node_uuid=switches[name], attribute_names=[SCOPED_ATTRIBUTE_NAME])
+    return switches
+
+
+async def _vlan_ids_by_name(db: InfrahubDatabase, branch: Branch, switches: dict[str, str]) -> dict[str, int | None]:
+    nodes = await NodeManager.get_many(db=db, branch=branch, ids=list(switches.values()))
+    return {name: nodes[uuid].get_attribute(name=SCOPED_ATTRIBUTE_NAME).value for name, uuid in switches.items()}

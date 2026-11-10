@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Modal } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { classNames } from "@/shared/utils/common";
 
@@ -96,13 +96,13 @@ export function ModalDeleteBranch({
     >
       <Col className="gap-4 p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-            <Icon icon="mdi:warning-outline" className="text-red-600" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-danger-surface">
+            <Icon icon="mdi:warning-outline" className="text-danger" />
           </div>
           Delete
         </Heading>
 
-        <p className="px-8 text-gray-500 text-sm">{description}</p>
+        <p className="px-8 text-foreground-muted text-sm">{description}</p>
 
         <RadioGroup
           value={scope}
@@ -114,12 +114,12 @@ export function ModalDeleteBranch({
             value={DELETE_BRANCH_SCOPE.LOCAL}
             className={classNames(
               "rounded-lg border p-3",
-              scope === DELETE_BRANCH_SCOPE.LOCAL ? "border-custom-blue-600" : "border-gray-200"
+              scope === DELETE_BRANCH_SCOPE.LOCAL ? "border-custom-blue-600" : "border-border"
             )}
           >
             <div>
               <div className="font-medium text-sm">Local only</div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-foreground-muted text-xs">
                 Remove the branch from Infrahub. The remote Git repository will not be affected.
               </div>
             </div>
@@ -130,12 +130,12 @@ export function ModalDeleteBranch({
               "rounded-lg border p-3",
               scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE
                 ? "border-custom-blue-600"
-                : "border-gray-200"
+                : "border-border"
             )}
           >
             <div>
               <div className="font-medium text-sm">Local and remote</div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-foreground-muted text-xs">
                 Remove the branch from Infrahub and delete it from the remote Git repository.
               </div>
             </div>
@@ -143,7 +143,7 @@ export function ModalDeleteBranch({
         </RadioGroup>
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => handleOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>

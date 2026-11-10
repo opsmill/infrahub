@@ -65,7 +65,7 @@ class SchemaManager(NodeManager):
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
 
-    def set(self, name: str, schema: NodeSchema | GenericSchema, branch: str | None = None) -> int:
+    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch = branch or registry.default_branch
 
         if branch not in self._branches:
@@ -184,7 +184,7 @@ class SchemaManager(NodeManager):
 
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
-        schema_branch.process()
+        schema_branch.process(default_branch_schema=self._branches.get(registry.default_branch))
 
     async def update_schema_branch(
         self,
@@ -228,7 +228,7 @@ class SchemaManager(NodeManager):
         branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
-        schema_branch.process()
+        schema_branch.process(default_branch_schema=self._branches.get(registry.default_branch))
         return schema_branch
 
     async def update_schema_to_db(

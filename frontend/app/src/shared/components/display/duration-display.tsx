@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 import { formatDistanceStrict } from "date-fns";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 type DateDisplayProps = {

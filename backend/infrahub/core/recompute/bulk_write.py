@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta
@@ -18,9 +19,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.event import InfrahubEventService
-
-DISPLAY_LABEL_FIELD = "display_label"
-HFID_FIELD = "human_friendly_id"
 
 
 @dataclass(frozen=True)
@@ -45,9 +43,9 @@ class WrittenNode:
 
 
 async def _apply(node: Node, write: AttributeValueWrite) -> None:
-    if write.field == DISPLAY_LABEL_FIELD:
+    if write.field == DISPLAY_LABEL_ATTRIBUTE_NAME:
         await node.set_display_label(value=cast("str | None", write.value))
-    elif write.field == HFID_FIELD:
+    elif write.field == HFID_ATTRIBUTE_NAME:
         await node.set_human_friendly_id(value=cast("list[str] | None", write.value))
     else:
         getattr(node, write.field).value = write.value

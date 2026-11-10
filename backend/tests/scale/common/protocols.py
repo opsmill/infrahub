@@ -25,7 +25,8 @@ class LocustInfrahubClient(InfrahubClientSync):
         start_perf_counter = time.perf_counter()
         try:
             request_meta["response"] = super().execute_graphql(*args, **kwargs)
-        except Exception as e:
+        # Locust instrumentation: record every failure as a request event instead of crashing the user greenlet
+        except Exception as e:  # noqa: BLE001
             request_meta["exception"] = e
         request_meta["response_time"] = (time.perf_counter() - start_perf_counter) * 1000
         self._request_event.fire(**request_meta)
@@ -50,7 +51,8 @@ class LocustInfrahubClient(InfrahubClientSync):
         start_perf_counter = time.perf_counter()
         try:
             request_meta["response"] = super()._request(*args, **kwargs)
-        except Exception as e:
+        # Locust instrumentation: record every failure as a request event instead of crashing the user greenlet
+        except Exception as e:  # noqa: BLE001
             request_meta["exception"] = e
         request_meta["response_time"] = (time.perf_counter() - start_perf_counter) * 1000
         self._request_event.fire(**request_meta)

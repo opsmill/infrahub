@@ -18,7 +18,7 @@ class DeleteIsolatedNodesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH p = (s: Node)-[r]-(d)
         WHERE NOT exists((s)-[:IS_PART_OF]-(:Root))

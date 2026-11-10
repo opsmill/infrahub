@@ -29,6 +29,7 @@ class RelatedNodeInput(InputObjectType):
 
 class IPAddressPoolInput(GenericPoolInput):
     prefixlen = Int(required=False)
+    address_type = String(required=False)
 
 
 class IPPrefixPoolInput(GenericPoolInput):
@@ -53,6 +54,16 @@ class RelatedIPPrefixNodeInput(InputObjectType):
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
+
+
+class NumberPoolRangeInput(InputObjectType):
+    start = BigInt(required=False, description="The first number of the range, included")
+    end = BigInt(required=False, description="The last number of the range, included")
+    allocation_weight = BigInt(
+        required=False,
+        description="Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds"
+        " of a stored range keeps the stored range's weight; null removes it.",
+    )
 
 
 class PermissionType(ObjectType):
@@ -84,7 +95,7 @@ class BaseAttribute(InfrahubAttributeMetaObject):
     permissions = Field(PermissionType, required=False)
 
     @classmethod
-    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         registry.default_graphql_type[cls.__name__] = cls
 

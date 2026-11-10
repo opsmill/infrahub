@@ -4,8 +4,10 @@ import os
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from opentelemetry import trace
 from pydantic import TypeAdapter
 from structlog.dev import plain_traceback
+from structlog.types import EventDict, WrappedLogger
 
 if TYPE_CHECKING:
     from structlog.types import Processor
@@ -95,6 +97,14 @@ def set_log_data(key: str, value: Any) -> None:
     structlog.contextvars.bind_contextvars(**{key: value})
 
 
+def add_trace_id(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:  # noqa: ARG001
+    """Add the trace ID of the current span when it is recording, unless the line already has a `trace_id`."""
+    span = trace.get_current_span()
+    if "trace_id" not in event_dict and span.is_recording():
+        event_dict["trace_id"] = format(span.get_span_context().trace_id, "032x")
+    return event_dict
+
+
 def configure_logging(production: bool, log_level: str) -> None:
     # Importing prefect.main here triggers prefect.logging.configuration.setup_logging()
     # to be executed, this function wipes out the previous logging configuration and
@@ -107,6 +117,7 @@ def configure_logging(production: bool, log_level: str) -> None:
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
+        add_trace_id,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.stdlib.add_logger_name,

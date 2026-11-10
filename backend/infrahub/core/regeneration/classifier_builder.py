@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from .derived_dependencies import DerivedFieldDependencyResolver
 from .impact_classifier import QueryImpactClassifier
 from .models import ReachedPath
 
@@ -12,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.graphql.analyzer import ObjectAccess
 
-    from .derived_dependencies import DerivedFieldDependencies
+    from .derived_dependencies import DerivedFieldDependencies, DerivedFieldDependencyResolver
 
 
 class AnalyzedQuery(Protocol):
@@ -44,10 +43,12 @@ class AnalyzedQuery(Protocol):
 class QueryClassifierBuilder:
     """Build a query's impact classifier from its analyzed read surface, on one branch."""
 
-    def __init__(self, *, query_branch: str, schema_branch: SchemaBranch) -> None:
+    def __init__(
+        self, *, query_branch: str, schema_branch: SchemaBranch, dependency_resolver: DerivedFieldDependencyResolver
+    ) -> None:
         self._query_branch = query_branch
         self._schema_branch = schema_branch
-        self._dependency_resolver = DerivedFieldDependencyResolver(schema_branch=schema_branch)
+        self._dependency_resolver = dependency_resolver
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
         readable_fields_by_kind = {kind: set(access.fields) for kind, access in query_report.requested_read.items()}

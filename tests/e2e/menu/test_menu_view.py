@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import save_screenshot_for_docs
+from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_foundation
 
@@ -30,7 +31,7 @@ class TestMenuView:
 
         await admin_page.goto("/")
         await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Location").click()
-        admin_page.get_by_role("menu", name="Location")
+        await expect(admin_page.get_by_role("dialog", name="Location")).to_be_visible()
         await save_screenshot_for_docs(admin_page, "location_menu")
 
         assert not server_errors, f"Unexpected 500 responses: {server_errors}"

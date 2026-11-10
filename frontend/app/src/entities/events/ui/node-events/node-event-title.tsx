@@ -40,16 +40,18 @@ export const NodeEventTitle = (props: NodeMutatedEvent) => {
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
       {account_id ? (
-        <span className="max-w-[200px] shrink-0 truncate">
+        <span className="max-w-50 shrink-0 truncate">
           <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
         </span>
       ) : (
         "-"
       )}
 
-      <span className="whitespace-nowrap text-gray-600">{NODE_EVENTS_MAPPING[event] ?? event}</span>
+      <span className="whitespace-nowrap text-foreground-muted">
+        {NODE_EVENTS_MAPPING[event] ?? event}
+      </span>
 
-      <div className="whitespace-nowrap text-gray-600">
+      <div className="whitespace-nowrap text-foreground-muted">
         {schemaLabels[payload.data.node_kind] ?? "-"}
       </div>
 

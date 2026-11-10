@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -53,7 +53,7 @@ export function KindMultiSelect({
         <Label htmlFor={id} className="inline-block w-fit">
           {label}
           {value.length > 0 && (
-            <span className="ml-1 font-normal text-gray-400 text-xs">({value.length})</span>
+            <span className="ml-1 font-normal text-foreground-muted text-xs">({value.length})</span>
           )}
         </Label>
       )}
@@ -63,13 +63,15 @@ export function KindMultiSelect({
           <div
             className={classNames(
               inputStyle,
-              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+              "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
               "cursor-pointer",
               className
             )}
           >
             <div className="flex grow flex-wrap gap-1">
-              {value.length === 0 && <span className="text-gray-400 text-sm">{placeholder}</span>}
+              {value.length === 0 && (
+                <span className="text-sm text-subtle-muted">{placeholder}</span>
+              )}
               {value.map((kind) => {
                 const node = nodes.find((n) => n.kind === kind);
                 return (
@@ -81,7 +83,7 @@ export function KindMultiSelect({
                       variant="ghost"
                       preventFocusOnPress
                       onPress={() => toggle(kind)}
-                      className="size-4 text-gray-500 data-hovered:text-gray-800"
+                      className="size-4 text-subtle-muted data-hovered:text-foreground"
                       aria-label="Remove"
                       data-testid="remove-option"
                     >
@@ -95,7 +97,7 @@ export function KindMultiSelect({
             <button
               id={id}
               type="button"
-              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
+              className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
               onClick={() => setOpen(!open)}
             >
               <Icon icon="mdi:unfold-more-horizontal" />
@@ -118,7 +120,7 @@ export function KindMultiSelect({
                   onSelect={() => toggle(kind)}
                 >
                   <span className="truncate">{s.label ?? kind}</span>
-                  <span className="ml-auto text-gray-400 text-xs">{s.namespace}</span>
+                  <span className="ml-auto text-subtle-muted text-xs">{s.namespace}</span>
                 </ComboboxItem>
               );
             })}

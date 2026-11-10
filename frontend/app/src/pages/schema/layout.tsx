@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Outlet } from "react-router";
 
@@ -6,6 +5,7 @@ import {
   LinkToggleButton,
   LinkToggleButtonGroup,
 } from "@/shared/components/buttons/link-toggle-button";
+import { Icon } from "@/shared/components/display/icon";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -24,6 +24,7 @@ function SchemaLayout() {
   const templates = useAtomValue(templateSchemasAtom);
 
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: calc: derived from the parent's height, so the value is not a constant
     <Content.Card className="h-[calc(100%-1rem)]">
       <Content.CardTitle
         title="Schema"

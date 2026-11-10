@@ -11,6 +11,7 @@ from infrahub.core.merge.selective_regen.fallbacks import repositories_forcing_f
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
 from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 from infrahub.core.merge.selective_regen.models import GateResult, LoadedDefinition
+from infrahub.core.regeneration.members import run_generator
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.graphql.analyzer import GraphQLQueryReport
@@ -106,7 +107,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         self.impacted = impacted
         self.widening = widening
 
-    def analyze(self, *, query_payload: str, target_branch: str) -> GraphQLQueryReport:
+    def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
         return GraphQLQueryReport(queries=[])
 
     async def resolve(
@@ -114,7 +115,7 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         *,
         query_report: GraphQLQueryReport,
         diff_summary: list[NodeDiff],
-        target_branch: str,
+        query_branch: str,
         subscriber_kind: str,
         every_target: list[str],
     ) -> TargetSelection:
@@ -165,7 +166,10 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
         return self._member_ids
 
     def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
-        return not subscriber_id or regenerate_all_members or subscriber_id in impacted
+        # Production code behavior
+        return run_generator(
+            instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
+        )
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]

@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+#
+# Demo schema for the pool "default target kind" override.
+#
+# `models/base` defines exactly one concrete kind per IPAM generic, so a pool has no second kind
+# to allocate and the override picker never has a second option to show. This file adds a second
+# concrete kind per generic plus a node whose relationships peer at the bare generics.
+#
+#   infrahubctl schema load models/base models/examples/ipam_kind_override.yml
+#   infrahubctl run models/examples/ipam_kind_override_data.py
+---
+version: '1.0'
+nodes:
+  - name: LoopbackAddress
+    namespace: Infra
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "Loopback IP Address — alternate concrete kind demonstrating the pool default-target-kind override"
+    icon: "mdi:router-network"
+    label: "Loopback Address"
+    attributes:
+      - name: router_id
+        kind: Text
+        optional: true
+        description: "Set so it's obvious a LoopbackAddress, not the pool default IpamIPAddress, was picked"
+  - name: TransitPrefix
+    namespace: Infra
+    include_in_menu: false
+    inherit_from:
+      - "BuiltinIPPrefix"
+    description: "Transit IP Prefix — alternate concrete kind demonstrating the pool default-target-kind override"
+    icon: "mdi:transit-connection-variant"
+    label: "Transit Prefix"
+    attributes:
+      - name: provider
+        kind: Text
+        optional: true
+        description: "Set so it's obvious a TransitPrefix, not the pool default IpamIPPrefix, was picked"
+  # Peering at the bare generics rather than a concrete kind is what makes the override picker appear.
+  - name: KindOverrideDemo
+    namespace: Infra
+    include_in_menu: true
+    description: "Relationships peer at the bare IPAM generics to exercise the pool target-kind override"
+    icon: "mdi:swap-horizontal-circle-outline"
+    label: "Kind Override Demo"
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_label: "{{ name__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: ip_address
+        label: "IP Address"
+        peer: "BuiltinIPAddress"
+        optional: true
+        cardinality: one
+      - name: ip_prefix
+        label: "IP Prefix"
+        peer: "BuiltinIPPrefix"
+        optional: true
+        cardinality: one

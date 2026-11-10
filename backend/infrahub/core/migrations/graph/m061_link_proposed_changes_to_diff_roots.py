@@ -23,7 +23,7 @@ class LinkOpenProposedChangesToDiffRootsQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // Find all proposed changes
         MATCH (pc:CoreProposedChange)
@@ -84,7 +84,7 @@ class LinkMergedProposedChangesToDiffRootsQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // Find all proposed changes
         MATCH (pc:CoreProposedChange)

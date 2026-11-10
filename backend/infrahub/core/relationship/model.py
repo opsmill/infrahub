@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -11,7 +12,6 @@ from typing import (
     Iterator,
     Literal,
     Mapping,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -21,19 +21,20 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.changelog.models import ChangelogRelationshipMapper
+from infrahub.core.changelog.relationship_mapper import ChangelogRelationshipMapper
 from infrahub.core.constants import (
     SYSTEM_USER_ID,
     BranchSupportType,
     InfrahubKind,
     MetadataOptions,
+    MutationAction,
     RelationshipCardinality,
     RelationshipKind,
 )
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
-from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -631,12 +632,18 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 if hfid_str:
                     data_from_pool["identifier"] = f"hfid={hfid_str} rel={self.name}"
 
+            # from_pool fields are forwarded as kwargs to whichever pool the id resolves to, so
+            # only pools whose get_resource accepts peer_kind may be given it.
+            pool_labels = pool.get_labels()
+            if InfrahubKind.IPADDRESSPOOL in pool_labels or InfrahubKind.IPPREFIXPOOL in pool_labels:
+                data_from_pool["peer_kind"] = self.schema.peer
+
             assigned_peer: Node = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=self.branch, at=at, user_id=user_id, **data_from_pool
             )
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
-            NodeCreationContext.record_if_active(node=assigned_peer)
+            NodeMutationContext.record_if_active(node=assigned_peer, action=MutationAction.CREATED)
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
@@ -1328,7 +1335,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
     async def update(
         self,
-        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
         | dict[str, Any]
         | str
         | Node
@@ -1345,7 +1352,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
             ValidationError: When the supplied data cannot form a valid relationship.
 
         """
-        if not isinstance(data, list):
+        # A str satisfies Sequence but stands for a single peer id, so it must not be iterated.
+        if isinstance(data, str) or not isinstance(data, Sequence):
             list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data

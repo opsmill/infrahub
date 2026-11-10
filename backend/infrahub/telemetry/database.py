@@ -14,6 +14,12 @@ from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, Telemetr
 from .queries import CountNodesByKindsQuery
 from .utils import safe_metric
 
+# The Neo4j setting for how many CPUs its parallel query engine uses; the default, 0, means all of them, so no cap.
+DB_WORKER_LIMIT_SETTING = "server.cypher.parallel.worker_limit"
+# The Neo4j settings that size its memory; left unset, Neo4j sizes it from the memory it can see.
+DB_HEAP_MAX_SETTING = "server.memory.heap.max_size"
+DB_PAGECACHE_SETTING = "server.memory.pagecache.size"
+
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
     data: list[TelemetryDatabaseServerData] = []
@@ -34,6 +40,49 @@ async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerD
     return data
 
 
+def _worker_limit_from_value(value: object) -> int | None:
+    """Turn the raw setting value into a number of CPUs, or ``None`` when no cap is set.
+
+    Only a positive whole number is a cap. ``0`` (the default), a missing value or
+    anything that is not a positive number means no cap.
+    """
+    if not isinstance(value, (str, int)):
+        return None
+    try:
+        limit = int(value)
+    except ValueError:
+        return None
+    return limit if limit > 0 else None
+
+
+async def _read_settings(db: InfrahubDatabase, setting_names: list[str], query_name: str) -> dict[str, object]:
+    query = """
+    SHOW SETTINGS YIELD name, value
+    WHERE name IN $setting_names
+    RETURN name, value
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"setting_names": setting_names},
+        name=query_name,
+        type=QueryType.READ,
+    )
+    return {result["name"]: result["value"] for result in results}
+
+
+async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
+    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set."""
+    settings = await _read_settings(db=db, setting_names=[DB_WORKER_LIMIT_SETTING], query_name="get_processor_assigned")
+    return _worker_limit_from_value(settings.get(DB_WORKER_LIMIT_SETTING))
+
+
+async def get_setting_text(db: InfrahubDatabase, setting_name: str) -> str | None:
+    """Read a database setting's value as the database reports it, or ``None`` when it is unset."""
+    settings = await _read_settings(db=db, setting_names=[setting_name], query_name="get_setting_text")
+    value = settings.get(setting_name)
+    return value if isinstance(value, str) else None
+
+
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
     query = """
     CALL dbms.queryJmx("java.lang:type=OperatingSystem")
@@ -49,6 +98,9 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
+        processor_assigned=await safe_metric(get_processor_assigned(db=db)),
+        memory_heap_max_size=await safe_metric(get_setting_text(db=db, setting_name=DB_HEAP_MAX_SETTING)),
+        memory_pagecache_size=await safe_metric(get_setting_text(db=db, setting_name=DB_PAGECACHE_SETTING)),
     )
 
 
@@ -84,7 +136,7 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
 
         if db.db_type == DatabaseType.NEO4J:
             server_info = await get_server_info(db=dbs)
-            system_info = await get_system_info(db=dbs)
+            system_info = await safe_metric(get_system_info(db=dbs))
 
             # server_info is populated only on Neo4j Enterprise, so a non-empty result implies it.
             if len(server_info) == 0:

@@ -148,6 +148,10 @@ export const router = createBrowserRouter([
                             lazy: () => import("@/pages/objects/object-details/repository-objects"),
                           },
                           {
+                            path: "repository_commits",
+                            lazy: () => import("@/pages/objects/object-details/repository-commits"),
+                          },
+                          {
                             path: ":relationshipName",
                             lazy: () => import("@/pages/objects/object-details/relationship"),
                           },
@@ -303,6 +307,9 @@ export const router = createBrowserRouter([
                         path: "resources/:resourceId",
                         lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
                       },
+                      {
+                        path: "ranges/:rangeId",
+                      },
                     ],
                   },
                 ],
@@ -365,6 +372,11 @@ export const router = createBrowserRouter([
                                 path: "repository_objects",
                                 lazy: () =>
                                   import("@/pages/objects/object-details/repository-objects"),
+                              },
+                              {
+                                path: "repository_commits",
+                                lazy: () =>
+                                  import("@/pages/objects/object-details/repository-commits"),
                               },
                               {
                                 path: ":relationshipName",

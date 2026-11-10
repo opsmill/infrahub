@@ -1,6 +1,5 @@
-import type * as React from "react";
-
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import type * as React from "react";
 import { cn } from "tailwind-variants";
 
 interface ScrollBarProps extends ScrollAreaPrimitive.ScrollAreaScrollbarProps {}
@@ -10,14 +9,14 @@ function ScrollBar({ className, orientation = "vertical", ...props }: ScrollBarP
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       orientation={orientation}
       className={cn(
-        "flex touch-none rounded-full bg-neutral-100 transition-colors select-none",
+        "flex touch-none select-none rounded-full bg-background/50 transition-colors",
         orientation === "vertical" && "h-full w-1",
         orientation === "horizontal" && "h-1 flex-col",
-        className,
+        className
       )}
       {...props}
     >
-      <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-[inherit] bg-neutral-300" />
+      <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-[inherit] bg-border" />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
 }
@@ -45,8 +44,12 @@ export function ScrollArea({
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
-        // `isolate` keeps z-indexed content, such as sticky table cells, from painting over the overlay scrollbars.
-        className="isolate size-full rounded-[inherit]"
+        className={cn(
+          // `isolate` keeps z-indexed content, such as sticky table cells, from painting over the overlay scrollbars.
+          "isolate size-full rounded-[inherit]",
+          // Radix lays the content out as a table that grows to its widest child; without horizontal scrolling it must stay at the area's width.
+          !scrollX && "[&>div]:block!"
+        )}
         ref={ref}
       >
         {children}

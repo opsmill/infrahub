@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.exceptions import ValidationError
+from infrahub.core.merge.builder import build_repository_import_guard
+from infrahub.core.registry import registry
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 
 from .checker import verify_proposed_change_is_mergeable
 from .constants import ProposedChangeAction, ProposedChangeState
@@ -105,6 +107,22 @@ class IsMergeable(Check):
             )
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+
+class RepositoryImportsUsable(Check):
+    async def evaluate(
+        self,
+        proposed_change: CoreProposedChange,
+        proposed_change_author: CoreGenericAccount,  # noqa: ARG002
+        db: InfrahubDatabase,
+        graphql_context: GraphqlContext,  # noqa: ARG002
+    ) -> None:
+        try:
+            source_branch = await registry.get_branch(db=db, branch=proposed_change.source_branch.value)
+        except BranchNotFoundError:
+            # A deleted source branch has no imports to check.
+            return
+        await build_repository_import_guard(db=db).verify(branch=source_branch)
 
 
 @dataclass
@@ -212,6 +230,7 @@ ACTION_RULES = [
             DraftIs(expected=False),
             HasPermission(permission=MERGE_PROPOSED_CHANGE_PERMISSION),
             IsMergeable(),
+            RepositoryImportsUsable(),
         ],
     ),
 ]

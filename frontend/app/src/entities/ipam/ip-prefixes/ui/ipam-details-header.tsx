@@ -57,8 +57,8 @@ export function IpamDetailsHeader({
 
       <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
 
-      <Row className="relative grow gap-2.5 overflow-hidden">
-        <Fade />
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: Tailwind has no mask-image utility; the fade length is local to this header */}
+      <Row className="grow gap-2.5 overflow-hidden [mask-image:linear-gradient(to_right,black_calc(100%-10rem),transparent)]">
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";
 
@@ -116,7 +116,7 @@ export function IpamDetailsHeader({
   );
 }
 
-const Divider = () => <div className="h-5 w-px shrink-0 bg-gray-200" />;
+const Divider = () => <div className="h-5 w-px shrink-0 bg-border" />;
 
 const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
   <div className={classNames("not-last:max-w-50 text-xs", className)} {...props}>
@@ -131,19 +131,9 @@ const Title = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement
 );
 
 const Value = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div className={classNames("truncate font-medium text-gray-600", className)} {...props}>
+  <div className={classNames("truncate font-medium text-foreground-muted", className)} {...props}>
     {children}
   </div>
-);
-
-const Fade = ({ className, ...props }: React.HTMLProps<HTMLDivElement>) => (
-  <div
-    className={classNames(
-      "pointer-events-none absolute top-0 right-0 bottom-0 w-40 bg-gradient-to-r from-transparent via-white/70 to-white",
-      className
-    )}
-    {...props}
-  />
 );
 
 interface RelationshipDisplayProps extends Omit<LinkProps, "to"> {

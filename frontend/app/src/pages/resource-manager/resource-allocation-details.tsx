@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent, LinkButton } from "@infrahub/ui";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Table } from "@/shared/components/table/table";
@@ -88,7 +88,7 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
+    <Card className="sticky right-0 ml-1 w-full min-w-112.5 max-w-151.5">
       <CardContent>
         <div className="flex items-center gap-1 pb-2">
           <h3 className="font-semibold">Allocated resources</h3>

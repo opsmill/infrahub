@@ -106,6 +106,7 @@ function IpamCreationForm(props: IpamCreationFormProps) {
               poolGetResourceMutationName: allocateMutationName,
               data: buildAllocateResourceInput({
                 poolId: fieldDataForIpField.source.id,
+                poolKind: fieldDataForIpField.source.kind,
                 poolFieldValue: fieldDataForIpField.value,
                 nodeData: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
               }),

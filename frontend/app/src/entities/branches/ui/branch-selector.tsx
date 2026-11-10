@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Autocomplete,
   Button,
@@ -18,6 +17,7 @@ import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-comp
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -71,7 +71,7 @@ export function BranchSelector() {
         <ChevronsUpDownIcon className="ml-0.5" />
       </Button>
 
-      <Popover placement="bottom start">
+      <Popover placement="bottom start" width="min-trigger">
         <PopoverDialog>
           {({ close }) =>
             isCreating ? (
@@ -171,7 +171,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onPress={closePopover}
       >
         View all branches
-        <ArrowUpRightIcon className="text-stone-500" />
+        <ArrowUpRightIcon className="text-subtle-muted" />
       </LinkButton>
     </>
   );
@@ -191,7 +191,7 @@ export function BranchFormTriggerButton({ ...props }: AriaButtonProps) {
         data-testid="create-branch-button"
         {...props}
       >
-        <PlusIcon className="size-5 text-stone-500" />
+        <PlusIcon className="size-5 text-subtle-muted" />
       </Button>
     </Tooltip>
   );

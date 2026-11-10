@@ -36,7 +36,7 @@ class BranchFlowRunPurger:
         try:
             return await self.client.read_flow_runs(flow_run_filter=flow_run_filter, limit=self.batch_size)
         # Best-effort cleanup that follows a committed deletion: a read failure must not fail it.
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log.warning(f"Failed to read flow runs for deleted branch '{branch_name}': {exc}")
             return None
 
@@ -60,7 +60,7 @@ class BranchFlowRunPurger:
                     await self.client.delete_flow_run(flow_run_id=flow_run.id)
                     deleted_calls += 1
                 # A single failed delete must not abort the rest of the batch.
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     self.log.warning(
                         f"Failed to delete flow run {flow_run.id} for deleted branch '{branch_name}': {exc}"
                     )

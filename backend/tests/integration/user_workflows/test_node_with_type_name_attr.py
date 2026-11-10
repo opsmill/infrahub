@@ -38,7 +38,7 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
             ],
         }
 
-        schema_root = SchemaRoot(**schema)  # type: ignore
+        schema_root = SchemaRoot(**schema)
         await load_schema(db, schema=schema_root)
         node = await Node.init(schema="InfraNode", db=db)
         await node.new(db=db, type="test_type")

@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
@@ -98,7 +98,7 @@ function RelationshipOneRow({
                 isProtected={relationshipProperties.is_protected}
                 header={
                   onClickMetadata && (
-                    <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
+                    <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
                       <div className="font-semibold">
                         {getRelationshipLabel(relationshipSchema, peerSchema)}
                       </div>
@@ -120,7 +120,7 @@ function RelationshipOneRow({
                 }
               />
               {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-gray-600" />
+                <LockIcon className="size-3.5 text-foreground-muted" />
               )}
             </>
           )}
@@ -184,7 +184,7 @@ function RelationshipManyRow({
                         isProtected={edgeProperties.is_protected}
                       />
                       {edgeProperties.is_protected && (
-                        <LockIcon className="size-3.5 text-gray-600" />
+                        <LockIcon className="size-3.5 text-foreground-muted" />
                       )}
                     </>
                   )}

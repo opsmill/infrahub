@@ -46,6 +46,11 @@ class AttributeConstraintViolationData(PayloadBase):
     detail: str | None = None
 
 
+class UniquenessViolationData(PayloadBase):
+    node_kind: str
+    fields: list[str]
+
+
 class BranchNotFoundData(PayloadBase):
     branch_name: str
 
@@ -70,6 +75,12 @@ class MergeRecoveryRequiredData(PayloadBase):
 
 class SchemaNotFoundData(PayloadBase):
     kind: str
+
+
+class WorkerTimeoutData(PayloadBase):
+    operation: str
+    timeout_seconds: int
+    retry_after_seconds: int
 
 
 class UndefinedErrorData(PayloadBase):

@@ -133,6 +133,8 @@ node deletes everything attached to it), the per-transaction cost is unbounded n
 `n` is. Batch over the fan-out unit where possible, and cap a fan-out-prone batch with
 `min(configured_size, ceiling)` rather than inheriting `query_size_limit` unchanged.
 
+**Pitfall — don't carry candidate ids across phases in application memory.** A multi-phase migration (phase 1 computes candidate node/edge ids, phase 2 acts on them — e.g. deleting orphans or restoring metadata for what phase 1 touched) must not hold those candidates in a Python list to drive the later phase. A crash between phases loses that in-memory list, and a resumed run can no longer tell what still needs cleanup. Keep candidate selection and its dependent cleanup database-side: re-derive candidates by the same filter inside the same `CALL ... IN TRANSACTIONS` pass as the write that produces them, rather than collecting ids in Python. Distinct logical phases (e.g. reopening edges vs. deleting edges) can and should stay as separate passes when planner or transaction-memory limits require it — each pass just needs to clean up after its own candidates rather than depending on ids collected by an earlier pass. See [Merge Failure Recovery](../../knowledge/backend/merge-failure-recovery.md) for a worked example.
+
 **Pitfall — one bad item must not hide the rest.** An `ArbitraryMigration` that owns its `execute`
 and iterates independent items (branches, nodes, kinds) as auto-commit statements wraps each item in
 its own `try`, collects per-item failures into `MigrationResult.errors`, and keeps going —

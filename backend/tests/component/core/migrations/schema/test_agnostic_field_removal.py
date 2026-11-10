@@ -13,15 +13,14 @@ manager is used as well, because that is the claim being made.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.node import Node
@@ -38,19 +37,21 @@ from tests.helpers.agnostic_edges import (
     attribute_global_edges,
     attribute_metadata,
     attribute_owning_edges,
+    create_gadget,
+    create_widget,
     edge_summary,
     open_edge_types,
     open_edges,
     relationship_global_edges,
     relationship_metadata,
     relationship_peer_shape,
+    remove_attribute_from_schema,
     to_times,
 )
 from tests.helpers.db_validation import get_node_metadata
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     BEACON_KIND,
-    GADGET_KIND,
     RELATIONSHIP_IDENTIFIER,
     WIDGET_KIND,
 )
@@ -77,49 +78,9 @@ async def verify_graph_invariants(db: InfrahubDatabase, default_branch: Branch) 
     await verify_graph(db=db)
 
 
-async def _create_widget(db: InfrahubDatabase, branch: Branch, name: str, serial: int, **kwargs: Any) -> Node:
-    widget = await Node.init(db=db, schema=WIDGET_KIND, branch=branch)
-    await widget.new(db=db, name=name, serial=serial, **kwargs)
-    await widget.save(db=db)
-    return widget
-
-
-async def _create_gadget(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
-    gadget = await Node.init(db=db, schema=GADGET_KIND, branch=branch)
-    await gadget.new(db=db, name=name)
-    await gadget.save(db=db)
-    return gadget
-
-
 async def _delete(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
     to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     await to_delete.delete(db=db, at=at, user_id=TEST_ACTOR_ID)
-
-
-async def _remove_attribute_from_schema(
-    db: InfrahubDatabase,
-    branch: Branch,
-    at: Timestamp,
-    kind: str = WIDGET_KIND,
-    attribute_name: str = ATTRIBUTE_NAME,
-    user_id: str = TEST_ACTOR_ID,
-) -> MigrationResult:
-    """Run the attribute-removal migration for a branch-agnostic attribute on `branch`."""
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    previous_node = schema_branch.get(name=kind)
-
-    candidate = schema_branch.duplicate()
-    node_schema = candidate.get(name=kind)
-    node_schema.get_attribute(name=attribute_name).state = HashableModelState.ABSENT
-    candidate.set(name=kind, schema=node_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
-
-    migration = NodeAttributeRemoveMigration(
-        previous_node_schema=previous_node,
-        new_node_schema=node_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=attribute_name),
-    )
-    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
 
 
 async def _create_beacon(db: InfrahubDatabase, branch: Branch, name: str, serial: int) -> Node:
@@ -163,13 +124,13 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_no_branch_dec
     db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
 ) -> None:
     """No branch forked while the attribute existed, so the removal leaves nothing able to read it."""
-    widget = await _create_widget(db=db, branch=default_branch, name="loses-its-serial", serial=100)
+    widget = await create_widget(db=db, branch=default_branch, name="loses-its-serial", serial=100)
 
     before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -187,8 +148,8 @@ async def test_a_relationship_removed_from_the_schema_is_closed_when_no_branch_d
     db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
 ) -> None:
     """Both peers survive the removal, but no branch can still reach them over a live global edge."""
-    gadget = await _create_gadget(db=db, branch=default_branch, name="keeps-existing")
-    widget = await _create_widget(db=db, branch=default_branch, name="loses-its-gadget", serial=200, gadget=gadget)
+    gadget = await create_gadget(db=db, branch=default_branch, name="keeps-existing")
+    widget = await create_widget(db=db, branch=default_branch, name="loses-its-gadget", serial=200, gadget=gadget)
 
     before = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
     assert [edge.edge_type for edge in open_edges(before)].count("IS_RELATED") == 2
@@ -209,13 +170,13 @@ async def test_an_attribute_stays_open_for_a_branch_that_forked_before_the_remov
     db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
 ) -> None:
     """The branch still declares the attribute and still holds the object, so the value is not released."""
-    widget = await _create_widget(db=db, branch=default_branch, name="serial-kept-by-a-fork", serial=300)
+    widget = await create_widget(db=db, branch=default_branch, name="serial-kept-by-a-fork", serial=300)
     branch = await create_branch(db=db, branch_name="declares-the-attribute-still")
 
     before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -231,8 +192,8 @@ async def test_a_relationship_stays_open_for_a_branch_that_forked_before_the_rem
     db: InfrahubDatabase, default_branch: Branch, agnostic_schema: None
 ) -> None:
     """The branch still declares the relationship and still reads both of its peers as live."""
-    gadget = await _create_gadget(db=db, branch=default_branch, name="peer-kept-by-a-fork")
-    widget = await _create_widget(db=db, branch=default_branch, name="gadget-kept-by-a-fork", serial=400, gadget=gadget)
+    gadget = await create_gadget(db=db, branch=default_branch, name="peer-kept-by-a-fork")
+    widget = await create_widget(db=db, branch=default_branch, name="gadget-kept-by-a-fork", serial=400, gadget=gadget)
     branch = await create_branch(db=db, branch_name="declares-the-relationship-still")
 
     before = await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER)
@@ -265,10 +226,10 @@ async def test_one_removal_closes_only_the_objects_the_fork_cannot_reach(
     the default. When the schema migration runs, the attribute on to-be-retired is not accessible
     from any branch and needs to be closed.
     """
-    retained = await _create_widget(db=db, branch=default_branch, name="held-by-the-fork", serial=800)
+    retained = await create_widget(db=db, branch=default_branch, name="held-by-the-fork", serial=800)
     branch = await create_branch(db=db, branch_name="forked-between-the-two")
     # created after the branch, so only visible on the default branch, not on the user branch
-    retired = await _create_widget(db=db, branch=default_branch, name="created-after-the-fork", serial=900)
+    retired = await create_widget(db=db, branch=default_branch, name="created-after-the-fork", serial=900)
 
     retained_before = await attribute_global_edges(db=db, node_id=retained.id, attribute_name=ATTRIBUTE_NAME)
     retired_before = await attribute_global_edges(db=db, node_id=retired.id, attribute_name=ATTRIBUTE_NAME)
@@ -276,7 +237,7 @@ async def test_one_removal_closes_only_the_objects_the_fork_cannot_reach(
     assert open_edge_types(retired_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 2, "both objects went through the one removal, as one batch"
 
@@ -308,8 +269,8 @@ async def test_a_relationship_is_closed_when_the_only_fork_reads_one_of_its_peer
     verify the relationship is still active on the global branch, remove the relationship schema
     on the default branch, verify the agnostic relationship is closed.
     """
-    gadget = await _create_gadget(db=db, branch=default_branch, name="peer-lost-on-the-fork")
-    widget = await _create_widget(db=db, branch=default_branch, name="half-a-relationship", serial=1000, gadget=gadget)
+    gadget = await create_gadget(db=db, branch=default_branch, name="peer-lost-on-the-fork")
+    widget = await create_widget(db=db, branch=default_branch, name="half-a-relationship", serial=1000, gadget=gadget)
     branch = await create_branch(db=db, branch_name="deleted-one-peer")
 
     # delete the peer on the branch
@@ -347,10 +308,10 @@ async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_delet
     the branch the object is deleted on is the one that declared it. Neither branch holds both axes, so
     nothing retains the value.
     """
-    widget = await _create_widget(db=db, branch=default_branch, name="serial-dropped-by-a-fork", serial=600)
+    widget = await create_widget(db=db, branch=default_branch, name="serial-dropped-by-a-fork", serial=600)
     branch = await create_branch(db=db, branch_name="dropped-the-attribute")
 
-    removal = await _remove_attribute_from_schema(db=db, branch=branch, at=Timestamp())
+    removal = await remove_attribute_from_schema(db=db, branch=branch, at=Timestamp())
     assert not removal.errors
     assert removal.nbr_migrations_executed == 1
 
@@ -387,7 +348,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork
     object, and the fork that goes on declaring the attribute is the one left with nothing to read it
     from.
     """
-    widget = await _create_widget(db=db, branch=default_branch, name="serial-outlived-by-a-fork", serial=700)
+    widget = await create_widget(db=db, branch=default_branch, name="serial-outlived-by-a-fork", serial=700)
     branch = await create_branch(db=db, branch_name="deleted-the-object")
 
     deleted_at = Timestamp()
@@ -399,7 +360,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork
     )
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -436,7 +397,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_is_closed_when_no_branch_d
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(
+    result = await remove_attribute_from_schema(
         db=db, branch=default_branch, at=removed_at, kind=BEACON_KIND, attribute_name=ATTRIBUTE_NAME
     )
     assert not result.errors
@@ -463,7 +424,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_stays_open_for_a_branch_th
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(
+    result = await remove_attribute_from_schema(
         db=db, branch=default_branch, at=removed_at, kind=BEACON_KIND, attribute_name=ATTRIBUTE_NAME
     )
     assert not result.errors
@@ -481,13 +442,13 @@ async def test_removing_an_attribute_stamps_the_removal_time_on_its_vertex(
     the global branch while the migration runs on the default branch -- and the default branch is one
     of the two whose writes maintain vertex metadata.
     """
-    widget = await _create_widget(db=db, branch=default_branch, name="stamped-on-removal", serial=1000)
+    widget = await create_widget(db=db, branch=default_branch, name="stamped-on-removal", serial=1000)
 
     before = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert before.updated_at is not None, "precondition: creating the object stamped the attribute"
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
 
     after = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
@@ -508,8 +469,8 @@ async def test_removing_a_relationship_stamps_the_removal_time_on_its_vertex(
     The removal touches both peers, so both peer nodes carry its stamp, each snapshotting its own
     pre-removal values.
     """
-    gadget = await _create_gadget(db=db, branch=default_branch, name="peer-of-the-stamped")
-    widget = await _create_widget(
+    gadget = await create_gadget(db=db, branch=default_branch, name="peer-of-the-stamped")
+    widget = await create_widget(
         db=db, branch=default_branch, name="stamped-on-rel-removal", serial=1001, gadget=gadget
     )
 
@@ -543,7 +504,7 @@ async def test_a_rolled_back_removal_leaves_the_global_edges_open(
     The edges reopen, and the stamps the removal wrote on the vertices it touched are restored
     from their snapshots, which the restore consumes.
     """
-    widget = await _create_widget(db=db, branch=default_branch, name="keeps-its-serial", serial=300)
+    widget = await create_widget(db=db, branch=default_branch, name="keeps-its-serial", serial=300)
 
     before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
@@ -551,7 +512,7 @@ async def test_a_rolled_back_removal_leaves_the_global_edges_open(
     before_owner = await get_node_metadata(db=db, node_uuid=widget.id)
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     closed = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edges(closed) == [], "precondition: the removal closed the global edges"

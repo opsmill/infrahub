@@ -170,7 +170,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                     </FormInput>
                     <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>
                   </div>
-                  <p className="text-gray-500 text-xs">
+                  <p className="text-foreground-muted text-xs">
                     Only return the shortest path(s) to each target. Uncheck to return every path
                     within the max depth.
                   </p>

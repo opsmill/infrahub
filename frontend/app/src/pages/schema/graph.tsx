@@ -4,6 +4,7 @@ import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
 
+import { useTheme } from "@/entities/config/ui/theme-provider";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -17,6 +18,7 @@ function SchemaGraph() {
   const profiles = useAtomValue(profileSchemasAtom);
   const templates = useAtomValue(templateSchemasAtom);
   const [highlightNodeId, setHighlightNodeId] = useQueryState(QSP.HIGHLIGHT);
+  const { resolvedTheme: theme } = useTheme();
 
   const schemaData: SchemaVisualizerData = { nodes, generics, profiles, templates };
 
@@ -25,6 +27,7 @@ function SchemaGraph() {
       <SchemaVisualizer
         data={schemaData}
         className="flex-1"
+        theme={theme}
         highlightNodeId={highlightNodeId}
         onClearHighlight={() => setHighlightNodeId(null)}
       />

@@ -123,9 +123,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         event_trigger = EventTrigger()
         event_trigger.events.add(NodeUpdatedEvent.event_name)
         event_trigger.match = {"infrahub.node.kind": node_kind}
-        if branches_out_of_scope:
-            event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
         # The coalesced merge and rebase recompute owns this family, so its per-node automation
         # fires only for live mutations, excluding the replayed merge and rebase changes.
@@ -135,6 +133,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": fields,
         }
+        event_trigger.exclude_branches(branches_out_of_scope or [])
 
         workflow = ExecuteWorkflow(
             workflow=HFID_PROCESS,

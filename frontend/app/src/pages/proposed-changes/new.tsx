@@ -28,8 +28,8 @@ function ProposedChangeCreatePage() {
     <Content>
       <Card className="m-auto mt-0 max-w-2xl md:mt-4">
         <CardContent className="px-8 py-4">
-          <h1 className="font-semibold text-gray-700 text-xl">Create a proposed change</h1>
-          <p className="mb-6 text-gray-700 text-xs">
+          <h1 className="font-semibold text-foreground text-xl">Create a proposed change</h1>
+          <p className="mb-6 text-foreground-muted text-xs">
             A proposed change lets you compare two branches, run tests, and finally merge one branch
             into another.
           </p>

@@ -1,8 +1,10 @@
 import { ScrollArea } from "@infrahub/ui";
-import type { ColumnDef } from "@tanstack/react-table";
-import { describe, expect, test } from "vitest";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import type { JSX } from "react";
+import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { DataTable } from "@/shared/components/table/data-table";
+import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import {
   StickyLeftCell,
@@ -70,7 +72,7 @@ const rows: DemoRow[] = [
 // outgrow.
 const renderTable = (columnDefs: ColumnDef<DemoRow>[], data: DemoRow[]) =>
   render(
-    <div className="w-[600px] overflow-x-auto">
+    <div className="w-150 overflow-x-auto">
       <DataTable columns={columnDefs} data={data} />
     </div>
   );
@@ -148,27 +150,39 @@ describe("DataTable first column overflow", () => {
     expect(marker.getBoundingClientRect().width).toBeGreaterThan(0);
   });
 
-  test("keeps the sticky footer above the sticky row actions", async () => {
-    // GIVEN a table that renders its count footer
-    await render(
-      <div className="w-[600px] overflow-x-auto">
-        <DataTable columns={columns} data={rows} count={rows.length} />
+  test("shows the count footer over the rows and columns scrolled behind it", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <div className="h-60 w-40 overflow-auto" data-testid="scroller">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
       </div>
     );
+    const scroller = component.getByTestId("scroller").element();
 
-    // THEN every footer cell outranks the sticky action cells, so the last row's
-    // action menu cannot punch through the count bar.
-    const grid = document.querySelector('[style*="grid-template-columns"]')!;
-    const footerCells = [...grid.children].filter(
-      (el) => getComputedStyle(el).position === "sticky" && getComputedStyle(el).bottom === "0px"
+    // WHEN
+    scroller.scrollLeft = scroller.scrollWidth;
+
+    // THEN
+    expect(scroller.scrollLeft).toBeGreaterThan(0);
+
+    const countLabel = component.getByText(/^counts?$/).element();
+    const countRect = countLabel.getBoundingClientRect();
+    const footerY = countRect.top + countRect.height / 2;
+    const topmostOverCount = document.elementFromPoint(
+      countRect.left + countRect.width / 2,
+      footerY
     );
-    expect(footerCells.length).toBeGreaterThan(0);
+    expect(countLabel.contains(topmostOverCount)).toBe(true);
 
-    const actionsZ =
-      Number(getComputedStyle(document.querySelector('[data-testid="actions-cell"]')!).zIndex) || 0;
-    for (const cell of footerCells) {
-      expect(Number(getComputedStyle(cell).zIndex) || 0).toBeGreaterThan(actionsZ);
-    }
+    const visibleRight =
+      scroller.getBoundingClientRect().left + scroller.clientLeft + scroller.clientWidth;
+    const topmostOverActions = document.elementFromPoint(visibleRight - 10, footerY);
+    expect(topmostOverActions?.closest('[data-testid="actions-cell"]')).toBeNull();
   });
 
   test("keeps both scrollbars above the sticky footer and row actions", async () => {
@@ -249,5 +263,252 @@ describe("DataTable first column tooltip", () => {
 
     // THEN
     await expect.element(component.getByRole("tooltip", { name: LONG_LABEL })).toBeVisible();
+  });
+});
+
+describe("DataTable rows that are not nodes", () => {
+  interface CommitRow {
+    hash: string;
+    summary: string;
+  }
+
+  const commitColumns: ColumnDef<CommitRow>[] = [
+    {
+      id: "hash",
+      header: () => <div>Hash</div>,
+      cell: ({ row }) => <div>{row.original.hash}</div>,
+    },
+    {
+      id: "summary",
+      header: () => <div>Summary</div>,
+      cell: ({ row }) => <div>{row.original.summary}</div>,
+    },
+  ];
+
+  test("renders rows that carry no id when given getRowId", async () => {
+    // GIVEN
+    const commits: CommitRow[] = [
+      { hash: "a1b2c3d", summary: "Add device inventory" },
+      { hash: "e5f6a7b", summary: "Initial import" },
+    ];
+
+    // WHEN
+    const component = await render(
+      <DataTable columns={commitColumns} data={commits} getRowId={(commit) => commit.hash} />
+    );
+
+    // THEN
+    const rows = component.getByTestId("data-table-row");
+    expect(rows.elements()).toHaveLength(2);
+    await expect.element(rows.nth(0).getByText("Add device inventory")).toBeVisible();
+    await expect.element(rows.nth(1).getByText("e5f6a7b")).toBeVisible();
+  });
+
+  test("rejects row selection on non-node rows at the type level", () => {
+    const commits: CommitRow[] = [];
+
+    const table = (
+      <DataTable
+        columns={commitColumns}
+        data={commits}
+        getRowId={(commit: CommitRow) => commit.hash}
+        // @ts-expect-error rows that are not nodes cannot be selected
+        enableRowSelection
+      />
+    );
+
+    expectTypeOf(table).toEqualTypeOf<JSX.Element>();
+  });
+});
+
+interface VisibilityRow {
+  id: string;
+  name: string;
+  __typename: string;
+}
+
+const visibilityColumnHelper = createColumnHelper<VisibilityRow>();
+
+// Mirrors the real object table's shape: an identity column, one schema field
+// column, the kind column and the actions column.
+const visibilityColumns: Array<ColumnDef<VisibilityRow, unknown>> = [
+  visibilityColumnHelper.display({
+    id: "id",
+    header: () => <div>Identifier</div>,
+    cell: ({ row }) => <div>{row.original.id}</div>,
+  }),
+  visibilityColumnHelper.display({
+    id: "name",
+    header: () => <div>Device name</div>,
+    cell: ({ row }) => <div>{row.original.name}</div>,
+  }),
+  visibilityColumnHelper.display({
+    id: "objectKind",
+    header: () => <div>Kind</div>,
+    cell: ({ row }) => <div>{row.original.__typename}</div>,
+  }),
+  visibilityColumnHelper.display({
+    id: "actions",
+    header: () => <div>Actions</div>,
+    cell: () => <div>Edit</div>,
+  }),
+];
+
+const visibilityRows: Array<VisibilityRow> = [
+  { id: "device-1", name: "atl1-core1", __typename: "InfraDevice" },
+];
+
+describe("DataTable column visibility", () => {
+  test("renders a header for every column when no visibility state is given", async () => {
+    // GIVEN
+    const columnVisibility = undefined;
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Identifier")).toBeVisible();
+    await expect.element(component.getByText("Device name")).toBeVisible();
+    await expect.element(component.getByText("Kind")).toBeVisible();
+    await expect.element(component.getByText("Actions")).toBeVisible();
+  });
+
+  test("omits both the header and the body cell of a column hidden by the visibility state", async () => {
+    // GIVEN
+    const columnVisibility = { name: false };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Identifier")).toBeVisible();
+    expect(component.getByText("Device name").elements()).toHaveLength(0);
+    expect(component.getByText("atl1-core1").elements()).toHaveLength(0);
+  });
+
+  test("keeps the header and the body cell of a column explicitly set to visible", async () => {
+    // GIVEN
+    const columnVisibility = { name: true };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Device name")).toBeVisible();
+    await expect.element(component.getByText("atl1-core1")).toBeVisible();
+  });
+
+  test("derives gridTemplateColumns from the visible column count only", async () => {
+    // GIVEN
+    const columnVisibility = { name: false };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+        role="grid"
+        aria-label="Devices"
+      />
+    );
+
+    // THEN
+    const grid = component.getByRole("grid", { name: "Devices" }).element();
+    // 3 of the 4 columns are visible, so the default formula must lay out 3 tracks — one track per
+    // rendered cell. A 4th (phantom) track misaligns every row. The track function is read from the
+    // same constant the component uses, so capping long columns can change without breaking this
+    // assertion about the track *count*.
+    expect(grid.style.gridTemplateColumns).toBe(
+      `repeat(1, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`
+    );
+  });
+
+  test("lays out a two-track grid when every field column is hidden", async () => {
+    // GIVEN only the identity and actions columns are left, as on a node schema
+    // (no `objectKind` column) with every field column hidden.
+    const columnVisibility = { name: false, objectKind: false };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+        role="grid"
+        aria-label="Devices"
+      />
+    );
+
+    // THEN the formula must skip `repeat()` entirely: `repeat(0, auto)` is invalid CSS, so the
+    // CSSOM would reject the whole declaration and leave an empty inline style.
+    const grid = component.getByRole("grid", { name: "Devices" }).element();
+    expect(grid.style.gridTemplateColumns).toBe("1fr 2.5rem");
+
+    // …and with a declaration the grid actually accepts, the two remaining body cells stay on one
+    // row. A rejected declaration collapses the grid to a single implicit column, which pushes the
+    // actions cell onto a row of its own and doubles the height of every row in the table.
+    const identityCell = component.getByText("device-1").element();
+    const actionsCell = component.getByText("Edit").element();
+    expect(identityCell.getBoundingClientRect().top).toBe(actionsCell.getBoundingClientRect().top);
+  });
+
+  test("keeps the identity column when every other column is hidden", async () => {
+    // GIVEN
+    const columnVisibility = { name: false, objectKind: false, actions: false };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        columnVisibility={columnVisibility}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Identifier")).toBeVisible();
+    await expect.element(component.getByText("device-1")).toBeVisible();
+  });
+
+  test("renders one footer count cell per visible column", async () => {
+    // GIVEN
+    const columnVisibility = { name: false };
+
+    // WHEN
+    const component = await render(
+      <DataTable
+        columns={visibilityColumns}
+        data={visibilityRows}
+        count={42}
+        columnVisibility={columnVisibility}
+        role="grid"
+        aria-label="Devices"
+      />
+    );
+
+    // THEN
+    const grid = component.getByRole("grid", { name: "Devices" }).element();
+    // Footer cells carry no accessible role, so their number can only be read
+    // from the `cellFooterStyle` sticky-bottom class they alone carry.
+    expect(grid.querySelectorAll(":scope > .bottom-0")).toHaveLength(3);
   });
 });

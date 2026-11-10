@@ -256,7 +256,7 @@ CALL (n_uuid, vertex_element_ids, element_id_to_keep) {
             "vertex_label": self.vertex_label,
         }
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["limit"] = self.limit or 1000
         self.params["offset"] = self.offset or 0
         query_start = """
@@ -348,7 +348,7 @@ class DeleteDuplicatedEdgesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // ------------
 // Find vertex pairs that have duplicate edges
@@ -428,7 +428,7 @@ class DeleteIllegalRelationships(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // ------------
 // Get the default and global branch names
@@ -499,7 +499,7 @@ class DeleteDuplicateRelationships(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (n:Node)
 WITH n.uuid AS node_uuid, count(*) as num_nodes_with_uuid
@@ -533,7 +533,7 @@ class PerformHardDeletes(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 CALL () {
     MATCH (n)
@@ -653,7 +653,8 @@ class Migration029(ArbitraryMigration):
             duplicate_relationships_cleanup_query = await DeleteDuplicateRelationships.init(db=db)
             await duplicate_relationships_cleanup_query.execute(db=db)
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             migration_result.errors.append(str(exc))
             return migration_result
 

@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardHeader } from "@infrahub/ui";
 import { useState } from "react";
 
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -29,7 +29,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
   const [isOpen, setIsOpen] = useState(false);
 
   if (isPending) {
-    return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
+    return <LoadingIndicator className="h-page-body" />;
   }
 
   if (error) {
@@ -100,7 +100,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
               targetSchema={targetSchema}
             />
           ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-foreground-muted">
               <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
               <div className="font-medium text-lg">No kind selected</div>
               <div className="text-sm">Please select a kind for the conversion target</div>

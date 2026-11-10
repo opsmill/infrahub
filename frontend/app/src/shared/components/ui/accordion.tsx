@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 export const Accordion = AccordionPrimitive.Root;

@@ -56,7 +56,7 @@ class Migration079(ArbitraryMigration):
             index_manager.init(nodes=TEXT_INDEXES_TO_DROP, rels=[])
             await index_manager.drop()
         # reported through the result so the runner prints it against this migration
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             result.errors.append(f"Unable to replace the diff indexes: {exc}")
 
         return result

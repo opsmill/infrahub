@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from typing import Any, Self
 
 from pydantic import ConfigDict, Field, model_validator
@@ -9,6 +8,7 @@ from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_ranges import allocation_bounds, format_range_label, unsupported_range_values
 
 
 def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParameters]:
@@ -89,11 +89,11 @@ class TextAttributeParameters(AttributeParameters):
             and config.SETTINGS.main.schema_strict_mode
             and self.min_length is not None
             and self.max_length is not None
+            and self.min_length > self.max_length
         ):
-            if self.min_length > self.max_length:
-                raise ValueError(
-                    "`max_length` can't be less than `min_length` when the schema is configured with strict mode"
-                )
+            raise ValueError(
+                "`max_length` can't be less than `min_length` when the schema is configured with strict mode"
+            )
 
         return self
 
@@ -137,11 +137,11 @@ class NumberAttributeParameters(AttributeParameters):
             and config.SETTINGS.main.schema_strict_mode
             and self.min_value is not None
             and self.max_value is not None
+            and self.min_value > self.max_value
         ):
-            if self.min_value > self.max_value:
-                raise ValueError(
-                    "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
-                )
+            raise ValueError(
+                "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
+            )
 
         return self
 
@@ -182,15 +182,72 @@ class NumberAttributeParameters(AttributeParameters):
                 raise ValidationError({name: f"{value} is in an the excluded range {start}-{end}"})
 
 
+class NumberPoolRangeParameters(HashableModel):
+    """One inclusive range of numbers declared for the NumberPool of an attribute."""
+
+    start: int | None = Field(default=None, description="First number of the range, 1 when unset")
+    end: int | None = Field(
+        default=None, description="Last number of the range, the largest supported number when unset"
+    )
+    weight: int | None = Field(
+        default=None,
+        description="Ranges with a higher weight are allocated from first",
+    )
+
+    # Sorting compares the resolved bounds because an unset bound cannot be ordered against a number.
+    _sort_by: list[str] = ["lower", "upper"]
+
+    @property
+    def lower(self) -> int:
+        return allocation_bounds(start=self.start, end=self.end)[0]
+
+    @property
+    def upper(self) -> int:
+        return allocation_bounds(start=self.start, end=self.end)[1]
+
+    @property
+    def label(self) -> str:
+        return format_range_label(start=self.lower, end=self.upper)
+
+    @property
+    def size(self) -> int:
+        return self.upper - self.lower + 1
+
+    def overlaps(self, other: NumberPoolRangeParameters) -> bool:
+        return self.lower <= other.upper and other.lower <= self.upper
+
+
+def _is_unset(value: object) -> bool:
+    return value is None
+
+
+# Unset range fields stay out of dumps so clients of an older published contract can load a dumped schema.
 class NumberPoolParameters(AttributeParameters):
-    end_range: int = Field(
-        default=sys.maxsize,
-        description="End range for numbers for the associated NumberPool",
+    end_range: int | None = Field(
+        default=None,
+        description=(
+            "Deprecated, use ranges instead. End of the single range of the associated NumberPool, "
+            "defaults to the largest supported number when only start_range is set"
+        ),
+        exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-    start_range: int = Field(
-        default=1,
-        description="Start range for numbers for the associated NumberPool",
+    start_range: int | None = Field(
+        default=None,
+        description=(
+            "Deprecated, use ranges instead. Start of the single range of the associated NumberPool, "
+            "defaults to 1 when only end_range is set"
+        ),
+        exclude_if=_is_unset,
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+    ranges: list[NumberPoolRangeParameters] | None = Field(
+        default=None,
+        description=(
+            "Ranges the NumberPool allocates from, without overlap. "
+            "Unset means one range from 1 to the largest supported number; an empty list means no range"
+        ),
+        exclude_if=_is_unset,
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
     number_pool_id: str | None = Field(
@@ -198,13 +255,85 @@ class NumberPoolParameters(AttributeParameters):
         description="The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
         json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
     )
+    allocation_scope: list[str] | None = Field(
+        default=None,
+        description=(
+            "Names of the attributes and relationships of the kind that divide the pool's space; "
+            "allocation returns the lowest free number within the writer's division. "
+            "The names are resolved against the schema of the default branch when the pool is created, "
+            "and compared by id to the pool's scope when a later schema load changes the declaration "
+            "or renames one of its elements."
+        ),
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @property
+    def has_shorthand(self) -> bool:
+        return self.start_range is not None or self.end_range is not None
+
+    def update(self, other: HashableModel) -> Self:
+        # A declaration carrying either spelling, an empty range list included, replaces the previous ranges wholesale:
+        # a field-wise merge would combine the two spellings or keep a previous bound or range the new one leaves out.
+        if isinstance(other, NumberPoolParameters):
+            if other.has_shorthand:
+                self.start_range = other.start_range
+                self.end_range = other.end_range
+                self.ranges = None
+            elif other.ranges is not None:
+                self.start_range = None
+                self.end_range = None
+                self.ranges = list(other.ranges)
+        return super().update(other)
 
     @model_validator(mode="after")
     def validate_ranges(self) -> Self:
-        if self.start_range > self.end_range:
-            raise ValueError("`start_range` can't be less than `end_range`")
+        if self.has_shorthand and self.ranges:
+            raise ValueError("start_range/end_range cannot be combined with ranges")
+
+        unsupported = [
+            violation
+            for candidate in self.effective_ranges()
+            for violation in unsupported_range_values(
+                label=candidate.label,
+                values={"start": candidate.start, "end": candidate.end, "weight": candidate.weight},
+            )
+        ]
+        if unsupported:
+            raise ValueError("; ".join(unsupported))
+
+        if self.has_shorthand:
+            shorthand = self._shorthand_range()
+            if shorthand.lower > shorthand.upper:
+                raise ValueError("`start_range` can't be less than `end_range`")
+            # An empty list sent beside the shorthand declares nothing more, so the declaration keeps one spelling.
+            self.ranges = None
+            return self
+
+        ordered = sorted(self.ranges or [])
+        for candidate in ordered:
+            if candidate.upper < candidate.lower:
+                raise ValueError(f"Range end ({candidate.upper}) cannot be lower than start ({candidate.lower})")
+        for candidate in ordered:
+            clashes = [other for other in ordered if other is not candidate and candidate.overlaps(other)]
+            if clashes:
+                raise ValueError(f"Range {candidate.label} overlaps {', '.join(clash.label for clash in clashes)}")
         return self
+
+    def _shorthand_range(self) -> NumberPoolRangeParameters:
+        return NumberPoolRangeParameters(start=self.start_range, end=self.end_range)
+
+    def effective_ranges(self) -> list[NumberPoolRangeParameters]:
+        """Return the declared ranges ordered by start, whichever spelling declared them.
+
+        A bound left unset stays None. A declaration using neither spelling has one range open at both ends,
+        and an empty range list has no range.
+        """
+        if self.has_shorthand:
+            return [self._shorthand_range()]
+        if self.ranges is None:
+            return [NumberPoolRangeParameters(start=None, end=None)]
+        return sorted(self.ranges)
 
     def get_pool_size(self) -> int:
         """Returns the size of the pool based on the defined ranges."""
-        return self.end_range - self.start_range + 1
+        return sum(pool_range.size for pool_range in self.effective_ranges())

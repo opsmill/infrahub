@@ -1,0 +1,20 @@
+/* Layered so the app's unlayered theme tokens keep :root, where GraphiQL declares its own --border-strong. */
+@import "graphiql/style.css" layer(graphiql);
+
+@layer graphiql {
+  [data-theme="dark"] {
+    --bg-canvas: 17.63% 0.006 56;
+    --bg-elevated: 10.39% 0.006 56;
+    --bg-subtle: 22.02% 0.006 56;
+    --bg-overlay: 26.66% 0.006 56;
+    --border-default: 24.58% 0.006 56;
+    --border-muted: 26.66% 0.006 56;
+    --border-strong: 33% 0.006 56;
+    --fg-default: 85.69% 0.006 56;
+    --fg-strong: 97.03% 0.006 56;
+    --fg-muted: 66.25% 0.006 56;
+    --fg-subtle: 61.37% 0.006 56;
+    --fg-disabled: 56.29% 0.006 56;
+    --fg-dim: 42.47% 0.006 56;
+  }
+}

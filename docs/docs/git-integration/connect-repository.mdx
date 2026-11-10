@@ -225,6 +225,30 @@ If you are using a **personal access token for authentication**, you should put 
 </TabItem>
 </Tabs>
 
+:::warning The default branch must exist on the remote
+
+When you connect a `Repository`, Infrahub lists the remote's branches and rejects the request if the `default_branch` you configured is not among them. No repository is left behind, and the mutation returns an error naming the branch Infrahub looked for and the branch the remote uses as its own default:
+
+```text
+Branch 'main' does not exist on the remote repository My Git Repository; the remote's default branch is 'master'.
+```
+
+When the remote does not report a default branch Infrahub can see - it is empty, its `HEAD` is detached, or its default branch is hidden from the branch listing - the message ends with `the remote is empty or has no default branch.` instead.
+
+Set `default_branch` to a branch that exists on the remote and connect again. It does not have to be the remote's default branch: any existing branch is accepted.
+
+Read-only repositories are not checked this way. Their `ref` can be a branch, a tag, or a commit hash, and a branch listing cannot confirm the last two.
+
+:::
+
+:::info A repository that fails the connectivity check is removed
+
+When you add a repository, Infrahub asks a task worker to check the connection to the remote, and waits for the answer before it responds to your request. If the check fails, or if no task worker answers within the number of seconds set by [`INFRAHUB_BROKER_RPC_TIMEOUT`](../reference/configuration.mdx#broker), Infrahub deletes the repository it created and returns the error. Fix the cause, then add the repository again with the same name.
+
+When no task worker answers, the error has the code `WORKER_TIMEOUT`, as described in the [error catalogue](../reference/error-catalogue.mdx#worker_timeout). Check that the task workers are running.
+
+:::
+
 :::success Check repository connectivity
 
 After creation, your new repository should appear under **Integrations > Git Repositories**. If the status shows `Unknown` or an error state, please refer to the [troubleshooting section](#troubleshoot-repository-connections).
@@ -232,6 +256,18 @@ After creation, your new repository should appear under **Integrations > Git Rep
 :::
 
 ## Advanced use cases
+
+### Change the default branch of a connected repository
+
+The `default_branch` of a `Repository` can be edited after the repository is connected, but Infrahub treats that edit as a plain attribute update. Be aware of the following limitations:
+
+- The new value is not validated against the remote. If the branch does not exist there, the edit is still accepted, and a later operation that needs that branch fails instead. Operations that do not need it, including a synchronization that an existing clone can serve, keep working, so the mistake can stay hidden for a while.
+- Nothing re-clones the repository or reconciles the branches that were already imported under the previous mapping.
+- The new value is served from cache for a short interval, so operations started immediately after the edit may still use the previous one.
+
+The **Check connectivity** action does not validate the branch either: it verifies that the remote is reachable with the configured credentials, nothing more.
+
+To change the mapping safely, confirm that the branch exists on the remote first, then apply the edit and let a synchronization cycle complete before relying on the repository.
 
 ### Update a read-only repository with remote changes
 
@@ -241,6 +277,8 @@ Unlike fully integrated repositories which sync automatically, read-only reposit
 - **Import latest commit**: Fetch the latest commit from the remote for the current ref and re-import resources
 
 For more details on how each repository type tracks changes, refer to the [Repository Topic](./overview.mdx#read-only-vs-core).
+
+To find out whether the remote has new commits before you import them, open the repository's **Commits** tab. The tab labels the newest commit **Remote head**, and the commits between it and the imported commit **Pending import**. To check the remote immediately instead of waiting for the next scheduled check, select **Check remote now**. The check does not import anything: the imported commit stays the same until you take one of the two actions below. For what each label and warning on the tab means, see [The Commits tab and commits not yet imported](./overview.mdx#commits-tab).
 
 #### Change the ref
 
@@ -343,13 +381,15 @@ The mutation returns a task ID that you can use to monitor the progress of the i
 
 :::success Check synchronization status
 
-After triggering the import, the repository will fetch from the remote and re-import resources. You can monitor the process by checking the repository's sync status and the commit field, which will update to reflect the latest commit from the tracked ref.
+After triggering the import, the repository will fetch from the remote and re-import resources. The **Repository activity** card on the repository's detail page shows the run while it works: its step, the branch it is on and how long it has been running. When the run finishes, the card shows which branches it changed or failed on. The repository's sync status and the commit field also update to reflect the latest commit from the tracked ref.
 
 :::
 
 ### Troubleshoot repository connections
 
 If you encounter issues with your repository connections, you can use the following steps to diagnose and resolve them:
+
+The repository sync status indicator in the header tells you whether anything is wrong without opening a repository. It turns red with a pulsing dot when any repository on the branch you are viewing has an `Import Error` sync status, and selecting it opens the repository list filtered to those repositories. When nothing is failing it opens the full list instead. It reads sync status rather than task results, so it still reports a failure when the task that ran the import finished successfully. It does not report the **Tracked Ref Missing** status of a read-only repository; see [when the tracked ref of a read-only repository is deleted](./overview.mdx#when-the-tracked-ref-of-a-read-only-repository-is-deleted).
 
 1. Check the repository status indicators:
    - **Admin status**: Indicates if Infrahub is actively using the repository
@@ -370,8 +410,28 @@ If you encounter issues with your repository connections, you can use the follow
    - Select **Reimport current commit** to force reimport without changing the reference
    - For read-only repositories, select **Import latest commit** to fetch and import the latest commit from the remote for the tracked ref
 
+4. **Check that a task worker answers.** When you select **Check connectivity**, open the **Commits** tab, or add a repository, Infrahub waits for a task worker to answer for up to the number of seconds set by [`INFRAHUB_BROKER_RPC_TIMEOUT`](../reference/configuration.mdx#broker). When no task worker answers in that time, the request fails with the error code `WORKER_TIMEOUT`. Check that the task workers are running, then try again.
+
+5. **Check which worker holds the repository lock.** The **Repository activity** card names the worker that holds the repository lock and when it requested it. A held lock is not an error on its own: short tasks such as fetches also hold it.
+
+6. **A `Repository` reporting a Credential Error may have valid credentials that lack write access.** A read-write `Repository` needs to push to the remote, and the connectivity check verifies this. If the token can read the repository but cannot push, the check fails with a credential error even though the credentials themselves are valid. Grant the token **write** access to the repository (see the token guidance below); reissuing the token does not help if the new one also lacks write access.
+
+7. **Clear a Tracked Ref Missing status.** On a branch where a read-only repository shows **Tracked Ref Missing**, use one of these:
+   - Change the `ref` of the repository on that branch. Infrahub imports the new target.
+   - Restore the branch or tag on the remote, then run **Reimport current commit** on that branch.
+
+   If you reimport while the ref is still missing from the remote, the status stays **Tracked Ref Missing**. For when Infrahub sets this status and what it blocks, see [when the tracked ref of a read-only repository is deleted](./overview.mdx#when-the-tracked-ref-of-a-read-only-repository-is-deleted).
+
+8. **Fix an `.infrahub.yml` entry that fails the import.** When the task log names an entry of `.infrahub.yml`, fix that entry in the repository and push the commit. Infrahub imports the new commit of a read-write repository at the next synchronization. For a read-only repository, run **Import latest commit**. The [entries that fail the import](./overview.mdx#entries-in-infrahubyml-that-fail-the-import) are listed on the Git integration overview.
+
 :::success Validation
 A healthy repository connection should show `Online` for operational status and `In sync` for sync status once all operations complete.
+:::
+
+:::note Limitation
+
+`Online` confirms that Infrahub has repository-level write access. It does not guarantee every push will succeed: the check does not evaluate branch protection, push rules, or pre-receive hooks, which are enforced only when a real push is attempted. The write check is also effective only on Git servers that enforce write authorization when advertising the receive-pack service (such as GitHub and GitLab). Some self-hosted servers defer that check to the moment a push is received; against those a read-only credential can pass the connectivity check and the failure will surface at the first branch creation or merge instead.
+
 :::
 
 #### Repository fails certificate verification with a CA bundle configured

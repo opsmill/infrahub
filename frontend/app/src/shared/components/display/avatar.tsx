@@ -14,7 +14,7 @@ export const initials = (name: string) =>
 const avatarVariants = cva("flex shrink-0 items-center justify-center rounded-full", {
   variants: {
     variant: {
-      primary: "bg-custom-blue-200 text-custom-white",
+      primary: "bg-custom-blue-200 text-white",
       active: "bg-green-300 text-green-700",
     },
     size: {

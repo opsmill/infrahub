@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from git import GitCommandError
 
-from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import CommitNotFoundError, RepositoryError
@@ -87,7 +87,6 @@ class TestCreateRepository(TestInfrahubApp):
             ("error: pathspec", RepositoryOperationalStatus.ERROR),
             ("SSL certificate problem", RepositoryOperationalStatus.ERROR_CONNECTION),
             ("authentication failed for", RepositoryOperationalStatus.ERROR_CRED),
-            ("Need to specify how to reconcile", RepositoryOperationalStatus.ERROR),
             ("fatal: could not read Username for | terminal prompts disable", RepositoryOperationalStatus.ERROR_CRED),
         ],
     )
@@ -114,16 +113,20 @@ class TestCreateRepository(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
-        with patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)):
-            try:
-                await infrahub_repo.fetch()
-            except RepositoryError:
-                r: CoreRepository = await NodeManager.get_one(
-                    db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
-                )
-                assert r.operational_status.value == expected_operational_status.value
+        with (
+            patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)),
+            pytest.raises(RepositoryError) as exc,
+        ):
+            await infrahub_repo.fetch()
+
+        assert "conflict" not in exc.value.message.lower()
+        r: CoreRepository = await NodeManager.get_one(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert r.operational_status.value == expected_operational_status.value
 
 
 class TestRepositoryChangedFiles(TestInfrahubApp):
@@ -147,6 +150,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             description="test repository",
             location=file_repo.path,
             commit=file_repo.repo.commit("main").hexsha,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -171,6 +175,7 @@ class TestRepositoryChangedFiles(TestInfrahubApp):
             repository_id=repository.id,
             name=repository.name.value,
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
 
         # Have commits from oldest to youngest

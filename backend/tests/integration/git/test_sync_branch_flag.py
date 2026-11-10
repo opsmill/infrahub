@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING
 
 from git.repo import Repo
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -40,6 +41,7 @@ class TestSyncBranchFlag(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             description="test repository",
             location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -48,12 +50,13 @@ class TestSyncBranchFlag(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         # The branch is created after the clone so the sync treats it as a new remote branch.
         Repo(git_repo_car_dealership.path).git.branch(NEW_BRANCH, "main")
 
-        collected = await repo.collect_pending_imports()
+        collected = await repo.collect_pending_imports(state=build_idle_delivery_state(repository_id=str(repo.id)))
         assert [pending.infrahub_branch_name for pending in collected.imports] == [NEW_BRANCH]
 
         branch = await client.branch.get(branch_name=NEW_BRANCH)

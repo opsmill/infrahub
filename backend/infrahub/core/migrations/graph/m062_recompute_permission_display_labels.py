@@ -56,7 +56,7 @@ class GetGlobalPermissionAttributesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"branch_names": [GLOBAL_BRANCH_NAME]}
 
         query = """
@@ -106,7 +106,7 @@ class GetObjectPermissionAttributesQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"branch_names": [registry.default_branch]}
 
         query = """
@@ -174,7 +174,7 @@ class GetObjectPermissionAttributesBranchQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter_r, branch_filter_params_r = self.branch.get_query_filter_path(
             at=self.at, variable_name="r", params_prefix="r_"
         )
@@ -368,7 +368,7 @@ class Migration062(MigrationRequiringRebase):
         if not core_global_permission.display_label:
             return
 
-        query = await GetGlobalPermissionAttributesQuery.init(db=db, branch_agnostic=True)
+        query = await GetGlobalPermissionAttributesQuery.init(db=db)
         await query.execute(db=db)
         results = query.get_permission_results()
 
@@ -422,7 +422,7 @@ class Migration062(MigrationRequiringRebase):
         await obj_count_query.execute(db=db)
         obj_permission_count = len(obj_count_query.get_permission_results())
 
-        global_count_query = await GetGlobalPermissionAttributesQuery.init(db=db, branch_agnostic=True)
+        global_count_query = await GetGlobalPermissionAttributesQuery.init(db=db)
         await global_count_query.execute(db=db)
         global_permission_count = len(global_count_query.get_permission_results())
 
@@ -451,7 +451,8 @@ class Migration062(MigrationRequiringRebase):
                         update_task=update_task,
                     )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
             return MigrationResult(errors=[error_msg])
 
@@ -470,7 +471,8 @@ class Migration062(MigrationRequiringRebase):
             await self._compute_object_permission_display_labels(
                 db=db, branch=branch, attribute_schema=display_label_attribute_schema, console=console
             )
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
             return MigrationResult(errors=[error_msg])
 

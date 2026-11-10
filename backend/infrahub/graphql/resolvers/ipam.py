@@ -12,11 +12,13 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.metadata import build_metadata_query_options
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
 
@@ -147,19 +149,18 @@ async def _resolve_available_address_nodes(
     # Look for gaps between existing addresses
     for existing in sorted_nodes:
         current = existing.address.obj.ip
-        if previous_address:
-            if int(current) - int(previous_address) > 1:
-                with_available_ranges.append(
-                    await _build_ip_range_node(
-                        db=db,
-                        branch=branch,
-                        schema=ip_range_schema,
-                        address=previous_address + 1,
-                        last_address=current - 1,
-                        ip_namespace=ip_namespace,
-                        ip_prefix=prefix,
-                    )
+        if previous_address and int(current) - int(previous_address) > 1:
+            with_available_ranges.append(
+                await _build_ip_range_node(
+                    db=db,
+                    branch=branch,
+                    schema=ip_range_schema,
+                    address=previous_address + 1,
+                    last_address=current - 1,
+                    ip_namespace=ip_namespace,
+                    ip_prefix=prefix,
                 )
+            )
 
         with_available_ranges.append(existing)
         previous_address = existing.address.obj.ip
@@ -331,7 +332,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     limit: int | None = None,
     order: dict[str, Any] | None = None,
     partial_match: bool = False,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> dict[str, Any]:
     schema: NodeSchema | GenericSchema = (
         info.return_type.of_type.graphene_type._meta.schema
@@ -402,6 +403,10 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
 
         objs = []
         if edges or "hfid" in filters:
+            schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+            include_metadata = build_metadata_query_options(
+                node_fields=node_fields, schema=schema, schema_branch=schema_branch
+            ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -411,7 +416,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 branch=graphql_context.branch,
                 limit=query_limit,
                 offset=offset,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=include_metadata,
                 partial_match=partial_match,
                 order=order_model,
             )

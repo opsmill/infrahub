@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import {
   Command,
   CommandEmpty,
@@ -29,12 +29,12 @@ export const ComboboxTrigger = ({ children, className, ref, ...props }: Combobox
         role="combobox"
         className={classNames(
           inputStyle,
-          "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
+          "focus:border-ring focus:outline-hidden focus:ring-2 focus:ring-ring-halo",
           className
         )}
       >
         {children}
-        <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-gray-600" />
+        <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-subtle-muted" />
       </button>
     </PopoverTrigger>
   );
@@ -54,7 +54,7 @@ export const ComboboxContent = ({
   return (
     <PopoverContent
       ref={ref}
-      className={classNames("p-0", className)}
+      className={classNames("rounded-xl border-input-border bg-input p-0", className)}
       align="start"
       portal={false}
       style={{
@@ -103,7 +103,7 @@ export const ComboboxItem = ({ children, selectedValue, ref, ...props }: Combobo
     <CommandItem ref={ref} {...props}>
       <Icon
         icon="mdi:check"
-        className={classNames("text-green-900", selectedValue !== props.value && "w-3.5 opacity-0")}
+        className={classNames("text-accent", selectedValue !== props.value && "w-3.5 opacity-0")}
       />
       {children}
     </CommandItem>

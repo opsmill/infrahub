@@ -25,7 +25,7 @@ mutate_create()
        -> preview node (process_pools=False) for lock calculation
        -> acquire InfrahubMultiLock
        -> _do_create_node()
-            -> NodeCreationContext     # tracks side-effect nodes for events
+            -> NodeMutationContext     # records the other nodes the mutation writes, for events
             -> Node.new()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs
@@ -81,6 +81,29 @@ mutate_upsert()
             -> _call_mutate_update(skip_uniqueness_check=True)
             -> handle file idempotency (checksum comparison)
 ```
+
+## Nodes a mutation writes besides its main node
+
+Record each node the mutation writes outside the main node's save on the node the mutation returns,
+with the action applied, so it gets its own event (see [Events](events.md#events-a-mutation-sends)):
+
+- `create_node()` records template components and resource pool allocations itself.
+- Any other write calls `Node.record_mutation_write(node, action)`, as the number pool and range
+  mutations do for the ranges and the pool they write.
+
+The records live on the returned node, so a retried attempt discards the records of a failed one
+along with its node.
+
+## Number pool values for existing nodes
+
+A schema change that adds a NumberPool attribute, and the repair of missing number pool rows, give
+existing nodes their numbers through `pools/existing_node_numbers.py`. It reads each node's division
+with `NodeNumberPoolDivisionReader`, the reader the create path uses, so an existing node gets the
+number a create would give it. It loads the nodes with only their id, the numbered attribute and the
+fields that hold the pool's scope elements, so the peers of a relationship element are read once for
+the whole set of nodes rather than once per node. The pre-load check that refuses a pool smaller than the kind's node
+count skips scoped pools, because their limit applies to each division; the allocation raises when
+one division runs out.
 
 ## Transaction Retry
 
@@ -182,6 +205,22 @@ the mutation then works from it rather than reading it back:
 
 Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
 the node replaces the `id` inside it rather than the payload itself.
+
+## RelationshipAdd and RelationshipRemove
+
+These mutations change one relationship of an existing node, so they refuse a change that would break the schema on either side of it:
+
+| Refused when | Mutation |
+|--------------|----------|
+| the relationship is `read_only` | both |
+| a peer is not of the relationship's peer kind | both |
+| a peer is already linked to another node on a cardinality-one side of its own | both |
+| the relationship is cardinality one and would receive more than one peer | `RelationshipAdd` |
+| the peers do not share the parent named by `common_parent` | `RelationshipAdd` |
+| the relationship is mandatory and would be left with no peer | `RelationshipRemove` |
+| a removed peer's own side of the relationship (same identifier, mirrored direction) is mandatory with cardinality one, so the peer would be left without its peer | `RelationshipRemove` |
+
+A peer that must keep its relationship, such as a component under a mandatory parent or a number pool range under its pool, therefore changes through a mutation on the peer itself: update its relationship to another node, or delete it.
 
 ## Locking Strategy
 

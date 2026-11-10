@@ -29,10 +29,7 @@ export const ContentTitle = ({
 }: ContentTitleProps) => {
   return (
     <header
-      className={classNames(
-        "flex min-h-[4rem] items-center border-gray-200 border-b bg-white px-4",
-        className
-      )}
+      className={classNames("flex min-h-16 items-center border-b bg-content px-4", className)}
       {...props}
     >
       <div className="flex flex-col gap-0.5 overflow-hidden pr-2">
@@ -50,7 +47,7 @@ export const ContentTitle = ({
 };
 
 export const ContentCard = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("overflow-auto", className)} {...props} />;
+  return <Card variant="secondary" className={classNames("overflow-auto", className)} {...props} />;
 };
 
 export type ContentCardTitleProps = {
@@ -74,10 +71,7 @@ export const ContentCardTitle = ({
   ...props
 }: ContentCardTitleProps) => {
   return (
-    <header
-      className={classNames("flex items-center border-gray-200 border-b p-5", className)}
-      {...props}
-    >
+    <header className={classNames("flex items-center border-b p-5", className)} {...props}>
       <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
         {title && (
           <div className="flex items-center gap-2 font-bold text-xl">
@@ -86,7 +80,7 @@ export const ContentCardTitle = ({
             {reload && <Retry isLoading={isReloadLoading} onClick={reload} />}
           </div>
         )}
-        {description && <div className="truncate text-neutral-600 text-sm">{description}</div>}
+        {description && <div className="truncate text-foreground-muted text-sm">{description}</div>}
       </div>
       {end}
     </header>

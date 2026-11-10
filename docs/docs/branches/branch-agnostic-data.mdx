@@ -2,7 +2,7 @@
 title: Branch-agnostic data
 ---
 
-A branch-agnostic attribute or relationship on a **branch-aware** object stores its value once and shares that single value with every branch, instead of keeping a copy per branch. Deleting the object that holds such a field on one branch therefore does not release the value — the object may still be readable on another branch, and its branch-agnostic fields must remain readable with it.
+A branch-agnostic attribute or relationship on a **branch-aware** object stores its value once and shares that single value with every branch, instead of keeping a copy per branch. Deleting the object that holds such a field on one branch therefore does not always release the value — the object may still be readable on another branch, and its branch-agnostic fields must remain readable with it.
 
 For how to configure a schema element as branch-agnostic, see [Branch awareness](../schema/branch-awareness.mdx).
 

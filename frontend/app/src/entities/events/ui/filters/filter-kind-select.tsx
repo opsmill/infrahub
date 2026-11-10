@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -25,13 +25,13 @@ export function FilterKindSelect({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
-            "min-w-[132px] max-w-[300px] cursor-pointer"
+            "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
+            "min-w-33 max-w-75 cursor-pointer"
           )}
         >
           <div className="flex grow flex-wrap gap-2">{value && schemaKindLabel[value]}</div>
 
-          <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
+          <button type="button" className="h-3.5 w-3.5 text-subtle-muted outline-hidden">
             <Icon icon="mdi:unfold-more-horizontal" />
           </button>
         </div>

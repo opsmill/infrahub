@@ -56,6 +56,7 @@ class TestSchemaLifecycleTemplateUpdate(TestSchemaLifecycleBase):
     async def test_step_03_check_main_template(self, client: InfrahubClient) -> None:
         device_template = await client.schema.get(kind=f"Template{TestKind.DEVICE}", branch="test")
         assert device_template.human_friendly_id == ["template_name__value"]
+        assert device_template.uniqueness_constraints is not None
         assert len(device_template.uniqueness_constraints) == 1
         assert device_template.uniqueness_constraints[0] == ["template_name__value"]
 
@@ -64,6 +65,7 @@ class TestSchemaLifecycleTemplateUpdate(TestSchemaLifecycleBase):
             kind=f"Template{TestKind.PHYSICAL_INTERFACE}", branch="test"
         )
         assert physical_interface_template.human_friendly_id == ["device__template_name__value", "template_name__value"]
+        assert physical_interface_template.uniqueness_constraints is not None
         assert len(physical_interface_template.uniqueness_constraints) == 1
         assert physical_interface_template.uniqueness_constraints[0] == ["template_name__value", "device"]
 

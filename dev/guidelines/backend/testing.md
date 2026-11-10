@@ -141,6 +141,8 @@ async def test_person_without_car(db: InfrahubDatabase, default_branch: Branch, 
 
 When a shared schema almost fits, `deepcopy` it and change the copy (`car_with_mileage = deepcopy(CAR)`, then append the attribute). Never modify a shared schema for one test, because every test that uses it changes too. Keep a schema that only one module needs in that module, and promote it to `tests/helpers/schema/` or a `conftest.py` only when several modules use it.
 
+Give a branch a divergent schema in production order. Register an edited schema the way the API path does: `schema_branch.process()`, then `registry.schema.set_schema_branch(...)`, `branch.update_schema_hash()` and `await branch.save(db=db)`. Hashing before processing persists a hash of a schema nothing serves, and skipping the save leaves the divergence in the registry only, invisible to anything that reads the stored hash.
+
 ## Share one schema and data load across a class
 
 When several tests or parametrized cases read the same schema and data, put them in a class and build that data once in `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants, then vary the query per method or case. A function-scoped schema or data fixture runs again for every test and every parametrized case. A class-scoped fixture cannot request a function-scoped one, so a schema fixture without a `_scope_class` variant needs one added beside it. `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters` follows this pattern; the fixture chain is in [Backend Testing — Schema Fixtures](../../knowledge/backend/testing.md#schema-fixtures).
@@ -415,6 +417,11 @@ Hold the shape instead of the duration:
   comparisons; a counting double fails identically on every machine.
 - Keep the measurement out of the suite. The numbers that justified the change belong in the commit
   message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+- A `PROFILE` db-hit count is the same trap without the clock: it encodes the Neo4j planner's choice
+  for the test database's statistics, not the code's behavior, so it flips when the planner replans.
+  Counting the work means counting what the code under test does — calls, queries, submissions — not
+  what the planner spends. Keep db-hit measurements in the pull request description, or in
+  `backend/tests/query_benchmark/` when they must be tracked over time.
 
 When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
 becomes a value the test reads exactly, rather than a duration it races.
@@ -452,9 +459,11 @@ assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPL
 The exact-match principle above is not limited to error messages — it applies to every assertion. A loose assertion passes for the wrong reason and hides regressions.
 
 - **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
-- **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
+- **Don't stop at non-emptiness when a specific result is expected.** `assert result` fits an existence-only contract only; otherwise assert the specific expected value. `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it does not even establish non-emptiness.
+- **Compare unordered results by key, and assert the row count.** Build a dict keyed by id on both sides instead of sorting both lists, and assert `len(result)` first: a dict comprehension silently collapses duplicate rows.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
 - **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test. The fixture must also let each clause fail on its own: a secondary sort key is only exercised by cases that tie on the primary one, and a chunked read only covers the partial final chunk when the fixture size is not an exact multiple of the chunk constant — derive the size from that constant rather than hard-coding a round number.
+- **Cover branch-scoped operations from a user branch too.** Running the operation only on the default branch cannot show cross-branch leakage. Add the user-branch case and assert the other branch is untouched — after a branch-side removal the default branch still resolves its value; after a default-branch change a pre-existing branch still sees its own.
 - **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 - **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.

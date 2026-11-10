@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
@@ -19,6 +19,8 @@ from infrahub.exceptions import HFIDViolatedError, UniquenessViolationError
 from .interface import NodeConstraintInterface
 
 if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship.model import RelationshipManager
@@ -29,8 +31,17 @@ if TYPE_CHECKING:
     )
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_pool_conflict import PooledNumberConflict
 
     from .uniqueness_violation_message import UniquenessViolationMessageBuilder
+
+
+class PooledNumberConflictFinder(Protocol):
+    """Finds the numbers pools just allocated to the violated fields, which another object already holds."""
+
+    async def find(
+        self, node: Node, fields: Sequence[str], holding_node_ids: Collection[str], branch: Branch
+    ) -> PooledNumberConflict | None: ...
 
 
 class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
@@ -39,11 +50,13 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         db: InfrahubDatabase,
         branch: Branch,
         message_builder: UniquenessViolationMessageBuilder,
+        number_pool_conflict_finder: PooledNumberConflictFinder,
     ) -> None:
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name)
         self._message_builder = message_builder
+        self._number_pool_conflict_finder = number_pool_conflict_finder
 
     async def _get_unique_valued_paths(
         self,
@@ -217,12 +230,39 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 ):
                     continue
 
-            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=violation.fields)
-            raise UniquenessViolationError(error_msg)
+            conflict = await self._pooled_number_conflict(node=node, violation=violation)
+            error_msg = self._message_builder.build(
+                node_schema=node.get_schema(),
+                fields=violation.fields,
+                advice=conflict.advice() if conflict is not None else None,
+            )
+            raise UniquenessViolationError(error_msg, node_kind=node.get_schema().kind, fields=violation.fields)
 
         if hfid_violation:
-            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=hfid_violation.fields)
-            raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
+            conflict = await self._pooled_number_conflict(node=node, violation=hfid_violation)
+            error_msg = self._message_builder.build(
+                node_schema=node.get_schema(),
+                fields=hfid_violation.fields,
+                advice=conflict.advice() if conflict is not None else None,
+            )
+            if conflict is not None:
+                # A number a pool just drew does not identify an existing object, so an upsert must not update it.
+                raise UniquenessViolationError(
+                    error_msg, node_kind=node.get_schema().kind, fields=hfid_violation.fields
+                )
+            raise HFIDViolatedError(
+                error_msg,
+                node_kind=node.get_schema().kind,
+                fields=hfid_violation.fields,
+                matching_nodes_ids=hfid_violation.nodes_ids,
+            )
+
+    async def _pooled_number_conflict(
+        self, node: Node, violation: UniquenessConstraintViolation
+    ) -> PooledNumberConflict | None:
+        return await self._number_pool_conflict_finder.find(
+            node=node, fields=violation.fields, holding_node_ids=violation.nodes_ids, branch=self.branch
+        )
 
     def _should_implicitly_check_uniqueness(self, attr_schema: AttributeSchema, schema_filters: list[str]) -> bool:
         """Decide whether an attribute must be validated for uniqueness despite being absent from the user-provided filters.

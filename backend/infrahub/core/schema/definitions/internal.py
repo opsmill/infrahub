@@ -875,7 +875,7 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="peer",

@@ -15,6 +15,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 
@@ -77,8 +78,9 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             # Handle both single relationships and lists
             items = [rel_data] if not isinstance(rel_data, list) else rel_data
             for item in items:
-                # Check if from_pool is present and has a non-None value
-                # (graphene InputObjectType may include keys with None values for unset fields)
+                # An unset field is absent from the input rather than present as a None value, and
+                # an explicit null names no pool either, so only a `from_pool` carrying an actual
+                # pool reference reaches the raise.
                 if isinstance(item, dict) and item.get("from_pool") is not None:
                     raise ValidationError(
                         {rel_name: "Resource pools cannot be used as the source for relationship values in Profiles"}
@@ -229,7 +231,9 @@ class InfrahubProfilesRefresh(Mutation):
             include_metadata=MetadataOptions.SOURCE,
             raise_on_error=True,
         )
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        node_profiles_applier = NodeProfilesApplier(
+            db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+        )
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)
         if updated_fields:
             await obj.save(db=db, fields=updated_fields, user_id=graphql_context.assigned_user_id)

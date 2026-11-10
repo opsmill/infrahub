@@ -68,7 +68,6 @@ async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo)
             db=db,
             at=graphql_context.at,
             branch=graphql_context.branch,
-            branch_agnostic=True,
             limit=1,
         )
     return bool(identities)
@@ -76,7 +75,7 @@ async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo)
 
 @trace.get_tracer(__name__).start_as_current_span("default_resolver")
 @retry_db_transaction(name="default_resolver")
-async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
+async def default_resolver(*args: Any, **kwargs: Any) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
     When it returns 4, they are organized as follow
@@ -221,7 +220,7 @@ async def default_paginated_list_resolver(
     limit: int | None = None,
     order: dict | None = None,
     partial_match: bool = False,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> dict[str, Any]:
     validate_offset_and_limit(offset, limit)
     schema: MainSchemaTypes = (
@@ -248,6 +247,8 @@ async def default_paginated_list_resolver(
         include_metadata = build_metadata_query_options(
             node_metadata_fields=node_metadata_fields,
             node_fields=node_fields,
+            schema=schema,
+            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
         )
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
@@ -332,13 +333,13 @@ async def many_relationship_resolver(
     return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
 
 
-async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.ANCESTORS, parent=parent, info=info, **kwargs
     )
 
 
-async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     return await hierarchy_resolver(
         direction=RelationshipHierarchyDirection.DESCENDANTS, parent=parent, info=info, **kwargs
     )
@@ -347,7 +348,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 @trace.get_tracer(__name__).start_as_current_span("hierarchy_resolver")
 @retry_db_transaction(name="hierarchy_resolver")
 async def hierarchy_resolver(
-    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
+    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs: Any
 ) -> dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes.
 
@@ -368,11 +369,6 @@ async def hierarchy_resolver(
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
     node_metadata_fields = edges.get("node_metadata", {})
-    include_metadata = MetadataQueryOptions(
-        node_level=MetadataOptions.LINKED_NODES,
-        attribute_level=MetadataOptions.LINKED_NODES,
-        relationship_level=MetadataOptions.LINKED_NODES,
-    ) | build_metadata_query_options(node_metadata_fields=node_metadata_fields, node_fields=node_fields)
 
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
@@ -400,19 +396,30 @@ async def hierarchy_resolver(
         if not node_fields:
             return response
 
+        # The nodes read may be of any kind in the hierarchy, so the metadata is built against its generic.
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+        hierarchy_schema = (
+            schema_branch.get(name=node_schema.hierarchy, duplicate=False) if node_schema.hierarchy else node_schema
+        )
+        include_metadata = build_metadata_query_options(
+            node_metadata_fields=node_metadata_fields,
+            node_fields=node_fields,
+            schema=hierarchy_schema,
+            schema_branch=schema_branch,
+        ) | MetadataQueryOptions.at_every_level(MetadataOptions.LINKED_NODES)
         objs = await NodeManager.query_hierarchy(
             db=db,
             id=parent["id"],
             direction=direction,
             node_schema=node_schema,
             filters=filters,
+            include_metadata=include_metadata,
             fields=node_fields,
             offset=offset,
             limit=limit,
             at=graphql_context.at,
             branch=graphql_context.branch,
             order=order_model,
-            include_metadata=include_metadata,
         )
 
         if not objs:

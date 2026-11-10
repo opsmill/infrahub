@@ -22,7 +22,7 @@ class FindOrphanedSchemaFieldsQuery(Query):
     name = "find_orphaned_schema_fields"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // ------------
 // Find orphaned SchemaRelationship and SchemaAttribute vertices
