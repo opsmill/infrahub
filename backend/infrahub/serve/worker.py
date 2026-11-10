@@ -6,6 +6,7 @@ from typing import Any
 from uvicorn.workers import UvicornWorker
 
 from infrahub.serve.processes import PROCESSES_PER_CONTAINER_ENV
+from infrahub.task_manager.client_settings import prefect_client_defaults
 
 log_config = {
     "version": 1,
@@ -40,3 +41,7 @@ class InfrahubUvicorn(UvicornWorker):
     def init_process(self) -> None:
         os.environ[PROCESSES_PER_CONTAINER_ENV] = str(self.cfg.workers)
         super().init_process()
+
+    def run(self) -> None:
+        with prefect_client_defaults():
+            super().run()

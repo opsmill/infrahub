@@ -312,6 +312,8 @@ Two earlier queries hold halves of this shape, and are the ones to read alongsid
 
 The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label (`node_uuid`, `node_kind` in `backend/infrahub/core/graph/index.py`), not on its kind label. A `MATCH` anchored on a kind label alone — `MATCH (pool:%(kind)s { uuid: $pool_id })` — cannot use them and scans every vertex of that kind. Include the `Node` label too: `MATCH (pool:Node:%(kind)s { uuid: $pool_id })`, and check the plan with `EXPLAIN` when in doubt.
 
+Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
+
 ### Cypher Variable Shadowing (Neo4j 5+)
 
 Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
