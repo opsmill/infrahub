@@ -183,13 +183,37 @@ query {
 
 The values are stored with the other organisation-wide preferences, so they are kept across restarts and upgrades of Infrahub and are included in a backup of the database.
 
+### Set a default label and color for a deployment
+
+Teams that deploy each Infrahub instance from its own configuration, such as one Docker Compose file or one set of Helm values per stage, can set the label and the color in that configuration. Two environment variables set the default values for the instance:
+
+- `INFRAHUB_INSTANCE_LABEL`: the default label. It follows the same rules as a label saved in the web interface.
+- `INFRAHUB_INSTANCE_COLOR`: the default color, one of `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, or `GRAY`.
+
+The `[instance]` section of `infrahub.toml` accepts the same values as `label` and `color`. See the [configuration reference](../../reference/configuration.mdx#instance).
+
+Infrahub checks both values when it starts. An empty value counts as not set. A label that breaks the rules or a color outside the list stops Infrahub at startup with an error that names the setting. A change to either variable takes effect when Infrahub restarts.
+
+Infrahub resolves the label and the color separately, in this order:
+
+1. The value saved in the web interface or with `InfrahubSetPreferences` using `scope: GLOBAL`.
+2. The deployment default from the environment variable.
+3. No value.
+
+For example, with a saved label and no saved color, every page shows the saved label in the default color of the deployment.
+
+In the **Instance identity** card, an empty label field shows the default label as its placeholder, with the line "Leave empty to use the deployment default: <label>." The color picker shows "Deployment default: <color>" when no color is saved. To return to the deployment default after you saved a value, reset the saved value: clear the label and save, or reset the color and save.
+
+`InfrahubGlobalPreferences` returns the saved values only, with `null` for a value that is not saved, even when the deployment sets a default.
+
 ### Read the current values without authentication
 
-Every client loads the public `GET /api/config` endpoint before it renders a page. Its response includes the current label and color under `instance`, with `null` for a value that is not set:
+Every client loads the public `GET /api/config` endpoint before it renders a page. Its response includes the label and the color in effect under `instance`, and the deployment defaults under `instance_defaults`, with `null` for a value that is not set:
 
 ```json
 {
-  "instance": { "label": "us-east-1 PROD", "color": "RED" }
+  "instance": { "label": "us-east-1 PROD", "color": "AMBER" },
+  "instance_defaults": { "label": "staging", "color": "AMBER" }
 }
 ```
 
