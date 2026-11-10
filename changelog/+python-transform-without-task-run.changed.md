@@ -1,0 +1,1 @@
+Recomputing a Python computed attribute no longer records a Prefect task run for each node. The transform of every node in a batch now runs within the batch's own flow run, which removes three task-run events per node from the task manager.

@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from prefect.client.orchestration import get_client as get_prefect_client
+from prefect.client.schemas.filters import TaskRunFilter, TaskRunFilterName
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_python
-from infrahub.computed_attribute.tasks import query_transform_targets
+from infrahub.computed_attribute.tasks import process_transform, query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -21,6 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
+    from prefect.client.orchestration import PrefectClient
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -34,6 +37,16 @@ mutation Recompute($kind: String!, $attribute: String!, $node_ids: [String!]) {
   }
 }
 """
+
+
+PYTHON_TRANSFORM_TASK_RUN_NAME = "Execute Python Transform"
+
+
+async def _count_task_runs(prefect_client: PrefectClient, task_run_name: str) -> int:
+    task_runs = await prefect_client.read_task_runs(
+        task_run_filter=TaskRunFilter(name=TaskRunFilterName(any_=[task_run_name]))
+    )
+    return len(task_runs)
 
 
 class TestComputedAttribute(TestInfrahubApp):
@@ -203,3 +216,37 @@ class TestComputedAttribute(TestInfrahubApp):
             tshirt_altered_pitch_allocation.pitch.value
             == "Buy your Rouge t-shirt today. Look great in a soft off-white, smooth and timeless."
         )
+
+    async def test_process_transform_runs_the_transforms_without_a_task_run_per_node(
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+        context: InfrahubContext,
+    ) -> None:
+        """A batch runs each node's transform inside its own flow run and still writes every value."""
+        tshirt_ids = [data["t1"].id, data["t2"].id]
+        for tshirt_id, description in zip(tshirt_ids, ["Batch colour one.", "Batch colour two."], strict=True):
+            tshirt = await client.get(kind=TSHIRT.kind, id=tshirt_id)
+            color = await client.get(kind=COLOR.kind, id=tshirt.color.id)
+            color.description.value = description
+            await color.save()
+
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            runs_before = await _count_task_runs(prefect_client, task_run_name=PYTHON_TRANSFORM_TASK_RUN_NAME)
+            await process_transform(
+                branch_name=default_branch.name,
+                node_kind=TSHIRT.kind,
+                computed_attribute_name="pitch",
+                computed_attribute_kind=TSHIRT.kind,
+                context=context.to_event_context(),
+                object_ids=tshirt_ids,
+            )
+            runs_after = await _count_task_runs(prefect_client, task_run_name=PYTHON_TRANSFORM_TASK_RUN_NAME)
+
+        pitches = [(await client.get(kind=TSHIRT.kind, id=tshirt_id)).pitch.value for tshirt_id in tshirt_ids]
+        assert runs_after == runs_before
+        assert pitches == [
+            "Buy your Explorer t-shirt today. Look great in batch colour one.",
+            "Buy your Rouge t-shirt today. Look great in batch colour two.",
+        ]

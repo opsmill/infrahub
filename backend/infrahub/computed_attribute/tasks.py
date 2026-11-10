@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
@@ -7,7 +8,6 @@ from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
-from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
@@ -156,6 +156,11 @@ async def _transform_value_for_node(
     ``update_group`` keeps the node subscribed to the transform's query group, which is
     what routes future source changes back to this node. ``context`` is reapplied here
     because ``get_client()`` builds a fresh client per call rather than inheriting one.
+
+    Raises:
+        ValueError: When the transform's repository has no commit to run it from.
+        TimeoutError: When the transform runs longer than ``transform_timeout`` seconds.
+
     """
     client = get_client()
     client.request_context = context.to_request_context()
@@ -168,14 +173,17 @@ async def _transform_value_for_node(
         subscribers=[object_id],
     )
 
-    value = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
-        client=client,
-        branch_name=branch_name,
-        commit=commit,
-        location=f"{file_path}::{class_name}",
-        data=quote(data),
-        convert_query_response=convert_query_response,
-    )  # type: ignore[call-overload]
+    if commit is None:
+        raise ValueError(f"The repository of transform '{file_path}::{class_name}' has no commit to run it from")
+    async with asyncio.timeout(transform_timeout):
+        value = await repo.run_python_transform(
+            client=client,
+            branch_name=branch_name,
+            commit=commit,
+            location=f"{file_path}::{class_name}",
+            data=data,
+            convert_query_response=convert_query_response,
+        )
 
     return AttributeValueWrite(node_id=object_id, field=attribute_name, value=value)
 
