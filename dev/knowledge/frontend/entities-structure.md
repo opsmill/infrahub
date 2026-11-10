@@ -353,7 +353,7 @@ When generating a query, pass every per-request value as a GraphQL variable:
 With `json-to-graphql-query` builders, declare a `__variables` block, reference variables with `new VariableType(...)`, and pass the values through Apollo's `variables` option:
 
 ```ts
-const query = gql(
+const query = graphql(
   jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${kind}`,
