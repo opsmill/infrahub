@@ -24,10 +24,6 @@ metadata:
 
 # Infrahub Docs
 
-Writes, restructures, or updates Infrahub docs feature pages. **Propose one pull request covering the whole scope of the work** and confirm it with the user — see [Step 1](rules/02-workflow/step-1-preflight.md). Branch discipline and PR creation are delegated to the opsmill-product `commit` / `pr` skills (see [Step 11](rules/02-workflow/step-11-lint-commit-push.md)), so this skill never opens a PR by hand.
-
-The skill defaults to the **Infrahub main repo** (`opsmill/infrahub`). In any other repository it works out the equivalent paths by reading the repository rather than asking the user ([Step 0.5](rules/02-workflow/step-0.5-detect-repo.md)).
-
 ## Reviewing a pull request
 
 When you review a pull request instead of writing docs, this section is the whole skill. It applies
@@ -36,9 +32,10 @@ API, the CLI or the configuration; for any other pull request it adds nothing. S
 file in a review: the workflow steps, the ★ gates, the required reads and the task list are for
 writing docs. Change no files.
 
-When you can open files, also check each changed page against `rules/_checklist.md` in this skill's
-folder and the rule files it names. For each finding, give the file and line, quote the sentence, and
-give the rewrite.
+When you can open files, the rule files under `rules/01-principles/` in this skill's folder explain
+these checks in more depth; their items about gates, checks files and "Rules read" lines are for
+writing, not review. For each finding, give the file and line, quote the sentence, and give the
+rewrite.
 
 ### Missing docs updates
 
@@ -50,17 +47,18 @@ give the rewrite.
 - When a page imports a file from outside `docs/`, check that the `docs` stage of
   `development/Dockerfile` has a `COPY` line for that file. The docs build passes without it and the
   container image build fails.
-- When a changed page has a GraphQL example, check that it has a Python SDK tab, or a placeholder when
-  the SDK equivalent is not known.
+- When a changed page has a GraphQL example for an operation that the Python SDK also offers, check
+  that the example has a Python SDK tab.
 
 ### Facts on changed docs lines
 
-- Check each claim against the code on the base branch: attribute kinds, GraphQL fields, defaults,
-  limits, commands, and the text of UI buttons and labels. Cite the source line.
+- Check each claim against the code as the pull request leaves it, its own changes included: attribute
+  kinds, GraphQL fields, defaults, limits, commands, and the text of UI buttons and labels. Cite the
+  source line.
 - A claim that names more than one interface needs a source for each one. A feature that works with
   `infrahubctl` does not therefore work with Git integration.
-- For `infrahubctl` and SDK claims, the source is the commit that the `python_sdk` submodule pins, not
-  the tip of an SDK branch.
+- For `infrahubctl` and SDK claims, the source is the commit that the `python_sdk` submodule pins in
+  the pull request, not the tip of an SDK branch.
 - Customer and prospect names, people, and real environment data do not belong in the prose, the code
   samples or the screenshots.
 
@@ -93,6 +91,10 @@ only these problems:
 - A page that opens with the word "use", or opens on implementation detail before saying what the
   reader can do.
 - Numbered steps outside a how-to guide, or guide steps and topic explanation mixed on one page.
+
+Writes, restructures, or updates Infrahub docs feature pages. **Propose one pull request covering the whole scope of the work** and confirm it with the user — see [Step 1](rules/02-workflow/step-1-preflight.md). Branch discipline and PR creation are delegated to the opsmill-product `commit` / `pr` skills (see [Step 11](rules/02-workflow/step-11-lint-commit-push.md)), so this skill never opens a PR by hand.
+
+The skill defaults to the **Infrahub main repo** (`opsmill/infrahub`). In any other repository it works out the equivalent paths by reading the repository rather than asking the user ([Step 0.5](rules/02-workflow/step-0.5-detect-repo.md)).
 
 ## Required reads
 
