@@ -2,7 +2,8 @@ export const INFRAHUB_GITHUB_URL = "https://github.com/opsmill/infrahub";
 export const INFRAHUB_DISCORD_URL = "https://discord.gg/opsmill";
 
 export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
-  ? "http://localhost:8000"
+  ? // PROTOTYPE design-jam schema-viewer-sections
+    (import.meta.env.VITE_INFRAHUB_API_SERVER_URL ?? "http://localhost:8000")
   : window.location.origin.toString();
 
 export const INFRAHUB_DOC_LOCAL = `${INFRAHUB_API_SERVER_URL}/docs`;

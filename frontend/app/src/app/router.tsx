@@ -89,6 +89,11 @@ export const router = createBrowserRouter([
                   },
                 ],
               },
+              // PROTOTYPE design-jam schema-viewer-sections
+              {
+                path: "/_proto/schema-viewer-sections",
+                lazy: () => import("@/pages/_proto/schema-viewer-sections"),
+              },
               {
                 path: "/activities",
                 children: [

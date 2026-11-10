@@ -1,0 +1,211 @@
+// PROTOTYPE design-jam schema-viewer-sections
+// Copy of the production field accordion with a slot after the title; revisions never edit it.
+import { type ReactNode, useEffect, useRef } from "react";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import type { components } from "@/shared/api/rest/types.generated";
+import Accordion from "@/shared/components/display/accordion";
+import { Link } from "@/shared/components/ui/link";
+import { formatNumberDisplay } from "@/shared/utils/number";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
+import { ComputedAttributeDisplay } from "@/entities/schema/ui/computed-attribute-display";
+import {
+  AccordionStyled,
+  NullDisplay,
+  PropertyRow,
+  PropertyTitle,
+} from "@/entities/schema/ui/styled";
+
+export const ProtoAttributeDisplay = ({
+  extra,
+  attribute,
+  onKindClick,
+  defaultOpen = false,
+}: {
+  attribute: AttributeSchema;
+  onKindClick?: (kind: string) => void;
+  defaultOpen?: boolean;
+  extra?: ReactNode;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (defaultOpen && ref.current) {
+      ref.current.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [defaultOpen]);
+
+  return (
+    <AccordionStyled
+      ref={ref}
+      title={
+        <span className="inline-flex flex-wrap items-center gap-x-1.5">
+          {attribute.label || attribute.name}
+          {extra}
+        </span>
+      }
+      kind={attribute.kind}
+      description={attribute.description}
+      isOptional={attribute.optional}
+      isUnique={attribute.unique}
+      isReadOnly={attribute.read_only}
+      isComputed={!!attribute.computed_attribute}
+      defaultOpen={defaultOpen}
+    >
+      <div>
+        <PropertyRow title="ID" value={attribute.id} />
+        <PropertyRow title="Kind" value={attribute.kind} />
+        <PropertyRow
+          title="Computed attribute"
+          value={
+            <ComputedAttributeDisplay
+              computedAttribute={attribute.computed_attribute}
+              onKindClick={onKindClick}
+            />
+          }
+        />
+        <PropertyRow title="Name" value={attribute.name} />
+        <PropertyRow title="Label" value={attribute.label} />
+        <PropertyRow title="Description" value={attribute.description} />
+        <PropertyRow title="Inherited" value={attribute.inherited} />
+        <PropertyRow title="Default value" value={attribute.default_value as any} />
+      </div>
+
+      <div>
+        <PropertyRow title="Unique" value={attribute.unique} />
+        <PropertyRow title="Optional" value={attribute.optional} />
+        <PropertyRow title="Choices" value={<ChoicesRow choices={attribute.choices} />} />
+        <PropertyRow title="Enum" value={attribute.enum as string[]} />
+      </div>
+
+      <div>
+        <PropertyRow title="Branch" value={attribute.branch} />
+        <PropertyRow title="Display" value={attribute.display} />
+        <PropertyRow title="Container" value={attribute.container ?? "-"} />
+        <PropertyRow title="Order weight" value={attribute.order_weight} />
+      </div>
+
+      <AttributeParameters attribute={attribute} />
+    </AccordionStyled>
+  );
+};
+
+const ChoicesRow = ({
+  choices,
+}: {
+  choices: components["schemas"]["DropdownChoiceRead"][] | null | undefined;
+}) => {
+  if (choices === undefined) return null;
+  if (choices === null) return <NullDisplay />;
+  if (choices.length === 0) return "No choices";
+
+  return (
+    <div className="grow space-y-1">
+      {choices.map((choice) => {
+        const color = choice.color === "" ? "var(--content-strong)" : choice.color;
+        return (
+          <Accordion
+            key={choice.name}
+            title={
+              <div className="flex justify-between gap-2 pr-2 font-normal">
+                {choice.label || choice.name} <span>{choice.color}</span>
+              </div>
+            }
+            className="grow divide-y rounded-md px-1.5 py-0.5"
+            style={{ backgroundColor: color ?? undefined }}
+          >
+            <PropertyRow title="Name" value={choice.name} />
+            <PropertyRow title="Label" value={choice.label} />
+            <PropertyRow title="Color" value={choice.color} />
+            <PropertyRow title="Description" value={choice.description} />
+          </Accordion>
+        );
+      })}
+    </div>
+  );
+};
+
+type NumberPoolParameters = components["schemas"]["NumberPoolParametersRead"];
+type NumberPoolRange = components["schemas"]["NumberPoolRangeRead"];
+
+const formatBound = (bound: number | null | undefined, openLabel?: string) =>
+  typeof bound === "number" ? formatNumberDisplay(bound) : openLabel;
+
+const formatRange = ({ start, end, weight }: NumberPoolRange) => {
+  const bounds = `${formatBound(start, "MIN")} – ${formatBound(end, "MAX")}`;
+  return typeof weight === "number" ? `${bounds} (weight ${weight})` : bounds;
+};
+
+// Leaving out ranges declares one range with no start or end, while an empty list declares no range.
+const getPoolRanges = ({ start_range, end_range, ranges }: NumberPoolParameters) => {
+  if (start_range != null || end_range != null) return [{ start: start_range, end: end_range }];
+  return ranges ?? [{ start: null, end: null }];
+};
+
+const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
+  if (attribute.kind === "Text") {
+    const parameters = attribute.parameters as components["schemas"]["TextAttributeParametersRead"];
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow title="Regex" value={parameters.regex} />
+          <PropertyRow title="Min length" value={parameters.min_length} />
+          <PropertyRow title="Max length" value={parameters.max_length} />
+        </div>
+      </div>
+    );
+  }
+
+  if (attribute.kind === "Number") {
+    const parameters =
+      attribute.parameters as components["schemas"]["NumberAttributeParametersRead"];
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow title="Min value" value={parameters.min_value} />
+          <PropertyRow title="Max value" value={parameters.max_value} />
+          <PropertyRow title="Excluded values" value={parameters.excluded_values} />
+        </div>
+      </div>
+    );
+  }
+
+  if (attribute.kind === "NumberPool") {
+    const parameters = attribute.parameters as NumberPoolParameters;
+    const ranges = getPoolRanges(parameters).map(formatRange);
+    return (
+      <div>
+        <PropertyTitle title="Parameters" />
+
+        <div className="pl-4">
+          <PropertyRow
+            title="Number pool"
+            value={
+              <Link to={constructPath(`/resource-manager/${parameters.number_pool_id}`)}>
+                <NodeLabel id={parameters.number_pool_id ?? undefined} />
+              </Link>
+            }
+          />
+          <PropertyRow title="Ranges" value={ranges.length > 0 ? ranges : "No range"} />
+          <PropertyRow
+            title="Allocation scope"
+            value={parameters.allocation_scope?.length ? parameters.allocation_scope : null}
+          />
+          <PropertyRow
+            title="Start range (deprecated)"
+            value={formatBound(parameters.start_range)}
+          />
+          <PropertyRow title="End range (deprecated)" value={formatBound(parameters.end_range)} />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
