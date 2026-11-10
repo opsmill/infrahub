@@ -36,6 +36,7 @@ ACCEPT_CASES: list[AcceptCase] = [
     AcceptCase(
         name="color_is_trimmed", label=None, color=" GRAY ", expected_label=None, expected_color=InstanceColor.GRAY
     ),
+    AcceptCase(name="lowercase_color", label=None, color="red", expected_label=None, expected_color=InstanceColor.RED),
     AcceptCase(name="both_unset", label=None, color=None, expected_label=None, expected_color=None),
 ]
 
@@ -60,31 +61,25 @@ REJECT_CASES: list[RejectCase] = [
         name="label_too_long",
         label="a" * 33,
         color=None,
-        expected_message="Value error, instance_label cannot be longer than 32 characters",
+        expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters",
     ),
     RejectCase(
         name="label_with_line_feed",
         label="a\nb",
         color=None,
-        expected_message="Value error, instance_label cannot contain control characters",
+        expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot contain control characters",
     ),
     RejectCase(
         name="label_with_bidi_override",
         label="a\u202eb",
         color=None,
-        expected_message="Value error, instance_label cannot contain control characters",
+        expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot contain control characters",
     ),
     RejectCase(
         name="unknown_color",
         label=None,
         color="PINK",
-        expected_message="Input should be 'RED', 'AMBER', 'GREEN', 'BLUE', 'INDIGO', 'PURPLE' or 'GRAY'",
-    ),
-    RejectCase(
-        name="lowercase_color",
-        label=None,
-        color="red",
-        expected_message="Input should be 'RED', 'AMBER', 'GREEN', 'BLUE', 'INDIGO', 'PURPLE' or 'GRAY'",
+        expected_message="INFRAHUB_INSTANCE_COLOR must be one of RED, AMBER, GREEN, BLUE, INDIGO, PURPLE, GRAY",
     ),
 ]
 

@@ -135,7 +135,7 @@ READ_FAILURE_CASES: list[ReadFailureCase] = [
 
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in READ_FAILURE_CASES])
-async def test_config_endpoint_serves_the_deployment_defaults_when_the_read_fails(
+async def test_config_endpoint_serves_no_identity_when_the_read_fails(
     client: TestClient,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -153,7 +153,8 @@ async def test_config_endpoint_serves_the_deployment_defaults_when_the_read_fail
         response = client.get("/api/config")
 
     assert response.status_code == 200
-    assert response.json()["instance"] == {"label": "staging", "color": "AMBER"}
+    assert response.json()["instance"] == {"label": None, "color": None}
+    assert response.json()["instance_defaults"] == {"label": "staging", "color": "AMBER"}
 
 
 @dataclass

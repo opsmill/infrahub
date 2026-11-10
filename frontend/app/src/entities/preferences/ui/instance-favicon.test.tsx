@@ -39,7 +39,7 @@ describe("InstanceFavicon", () => {
     // THEN
     const href = faviconHref() ?? "";
     expect(href.startsWith("data:image/svg+xml,")).toBe(true);
-    expect(decodeURIComponent(href)).toContain('fill="#e11d48"');
+    expect(decodeURIComponent(href)).toContain('fill="#be123c"');
   });
 
   test("keeps the standard favicon when no color is set", async () => {
@@ -57,7 +57,7 @@ describe("InstanceFavicon", () => {
     // GIVEN
     vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance(null, "BLUE"));
     const component = await render(<InstanceFavicon />);
-    expect(decodeURIComponent(faviconHref() ?? "")).toContain('fill="#0284c7"');
+    expect(decodeURIComponent(faviconHref() ?? "")).toContain('fill="#0369a1"');
 
     // WHEN
     vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance(null, null));

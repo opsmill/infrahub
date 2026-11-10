@@ -66,7 +66,7 @@ class InfoAPI(BaseModel):
     version: str
 
 
-def get_instance_defaults() -> InstanceIdentityAPI:
+async def get_instance_defaults() -> InstanceIdentityAPI:
     return InstanceIdentityAPI(label=config.SETTINGS.instance.label, color=config.SETTINGS.instance.color)
 
 
@@ -74,14 +74,15 @@ async def get_instance_identity(
     db: InfrahubDatabase = Depends(get_db),
     defaults: InstanceIdentityAPI = Depends(get_instance_defaults),
 ) -> InstanceIdentityAPI:
-    """Resolve each field to its saved value, else the deployment default; a failed read serves the defaults."""
+    """Resolve each field to its saved value, else the deployment default; a failed read serves no identity."""
     try:
         global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     except Exception:
-        log.exception("Saved instance identity unavailable, serving the deployment defaults")
-        global_preference = None
+        # A default could name another stage than the saved value it stands in for, so show nothing.
+        log.exception("Instance identity unavailable, serving it as unset")
+        return InstanceIdentityAPI(label=None, color=None)
     if global_preference is None:
-        return defaults
+        return defaults.model_copy()
     label = global_preference.instance_label
     color = global_preference.instance_color
     return InstanceIdentityAPI(

@@ -31,7 +31,7 @@ def _contains_control_character(value: str) -> bool:
     return any(unicodedata.category(char) == "Cc" or char in _BIDI_CONTROL_CHARACTERS for char in value)
 
 
-def validate_instance_label(value: str | None) -> str | None:
+def validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None:
     """Validate an instance label for storage; it is stripped, and an empty result becomes None.
 
     Raises:
@@ -44,9 +44,7 @@ def validate_instance_label(value: str | None) -> str | None:
     if not stripped:
         return None
     if _contains_control_character(stripped):
-        raise ValidationError(input_value="instance_label cannot contain control characters")
+        raise ValidationError(input_value=f"{field_name} cannot contain control characters")
     if len(stripped) > INSTANCE_LABEL_MAX_LENGTH:
-        raise ValidationError(
-            input_value=f"instance_label cannot be longer than {INSTANCE_LABEL_MAX_LENGTH} characters"
-        )
+        raise ValidationError(input_value=f"{field_name} cannot be longer than {INSTANCE_LABEL_MAX_LENGTH} characters")
     return stripped
