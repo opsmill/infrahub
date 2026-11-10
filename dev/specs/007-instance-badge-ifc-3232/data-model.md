@@ -39,7 +39,7 @@ Deployment defaults, read once when the settings load. They are not stored in th
 
 ## Resolution of the identity in effect (`backend/infrahub/api/internal.py`)
 
-`get_instance_identity` resolves each field of `/api/config` `instance` on its own:
+`InstanceIdentityResolver.resolve` resolves each field of `/api/config` `instance` on its own:
 
 1. The field of the global `Preference` row, when the row exists and the field is not `None`.
 2. Else the field of `InstanceSettings`.

@@ -146,7 +146,7 @@ Infrahub does not attach a meaning to any color. A convention that teams can ado
 2. In the **Instance identity** card, enter an **Instance label** and select an **Instance color**.
 3. Click **Save instance identity**.
 
-The badge, the bar, and the tab title update in your own session as soon as the save completes. Tabs that other users already have open pick the change up the next time the tab regains focus. No restart of Infrahub is needed.
+The badge, the bar, and the tab title update in your own session as soon as the save completes. Tabs that other users already have open pick the change up the next time the tab regains focus, unless the tab loaded the settings less than two seconds before. No restart of Infrahub is needed.
 
 To reset the label, clear the field and save. To reset the color, select **No color** and save. Each value can be changed or reset on its own; saving one leaves the other, and the date and time defaults, unchanged.
 
@@ -202,7 +202,7 @@ Infrahub resolves the label and the color separately, in this order:
 
 For example, with a saved label and no saved color, every page shows the saved label in the default color of the deployment.
 
-In the **Instance identity** card, an empty label field shows the default label as its placeholder, with the line `Leave empty to use the deployment default: <label>.` The color picker shows `Deployment default: <color>` when no color is saved. To return to the deployment default after you saved a value, reset the saved value: clear the label and save, or reset the color and save. While a deployment sets a default, the web interface can replace it with another value but cannot remove it; to show no label or no color, remove the environment variable and restart Infrahub.
+When the deployment sets a default label, an empty label field in the **Instance identity** card shows that label as its placeholder, with the line `Leave empty to use the deployment default: <label>.` When the deployment sets a default color and no color is saved, the color picker shows `Deployment default: <color>`; without a default color it shows **No color**. To return to the deployment default after you saved a value, reset the saved value: clear the label and save, or reset the color and save. While a deployment sets a default, the web interface can replace it with another value but cannot remove it; to show no label or no color, remove the environment variable and restart Infrahub.
 
 `InfrahubGlobalPreferences` returns the saved values only, with `null` for a value that is not saved, even when the deployment sets a default.
 
