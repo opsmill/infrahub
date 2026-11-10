@@ -9,11 +9,10 @@ from typing_extensions import Self
 from infrahub import lock
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, PREFERENCE_LOCK_NAMESPACE
 from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
-from infrahub.core.preferences.constants import InstanceColor as InstanceColorEnum
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PreferenceRepository
-from infrahub.core.preferences.validation import validate_instance_label, validate_timezone
+from infrahub.core.preferences.validation import validate_timezone
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.preferences import (
@@ -22,6 +21,8 @@ from infrahub.graphql.types.preferences import (
     PreferenceWriteScope,
     PreferenceWriteScopeType,
 )
+from infrahub.instance_identity import InstanceColor as InstanceColorEnum
+from infrahub.instance_identity import validate_instance_label
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

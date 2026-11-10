@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.preferences.constants import DateFormat, InstanceColor, PreferenceSource
+from infrahub.core.preferences.constants import DateFormat, PreferenceSource
+from infrahub.instance_identity import InstanceColor  # noqa: TC001
 
 
 class Preference(StandardNode):

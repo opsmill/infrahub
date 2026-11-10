@@ -17,10 +17,11 @@ from infrahub.config import (  # noqa: TC001
     MainSettings,
 )
 from infrahub.core import registry
-from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.instance_identity import InstanceColor  # noqa: TC001
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION

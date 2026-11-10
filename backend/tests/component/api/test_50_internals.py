@@ -8,11 +8,12 @@ from infrahub import config
 from infrahub.api import internal
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
-from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, InstanceColor
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
+from infrahub.instance_identity import InstanceColor
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
 from tests.adapters.message_bus import BusRecorder
