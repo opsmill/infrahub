@@ -807,7 +807,7 @@ export interface components {
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
-            /** @description Instance identity: each field is the value saved in the global preferences, else the deployment default */
+            /** @description Instance identity: each field is the value saved in the global preferences, else the deployment default; both fields are null when the saved values cannot be read */
             instance: components["schemas"]["InstanceIdentityAPI"];
             /** @description Instance identity set by the deployment configuration, used for a field with no saved value */
             instance_defaults: components["schemas"]["InstanceIdentityAPI"];
