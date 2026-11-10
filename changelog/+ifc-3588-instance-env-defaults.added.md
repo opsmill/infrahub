@@ -1,0 +1,1 @@
+Added the `INFRAHUB_INSTANCE_LABEL` and `INFRAHUB_INSTANCE_COLOR` environment variables, which set a default instance label and color for a deployment; a label or color saved on the Global preferences page overrides the default, and resetting the saved value applies the default again. When an instance color is set, the browser tab icon shows the Infrahub logo in that color.
