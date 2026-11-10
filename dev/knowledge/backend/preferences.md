@@ -146,13 +146,30 @@ fields off the per-user surface; `EffectivePreferences` is unchanged.
 ## Public read through `/api/config`
 
 Every client, the login page included, loads `GET /api/config` before it renders, and that response
-is the only way an anonymous visitor reads the instance label and color. `ConfigAPI.instance` is an
-`InstanceIdentityAPI(label, color)` filled from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)`; a
-missing row yields `null` for both. The read goes through the repository, so it never creates the
-global row. Any exception on that read is logged and served as `null` for both, because the
-config response bootstraps every page and the login page must not fail with the identity. Only
-these two fields are exposed; `date_format` and `timezone` stay behind the
-authenticated GraphQL queries.
+is the only way an anonymous visitor reads the instance label and color. The response carries two
+`InstanceIdentityAPI(label, color)` values:
+
+- `instance_defaults`: the deployment defaults from `InstanceSettings` (`INFRAHUB_INSTANCE_LABEL`,
+  `INFRAHUB_INSTANCE_COLOR`, or the `[instance]` section of `infrahub.toml`).
+- `instance`: the effective identity, built in `get_instance_identity`. Each field is resolved on its
+  own: the value of the global row from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)` if set,
+  else the deployment default, else `null`.
+
+The read goes through the repository, so it never creates the global row. Any exception on that
+read is logged and the deployment defaults are served, because the config response bootstraps every
+page and the login page must not fail with the identity. Only these fields are exposed;
+`date_format` and `timezone` stay behind the authenticated GraphQL queries.
+
+The deployment defaults never reach the GraphQL surface: `InfrahubGlobalPreferences` returns the
+saved values only, so the form can tell a saved value from a default. Resetting a saved value (an
+explicit `null` in the set mutation) makes the default apply again.
+
+The settings validate both values when they load: the label goes through `validate_instance_label`,
+and an empty color counts as unset because a deployment tool can pass an unset variable as an empty
+string. An invalid value stops the process at startup. The enum, the length limit and the label
+validator live in `infrahub/instance_identity.py`, not under `core/preferences/`, because
+`config.py` imports them and anything under `infrahub.core` imports `config.py` back through
+`core.registry`.
 
 ## Caveats
 
