@@ -105,9 +105,10 @@ agree, as drafts that link the Infrahub pull request and name the release the up
 - `opsmill/infrahub-helm`: only when the charts change. Every final Infrahub and Infrahub
   Enterprise release publishes its chart from `stable`, and so does a chart release cut by hand
   there. So the pull request merges while the Infrahub release it ships in is cut, before it is
-  published: merged earlier, it ships with a release that was not tested with it. Leave `version`,
-  `appVersion` and `prefectTag` alone: the release process sets them on `stable` just before the
-  merge.
+  published: merged earlier, it ships with a release that was not tested with it. Keep it a draft
+  until then, also after its review, because GitHub does not merge a draft; `/cut-release` marks it
+  ready and merges it. Leave `version`, `appVersion` and `prefectTag` alone: the release process
+  sets them on `stable` just before the merge.
 
 If the Infrahub pull request moves to a later release, change the release named in these
 descriptions.
