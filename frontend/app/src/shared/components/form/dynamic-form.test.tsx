@@ -2,13 +2,18 @@ import { describe, expect, test, vi } from "vitest";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
 import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 import { render } from "../../../../tests/components/render";
 import { buildFormField } from "../../../../tests/fake/form";
-import { generateAttributeSchema, generateContainerSchema } from "../../../../tests/fake/schema";
+import {
+  generateAttributeSchema,
+  generateContainerSchema,
+  generateProfileSchema,
+} from "../../../../tests/fake/schema";
 
 function buildAttributeField(
   name: string,
@@ -58,6 +63,53 @@ describe("DynamicForm", () => {
     await expect
       .element(component.getByRole("region", { name: "Layer 2" }).getByLabelText("vlan"))
       .toBeVisible();
+  });
+
+  test("renders the Profile panel of a profile above Details", async () => {
+    const profileSchema = generateProfileSchema({
+      containers: [
+        generateContainerSchema({ name: "builtin_profile", label: "Profile", order_weight: -100 }),
+        layer2,
+      ],
+      attributes: [
+        generateAttributeSchema({
+          name: "profile_name",
+          label: "Profile Name",
+          order_weight: 100,
+          container: "builtin_profile",
+        }),
+        generateAttributeSchema({
+          name: "profile_priority",
+          label: "Profile Priority",
+          kind: "Number",
+          order_weight: 200,
+          container: "builtin_profile",
+        }),
+        generateAttributeSchema({ name: "name", label: "Name", order_weight: 300 }),
+        generateAttributeSchema({
+          name: "vlan",
+          label: "VLAN",
+          order_weight: 400,
+          container: "layer2",
+        }),
+      ],
+      relationships: [],
+    });
+    const component = await render(
+      <DynamicForm
+        fields={getFormFieldsFromSchema({ schema: profileSchema })}
+        sections={profileSchema.containers}
+      />
+    );
+
+    const profile = component.getByRole("region", { name: "Profile", exact: true });
+    await expect.element(profile.getByLabelText("Profile Name")).toBeVisible();
+    await expect.element(profile.getByLabelText("Profile Priority")).toBeVisible();
+    const regionNames = component
+      .getByRole("region")
+      .elements()
+      .map((region) => region.querySelector("h2")?.textContent);
+    expect(regionNames).toEqual(["Profile", "Details", "Layer 2"]);
   });
 
   test("renders no panel when all its fields are filtered out", async () => {

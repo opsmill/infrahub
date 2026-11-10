@@ -11,16 +11,16 @@ internal schema definitions and stored with the schema of each branch.
 
 | Field | Type | Default | Rule |
 |---|---|---|---|
-| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details` |
+| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details`; never starts with `builtin_`, except the `builtin_profile` container of a generated profile |
 | `label` | `str` | required | Section title |
 | `description` | `str \| None` | `None` | Muted text under the title |
-| `order_weight` | `int \| None` | `None` | Lowest first; containers without a weight follow, in declaration order; the backend does not fill it |
+| `order_weight` | `int \| None` | `None` | Lowest first; Details sits at 0, so a negative weight places the container above Details and 0 or more below it; containers without a weight follow the weighted ones, in declaration order; no lower bound; the backend does not fill it |
 | `collapsed` | `bool` | `False` | The detail card starts collapsed; the form ignores it |
 | `state` | `HashableModelState` | `present` | Inherited from `HashableModel`; `absent` removes the item on reload |
 | `inherited` | `bool` | `False` | `True` on a copy taken from a generic; read-only in the write contract |
 
 - `_sort_by = ["name"]`, so the name identifies the item in a diff.
-- Name format and required fields are Pydantic constraints; uniqueness and the reserved name are
+- Name format and required fields are Pydantic constraints; uniqueness and the reserved names are
   validator rules (below).
 - A container name and an attribute name are separate namespaces.
 
@@ -43,6 +43,8 @@ constraint check (FR-005).
 Valid `container` values: a container of the kind after inheritance. `None` means the Details
 section. `details` (`DETAILS_CONTAINER_NAME` in `backend/infrahub/core/constants/__init__.py`) is
 not valid. `advanced` is valid only when the kind declares or inherits a container of that name.
+`builtin_profile` (`PROFILE_CONTAINER_NAME`) is valid only on a generated profile, the only kind
+that has it.
 
 The SDK generator in `tasks/backend.py` lists `container_schema_fields`: `name`, `label`,
 `description`, `order_weight`, `collapsed`, `state` (`Visibility.WRITE`, enum class `SchemaState`,
@@ -84,17 +86,21 @@ attributes and relationships. A node that redeclares an inherited field keeps it
 
 `backend/infrahub/core/validators/schema_branch/container_validator.py::ContainerValidator` is
 registered in `SchemaBranch.validators` and runs in `SchemaBranch.process_validate`, after
-inheritance. For each node and generic, in this order, it raises `ValueError` with:
+inheritance. For each node, generic, profile and template, in this order, it raises `ValueError`
+with:
 
 1. A name declared twice among the kind's own containers:
    `<Kind>.containers: container names must be unique, duplicate '<x>'`
 2. A declared container named `details` (`DETAILS_CONTAINER_NAME`):
    `<Kind>.containers: 'details' is a built-in container and cannot be declared`
-3. A field that references a container the kind does not have:
+3. A declared container whose name starts with `builtin_` (`BUILTIN_CONTAINER_PREFIX`), other than
+   `builtin_profile` on a profile:
+   `<Kind>.containers: '<x>' starts with the reserved prefix 'builtin_' and cannot be declared`
+4. A field that references a container the kind does not have:
    `<Kind>.attributes.<name>.container: container '<x>' is not declared on <Kind>`, or the same with
    `relationships`. Inherited fields are skipped, so a wrong reference on a generic's field names
-   the generic. `container: details` fails this rule, and so does `container: advanced` on a kind
-   without a container of that name.
+   the generic. `container: details` fails this rule, and so do `container: advanced` on a kind
+   without a container of that name and `container: builtin_profile` on a node or generic.
 
 `evaluate_candidate_schemas` in `backend/infrahub/api/schema.py` turns the `ValueError` into a
 422; the bodies are in [contracts/schema-api.md](contracts/schema-api.md).
@@ -107,6 +113,14 @@ copies already carry `container`; `add_relationships_to_profile` and
 `add_relationships_to_template` set `container=relationship.container`. Both generators run in
 `process_pre_validation` on every process, before the validator, so the copies follow the node
 (FR-011).
+
+`generate_profile_from_node` also puts a Profile container first in the profile's `containers`:
+`name=PROFILE_CONTAINER_NAME` (`builtin_profile`), `label=PROFILE_CONTAINER_LABEL` (`Profile`),
+`order_weight=PROFILE_CONTAINER_ORDER_WEIGHT` (-100), `collapsed=False`, all in
+`backend/infrahub/core/constants/__init__.py`. It sets `container` to `builtin_profile` on the
+profile's `profile_name` and `profile_priority`. The attributes copied from the node keep the
+node's `container`. The template generator does not add it. The product owner asked for it on
+2026-11-10.
 
 ## Reload merge
 
@@ -138,6 +152,8 @@ hash ignores item order. A reload that only reorders containers is therefore a s
 ```typescript
 export const DETAILS_SECTION = { name: "details", label: "Details", collapsed: false } as const;
 
+export const DETAILS_SECTION_ORDER_WEIGHT = 0;
+
 export type FieldSection<T> = {
   container: Pick<ContainerSchema, "name" | "label" | "collapsed"> &
     Partial<Pick<ContainerSchema, "description" | "order_weight">>;
@@ -151,12 +167,17 @@ export type FieldSection<T> = {
 `groupFieldsBySection(containers, items, getContainer)` in
 `entities/nodes/object/domain/rules/group-fields-by-section.ts` returns `FieldSection<T>[]`:
 
-1. Details first, with every item whose container is unset or names no declared container (the
-   backend rejects the second case; the rule keeps the field visible).
-2. One section per declared container: containers with an `order_weight` by ascending weight, then
-   the others in declaration order. A declared container named `details` is ignored. Items keep
-   their input order; callers sort them by `order_weight`.
-3. Sections without an item are dropped.
+1. One section per declared container whose `order_weight` is below
+   `DETAILS_SECTION_ORDER_WEIGHT` (0), by ascending weight.
+2. Details, with every item whose container is unset or names no declared container (the backend
+   rejects the second case; the rule keeps the field visible).
+3. One section per other declared container: containers with an `order_weight` of 0 or more by
+   ascending weight, then the containers without a weight in declaration order.
+4. A declared container named `details` is ignored. Items keep their input order; callers sort
+   them by `order_weight`. Sections without an item are dropped.
+
+The product owner added the rule that a negative weight places a container above Details on
+2026-11-10; before it, Details was always first.
 
 The rule does not filter or sort items. The detail view passes the fields its visibility rules
 show; the form passes the fields `getFormFieldsFromSchema` built.

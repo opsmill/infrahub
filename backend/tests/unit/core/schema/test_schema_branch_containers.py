@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import HashableModelState
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.internal import base_node_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
@@ -131,6 +131,24 @@ REFUSED_CONTAINER_CASES = [
         message=f"{GENERIC_KIND}.containers: 'details' is a built-in container and cannot be declared",
     ),
     RefusedContainerCase(
+        name="declaring_a_container_with_the_builtin_prefix",
+        schema=_lag_schema_with_generic_containers([{"name": "builtin_x", "label": "X"}]),
+        message=f"{GENERIC_KIND}.containers: 'builtin_x' starts with the reserved prefix 'builtin_' and cannot be declared",
+    ),
+    RefusedContainerCase(
+        name="declaring_the_profile_container_on_a_node",
+        schema=_lag_schema_with_l2_containers([{"name": "builtin_profile", "label": "Profile"}]),
+        message=f"{L2_KIND}.containers: 'builtin_profile' starts with the reserved prefix 'builtin_' and cannot be declared",
+    ),
+    RefusedContainerCase(
+        name="attribute_referencing_the_profile_container_on_a_node",
+        schema=_lag_schema_with_l2_field(
+            field_list="attributes",
+            field={"name": "mtu", "kind": "Number", "optional": True, "container": "builtin_profile"},
+        ),
+        message=f"{L2_KIND}.attributes.mtu.container: container 'builtin_profile' is not declared on {L2_KIND}",
+    ),
+    RefusedContainerCase(
         name="attribute_referencing_the_details_container",
         schema=_lag_schema_with_l2_field(
             field_list="attributes",
@@ -154,6 +172,12 @@ ACCEPTED_CONTAINER_CASES = [
         container_names=["lacp", "layer2", "layer3", "spare"],
     ),
     AcceptedContainerCase(
+        name="container_with_a_negative_order_weight",
+        schema=_lag_schema_with_generic_containers([{"name": "summary", "label": "Summary", "order_weight": -50}]),
+        kind=L2_KIND,
+        container_names=["lacp", "layer2", "layer3", "summary"],
+    ),
+    AcceptedContainerCase(
         name="container_without_order_weight",
         schema=_lag_schema_with_unweighted_container({"name": "monitoring", "label": "Monitoring"}),
         kind=GENERIC_KIND,
@@ -174,6 +198,39 @@ def test_container_declaration_is_accepted(case: AcceptedContainerCase) -> None:
 
     node = schema_branch.get(name=case.kind, duplicate=False)
     assert [container.name for container in node.containers] == case.container_names
+
+
+def test_generated_profile_shows_its_own_attributes_in_a_profile_container_above_details() -> None:
+    schema = copy.deepcopy(LAG_SCHEMA)
+    schema["nodes"][L2_INDEX]["generate_template"] = True
+    schema_branch = SchemaBranch(cache={}, name="main")
+    schema_branch.load_schema(schema=SchemaRoot(**internal_schema))
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+
+    schema_branch.process()
+
+    profile = schema_branch.get(name=f"Profile{L2_KIND}", duplicate=False)
+    assert [(container.name, container.label, container.order_weight) for container in profile.containers] == [
+        ("builtin_profile", "Profile", -100),
+        ("lacp", "LACP", 100),
+        ("layer2", "Layer 2", 200),
+        ("layer3", "Layer 3", 300),
+    ]
+    assert profile.containers[0].collapsed is False
+    assert {attribute.name: attribute.container for attribute in profile.attributes} == {
+        "profile_name": "builtin_profile",
+        "profile_priority": "builtin_profile",
+        "name": None,
+        "description": None,
+        "lacp_rate": "lacp",
+        "lacp_mode": "lacp",
+        "l2_mode": "layer2",
+        "mac_address": "layer2",
+        "mtu": "layer3",
+    }
+    template = schema_branch.get(name=f"Template{L2_KIND}", duplicate=False)
+    assert [container.name for container in template.containers] == ["lacp", "layer2", "layer3"]
 
 
 def test_reference_to_a_declared_advanced_container_is_accepted() -> None:

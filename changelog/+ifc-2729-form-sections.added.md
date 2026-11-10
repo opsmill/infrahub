@@ -1,1 +1,1 @@
-Added one panel per field section in the create and edit forms of an object, with the Details panel first.
+Added one panel per field section in the create and edit forms of an object. The Details panel comes first unless a section has a negative order weight, and the form of a profile shows a Profile panel with the profile name and priority first.

@@ -3110,7 +3110,7 @@
                         "minLength": 2,
                         "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
-                        "description": "Name of the section, must be unique within the node."
+                        "description": "Name of the section, must be unique within the node. 'details' and names that start with 'builtin_' are reserved."
                     },
                     "label": {
                         "type": "string",
@@ -3139,7 +3139,7 @@
                             }
                         ],
                         "title": "Order Weight",
-                        "description": "Position of the section among the sections of the node, lowest first."
+                        "description": "Position of the section among the sections of the node, lowest first. A negative weight places the section above Details."
                     },
                     "collapsed": {
                         "type": "boolean",
@@ -3174,7 +3174,7 @@
                         "minLength": 2,
                         "pattern": "^[a-z0-9\\_]+$",
                         "title": "Name",
-                        "description": "Name of the section, must be unique within the node."
+                        "description": "Name of the section, must be unique within the node. 'details' and names that start with 'builtin_' are reserved."
                     },
                     "label": {
                         "type": "string",
@@ -3203,7 +3203,7 @@
                             }
                         ],
                         "title": "Order Weight",
-                        "description": "Position of the section among the sections of the node, lowest first."
+                        "description": "Position of the section among the sections of the node, lowest first. A negative weight places the section above Details."
                     },
                     "collapsed": {
                         "type": "boolean",

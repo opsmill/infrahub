@@ -73,7 +73,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
-`DynamicForm` (`shared/components/form/dynamic-form.tsx`) takes an optional `sections` prop, the schema's `containers`. With it, the form groups its fields with `groupFieldsBySection` and renders one `FormSectionPanel` per section, Details first; when every field lands in Details it renders the flat field list. `NodeForm` passes `schema.containers`; omit the prop for a form that is not built from a node schema.
+`DynamicForm` (`shared/components/form/dynamic-form.tsx`) takes an optional `sections` prop, the schema's `containers`. With it, the form groups its fields with `groupFieldsBySection` and renders one `FormSectionPanel` per section, Details first unless a container has a negative `order_weight`; when every field lands in Details it renders the flat field list. `NodeForm` passes `schema.containers`; omit the prop for a form that is not built from a node schema.
 
 ### Tab bars
 

@@ -914,8 +914,13 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any
     node_profile = schema.get(name="ProfileTestingCriticality", duplicate=False)
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert node_profile.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
-    assert node_profile.containers[0].inherited is False
+    assert node_profile.containers == [
+        ContainerSchema(name="builtin_profile", label="Profile", order_weight=-100),
+        ContainerSchema(name="grading", label="Grading", order_weight=100),
+    ]
+    assert node_profile.containers[1].inherited is False
+    assert node_profile.get_attribute("profile_name").container == "builtin_profile"
+    assert node_profile.get_attribute("profile_priority").container == "builtin_profile"
     assert node_profile.get_attribute("level").container == "grading"
     assert node_profile.get_relationship("tags").container == "grading"
     assert set(node_profile.attribute_names) == {

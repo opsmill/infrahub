@@ -16,10 +16,10 @@ Add a `containers` list to a node or a generic. Each item declares one section:
 
 | Property | Required | Default | Description |
 | --- | --- | --- | --- |
-| `name` | Yes | | Identifier that fields reference through `container`. Lowercase letters, digits and underscores, 2 to 32 characters. |
+| `name` | Yes | | Identifier that fields reference through `container`. Lowercase letters, digits and underscores, 2 to 32 characters. Cannot be `details` or start with `builtin_`. |
 | `label` | Yes | | Title of the section card and of the form panel. |
 | `description` | No | none | Text shown under the section title, in the detail page and in the form. |
-| `order_weight` | No | none | Position of the section; the lowest weight comes first. |
+| `order_weight` | No | none | Position of the section; the lowest weight comes first. A negative weight places the section above **Details**. |
 | `collapsed` | No | `false` | When `true`, the section card starts collapsed on the detail page. The forms ignore it. |
 | `state` | No | `present` | Set `absent` to remove the section when you load the schema again. |
 
@@ -43,7 +43,9 @@ Changing `containers` or `container` requires no data migration: load the new sc
 
 ## The built-in Details section
 
-The **Details** section exists without being declared. It holds every field without a `container` and is always the first section. A node without sections shows a single **Details** card, as before. Infrahub refuses a section named `details` in `containers` and a field with `container: details`: leave `container` unset instead.
+The **Details** section exists without being declared. It holds every field without a `container` and sits at order weight 0: it comes first unless a section has a negative `order_weight`. A node without sections shows a single **Details** card, as before. Infrahub refuses a section named `details` in `containers` and a field with `container: details`: leave `container` unset instead.
+
+Section names that start with `builtin_` are reserved for the sections that Infrahub generates. Infrahub refuses a node or a generic that declares one.
 
 A section that holds no field is not shown, including Details.
 
@@ -51,9 +53,12 @@ A section that holds no field is not shown, including Details.
 
 The detail page and the forms order the sections as follows:
 
-1. **Details**.
-2. The sections with an `order_weight`, lowest weight first.
-3. The sections without an `order_weight`, in declaration order.
+1. The sections with a negative `order_weight`, lowest weight first.
+2. **Details**.
+3. The sections with an `order_weight` of 0 or more, lowest weight first. A section with `order_weight: 0` comes after **Details**.
+4. The sections without an `order_weight`, in declaration order.
+
+For example, a node that declares the sections `summary` with `order_weight: -10`, `lacp` with `order_weight: 100` and `notes` without `order_weight` shows `summary`, then **Details**, then `lacp`, then `notes`.
 
 Sections with the same `order_weight` keep their declaration order. On a node that inherits from generics, the declaration order lists the sections of the generics first, in `inherit_from` order, then the sections of the node itself.
 
@@ -71,7 +76,7 @@ On the detail page of an object:
 In the create and edit forms:
 
 - Each section is a panel with the section `label` and `description`, and every panel is expanded, including sections with `collapsed: true`.
-- **Details** comes first, with the same section order as the detail page.
+- The panels follow the same section order as the detail page.
 - When every field of the form is in **Details**, the form shows the fields without a panel.
 
 ## Example: a LAG interface
@@ -198,6 +203,10 @@ When you remove a section from a generic, it disappears from every node that doe
 
 Profiles and object templates generated from a node get the sections of that node.
 
+## The Profile section of a profile
+
+A Profile generated from a node also gets a **Profile** section, named `builtin_profile`, with `order_weight: -100`. It holds the profile name and the profile priority, so the detail page and the forms of a Profile show them above **Details**. The attributes that the Profile copies from the node keep their sections. Object templates do not get this section, and a field of a node or a generic cannot reference `builtin_profile`.
+
 ## Change sections when you load the schema again
 
 When you load a schema again, Infrahub merges the `containers` of each node and generic by name:
@@ -232,7 +241,7 @@ attributes:
 
 Infrahub rejects a schema with a section error and returns one of these messages:
 
-- A field references a section that the node neither declares nor inherits, or references `details`:
+- A field references a section that the node neither declares nor inherits, or references `details` or `builtin_profile`:
 
   ```text
   InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2
@@ -252,12 +261,18 @@ Infrahub rejects a schema with a section error and returns one of these messages
   InfraLagInterface.containers: 'details' is a built-in container and cannot be declared
   ```
 
+- A section name starts with `builtin_`:
+
+  ```text
+  InfraLagInterface.containers: 'builtin_x' starts with the reserved prefix 'builtin_' and cannot be declared
+  ```
+
 A section without `label`, or with a `name` that breaks the naming rules, fails the schema validation before these checks.
 
 ## Data access and the API
 
 - The GraphQL schema and GraphQL queries do not change. Sections do not affect how you read or write data.
-- The schema REST API returns `containers` on nodes, generics, Profiles and object templates, and `container` on attributes and relationships. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
+- The schema REST API returns `containers` on nodes, generics, Profiles and object templates, and `container` on attributes and relationships. A Profile lists its `builtin_profile` section first. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
 - Sections do not restrict access. To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview).
 
 ## Related concepts

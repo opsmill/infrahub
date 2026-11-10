@@ -58,6 +58,38 @@ describe("groupFieldsBySection", () => {
     ]);
   });
 
+  it("places containers with a negative order weight above Details and the others below it", () => {
+    // GIVEN
+    const containers = [
+      generateContainerSchema({ name: "unweighted", order_weight: null }),
+      generateContainerSchema({ name: "zero", order_weight: 0 }),
+      generateContainerSchema({ name: "near_above", order_weight: -1 }),
+      generateContainerSchema({ name: "positive", order_weight: 100 }),
+      generateContainerSchema({ name: "far_above", order_weight: -200 }),
+    ];
+    const items: Item[] = [
+      { name: "a", container: "unweighted" },
+      { name: "b", container: "zero" },
+      { name: "c", container: "near_above" },
+      { name: "d", container: "positive" },
+      { name: "e", container: "far_above" },
+      { name: "name", container: null },
+    ];
+
+    // WHEN
+    const sections = groupFieldsBySection(containers, items, getContainer);
+
+    // THEN
+    expect(sectionNames(sections)).toEqual([
+      "far_above",
+      "near_above",
+      "details",
+      "zero",
+      "positive",
+      "unweighted",
+    ]);
+  });
+
   it("groups items under a declared container named advanced like any other container", () => {
     // GIVEN
     const containers = [

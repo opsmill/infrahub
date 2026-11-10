@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import duplicates
 
-from infrahub.core.constants import DETAILS_CONTAINER_NAME
+from infrahub.core.constants import BUILTIN_CONTAINER_PREFIX, DETAILS_CONTAINER_NAME, PROFILE_CONTAINER_NAME
+from infrahub.core.schema import ProfileSchema
 
 from .interface import SchemaBranchValidator
 
@@ -31,6 +32,13 @@ class ContainerValidator(SchemaBranchValidator):
             raise ValueError(
                 f"{node.kind}.containers: '{DETAILS_CONTAINER_NAME}' is a built-in container and cannot be declared"
             )
+        generated_names = {PROFILE_CONTAINER_NAME} if isinstance(node, ProfileSchema) else set()
+        for container_name in container_names:
+            if container_name.startswith(BUILTIN_CONTAINER_PREFIX) and container_name not in generated_names:
+                raise ValueError(
+                    f"{node.kind}.containers: '{container_name}' starts with the reserved prefix "
+                    f"'{BUILTIN_CONTAINER_PREFIX}' and cannot be declared"
+                )
 
     def _validate_references(self, node: MainSchemaTypes) -> None:
         valid_names = {container.name for container in node.containers}

@@ -961,7 +961,8 @@ class SdkSchemaGenerator:
             self._field(
                 "name",
                 "Text",
-                "Name of the section, must be unique within the node.",
+                "Name of the section, must be unique within the node. "
+                "'details' and names that start with 'builtin_' are reserved.",
                 regex=str(NAME_REGEX),
                 min_length=DEFAULT_NAME_MIN_LENGTH,
                 max_length=DEFAULT_NAME_MAX_LENGTH,
@@ -971,7 +972,8 @@ class SdkSchemaGenerator:
             self._field(
                 "order_weight",
                 "Number",
-                "Position of the section among the sections of the node, lowest first.",
+                "Position of the section among the sections of the node, lowest first. "
+                "A negative weight places the section above Details.",
                 optional=True,
             ),
             self._field(

@@ -33,6 +33,9 @@ The schema and the demo data load without error.
    `layer2` and `layer3`, and the `lacp` attribute shows `Container: lacp`.
 6. Open an object of a kind without containers, such as an `InfraDevice`: the detail page shows
    the single Details card and the edit form is a flat list.
+7. Create a profile of kind `ProfileInfraLagInterfaceL2`: the form shows a Profile panel with
+   Profile Name and Profile Priority above the Details panel. Save it and open it: the Profile
+   card comes first, above the Details card.
 
 ## Run the tests
 

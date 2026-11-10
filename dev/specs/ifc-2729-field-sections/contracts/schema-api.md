@@ -14,10 +14,16 @@ are left out.
   node container with the same name as an inherited one takes its position.
 - `inherited` is `true` on a copy taken from a generic and `false` on a container the kind
   declares. Profiles and templates return the containers of their node with `inherited: false`.
+  A profile also returns, first,
+  `{"name": "builtin_profile", "label": "Profile", "description": null, "order_weight": -100, "collapsed": false, "state": "present", "inherited": false}`,
+  and its `profile_name` and `profile_priority` attributes have `"container": "builtin_profile"`.
+  Templates do not return it.
 - `details` is never listed. A container named `advanced` is listed like any other container.
 - Attributes and relationships carry `container`: the container name, or `null` for the Details
   section.
-- Clients order sections by `order_weight`, then by list order for items without a weight.
+- Clients place Details at order weight 0: the containers with a negative `order_weight` come
+  before Details, and the others after it. On each side, clients order by `order_weight`, and the
+  items without a weight come last, in list order.
 - Both fields are returned on every branch, with the values stored on that branch.
 
 Example `GET /api/schema/InfraLagInterface` (abridged):
@@ -92,8 +98,9 @@ Example request body (abridged):
 Each rejection is a 422 with the body
 `{"data": null, "errors": [{"message": "<message>", "extensions": {"code": 422}}]}`:
 
-- A field references a container the kind does not have after inheritance, `details`, or
-  `advanced` on a kind without a container of that name:
+- A field references a container the kind does not have after inheritance, `details`,
+  `advanced` on a kind without a container of that name, or `builtin_profile` on a node or
+  generic:
   `InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2`.
   A relationship gives `relationships.<name>.container`. For a field declared on a generic, the
   message names the generic.
@@ -101,6 +108,8 @@ Each rejection is a 422 with the body
   `InfraLagInterface.containers: container names must be unique, duplicate 'lacp'`.
 - A container is named `details`:
   `InfraLagInterface.containers: 'details' is a built-in container and cannot be declared`.
+- A container name starts with `builtin_`:
+  `InfraLagInterface.containers: 'builtin_x' starts with the reserved prefix 'builtin_' and cannot be declared`.
 
 A container item without `label`, or with a `name` outside the attribute name rules, fails the
 write contract's Pydantic validation with the standard FastAPI `detail` body, before the validator

@@ -513,6 +513,11 @@ NAME_REGEX = r"^[a-z0-9\_]+$"
 NAME_REGEX_OR_EMPTY = r"^[a-z0-9\_]*$"
 # Reserved for the built-in Details section, which holds the fields without a `container`: never declared or referenced.
 DETAILS_CONTAINER_NAME = "details"
+BUILTIN_CONTAINER_PREFIX = "builtin_"
+PROFILE_CONTAINER_NAME = f"{BUILTIN_CONTAINER_PREFIX}profile"
+PROFILE_CONTAINER_LABEL = "Profile"
+# Negative so that the Profile section of a generated profile renders above Details.
+PROFILE_CONTAINER_ORDER_WEIGHT = -100
 DEFAULT_DESCRIPTION_LENGTH = 128
 
 DEFAULT_NAME_MAX_LENGTH = 32

@@ -26,17 +26,27 @@ other clients can group fields the same way. The schema and the API use `contain
   and relationships. No graph migration and no GraphQL change.
 - The form uses bordered panels with the same header as the detail card (mockup option B). The
   container description is muted text under the section title.
-- Fields without a container form the Details section, first on the page and in the form.
-- Details is the only built-in section: `details` cannot be declared or referenced. The original
+- Fields without a container form the Details section, which sits at order weight 0. A container
+  with a negative `order_weight` is shown above Details; a container with a weight of 0 or more, or
+  without a weight, is shown below it. The product owner added this rule on 2026-11-10; before
+  it, Details was always the first section. Schemas whose containers have no negative weight keep
+  their layout.
+- Details is the only built-in section of a node or generic: `details` cannot be declared or
+  referenced. The original
   decision also made an Advanced section implicit (never stored, never returned in `containers`,
   always accepted as a `container` value, shown last and collapsed). The product owner reversed it
   on 2026-11-10: `advanced` is an ordinary container name, and a field can reference it only when
   the node declares or inherits a container of that name.
+- Container names that start with `builtin_` are reserved for the containers Infrahub generates:
+  a node or generic cannot declare one. The product owner added this rule on 2026-11-10.
 - `collapsed` applies to the detail view only; form panels are always expanded.
 - The Extra toggle is per section.
 - Containers inherited from a generic merge by name; the node's definition wins, then the first
   generic in `inherit_from`.
-- Generated profiles and object templates copy the node's containers.
+- Generated profiles and object templates copy the node's containers. Generated profiles also get
+  a Profile container (`builtin_profile`, label Profile, order weight -100, not collapsed) that
+  holds `profile_name` and `profile_priority`, so a profile shows its name and priority above
+  Details. Object templates do not get it. The product owner added this on 2026-11-10.
 - The demo schema (`models/base/dcim.yml`) carries LACP, Layer 2 and Layer 3 containers on the
   `InfraLagInterface` generic, and the end-to-end test uses it.
 
@@ -59,7 +69,9 @@ a container name, the load fails with a message that names the node, the field a
 3. **Given** two containers with the same name on one node, **When** it is loaded, **Then** the
    load is rejected with `<Kind>.containers: container names must be unique, duplicate '<x>'`.
 4. **Given** a container named `details`, **When** it is loaded, **Then** the load is rejected
-   with `<Kind>.containers: 'details' is a built-in container and cannot be declared`.
+   with `<Kind>.containers: 'details' is a built-in container and cannot be declared`. A container
+   whose name starts with `builtin_` is rejected with
+   `<Kind>.containers: '<x>' starts with the reserved prefix 'builtin_' and cannot be declared`.
 5. **Given** a field with `container: advanced` and no declared container of that name, **When**
    it is loaded, **Then** the load is rejected with the unknown container error of scenario 2. With
    a declared `advanced` container, the load succeeds.
@@ -95,9 +107,10 @@ An operator opens the detail page of LAG interface `bond0`. They view a Details 
 Layer 2 and Layer 3 cards. They collapse Layer 2. The MAC address
 is an extra field of Layer 2, so it appears only after they switch on Extra in that card.
 
-1. **Given** a node with containers, **When** the detail page opens, **Then** it shows a Details
-   card with the fields without a container, then one card per container in order weight order,
-   each listing its fields in order weight order.
+1. **Given** a node with containers, **When** the detail page opens, **Then** it shows one card
+   per container with a negative order weight, then a Details card with the fields without a
+   container, then one card per other container, each group in order weight order and each card
+   listing its fields in order weight order.
 2. **Given** a container with `collapsed: true`, **When** the page opens, **Then** that card shows
    only its header, and selecting the header expands it.
 3. **Given** a section with fields marked `display: extra`, **When** the page opens, **Then** those
@@ -107,7 +120,8 @@ is an extra field of Layer 2, so it appears only after they switch on Extra in t
 5. **Given** a container for which the node has no visible field, **When** the page opens,
    **Then** no card is shown for it.
 6. **Given** a profile or object template of a node with containers, **When** its detail page
-   opens, **Then** it shows the same sections as the node.
+   opens, **Then** it shows the same sections as the node. A profile also shows a Profile card,
+   with the profile name and priority, above the Details card.
 
 ### User Story 4 - Edit a node by section (P2)
 
@@ -117,7 +131,8 @@ the same as without panels.
 
 1. **Given** the create or edit form of a node with containers, **When** it opens, **Then** the
    fields are grouped into bordered panels, one per container in order weight order, headed with
-   the container label.
+   the container label, and the panels of containers with a negative order weight come before the
+   Details panel. The form of a profile shows the Profile panel first.
 2. **Given** a container whose fields are all read-only or left out of the form, **When** the form
    opens, **Then** no panel is shown for it.
 3. **Given** a sectioned form, **When** the operator saves, **Then** the request is identical to
@@ -156,6 +171,8 @@ errors.
 - A container name and an attribute name are separate namespaces; both may be `mtu`.
 - A container without `order_weight` comes after the weighted ones, in declaration order. Infrahub
   does not fill container order weights.
+- A container with `order_weight: 0` is shown below Details, which also sits at 0. Only a negative
+  weight places a container above Details.
 - On a node, inherited containers come first, in the order the generics list them (first generic
   in `inherit_from` first), then the node's own containers. A node container with the same name
   as an inherited one takes the inherited one's position.
@@ -179,8 +196,9 @@ errors.
   Unset, the field belongs to Details. A reload that leaves `container` out keeps the stored
   value; `container: ""` moves the field back to Details.
 - **FR-003**: A container `name` MUST follow the attribute name format and length rules, MUST be
-  unique among the containers a node declares, and MUST NOT be `details`. A field MUST NOT
-  reference `details`.
+  unique among the containers a node declares, MUST NOT be `details` and MUST NOT start with
+  `builtin_`. A field MUST NOT reference `details`, and only the fields of a generated profile can
+  reference `builtin_profile`.
 - **FR-004**: Schema loading MUST reject a field whose `container` is not a container of the node
   after inheritance. For a field declared on a generic, the message names the generic.
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
@@ -200,15 +218,17 @@ errors.
 - **FR-009**: An inherited field MUST keep the generic's `container`. A node that redeclares the
   field MAY set another container.
 - **FR-010**: Processing a schema twice MUST yield the same containers.
-- **FR-011**: Generated profiles and object templates MUST carry the node's containers.
+- **FR-011**: Generated profiles and object templates MUST carry the node's containers. Generated
+  profiles MUST also carry the `builtin_profile` container (label Profile, order weight -100) and
+  place `profile_name` and `profile_priority` in it; object templates MUST NOT carry it.
 
 ### Schema API and SDK
 
 - **FR-012**: The schema API MUST return `containers` on nodes, generics, profiles and templates
   (empty list when none) and `container` on attributes and relationships (`null` when unset),
   after inheritance, with `inherited: true` on each container a node takes from a generic.
-  `details` MUST NOT be listed. Infrahub stores only the containers a node
-  declares and rebuilds the inherited ones on load.
+  `details` MUST NOT be listed; a profile lists `builtin_profile`. Infrahub stores only the
+  containers a node declares and rebuilds the inherited ones on load.
 - **FR-013**: The schema load endpoint and the SDK offline validation MUST accept both properties.
   The SDK formatter MUST place them in a fixed position, and the SDK export MUST leave out
   inherited containers.
@@ -216,7 +236,8 @@ errors.
 
 ### Detail view
 
-- **FR-015**: The detail page MUST show the Details card first, then one card per container by
+- **FR-015**: The detail page MUST show the cards of the containers with a negative
+  `order_weight`, then the Details card, then the cards of the other containers, each group by
   `order_weight`, and MUST omit a card without a visible field.
 - **FR-016**: Each section card MUST use the rows of the Details card, titled with the container
   label, with its fields ordered by `order_weight`.
@@ -235,7 +256,8 @@ errors.
 - **FR-021**: The create and edit forms, including the file object form, MUST group fields into
   bordered panels, one per container by `order_weight`, with the same header as the detail card.
 - **FR-022**: In a form with at least one section, fields without a container MUST be shown in a
-  Details panel placed first.
+  Details panel placed after the panels of containers with a negative `order_weight` and before
+  the others.
 - **FR-023**: Form panels MUST always be expanded, including those of containers with
   `collapsed: true`.
 - **FR-024**: A panel with no field left after the form's own filtering MUST be omitted.

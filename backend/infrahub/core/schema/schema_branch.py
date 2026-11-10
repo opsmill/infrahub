@@ -19,6 +19,9 @@ from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILE_CONTAINER_LABEL,
+    PROFILE_CONTAINER_NAME,
+    PROFILE_CONTAINER_ORDER_WEIGHT,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     PROFILES_RELATIONSHIP_NAME,
@@ -2775,12 +2778,14 @@ class SchemaBranch:
             **core_name_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_name_attr.branch = node.branch
+        profile_name_attr.container = PROFILE_CONTAINER_NAME
         core_priority_attr = core_profile_schema.get_attribute(name="profile_priority")
         priority_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_priority_attr.kind)
         profile_priority_attr = priority_attr_schema_class(
             **core_priority_attr.model_dump(exclude={"id", "inherited"}),
         )
         profile_priority_attr.branch = node.branch
+        profile_priority_attr.container = PROFILE_CONTAINER_NAME
         profile = ProfileSchema(
             name=node.kind,
             namespace="Profile",
@@ -2792,7 +2797,14 @@ class SchemaBranch:
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
             human_friendly_id=["profile_name__value"],
             default_filter="profile_name__value",
-            containers=self._copy_containers(node=node),
+            containers=[
+                ContainerSchema(
+                    name=PROFILE_CONTAINER_NAME,
+                    label=PROFILE_CONTAINER_LABEL,
+                    order_weight=PROFILE_CONTAINER_ORDER_WEIGHT,
+                ),
+                *self._copy_containers(node=node),
+            ],
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[
                 RelationshipSchema(

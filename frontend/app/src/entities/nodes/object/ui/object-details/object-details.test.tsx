@@ -385,6 +385,62 @@ describe("ObjectDetails sections", () => {
     expect(component.getByText("VLAN ID from pool").elements()).toHaveLength(0);
   });
 
+  it("renders the Profile container of a profile above Details", async () => {
+    const component = await render(
+      <ObjectDetails
+        objectSchema={generateProfileSchema({
+          containers: [
+            generateContainerSchema({
+              name: "builtin_profile",
+              label: "Profile",
+              order_weight: -100,
+            }),
+            ...sectionContainers,
+          ],
+          attributes: [
+            generateAttributeSchema({
+              name: "profile_name",
+              label: "Profile Name",
+              order_weight: 100,
+              container: "builtin_profile",
+            }),
+            generateAttributeSchema({
+              name: "profile_priority",
+              label: "Profile Priority",
+              kind: "Number",
+              order_weight: 200,
+              container: "builtin_profile",
+            }),
+            ...sectionedAttributes,
+          ],
+          relationships: sectionedRelationships,
+        })}
+        objectData={{
+          ...sectionedData,
+          __typename: "ProfileInfraInterface",
+          profile_name: generateNodeAttributeWithMetadata({ value: "access-ports" }),
+          profile_priority: generateNodeAttributeWithMetadata({ value: 1000 }),
+        }}
+        permission={permission}
+      />
+    );
+
+    const profile = component.getByRole("region", { name: "Profile", exact: true });
+    await expect.element(profile.getByText("Profile Name", { exact: true })).toBeVisible();
+    await expect.element(profile.getByText("Profile Priority", { exact: true })).toBeVisible();
+    expect(
+      profile
+        .element()
+        .compareDocumentPosition(component.getByRole("region", { name: "Details" }).element())
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      component
+        .getByTestId("object-details-section")
+        .elements()
+        .map((card) => card.getAttribute("data-section"))
+    ).toEqual(["builtin_profile", "addressing", "lacp", "management"]);
+  });
+
   it.each([
     ["a profile", generateProfileSchema, "ProfileInfraInterface"],
     ["an object template", generateTemplateSchema, "TemplateInfraInterface"],

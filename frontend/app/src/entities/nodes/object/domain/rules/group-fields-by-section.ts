@@ -1,5 +1,6 @@
 import {
   DETAILS_SECTION,
+  DETAILS_SECTION_ORDER_WEIGHT,
   type FieldSection,
 } from "@/entities/nodes/object/domain/model/field-section";
 import type { ContainerSchema } from "@/entities/schema/domain/model/schema";
@@ -9,6 +10,10 @@ function orderContainers(containers: ContainerSchema[]): ContainerSchema[] {
     container.order_weight ?? Number.MAX_SAFE_INTEGER;
 
   return [...containers].sort((a, b) => weightOf(a) - weightOf(b));
+}
+
+function isAboveDetails(container: ContainerSchema): boolean {
+  return container.order_weight != null && container.order_weight < DETAILS_SECTION_ORDER_WEIGHT;
 }
 
 export function groupFieldsBySection<T>(
@@ -35,12 +40,15 @@ export function groupFieldsBySection<T>(
     }
   }
 
+  const toSection = (container: ContainerSchema): FieldSection<T> => ({
+    container,
+    items: itemsByContainer.get(container.name) ?? [],
+  });
+
   const sections: FieldSection<T>[] = [
+    ...declaredContainers.filter(isAboveDetails).map(toSection),
     { container: DETAILS_SECTION, items: detailsItems },
-    ...declaredContainers.map((container) => ({
-      container,
-      items: itemsByContainer.get(container.name) ?? [],
-    })),
+    ...declaredContainers.filter((container) => !isAboveDetails(container)).map(toSection),
   ];
 
   return sections.filter((section) => section.items.length > 0);

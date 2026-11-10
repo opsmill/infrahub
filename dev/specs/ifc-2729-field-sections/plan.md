@@ -12,7 +12,8 @@ sections. The inheritance handler merges a node's containers with its generics' 
 schema-branch validator checks names and references, and generated profiles and templates copy the
 containers. The backend, SDK, OpenAPI, REST type and reference doc files are regenerated. In the
 frontend, one partition rule feeds the detail page (one card per section) and the forms (one panel
-per section). Details is the only built-in section, and the GraphQL schema does not change.
+per section). Details is the only built-in section of a node or generic and sits at order weight
+0, generated profiles add a Profile section above it, and the GraphQL schema does not change.
 
 ## Design decisions
 
@@ -41,6 +42,27 @@ implicit: never stored or returned, always accepted as a reference, and not decl
 alternative: a derived read-only container in the API, which the write contract and the formatter
 would have to strip). The product owner reversed that decision on 2026-11-10: `advanced` is an
 ordinary container name, and the frontend has no Advanced section.
+
+**Negative weights place a container above Details.** The product owner decided on 2026-11-10 that
+Details sits at order weight 0: a container with a negative `order_weight` renders before it, and
+a container with a weight of 0 or more, or without a weight, after it. `groupFieldsBySection`
+applies the rule, so the detail page, the IPAM detail page and the forms follow it. The backend
+does not order containers and `ContainerSchema.order_weight` has no lower bound, so no backend
+change was needed. Existing schemas keep their layout unless a container has a negative weight.
+
+**The `builtin_` prefix is reserved.** The product owner decided on 2026-11-10 that a node or
+generic cannot declare a container whose name starts with `builtin_`
+(`BUILTIN_CONTAINER_PREFIX`), so a generated container never collides with a declared one.
+`ContainerValidator` accepts `builtin_profile` only on a `ProfileSchema`.
+
+**Profiles get a generated Profile container.** The product owner asked on 2026-11-10 that a
+profile show its name and priority first. `generate_profile_from_node` adds `builtin_profile`
+(label Profile, order weight -100, not collapsed) before the node's copied containers and sets
+`container: builtin_profile` on `profile_name` and `profile_priority`. The copied node attributes
+keep the node's containers. Profiles are generated on every process and are not stored
+(`SchemaManager.load_schema_to_db` stores nodes and generics), and `SchemaBranch.diff` and
+`SchemaBranch.get_hash` compare nodes and generics only, so the container is never reported as a
+schema change or a merge conflict. Object templates do not get it.
 
 **No migration.** The three properties use `UpdateSupport.ALLOWED` and `Visibility.WRITE`, as
 `display` and `order_weight` do: sections only affect rendering. A schema stored before the change

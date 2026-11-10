@@ -812,7 +812,7 @@ export interface components {
         ContainerSchemaRead: {
             /**
              * Name
-             * @description Name of the section, must be unique within the node.
+             * @description Name of the section, must be unique within the node. 'details' and names that start with 'builtin_' are reserved.
              */
             name: string;
             /**
@@ -827,7 +827,7 @@ export interface components {
             description?: string | null;
             /**
              * Order Weight
-             * @description Position of the section among the sections of the node, lowest first.
+             * @description Position of the section among the sections of the node, lowest first. A negative weight places the section above Details.
              */
             order_weight?: number | null;
             /**
@@ -852,7 +852,7 @@ export interface components {
         ContainerSchemaWrite: {
             /**
              * Name
-             * @description Name of the section, must be unique within the node.
+             * @description Name of the section, must be unique within the node. 'details' and names that start with 'builtin_' are reserved.
              */
             name: string;
             /**
@@ -867,7 +867,7 @@ export interface components {
             description?: string | null;
             /**
              * Order Weight
-             * @description Position of the section among the sections of the node, lowest first.
+             * @description Position of the section among the sections of the node, lowest first. A negative weight places the section above Details.
              */
             order_weight?: number | null;
             /**
