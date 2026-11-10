@@ -54,7 +54,10 @@ class ConfigAPI(BaseModel):
     installation_type: str
     policy: config.PolicySettings
     instance: InstanceIdentityAPI = Field(
-        description="Instance identity: each field is the value saved in the global preferences, else the deployment default"
+        description=(
+            "Instance identity: each field is the value saved in the global preferences, else the deployment default;"
+            " both fields are null when the saved values cannot be read"
+        )
     )
     instance_defaults: InstanceIdentityAPI = Field(
         description="Instance identity set by the deployment configuration, used for a field with no saved value"
@@ -66,35 +69,41 @@ class InfoAPI(BaseModel):
     version: str
 
 
-async def get_instance_defaults() -> InstanceIdentityAPI:
+def get_instance_defaults() -> InstanceIdentityAPI:
     return InstanceIdentityAPI(label=config.SETTINGS.instance.label, color=config.SETTINGS.instance.color)
 
 
-async def get_instance_identity(
-    db: InfrahubDatabase = Depends(get_db),
-    defaults: InstanceIdentityAPI = Depends(get_instance_defaults),
-) -> InstanceIdentityAPI:
-    """Resolve each field to its saved value, else the deployment default; a failed read serves no identity."""
-    try:
-        global_preference = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
-    except Exception:
-        # A default could name another stage than the saved value it stands in for, so show nothing.
-        log.exception("Instance identity unavailable, serving it as unset")
-        return InstanceIdentityAPI(label=None, color=None)
-    if global_preference is None:
-        return defaults.model_copy()
-    label = global_preference.instance_label
-    color = global_preference.instance_color
-    return InstanceIdentityAPI(
-        label=label if label is not None else defaults.label,
-        color=color if color is not None else defaults.color,
-    )
+class InstanceIdentityResolver:
+    def __init__(self, repository: PreferenceRepository, defaults: InstanceIdentityAPI) -> None:
+        self.repository = repository
+        self.defaults = defaults
+
+    async def resolve(self) -> InstanceIdentityAPI:
+        """Resolve each field to its saved value, else the deployment default; a failed read serves no identity."""
+        try:
+            global_preference = await self.repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
+        # The config response loads every page, the login page included, so no read error may fail it.
+        except Exception:
+            # A default could name another stage than the saved value it stands in for, so show nothing.
+            log.exception("Instance identity unavailable, serving it as unset")
+            return InstanceIdentityAPI(label=None, color=None)
+        if global_preference is None:
+            return self.defaults.model_copy()
+        label = global_preference.instance_label
+        color = global_preference.instance_color
+        return InstanceIdentityAPI(
+            label=label if label is not None else self.defaults.label,
+            color=color if color is not None else self.defaults.color,
+        )
+
+
+async def build_instance_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> InstanceIdentityResolver:
+    return InstanceIdentityResolver(repository=PreferenceRepository(db=db), defaults=get_instance_defaults())
 
 
 @router.get("/config")
 async def get_config(
-    instance: InstanceIdentityAPI = Depends(get_instance_identity),
-    instance_defaults: InstanceIdentityAPI = Depends(get_instance_defaults),
+    instance_resolver: InstanceIdentityResolver = Depends(build_instance_identity_resolver),
 ) -> ConfigAPI:
     return ConfigAPI(
         main=config.SETTINGS.main,
@@ -109,8 +118,8 @@ async def get_config(
         ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
-        instance=instance,
-        instance_defaults=instance_defaults,
+        instance=await instance_resolver.resolve(),
+        instance_defaults=instance_resolver.defaults,
     )
 
 
