@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, quote, urlencode
 
 from prefect_redis.connection import redis_from_url
 from redis.asyncio.retry import Retry
+from redis.asyncio.sentinel import SentinelConnectionPool
 from redis.backoff import ExponentialWithJitterBackoff
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
@@ -102,8 +103,27 @@ def _connection_defaults() -> dict[str, Any]:
     }
 
 
-def _redis_from_url(url: str) -> redis.Redis:
-    return redis_from_url(url, asynchronous=True, **_connection_defaults())
+def _redis_from_url(url: str, max_connections: int | None = None) -> redis.Redis:
+    options = _connection_defaults()
+    if max_connections is not None:
+        # Each flow waiting on a lock polls it with its own command, and redis-py 8 otherwise caps a pool at 100.
+        options["max_connections"] = max_connections
+    client = redis_from_url(url, asynchronous=True, **options)
+    pool = client.connection_pool
+    if isinstance(pool, SentinelConnectionPool):
+        # prefect-redis 0.3.0 passes only the socket_* and ssl_* options to the Sentinel daemon clients, so their
+        # pools would keep redis-py 8's 100 connections while every new data connection asks a daemon for the master.
+        for daemon in pool.sentinel_manager.sentinels:
+            daemon.connection_pool.max_connections = pool.max_connections
+    return client
+
+
+def pool_size_from_url(url: str, max_connections: int) -> int:
+    """Return the size of the pool built from ``url`` for a ``max_connections`` setting.
+
+    A ``max_connections`` query option of the URL takes precedence, read the way redis-py reads it.
+    """
+    return _redis_from_url(url, max_connections=max_connections).connection_pool.max_connections
 
 
 def validate_redis_url(url: str) -> None:
@@ -133,4 +153,4 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     Close it with ``prefect_redis.connection.aclose_redis_client``, which also releases a Sentinel
     client's daemon connections.
     """
-    return _redis_from_url(build_cache_connection_string(settings))
+    return _redis_from_url(build_cache_connection_string(settings), max_connections=settings.max_connections)

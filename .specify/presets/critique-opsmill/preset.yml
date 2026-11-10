@@ -1,0 +1,27 @@
+schema_version: "1.0"
+
+preset:
+  id: "critique-opsmill"
+  name: "Critique (OpsMill)"
+  version: "1.0.0"
+  description: "Override speckit.critique.run (arunt14/spec-kit-critique extension) with its script path fixed."
+  author: "opsmill"
+  repository: "https://github.com/opsmill/opsmill-speckit"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.8.0"
+
+provides:
+  templates:
+    - type: "command"
+      name: "speckit.critique.run"
+      file: "commands/speckit.critique.run.md"
+      description: "Perform a dual-lens critical review of the specification and plan"
+      replaces: "speckit.critique.run"
+
+tags:
+  - "critique"
+  - "review"
+  - "planning"
+  - "opsmill"

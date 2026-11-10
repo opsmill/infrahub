@@ -29,7 +29,7 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
-from infrahub.redis_connection import validate_redis_url
+from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
@@ -641,6 +641,16 @@ class CacheSettings(BaseSettings):
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
+    max_connections: int = Field(
+        default=1000,
+        ge=1,
+        description=(
+            "Maximum number of connections in each Redis connection pool that an Infrahub process opens for the "
+            "cache and the locks; with a Sentinel URL, the pools to the Sentinel daemons get the same size. A "
+            "command that finds every connection of its pool in use fails with MaxConnectionsError. A "
+            "max_connections query parameter in the cache URL takes precedence."
+        ),
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -672,20 +682,27 @@ class CacheSettings(BaseSettings):
         if url is None:
             return self
 
+        validate_redis_url(url.get_secret_value())
+
         # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
         fields = type(self).model_fields
-        superseded = sorted(
+        superseded = {
             name
             for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
             if getattr(self, name) != fields[name].get_default()
-        )
+        }
+        # The pool size is superseded only when the URL sets one, so the check reads the pool that redis-py builds.
+        if (
+            "max_connections" in self.model_fields_set
+            and self.max_connections != fields["max_connections"].get_default()
+            and pool_size_from_url(url.get_secret_value(), max_connections=self.max_connections) != self.max_connections
+        ):
+            superseded.add("max_connections")
         if superseded:
             log.warning(
                 "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
-                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
+                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in sorted(superseded)],
             )
-
-        validate_redis_url(url.get_secret_value())
         return self
 
     @model_validator(mode="after")
