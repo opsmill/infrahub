@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -56,6 +57,12 @@ class DiffQuery(Query):
 
 
 class DiffCountChanges(Query):
+    """Count the edges of each branch that were opened or closed in a time window.
+
+    An edge counts once for each of its two vertices that is a `Node`, `Attribute` or `Relationship`, when at
+    least one of the two is branch-aware.
+    """
+
     name = "diff_count_changes"
     type = QueryType.READ
 
@@ -77,16 +84,46 @@ class DiffCountChanges(Query):
             "to_time": self.diff_to.to_string(),
             "branch_names": self.branch_names,
         }
-        query = """
-        MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
-        WHERE diff_rel.branch in $branch_names
-        AND (
-            (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
-            OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)
-        )
-        AND (p.branch_support = "aware" OR q.branch_support = "aware")
-        WITH diff_rel.branch AS branch_name, count(*) AS num_changes
+        # each read sums its own edges, which costs less than passing every edge to one sum at the end
+        count_vertices = """
+            AND diff_rel.branch IN $branch_names
+            AND (p.branch_support = "aware" OR q.branch_support = "aware")
+            RETURN diff_rel.branch AS branch_name, sum(
+                (CASE WHEN p:Node|Attribute|Relationship THEN 1 ELSE 0 END)
+                + (CASE WHEN q:Node|Attribute|Relationship THEN 1 ELSE 0 END)
+            ) AS num_vertices
         """
+        # each edge type is read through its `from` index, then through its `to` index, so the cost follows
+        # the number of edges in the window instead of the size of the graph
+        edge_reads = []
+        for edge_type in DatabaseEdgeType:
+            edge_reads.append(
+                """
+            MATCH (p)-[diff_rel:%(edge_type)s]->(q)
+            USING INDEX SEEK diff_rel:%(edge_type)s(from)
+            WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+            %(count_vertices)s
+                """
+                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+            )
+            # an edge opened and closed in the window is already counted by the read on `from`
+            edge_reads.append(
+                """
+            MATCH (p)-[diff_rel:%(edge_type)s]->(q)
+            USING INDEX SEEK diff_rel:%(edge_type)s(to)
+            WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+            AND NOT coalesce(diff_rel.from >= $from_time AND diff_rel.from < $to_time, false)
+            %(count_vertices)s
+                """
+                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+            )
+        query = """
+        CALL () {
+            %(edge_reads)s
+        }
+        WITH branch_name, sum(num_vertices) AS num_changes
+        WHERE num_changes > 0
+        """ % {"edge_reads": "UNION ALL".join(edge_reads)}
         self.add_to_query(query=query)
         self.return_labels = ["branch_name", "num_changes"]
 
