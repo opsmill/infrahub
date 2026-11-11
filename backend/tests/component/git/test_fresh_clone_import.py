@@ -20,6 +20,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.activity.models import RepositoryActivityOperation
 from infrahub.git.constants import UPDATE_SYNC_STATUS_MUTATION
 from infrahub.git.models import GitRepositoryAdd
+from infrahub.git.state.cache_keys import activity_last_run_key
 from infrahub.git.sync import RepositoryAdder, RepositoryFileImporter, RepositoryImporter
 from infrahub.git.tasks import bootstrap_local_repository, sync_remote_repositories
 from infrahub.git.writeback.store import build_intent_store
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
 
 TRUNK = "main"
 CONFIG_FILES = {".infrahub.yml": "---\n"}
+MISSING_SCHEMA_FILES = {".infrahub.yml": "schemas:\n  - schemas/missing.yml\n"}
 NO_IMPORT: list[tuple[str | None, str | None]] = [(None, None), ("fetching", None)]
 ONE_IMPORT: list[tuple[str | None, str | None]] = [
     (None, None),
@@ -253,8 +255,38 @@ class TestFreshCloneImport(TestInfrahubApp):
 
         assert added.import_error is None
         assert run_record_writes(cache=cache, repository_id=node.id) == NO_IMPORT
+        assert await cache.get(key=activity_last_run_key(repository_id=node.id, operation="add")) is None
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
         assert commit_events(events) == [(head, node.id)]
+
+    async def test_the_add_flow_keeps_the_copy_that_an_import_on_this_worker_reads(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The periodic sync on the same worker can still be importing from the copy it cloned when the add flow runs."""
+        name = "cloned-on-this-worker"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        cloned = await InfrahubRepository.init(
+            id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
+        )
+        await cloned.record_commit_for_import(branch_name=TRUNK, commit=head)
+        # A clone over the copy deletes the whole copy, this file included.
+        in_the_copy = cloned.directory_root / "in-the-copy"
+        in_the_copy.write_text("")
+        adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
+
+        async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD) as run:
+            added = await adder.add(add_model(node=node, name=name, remote=remote), activity=run)
+
+        assert added.import_error is None
+        assert in_the_copy.exists()
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
 
     async def test_the_add_flow_marks_the_branch_syncing_before_it_releases_the_lock(
         self,
@@ -335,6 +367,29 @@ class TestSynchronisationCycleOnAFreshWorker(TestInfrahubApp):
 
         assert run_record_writes(cache=cache, repository_id=node.id) == [*ONE_IMPORT, ("fetching", None)]
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
+
+    async def test_the_cycle_imports_again_a_default_branch_whose_seed_import_failed(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A failed seed import records no commit for the cycle, so the syncer of the same cycle imports the branch."""
+        name = "seed-import-fails"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=MISSING_SCHEMA_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            await sync_remote_repositories()
+
+        builds = [write for write in run_record_writes(cache=cache, repository_id=node.id) if write[0] == "building"]
+        assert builds == [("building", TRUNK), ("building", TRUNK)]
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.ERROR_IMPORT.value)
 
     async def test_the_cycle_records_a_rewrite_of_the_trunk_that_a_fresh_clone_holds(
         self,
