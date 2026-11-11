@@ -81,14 +81,14 @@ Keep the Community Compose file, then fetch the Enterprise Compose file for the 
 cp docker-compose.yml docker-compose.community.yml
 
 # Retrieve the Enterprise Compose file, pinned to your current version
-curl https://infrahub.opsmill.io/enterprise/1.10.6 > docker-compose.yml
+curl https://infrahub.opsmill.io/enterprise/1.12.0 > docker-compose.yml
 
 # Accept the Infrahub and Neo4j license agreements
 echo "INFRAHUB_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 ```
 
-Replace `1.10.6` with the version reported by `/api/info`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition switch with a version upgrade.
+Replace `1.12.0` with the version reported by `/api/info`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition switch with a version upgrade.
 
 Set `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `yes` to accept the Infrahub license agreement, which Infrahub Enterprise requires. The `NEO4J_ACCEPT_LICENSE_AGREEMENT` variable is `no` by default, and Neo4j Enterprise Edition starts only when it is `yes`. Without it, the `database` service does not start after the replacement. If your `.env` file already sets either variable, change its value to `yes` instead of appending a second line.
 
@@ -142,7 +142,7 @@ infrahubTaskWorker:
 ```yaml
 infrahub:
   global:
-    infrahubTag: "1.10.6"  # set to your current Infrahub version
+    infrahubTag: "1.12.0"  # set to your current Infrahub version
 
   infrahubServer:
     replicas: 2
@@ -165,7 +165,7 @@ infrahub:
     global:
       prefect:
         image:
-          prefectTag: "1.10.6"  # set to your current Infrahub version
+          prefectTag: "1.12.0"  # set to your current Infrahub version
 ```
 
 **Accept the Infrahub license agreement:**
@@ -210,12 +210,12 @@ The chart version and the `appVersion` move independently, so choosing a chart v
 ```yaml
 infrahub:
   global:
-    infrahubTag: "1.10.6"         # pins infrahub-server and infrahub-task-worker
+    infrahubTag: "1.12.0"         # pins infrahub-server and infrahub-task-worker
   prefect-server:
     global:
       prefect:
         image:
-          prefectTag: "1.10.6"    # pins the Prefect server container
+          prefectTag: "1.12.0"    # pins the Prefect server container
 ```
 
 **Choose a chart version:**
