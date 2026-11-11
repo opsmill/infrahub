@@ -26,7 +26,6 @@ Apply in every repo and every use case.
 - [steps-vs-sections](01-principles/steps-vs-sections.md): numbered steps only for dependency-ordered how-to guides
 - [audit-rigor](01-principles/audit-rigor.md): real read-through, source every claim, no invented content
 - [spec-drift](01-principles/spec-drift.md): update the doc before implementing deviations
-- [skip-requests](01-principles/skip-requests.md): what a request to skip the process removes, what it does not, and the answer to each excuse
 
 ## 02-workflow — triage to PR
 

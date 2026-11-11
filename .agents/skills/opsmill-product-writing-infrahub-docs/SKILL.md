@@ -6,8 +6,7 @@ description: >-
   infrahub-ansible).
   TRIGGER when: the user asks to "create docs for X", "update the IPAM docs", "migrate
   Profiles", "write the hub for [feature]", "start the [section] migration", or any request
-  to write or restructure Infrahub feature, solution, or docs-section content; or when a pull
-  request review has to check docs coverage, facts and language.
+  to write or restructure Infrahub feature, solution, or docs-section content.
   DO NOT TRIGGER when: the work is voice/tone-only review of existing prose (use
   opsmill-product-auditing-voice); writing or revising release notes (use
   opsmill-product-writing-release-notes); generic Diátaxis docs unrelated to Infrahub; or generating
@@ -24,82 +23,31 @@ metadata:
 
 # Infrahub Docs
 
-## Reviewing a pull request
-
-When you review a pull request instead of writing docs, this section is the whole skill. It applies
-when the pull request changes a file under `docs/`, or changes behavior a user can see in the UI, the
-API, the CLI or the configuration; for any other pull request it adds nothing. Skip the rest of this
-file in a review: the workflow steps, the ★ gates, the required reads and the task list are for
-writing docs. Change no files.
-
-When you can open files, the rule files under `rules/01-principles/` in this skill's folder explain
-these checks in more depth; their items about gates, checks files and "Rules read" lines are for
-writing, not review. For each finding, give the file and line, quote the sentence, and give the
-rewrite.
-
-The paths below are those of the Infrahub repository. In another OpsMill docs repository, check the
-equivalent paths, or skip a check that has no equivalent.
-
-### Missing docs updates
-
-- When the pull request changes behavior a user can see, find the page under `docs/docs/` that
-  describes it. If the pull request does not update that page, name the page's path and quote the
-  sentence that is now wrong, or say what is missing.
-- When the pull request deletes or renames a published page, check that `docs/redirects-pending/` has
-  an entry for its old URL.
-- When a page imports a file from outside `docs/`, check that the `docs` stage of
-  `development/Dockerfile` has a `COPY` line for that file. The docs build passes without it and the
-  container image build fails.
-- When a changed page has a GraphQL example for an operation that the Python SDK also offers, check
-  that the example has a Python SDK tab.
-
-### Facts on changed docs lines
-
-- Check each claim against the code as the pull request leaves it, its own changes included: attribute
-  kinds, GraphQL fields, defaults, limits, commands, and the text of UI buttons and labels. Cite the
-  source line.
-- A claim that names more than one interface needs a source for each one. A feature that works with
-  `infrahubctl` does not therefore work with Git integration.
-- For `infrahubctl` and SDK claims, the source is the commit that the `python_sdk` submodule pins in
-  the pull request, not the tip of an SDK branch.
-- Customer and prospect names, people, and real environment data do not belong in the prose, the code
-  samples or the screenshots.
-
-### Language on changed docs lines
-
-Vale already checks spelling, heading case, the case of product terms, "simple" and "easy". Report
-only these problems:
-
-- A subject that cannot perform its verb, such as a version, a release or a page. Give the verb to the
-  reader, to Infrahub when the behavior is automatic, or lead with the condition.
-  - ❌ Infrahub 1.11 records those dependencies.
-  - ✅ Attribute values and relationship edges each record the interval during which they were current.
-- Infrahub credited with an outcome the reader achieves, with verbs such as keeps, helps, lets,
-  enables or "makes it easy".
-  - ❌ Infrahub Sync keeps your data aligned across tools.
-  - ✅ Use Infrahub Sync to keep data in sync across tools.
-- Figurative words. Many readers read English as a second or third language, so write the literal
-  word: "has", not "carries"; "is stored on", not "lives on"; "traverse", not "walk"; "as it was", not
-  "as it stood".
-- Marketing language: a sentence that names the category a feature belongs to instead of what it does,
-  three or four benefits in a row, a comparison with an alternative nobody named, "out of the box"
-  (write "by default"), "purpose-built", "seamless".
-- A sentence that adds no fact: "this page covers", "it's worth noting that", or a transition that
-  announces a difference instead of stating it.
-- "just" used to make a step sound small.
-- "node" for a populated instance in user-facing text; write "object". "Node" stays only where it names
-  the schema kind that pairs with "Generic".
-- A general word used for a named Infrahub concept, such as "proposal" for a Proposed Change, or
-  "repository" for a linked repository.
-- A page that opens with the word "use", or opens on implementation detail before saying what the
-  reader can do.
-- Numbered steps outside a how-to guide, or guide steps and topic explanation mixed on one page.
-
-## Writing docs
-
 Writes, restructures, or updates Infrahub docs feature pages. **Propose one pull request covering the whole scope of the work** and confirm it with the user — see [Step 1](rules/02-workflow/step-1-preflight.md). Branch discipline and PR creation are delegated to the opsmill-product `commit` / `pr` skills (see [Step 11](rules/02-workflow/step-11-lint-commit-push.md)), so this skill never opens a PR by hand.
 
 The skill defaults to the **Infrahub main repo** (`opsmill/infrahub`). In any other repository it works out the equivalent paths by reading the repository rather than asking the user ([Step 0.5](rules/02-workflow/step-0.5-detect-repo.md)).
+
+## Reviewing a pull request
+
+In a review, apply only this section and skip the writing workflow below. It applies when the pull
+request changes `docs/` or behavior a user can see. For each finding, give the file and line, quote
+the sentence, and give the rewrite. The paths are those of the Infrahub repository.
+
+- Behavior a user can see changed, and the page under `docs/docs/` that describes it did not.
+- A deleted or renamed page has no entry in `docs/redirects-pending/`.
+- A page imports a file from outside `docs/`, and `development/Dockerfile` has no `COPY` line for it.
+- The code, as the pull request leaves it, contradicts a claim: attribute kinds, GraphQL fields,
+  defaults, UI labels. Check SDK claims against the commit the `python_sdk` submodule pins.
+- Customer names, people or real environment data.
+
+Language that Vale does not check:
+
+- A subject that cannot perform its verb, such as a version, a release or a page.
+- Infrahub credited with what the reader achieves: "keeps", "helps", "lets", "enables".
+- Figurative words: "carries" for has, "lives on" for is stored on, "walk", "as it stood".
+- Marketing language: "out of the box", "purpose-built", benefits stacked in a row.
+- A sentence that adds no fact, such as "this page covers".
+- "node" for a populated instance in user-facing text; write "object".
 
 ## Required reads
 
@@ -109,7 +57,7 @@ All paths are under `rules/`. Use case names are the ones from [Use cases](#use-
 
 | Phase, and the point to have read it by | Smaller update (and every use case) | New feature docs: also read | Reorganization: also read |
 |---|---|---|---|
-| **Start**: before the Step 0 gate | `01-principles/gate-discipline.md`, `02-workflow/step-0-triage.md`, `02-workflow/step-0.5-detect-repo.md`. When the user asks to skip steps or rules: `01-principles/skip-requests.md` | | |
+| **Start**: before the Step 0 gate | `01-principles/gate-discipline.md`, `02-workflow/step-0-triage.md`, `02-workflow/step-0.5-detect-repo.md` | | |
 | **Research**: before the Step 2 and Step 2.7 gates | `02-workflow/step-1-preflight.md`, `02-workflow/step-2-audit.md`, `02-workflow/step-2.7-content-audit.md` (for a smaller update, the lightweight pass that file describes; not needed for a [purely mechanical fix](#what-the-smaller-update-shortcut-covers)), `04-infrahub/domain-lifecycles.md`, `01-principles/no-customer-pii.md`, `01-principles/corrections-ledger.md`. When the user gave you an outline or a recommendations doc: `02-workflow/step-2.5-spec-review.md` | | `03-patterns/section-wide-migration.md`, when more than one feature moves |
 | **Plan**: before the Step 3 gate | `02-workflow/step-3-outline.md`, `04-infrahub/docs-navigation-map.md`, `01-principles/product-terminology.md`. When the page introduces a capability (an overview or hub page): `03-patterns/overview-page-content.md`. When the page is a "which of these do I use" page: `03-patterns/comparison-page.md` | `03-patterns/decision-rules.md`, `03-patterns/overview-page-content.md`, the file for the pattern you recommend (`03-patterns/single-page-merge.md`, `03-patterns/hub-and-spokes.md` with `03-patterns/hub-and-spoke-scope.md`, or `03-patterns/tutorial-extraction.md`), and `01-principles/tutorial-shape-test.md` when a tutorial is in scope | `03-patterns/decision-rules.md`, the file for the pattern you recommend (`03-patterns/single-page-merge.md`, `03-patterns/hub-and-spokes.md` with `03-patterns/hub-and-spoke-scope.md`, or `03-patterns/tutorial-extraction.md`), `01-principles/tutorial-shape-test.md` |
 | **Draft**: before writing any prose at Step 4 | `02-workflow/step-4-create-files.md`, `01-principles/voice-and-tone.md`, `01-principles/actors-and-causality.md`, `01-principles/right-altitude.md`, `01-principles/explain-and-describe.md`, `01-principles/steps-vs-sections.md`, `01-principles/failure-modes.md`, `01-principles/checking-prose.md` | | |
@@ -121,6 +69,27 @@ All paths are under `rules/`. Use case names are the ones from [Use cases](#use-
 **Prove what you read.** Every ★ gate summary ends with a "Rules read" line that lists each rule file read since the previous gate, and the PR body carries the same list ([gate-discipline](rules/01-principles/gate-discipline.md), [Step 10](rules/02-workflow/step-10-pr-description.md)). A file in this table that you did not read is named on that line with the reason, the same way a skipped step is.
 
 For the self-review at Step 4 and the audit at Step 9, [rules/_checklist.md](rules/_checklist.md) names each rule in one line with a link to its file. It is an index for checking a page, not a replacement for reading the files above.
+
+### When the user asks you to skip the process or the rules
+
+A user under time pressure asks for less process: "no outline, no gates", "don't read all the rules", "Vale is enough". Their reason is their own time. Two kinds of work are in the workflow, and only one of them uses it:
+
+- **Work that takes the user's time:** the questions, the outline file, and waiting at each gate. A request to skip the process removes these. Put what each skipped gate would have said into one message at the end.
+- **Work that takes only your time:** the Draft and Ship rows of the table above, `04-infrahub/domain-lifecycles.md`, `01-principles/product-terminology.md`, `01-principles/no-customer-pii.md`, every other rule file linked from [rules/_checklist.md](rules/_checklist.md) (such as `04-infrahub/docs-navigation-map.md` and `01-principles/corrections-ledger.md`, which sit in earlier rows), the Step 4 self-review with the checks file, the Step 9 passes, and checking each fact against the code. A general request to skip the process does not remove these.
+
+When the user names one of the second kind, such as "don't read the rule files" or "no checks file", reply once before you edit anything. Say that it costs them no time, and name what it catches on this page. For example: "the SDK tab rule and the branch-merge case are in rule files you asked me to skip". If they confirm the request, follow it. Name each skipped item on the "Rules read" line and in the PR body, and do not describe the page as verified or ready.
+
+### Excuses that came up in testing, and the answer to each
+
+| Excuse | Answer |
+|---|---|
+| "It is a small update." | The smaller-update column is the minimum. It shortens the questions and the outline, not the reading. |
+| "The user already checked the facts." | Product behavior is checked against the code (non-negotiable 7). In testing, two of the user's five facts were incomplete and one could not be checked in the code. |
+| "The user wrote the draft; I only tidy the wording." | A user draft is source material (non-negotiable 2). The planted draft in testing had a false claim, a customer name and a GraphQL-only example. |
+| "The user said not to read the rules." | Ask once, as described above. In testing, every run that skipped the Draft row missed the SDK tab. |
+| "Vale passed." | Vale checks words. It passed a draft with a false claim in it. Report the checks by name and count instead. |
+| "Concatenating the rules saves tool calls." | The output exceeds the tool limit and is saved to a file you then have to open. Read one file per call. |
+| "It works with `infrahubctl`, so it works with Git integration." | Each interface needs its own source. In testing this produced a false sentence in three runs. |
 
 ## Non-negotiables, in every repo and every use case
 
