@@ -3206,6 +3206,11 @@
                         ],
                         "title": "Label",
                         "description": "Human friendly representation of the choice."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the choice after loading the schema",
+                        "default": "present"
                     }
                 },
                 "type": "object",
