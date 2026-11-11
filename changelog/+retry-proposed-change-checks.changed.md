@@ -1,0 +1,1 @@
+The database work of the data integrity, schema integrity, artifact and generator checks of a proposed change, and of schema constraint validation, is now retried after a temporary database error or a lost database connection instead of failing the check.

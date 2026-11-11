@@ -380,7 +380,7 @@ The same holds for a single side effect inline in a request handler — a teleme
 
 ### Transient database errors are retried at the transaction layer, not by task retry
 
-A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
+A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. Put `retry_db_transaction` on a helper that opens its own session or transaction and holds only the database work, never on the flow or task itself: a flow also saves through the SDK, sends events and submits workflows, which a replay would repeat. Let retriable errors reach that helper. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
 
 ## Recovery actions
 
