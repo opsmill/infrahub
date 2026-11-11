@@ -399,9 +399,9 @@ sets the branch back to `syncing` after the first one set it to `in-sync`.
   (`InfrahubRepository.record_commit_for_import`). The import is built after the lock is released, so
   without the mark a clone that takes the lock in between reads the new commit next to the earlier
   status, `unknown` for a new repository, and imports it too.
-- **Check before the flow's own write.** The add flow clones without recording and records the commit
-  after the check. The seed import checks only a reinitialized copy, because the fallback clone after
-  a failed `init()` records its commit while it clones.
+- **Check before the flow's own write.** Both flows clone without recording and record the commit
+  after the check. For the seed import this holds for a re-cloned copy and for the fallback clone after
+  a failed `init()`.
 - **Keep a copy that this worker holds already.** The add flow reuses a usable copy instead of cloning
   over it, because the seed import that cloned it may still read its files and would then import too
   few objects or fail after the add flow skipped.

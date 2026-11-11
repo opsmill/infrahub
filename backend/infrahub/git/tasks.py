@@ -615,8 +615,8 @@ async def bootstrap_local_repository(
                     location=repository.location.value,
                     client=client,
                     infrahub_branch_name=infrahub_branch,
-                    # With the seed import skipped, the graph would record a commit whose objects it lacks.
-                    update_commit_value=branch_accepts_commit and not delivery_pending,
+                    # Recorded below, once the graph is known not to hold or import the commit already.
+                    update_commit_value=False,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
@@ -637,9 +637,8 @@ async def bootstrap_local_repository(
             # Pin the commit while the lock is held so the import below reads an immutable
             # worktree even though it is built after the lock is released.
             seed_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
-            # The fallback clone has already recorded its commit, so only a reinitialized copy can still tell.
-            recorded = await repo.read_recorded_import(branch_name=infrahub_branch) if repo.reinitialized else None
-            if recorded is not None and recorded.covers(commit=seed_commit):
+            recorded = await repo.read_recorded_import(branch_name=infrahub_branch)
+            if recorded.covers(commit=seed_commit):
                 log.info(
                     f"Skipped the import of the default branch {default_import_git_branch} of repository "
                     f"{repo.name}: commit {seed_commit} is already imported or being imported"
@@ -652,11 +651,11 @@ async def bootstrap_local_repository(
                     commit=seed_commit,
                 )
                 # The flows that the import starts read the commit from the graph, and the clone recorded none.
-                if repo.reinitialized and branch_accepts_commit:
-                    await repo.record_commit_for_import(branch_name=infrahub_branch, commit=seed_commit)
                 if branch_accepts_commit:
+                    await repo.record_commit_for_import(branch_name=infrahub_branch, commit=seed_commit)
                     recorded_commit = seed_commit
-                    announces_first_commit = recorded is not None and recorded.commit is None
+                    # The import of a re-cloned copy sends no commit event, unlike that of the fallback clone.
+                    announces_first_commit = repo.reinitialized and recorded.commit is None
 
     if pending_import is not None:
         try:
