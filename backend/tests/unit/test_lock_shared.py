@@ -369,6 +369,28 @@ async def test_a_failed_record_removal_keeps_the_error_of_the_holder_work(
             raise ValueError("the work failed")
 
 
+class FailingAfterWriteSharedHolderStore(RecordingSharedHolderStore):
+    """Writes each record and then fails, as a cache that times out after applying the write would."""
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+        raise ConnectionError("cache timed out")
+
+
+async def test_a_failed_shared_request_removes_the_record_it_wrote(mutex: InfrahubLock, clock: FakeClock) -> None:
+    store = FailingAfterWriteSharedHolderStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME, mutex=mutex, store=store, ttl_seconds=TTL_SECONDS, wait_seconds=WAIT_SECONDS, clock=clock
+    )
+
+    with pytest.raises(ConnectionError, match=r"^cache timed out$"):
+        await shared_lock.acquire_shared()
+
+    assert len(store.added) == 1
+    assert not await _has_holders(store)
+    assert not await mutex.locked()
+
+
 def _shared_lock_named(name: str, store: RecordingSharedHolderStore, clock: FakeClock) -> InfrahubSharedLock:
     return InfrahubSharedLock(
         name=name,

@@ -74,6 +74,11 @@ _LOCK_TOKEN_SEPARATOR = "::"
 # answering.
 LOCK_COMMAND_ATTEMPTS = 3
 
+# A shared holder renews its record this many times per time-to-live, so the record expires only after that many
+# renewals in a row fail.
+SHARED_LOCK_RENEWALS_PER_TTL = 3
+EXCLUSIVE_LOCK_POLL_SECONDS = 0.1
+
 
 def get_worker_id_from_lock_token(token: str | None) -> str | None:
     """Return the worker id from a lock token, or ``None`` if it is absent or malformed.
@@ -362,24 +367,26 @@ class InfrahubLock:
                 LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
             self.acquire_time = None
 
-        if not self.use_local:
-            remote = self._held_remote.get()
-            if remote is None:
-                raise RuntimeError("Lock release attempted without ownership context.")
-            self._held_remote.set(None)
-            try:
-                await remote.release()
-            except LockNotOwnedError:
-                # When a TTL is set the lock may have auto-expired (and possibly been re-acquired by
-                # another worker) before we got here. There is nothing left for us to release.
-                if self.ttl is None:
-                    raise
-                log.warning("Lock expired before it could be released", lock=self.name, ttl=self.ttl)
-        else:
-            self.local.release()
-
-        self._recursion_var.set(None)
-        self.event.set()
+        try:
+            if not self.use_local:
+                remote = self._held_remote.get()
+                if remote is None:
+                    raise RuntimeError("Lock release attempted without ownership context.")
+                self._held_remote.set(None)
+                try:
+                    await remote.release()
+                except LockNotOwnedError:
+                    # When a TTL is set the lock may have auto-expired (and possibly been re-acquired by
+                    # another worker) before we got here. There is nothing left for us to release.
+                    if self.ttl is None:
+                        raise
+                    log.warning("Lock expired before it could be released", lock=self.name, ttl=self.ttl)
+            else:
+                self.local.release()
+        finally:
+            # A task whose release failed must not re-enter the lock as if it still held it.
+            self._recursion_var.set(None)
+            self.event.set()
 
     async def locked(self) -> bool:
         if not self.use_local:
@@ -403,6 +410,8 @@ class InfrahubSharedLock:
 
     The exclusive mode is the plain lock of the same name, which a shared request also takes while it records
     itself, so a shared request queues behind an exclusive one that waits for the shared holders to finish.
+    Taking that plain lock directly does not wait for the shared holders, so a name used here must not also be
+    taken as a plain lock.
     """
 
     def __init__(
@@ -412,7 +421,7 @@ class InfrahubSharedLock:
         store: SharedHolderStore,
         ttl_seconds: int,
         wait_seconds: float,
-        poll_seconds: float = 0.1,
+        poll_seconds: float = EXCLUSIVE_LOCK_POLL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.name = name
@@ -449,10 +458,20 @@ class InfrahubSharedLock:
 
         holder = str(uuid.uuid4())
         token = f"{current_timestamp()}{_LOCK_TOKEN_SEPARATOR}{WORKER_IDENTITY}"
-        with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, "shared").time():
-            # Recorded even under this task's exclusive hold, which can end before this shared one does.
-            async with self._mutex:
-                await self._store.add(key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds)
+        written = False
+        try:
+            with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, "shared").time():
+                # Recorded even under this task's exclusive hold, which can end before this shared one does.
+                async with self._mutex:
+                    written = True
+                    await self._store.add(
+                        key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds
+                    )
+        except BaseException:
+            # The write may have reached the store before the failure, and no release will follow to remove it.
+            if written:
+                await self._remove_record(holder=holder)
+            raise
         renewal = asyncio.create_task(self._renew(holder=holder, token=token))
         self._hold.set(_SharedHold(depth=1, holder=holder, renewal=renewal))
 
@@ -467,8 +486,12 @@ class InfrahubSharedLock:
         self._hold.set(None)
         hold.renewal.cancel()
         await asyncio.gather(hold.renewal, return_exceptions=True)
+        await self._remove_record(holder=hold.holder)
+
+    async def _remove_record(self, holder: str) -> None:
+        """Remove the holder's record; raises nothing but cancellation."""
         try:
-            await self._store.remove(key=self._holders_key, holder=hold.holder)
+            await self._store.remove(key=self._holders_key, holder=holder)
         # Cleanup after the holder's work, whose outcome a failed removal must not replace; the record expires unrenewed.
         except Exception:
             log.exception("Failed to remove a shared lock record", lock=self.name)
@@ -506,7 +529,7 @@ class InfrahubSharedLock:
 
     async def _renew(self, holder: str, token: str) -> None:
         while True:
-            await sleep(self._ttl_seconds / 3)
+            await sleep(self._ttl_seconds / SHARED_LOCK_RENEWALS_PER_TTL)
             try:
                 await self._store.add(key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds)
             # A loop that must keep renewing after one failed write, since the record lapses once renewals stop.
