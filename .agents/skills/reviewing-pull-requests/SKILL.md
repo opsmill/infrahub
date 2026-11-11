@@ -27,12 +27,10 @@ request that started this skill, or use the pull request of the current branch.
      result. Codex does not offer that skill by name, so the subagent reads the file. The pull
      request's branch must be checked out, as it is when this session opened the pull request.
 3. If the pull request changes `docs/` or user-facing behavior, start a separate subagent without
-   this conversation. Give it the diff and relevant docs/source paths, and ask it to check the
-   changed docs, and the docs the change leaves out of date, against
-   `.agents/skills/opsmill-product-writing-infrahub-docs/rules/_checklist.md` and the rule files it
-   links. It skips the checklist items about the writing workflow, such as the checks file, the gates
-   and the "Rules read" line, and returns findings only, each with file/line evidence and a suggested
-   correction. Wait for its result.
+   this conversation. Give it the diff, the relevant docs and source paths, and the docs checks that
+   `REVIEW.md` names, and ask it to apply them to the changed docs and to the docs the change leaves
+   out of date. It returns findings only, each with file/line evidence and a suggested correction.
+   Wait for its result.
 4. Combine and deduplicate the findings with the rules in `REVIEW.md` applied, separating the
    issues this pull request introduces from older ones. Give each docs finding its suggested
    correction, and give a missing docs update the path of the page to change. Return the findings
