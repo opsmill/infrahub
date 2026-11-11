@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from fastapi import APIRouter, FastAPI
-from prefect.context import refresh_global_settings_context
+from prefect.context import refresh_global_settings_context, root_settings_context
 from prefect.server.api.server import create_app
 from prefect.server.database import provide_database_interface
 from prefect.server.database.configurations import AsyncPostgresConfiguration
@@ -87,7 +87,9 @@ def apply_infrahub_settings_to_prefect(config_file: Path | None = None) -> None:
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
     refresh_global_settings_context()
-    prefect_settings = get_current_settings()
+    # Read again from the environment rather than from the settings in effect: inside a settings context, such as
+    # the one every `infrahub` command runs in, those are the settings copied before the variables were written.
+    prefect_settings = root_settings_context().settings
     for warning in turned_off_cleanup_warnings(vacuum=prefect_settings.server.services.db_vacuum):
         log.warning(warning)
     for name, value in prefect_retention_in_effect(settings=prefect_settings).items():

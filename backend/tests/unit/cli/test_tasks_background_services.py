@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 
 from infrahub.cli import app
 from infrahub.cli.tasks import run_background_services
+from infrahub.task_manager.client_settings import prefect_client_defaults
 from tests.helpers.task_manager_retention import PREFECT_RETENTION_VARIABLES
 
 if TYPE_CHECKING:
@@ -71,6 +72,29 @@ def test_the_services_start_once_with_the_retention_of_the_given_configuration_f
     starter = RecordingServicesStarter()
 
     run_background_services(config_file=config_file, start_services=starter)
+
+    assert starter.starts == [
+        ServicesStart(
+            vacuum_types={"events", "flow_runs", "orphans"},
+            task_history=timedelta(days=45),
+            activity_log=timedelta(days=14),
+            own_events={timedelta(days=3)},
+        )
+    ]
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_the_services_start_with_the_retention_inside_the_settings_context_of_a_command(tmp_path: Path) -> None:
+    """Every infrahub command runs inside a Prefect settings context, which holds the settings read before the retention is written."""
+    config_file = _config_file(
+        directory=tmp_path,
+        name="background-services.toml",
+        retention='task_history = "45d"\nactivity_log = "P14D"\nprefect_own_events = "3d"',
+    )
+    starter = RecordingServicesStarter()
+
+    with prefect_client_defaults():
+        run_background_services(config_file=config_file, start_services=starter)
 
     assert starter.starts == [
         ServicesStart(

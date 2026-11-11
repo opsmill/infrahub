@@ -13,6 +13,7 @@ from click.core import ParameterSource
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
+from prefect.context import root_settings_context
 from pydantic import ValidationError
 from rich.filesize import decimal
 
@@ -21,6 +22,7 @@ from infrahub.core.migrations.shared import get_migration_console
 from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite, TaskHistorySize
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.task_manager.client_settings import prefect_client_defaults
 from infrahub.task_manager.flow_run.cleanup import (
     GIVE_UP_AFTER,
     POLL_INTERVAL,
@@ -112,7 +114,11 @@ def run_background_services(config_file: Path, start_services: Callable[[], None
     apply_infrahub_settings_to_prefect(config_file=config_file)
     # Docket, which runs Prefect's services, logs every run of every service at INFO, about three lines a second.
     logging.getLogger("docket").setLevel(logging.WARNING)
-    start_services()
+    # Every `infrahub` command runs inside a Prefect settings context, which keeps the settings copied when the command
+    # started, before the retention was written to the environment. The services run inside a context that reads the
+    # settings again, with the client defaults of every command.
+    with root_settings_context(), prefect_client_defaults():
+        start_services()
 
 
 @app.command()

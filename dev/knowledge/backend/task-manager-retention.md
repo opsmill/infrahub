@@ -50,6 +50,13 @@ prefix. `prefect_server/retention.py` turns it into Prefect variables:
   `cli/tasks.py::run_background_services`, which the `background-services` command runs, call it.
   `run_background_services` then sets the `docket` logger to WARNING, because Docket, which runs
   Prefect's services, logs each run of each service at INFO.
+- The refresh replaces only Prefect's global settings. Inside an entered settings context,
+  `get_current_settings` keeps returning the settings that context copied when it was entered, and
+  every `infrahub` command enters one (`cli/__init__.py::common`, for the Prefect client defaults).
+  So `run_background_services` starts the services inside `root_settings_context()`, which reads
+  the settings again from the environment, and `apply_infrahub_settings_to_prefect` logs the
+  retention in effect from settings read the same way. Without this, the separate background
+  services run with Prefect's defaults: events kept 7 days and old runs never deleted.
 - `prefect_retention_already_set` reads, before any variable is written, which settings a Prefect
   source already sets: Prefect marks a field as set when the environment, under any name Prefect
   accepts including legacy aliases such as `PREFECT_EVENTS_RETENTION_PERIOD`, a `.env` file,
