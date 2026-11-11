@@ -106,7 +106,7 @@ The **Schema Visualizer** shows the resulting schema.
             - start: 5000
 ```
 
-A range without a `start` begins at the attribute's `min_value`, or at 1 when the attribute has no `min_value` or a `min_value` below 1. A range without an `end` stops at the attribute's `max_value`, or at the largest number Infrahub supports when the attribute has no `max_value`. The pool page shows that largest number as `MAX`, so the second range above is shown as `5000 - MAX`. See [Ranges without a start or an end](../resource-manager/allocate-number.mdx#open-ranges) for the full rule.
+A `NumberPool` attribute has no `min_value` or `max_value` parameter, so a range without a `start` begins at 1, and a range without an `end` stops at 9,223,372,036,854,775,807, the largest number Infrahub supports. The pool page shows that largest number as `MAX`, so the second range above is shown as `5000 - MAX`. A pool you create for a `Number` attribute reads these bounds from the attribute's `min_value` and `max_value` instead, as described in [Ranges without a start or an end](../resource-manager/allocate-number.mdx#open-ranges).
 
 The declaration sets the ranges Infrahub creates for the pool:
 
