@@ -55,26 +55,18 @@ class LabelEventFilter(InfrahubEventFilter):
         event_type = event_type or []
         event_type_filter = event_type_filter or {}
 
-        if branch_merged := event_type_filter.get("branch_merged"):
-            branches: list[str] = branch_merged.get("branches") or []
-            if "infrahub.branch.created" not in event_type:
-                event_type.append("infrahub.branch.merged")
-            if branches:
-                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
-
-        if branch_migrated := event_type_filter.get("branch_migrated"):
-            branches = branch_migrated.get("branches") or []
-            if "infrahub.branch.created" not in event_type:
-                event_type.append("infrahub.branch.migrated")
-            if branches:
-                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
-
-        if branch_rebased := event_type_filter.get("branch_rebased"):
-            branches = branch_rebased.get("branches") or []
-            if "infrahub.branch.created" not in event_type:
-                event_type.append("infrahub.branch.rebased")
-            if branches:
-                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+        for key, event_name in (
+            ("branch_merged", "infrahub.branch.merged"),
+            ("branch_migrated", "infrahub.branch.migrated"),
+            ("branch_rebased", "infrahub.branch.rebased"),
+        ):
+            if branch_filter := event_type_filter.get(key):
+                if "infrahub.branch.created" not in event_type:
+                    event_type.append(event_name)
+                if branches := (branch_filter.get("branches") or []):
+                    self.resource = EventResourceFilter(
+                        labels=ResourceSpecification({"infrahub.branch.name": branches})
+                    )
 
         if (group_auto_create := event_type_filter.get("group_auto_create")) is not None:
             auto_create_event_names = [
