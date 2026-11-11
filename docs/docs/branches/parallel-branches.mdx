@@ -70,7 +70,7 @@ For both ways to run a rebase, and what to do when one is refused, see [Rebase a
 
 You can build a small service that rebases the open branches each time a branch merges. Infrahub's [event actions](../events/event-actions.mdx) add objects to groups or remove them, and run Generators, and none of them rebases a branch, so this approach combines a webhook with the GraphQL API. You build and run the service yourself.
 
-1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service, and set its branch scope to **All Branches**. With the default scope, **Default Branch**, the webhook does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
+1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service. Keep the default branch scope, **Default Branch**, or set **All Branches**: Infrahub emits the merge event on the default branch, so a webhook scoped to **Other Branches** does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
 2. When your service receives the webhook, list the branches with the `Branch` query shown in [What changes when another branch merges](#what-changes-when-another-branch-merges). Skip the default branch (`is_default`) and any branch with the status `MERGED` or `MERGING`.
 3. For each remaining branch, send `BranchRebase` to `/graphql` and let it wait for the rebase, which is the default, so the response contains the outcome.
 4. Handle a refusal according to the `code` in the error's `extensions`:
