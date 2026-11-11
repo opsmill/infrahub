@@ -98,7 +98,7 @@ services:
     userns_mode: "keep-id:uid=1000"
 ```
 
-`podman-compose` runs the services in a pod by default, and a container in a pod cannot have its own user namespace, so `in_pod: false` turns the pod off. Without `podman-compose`, pass `--userns=keep-id:uid=1000` to `podman run`. Plain `--userns=keep-id` runs the containers as your host user ID, which cannot write to the runtime directories unless it is `1000`.
+`podman-compose` runs the services in a pod by default, and Podman 4.9 refuses a separate user namespace for a container in a pod (`--userns and --pod cannot be set together`). `in_pod: false` turns the pod off, so the same file works on Podman 4.9 as well as on Podman 6.1, which accepts either setting. Without `podman-compose`, pass `--userns=keep-id:uid=1000` to `podman run`. Plain `--userns=keep-id` runs the containers as your host user ID, which cannot write to the runtime directories unless it is `1000`.
 
 Restart Infrahub:
 
