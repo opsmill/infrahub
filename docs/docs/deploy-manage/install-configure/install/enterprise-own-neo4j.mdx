@@ -1,0 +1,139 @@
+---
+title: Install Infrahub Enterprise with your own Neo4j
+---
+
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Install Infrahub Enterprise with your own Neo4j <EnterpriseBadge />
+
+Infrahub Enterprise can store its data in a Neo4j Enterprise instance that you already run and license, instead of the Neo4j that the Infrahub Enterprise Helm chart installs. Follow this guide when your organization already has a licensed Neo4j Enterprise instance, either one you operate or a managed Neo4j service, and you want Infrahub to store its data there.
+
+:::warning Contact OpsMill before you start
+
+OpsMill does not validate the performance of Infrahub Enterprise on Neo4j instances that you operate or on managed Neo4j services. Contact OpsMill for support before you install, including to confirm which Neo4j versions to use:
+
+- **Discord:** [discord.gg/opsmill](https://discord.gg/opsmill)
+- **Email:** [contact@opsmill.com](mailto:contact@opsmill.com)
+- **Schedule a meeting:** [cal.com/team/opsmill/meet](https://cal.com/team/opsmill/meet)
+
+The steps below are for a Helm installation. To connect an Infrahub Enterprise deployment that runs on Docker Compose to your own Neo4j, contact OpsMill.
+
+:::
+
+## Prerequisites
+
+Before starting, make sure you have:
+
+- Access to Infrahub Enterprise, with the license terms reviewed, as described in [Before you start](./enterprise.mdx#before-you-start)
+- A Kubernetes cluster and [Helm](https://helm.sh/docs/intro/install/)
+- A Neo4j Enterprise instance that accepts Bolt connections from the cluster, on port `7687` or the port you set in Step 3
+- A Neo4j user for Infrahub with the privileges listed in [Least-privilege service credentials](../production-deployment/overview.mdx#neo4j)
+- The database that Infrahub writes to, created in Neo4j
+
+Infrahub writes to the `neo4j` database unless you set another name with `INFRAHUB_DB_DATABASE`. If that database does not exist, Infrahub creates it when it starts, which requires the `CREATE DATABASE` privilege. Create the database beforehand, so that the Infrahub user needs only the privileges listed above.
+
+## License settings with your own Neo4j
+
+When you install Infrahub Enterprise with the bundled Neo4j, you set one value for each of two license agreements, as described in [Before you start](./enterprise.mdx#before-you-start). With your own Neo4j, you set only the value for the Infrahub license agreement:
+
+- **Infrahub license agreement:** accept it by setting `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `"yes"`. You set it for the API server and the task workers in Step 3.
+- **Neo4j license agreement:** do not set `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`. The chart does not install Neo4j, and your own Neo4j license covers your instance.
+
+## Step 1: Remove the bundled Neo4j
+
+Set `enabled` to `false` under `infrahub.neo4j` in your `values.yml` file, so that the Infrahub Enterprise chart does not install Neo4j:
+
+```yaml title="values.yml"
+infrahub:
+  neo4j:
+    enabled: false
+```
+
+With the bundled Neo4j removed, the chart no longer sets `INFRAHUB_DB_ADDRESS` and `INFRAHUB_DB_PORT` for the API server and the task workers. Without them, Infrahub tries to connect to `localhost`, so you set both in Step 3.
+
+## Step 2: Store the Neo4j password in a Kubernetes Secret
+
+Create a Secret that contains the password of the Neo4j user, in the namespace where you install Infrahub. Kubernetes sets one environment variable for each key of the Secret, named after the key, so name the key `INFRAHUB_DB_PASSWORD`:
+
+```shell
+kubectl create secret generic infrahub-neo4j \
+  --namespace <namespace> \
+  --from-literal=INFRAHUB_DB_PASSWORD='<password>'
+```
+
+In Step 3, you list the Secret under `envFromExistingSecrets` for the API server and the task workers. The chart sets the same environment variables on its upgrade job as on the API server, so the upgrade job also reads the password from the Secret.
+
+## Step 3: Connect Infrahub to your Neo4j
+
+The API server and the task workers each connect to Neo4j, so set the connection settings and the Infrahub license acceptance for both. Add them to the `values.yml` file from Step 1:
+
+```yaml title="values.yml"
+infrahub:
+  neo4j:
+    enabled: false
+
+  infrahubServer:
+    infrahubServer:
+      envFromExistingSecrets:
+        - infrahub-neo4j
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+        INFRAHUB_DB_ADDRESS: neo4j.example.com
+        INFRAHUB_DB_PORT: 7687
+        INFRAHUB_DB_USERNAME: infrahub
+        INFRAHUB_DB_DATABASE: infrahub
+
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      envFromExistingSecrets:
+        - infrahub-neo4j
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+        INFRAHUB_DB_ADDRESS: neo4j.example.com
+        INFRAHUB_DB_PORT: 7687
+        INFRAHUB_DB_USERNAME: infrahub
+        INFRAHUB_DB_DATABASE: infrahub
+```
+
+Write `"yes"` as a quoted string. Helm reads an unquoted `yes` as a boolean, and the chart then passes it to Infrahub as `true`.
+
+The connection settings and their defaults:
+
+| Setting | Value | Default |
+|---------|-------|---------|
+| `INFRAHUB_DB_ADDRESS` | Host name or IP address of your Neo4j instance, or a comma-separated list of cluster members in `host[:port]` format | `localhost` |
+| `INFRAHUB_DB_PORT` | Bolt port of your Neo4j instance | `7687` |
+| `INFRAHUB_DB_PROTOCOL` | `bolt`, or `neo4j` when Neo4j runs as a cluster | `bolt` |
+| `INFRAHUB_DB_USERNAME` | Neo4j user for Infrahub | `neo4j` |
+| `INFRAHUB_DB_PASSWORD` | Password of the Neo4j user, from the Secret in Step 2 | `admin` |
+| `INFRAHUB_DB_DATABASE` | Database that Infrahub writes to | `neo4j` |
+| `INFRAHUB_DB_TLS_ENABLED` | `true` to encrypt the connection | `false` |
+| `INFRAHUB_DB_TLS_CA_FILE` | CA certificate or bundle that Infrahub trusts for the Neo4j certificate, as a file path or as PEM text | Not set |
+| `INFRAHUB_DB_TLS_INSECURE` | `true` to skip validation of the Neo4j certificate | `false` |
+
+When Neo4j runs as a cluster, set `INFRAHUB_DB_PROTOCOL` to `neo4j`, so that Infrahub discovers the cluster members and routes reads and writes to them. To list the members in `INFRAHUB_DB_ADDRESS`, follow one of the two methods in [Connecting Infrahub to a Neo4j cluster](../production-deployment/high-availability.mdx#connecting-infrahub-to-a-neo4j-cluster).
+
+When `INFRAHUB_DB_TLS_CA_FILE` is not set, Infrahub trusts the CA bundle in `INFRAHUB_TLS_CA_BUNDLE`, or the system trust store of the container if that is not set either. If a private certificate authority signed the Neo4j certificate, mount its CA bundle and set one of the two settings, as described in [Trust a private CA](../production-deployment/private-ca.mdx).
+
+## Step 4: Install the chart and check the pods
+
+Install the Infrahub Enterprise chart with your `values.yml` file. Choose the chart version and the sizing preset as described in [Install Infrahub Enterprise](./enterprise.mdx), and add the other values listed there for production deployments, such as persistent storage for the task manager database and S3 storage for the API server:
+
+```shell
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version <chart-version> --namespace <namespace>
+```
+
+Check that all pods are running:
+
+```shell
+kubectl get pods --namespace <namespace>
+```
+
+## Related resources
+
+- [Install Infrahub Enterprise](./enterprise.mdx) - Chart versions, sizing presets and the other values for a production deployment
+- [Production deployment](../production-deployment/overview.mdx) - Hardened configuration, and the privileges of a restricted Neo4j user
+- [High availability](../production-deployment/high-availability.mdx) - Connecting Infrahub to a Neo4j cluster
+- [Trust a private CA](../production-deployment/private-ca.mdx) - Trusting the certificate of your Neo4j instance
+- [Database backup and restore](../../maintain-upgrade/database-backup/overview.mdx) - Backup and restore options for Infrahub
+- [Configuration reference](../../../reference/configuration.mdx) - Every `INFRAHUB_DB_*` setting

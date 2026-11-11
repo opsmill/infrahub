@@ -394,6 +394,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise-own-neo4j', label: 'Enterprise with your own Neo4j' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/observability-stack', label: 'Observability stack' },
               ],
             },

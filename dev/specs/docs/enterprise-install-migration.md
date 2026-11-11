@@ -19,6 +19,8 @@ The migration guide sits in Deployment & Management > Maintain & upgrade > Upgra
 - Neo4j Docker documentation: setting `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes` accepts the Enterprise license agreement.
 - Neo4j upgrade guide, Community to Enterprise: dump and load of the `neo4j` and `system` databases.
 - `overview/community-vs-enterprise.mdx`: the list of Enterprise-only capabilities used in the migration guide's opening.
+- The author of the page (2026-11-11): Infrahub Enterprise requires the person to accept the Infrahub license agreement with `INFRAHUB_ACCEPT_LICENSE_AGREEMENT`. The backend team is implementing the check; the Compose file and the Helm chart were not checked.
+- infrahub-helm `charts/infrahub/values.yaml` (`stable`): the API server and the task workers each take an `env` map, under `infrahubServer.infrahubServer.env` and `infrahubTaskWorker.infrahubTaskWorker.env`.
 
 ## Open questions (carried to the pull request)
 
@@ -27,4 +29,4 @@ The migration guide sits in Deployment & Management > Maintain & upgrade > Upgra
 3. Whether the Helm chart also sets the Neo4j acceptance to yes. The board says it does (infrahub-helm values); not verified here, so the new section mentions only the Compose file.
 4. Whether pulling `registry.opsmill.io/opsmill/infrahub-enterprise` needs credentials. Neither page says so.
 5. `overview/community-vs-enterprise.mdx` still says Enterprise features "can be assessed through trials" and that organizations can "seamlessly migrate". Both conflict with the board and with the revised migration section. Not changed here.
-6. The acceptance step proposed on the board (stage 3a) is not shipped, so no page documents it.
+6. `install/enterprise.mdx` now documents `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` before the backend check ships. Not known yet: the accepted value (the page uses `yes`, like the Neo4j variable), which Infrahub components read it (the page sets it on the API server and the task workers), and what happens when it is missing. The migration guide also documents it, with the same assumptions, and its Docker Compose pre-flight check assumes the Enterprise Compose file sets it on the `infrahub-server` and `task-worker` services.

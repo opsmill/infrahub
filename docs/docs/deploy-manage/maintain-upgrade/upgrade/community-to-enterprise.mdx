@@ -46,6 +46,8 @@ A Prefect work pool is typed, and a worker whose type does not match its pool's 
 
 No license file, license key, or image pull secret is required. Images can be pulled from the Enterprise registry (`registry.opsmill.io/opsmill/infrahub-enterprise`) without authentication.
 
+Infrahub Enterprise requires you to accept the Infrahub license agreement: set the `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` environment variable to `yes`, as described in [Prepare the new configuration](#prepare-the-new-configuration). Accepting it is your decision, so review the terms listed in [Before you start](../../install-configure/install/enterprise.mdx#before-you-start) first.
+
 :::
 
 ## Neo4j deployment and licensing
@@ -81,19 +83,20 @@ cp docker-compose.yml docker-compose.community.yml
 # Retrieve the Enterprise Compose file, pinned to your current version
 curl https://infrahub.opsmill.io/enterprise/1.10.6 > docker-compose.yml
 
-# Accept the Neo4j license agreement
+# Accept the Infrahub and Neo4j license agreements
+echo "INFRAHUB_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 ```
 
 Replace `1.10.6` with the version reported by `/api/info`. Fetching `https://infrahub.opsmill.io/enterprise` without a version returns the latest release, which would combine the edition switch with a version upgrade.
 
-The `NEO4J_ACCEPT_LICENSE_AGREEMENT` variable is `no` by default, and Neo4j Enterprise Edition starts only when it is `yes`. Without it, the `database` service does not start after the replacement. If your `.env` file already sets the variable, change its value to `yes` instead of appending a second line.
+Set `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `yes` to accept the Infrahub license agreement, which Infrahub Enterprise requires. The `NEO4J_ACCEPT_LICENSE_AGREEMENT` variable is `no` by default, and Neo4j Enterprise Edition starts only when it is `yes`. Without it, the `database` service does not start after the replacement. If your `.env` file already sets either variable, change its value to `yes` instead of appending a second line.
 
 You can append a sizing preset — `?size=small`, `?size=medium`, `?size=large` — to configure replica counts and Neo4j memory settings for your hardware. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the sizing table.
 
 **Configuration reused from Community:**
 
-Environment variable names are identical between editions, so an existing `.env` file or Compose override file applies unchanged, apart from the `NEO4J_ACCEPT_LICENSE_AGREEMENT` line you add above. The Enterprise Compose file adds an `x-infrahub-config-enterprise` block with three variables:
+Environment variable names are identical between editions, so an existing `.env` file or Compose override file applies unchanged, apart from the two license lines you add above. The Enterprise Compose file adds an `x-infrahub-config-enterprise` block with three variables:
 
 - `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE`, defaulting to `infrahubentasync` — the variable behind the [work pool switch](#how-the-work-pool-is-switched).
 - `INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS` and `INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS`, which the Community Compose file already defines with the same defaults (`0` and `false`), so they change nothing until you set them.
@@ -164,6 +167,25 @@ infrahub:
         image:
           prefectTag: "1.10.6"  # set to your current Infrahub version
 ```
+
+**Accept the Infrahub license agreement:**
+
+Set the `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` environment variable to `"yes"` for the API server and the task workers, whether you run the bundled Neo4j or your own:
+
+```yaml
+infrahub:
+  infrahubServer:
+    infrahubServer:
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+```
+
+Add the variable to the `env` maps you already have in `values-enterprise.yaml`, rather than adding a second `env` key under the same component. Write the value as a quoted string (`"yes"`), because Helm reads an unquoted `yes` as a boolean. See [Accept the Infrahub license agreement](../../install-configure/install/enterprise.mdx#accept-the-infrahub-license-agreement).
 
 **Accept the Neo4j license agreement:**
 
@@ -261,6 +283,7 @@ Review the rendered configuration for:
 
 - Identical volume names — `database_data`, `database_logs`, `storage_data`, `workflow_db`, `workflow_data`.
 - Image references showing `infrahub-enterprise:<version>` at the version you pinned.
+- `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` set to `yes` on the `infrahub-server` and `task-worker` services.
 - A `database` service on `neo4j:<version>-enterprise`, with `NEO4J_ACCEPT_LICENSE_AGREEMENT` set to `yes`.
 
 </TabItem>
@@ -293,6 +316,7 @@ Review the dry-run output for:
 - Identical PVC names (the StatefulSet `volumeClaimTemplates` and any standalone PVCs should match what `kubectl get pvc` showed).
 - Identical service names.
 - Image references showing `infrahub-enterprise:<version>`.
+- `INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"` in the `env` maps of the API server and the task workers in `values-enterprise.yaml`.
 - `acceptLicenseAgreement: "yes"` under `infrahub.neo4j.neo4j` in `values-enterprise.yaml`, if you run the bundled Neo4j.
 
 </TabItem>
@@ -446,7 +470,7 @@ The procedure is:
 2. Take a `neo4j-admin database dump` of the `neo4j` database and the `system` database.
 3. Provision the Enterprise instance with a valid Neo4j Enterprise license.
 4. Restore the dumps into the Enterprise instance with `neo4j-admin database load`.
-5. Point Infrahub at the new endpoint via `INFRAHUB_DB_ADDRESS`.
+5. Point Infrahub at the new endpoint via `INFRAHUB_DB_ADDRESS`. For the other connection settings and the Helm values, see [Connect Infrahub to your Neo4j](../../install-configure/install/enterprise-own-neo4j.mdx#step-3-connect-infrahub-to-your-neo4j).
 6. Convert the store to the `block` format, as described in [Migrate the Neo4j store to the block format](#migrate-the-neo4j-store-to-the-block-format). A restored store keeps the `aligned` format it had on Community.
 
 This can happen before, simultaneously with, or after the edition switch — Infrahub Enterprise runs against Neo4j Community. The performance and high-availability benefits of Infrahub Enterprise that depend on Neo4j Enterprise features (online backups, clustering, and advanced indexing) only apply once Neo4j is also on the Enterprise edition.
