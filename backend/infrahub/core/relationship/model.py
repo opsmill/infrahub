@@ -872,7 +872,7 @@ class RelationshipValidatorList:
         kept = [rel for rel in self._relationships if rel.get_peer_id() not in peer_ids]
         if self.min_count and len(kept) < self.min_count:
             self._raise_too_few()
-        self._relationships = kept
+        self._relationships[:] = kept
         self._relationships_count = len(kept)
 
     def as_list(self) -> list[Relationship]:

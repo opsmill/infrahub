@@ -488,8 +488,10 @@ async def test_relationship_validate_remove_peers(person_jack_main: Node, branch
         result.remove_peers(peer_ids={"peer-a", "peer-c"})
     assert [rel.peer_id for rel in result] == ["peer-a", "peer-b", "peer-c"]
 
+    held = result.as_list()
     result.remove_peers(peer_ids={"peer-a"})
     assert [rel.peer_id for rel in result] == ["peer-b", "peer-c"]
+    assert [rel.peer_id for rel in held] == ["peer-b", "peer-c"]
     assert len(result) == 2
 
 
