@@ -1,0 +1,27 @@
+changelog/+npm-security-resolution.security.md
+  s_15b06b32bc2714::t_ff5c64ec1003db 1
+docs/package-lock.json
+  s_15b06b32bc2714::t_f539f9b37dbb25 4478-4480,4484-4485,4488,4687-4693,7208-7210,7214-7215,7218,10816-10818,10822-10823,10826,19038-19040,19044,21768-21774,21777
+docs/package.json
+  s_15b06b32bc2714::t_4f30ede14ce65e 68-75
+frontend/packages/plugins/template/package-lock.json
+  s_15b06b32bc2714::t_97dc4ad00e652e 561-567,3648-3650,3654-3655,3658
+frontend/packages/plugins/template/package.json
+  s_15b06b32bc2714::t_f46f6b7472ea06 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2eb0733f90e7c6ddd5593f2a7d82f19008a9e87b",
+  "prompts": {},
+  "sessions": {
+    "s_15b06b32bc2714": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cac6-9c2e-7101-bc91-45ca7d63cb5a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
