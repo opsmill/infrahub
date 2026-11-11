@@ -109,11 +109,15 @@ class RecordingSharedLock(InfrahubSharedLock):
             self._timeline.record(f"{self.name}:shared", LockAction.RELEASE)
 
     async def acquire_exclusive(self) -> None:
+        if self._mutex.held_by_current_task():
+            await super().acquire_exclusive()
+            return
         await self._record_acquire(name=f"{self.name}:exclusive", acquire=super().acquire_exclusive())
 
     async def release_exclusive(self) -> None:
         await super().release_exclusive()
-        self._timeline.record(f"{self.name}:exclusive", LockAction.RELEASE)
+        if not self._mutex.held_by_current_task():
+            self._timeline.record(f"{self.name}:exclusive", LockAction.RELEASE)
 
     async def _record_acquire(self, name: str, acquire: Coroutine[Any, Any, None]) -> None:
         self._timeline.record(name, LockAction.WAIT)
