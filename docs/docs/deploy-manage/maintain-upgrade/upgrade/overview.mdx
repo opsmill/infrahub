@@ -104,7 +104,7 @@ In step 5/7, the upgrade prints how much disk space the task history takes and h
 Task history takes 864.3 MB, with more than 100,000 runs older than the retention.
 ```
 
-The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup command only shrinks the tables. In OpsMill benchmarks, rewriting the tables took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB. These figures leave out the pauses between tables: before each table after the first, the cleanup pauses ten times as long as the previous table was locked, up to 60 seconds.
+The count stops at 100,000, so a larger backlog shows as `more than 100,000 runs`. When it shows `no runs older than the retention`, there is no backlog left to delete, and the cleanup command only shrinks the tables. In a local OpsMill benchmark of an earlier version of the cleanup, rewriting the tables took about 20 seconds for 25 GB of task history and 85 seconds for 100 GB. These figures leave out the pauses between tables: before each table after the first, the cleanup pauses ten times as long as the previous table was locked, up to 60 seconds.
 
 When the task manager does not delete old task runs, because `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value without `flow_runs`, the line ends with the reason, and the task manager refuses the cleanup. See [Set the retention](../../run-observe/tasks.mdx#set-the-retention).
 
@@ -166,9 +166,9 @@ Run `infrahub tasks flush flow-runs --rewrite` once the instance runs again, on 
 - When step 7 skipped the cleanup and printed the command, or printed `The upgrade goes on without the cleanup`.
 - After you lower the task history retention or the activity log retention. See [After you lower a retention](#after-you-lower-a-retention).
 
-New and small instances do not need it.
+New and small instances do not need it, with one exception: an instance with fewer than 100,000 old runs whose activity log tables are mostly free space, for example after the task manager deleted a burst of the events it stores for its own use. The upgrade skips the cleanup on such an instance, and the command returns that space to the disk.
 
-Without the command, the hourly cleanup works through the old runs in the background, slowly: about 2.5 hours per 25 GB of task history in OpsMill benchmarks. The database stops growing, because new runs reuse the space of the deleted ones, but it does not shrink until the command runs.
+Without the command, the hourly cleanup works through the old runs in the background, slowly: 1 hour 50 minutes for 25.8 GB of task history in an OpsMill test. The database then grows much more slowly, because new runs reuse the space of the deleted ones, but it does not shrink until the command runs. How much it still grows was not measured.
 
 ### Run the cleanup command
 
@@ -185,11 +185,11 @@ kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs -
 The command:
 
 - Deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, together with their logs and artifacts. Runs that are still running or pending are kept. It deletes one day of end times at a time and prints the day it is working on, so `Deleting the runs that ended on …` lines are progress messages.
-- Then rewrites each task history and activity log table whose live rows hold less than half of its disk space, so that the files of that table shrink and the disk space returns. This includes the space of the records that the hourly cleanup deleted before the command started. A table whose rows mostly hold live data is left as it is, because rewriting it would return little space.
+- Then rewrites each task history and activity log table whose live rows hold less than half of its disk space, not counting its indexes, so that the files of that table shrink and the disk space returns. This includes the space of the records that the hourly cleanup deleted before the command started. A table whose rows mostly hold live data is left as it is, because rewriting it would return little space.
 
 :::tip
 
-On very large instances, tasks may pause for a few seconds while tables are rewritten, because a task that reads or writes a table waits until the rewrite of that table ends. In OpsMill benchmarks, tasks waited up to 7.4 seconds with the instance running on 25 GB of task history, and the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
+On very large instances, tasks may pause for several seconds, and at most about a minute, while tables are rewritten, because a task that reads or writes a table waits until the rewrite of that table ends. In OpsMill tests on 25.8 GB of task history with the instance running, tasks waited up to 21 seconds behind a table rewrite. In a local benchmark of an earlier version of the cleanup, the slowest table took about 20 seconds on 100 GB. How long the activity log tables take after you lower a long activity log retention was not measured.
 
 To keep these pauses short, the command waits at most 3 seconds for a table that another session is using. When the table is still in use, it tries again 20 seconds later, up to four more times, so it makes at most five attempts on each table. It stops a rewrite that takes longer than 60 seconds, which leaves that table as it was. Before the next table, it pauses ten times as long as the previous table was locked, up to 60 seconds, so that the tasks that waited catch up.
 
@@ -197,8 +197,8 @@ To keep these pauses short, the command waits at most 3 seconds for a table that
 
 Plan for the time and the disk space the cleanup needs, in step 7 of the upgrade or with the command:
 
-- **Time**: most of it is spent deleting. In an OpsMill test on a restored backup with 7.3 GB of task history, PostgreSQL 18 and the instance running, the cleanup deleted 422,735 runs and took the task history from 7.3 GB to 1.3 GB in about 6 minutes, about 1,250 runs a second; each run takes longer to delete on a larger task history, so 25 GB takes at least about 20 minutes. The longest wait for a table lock was 4 seconds. With Docker Compose, step 7 adds this time to the time the instance is down. The pauses between rewritten tables are included, and add at most 60 seconds for each table after the first. The figures are not a guarantee: the duration depends on the hardware and the data of your instance.
-- **Free disk space**: the rewrite writes a copy of the rows that a table keeps before it removes the old files. In the same benchmarks, that was under 0.5 GB for 25 GB of task history and 2.2 GB for 100 GB. For the activity log tables, the copy holds the events that the activity log retention keeps.
+- **Time**: most of it is spent deleting. In an OpsMill test on a restored backup with 7.3 GB of task history, PostgreSQL 18 and the instance running, the cleanup deleted 422,735 runs and took the task history from 7.3 GB to 1.3 GB in about 6 minutes, about 1,250 runs a second. Each run takes longer to delete on a larger task history: in OpsMill tests on 25.8 GB of task history, with PostgreSQL 18 and the instance running, the last step of the upgrade took about 14 to 16 minutes, and the cleanup command took 17 to 20 minutes. With Docker Compose, step 7 adds this time to the time the instance is down. That added downtime is an estimate, because the tests ran the upgrade with the instance running. This version of the cleanup was not measured on more than 25.8 GB of task history, nor on PostgreSQL 14. The pauses between rewritten tables are included, and add at most 60 seconds for each table after the first. The figures are not a guarantee: the duration depends on the hardware and the data of your instance.
+- **Free disk space**: the rewrite writes a new copy of the table and its indexes before it removes the old files, and the command does not check the free disk space before it rewrites a table. In two OpsMill tests on 25.8 GB of task history, the files of the task manager database took up to 0.7 GB and 1.1 GB more than at the start of the upgrade, write-ahead log included. In a local benchmark of an earlier version of the cleanup, the rewrite needed 2.2 GB for 100 GB of task history. For the activity log tables, the copy holds the events that the activity log retention keeps.
 
 The cleanup runs inside the task manager, so it continues if the session that runs the command ends. Running the command again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining run. If the task manager restarts while the command follows the cleanup, the command waits until the task manager answers again and starts a new cleanup. The command then reports `Deleted at least N runs`, because the cleanup that the restart stopped may have deleted more runs than the command saw.
 
@@ -229,11 +229,11 @@ To get the space back, rewrite the table yourself with `VACUUM FULL` on the task
 docker compose exec task-manager-db psql -U postgres -d prefect -c 'VACUUM FULL events'
 ```
 
-With Helm, run the same statement with `psql` on the task manager database. While the rewrite runs, every query of the task manager that reads or writes the table waits until the rewrite ends. The Infrahub image sets `PREFECT_API_DATABASE_TIMEOUT=60`, so the task manager stops a database query after 60 seconds, and these queries fail when the rewrite takes longer. How tasks behave after such a failure was not measured. The rewrite needs free disk space for a copy of the rows that the table keeps. See [VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html) in the PostgreSQL documentation.
+With Helm, run the same statement with `psql` on the task manager database. While the rewrite runs, every query of the task manager that reads or writes the table waits until the rewrite ends. The Infrahub image sets `PREFECT_API_DATABASE_TIMEOUT=60`, so the task manager stops a database query after 60 seconds, and these queries fail when the rewrite takes longer. How tasks behave after such a failure was not measured. The rewrite needs free disk space for a new copy of the table and its indexes. See [VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html) in the PostgreSQL documentation.
 
 ### After you lower a retention
 
-The cleanup command gets the disk space back after you lower the task history retention or the activity log retention, for each table that it rewrites within 60 seconds. For a table whose rewrite the command stops, see [A table whose rewrite takes longer than 60 seconds](#a-table-whose-rewrite-takes-longer-than-60-seconds). The hourly cleanup deletes the records older than the new value, and the database stops growing, but it does not shrink on its own. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) and [Activity log retention](../../run-observe/activity-log.mdx#retention).
+The cleanup command gets the disk space back after you lower the task history retention or the activity log retention, for each table that it rewrites within 60 seconds. For a table whose rewrite the command stops, see [A table whose rewrite takes longer than 60 seconds](#a-table-whose-rewrite-takes-longer-than-60-seconds). The hourly cleanup deletes the records older than the new value. The database then grows much more slowly, because new records reuse the space of the deleted ones, but it does not shrink on its own. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) and [Activity log retention](../../run-observe/activity-log.mdx#retention).
 
 ## Database migration commands
 

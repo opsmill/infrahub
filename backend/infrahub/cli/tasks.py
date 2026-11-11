@@ -352,7 +352,7 @@ async def flow_runs(
         help=(
             "After the deletes, rewrite each task history and activity log table whose live rows hold less than "
             "half of its disk space, to return that space to the disk. Tasks that read or write a table wait while it "
-            "is rewritten, for at most a minute."
+            "is rewritten, for at most about a minute."
         ),
     ),
 ) -> None:
