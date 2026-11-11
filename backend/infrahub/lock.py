@@ -394,8 +394,8 @@ class InfrahubLock:
 @dataclass(frozen=True)
 class _SharedHold:
     depth: int
-    holder: str | None
-    renewal: asyncio.Task[None] | None
+    holder: str
+    renewal: asyncio.Task[None]
 
 
 class InfrahubSharedLock:
@@ -446,13 +446,11 @@ class InfrahubSharedLock:
         if hold is not None:
             self._hold.set(replace(hold, depth=hold.depth + 1))
             return
-        if self._mutex.held_by_current_task():
-            self._hold.set(_SharedHold(depth=1, holder=None, renewal=None))
-            return
 
         holder = str(uuid.uuid4())
         token = f"{current_timestamp()}{_LOCK_TOKEN_SEPARATOR}{WORKER_IDENTITY}"
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, "shared").time():
+            # Recorded even under this task's exclusive hold, which can end before this shared one does.
             async with self._mutex:
                 await self._store.add(key=self._holders_key, holder=holder, token=token, ttl_seconds=self._ttl_seconds)
         renewal = asyncio.create_task(self._renew(holder=holder, token=token))
@@ -467,11 +465,8 @@ class InfrahubSharedLock:
             return
 
         self._hold.set(None)
-        if hold.renewal is not None:
-            hold.renewal.cancel()
-            await asyncio.gather(hold.renewal, return_exceptions=True)
-        if hold.holder is None:
-            return
+        hold.renewal.cancel()
+        await asyncio.gather(hold.renewal, return_exceptions=True)
         try:
             await self._store.remove(key=self._holders_key, holder=hold.holder)
         # Cleanup after the holder's work, whose outcome a failed removal must not replace; the record expires unrenewed.
@@ -481,11 +476,17 @@ class InfrahubSharedLock:
     async def acquire_exclusive(self) -> None:
         """Take the lock alone, once every shared holder has released it.
 
+        A task that already holds the lock exclusively gets it again at once.
+
         Raises:
-            LockError: When the current task holds the lock in shared mode.
+            LockError: When the current task holds the lock in shared mode only.
             LockWaitTimeoutError: When shared holders remain after the wait limit; the lock is not held then.
 
         """
+        if self._mutex.held_by_current_task():
+            # Other tasks record a shared hold only under the mutex, so every holder left is this task's own.
+            await self._mutex.acquire()
+            return
         if self._hold.get() is not None:
             raise LockError(f"The lock {self.name} is held in shared mode by this task and cannot be made exclusive")
 

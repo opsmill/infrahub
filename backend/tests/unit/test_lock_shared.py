@@ -263,10 +263,57 @@ async def test_a_shared_request_from_a_task_holding_it_exclusively_returns_at_on
 ) -> None:
     async with shared_lock.exclusive():
         async with shared_lock.shared():
-            assert not await _has_holders(store)
+            assert await _has_holders(store)
         assert await mutex.locked()
 
     assert not await mutex.locked()
+    assert not await _has_holders(store)
+
+
+async def test_an_exclusive_request_under_a_shared_hold_granted_from_an_exclusive_one_returns_at_once(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock
+) -> None:
+    async with shared_lock.exclusive():
+        async with shared_lock.shared(), shared_lock.exclusive():
+            assert await mutex.locked()
+        assert await mutex.locked()
+
+    assert not await mutex.locked()
+
+
+async def test_a_shared_hold_outlasting_the_exclusive_hold_it_was_granted_under_keeps_exclusive_requests_waiting(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore
+) -> None:
+    shared_inside = asyncio.Event()
+    shared_release = asyncio.Event()
+    exclusive_inside = asyncio.Event()
+
+    async def hold_shared_past_the_exclusive_hold() -> None:
+        await shared_lock.acquire_exclusive()
+        await shared_lock.acquire_shared()
+        await shared_lock.release_exclusive()
+        shared_inside.set()
+        await asyncio.wait_for(shared_release.wait(), timeout=5)
+        await shared_lock.release_shared()
+
+    holder = asyncio.create_task(hold_shared_past_the_exclusive_hold())
+    await asyncio.wait_for(shared_inside.wait(), timeout=5)
+    exclusive = asyncio.create_task(
+        _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=asyncio.Event())
+    )
+    await _wait_until(mutex.locked)
+    await _let_other_tasks_run()
+
+    assert not exclusive_inside.is_set()
+
+    shared_release.set()
+    await asyncio.wait_for(exclusive_inside.wait(), timeout=5)
+    await holder
+    exclusive.cancel()
+    await asyncio.gather(exclusive, return_exceptions=True)
+
+    assert not await mutex.locked()
+    assert not await _has_holders(store)
 
 
 async def test_an_exclusive_request_from_a_task_holding_it_shared_is_refused(
