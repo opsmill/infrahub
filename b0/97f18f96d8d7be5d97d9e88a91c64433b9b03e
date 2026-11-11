@@ -1,0 +1,33 @@
+backend/infrahub/git/activity/recorder.py
+  s_2ab8629d5567d5::t_42e3e314867b74 10-16,93-109
+backend/infrahub/git/repository.py
+  s_2ab8629d5567d5::t_64dfc4552788a5 181-182,586-590,592
+backend/infrahub/git/state/cache_keys.py
+  s_2ab8629d5567d5::t_74ebd1a51588de 34-37,63-66
+backend/infrahub/git/sync.py
+  s_2ab8629d5567d5::t_305c279d8c78a1 14,33-36,155-156,334-336,345-346,388-419
+backend/infrahub/git/tasks.py
+  s_2ab8629d5567d5::t_5a45e4db743249 443-444,852
+backend/infrahub/git/utils.py
+  s_2ab8629d5567d5::t_4de2c76316e154 41-42
+backend/tests/component/git/test_stopped_import_repair.py
+  s_2ab8629d5567d5::t_203125f116529c 46,142-237
+dev/knowledge/backend/git-sync.md
+  s_2ab8629d5567d5::t_5143a230464342 560-562,573-584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b097f18f96d8d7be5d97d9e88a91c64433b9b03e",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
