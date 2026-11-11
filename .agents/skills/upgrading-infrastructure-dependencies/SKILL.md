@@ -89,33 +89,74 @@ results of steps 6 and 7 as they come in.
 
 ## 6. Change the other two repositories
 
-Search there for the old version too. Show the user the changes, and open the pull requests only
-after they agree, as drafts that link the Infrahub pull request and name the release the upgrade
-ships in.
+Search there for the old version too. In `opsmill/infrahub-private`, add `':!community'` to the
+search so that it skips the submodule. The [service notes](#service-notes) list the files that a
+Neo4j upgrade changes there. Show the user the changes, and open the pull requests only after they
+agree, as drafts that link the Infrahub pull request and name the release the upgrade ships in.
 
 - `opsmill/infrahub-private`: its tests must pass with the new version before the Infrahub pull
-  request merges. Run them with `community` at the upgrade branch, as its `AGENTS.md` describes,
-  and post the result on the Infrahub pull request. A pull request there merges after the Infrahub
-  pull request, once `develop` there holds the release the upgrade ships in. If it moved
-  `community`, set it back to the commit of `develop` before the merge.
+  request merges.
+  - Point `community` at the upgrade branch in the draft pull request, so that its CI runs the
+    enterprise tests with the new version. Also run the smoke tests of
+    `dev/guides/testing-service-upgrades.md` there, and post the results on the Infrahub pull
+    request.
+  - Run the checks of its `AGENTS.md`. When `community` moves to a commit with changed settings,
+    `release.validate-dockercomposeenv` fails: run `uv run invoke release.gen-config-env -u`.
+  - `develop` there also moves `community` while the pull request is open, so a merge of `develop`
+    can conflict on `community`. Keep the commit of the upgrade branch when it already contains the
+    commit of `develop`. Otherwise, update the upgrade branch in `opsmill/infrahub` first.
+
+    ```bash
+    git -C community merge-base --is-ancestor <commit of develop> <commit of the upgrade branch>
+    ```
+
+  - The pull request merges after the Infrahub pull request, once `develop` there holds the release
+    the upgrade ships in. Before the merge, set `community` back to the commit of `develop`.
 - `opsmill/infrahub-helm`: only when the charts change. Every final Infrahub and Infrahub
   Enterprise release publishes its chart from `stable`, and so does a chart release cut by hand
   there. So the pull request merges while the Infrahub release it ships in is cut, before it is
-  published: merged earlier, it ships with a release that was not tested with it. Leave `version`,
-  `appVersion` and `prefectTag` alone: the release process sets them on `stable` just before the
-  merge.
+  published: merged earlier, it ships with a release that was not tested with it. Keep it a draft
+  until then, also after its review, because GitHub does not merge a draft; `/cut-release` marks it
+  ready and merges it. Leave `version`, `appVersion` and `prefectTag` alone: the release process
+  sets them on `stable` just before the merge.
 
 If the Infrahub pull request moves to a later release, change the release named in these
 descriptions.
 
 ## 7. Run the tests that CI does not run
 
-A Neo4j or Prefect upgrade also needs these two runs. Run them, or ask a maintainer to.
+The CI of each pull request tests the new version in its own repository. The CI of the Infrahub
+pull request also runs the version upgrade test: it starts Infrahub and Neo4j at the older versions
+that `.github/workflows/version-upgrade.yml` sets, then upgrades them to the upgrade branch. A
+Neo4j or Prefect upgrade also needs the runs below. Run them, or ask a maintainer to.
 
-- Performance: run the tests of `opsmill/infrahub-private-tests` with the new version and with the
-  current one, on the same datasets, and compare the failures and the durations. Check in the
-  output of each run that it used the version you meant.
-- High availability on Kubernetes: deploy the example of the
+Run them on images built from the upgrade branch. With the user's agreement, add the `cd/preview`
+label to the Infrahub pull request for `opsmill/infrahub`, and to the draft pull request in
+`opsmill/infrahub-private` for `opsmill/infrahub-enterprise`. Each push then publishes the image
+with the tag `dev-` followed by the first 7 characters of the commit. For an image without the
+upgrade, run the "Publish development docker image" workflow of the same repository with a commit
+that does not have it.
+
+- Performance: run the `Test dataset` workflow of `opsmill/infrahub-private-tests` (its
+  `run-test-dataset` skill) with the new version and with the current one, on the same backup, and
+  compare the failures and the durations. Its `infrahub_ref` input builds the image from the
+  upgrade branch. For Neo4j, also set the `neo4j_image` input in both runs: the workflow takes
+  Neo4j from the version of `infrahub-testcontainers` that the repository pins, not from the
+  image. Check in the log of each run that it used the version you meant.
+- High availability on Kubernetes: run the `Enterprise Neo4j HA E2E` workflow
+  (`.github/workflows/ha-e2e.yml`) of `opsmill/infrahub-helm` by hand on the branch of the pull
+  request there, or on `stable` when there is none. CI runs it on that pull request with the
+  Infrahub image that the chart sets by default, a release without the upgrade. Set these inputs:
+  - `infrahub_image` and `prefect_image`: the Infrahub Enterprise image built from the upgrade,
+    with the registry host, for example
+    `registry.opsmill.io/opsmill/infrahub-enterprise:dev-1234567`.
+  - For Neo4j, `neo4j_upgrade_from_chart`: the chart version that `stable` pins. The `ha-upgrade`
+    job then installs a cluster of 3 Neo4j members at that version and upgrades it to the pinned
+    chart of the branch, one member at a time with the writer last, while Infrahub keeps writing
+    and reading data. The `ha` job checks the placement of the members, the loss of the writer
+    and the recovery.
+- The whole high-availability stack: the workflow does not test the failover of Redis, RabbitMQ
+  and PostgreSQL, so also deploy the example of the
   [high-availability guide](../../../docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx)
   (`development/deploy.tf` deploys the same) and test it by hand. The example pins an old chart
   and image, so install the `infrahub-enterprise` chart from a checkout of `opsmill/infrahub-helm`
@@ -123,17 +164,11 @@ A Neo4j or Prefect upgrade also needs these two runs. Run them, or ask a maintai
   values file of the example. Set `infrahub.global.infrahubTag` and
   `infrahub.prefect-server.global.prefect.image.prefectTag` to the image you test.
 
-Run both on images built from the upgrade branch. With the user's agreement, add the `cd/preview`
-label to the Infrahub pull request for `opsmill/infrahub`, and for `opsmill/infrahub-enterprise` to
-a draft pull request in `opsmill/infrahub-private` whose `community` points at the upgrade branch.
-Each push then publishes the image with the tag `dev-` followed by the first 7 characters of the
-commit. For an image without the upgrade, run the "Publish development docker image" workflow of
-the same repository with a commit that does not have it.
-
 ## 8. Mark the Infrahub pull request ready
 
-It is ready for review when its CI and the `opsmill/infrahub-private` tests of step 6 pass and,
-for Neo4j and Prefect, the two runs of step 7 pass. Once the user agrees, mark it ready.
+It is ready for review when the CI of each pull request you opened and the
+`opsmill/infrahub-private` smoke tests pass and, for Neo4j and Prefect, the runs of step 7 pass.
+Write the link of each run in the description. Once the user agrees, mark it ready.
 
 Before you mark it ready, merge the latest `develop` into the branch and run the searches of step 4
 and of the service notes again. A pin that reaches `develop` while the branch is open is not in your
@@ -166,11 +201,22 @@ then the `opsmill/infrahub-private` one. The person who cuts the release merges 
     | jq -r '.results[].name' | grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]+-enterprise$' | head -5
   ```
 
+- The pins in the other two repositories:
+  - `opsmill/infrahub-private`: `.env.example`, `docker-compose.yml`, `tasks/shared.py` and the
+    end-to-end job of `.github/workflows/ci.yml`.
+  - `opsmill/infrahub-helm`: the `version` of the `neo4j` dependency in
+    `charts/infrahub/Chart.yaml` and its row in `charts/infrahub/README.md`, with a changelog
+    fragment in `charts/infrahub` and in `charts/infrahub-enterprise`.
 - Check the Cypher changes in the output of the component tests, deprecation warnings included.
-  Open a data volume of the current version with the new one, and back it up and restore it with
-  `utilities/db_backup`. Compare the memory settings of the size presets in the other two
-  repositories with the release notes, and check that the `neo4j` driver and `neo4j-rust-ext` in
-  `pyproject.toml` support the new version.
+  The version upgrade test of CI starts from an older Neo4j version, so also open a data volume of
+  the current version with the new one, and back it up and restore it with `utilities/db_backup`.
+  Compare the memory settings of the size presets in the other two repositories with the release
+  notes, and check that the `neo4j` driver and `neo4j-rust-ext` in `pyproject.toml` support the new
+  version.
+- If the release notes or the upgrade guide change how a cluster is upgraded, update the
+  "Upgrading the Neo4j cluster" section of the
+  [high-availability guide](../../../docs/docs/deploy-manage/install-configure/production-deployment/high-availability.mdx)
+  and the `ha-upgrade` job of `opsmill/infrahub-helm`, which runs the same steps.
 - `python_testcontainers/infrahub_testcontainers/container.py` has two images: the Community
   default in `PROJECT_ENV_VARIABLES` and the Enterprise image in `create_env_file`. Both are
   written into the `.env` file of the test stack, so they win over the fallback of
