@@ -36,7 +36,7 @@ Infrahub Enterprise requires you to accept the Infrahub license agreement, and N
   - `NEO4J_ACCEPT_LICENSE_AGREEMENT` to accept the Neo4j license agreement.
 - **Helm:** set these values to `"yes"` in `values.yml`:
   - The `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` environment variable of the Infrahub API server and the task workers, to accept the Infrahub license agreement. See [Accept the Infrahub license agreement](#accept-the-infrahub-license-agreement).
-  - `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`, to accept the Neo4j license agreement. The Enterprise chart uses `"yes"` for this value in its default values. See [Accept the Neo4j license agreement](#accept-the-neo4j-license-agreement).
+  - `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`, to accept the Neo4j license agreement. See [Accept the Neo4j license agreement](#accept-the-neo4j-license-agreement).
 - **Bare metal:** the settings depend on your environment, so agree on them with OpsMill.
 
 To move an existing Community deployment to Enterprise, follow [Migrate from Community to Enterprise](../../maintain-upgrade/upgrade/community-to-enterprise.mdx) instead of installing a new instance.
@@ -330,17 +330,17 @@ infrahub:
       acceptLicenseAgreement: "yes"
 ```
 
-Write the value as a quoted string (`"yes"`), because YAML reads an unquoted `yes` as a boolean. The Infrahub Community chart sets `acceptLicenseAgreement` to `"no"`. The Infrahub Enterprise chart sets `edition` to `"enterprise"` and `acceptLicenseAgreement` to `"yes"` in its default values. Keep both keys in your `values.yml` so that the license acceptance is explicit and recorded in your own configuration.
+Write the value as a quoted string (`"yes"`), because YAML reads an unquoted `yes` as a boolean. The Infrahub Community chart sets `acceptLicenseAgreement` to `"no"`, and the Infrahub Enterprise chart sets `edition` to `"enterprise"` in its default values. Set both keys in your `values.yml` so that the license acceptance is explicit and recorded in your own configuration.
 
 Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
 
 | Flavor      | Chart version example | Required memory |
 |-------------|-----------------------|-----------------|
-| small       | 4.0.0-small           | 16 GB           |
-| medium      | 4.0.0-medium          | 32 GB           |
-| medium-data | 4.0.0-medium-data     | 32 GB           |
-| large       | 4.0.0-large           | 64 GB           |
-| large-data  | 4.0.0-large-data      | 64 GB           |
+| small       | 4.26.0-small          | 16 GB           |
+| medium      | 4.26.0-medium         | 32 GB           |
+| medium-data | 4.26.0-medium-data    | 32 GB           |
+| large       | 4.26.0-large          | 64 GB           |
+| large-data  | 4.26.0-large-data     | 64 GB           |
 
 You can review the configuration values for each sizing preset here:
 
@@ -363,7 +363,7 @@ infrahub:
           host: "infrahub-cache-master"
 ```
 
-The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.0.0`) does not require it.
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.26.0`) does not require it.
 
 :::
 
@@ -389,13 +389,13 @@ infrahub:
 Install using a flavored chart from the OpsMill registry (recommended for production):
 
 ```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0-medium
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.26.0-medium
 ```
 
 Or install the base chart and provide your own sizing configuration:
 
 ```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.26.0
 ```
 
 Install using a local chart:

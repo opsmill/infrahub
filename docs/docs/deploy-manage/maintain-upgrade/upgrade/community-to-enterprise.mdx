@@ -203,7 +203,7 @@ Write the value as a quoted string (`"yes"`), because YAML reads an unquoted `ye
 
 **Pin the Infrahub version:**
 
-`global.infrahubTag` is an override, not a required value. Left unset, the image tag defaults to the chart's `appVersion` — chart `4.18.0` declares `appVersion: "1.10.6"`, so it deploys Infrahub 1.10.6.
+`global.infrahubTag` is an override, not a required value. Left unset, the image tag defaults to the chart's `appVersion` — chart `4.26.0` declares `appVersion: "1.12.0"`, so it deploys Infrahub 1.12.0.
 
 The chart version and the `appVersion` move independently, so choosing a chart version also chooses an Infrahub version, whether or not you meant to. Prerequisite 1 requires the version to stay unchanged across the edition switch, so set both tags explicitly — that pins the outcome to your current version and keeps it pinned when the chart version moves:
 
@@ -226,13 +226,13 @@ For production, use a flavored chart. Available from chart version 4.0.0, these 
 
 | Flavor      | Chart version example | Required memory |
 |-------------|-----------------------|-----------------|
-| small       | 4.18.0-small          | 16 GB           |
-| medium      | 4.18.0-medium         | 32 GB           |
-| medium-data | 4.18.0-medium-data    | 32 GB           |
-| large       | 4.18.0-large          | 64 GB           |
-| large-data  | 4.18.0-large-data     | 64 GB           |
+| small       | 4.26.0-small          | 16 GB           |
+| medium      | 4.26.0-medium         | 32 GB           |
+| medium-data | 4.26.0-medium-data    | 32 GB           |
+| large       | 4.26.0-large          | 64 GB           |
+| large-data  | 4.26.0-large-data     | 64 GB           |
 
-Pick the flavor matching the sizing your Community deployment already runs at. The base chart (for example, `4.18.0`) is the alternative when you provide your own sizing configuration. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the values behind each preset.
+Pick the flavor matching the sizing your Community deployment already runs at. The base chart (for example, `4.26.0`) is the alternative when you provide your own sizing configuration. See [Install Infrahub Enterprise](../../install-configure/install/enterprise.mdx) for the values behind each preset.
 
 :::info Redis host configuration for flavored charts
 
@@ -306,7 +306,7 @@ helm history <release-name> -n <namespace>
 
 # Dry-run the upgrade to inspect the rendered manifests
 helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
-  -n <namespace> -f values-enterprise.yaml --version 4.18.0-small --dry-run
+  -n <namespace> -f values-enterprise.yaml --version 4.26.0-small --dry-run
 ```
 
 Use the same `--version` you intend to run for real — a dry-run against a different chart version renders manifests you are not going to apply.
@@ -369,7 +369,7 @@ Old Community images stay on the host and consume disk space. Remove them with `
 helm upgrade <release-name> oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise \
   -n <namespace> \
   -f values-enterprise.yaml \
-  --version 4.18.0-small \
+  --version 4.26.0-small \
   --timeout 15m
 
 # Run the upgrade pipeline from inside the new server pod
