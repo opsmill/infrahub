@@ -77,7 +77,7 @@ For failed jobs with an empty `tests` list and no bucket tag, read the log yours
 - It's a genuine test failure the extraction regexes missed — note the test manually and
   consider extending `extract_tests`.
 
-### Known systemic signatures (as of 2026-08 — keep in sync with `BUCKETS` in collect.py)
+### Known systemic signatures (as of 2026-11 — keep in sync with `BUCKETS` in collect.py)
 
 | Bucket | Signature | Meaning |
 |---|---|---|
@@ -92,6 +92,10 @@ For failed jobs with an empty `tests` list and no bucket tag, read the log yours
 | `actions-download-429` | `Failed to download action … 429` | GitHub rate-limited its own action download; pure platform flake. |
 | `prefect-task-manager-wedged` | `RuntimeError: Prefect task manager setup already failed for http…` | The memoized task-manager setup (`backend/tests/helpers/task_manager.py`) timed out once against a Prefect test server; every later class fail-fasts on the remembered failure. One incident, hundreds of cascaded ERRORs. |
 | `pytest-green-exit-1` | green pytest summary (no failed, no errors) directly followed by exit 1 | Session-teardown/plugin abort after all tests passed (e.g. testcontainers result reporting). |
+| `pytest-session-timeout` | `xdist.dsession.Interrupted: session-timeout: 1800.0 sec exceeded` | A component shard ran past the pytest-xdist session budget; the summary shows only passes, the job exits 2, and the tests it did not reach are not reported. |
+| `asyncio-stream-buffer-error` | `BufferError: Existing exports of data: object cannot be re-sized` (raised from `asyncio/streams.py` during the Neo4j Bolt handshake) | Seen in `backend-benchmark`: the shared `db` fixture fails to connect, so all 13 benchmarks error at setup. One incident per job, not 13 flaky tests. |
+| `docker-pull-lease` | `unable to lease content: lease does not exist` | The Docker daemon on a self-hosted runner lost a containerd lease while pulling an image (`demo.pull`); the job fails before any test runs. `version-upgrade.yml` retries the pull, so expect this only when all three attempts fail. |
+| `redis-read-timeout` | `redis.exceptions.TimeoutError: Timeout reading from …` | The server's cache stopped answering; the E2E fixtures that load data through the server error at setup. One incident, not N flaky tests. |
 
 ## Step 4 — Judge: flake vs regression
 

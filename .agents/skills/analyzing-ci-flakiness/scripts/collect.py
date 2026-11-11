@@ -82,6 +82,13 @@ BUCKETS: list[tuple[str, str]] = [
         "pytest-green-exit-1",
         r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
     ),
+    # The shard ran out of its pytest-xdist session budget, so the job fails with every test it reached green.
+    ("pytest-session-timeout", r"xdist\.dsession\.Interrupted: session-timeout: [\d.]+ sec exceeded"),
+    # Raised in asyncio's stream reader during the Neo4j handshake of the shared `db` fixture, so every benchmark errors.
+    ("asyncio-stream-buffer-error", r"BufferError: Existing exports of data: object cannot be re-sized"),
+    ("docker-pull-lease", r"unable to lease content: lease does not exist"),
+    # The server's cache reads time out, so the E2E fixtures that load data through it error at setup.
+    ("redis-read-timeout", r"redis\.exceptions\.TimeoutError: Timeout reading from"),
 ]
 
 LEDGER_FIELDS = (
