@@ -1,0 +1,1 @@
+Infrahub no longer reads every relationship in the database to check whether a branch has new changes, a check that runs before a branch diff is updated and when the diff of a branch is loaded. The upgrade adds 14 database indexes, which it creates and waits for.
