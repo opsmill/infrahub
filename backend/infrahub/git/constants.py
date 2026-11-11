@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Final, Mapping
+from typing import Final
 
 COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"

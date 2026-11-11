@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, MutableMapping, TypeVar
+from collections.abc import Awaitable, Callable, MutableMapping
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import aio_pika
 import ujson

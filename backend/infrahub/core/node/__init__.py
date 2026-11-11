@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast, overload
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub_sdk.utils import is_valid_uuid
@@ -60,7 +60,8 @@ from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from .node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from collections.abc import Sequence
+    from typing import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreObjectTemplate

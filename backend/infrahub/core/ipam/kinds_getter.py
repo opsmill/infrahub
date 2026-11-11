@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self, Sequence
+from typing import TYPE_CHECKING, Self
 
 from infrahub.core.account import GlobalPermission
 from infrahub.exceptions import PermissionDeniedError
@@ -9,6 +9,8 @@ from infrahub.permissions.loader import PermissionLoader
 from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.auth.session import AccountSession
     from infrahub.core.account import ObjectPermission
     from infrahub.core.branch import Branch
