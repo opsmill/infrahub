@@ -134,8 +134,9 @@ def _build_allocated_values_query(
 ) -> tuple[str, dict[str, Any]]:
     """Return the Cypher that matches the namespace `$ns_id`, then the value `av` of each child allocated in it.
 
-    The rows hold `ns` and `av`, with `av` NULL when no child is in range, and there is no row when the namespace is
-    not active. The value must match `$prefix_binary`, `$maxprefixlen` and `$ip_version`, and `child_filter` can
+    The rows hold `namespace_id` and `av`, with `av` NULL when no child is in range, and there is no row when the
+    namespace is not active. A kind migration leaves one vertex per kind for the same namespace, so callers group the
+    values by `namespace_id`, never by vertex. The value must match `$prefix_binary`, `$maxprefixlen` and `$ip_version`, and `child_filter` can
     exclude a `child` node. In branch-agnostic mode, the namespace and a child count when they are active in the
     window of at least one live branch, so a value stays taken while any live branch holds it.
     """
@@ -163,6 +164,7 @@ def _build_allocated_values_query(
             AND av.version = $ip_version
             %(child_filter)s
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH ns.uuid AS namespace_id, av
     """ % {
         "ns_label": InfrahubKind.IPNAMESPACE,
         "node_label": child.node_label,
@@ -245,6 +247,7 @@ def _build_allocated_values_in_windows_query(
             }
             RETURN held_av AS av
         }
+        WITH ns.uuid AS namespace_id, av
     """ % {
         "windows_query": windows_query,
         "ns_label": InfrahubKind.IPNAMESPACE,
@@ -534,22 +537,22 @@ class IPPrefixSubnetFetchFree(Query):
         # ruff: noqa: E501
         query = """
         %(allocated_query)s
-        WITH ns, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        WITH namespace_id, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
         // Convert binary strings to integer ranges for gap detection
         // - start: Convert binary string to decimal by iterating through each bit
         //          and accumulating (dec * 2 + bit_value), which is binary-to-decimal conversion
         // - end: start + (2^host_bits - 1), where host_bits = 32 - prefixlen
         //        This gives the broadcast address (last IP) of the prefix
-        WITH ns, [r IN ranges_raw |
+        WITH namespace_id, [r IN ranges_raw |
                 {
                     start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
                     end: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)) + toInteger(2 ^ (32 - r.prefixlen)) - 1
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end: null}] ELSE ranges END AS r
-        WITH ns, r
+        WITH namespace_id, r
         ORDER BY r.start ASC
-        WITH ns, collect(r) AS ranges_sorted_raw
+        WITH namespace_id, collect(r) AS ranges_sorted_raw
         WITH [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
         // Gap detection algorithm using reduce to scan through sorted ranges
         // acc.cursor: current candidate position for a free block (always block-aligned)
@@ -648,9 +651,9 @@ class IPv6PrefixSubnetFetchFree(Query):
         # ruff: noqa: E501
         query = """
         %(allocated_query)s
-        WITH ns, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        WITH namespace_id, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
         // Create ranges with start (block-aligned) and end_block (the block containing the end address)
-        WITH ns, [r IN ranges_raw WHERE r.binary IS NOT NULL |
+        WITH namespace_id, [r IN ranges_raw WHERE r.binary IS NOT NULL |
                 {
                     // Start block: first target_prefixlen bits of network address
                     start_block: left(r.binary, $target_prefixlen),
@@ -660,9 +663,9 @@ class IPv6PrefixSubnetFetchFree(Query):
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start_block: null, end_block: null}] ELSE ranges END AS r
-        WITH ns, r
+        WITH namespace_id, r
         ORDER BY r.start_block ASC
-        WITH ns, collect(r) AS ranges_sorted_raw
+        WITH namespace_id, collect(r) AS ranges_sorted_raw
         WITH [r IN ranges_sorted_raw WHERE r.start_block IS NOT NULL] AS ranges_sorted
         // Find first available slot using binary string comparison
         // We track cursor as the current candidate block (target_prefixlen bits)
@@ -871,13 +874,13 @@ class IPPrefixIPAddressFetchFree(Query):
         %(allocated_query)s
         // Gap detection algorithm: collect used addresses and find first available slot
         // Each used_address is a single binary string representing an allocated IP
-        WITH DISTINCT ns, av.binary_address AS used_address
+        WITH DISTINCT namespace_id, av.binary_address AS used_address
         ORDER BY used_address
         // Convert binary string to integer for comparison
-        WITH ns, [x IN split(used_address, "") | toInteger(x)] AS bits
+        WITH namespace_id, [x IN split(used_address, "") | toInteger(x)] AS bits
         // Build array: [start_range - 1] prepended to all used addresses as integers
         // This creates a baseline for gap detection starting from the range beginning
-        WITH ns, [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
+        WITH namespace_id, [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
         UNWIND range(0, size(nums) - 1) AS idx
         CALL (nums, idx) {
             // Compare expected sequential address with actual address at this position
@@ -967,10 +970,10 @@ class IPv6PrefixIPAddressFetchFree(Query):
         # ruff: noqa: E501
         query = """
         %(allocated_query)s
-        WITH DISTINCT ns, av.binary_address AS used_address
+        WITH DISTINCT namespace_id, av.binary_address AS used_address
         ORDER BY used_address
         // Collect used addresses as binary strings, prepend a sentinel value before start_range
-        WITH ns, collect(used_address) AS used_addrs_raw
+        WITH namespace_id, collect(used_address) AS used_addrs_raw
         WITH [addr IN used_addrs_raw WHERE addr IS NOT NULL AND addr >= $start_range_bin AND addr <= $end_range_bin] AS used_addrs
         // Gap detection using binary string comparison
         // We iterate through used addresses and find the first gap

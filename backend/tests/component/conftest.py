@@ -2415,6 +2415,15 @@ async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db: None) -> 
 
 @pytest.fixture
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
+    do_init_nodes_registry()
+
+
+@pytest.fixture(scope="class")
+async def init_nodes_registry_scope_class(db: InfrahubDatabase) -> None:
+    do_init_nodes_registry()
+
+
+def do_init_nodes_registry() -> None:
     registry.node["Node"] = Node
     registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
@@ -2617,8 +2626,17 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    return do_register_ipam_schema(branch=default_branch, ipam_schema=ipam_schema)
+
+
+@pytest.fixture(scope="class")
+async def register_ipam_schema_scope_class(default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    return do_register_ipam_schema(branch=default_branch_scope_class, ipam_schema=ipam_schema)
+
+
+def do_register_ipam_schema(branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 

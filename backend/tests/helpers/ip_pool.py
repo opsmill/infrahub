@@ -118,8 +118,10 @@ ADDRESS_POOL_IPV6 = IPPoolCase(
 IP_POOL_CASES = [PREFIX_POOL_IPV4, PREFIX_POOL_IPV6, ADDRESS_POOL_IPV4, ADDRESS_POOL_IPV6]
 
 
-async def create_namespace(db: InfrahubDatabase, name: str = NAMESPACE_NAME, branch: Branch | None = None) -> Node:
-    namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=branch)
+async def create_namespace(
+    db: InfrahubDatabase, name: str = NAMESPACE_NAME, branch: Branch | None = None, kind: str = InfrahubKind.NAMESPACE
+) -> Node:
+    namespace = await Node.init(db=db, schema=kind, branch=branch)
     await namespace.new(db=db, name=name)
     await namespace.save(db=db)
     return namespace
@@ -139,18 +141,21 @@ async def create_prefix(
 
 
 async def create_pool(
-    db: InfrahubDatabase, case: IPPoolCase, namespace: Node, resources: list[Node], branch: Branch | None = None
+    db: InfrahubDatabase,
+    case: IPPoolCase,
+    namespace: Node,
+    resources: list[Node],
+    branch: Branch | None = None,
+    name: str = POOL_NAME,
 ) -> Node:
-    """A pool of the case's kind named `POOL_NAME`; an address pool allocates `IpamIPAddress` nodes."""
+    """A pool of the case's kind; an address pool allocates `IpamIPAddress` nodes."""
     pool: CoreIPPrefixPool | CoreIPAddressPool
     if case.pool_kind == InfrahubKind.IPADDRESSPOOL:
         pool = await CoreIPAddressPool.init(db=db, schema=case.pool_kind, branch=branch)
-        await pool.new(
-            db=db, name=POOL_NAME, resources=resources, ip_namespace=namespace, default_address_type=ADDRESS_KIND
-        )
+        await pool.new(db=db, name=name, resources=resources, ip_namespace=namespace, default_address_type=ADDRESS_KIND)
     else:
         pool = await CoreIPPrefixPool.init(db=db, schema=case.pool_kind, branch=branch)
-        await pool.new(db=db, name=POOL_NAME, resources=resources, ip_namespace=namespace)
+        await pool.new(db=db, name=name, resources=resources, ip_namespace=namespace)
     await pool.save(db=db)
     return pool
 
