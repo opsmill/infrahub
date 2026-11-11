@@ -285,7 +285,7 @@ async def allocate_from_resource_pools(
             attr_schema = obj_schema.get_attribute(name=original_name)
             allocated_value = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=branch, identifier=obj.get_id(), attribute=attr_schema
-            )  # type: ignore
+            )
             attribute = obj.get_attribute(name=original_name)
             attribute.value = allocated_value
             attribute.is_default = False
@@ -296,7 +296,7 @@ async def allocate_from_resource_pools(
             # IP pool: allocate a node and set it as the relationship peer
             allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
                 db=db, branch=branch, identifier=obj.get_id(), at=at, user_id=user_id
-            )  # type: ignore
+            )
             NodeMutationContext.record_if_active(node=allocated_resource, action=MutationAction.CREATED)
 
             obj_rel_manager = obj.get_relationship(name=original_name)

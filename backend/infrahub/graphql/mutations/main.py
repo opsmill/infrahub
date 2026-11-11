@@ -525,7 +525,7 @@ class InfrahubMutationMixin:
                 file_processor
                 and file_stored
                 and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
-                and node.checksum.value == file_processor.metadata.checksum  # type: ignore
+                and node.checksum.value == file_processor.metadata.checksum  # type: ignore[attr-defined]
             ):
                 file_processor.delete_file()
                 file_stored = False
