@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -25,21 +25,27 @@ const getCheckIcon = (conclusion?: string | null) => {
     case "success": {
       return (
         <Tooltip message="Success" nonInteractiveTrigger>
-          <Icon icon={"mdi:check-circle-outline"} className="mr-2 text-green-500" />
+          <Icon
+            icon={"mdi:check-circle-outline"}
+            className="mr-2 text-green-500 dark:text-green-400"
+          />
         </Tooltip>
       );
     }
     case "failure": {
       return (
         <Tooltip message="Failure" nonInteractiveTrigger>
-          <Icon icon={"mdi:warning"} className="mr-2 text-red-500" />
+          <Icon icon={"mdi:warning"} className="mr-2 text-red-500 dark:text-red-400" />
         </Tooltip>
       );
     }
     default: {
       return (
         <Tooltip message="In progress" nonInteractiveTrigger>
-          <Icon icon={"mdi:warning-circle-outline"} className="mr-2 text-yellow-500" />
+          <Icon
+            icon={"mdi:warning-circle-outline"}
+            className="mr-2 text-yellow-500 dark:text-yellow-400"
+          />
         </Tooltip>
       );
     }
@@ -76,7 +82,7 @@ export const Check = ({ id }: tCheckProps) => {
 
   if (error) {
     return (
-      <div className={"flex flex-col rounded-md border-l-4 bg-white p-2"}>
+      <div className={"flex flex-col rounded-md border-l-4 bg-content p-2"}>
         <ErrorScreen message="Something went wrong when fetching the check details" />
       </div>
     );
@@ -129,7 +135,7 @@ export const Check = ({ id }: tCheckProps) => {
   return (
     <div
       className={classNames(
-        "flex min-w-0 flex-col rounded-md border border-l-4 bg-gray-50 p-2",
+        "flex min-w-0 flex-col rounded-md border border-l-4 bg-content-muted p-2",
         getCheckBorderColor(severity?.value)
       )}
     >

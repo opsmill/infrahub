@@ -12,10 +12,7 @@ interface HomeCardProps {
 const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
   return (
     <CardHeader
-      className={classNames(
-        "flex items-center justify-between from-white font-semibold",
-        className
-      )}
+      className={classNames("flex items-center justify-between font-semibold", className)}
       {...props}
     />
   );
@@ -25,7 +22,7 @@ const HomeCardLink = ({ className, ...props }: LinkProps) => {
   return (
     <Link
       className={classNames(
-        "flex items-center font-normal text-neutral-500 text-sm hover:underline",
+        "flex items-center font-normal text-foreground-muted text-sm hover:underline",
         className
       )}
       {...props}

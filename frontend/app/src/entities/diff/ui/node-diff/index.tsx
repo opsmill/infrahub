@@ -123,8 +123,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
-      <header className="flex items-center gap-2 border-gray-200 border-b px-4 py-2">
+    <div className="flex h-page-body-tabs flex-col overflow-hidden">
+      <header className="flex items-center gap-2 border-b px-4 py-2">
         <DiffFilter
           branch={branchName}
           filters={filters}
@@ -142,11 +142,11 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
       </header>
 
       <div className="grid grow grid-cols-4 overflow-hidden">
-        <nav className="col-span-1 overflow-auto border-gray-200 border-r p-4">
+        <nav className="col-span-1 overflow-auto border-r p-4">
           <DiffTree nodes={nodes} className="w-full" />
         </nav>
 
-        <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-stone-100 p-4">
+        <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-background p-4">
           {changedNodes.length ? (
             changedNodes.map((node) => (
               <DiffNode

@@ -39,7 +39,7 @@ export const TaskHomepageState = ({
       <EmptyHomeCard
         title={emptyTitle}
         subtitle={emptySubtitle}
-        className="w-full text-center text-gray-400"
+        className="w-full text-center text-foreground-muted"
       />
     );
   }

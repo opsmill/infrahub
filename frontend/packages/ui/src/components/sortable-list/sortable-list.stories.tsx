@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -47,10 +46,10 @@ function DefaultRender() {
           </SortableItem>
         )}
       </SortableList>
-      <ol className="w-48 rounded-lg border border-stone-200 bg-stone-50 p-2 text-xs text-stone-600">
+      <ol className="w-48 rounded-lg border bg-stone-50 p-2 text-subtle text-xs">
         {tasks.map((task, index) => (
           <li key={task.id} className="flex gap-2 px-1 py-0.5">
-            <span className="text-stone-400">{index + 1}.</span>
+            <span className="text-subtle-muted">{index + 1}.</span>
             <span className="truncate">{task.name}</span>
           </li>
         ))}

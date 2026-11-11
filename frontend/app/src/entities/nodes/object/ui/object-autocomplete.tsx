@@ -1,13 +1,13 @@
-import { Icon } from "@iconify-icon/react";
 import { Autocomplete, ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
 
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
@@ -17,12 +17,14 @@ interface ObjectAutocompleteProps {
   objectKind: string;
   filterQuery?: GetRelationshipsParams["filterQuery"];
   className?: string;
+  getItemHref: (node: NodeCore) => string;
 }
 
 export function ObjectAutocomplete({
   objectKind,
   filterQuery,
   className,
+  getItemHref,
 }: ObjectAutocompleteProps) {
   const [search, setSearch] = React.useState("");
   const setSearchDebounced = debounce(setSearch, 300);
@@ -52,10 +54,7 @@ export function ObjectAutocomplete({
             const nodeLabel = getNodeLabel(node);
 
             return (
-              <ListBoxItem
-                textValue={nodeLabel}
-                href={getObjectDetailsUrl(node.__typename, node.id)}
-              >
+              <ListBoxItem textValue={nodeLabel} href={getItemHref(node)}>
                 <Icon icon={getSchemaIcon(schema)} />
                 <span className="truncate">{nodeLabel}</span>
               </ListBoxItem>

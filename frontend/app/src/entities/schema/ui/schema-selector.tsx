@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { ListChevronsDownUpIcon, ListChevronsUpDown } from "lucide-react";
@@ -8,6 +7,7 @@ import * as R from "remeda";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
+import { Icon } from "@/shared/components/display/icon";
 import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
@@ -89,14 +89,14 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
   };
 
   return (
-    <Col className={classNames("bg-white", className)}>
-      <Row className="sticky top-0 z-1 border-gray-200 border-b bg-white p-4">
+    <Col className={classNames("bg-background", className)}>
+      <Row className="sticky top-0 z-1 border-b bg-background p-4">
         <SearchInput placeholder="Search schema" value={search} onChange={handleSearchChange} />
         <Tooltip message={anyOpen ? "Collapse all" : "Expand all"}>
           <Button
             shape="square"
             variant="outline"
-            className="size-10 rounded-md border-gray-300"
+            className="size-10 rounded-md border-border-strong"
             onPress={toggleAll}
             aria-label={anyOpen ? "Collapse all" : "Expand all"}
           >
@@ -121,7 +121,7 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
               setOpenByNamespace((prev) => ({ ...prev, [namespace]: next }));
             }}
           >
-            <div className="divide-y divide-gray-200 px-4">
+            <div className="divide-y px-4">
               {schemas.map((schema) => {
                 const isSelected =
                   selectedKind && schema.kind && selectedKind.includes(schema.kind);
@@ -132,14 +132,15 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
                     ref={isSelectedLast ? scrollRef : undefined}
                     key={schema.kind}
                     className={classNames(
-                      "relative flex h-24 cursor-pointer items-center overflow-hidden pr-2 pl-9 mix-blend-multiply hover:rounded-sm hover:bg-gray-100",
-                      isSelected && "rounded-sm shadow-lg ring-1 ring-custom-blue-600"
+                      "relative flex h-24 cursor-pointer items-center overflow-hidden pr-2 pl-9 hover:rounded-sm hover:bg-highlight",
+                      isSelected &&
+                        "rounded-sm bg-selected text-selected-foreground shadow-selected ring-1 ring-ring"
                     )}
                     onClick={() => setKind([schema.kind!])}
                   >
                     {schema.icon && (
                       <div className="absolute left-2">
-                        <Icon icon={schema.icon} className="text-custom-blue-700 text-xl" />
+                        <Icon icon={schema.icon} className="text-accent text-xl" />
                       </div>
                     )}
                     <div className="grow">
@@ -155,7 +156,9 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
                         </Badge>
                       </h2>
 
-                      <p className="mt-1 pl-1 text-gray-600 text-xs">{schema.description}</p>
+                      <p className="mt-1 pl-1 text-foreground-muted text-xs">
+                        {schema.description}
+                      </p>
                     </div>
                   </div>
                 );

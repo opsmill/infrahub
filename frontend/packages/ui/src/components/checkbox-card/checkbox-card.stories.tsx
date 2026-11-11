@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { type ComponentProps, useState } from "react";
 
 import { CheckboxCard } from "./checkbox-card";
@@ -32,7 +31,7 @@ function DefaultRender() {
 
   const toggleFruit = (fruit: string) => {
     setSelectedFruits((current) =>
-      current.includes(fruit) ? current.filter((item) => item !== fruit) : [...current, fruit],
+      current.includes(fruit) ? current.filter((item) => item !== fruit) : [...current, fruit]
     );
   };
 

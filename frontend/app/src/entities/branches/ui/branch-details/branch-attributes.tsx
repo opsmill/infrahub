@@ -1,4 +1,4 @@
-import { Card, CardContent, Tooltip } from "@infrahub/ui";
+import { Card, CardContent, CardHeader, Tooltip } from "@infrahub/ui";
 import {
   BoxIcon,
   CheckIcon,
@@ -24,7 +24,9 @@ interface BranchAttributesProps {
 
 export function BranchAttributes({ branch }: BranchAttributesProps) {
   return (
-    <Card className="w-fit">
+    <Card>
+      <CardHeader>Details</CardHeader>
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: structure: single-site intrinsic track list; the sizes are structural, not design values */}
       <CardContent className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
         <BranchAttributeLabel>
           <IdCardIcon className="size-3.5" /> Name
@@ -45,7 +47,7 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
         <BranchAttributeLabel>
           <RefreshCwIcon className="size-3.5" /> Sync with Git
           <Tooltip message={SYNC_WITH_GIT_DESCRIPTION} className="max-w-xs" nonInteractiveTrigger>
-            <InfoIcon className="size-3.5 shrink-0 text-neutral-400" />
+            <InfoIcon className="size-3.5 shrink-0 text-subtle-muted" />
           </Tooltip>
         </BranchAttributeLabel>
         <BranchAttributeValue>
@@ -86,7 +88,7 @@ export function BranchAttributeLabel({
   return (
     <div
       className={classNames(
-        "flex items-center gap-1.5 truncate text-neutral-500 text-sm",
+        "flex items-center gap-1.5 truncate text-foreground-muted text-sm",
         className
       )}
       {...props}
@@ -98,5 +100,5 @@ export function BranchAttributeValue({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={classNames("text-neutral-700 text-sm", className)} {...props} />;
+  return <div className={classNames("text-foreground text-sm", className)} {...props} />;
 }

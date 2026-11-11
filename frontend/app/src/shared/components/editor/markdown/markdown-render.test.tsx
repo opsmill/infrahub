@@ -61,7 +61,7 @@ describe("MarkdownRender Component", () => {
 
     // THEN
     await expect
-      .poll(() => component.container.querySelector("svg[id^='mermaid']"), { timeout: 15_000 })
+      .poll(() => component.container.querySelector("svg.pele"), { timeout: 15_000 })
       .toBeTruthy();
   });
 
@@ -76,6 +76,21 @@ describe("MarkdownRender Component", () => {
     await expect.element(component.getByRole("button", { name: "Zoom in" })).toBeVisible();
   });
 
+  test("keeps the zoom controls clear of the diagram", async () => {
+    // GIVEN
+    const markdownText = "```mermaid\nsequenceDiagram\n  Alice->>Bob: Hello\n```";
+
+    // WHEN
+    const component = await render(<MarkdownRender markdownText={markdownText} />);
+
+    // THEN
+    const zoomInButton = component.getByRole("button", { name: "Zoom in" });
+    await expect.element(zoomInButton, { timeout: 15_000 }).toBeVisible();
+    const diagram = component.container.querySelector("svg.pele")?.getBoundingClientRect();
+    const zoomIn = zoomInButton.element().getBoundingClientRect();
+    expect(zoomIn.bottom).toBeLessThanOrEqual(diagram?.top ?? 0);
+  });
+
   test("shows an error banner when a mermaid diagram is invalid", async () => {
     // GIVEN
     const markdownText = "```mermaid\nnotadiagramtype\n```";
@@ -85,9 +100,9 @@ describe("MarkdownRender Component", () => {
 
     // THEN
     await expect
-      .poll(() => component.container.querySelector(".mermaid-error")?.textContent ?? "", {
+      .element(component.getByText("No diagram type detected for the given text."), {
         timeout: 15_000,
       })
-      .not.toBe("");
+      .toBeVisible();
   });
 });

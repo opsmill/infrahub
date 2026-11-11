@@ -100,7 +100,8 @@ def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
                     lines.extend(_format_stack_block(creation_stack, indent="        "))
         else:
             lines.append("  redis pool: <none>")
-    except Exception as diag_exc:
+    # Best-effort post-mortem dump: must never raise while reporting the original error
+    except Exception as diag_exc:  # noqa: BLE001
         lines.append(f"  (diagnostic dump failed: {diag_exc!r})")
 
     print("\n".join(lines), file=stderr, flush=True)
@@ -176,7 +177,8 @@ def install_redis_loop_diagnostics() -> None:
     async def _instrumented_disconnect(self: ConnectionPool, inuse_connections: bool = True) -> None:
         try:
             _dump_pool_loop_divergence(self)
-        except Exception as diag_exc:
+        # Instrumentation must never break the real pool disconnect; log and continue
+        except Exception as diag_exc:  # noqa: BLE001
             print(f"(redis loop divergence dump failed: {diag_exc!r})", file=stderr, flush=True)
         await original_disconnect(self, inuse_connections=inuse_connections)
 

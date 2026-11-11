@@ -8,7 +8,7 @@ QUERY_EXECUTION_METRICS = Histogram(
     f"{METRIC_PREFIX}_query_execution_seconds",
     "Execution time to query the database",
     labelnames=["type", "query", "runtime", "context1", "context2"],
-    buckets=[0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.5, 1],
+    buckets=[0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300],
 )
 
 # The single query used as the baseline reference for the database-stress signal. It runs
@@ -44,8 +44,24 @@ TRANSACTION_RETRIES = Counter(
     labelnames=["name"],
 )
 
+# The connection pool belongs to one process, so the pool gauges keep one series per live process
+# and drop the series of a process that stopped.
 CONNECTION_POOL_USAGE = Gauge(
     f"{METRIC_PREFIX}_last_connection_pool_usage",
     "Number of last known active connections in the pool",
     labelnames=["address"],
+    multiprocess_mode="liveall",
+)
+
+CONNECTION_POOL_SIZE = Gauge(
+    f"{METRIC_PREFIX}_connection_pool_size",
+    "Maximum number of connections in the pool of this process",
+    labelnames=["address"],
+    multiprocess_mode="liveall",
+)
+
+CONNECTION_WAIT_METRICS = Histogram(
+    f"{METRIC_PREFIX}_connection_wait_seconds",
+    "Time spent waiting to acquire a connection from the pool",
+    buckets=[0.001, 0.01, 0.1, 0.5, 1, 5, 10, 30, 60],
 )

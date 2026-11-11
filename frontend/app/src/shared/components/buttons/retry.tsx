@@ -1,5 +1,4 @@
-import { Icon } from "@iconify-icon/react";
-
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 type tRetryProps = {
@@ -35,10 +34,7 @@ export const Retry = (props: tRetryProps) => {
       )}
       onClick={handleClick}
     >
-      <Icon
-        icon={"mdi:reload"}
-        className={classNames(isLoading ? "text-gray-300" : "text-gray-400")}
-      />
+      <Icon icon={"mdi:reload"} className="text-subtle-muted" />
     </div>
   );
 };

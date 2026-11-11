@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { Link, Outlet } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";

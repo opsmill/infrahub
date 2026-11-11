@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -13,7 +13,7 @@ export interface KindHeaderCellProps extends React.HTMLAttributes<HTMLDivElement
 export function KindHeaderCell({ schema, className, ...props }: KindHeaderCellProps) {
   return (
     <div
-      className={classNames(cellsStyle, cellHeaderStyle, "hover:bg-white", className)}
+      className={classNames(cellsStyle, cellHeaderStyle, className)}
       data-testid="kind-header-cell"
       {...props}
     >

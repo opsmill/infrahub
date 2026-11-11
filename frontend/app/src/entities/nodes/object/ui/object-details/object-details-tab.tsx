@@ -1,5 +1,4 @@
-import { Icon } from "@iconify-icon/react";
-
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 

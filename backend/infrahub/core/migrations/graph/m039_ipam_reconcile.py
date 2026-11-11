@@ -37,7 +37,7 @@ class FindNodesToReconcileQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(
             {
                 "prefix_kind": InfrahubKind.IPPREFIX,
@@ -201,7 +201,7 @@ class DeleteSelfParentRelationshipsQuery(Query):
         super().__init__(**kwargs)
         self.uuids_to_check = uuids_to_check
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["uuids_to_check"] = self.uuids_to_check
         query = """
 MATCH (n:Node)-[e1:IS_RELATED]->(:Relationship {name: "parent__child"})-[e2:IS_RELATED {branch: e1.branch, status: e1.status, from: e1.from}]->(n)

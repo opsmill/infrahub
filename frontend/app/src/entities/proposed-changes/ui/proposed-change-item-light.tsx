@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
@@ -54,7 +54,7 @@ const ProposedChangesInfo = ({ id, name, isDraft, isApproved }: ProposedChangesI
     <span className="flex min-w-0 max-w-full items-center gap-4 whitespace-nowrap">
       <Link
         to={constructPath(`/proposed-changes/${id}`)}
-        className={classNames("truncate font-semibold transition-all hover:text-gray-500")}
+        className={classNames("truncate font-semibold transition-all hover:text-foreground-muted")}
       >
         {name}
       </Link>
@@ -83,7 +83,7 @@ const ProposedChangesData = ({
   updatedAt,
 }: ProposedChangesDataProps) => {
   return (
-    <div className="grid grid-cols-7 items-center gap-4 text-gray-500">
+    <div className="grid grid-cols-7 items-center gap-4 text-foreground-muted">
       <ProposedChangesComments comments={comments} />
 
       <ProposedChangeDiffSummary

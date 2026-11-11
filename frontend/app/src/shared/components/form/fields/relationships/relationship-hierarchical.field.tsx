@@ -1,14 +1,13 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import type { PoolValue } from "@/shared/components/form/pool-selector";
+import { ResetAction } from "@/shared/components/form/fields/common";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
-  PoolSource,
+  PoolValue,
 } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
@@ -19,6 +18,24 @@ import {
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
 
 import { useCommonParentFilter } from "./useCommonParentFilter";
+
+// A nullish label stays `""` so the label falls back to hfid/id.
+const toRelationshipNode = (node: NodeCore): RelationshipNode => ({
+  ...node,
+  display_label: node.display_label ?? "",
+});
+
+/**
+ * Narrows the stored value to the node the picker renders: a from-pool marker and an array are
+ * not one.
+ */
+const toPickedNode = (value: FormRelationshipValue["value"]): RelationshipNode | null => {
+  if (!value || Array.isArray(value) || "from_pool" in value) return null;
+  return toRelationshipNode(value);
+};
+
+const toPickedNodes = (value: FormRelationshipValue["value"]): RelationshipNode[] | null =>
+  Array.isArray(value) ? value.map(toRelationshipNode) : null;
 
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}
@@ -33,9 +50,14 @@ export default function RelationshipHierarchicalField({
   rules,
   unique,
   shouldUnregister,
+  disabled,
   pool,
 }: RelationshipHierarchicalFieldProps) {
   const commonParent = useCommonParentFilter(relationship, name);
+
+  // Only a cardinality-one relationship can be satisfied from a pool, so the many case never
+  // grows a tab strip.
+  const poolForCardinality = relationship.cardinality === "one" ? pool : undefined;
 
   return (
     <FormField
@@ -44,78 +66,62 @@ export default function RelationshipHierarchicalField({
       defaultValue={defaultValue}
       shouldUnregister={shouldUnregister}
       render={({ field }) => {
-        const fieldData: FormRelationshipValue = field.value;
-        const value: NodeCore | NodeCore[] | null =
-          fieldData.value && "from_pool" in fieldData.value
-            ? {
-                id: fieldData.value.from_pool.id,
-                display_label: "Allocated by pool",
-                __typename: (fieldData.source as PoolSource).kind,
-              }
-            : fieldData.value;
+        const fieldData: FormRelationshipValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
 
         const { peer } = relationship;
-        const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
         const onChange = (newValue: NodeCore | NodeCore[] | PoolValue | null) => {
           field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
         };
 
         return (
-          <div className="flex flex-col gap-2">
-            <LabelFormField
-              label={label}
-              unique={unique}
-              required={!!rules?.required}
-              description={description}
-              fieldData={fieldData}
-            />
-
-            <div className="flex gap-2">
-              <FormInput>
-                {relationship.cardinality === "many" ? (
-                  <RelationshipHierarchicalManyInput
-                    {...field}
-                    peer={peer}
-                    value={value as RelationshipNode[] | null}
-                    onChange={onChange}
-                    filterQuery={commonParent.filterQuery}
-                    hideExplore={commonParent.isActive}
-                    addNewInitialObject={commonParent.addNewInitialObject}
-                    enforceFilterQueryOnIdSearch={commonParent.isActive}
-                  />
-                ) : (
-                  <RelationshipHierarchicalInput
-                    {...field}
-                    peer={peer}
-                    value={value as RelationshipNode | null}
-                    onChange={onChange}
-                    filterQuery={commonParent.filterQuery}
-                    hideExplore={commonParent.isActive}
-                    addNewInitialObject={commonParent.addNewInitialObject}
-                    enforceFilterQueryOnIdSearch={commonParent.isActive}
-                  />
-                )}
-              </FormInput>
-
-              {relationship.cardinality === "one" && pool && (
-                <PoolSelect
-                  name={name}
-                  poolKind={pool.kind}
-                  poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
-                  selectedPoolId={selectedPoolId}
-                  value={fieldData}
+          <PoolBackedField
+            name={name}
+            label={label}
+            description={description}
+            unique={unique}
+            required={!!rules?.required}
+            fieldData={fieldData}
+            defaultValue={defaultValue}
+            // A concrete peer pins the kind the pool allocates, so there is nothing to override.
+            pool={poolForCardinality}
+            valueTabLabel="Object"
+            disabled={disabled}
+            onPoolChange={onChange}
+          >
+            <FormInput>
+              {relationship.cardinality === "many" ? (
+                <RelationshipHierarchicalManyInput
+                  {...field}
+                  peer={peer}
+                  value={toPickedNodes(fieldData.value)}
                   onChange={onChange}
+                  filterQuery={commonParent.filterQuery}
+                  hideExplore={commonParent.isActive}
+                  addNewInitialObject={commonParent.addNewInitialObject}
+                  enforceFilterQueryOnIdSearch={commonParent.isActive}
+                />
+              ) : (
+                <RelationshipHierarchicalInput
+                  {...field}
+                  peer={peer}
+                  value={toPickedNode(fieldData.value)}
+                  disabled={disabled}
+                  onChange={onChange}
+                  filterQuery={commonParent.filterQuery}
+                  hideExplore={commonParent.isActive}
+                  addNewInitialObject={commonParent.addNewInitialObject}
+                  enforceFilterQueryOnIdSearch={commonParent.isActive}
                 />
               )}
-            </div>
+            </FormInput>
 
             {canDisplayResetActions(relationship, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
 
             <FormMessage />
-          </div>
+          </PoolBackedField>
         );
       }}
     />

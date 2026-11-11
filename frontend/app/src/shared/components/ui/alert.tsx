@@ -46,7 +46,7 @@ export const Alert = (props: AlertProps) => {
         return <XCircleIcon className="h-4 w-4 text-red-400" aria-hidden="true" />;
       }
       default: {
-        return <LightbulbIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />;
+        return <LightbulbIcon className="h-4 w-4 text-subtle-muted" aria-hidden="true" />;
       }
     }
   };
@@ -91,11 +91,11 @@ export const Alert = (props: AlertProps) => {
       }
       default: {
         return {
-          container: "bg-gray-50 text-gray-800",
+          container: "bg-content-muted text-foreground",
           bg: "",
-          text: "text-gray-800",
+          text: "text-foreground",
           button:
-            "bg-gray-50 p-1.5 text-gray-500 hover:bg-gray-100 focus:ring-gray-600 focus:ring-offset-gray-50",
+            "bg-content-muted p-1.5 text-subtle-muted hover:bg-content-strong focus:ring-ring focus:ring-offset-content-muted",
         };
       }
     }

@@ -48,7 +48,7 @@ class GetNodesWithoutDisplayLabelQuery(Query):
         super().__init__(**kwargs)
         self.kinds_to_skip = kinds_to_skip or []
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "branch_names": [registry.default_branch, GLOBAL_BRANCH_NAME],
             "kinds_to_skip": self.kinds_to_skip,
@@ -93,7 +93,7 @@ class GetNodesWithoutDisplayLabelBranchQuery(Query):
         super().__init__(**kwargs)
         self.kinds_to_skip = kinds_to_skip or []
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params = {
             "kinds_to_skip": self.kinds_to_skip,
@@ -144,7 +144,7 @@ class CreateDisplayLabelNullQuery(Query):
         super().__init__(**kwargs)
         self.node_uuids = node_uuids
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "node_uuids": self.node_uuids,
             "attribute_name": "display_label",
@@ -413,7 +413,8 @@ class Migration047(MigrationRequiringRebase):
                             update_task=backfill_task,
                         )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
@@ -462,6 +463,7 @@ class Migration047(MigrationRequiringRebase):
                     at=at,
                 )
 
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()

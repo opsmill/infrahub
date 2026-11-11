@@ -22,7 +22,7 @@ class BackfillAttributeMetadataQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // Find all Attribute vertices on default/global branch without created_at
         MATCH (:Node)-[ha:HAS_ATTRIBUTE {status: "active"}]->(attr:Attribute)
@@ -67,7 +67,7 @@ class BackfillRelationshipMetadataQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // Find all Relationship vertices on default/global branch without created_at
         MATCH (:Node)-[ir:IS_RELATED]-(rel:Relationship)
@@ -120,7 +120,7 @@ class BackfillNodeMetadataQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // Find all Node vertices on default/global branch without created_at
         MATCH (n:Node)-[e:IS_PART_OF]->(:Root)

@@ -1,0 +1,16 @@
+/* react-toastify's default "light" theme paints a hardcoded white card, so toasts stayed a light
+   island in dark mode. It themes through its own custom properties, so re-pointing the light
+   theme's two surface variables at our tokens is enough: the tokens flip under `.dark`, and the
+   toast follows without a `theme` prop or any JSX. Icon colours (success/error/…) are semantic
+   and deliberately left alone. */
+
+:root {
+  --toastify-color-light: var(--content);
+  --toastify-text-color-light: var(--foreground);
+}
+
+/* The close button is the one colour outside the variable system: hardcoded near-black, which
+   disappears against a dark card. */
+.Toastify__close-button--light {
+  color: var(--foreground);
+}

@@ -64,7 +64,7 @@ export const IpAddressPoolForm = ({
               label: (
                 <div className="flex w-full items-center justify-between">
                   <span>{schema.label}</span>
-                  <span className="text-gray-500 text-xs">{schema.namespace}</span>
+                  <span className="text-subtle-muted text-xs">{schema.namespace}</span>
                 </div>
               ),
             };

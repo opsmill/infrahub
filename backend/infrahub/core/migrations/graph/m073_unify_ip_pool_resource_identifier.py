@@ -333,7 +333,8 @@ class Migration073(ArbitraryMigration):
                 await self._bootstrap_core_ip_pool_generic(db=dbt, at=schema_root_at, user_id=user_id)
                 await self._append_inherit_from_for_all_pools(db=dbt)
                 await self._rewrite_resource_relationship_attributes(db=dbt)
-            except Exception as exc:
+            # Failures become MigrationResult errors so the runner reports them instead of crashing
+            except Exception as exc:  # noqa: BLE001
                 error_msg = str(exc) or f"{type(exc).__name__}: {exc!r}"
                 return MigrationResult(errors=[error_msg])
 

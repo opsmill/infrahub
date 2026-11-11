@@ -73,7 +73,7 @@ function ResourceSelector({
     <Breadcrumb>
       <Row className="items-end gap-0.5 pr-1 pl-2">
         <Col className="gap-0 py-0.5">
-          <div className="truncate text-neutral-600 text-xs leading-3.5">Resources</div>
+          <div className="truncate text-foreground-muted text-xs leading-3.5">Resources</div>
 
           <Link
             to={constructPath(`/resource-manager/${resourcePoolId}/resources/${resourceId}`)}

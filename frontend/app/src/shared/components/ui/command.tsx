@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Command as CommandPrimitive } from "cmdk";
 import type React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 interface CommandProps extends React.ComponentProps<typeof CommandPrimitive> {}
@@ -22,14 +22,15 @@ export function CommandInput({ className, ref, ...props }: CommandInputProps) {
   return (
     <div
       className={classNames(
-        "flex h-10 shrink-0 items-center border-gray-200 border-b text-neutral-800 outline-hidden",
+        "flex h-10 shrink-0 items-center border-b text-foreground outline-hidden",
         className
       )}
     >
       <Icon icon="mdi:search" className="mx-2.5 shrink-0 text-lg" />
       <CommandPrimitive.Input
         ref={ref}
-        className="grow border-none bg-transparent pl-0 text-sm outline-hidden placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 focus:[box-shadow:none]"
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: shadow-none is not equivalent here, it sets --tw-shadow and recomposes the ring chain
+        className="grow border-none bg-transparent pl-0 text-sm outline-hidden placeholder:text-subtle-muted disabled:cursor-not-allowed disabled:opacity-50 focus:[box-shadow:none]"
         {...props}
       />
     </div>
@@ -43,7 +44,7 @@ export function CommandList({ className, ref, ...props }: CommandListProps) {
     <CommandPrimitive.List
       ref={ref}
       className={classNames(
-        "max-h-[280px] grow overflow-y-auto overflow-x-hidden rounded-md p-2",
+        "max-h-70 grow overflow-y-auto overflow-x-hidden rounded-md p-2 text-subtle",
         className
       )}
       asChild
@@ -60,7 +61,7 @@ export function CommandItem({ className, ref, ...props }: CommandItemProps) {
       ref={ref}
       className={classNames(
         "flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden",
-        "data-[disabled=true]:pointer-events-none data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50",
+        "data-[disabled=true]:pointer-events-none data-[selected=true]:bg-highlight data-[selected=true]:text-highlight-foreground data-[disabled=true]:opacity-50",
         className
       )}
       {...props}

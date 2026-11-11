@@ -25,7 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node_agnostic_retirement import (
     NodeAgnosticRetirementResult,
-    NodesDeletedOnBranchQuery,
+    NodesToCheckForGlobalEdgesQuery,
     RetireNodeAgnosticFieldsQuery,
 )
 from infrahub.core.timestamp import Timestamp
@@ -91,6 +91,51 @@ async def _create_widget(db: InfrahubDatabase, branch: Branch, name: str, serial
 async def _delete_widget(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
     to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     await to_delete.delete(db=db, at=at)
+
+
+async def _reserve_attribute(db: InfrahubDatabase, node_id: str, attribute_name: str, at: Timestamp) -> None:
+    """Give the attribute a global IS_RESERVED edge from a stand-in for the pool that allocated it."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(attribute:Attribute {name: $attribute_name})
+        CREATE (:Node {uuid: randomUUID()})-[:IS_RESERVED {branch: $global_branch, branch_level: 1, status: "active", from: $at}]->(attribute)
+        RETURN count(attribute) AS reserved
+        """,
+        params={
+            "node_id": node_id,
+            "attribute_name": attribute_name,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "at": at.to_string(),
+        },
+    )
+    assert results[0]["reserved"] == 1
+
+
+async def _close_reservation(db: InfrahubDatabase, node_id: str, attribute_name: str) -> None:
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute_name})<-[reservation:IS_RESERVED]-()
+        WHERE reservation.to IS NULL
+        SET reservation.to = $at
+        RETURN count(reservation) AS closed
+        """,
+        params={"node_id": node_id, "attribute_name": attribute_name, "at": Timestamp().to_string()},
+    )
+    assert results[0]["closed"] == 1
+
+
+async def _close_owning_edge(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
+    """Close the name attribute's owning edge in place, the way a schema migration on the branch does."""
+    results = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[owning:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
+        WHERE owning.branch = $branch AND owning.status = "active" AND owning.to IS NULL
+        SET owning.to = $at
+        RETURN count(owning) AS closed
+        """,
+        params={"node_id": node_id, "branch": branch.name, "at": at.to_string()},
+    )
+    assert results[0]["closed"] == 1
 
 
 async def _create_gadget(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
@@ -467,7 +512,7 @@ class TestRetireNodeAgnosticFields:
         )
 
 
-class TestNodesDeletedOnBranch:
+class TestNodesToCheckForGlobalEdges:
     async def test_only_the_deletions_on_the_branch_within_the_window_are_returned(
         self,
         db: InfrahubDatabase,
@@ -492,7 +537,53 @@ class TestNodesDeletedOnBranch:
         await _delete_widget(db=db, node_id=widgets["at-the-end"].id, branch=default_branch, at=to_time)
         await _delete_widget(db=db, node_id=widgets["after"].id, branch=default_branch, at=Timestamp())
 
-        query = await NodesDeletedOnBranchQuery.init(
+        query = await NodesToCheckForGlobalEdgesQuery.init(
+            db=db, branch_name=default_branch.name, from_time=from_time, to_time=to_time
+        )
+        await query.execute(db=db)
+
+        assert sorted(query.get_node_uuids()) == sorted(
+            widgets[name].id for name in ["at-the-start", "within", "at-the-end"]
+        )
+
+    async def test_only_reserved_attributes_whose_owning_edge_closed_within_the_window_are_returned(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        nodedel_schema: None,
+    ) -> None:
+        """A migration closes a live node's owning edge in place, so the node never gets a deleted existence edge.
+
+        Both bounds are included; a close before or after the window, on another branch, on an attribute
+        with no reservation, or on one whose reservation is already closed, is not returned.
+        """
+        other_branch = await create_branch(db=db, branch_name="closes-within-the-window")
+        names = ["before", "at-the-start", "within", "at-the-end", "after", "unreserved", "reservation-closed"]
+        widgets = {
+            name: await _create_widget(db=db, branch=default_branch, name=f"closed-{name}", serial=6000 + index)
+            for index, name in enumerate(names)
+        }
+        widgets["on-another-branch"] = await _create_widget(
+            db=db, branch=other_branch, name="closed-on-another-branch", serial=6100
+        )
+        reserved_at = Timestamp()
+        for name, widget in widgets.items():
+            if name != "unreserved":
+                await _reserve_attribute(db=db, node_id=widget.id, attribute_name="name", at=reserved_at)
+        await _close_reservation(db=db, node_id=widgets["reservation-closed"].id, attribute_name="name")
+
+        await _close_owning_edge(db=db, node_id=widgets["before"].id, branch=default_branch, at=Timestamp())
+        from_time = Timestamp()
+        await _close_owning_edge(db=db, node_id=widgets["at-the-start"].id, branch=default_branch, at=from_time)
+        within = Timestamp()
+        for name in ["within", "unreserved", "reservation-closed"]:
+            await _close_owning_edge(db=db, node_id=widgets[name].id, branch=default_branch, at=within)
+        await _close_owning_edge(db=db, node_id=widgets["on-another-branch"].id, branch=other_branch, at=within)
+        to_time = Timestamp()
+        await _close_owning_edge(db=db, node_id=widgets["at-the-end"].id, branch=default_branch, at=to_time)
+        await _close_owning_edge(db=db, node_id=widgets["after"].id, branch=default_branch, at=Timestamp())
+
+        query = await NodesToCheckForGlobalEdgesQuery.init(
             db=db, branch_name=default_branch.name, from_time=from_time, to_time=to_time
         )
         await query.execute(db=db)

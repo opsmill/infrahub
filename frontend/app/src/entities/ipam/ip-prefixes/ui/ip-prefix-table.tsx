@@ -5,6 +5,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { getIpPrefixTableColumns } from "@/entities/ipam/ip-prefixes/ui/get-ip-prefix-table-columns";
 import { useGetIpPrefixList } from "@/entities/ipam/ip-prefixes/ui/queries/get-ip-prefix-list.query";
+import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
@@ -27,8 +28,9 @@ export interface IpPrefixTableProps {
 }
 
 export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
-  const { filters, selectedSchema, permission } = useObjectTableContext();
+  const { filters, selectedSchema, permission, columnSurface } = useObjectTableContext();
   const { customSort } = useSort(selectedSchema);
+  const { columnVisibility } = useColumnVisibility(selectedSchema, columnSurface);
   const allFilters = [...baseFilters, ...filters];
 
   const { data: count } = useObjectsCount({
@@ -54,6 +56,7 @@ export function IpPrefixTable({ baseFilters = [] }: IpPrefixTableProps) {
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <DataTable
         columnOrder={IP_PREFIX_TABLE_COLUMN_ORDER}
+        columnVisibility={columnVisibility}
         columns={columns}
         count={count}
         data={flatData}

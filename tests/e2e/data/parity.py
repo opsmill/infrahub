@@ -78,7 +78,8 @@ _GQL_LIMIT = 2000
 async def _safe[T](fn: Callable[[], Awaitable[T]]) -> T | str:
     try:
         return await fn()
-    except Exception as exc:  # capture per-entry, never kill the whole dump
+    # Diagnostic dump: record any per-entry failure as a string, never kill the whole dump
+    except Exception as exc:  # noqa: BLE001
         return f"ERROR: {type(exc).__name__}: {exc}"
 
 

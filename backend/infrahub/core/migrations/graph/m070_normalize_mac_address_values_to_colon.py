@@ -222,7 +222,8 @@ class Migration070(MigrationRequiringRebase):
                     display_label_attribute_schema=display_label_attribute_schema,
                     at=at,
                 )
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {repr(exc)}"])
 
         return MigrationResult()

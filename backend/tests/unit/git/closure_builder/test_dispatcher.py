@@ -8,12 +8,16 @@ from git import Repo
 from infrahub_sdk.schema.repository import (
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
+    InfrahubWatchConfig,
 )
 
-from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
+from infrahub.git.closure_builder.dispatcher import AggregatedTransformClosureBuilder, build_default_closure_builder
 
 if TYPE_CHECKING:
     import pytest
+
+    from infrahub.git.closure_builder.protocols import TransformConfig
+    from infrahub.git.closure_builder.result import ClosureResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,11 +29,10 @@ def _write(root: Path, rel: str, content: str = "") -> None:
 
 
 def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
-    """A Jinja2 transform config is dispatched to the Jinja2 builder and the manifest path is appended.
+    """A Jinja2 transform config is dispatched to the Jinja2 builder.
 
     The dispatcher is the single integration boundary between the per-language
-    builders and the integrator, so this checks both dispatch correctness and
-    the post-processing step in one place.
+    builders and the integrator, so dispatch correctness is checked here.
     """
     _write(tmp_path, "templates/device.j2", "static body\n")
 
@@ -41,13 +44,12 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
 
     result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
-    assert "templates/device.j2" in result.dependencies
-    assert ".infrahub.yml" in result.dependencies
+    assert result.dependencies == ("templates/device.j2",)
     assert result.complete is True
 
 
 def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
-    """A Python transform config is dispatched to the Python builder and the manifest path is appended.
+    """A Python transform config is dispatched to the Python builder.
 
     The undeclared sibling stays out: neither builder treats co-location as a dependency,
     so the Python closure is the entry file alone until `watch.files` says otherwise.
@@ -65,8 +67,38 @@ def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
 
     result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
-    assert result.dependencies == (".infrahub.yml", "transforms/network/main.py")
+    assert result.dependencies == ("transforms/network/main.py",)
     assert result.complete is True
+
+
+def test_manifest_is_absent_from_a_closure_unless_watch_names_it(tmp_path: Path) -> None:
+    """`.infrahub.yml` reaches a closure only through an explicit `watch.files` entry.
+
+    Nothing merges it in on its own, so an edit to the manifest no longer regenerates
+    every definition in the repository. Naming it is the way to opt back in.
+    """
+    repo = Repo.init(tmp_path)
+    _write(tmp_path, "transforms/net.py", "")
+    _write(tmp_path, ".infrahub.yml", "python_transforms: []\n")
+    repo.index.add(["transforms/net.py", ".infrahub.yml"])
+    repo.index.commit("seed")
+
+    builder = build_default_closure_builder(logger=LOGGER)
+    undeclared = builder.build(
+        transform_config=InfrahubPythonTransformConfig(name="net", file_path=Path("transforms/net.py")),
+        worktree_root=tmp_path,
+    )
+    declared = builder.build(
+        transform_config=InfrahubPythonTransformConfig(
+            name="net",
+            file_path=Path("transforms/net.py"),
+            watch=InfrahubWatchConfig(files=[".infrahub.yml"]),
+        ),
+        worktree_root=tmp_path,
+    )
+
+    assert undeclared.dependencies == ("transforms/net.py",)
+    assert declared.dependencies == (".infrahub.yml", "transforms/net.py")
 
 
 def test_jinja2_failure_is_isolated_and_logged(
@@ -77,7 +109,8 @@ def test_jinja2_failure_is_isolated_and_logged(
 
     Failure isolation is the contract that lets the integrator import the
     rest of the repository's transforms when a single transform's source is
-    broken or its closure cannot be computed for a documented reason.
+    broken or its closure cannot be computed for a documented reason. The log
+    names the cause and carries no traceback.
     """
     config = InfrahubJinja2TransformConfig(
         name="missing-entry",
@@ -93,8 +126,12 @@ def test_jinja2_failure_is_isolated_and_logged(
 
     assert result.complete is False
     assert result.dependencies == ()
-    assert [record.getMessage() for record in caplog.records] == [
-        "Closure builder failed for transform 'missing-entry'"
+    assert [(record.getMessage(), record.exc_info) for record in caplog.records] == [
+        (
+            "Closure builder failed for transform 'missing-entry': "
+            "Path resolves to the repository root and is not a valid dependency: '.'",
+            None,
+        )
     ]
 
 
@@ -125,4 +162,34 @@ def test_closure_failure_does_not_poison_well_formed_siblings(
     assert broken_result.dependencies == ()
     assert healthy_result.complete is True
     assert "templates/device.j2" in healthy_result.dependencies
-    assert [record.getMessage() for record in caplog.records] == ["Closure builder failed for transform 'broken'"]
+    assert [record.getMessage() for record in caplog.records] == [
+        "Closure builder failed for transform 'broken': "
+        "Path resolves to the repository root and is not a valid dependency: '.'"
+    ]
+
+
+class _UnreadableWorktreeClosure:
+    """A builder whose worktree cannot be read, as when the worker's filesystem fails."""
+
+    def supports(self, transform_config: TransformConfig) -> bool:
+        return True
+
+    def build(self, transform_config: TransformConfig, worktree_root: Path) -> ClosureResult:
+        raise PermissionError(f"Permission denied: '{worktree_root}'")
+
+
+def test_unexpected_isolated_failure_keeps_its_traceback(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failure not caused by the repository's content is isolated too, but logged with its traceback."""
+    builder = AggregatedTransformClosureBuilder(builders=(_UnreadableWorktreeClosure(),), logger=LOGGER)
+    config = InfrahubJinja2TransformConfig(name="device", query="any-query", template_path=Path("templates/device.j2"))
+
+    with caplog.at_level(logging.ERROR, logger=LOGGER.name):
+        result = builder.build(transform_config=config, worktree_root=tmp_path)
+
+    assert result.complete is False
+    assert [
+        (record.getMessage(), type(record.exc_info[1]) if record.exc_info else None) for record in caplog.records
+    ] == [(f"Closure builder failed for transform 'device': Permission denied: '{tmp_path}'", PermissionError)]

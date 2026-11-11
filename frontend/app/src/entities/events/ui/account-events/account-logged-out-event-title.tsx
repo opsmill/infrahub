@@ -5,7 +5,7 @@ import { AccountEventLayout } from "@/entities/events/ui/account-events/account-
 export const AccountLoggedOutEventTitle = (props: AccountLoggedOutEventType) => {
   return (
     <AccountEventLayout accountId={props.account_id} branch={props.branch}>
-      <span className="whitespace-nowrap text-gray-600">logged out</span>
+      <span className="whitespace-nowrap text-foreground-muted">logged out</span>
     </AccountEventLayout>
   );
 };

@@ -45,7 +45,7 @@ export function TableIdentifierCell({
           variant="ghost"
           size="sm"
           href={getObjectDetailsUrl(objectKind, objectId, overrideParams)}
-          className="-mx-1 min-w-0 shrink rounded-xl px-2 text-custom-blue-700 hover:underline"
+          className="-mx-1 min-w-0 shrink rounded-xl px-2 text-accent hover:underline"
         >
           {/* The button is a flex container, where `text-overflow` has no effect, so
               the ellipsis has to live on a child of it. */}

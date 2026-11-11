@@ -16,7 +16,10 @@ export interface ToolbarProps extends Omit<AriaToolbarProps, "className"> {
 export function Toolbar({ className, ...props }: ToolbarProps) {
   return (
     <AriaToolbar
-      className={cn("flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-lg", className)}
+      className={cn(
+        "flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-xl backdrop-blur-lg",
+        className
+      )}
       {...props}
     />
   );
@@ -30,7 +33,7 @@ function ToolbarDivider({ className, ...props }: ToolbarDividerProps) {
   return (
     <Separator
       orientation="vertical"
-      className={cn("h-6 w-px border-0 bg-gray-200", className)}
+      className={cn("h-6 w-px border-0 bg-border", className)}
       {...props}
     />
   );

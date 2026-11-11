@@ -43,11 +43,9 @@ query GetPythonDevice($ids: [ID!]!) {
 # scenarios drive the selection gate, and the closure builder has its own tests. The Jinja2
 # closure carries a transitively-included partial; the Python one carries a sibling helper,
 # which a real import would only put there because the transform declared its directory in
-# `watch.files` - auto-detection stops at the source file. The repository manifest is part
-# of every closure.
-JINJA_DEPENDENCIES = [".infrahub.yml", "partials/header.j2", "templates/device.j2"]
+# `watch.files` - auto-detection stops at the source file.
+JINJA_DEPENDENCIES = ["partials/header.j2", "templates/device.j2"]
 PYTHON_DEPENDENCIES = [
-    ".infrahub.yml",
     "transforms/foo/__init__.py",
     "transforms/foo/foo.py",
     "transforms/foo/helpers.py",

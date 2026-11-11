@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
@@ -121,13 +121,14 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
     async def _resolve(
         self,
         *,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
         car_id: str,
         query: str = QUERY_CAR_WITH_ITS_OWNER_CARS,
     ) -> TargetSelection:
-        return await get_field_level_impacted_subscribers(
+        return await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(query, default_branch),
             diff_summary=[
                 node_diff(node_id=car_id, kind=TestKind.CAR, branch=default_branch.name, field_names=["name"])
@@ -135,43 +136,46 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["first_subscriber_id"], dataset["third_subscriber_id"]],
-            client=client,
         )
 
     async def test_change_on_a_car_read_only_through_the_relationship_selects_the_reading_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
         """The second car is no group member: its change walks back through its owner to the first car."""
         resolved = await self._resolve(
-            dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["second_car_id"]
+            db=db, dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["second_car_id"]
         )
 
         assert resolved == TargetSelection(ids=[dataset["first_subscriber_id"]])
 
     async def test_change_on_a_car_read_at_the_root_selects_its_own_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
         """The third car is the root of its own group and shares no owner with the first car."""
         resolved = await self._resolve(
-            dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["third_car_id"]
+            db=db, dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["third_car_id"]
         )
 
         assert resolved == TargetSelection(ids=[dataset["third_subscriber_id"]])
 
     async def test_change_on_a_car_no_relationship_reaches_back_selects_its_own_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
     ) -> None:
         """The first car has no previous owner, so walking the relationship back from it reaches no member."""
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,

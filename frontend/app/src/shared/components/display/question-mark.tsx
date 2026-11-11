@@ -16,7 +16,7 @@ export const QuestionMark = ({ className, message }: tQuestionMark) => {
         size="xs"
         shape="circle"
         variant="outline"
-        className={classNames("h-4 w-4 p-2 text-[10px]", className)}
+        className={classNames("h-4 w-4 p-2 text-xxs", className)}
       >
         ?
       </Button>

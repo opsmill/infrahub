@@ -13,3 +13,8 @@ TICKET = NodeSchema(
         AttributeSchema(name="ticket_id", kind="Number", optional=True, unique=True),
     ],
 )
+
+# Several pools over one unique attribute must not share numbers, so tests that build many pools over overlapping
+# ranges use this variant.
+SHARED_NUMBER_TICKET = TICKET.model_copy(deep=True)
+SHARED_NUMBER_TICKET.get_attribute(name="ticket_id").unique = False

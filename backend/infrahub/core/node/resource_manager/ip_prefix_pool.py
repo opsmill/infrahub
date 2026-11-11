@@ -16,7 +16,8 @@ from infrahub.exceptions import ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
-from .reservation import validate_reserved_prefix_length
+from .kind_validation import validate_allocated_kind
+from .reservation import validate_reserved_kind, validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -36,12 +37,28 @@ class CoreIPPrefixPool(Node):
         size: int | None = None,
         member_type: str | None = None,
         prefix_type: str | None = None,
+        peer_kind: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> Node:
         # TODO(IFC-2945): drop this alias once the public `size` input field is renamed to `prefixlen`.
         if prefixlen is None:
             prefixlen = size
+        data = data or {}
+        pool_name = str(self.get_attribute("name").value)
+
+        # Only an explicitly requested kind is validated; the pool's own default is left alone.
+        requested_prefix_type = prefix_type or data.get("prefix_type", None)
+
+        validate_allocated_kind(
+            db=db,
+            branch=branch,
+            pool_kind="IPPrefixPool",
+            pool_name=pool_name,
+            requested_kind=requested_prefix_type,
+            peer_kind=peer_kind,
+        )
+
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
@@ -56,16 +73,21 @@ class CoreIPPrefixPool(Node):
                     if node:
                         validate_reserved_prefix_length(
                             pool_kind="IPPrefixPool",
-                            pool_name=str(self.get_attribute("name").value),
+                            pool_name=pool_name,
                             reserved_value=node.get_attribute("prefix").value,
                             prefixlen=prefixlen,
                             data=data,
                         )
+                        validate_reserved_kind(
+                            pool_kind="IPPrefixPool",
+                            pool_name=pool_name,
+                            reserved_value=node.get_attribute("prefix").value,
+                            reserved_kind=node.get_kind(),
+                            requested_kind=requested_prefix_type,
+                        )
                         return node
 
             ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
-
-            data = data or {}
 
             prefixlen = prefixlen or data.get("prefixlen", None) or self.default_prefix_length.value  # type: ignore[attr-defined]
             if not prefixlen:
@@ -76,7 +98,7 @@ class CoreIPPrefixPool(Node):
 
             next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
 
-            prefix_type = prefix_type or data.get("prefix_type", None) or self.default_prefix_type.value  # type: ignore[attr-defined]
+            prefix_type = requested_prefix_type or self.default_prefix_type.value  # type: ignore[attr-defined]
             if not prefix_type:
                 raise ValueError(
                     f"IPPrefixPool: {self.name.value} | "  # type: ignore[attr-defined]

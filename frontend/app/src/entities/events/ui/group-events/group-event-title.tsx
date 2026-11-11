@@ -13,26 +13,26 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
     return (
       <div className="flex flex-wrap items-center gap-1">
         <span>added</span>
-        <div className="flex min-w-0 items-center gap-1 text-black">
+        <div className="flex min-w-0 items-center gap-1 text-foreground">
           {props.related_nodes.slice(0, GROUP_MEMBERSTO_DISPLAY).map(({ id, kind }) => {
             return (
               <Link
                 key={id}
                 to={constructPath(`/objects/${kind}/${id}`)}
-                className="max-w-[150px] shrink-0 truncate"
+                className="max-w-37.5 shrink-0 truncate"
               >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
           {props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">
+            <span className="shrink-0 text-foreground-muted italic">
               (+{props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length})
             </span>
           )}
         </div>
         <span>in group</span>
-        <span className="min-w-0 truncate font-semibold text-black">
+        <span className="min-w-0 truncate font-semibold text-foreground">
           <Link
             key={props.primary_node?.id}
             to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
@@ -52,26 +52,26 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
     return (
       <div className="flex min-w-0 items-center gap-1 overflow-hidden">
         <span className="whitespace-nowrap">removed</span>
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden text-black">
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden text-foreground">
           {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
               <Link
                 key={id}
                 to={constructPath(`/objects/${kind}/${id}`)}
-                className="max-w-[150px] shrink-0 truncate"
+                className="max-w-37.5 shrink-0 truncate"
               >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">
+            <span className="shrink-0 text-foreground-muted italic">
               (+{props.related_nodes.slice(6).length})
             </span>
           )}
         </div>
         <span className="whitespace-nowrap">from group</span>
-        <span className="min-w-0 truncate text-black">
+        <span className="min-w-0 truncate text-foreground">
           <Link
             key={props.primary_node?.id}
             to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
@@ -95,14 +95,14 @@ export const GroupEventTitle = (props: GroupEvent) => {
   return (
     <div className="flex w-full flex-wrap items-center gap-1 text-sm">
       {account_id ? (
-        <span className="max-w-[200px] shrink-0 truncate">
+        <span className="max-w-50 shrink-0 truncate">
           <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
         </span>
       ) : (
         "-"
       )}
 
-      <div className="min-w-0 text-gray-500">
+      <div className="min-w-0 text-foreground-muted">
         {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
 
         {!GROUP_EVENTS_MAPPING[event] && event}

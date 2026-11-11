@@ -89,7 +89,7 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
   };
 
   return (
-    <div className={classNames("min-w-[350px] grow space-y-4", className)} {...props}>
+    <div className={classNames("min-w-87.5 grow space-y-4", className)} {...props}>
       <ProposedChangeEvents />
 
       <Card>

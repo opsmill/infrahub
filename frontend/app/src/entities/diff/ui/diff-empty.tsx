@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
@@ -22,7 +22,7 @@ export function DiffEmpty({
 
   return (
     <div className="my-10 flex flex-col items-center gap-5">
-      <div className="inline-flex rounded-full bg-white p-3">
+      <div className="inline-flex rounded-full bg-content p-3">
         <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
       </div>
 

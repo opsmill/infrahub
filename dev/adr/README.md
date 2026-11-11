@@ -21,6 +21,14 @@ We document significant architectural decisions using ADRs.
 | [0013](0013-webhook-delivery-on-prefect-run-primitives.md) | Webhook Deliveries as Retention-bounded Prefect-run Objects | Accepted | 2026-07-31 |
 | [0014](0014-generic-per-task-recovery-actions.md) | Generic Per-task Recovery Actions with Polymorphic Task Typing | Accepted | 2026-07-31 |
 | [0015](0015-uniform-bounded-webhook-retry.md) | Uniform Bounded Fixed-delay Auto-retry for Webhook Deliveries | Accepted | 2026-07-31 |
+| [0016](0016-node-mutation-origin-label-suppression.md) | Suppress Coalesced-Family Triggers with a Node-Mutation Origin Label | Accepted | 2026-07-31 |
+| [0017](0017-coalesced-merge-rebase-recompute.md) | Coalesced Deduplicated Recompute Pass on Merge and Rebase | Accepted | 2026-07-31 |
+| [0018](0018-static-transform-lifecycle-triggers.md) | Static Kind-Scoped Lifecycle Triggers for Python-Transform Recompute | Accepted | 2026-07-31 |
+| [0019](0019-transform-lifecycle-owns-node-input-reconciliation.md) | Transform Lifecycle Flow Owns Node-Input Automation Reconciliation | Accepted | 2026-07-31 |
+| [0020](0020-python-transform-recompute-targets.md) | Python Transform Targets from Analyzed Queries and Query-Group Subscribers | Accepted | 2026-09-28 |
+| [0021](0021-resource-allocation-telemetry.md) | Resource-allocation Telemetry: Container Limits, Stored by Each Process, in New Blocks | Accepted | 2026-10-08 |
+| [0022](0022-experimental-flag-gates-pre-release-ui.md) | A Pre-Release UI Feature Is Gated by an Experimental Settings Flag, Not by the Running Version | Deprecated | 2026-08-24 |
+| [0023](0023-application-owned-theme-resolution.md) | The Application Resolves the Theme Once and Hands the Answer Down | Accepted | 2026-08-24 |
 
 ## Creating a New ADR
 

@@ -91,6 +91,7 @@ Global TLS defaults shared by every component that opens outbound TLS connection
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 | `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
+| `INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS` | Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs. | integer | 15 |
 | `INFRAHUB_GIT_TLS_INSECURE` | Skip TLS certificate validation when git connects to HTTPS remotes, by setting `http.sslVerify` to false in the global git configuration. Takes precedence over `tls_ca_file`, which may stay configured. Test and development environments only; never enable in production. | boolean | False |
 | `INFRAHUB_GIT_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself, used to verify the certificate of HTTPS git remotes, set as `http.sslCAInfo` in the global git configuration. Falls back to `tls.ca_bundle` when unset. | string | None |
 
@@ -162,6 +163,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
+| `INFRAHUB_BROKER_RPC_TIMEOUT` | The maximum number of seconds to wait for a worker to answer an RPC request | integer | 120 |
 | `INFRAHUB_BROKER_DRIVER` | Message bus implementation. RabbitMQ is the only supported value. | string (rabbitmq) | rabbitmq |
 | `INFRAHUB_BROKER_QUEUE_TYPE` | RabbitMQ type of the durable queues. Use quorum on a RabbitMQ cluster to replicate these queues across nodes; a classic queue is stored on a single node. RabbitMQ does not change the type of an existing queue, so the durable queues must be deleted before this setting is changed. | string (classic, quorum) | classic |
 
@@ -246,7 +248,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group assigned to an SSO user on their first login when the identity provider supplies no group claims. Applied only when the account is first created; it is not re-applied on subsequent logins, so removing a user from this group is not undone. | string | None |
 | `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER` | Regex(es) that decide which external identity-provider group claims become Infrahub groups. Accepts one regex or a list; the first matching pattern wins. Use a named capture group `(?P<name>...)` to set the group name; otherwise the full claim is used. Leave empty to disable auto-creation. | None | None |
 | `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN` | Maximum number of groups that can be auto-created during a single login. Once reached, further new groups are skipped (with a warning) but the login still succeeds. Adding the user to groups that already exist is not limited. | integer | 50 |
-| `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. | boolean | True |
+| `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. Deprecated: this setting will be removed in Infrahub 1.13. | boolean | False |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
 
@@ -398,6 +400,7 @@ LDAP authentication configuration.
 | `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | string (console, otlp) | console |
 | `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | string (grpc, http/protobuf) | grpc |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | OTLP endpoint for exporting traces | string | None |
+| `INFRAHUB_TRACE_SAMPLE_RATIO` | Share of new traces to record, from 0 (none) to 1 (all). A request or task that arrives with a trace context follows the sampling decision of its caller. | number | 0.1 |
 
 ## Experimental features
 

@@ -25,7 +25,7 @@ class SchemaFieldDetails:
 
 
 class DuplicateSchemaFields(Query):
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (root:Root)
 LIMIT 1
@@ -81,7 +81,7 @@ class GetDuplicateSchemaFields(DuplicateSchemaFields):
     type = QueryType.READ
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         await super().query_init(db=db, **kwargs)
         query = """
 CALL (schema_vertex, default_branch) {
@@ -129,7 +129,7 @@ class FixDuplicateSchemaFields(DuplicateSchemaFields):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         await super().query_init(db=db, **kwargs)
         query = """
 WITH default_branch, tail(fields_reverse_chron) AS fields_to_delete

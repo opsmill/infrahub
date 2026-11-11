@@ -36,18 +36,18 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           focusVisibleStyle,
           "flex flex-col justify-center rounded-lg px-2 py-1",
           "border border-transparent",
-          "hover:bg-gray-100",
+          "hover:bg-highlight",
           className
         )}
       >
-        <Row className="truncate text-gray-600 text-xs">IP Namespace</Row>
+        <Row className="truncate text-subtle text-xs">IP Namespace</Row>
         <Row className="gap-1.5 text-sm leading-3.5">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
-          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-gray-600" />
+          <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-subtle" />
         </Row>
       </AriaButton>
 
-      <Popover placement="bottom start" className="w-(--trigger-width) bg-white">
+      <Popover placement="bottom start" width="min-trigger">
         <IpNamespaceComboboxList
           onNamespaceSelection={(value) => {
             setCurrentIpNamespace(value);
@@ -55,7 +55,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-neutral-200 border-t p-2">
+        <Col className="border-t p-2">
           <LinkButton
             href={constructPath("/ipam/namespaces")}
             variant="ghost"
@@ -110,7 +110,7 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
               >
                 <div className="overflow-hidden">
                   <div className="truncate">{getNodeLabel(namespace)}</div>
-                  <p className="truncate text-gray-500 text-xs">{namespace.description?.value}</p>
+                  <p className="truncate text-subtle text-xs">{namespace.description?.value}</p>
                 </div>
               </ComboboxItem>
             ));
@@ -123,7 +123,7 @@ function IpNamespaceComboboxList({ onNamespaceSelection, ...props }: IpNamespace
           value="Load more"
           onSelect={() => fetchNextPage()}
           disabled={!hasNextPage || isFetchingNextPage}
-          className="justify-center text-custom-blue-700"
+          className="justify-center text-accent"
         >
           {isFetchingNextPage ? "Loading more..." : "Load more"}
         </ComboboxItem>

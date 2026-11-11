@@ -42,7 +42,7 @@ export function PathEdge({
     edgeStyle === "smoothstep" ? getSmoothStepPath(pathArgs) : getBezierPath(pathArgs);
 
   const baseStyle: React.CSSProperties = {
-    stroke: highlighted ? "#3b82f6" : "#94a3b8",
+    stroke: highlighted ? "#3b82f6" : "var(--color-subtle-muted)",
     strokeWidth: highlighted ? 2.5 : 1,
     opacity: highlighted ? 1 : 0.6,
     strokeDasharray: highlighted ? undefined : "6 4",
@@ -60,7 +60,7 @@ export function PathEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: "all",
             }}
-            className="rounded border border-blue-200 bg-white px-1.5 py-0.5 text-blue-700 text-xs shadow-sm"
+            className="rounded border border-blue-200 bg-input px-1.5 py-0.5 text-blue-700 text-xs shadow-sm dark:border-blue-400/30 dark:text-blue-300"
           >
             {edgeData.label}
           </div>

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { use, useEffect, useState } from "react";
 
 import { DismissGuardContext } from "../../hooks/use-dissmiss-guard";
@@ -31,8 +30,8 @@ function NestedSheet({ depth = ROOT_DEPTH }: { depth?: number }) {
       </Button>
       <Sheet isOpen={isOpen} onOpenChange={setIsOpen} aria-label={`Sheet level ${level}`}>
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-medium text-stone-900">Level {level}</h2>
-          <p className="text-sm text-neutral-600">
+          <h2 className="font-medium text-base text-foreground">Level {level}</h2>
+          <p className="text-foreground-muted text-sm">
             Each open sheet pushes the previous ones to the left. Press Escape or click outside to
             close the topmost sheet.
           </p>
@@ -67,20 +66,20 @@ function DismissGuardContent({ close }: { close: () => void }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-base font-medium text-stone-900">Edit description</h2>
-      <p className="text-sm text-neutral-600">
+      <h2 className="font-medium text-base text-foreground">Edit description</h2>
+      <p className="text-foreground-muted text-sm">
         Type something below, then press Escape or click outside: the sheet refuses to close while
         the text is unsaved. Clear the text to make it dismissable again.
       </p>
       <textarea
         aria-label="Description"
-        className="h-24 resize-none rounded-lg border border-neutral-300 p-2 text-sm outline-hidden focus:border-cyan-700"
+        className="h-24 resize-none rounded-lg border border-border-strong p-2 text-sm outline-hidden focus:border-ring"
         placeholder="Unsaved changes block dismissal…"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
       />
       {showWarning && isDirty && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-red-600 text-sm" role="alert">
           Unsaved changes — save or discard them first.
         </p>
       )}
@@ -122,8 +121,8 @@ export const Playground: Story = {
   render: (args) => (
     <Sheet {...args}>
       <div className="flex flex-col gap-3">
-        <h2 className="text-base font-medium text-stone-900">Sheet</h2>
-        <p className="text-sm text-neutral-600">
+        <h2 className="font-medium text-base text-foreground">Sheet</h2>
+        <p className="text-foreground-muted text-sm">
           A side panel anchored to the right edge of the viewport. Toggle the isOpen control to open
           and close it.
         </p>

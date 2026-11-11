@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING
 
 from prefect import flow
 
+from infrahub import lock
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -17,8 +21,6 @@ from infrahub.core.merge.recompute_coalescing import (
 )
 from infrahub.core.node import Node
 from infrahub.core.recompute.bulk_write import (
-    DISPLAY_LABEL_FIELD,
-    HFID_FIELD,
     AttributeValueWrite,
     BulkRecomputeWriter,
     WrittenNode,
@@ -28,8 +30,10 @@ from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.python_target_sources import RecordingPythonTargetResolver
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
     PROFILE_NODE_KIND,
@@ -38,10 +42,12 @@ from tests.helpers.merge_recompute.dataset import (
     load_chain_schema,
     load_profile_schema,
 )
+from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.merge.regeneration_barrier import RegenerationBarrier
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.event import InfrahubEventService
@@ -52,19 +58,35 @@ def _event_context() -> EventContext:
     return EventContext(branch=EventBranchContext(name="main"), account_id="")
 
 
+def _barrier(db: InfrahubDatabase) -> RegenerationBarrier:
+    default_branch = registry.get_branch_from_registry()
+    return regeneration_barrier(
+        state=WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        ),
+        default_branch_name=default_branch.name,
+    )
+
+
 def _dispatcher(
     db: InfrahubDatabase,
     event_service: InfrahubEventService,
     workflow: InfrahubWorkflow,
     schema_branch: SchemaBranch,
+    coalesced: bool = True,
 ) -> BulkRecomputeDispatcher:
+    chain = None
+    if coalesced:
+        chain = RecomputeChainSubmitter(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
+            barrier=_barrier(db),
+        )
     return BulkRecomputeDispatcher(
         db=db,
         writer=BulkRecomputeWriter(db=db, event_service=event_service),
-        chain=RecomputeChainSubmitter(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        ),
+        chain=chain,
     )
 
 
@@ -92,8 +114,8 @@ async def test_bulk_writer_persists_all_three_families_and_emits_one_event_per_n
     written = await writer.write(
         branch=default_branch,
         writes=[
-            AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label"),
-            AttributeValueWrite(node_id=node.id, field=HFID_FIELD, value=["custom-hfid"]),
+            AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="custom label"),
+            AttributeValueWrite(node_id=node.id, field=HFID_ATTRIBUTE_NAME, value=["custom-hfid"]),
             AttributeValueWrite(node_id=node.id, field="summary", value="custom summary"),
         ],
         context=_event_context(),
@@ -102,7 +124,7 @@ async def test_bulk_writer_persists_all_three_families_and_emits_one_event_per_n
     assert len(written) == 1
     assert written[0].node_id == node.id
     assert written[0].kind == PROFILE_NODE_KIND
-    assert set(written[0].fields) == {DISPLAY_LABEL_FIELD, HFID_FIELD, "summary"}
+    assert set(written[0].fields) == {DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME, "summary"}
 
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
@@ -116,7 +138,7 @@ async def test_bulk_writer_persists_all_three_families_and_emits_one_event_per_n
     event = recorder.events[0]
     assert isinstance(event, NodeUpdatedEvent)
     assert event.node_id == node.id
-    assert set(event.fields) == {DISPLAY_LABEL_FIELD, HFID_FIELD, "summary"}
+    assert set(event.fields) == {DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME, "summary"}
     assert event.meta.origin is NodeMutationOrigin.LIVE
 
 
@@ -134,7 +156,7 @@ async def test_bulk_writer_groups_writes_across_many_nodes(
     written = await writer.write(
         branch=default_branch,
         writes=[
-            AttributeValueWrite(node_id=n.id, field=DISPLAY_LABEL_FIELD, value=f"label-{i}")
+            AttributeValueWrite(node_id=n.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value=f"label-{i}")
             for i, n in enumerate(nodes)
         ],
         context=_event_context(),
@@ -162,7 +184,7 @@ async def test_bulk_writer_stamps_recompute_origin_so_per_node_automations_skip_
 
     await writer.write(
         branch=default_branch,
-        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label")],
+        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="custom label")],
         context=_event_context(),
         origin=NodeMutationOrigin.RECOMPUTE,
     )
@@ -190,7 +212,7 @@ async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
     seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
     await seed.write(
         branch=default_branch,
-        writes=[AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_FIELD, value="steady")],
+        writes=[AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="steady")],
         context=_event_context(),
     )
 
@@ -199,9 +221,9 @@ async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
     written = await writer.write(
         branch=default_branch,
         writes=[
-            AttributeValueWrite(node_id=nodes[0].id, field=DISPLAY_LABEL_FIELD, value="changed-0"),
-            AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_FIELD, value="steady"),
-            AttributeValueWrite(node_id=nodes[2].id, field=DISPLAY_LABEL_FIELD, value="changed-2"),
+            AttributeValueWrite(node_id=nodes[0].id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="changed-0"),
+            AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="steady"),
+            AttributeValueWrite(node_id=nodes[2].id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="changed-2"),
         ],
         context=_event_context(),
     )
@@ -230,7 +252,7 @@ async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_
     seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
     await seed.write(
         branch=default_branch,
-        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="steady")],
+        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="steady")],
         context=_event_context(),
     )
 
@@ -239,7 +261,7 @@ async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_
     written = await writer.write(
         branch=default_branch,
         writes=[
-            AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="steady"),
+            AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="steady"),
             AttributeValueWrite(node_id=node.id, field="summary", value="changed"),
         ],
         context=_event_context(),
@@ -282,8 +304,8 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
 
     # Both the written record and the event carry every cascaded field, not only the requested one.
     assert len(written) == 1
-    assert set(written[0].fields) == {"code", DISPLAY_LABEL_FIELD, HFID_FIELD}
-    assert set(recorder.events[0].fields) == {"code", DISPLAY_LABEL_FIELD, HFID_FIELD}
+    assert set(written[0].fields) == {"code", DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME}
+    assert set(recorder.events[0].fields) == {"code", DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME}
 
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
@@ -316,10 +338,9 @@ async def test_dispatch_returns_without_writing_when_branch_is_gone(
     @flow(name="test-dispatch-branch-gone")
     async def _run() -> None:
         await dispatcher.dispatch(
-            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
+            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="ignored")],
             branch_name="branch-that-was-deleted",
             context=_event_context(),
-            coalesced=True,
             recompute_depth=0,
         )
 
@@ -352,16 +373,19 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     dispatcher = _dispatcher(
-        db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
+        db=db,
+        event_service=event_recorder,
+        workflow=workflow_recorder,
+        schema_branch=schema_branch,
+        coalesced=False,
     )
 
     @flow(name="test-dispatch-live")
     async def _run() -> None:
         await dispatcher.dispatch(
-            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
+            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="live label")],
             branch_name=default_branch.name,
             context=_event_context(),
-            coalesced=False,
             recompute_depth=0,
         )
 
@@ -404,6 +428,8 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
         submissions = await RecomputeChainSubmitter(
             builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
+            barrier=_barrier(db),
         ).submit(
             written=written,
             branch=default_branch.name,
@@ -425,6 +451,8 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -450,6 +478,8 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -480,6 +510,8 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=[],
         branch=default_branch.name,
@@ -508,6 +540,8 @@ async def test_chain_stops_at_the_depth_bound(
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,
@@ -536,6 +570,8 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     submissions = await RecomputeChainSubmitter(
         builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
         submitter=CoalescedRecomputeSubmitter(workflow=recorder),
+        python_resolver=RecordingPythonTargetResolver(targets=[]),
+        barrier=_barrier(db),
     ).submit(
         written=written,
         branch=default_branch.name,

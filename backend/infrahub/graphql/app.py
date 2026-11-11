@@ -446,10 +446,9 @@ class InfrahubGraphQLApp:
                 subscriptions=subscriptions,
                 account_session=account_session,
             )
-        elif message_type == GQL_STOP:
-            if operation_id in subscriptions:
-                await subscriptions[operation_id].aclose()
-                del subscriptions[operation_id]
+        elif message_type == GQL_STOP and operation_id in subscriptions:
+            await subscriptions[operation_id].aclose()
+            del subscriptions[operation_id]
 
     async def _ws_on_start(
         self,

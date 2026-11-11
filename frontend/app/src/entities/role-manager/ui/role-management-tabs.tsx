@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { ScrollArea, Spinner } from "@infrahub/ui";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
@@ -57,12 +57,7 @@ const tabs = [
 
 export function RoleManagementTabs() {
   return (
-    <ScrollArea
-      scrollX
-      scrollY={false}
-      scrollBarClassName="hidden"
-      className="shrink-0 border-gray-200 border-b"
-    >
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0 border-b">
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4">
           {tabs.map((tab) => (
@@ -96,7 +91,7 @@ function RoleManagementTab({ to, icon, label, kind }: RoleManagementTabProps) {
       {label}
       {isPending && <Spinner />}
       {!isPending && count !== undefined && (
-        <Badge className="rounded-full font-medium text-gray-500">{count}</Badge>
+        <Badge className="rounded-full font-medium text-foreground-muted">{count}</Badge>
       )}
     </LinkTab>
   );

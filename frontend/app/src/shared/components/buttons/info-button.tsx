@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 export const InfoButton = (props: ButtonProps) => (
   <Button variant="ghost" size="xs" shape="circle" {...props}>

@@ -26,7 +26,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // THEN
@@ -46,7 +46,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChange}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // WHEN
@@ -64,7 +64,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayout}
-      />,
+      />
     );
 
     // WHEN
@@ -81,7 +81,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // WHEN / THEN

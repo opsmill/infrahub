@@ -1,0 +1,51 @@
+import { describe, expect, test } from "vitest";
+
+import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
+
+import { render } from "../../../../tests/components/render";
+
+const SVG_CONTENT =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="red"/></svg>';
+
+describe("DataViewer", () => {
+  test("renders an svg with zoom controls", async () => {
+    // WHEN
+    const component = await render(<DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />);
+
+    // THEN
+    await expect.element(component.getByRole("img", { name: "svg-image" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Zoom in" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Zoom out" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Reset zoom" })).toBeVisible();
+  });
+
+  test("stretches the svg viewport to the height available to the viewer", async () => {
+    // WHEN
+    const component = await render(
+      <div className="flex h-150 flex-col">
+        <DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />
+      </div>
+    );
+
+    // THEN
+    const viewport = component.container.querySelector(".react-transform-wrapper");
+    await expect.poll(() => viewport?.getBoundingClientRect().height ?? 0).toBeGreaterThan(400);
+  });
+
+  test("zooms the svg in when pressing zoom in", async () => {
+    // GIVEN
+    const component = await render(<DataViewer data={SVG_CONTENT} contentType="image/svg+xml" />);
+    const content = component.container.querySelector(".react-transform-component");
+
+    // WHEN
+    await component.getByRole("button", { name: "Zoom in" }).click();
+
+    // THEN
+    await expect.poll(() => getScale(content)).toBeGreaterThan(1);
+  });
+});
+
+function getScale(element: Element | null): number {
+  const match = element?.getAttribute("style")?.match(/scale\(([\d.]+)\)/);
+  return match ? Number(match[1]) : Number.NaN;
+}

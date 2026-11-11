@@ -1,17 +1,33 @@
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ListFilterIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  EyeOffIcon,
+  ListFilterIcon,
+} from "lucide-react";
 import React from "react";
 import { Button } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
+import {
+  cellHeaderInteractiveStyle,
+  cellHeaderStyle,
+  cellsStyle,
+} from "@/shared/components/table/style";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
+import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderSimple } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-simple";
+import {
+  useColumnSurface,
+  useSupportsColumnVisibility,
+} from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   SORT_DIRECTION,
   type Sort,
@@ -42,6 +58,8 @@ export interface TableColumnHeaderProps {
   schema?: ModelSchema;
   isDisabled?: boolean;
   className?: string;
+  role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 export function TableColumnHeader({
@@ -49,9 +67,13 @@ export function TableColumnHeader({
   schema,
   isDisabled,
   className,
+  role,
+  filterConditions,
 }: TableColumnHeaderProps) {
   if (isDisabled) {
-    return <TableColumnHeaderSimple columnSchema={columnSchema} className={className} />;
+    return (
+      <TableColumnHeaderSimple columnSchema={columnSchema} className={className} role={role} />
+    );
   }
 
   if (schema && !isRelationshipSchema(columnSchema) && isSortableAttribute(columnSchema)) {
@@ -60,6 +82,8 @@ export function TableColumnHeader({
         schema={schema}
         attributeSchema={columnSchema}
         className={className}
+        role={role}
+        filterConditions={filterConditions}
       />
     );
   }
@@ -70,23 +94,37 @@ export function TableColumnHeader({
         schema={schema}
         relationshipSchema={columnSchema}
         className={className}
+        role={role}
+        filterConditions={filterConditions}
       />
     );
   }
 
-  return <ColumnHeaderMenu columnSchema={columnSchema} className={className} />;
+  return (
+    <ColumnHeaderMenu
+      columnSchema={columnSchema}
+      schema={schema}
+      className={className}
+      role={role}
+      filterConditions={filterConditions}
+    />
+  );
 }
 
 interface SortableAttributeColumnHeaderProps {
   schema: ModelSchema;
   attributeSchema: AttributeSchema;
   className?: string;
+  role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 function SortableAttributeColumnHeader({
   schema,
   attributeSchema,
   className,
+  role,
+  filterConditions,
 }: SortableAttributeColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const activeSort = findSortForField(customSort, attributeSchema);
@@ -102,7 +140,10 @@ function SortableAttributeColumnHeader({
   return (
     <ColumnHeaderMenu
       columnSchema={attributeSchema}
+      schema={schema}
       className={className}
+      role={role}
+      filterConditions={filterConditions}
       activeSort={activeSort}
       sortItems={
         <>
@@ -130,12 +171,16 @@ interface SortableRelationshipColumnHeaderProps {
   schema: ModelSchema;
   relationshipSchema: RelationshipSchema;
   className?: string;
+  role?: React.AriaRole;
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
 }
 
 function SortableRelationshipColumnHeader({
   schema,
   relationshipSchema,
   className,
+  role,
+  filterConditions,
 }: SortableRelationshipColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
@@ -145,7 +190,15 @@ function SortableRelationshipColumnHeader({
   );
 
   if (sortableAttributes.length === 0) {
-    return <ColumnHeaderMenu columnSchema={relationshipSchema} className={className} />;
+    return (
+      <ColumnHeaderMenu
+        columnSchema={relationshipSchema}
+        schema={schema}
+        className={className}
+        role={role}
+        filterConditions={filterConditions}
+      />
+    );
   }
 
   const selectSort = (sort: Sort) => {
@@ -161,7 +214,10 @@ function SortableRelationshipColumnHeader({
   return (
     <ColumnHeaderMenu
       columnSchema={relationshipSchema}
+      schema={schema}
       className={className}
+      role={role}
+      filterConditions={filterConditions}
       activeSort={activeSort}
       sortItems={
         <SubmenuTrigger>
@@ -197,14 +253,25 @@ function SortableRelationshipColumnHeader({
 
 interface ColumnHeaderMenuProps {
   columnSchema: AttributeSchema | RelationshipSchema;
+  /**
+   * The table's own schema: both the sort and the hide entry act against it, so a header given none
+   * offers neither.
+   */
+  schema?: ModelSchema;
   className?: string;
+  role?: React.AriaRole;
+  /** Narrows the conditions the filter entry offers, for a caller whose request cannot honour them all. */
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   activeSort?: Sort | null;
   sortItems?: React.ReactNode;
 }
 
 function ColumnHeaderMenu({
   columnSchema,
+  schema,
   className,
+  role,
+  filterConditions,
   activeSort = null,
   sortItems,
 }: ColumnHeaderMenuProps) {
@@ -222,10 +289,24 @@ function ColumnHeaderMenu({
     setShowFilterForm(false);
   };
 
-  return (
+  // A semantic table needs a grid item carrying `columnheader`, and the trigger has to keep its own
+  // button role, so the role goes on a transparent wrapper rather than on the trigger.
+  const wrap = (content: React.ReactNode) =>
+    role ? (
+      <div role={role} className="contents">
+        {content}
+      </div>
+    ) : (
+      content
+    );
+
+  return wrap(
     <>
       <MenuTrigger>
-        <Button ref={triggerRef} className={classNames(cellsStyle, cellHeaderStyle, className)}>
+        <Button
+          ref={triggerRef}
+          className={classNames(cellsStyle, cellHeaderStyle, cellHeaderInteractiveStyle, className)}
+        >
           <FieldSchemaIcon fieldSchema={columnSchema} />
 
           <span className="mr-2 truncate">{label}</span>
@@ -233,16 +314,16 @@ function ColumnHeaderMenu({
             {activeSort &&
               (activeSort.direction === SORT_DIRECTION.DESC ? (
                 <>
-                  <ArrowDownIcon className="size-4 text-indigo-700" />
+                  <ArrowDownIcon className="size-4 text-active" />
                   <span className="sr-only">sorted descending</span>
                 </>
               ) : (
                 <>
-                  <ArrowUpIcon className="size-4 text-indigo-700" />
+                  <ArrowUpIcon className="size-4 text-active" />
                   <span className="sr-only">sorted ascending</span>
                 </>
               ))}
-            {currentColumnFilters && <ListFilterIcon className="size-4 text-indigo-700" />}
+            {currentColumnFilters && <ListFilterIcon className="size-4 text-active" />}
           </Row>
         </Button>
 
@@ -258,6 +339,7 @@ function ColumnHeaderMenu({
               <ListFilterIcon />
               <span>Filter</span>
             </MenuItem>
+            {schema ? <HideColumnMenuItem schema={schema} field={columnSchema.name} /> : null}
           </Menu>
         </Popover>
       </MenuTrigger>
@@ -269,11 +351,51 @@ function ColumnHeaderMenu({
         placement="bottom start"
       >
         {isRelationshipSchema(columnSchema) ? (
-          <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closeFilterForm} />
+          <RelationshipFilterForm
+            relationshipSchema={columnSchema}
+            filterConditions={filterConditions}
+            onSuccess={closeFilterForm}
+          />
         ) : (
-          <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closeFilterForm} />
+          <AttributeFilterForm
+            attributeSchema={columnSchema}
+            filterConditions={filterConditions}
+            onSuccess={closeFilterForm}
+          />
         )}
       </Popover>
+    </>
+  );
+}
+
+/**
+ * A separate component because `schema` is optional on the menu: the hook cannot be called
+ * conditionally in `ColumnHeaderMenu`. It owns its leading separator too, so that gating the entry
+ * off cannot leave a dangling separator behind in the menu.
+ *
+ * Renders nothing unless the table honours the column-visibility params: this header is shared with
+ * tables that render their own columns (proposed changes, role management), where a hide would
+ * write `hide_columns` and change nothing — with no `ColumnsPicker` in their toolbar to undo it.
+ *
+ * The surface must come from the table's own context, not the default. `hideColumn` itself is
+ * surface-independent, but the hook's write path re-serialises the *validated* lists, so a name
+ * only another surface has a candidate for — `ip_prefix` on an IP address table — would be erased
+ * from `hide_columns` by a write made under the object surface.
+ */
+function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: string }) {
+  const supportsColumnVisibility = useSupportsColumnVisibility();
+  const columnSurface = useColumnSurface();
+  const { hideColumn } = useColumnVisibility(schema, columnSurface);
+
+  if (!supportsColumnVisibility) return null;
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
+        <EyeOffIcon />
+        <span>Hide column</span>
+      </MenuItem>
     </>
   );
 }

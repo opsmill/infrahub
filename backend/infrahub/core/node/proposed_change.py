@@ -28,18 +28,17 @@ class CoreProposedChange(Node):
             include_properties=include_properties,
         )
 
-        if fields:
-            if "total_comments" in fields:
-                total_comments = 0
-                proposed_change = cast("CoreProposedChangeProtocol", self)
-                change_comments = await proposed_change.comments.get_relationships(db=db)
-                total_comments += len(change_comments)
+        if fields and "total_comments" in fields:
+            total_comments = 0
+            proposed_change = cast("CoreProposedChangeProtocol", self)
+            change_comments = await proposed_change.comments.get_relationships(db=db)
+            total_comments += len(change_comments)
 
-                threads = await proposed_change.threads.get_peers(db=db)
-                thread_comments = await NodeManager.query(
-                    db=db, schema=THREADCOMMENT, filters={"thread__ids": list(threads.keys())}
-                )
-                total_comments += len(thread_comments)
-                response["total_comments"] = {"value": total_comments}
+            threads = await proposed_change.threads.get_peers(db=db)
+            thread_comments = await NodeManager.query(
+                db=db, schema=THREADCOMMENT, filters={"thread__ids": list(threads.keys())}
+            )
+            total_comments += len(thread_comments)
+            response["total_comments"] = {"value": total_comments}
 
         return response

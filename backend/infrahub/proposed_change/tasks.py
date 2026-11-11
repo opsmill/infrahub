@@ -12,7 +12,9 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifactDefinition,
     CoreArtifactValidator,
+    CoreGeneratorCheck,
     CoreGeneratorDefinition,
+    CoreGeneratorInstance,
     CoreGeneratorValidator,
     CoreProposedChange,
 )
@@ -49,7 +51,7 @@ from infrahub.core.merge.constraints import build_merge_constraint_result, gathe
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.members import (
     map_subscriber_ids_by_member,
     run_generator,
@@ -75,6 +77,10 @@ from infrahub.exceptions import (
     MergeConflictsUnresolvedError,
     MergeConstraintsViolatedError,
     MergeFailedError,
+    MergeRefusedError,
+    MergeRepositoryImportError,
+    RepositoryCredentialsRefusedError,
+    RepositoryNotSynchronizedError,
     SchemaNotFoundError,
     ValidationError,
 )
@@ -213,8 +219,14 @@ async def _merge_branch_for_proposed_change(
             database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
         )
         return Failed(message="Unable to merge proposed change containing failing checks")
-    except MergeConflictsUnresolvedError as exc:
-        # Cannot merge a branch with unresolved conflicts.
+    except (
+        MergeConflictsUnresolvedError,
+        MergeRefusedError,
+        MergeRepositoryImportError,
+        RepositoryNotSynchronizedError,
+        RepositoryCredentialsRefusedError,
+    ) as exc:
+        # Each is a refusal before the graph merge that the user can clear, not a crash.
         return Failed(message=exc.message)
     except MergeFailedError as exc:
         return Failed(message=exc.message)
@@ -530,7 +542,9 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     candidate_schema.update(schema=source_schema)
 
     try:
-        candidate_schema.duplicate().process()
+        candidate_schema.duplicate().process(
+            default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch)
+        )
     except (ValueError, ValidationError, SchemaNotFoundError) as exc:
         error_msg = str(exc)
         parts = error_msg.split(":", 1)
@@ -630,27 +644,28 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     for repository in model.branch_diff.repositories:
-        if (
-            model.source_branch_sync_with_git
-            and not repository.read_only
-            and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
-        ):
-            trigger_internal_checks_model = TriggerRepositoryInternalChecks(
-                proposed_change=model.proposed_change,
-                repository=repository.repository_id,
-                source_branch=model.source_branch,
-                target_branch=model.destination_branch,
-            )
-            await get_workflow().submit_workflow(
-                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
-                context=context,
-                parameters={"model": trigger_internal_checks_model},
-            )
+        trigger_internal_checks_model = TriggerRepositoryInternalChecks(
+            proposed_change=model.proposed_change,
+            repository=repository.repository_id,
+            source_branch=model.source_branch,
+            target_branch=model.destination_branch,
+            check_merge_conflicts=(
+                model.source_branch_sync_with_git
+                and not repository.read_only
+                and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
+            ),
+        )
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+            context=context,
+            parameters={"model": trigger_internal_checks_model},
+        )
 
         trigger_user_checks_model = TriggerRepositoryUserChecks(
             proposed_change=model.proposed_change,
             repository_id=repository.repository_id,
             repository_name=repository.repository_name,
+            repository_kind=InfrahubKind.READONLYREPOSITORY if repository.read_only else InfrahubKind.REPOSITORY,
             source_branch=model.source_branch,
             source_branch_sync_with_git=model.source_branch_sync_with_git,
             target_branch=model.destination_branch,
@@ -743,6 +758,7 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
                 repository_id=repository.repository_id,
                 name=repository.repository_name,
                 repository_kind=repository.kind,
+                infrahub_branch_name=model.source_branch,
             )
             commit = repo.get_commit_value(proposed_change.source_branch.value)
             worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
@@ -816,19 +832,18 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    selection = await get_field_level_impacted_subscribers(
-        query_report=InfrahubGraphQLQueryAnalyzer(
-            query=model.artifact_definition.query_payload,
-            branch=registry.get_branch_from_registry(branch=model.source_branch),
-            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-            document=cached_parse(model.artifact_definition.query_payload),
-        ).query_report,
-        diff_summary=diff_summary,
-        query_branch=model.source_branch,
-        subscriber_kind=InfrahubKind.ARTIFACT,
-        every_target=list(artifacts_by_member.values()),
-        client=client,
-    )
+    database = await get_database()
+    async with database.start_session() as db:
+        impact_resolver = FieldLevelImpactResolver(db=db, client=client)
+        selection = await impact_resolver.resolve(
+            query_report=impact_resolver.analyze(
+                query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
+            ),
+            diff_summary=diff_summary,
+            query_branch=model.source_branch,
+            subscriber_kind=InfrahubKind.ARTIFACT,
+            every_target=list(artifacts_by_member.values()),
+        )
     impacted_artifacts = selection.ids
     if selection.widening is not None:
         log.warning(
@@ -926,6 +941,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
 
@@ -989,7 +1005,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
 
     check = None
     existing_check = await client.filters(
-        kind=InfrahubKind.GENERATORCHECK, validator__ids=model.validator_id, instance__value=generator_instance.id
+        kind=CoreGeneratorCheck, validator__ids=model.validator_id, instance__value=generator_instance.id
     )
     if existing_check:
         check = existing_check[0]
@@ -1000,7 +1016,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         await check.save(request_context=context.to_request_context())
     else:
         check = await client.create(
-            kind=InfrahubKind.GENERATORCHECK,
+            kind=CoreGeneratorCheck,
             data={
                 "name": model.target_name,
                 "origin": model.repository_id,
@@ -1017,11 +1033,9 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     return conclusion
 
 
-async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClient) -> InfrahubNode:
+async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClient) -> CoreGeneratorInstance:
     if model.generator_instance:
-        instance = await client.get(
-            kind=InfrahubKind.GENERATORINSTANCE, id=model.generator_instance, branch=model.branch_name
-        )
+        instance = await client.get(kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name)
         instance.status.value = GeneratorInstanceStatus.PENDING.value
         await instance.update(do_full_update=True)
 
@@ -1030,7 +1044,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await client.filters(
-                kind=InfrahubKind.GENERATORINSTANCE,
+                kind=CoreGeneratorInstance,
                 definition__ids=[model.generator_definition.definition_id],
                 object__ids=[model.target_id],
                 branch=model.branch_name,
@@ -1041,7 +1055,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
                 await instance.update(do_full_update=True)
             else:
                 instance = await client.create(
-                    kind=InfrahubKind.GENERATORINSTANCE,
+                    kind=CoreGeneratorInstance,
                     branch=model.branch_name,
                     data={
                         "name": f"{model.generator_definition.definition_name}: {model.target_name}",
@@ -1094,7 +1108,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521
     existing_instances = await client.filters(
-        kind=InfrahubKind.GENERATORINSTANCE,
+        kind=CoreGeneratorInstance,
         definition__ids=[model.generator_definition.definition_id],
         include=["object"],
         branch=model.source_branch,
@@ -1114,19 +1128,18 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    selection = await get_field_level_impacted_subscribers(
-        query_report=InfrahubGraphQLQueryAnalyzer(
-            query=model.generator_definition.query_payload,
-            branch=registry.get_branch_from_registry(branch=model.source_branch),
-            schema_branch=registry.schema.get_schema_branch(name=model.source_branch),
-            document=cached_parse(model.generator_definition.query_payload),
-        ).query_report,
-        diff_summary=diff_summary,
-        query_branch=model.source_branch,
-        subscriber_kind=InfrahubKind.GENERATORINSTANCE,
-        every_target=list(instance_by_member.values()),
-        client=client,
-    )
+    database = await get_database()
+    async with database.start_session() as db:
+        impact_resolver = FieldLevelImpactResolver(db=db, client=client)
+        selection = await impact_resolver.resolve(
+            query_report=impact_resolver.analyze(
+                query_payload=model.generator_definition.query_payload, query_branch=model.source_branch
+            ),
+            diff_summary=diff_summary,
+            query_branch=model.source_branch,
+            subscriber_kind=InfrahubKind.GENERATORINSTANCE,
+            every_target=list(instance_by_member.values()),
+        )
     definition_name = model.generator_definition.definition_name
     impacted_instances = selection.ids
     if selection.widening is not None:
@@ -1210,18 +1223,20 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         repositories=repositories, client=client
     ):
         for repo in repositories:
-            if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
-                trigger_repo_checks_model = TriggerRepositoryInternalChecks(
-                    proposed_change=model.proposed_change,
-                    repository=repo.repository_id,
-                    source_branch=repo.source_branch,
-                    target_branch=repo.destination_branch,
-                )
-                await get_workflow().submit_workflow(
-                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
-                    context=context,
-                    parameters={"model": trigger_repo_checks_model},
-                )
+            trigger_repo_checks_model = TriggerRepositoryInternalChecks(
+                proposed_change=model.proposed_change,
+                repository=repo.repository_id,
+                source_branch=repo.source_branch,
+                target_branch=repo.destination_branch,
+                check_merge_conflicts=(
+                    not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value
+                ),
+            )
+            await get_workflow().submit_workflow(
+                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+                context=context,
+                parameters={"model": trigger_repo_checks_model},
+            )
         return
 
     file_diff_populator = RepositoryFileDiffPopulator(differ=GitRepositoryFileDiffer(client=client))
@@ -1429,15 +1444,8 @@ query DestinationBranchRepositories {
         internal_status {
           value
         }
-        ... on CoreRepository {
-          commit {
-            value
-          }
-        }
-        ... on CoreReadOnlyRepository {
-          commit {
-            value
-          }
+        commit {
+          value
         }
       }
     }
@@ -1600,7 +1608,12 @@ async def _validate_repository_merge_conflicts(
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=client,
+                infrahub_branch_name=repo.source_branch,
+            )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch

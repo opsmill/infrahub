@@ -70,9 +70,12 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 elif diff_property.changed_at < current_earliest.changed_at:
                     earliest_property_map[prop_type] = diff_property
                 # special handling for a REMOVE and ADD with the same timestamp to treat them as an update
-                elif diff_property.changed_at == current_earliest.changed_at:
-                    if diff_property.action is DiffAction.REMOVED and current_earliest.action is DiffAction.ADDED:
-                        earliest_property_map[prop_type] = diff_property
+                elif (
+                    diff_property.changed_at == current_earliest.changed_at
+                    and diff_property.action is DiffAction.REMOVED
+                    and current_earliest.action is DiffAction.ADDED
+                ):
+                    earliest_property_map[prop_type] = diff_property
 
                 current_latest = latest_property_map.get(prop_type)
                 if not current_latest:
@@ -80,9 +83,12 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 elif diff_property.changed_at > current_latest.changed_at:
                     latest_property_map[prop_type] = diff_property
                 # special handling for a REMOVE and ADD with the same timestamp to treat them as an update
-                elif diff_property.changed_at == current_latest.changed_at:
-                    if diff_property.action is DiffAction.ADDED and current_latest.action is DiffAction.REMOVED:
-                        latest_property_map[prop_type] = diff_property
+                elif (
+                    diff_property.changed_at == current_latest.changed_at
+                    and diff_property.action is DiffAction.ADDED
+                    and current_latest.action is DiffAction.REMOVED
+                ):
+                    latest_property_map[prop_type] = diff_property
         return (earliest_property_map, latest_property_map)
 
     def consolidate_cardinality_one_diff_elements(self, diff_relationship: EnrichedDiffRelationship) -> None:

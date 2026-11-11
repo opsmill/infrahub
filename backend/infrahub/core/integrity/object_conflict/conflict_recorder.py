@@ -95,7 +95,7 @@ class ObjectConflictValidatorRecorder:
         return current_checks
 
     async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
-        validations = await proposed_change.validations.get_peers(db=self.db, branch_agnostic=True)
+        validations = await proposed_change.validations.get_peers(db=self.db)
 
         for validation in validations.values():
             if validation.get_kind() == self.validator_kind:
@@ -120,15 +120,15 @@ class ObjectConflictValidatorRecorder:
             return validator_obj
 
     async def initialize_validator(self, validator: CoreValidator) -> None:
-        validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[misc]
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[misc]
+        validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
+        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
         validator.started_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
         validator.completed_at.value = ""  # type: ignore[attr-defined]
         await validator.save(db=self.db)
 
     async def finalize_validator(self, validator: CoreValidator, is_success: bool) -> None:
-        validator.state.value = ValidatorState.COMPLETED.value  # type: ignore[misc]
-        validator.conclusion.value = (  # type: ignore[misc]
+        validator.state.value = ValidatorState.COMPLETED.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
+        validator.conclusion.value = (  # type: ignore[misc]  # ty: ignore[invalid-assignment]
             ValidatorConclusion.SUCCESS.value if is_success else ValidatorConclusion.FAILURE.value
         )
         validator.completed_at.value = Timestamp().to_string()  # type: ignore[attr-defined]

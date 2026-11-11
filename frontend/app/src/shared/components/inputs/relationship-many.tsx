@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
@@ -48,7 +48,7 @@ export function RelationshipManyInput({
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
             "cursor-pointer",
             className
           )}
@@ -66,7 +66,7 @@ export function RelationshipManyInput({
                   onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="size-4 text-gray-500 data-hovered:text-gray-800"
+                  className="size-4 text-subtle-muted data-hovered:text-foreground"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >
@@ -79,7 +79,7 @@ export function RelationshipManyInput({
           <button
             ref={ref}
             type="button"
-            className="h-3.5 w-3.5 text-gray-600 outline-hidden"
+            className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
             onClick={() => setOpen(!open)}
             {...props}
           >

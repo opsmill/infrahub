@@ -52,8 +52,7 @@ def _collect_cyclic_garbage() -> Generator[None, None, None]:
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
     """Overrides pytest default function scoped event loop."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
