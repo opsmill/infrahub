@@ -6,7 +6,12 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.regeneration.definitions import parse_artifact_definitions, selects_repository
+from infrahub.core.regeneration.definitions import (
+    ArtifactTargetGroup,
+    parse_artifact_definition_target_groups,
+    parse_artifact_definitions,
+    selects_repository,
+)
 
 QUERY_PAYLOAD = "query { TestingCar { edges { node { name { value } } } } }"
 
@@ -55,7 +60,7 @@ def _artifact_definition_edge(
             "artifact_name": _attribute("config"),
             "content_type": _attribute("text/plain"),
             "fingerprint": _attribute(fingerprint),
-            "targets": {"node": {"id": "group-1"}},
+            "targets": {"node": {"__typename": "CoreStandardGroup", "id": "group-1"}},
             "transformation": {"node": transformation},
         }
     }
@@ -92,6 +97,19 @@ def test_computed_closure_is_carried_through() -> None:
     assert definition.dependencies == ["partials/header.j2", "templates/config.j2"]
     assert definition.dependencies_complete is True
     assert definition.fingerprint == "abc123"
+
+
+def test_target_group_is_parsed_per_definition() -> None:
+    target_groups = parse_artifact_definition_target_groups(definitions=[_artifact_definition_edge()])
+
+    assert target_groups == {"def-1": ArtifactTargetGroup(id="group-1", kind="CoreStandardGroup")}
+
+
+def test_definition_without_a_target_group_is_left_out() -> None:
+    edge = _artifact_definition_edge()
+    edge["node"]["targets"] = {"node": None}
+
+    assert parse_artifact_definition_target_groups(definitions=[edge]) == {}
 
 
 def test_jinja2_transform_carries_its_template_path() -> None:

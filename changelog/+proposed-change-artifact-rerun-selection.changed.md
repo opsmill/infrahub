@@ -1,0 +1,1 @@
+Running the artifact checks of a proposed change again now validates only the artifact definitions, and renders only the artifacts, that a change made since their last successful validation can reach. An artifact is also rendered again when a field it reads was changed back to the value of the destination branch after that validation.

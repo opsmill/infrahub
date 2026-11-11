@@ -1,6 +1,13 @@
+from datetime import UTC, datetime
+
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.regeneration.changes_since import DiffChangeTimes
 from infrahub.message_bus.types import ProposedChangeRepository
-from infrahub.proposed_change.branch_diff import RepositoryFileDiff, RepositoryFileDiffPopulator
+from infrahub.proposed_change.branch_diff import (
+    RepositoryFileDiff,
+    RepositoryFileDiffPopulator,
+    parse_diff_change_times,
+)
 from tests.adapters.repository_file_diff import RecordingRepositoryFileDiffer
 
 
@@ -115,3 +122,122 @@ async def test_managed_and_readonly_repositories_diffed_together() -> None:
     assert {request.repository_id for request in differ.requests} == {"managed-1", "readonly-1"}
     assert managed.files_changed == ["a.py"]
     assert readonly.files_removed == ["b.gql"]
+
+
+DEVICE_ID = "11111111-1111-1111-1111-111111111111"
+GROUP_ID = "22222222-2222-2222-2222-222222222222"
+MEMBER_1 = "33333333-3333-3333-3333-333333333333"
+MEMBER_2 = "44444444-4444-4444-4444-444444444444"
+
+
+def test_parse_diff_change_times_collects_the_times_of_nodes_fields_and_peers() -> None:
+    diff_tree = {
+        "from_time": "2026-01-01T08:00:00+00:00",
+        "to_time": "2026-01-01T16:00:00+00:00",
+        "nodes": [
+            {
+                "uuid": DEVICE_ID,
+                "last_changed_at": "2026-01-01T12:00:00+00:00",
+                "attributes": [
+                    {"name": "name", "last_changed_at": "2026-01-01T10:00:00+00:00", "properties": []},
+                    {
+                        "name": "color",
+                        "last_changed_at": "2026-01-01T07:00:00+00:00",
+                        "properties": [
+                            {"last_changed_at": "2026-01-01T09:00:00+00:00"},
+                            {"last_changed_at": "2026-01-01T12:00:00+00:00"},
+                        ],
+                    },
+                ],
+                "relationships": [],
+            },
+            {
+                "uuid": GROUP_ID,
+                "last_changed_at": "2026-01-01T14:00:00+00:00",
+                "attributes": [],
+                "relationships": [
+                    {
+                        "name": "members",
+                        "last_changed_at": None,
+                        "elements": [
+                            {"peer_id": MEMBER_1, "last_changed_at": "2026-01-01T11:00:00+00:00"},
+                            {"peer_id": MEMBER_2, "last_changed_at": "2026-01-01T14:00:00+00:00"},
+                        ],
+                    }
+                ],
+            },
+        ],
+    }
+
+    change_times = parse_diff_change_times(diff_tree=diff_tree)
+
+    assert change_times == DiffChangeTimes(
+        from_time=datetime(2026, 1, 1, 8, 0, tzinfo=UTC),
+        to_time=datetime(2026, 1, 1, 16, 0, tzinfo=UTC),
+        nodes={
+            DEVICE_ID: datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+            GROUP_ID: datetime(2026, 1, 1, 14, 0, tzinfo=UTC),
+        },
+        fields={
+            DEVICE_ID: {
+                "name": datetime(2026, 1, 1, 10, 0, tzinfo=UTC),
+                "color": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+            },
+            GROUP_ID: {"members": datetime(2026, 1, 1, 14, 0, tzinfo=UTC)},
+        },
+        peers={
+            GROUP_ID: {
+                "members": {
+                    MEMBER_1: datetime(2026, 1, 1, 11, 0, tzinfo=UTC),
+                    MEMBER_2: datetime(2026, 1, 1, 14, 0, tzinfo=UTC),
+                }
+            }
+        },
+    )
+
+
+def test_parse_diff_change_times_keeps_the_latest_time_of_a_node_listed_twice() -> None:
+    diff_tree = {
+        "from_time": "2026-01-01T08:00:00+00:00",
+        "to_time": "2026-01-01T16:00:00+00:00",
+        "nodes": [
+            {
+                "uuid": DEVICE_ID,
+                "last_changed_at": "2026-01-01T12:00:00+00:00",
+                "attributes": [{"name": "name", "last_changed_at": "2026-01-01T12:00:00+00:00"}],
+                "relationships": [],
+            },
+            {
+                "uuid": DEVICE_ID,
+                "last_changed_at": "2026-01-01T10:00:00+00:00",
+                "attributes": [{"name": "name", "last_changed_at": "2026-01-01T10:00:00+00:00"}],
+                "relationships": [],
+            },
+        ],
+    }
+
+    change_times = parse_diff_change_times(diff_tree=diff_tree)
+
+    assert change_times.nodes == {DEVICE_ID: datetime(2026, 1, 1, 12, 0, tzinfo=UTC)}
+    assert change_times.fields == {DEVICE_ID: {"name": datetime(2026, 1, 1, 12, 0, tzinfo=UTC)}}
+
+
+def test_parse_diff_change_times_leaves_out_a_field_without_a_time() -> None:
+    diff_tree = {
+        "from_time": "2026-01-01T08:00:00+00:00",
+        "to_time": "2026-01-01T16:00:00+00:00",
+        "nodes": [
+            {
+                "uuid": GROUP_ID,
+                "last_changed_at": None,
+                "attributes": [],
+                "relationships": [{"name": "members", "last_changed_at": None, "elements": []}],
+            }
+        ],
+    }
+
+    change_times = parse_diff_change_times(diff_tree=diff_tree)
+
+    assert change_times.nodes == {}
+    assert change_times.fields == {GROUP_ID: {}}
+    assert change_times.peers == {}

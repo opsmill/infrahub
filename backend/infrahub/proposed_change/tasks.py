@@ -40,6 +40,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
     ValidatorConclusion,
+    ValidatorState,
 )
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
@@ -50,7 +51,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
-from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
+from infrahub.core.regeneration.changes_since import changes_since
+from infrahub.core.regeneration.definitions import (
+    GATHER_ARTIFACT_DEFINITIONS,
+    parse_artifact_definition_target_groups,
+    parse_artifact_definitions,
+)
 from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.members import (
     map_subscriber_ids_by_member,
@@ -96,11 +102,23 @@ from infrahub.message_bus.types import (
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
 )
+from infrahub.proposed_change.artifact_validation import (
+    ArtifactValidationRecord,
+    ArtifactValidationRecords,
+    ArtifactValidationRun,
+    RecentChanges,
+    changes_reach_definition,
+    changes_validated_until,
+    diff_tracks_members,
+)
 from infrahub.proposed_change.branch_diff import (
     GitRepositoryFileDiffer,
     RepositoryFileDiffPopulator,
+    get_diff_change_times_cache,
     has_data_changes,
     has_node_changes,
+    read_diff_summary,
+    set_diff_change_times_cache,
     set_diff_summary_cache,
 )
 from infrahub.proposed_change.constants import ProposedChangeState
@@ -139,6 +157,8 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -798,6 +818,22 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         ):
             previous_validator = existing_validator
 
+    repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
+
+    cache = await get_cache()
+    validation_run = ArtifactValidationRun(
+        records=ArtifactValidationRecords(cache=cache, proposed_change_id=model.proposed_change),
+        definition_id=model.artifact_definition.definition_id,
+        pipeline_id=model.branch_diff.pipeline_id,
+        change_times=await get_diff_change_times_cache(pipeline_id=model.branch_diff.pipeline_id, cache=cache),
+        repository=repository,
+    )
+    await validation_run.start(
+        previous_validation_succeeded=previous_validator is not None
+        and previous_validator.state.value == ValidatorState.COMPLETED.value
+        and previous_validator.conclusion.value == ValidatorConclusion.SUCCESS.value
+    )
+
     validator = await start_validator(
         client=client,
         validator=previous_validator,
@@ -829,9 +865,20 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         log=log,
     )
 
-    repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
-
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    changes = validation_run.changes_to_validate(
+        diff_summary=await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id),
+        target_group_id=group.id
+        if diff_tracks_members(
+            group_kind=group.get_kind(), schema_branch=registry.schema.get_schema_branch(name=model.source_branch)
+        )
+        else None,
+        members_with_artifact=artifacts_by_member,
+    )
+    if changes.validated_until is not None:
+        log.info(
+            f"Artifact definition {artifact_definition.name.value} was validated with the changes made until "
+            f"{changes.validated_until.isoformat()}. Only later changes are considered."
+        )
     database = await get_database()
     async with database.start_session() as db:
         impact_resolver = FieldLevelImpactResolver(db=db, client=client)
@@ -839,7 +886,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             query_report=impact_resolver.analyze(
                 query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
             ),
-            diff_summary=diff_summary,
+            diff_summary=changes.diff_summary,
             query_branch=model.source_branch,
             subscriber_kind=InfrahubKind.ARTIFACT,
             every_target=list(artifacts_by_member.values()),
@@ -860,10 +907,12 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
     managed_branch = (
-        query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
-        or definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+        query_changed(definition=model.artifact_definition, diff_summary=changes.diff_summary).matched
+        or definition_changed(definition=model.artifact_definition, diff_summary=changes.diff_summary).matched
         or (
-            repo_diff_for_definition is not None
+            # A completed validation is only relied on while the repository has not moved, so it covered these files.
+            changes.validated_until is None
+            and repo_diff_for_definition is not None
             and transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
         )
     )
@@ -923,6 +972,8 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         proposed_change_id=model.proposed_change,
         context=context,
     )
+    if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
+        await validation_run.complete()
 
 
 @flow(
@@ -1215,6 +1266,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
+    pipeline_started_at = Timestamp().to_datetime()
     client = get_client()
     client.request_context = context.to_request_context()
     repositories = await _get_proposed_change_repositories(model=model, client=client)
@@ -1256,8 +1308,12 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     client = get_client()
     client.request_context = context.to_request_context()
 
-    diff_summary = await client.get_diff_summary(branch=model.source_branch)
-    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
+    diff_summary, change_times = await read_diff_summary(client=client, branch=model.source_branch)
+    cache = await get_cache()
+    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=cache)
+    # A diff that this run did not refresh can describe the branch as it was before a rebase.
+    if change_times is not None and change_times.to_time >= pipeline_started_at:
+        await set_diff_change_times_cache(pipeline_id=model.pipeline_id, change_times=change_times, cache=cache)
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
 
     if model.check_type is CheckType.ARTIFACT:
@@ -1368,14 +1424,29 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=model.source_branch,
     )
-    artifact_definitions = parse_artifact_definitions(
-        definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
-    )
+    definition_edges = definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
+    artifact_definitions = parse_artifact_definitions(definitions=definition_edges)
+    source_schema = registry.schema.get_schema_branch(name=model.source_branch)
+    target_group_ids = {
+        definition_id: target_group.id
+        for definition_id, target_group in parse_artifact_definition_target_groups(definitions=definition_edges).items()
+        if diff_tracks_members(group_kind=target_group.kind, schema_branch=source_schema)
+    }
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    modified_kinds = SchemaProfileExpander(schema_manager=registry.schema).expand(
+    kinds_expander = SchemaProfileExpander(schema_manager=registry.schema)
+    modified_kinds = kinds_expander.expand(
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
+
+    cache = await get_cache()
+    change_times = await get_diff_change_times_cache(pipeline_id=model.branch_diff.pipeline_id, cache=cache)
+    validation_records: dict[str, ArtifactValidationRecord] = {}
+    if change_times is not None:
+        validation_records = await ArtifactValidationRecords(cache=cache, proposed_change_id=model.proposed_change).get(
+            definition_ids=[definition.definition_id for definition in artifact_definitions]
+        )
+    recent_changes_by_time: dict[datetime, RecentChanges] = {}
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1412,6 +1483,37 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             flag=DefinitionSelect.MODIFIED_KINDS,
             condition=any(changed_model in read_kinds for changed_model in modified_kinds),
         )
+
+        validated_until = changes_validated_until(
+            record=validation_records.get(artifact_definition.definition_id),
+            change_times=change_times,
+            repository=repo_diff_for_definition,
+        )
+        if select and change_times is not None and validated_until is not None:
+            if validated_until not in recent_changes_by_time:
+                recent_diff_summary = changes_since(
+                    diff_summary=diff_summary, change_times=change_times, since=validated_until
+                )
+                recent_changes_by_time[validated_until] = RecentChanges(
+                    since=validated_until,
+                    diff_summary=recent_diff_summary,
+                    modified_kinds=kinds_expander.expand(
+                        modified_kinds=get_modified_kinds(diff_summary=recent_diff_summary, branch=model.source_branch),
+                        branch=model.source_branch,
+                    ),
+                )
+            if not changes_reach_definition(
+                definition=artifact_definition,
+                target_group_id=target_group_ids.get(artifact_definition.definition_id),
+                read_kinds=read_kinds,
+                recent_changes=recent_changes_by_time[validated_until],
+                change_times=change_times,
+            ):
+                log.info(
+                    f"Skip processing of {artifact_definition.definition_name}: no change since its validation "
+                    f"with the changes made until {validated_until.isoformat()} can reach it"
+                )
+                continue
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
