@@ -1,0 +1,1 @@
+Looking up nodes by an exact attribute value or by the IDs of related nodes is now faster on kinds with many nodes. The list query starts from that value or those nodes when few nodes hold them, instead of reading every node of the kind.
