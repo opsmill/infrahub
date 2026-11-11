@@ -271,6 +271,17 @@ def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
 
 @pytest.fixture
 async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node | None:
+    return await do_default_ipnamespace(db=db)
+
+
+@pytest.fixture(scope="class")
+async def default_ipnamespace_scope_class(
+    db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch
+) -> Node | None:
+    return await do_default_ipnamespace(db=db)
+
+
+async def do_default_ipnamespace(db: InfrahubDatabase) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
