@@ -1,0 +1,1 @@
+Changed when a Generator runs for a target that has no Generator instance: in a proposed change, and after a merge when selective execution is enabled, the target runs only when the Generator definition, its query or its code changed, when a change reaches data the query reads, or when the target was created or its group membership changed.

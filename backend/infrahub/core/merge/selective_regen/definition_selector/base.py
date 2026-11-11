@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
+from infrahub.core.regeneration.predicates import nodes_with_changed_group_membership
 
 from ..fallbacks import dependency_closure_trigger
 from ..models import DefinitionModel
@@ -78,6 +79,9 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         affected.
         """
         requests: list[RequestT] = []
+        members_with_changed_membership = nodes_with_changed_group_membership(
+            diff_summary=diff_summary, query_branch=target_branch
+        )
         for loaded in loaded_definitions:
             definition = loaded.definition
             query_report = self.impacted_resolver.analyze(
@@ -111,6 +115,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             )
             member_ids = await self._fetch_member_ids(definition=definition, target_branch=target_branch)
             impacted: list[str] = []
+            change_reaches_query = False
             if not regenerate_all_members:
                 # The merge target branch is the branch the definition's query is analysed against.
                 selection = await self.impacted_resolver.resolve(
@@ -121,6 +126,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     every_target=list(subscriber_by_member.values()),
                 )
                 impacted = selection.ids
+                change_reaches_query = selection.change_reaches_query
                 if selection.widening is not None:
                     self.log.info(
                         f"{definition.definition_name}: {selection.widening.detail}. "
@@ -134,6 +140,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                     subscriber_id=subscriber_by_member.get(member_id),
                     regenerate_all_members=regenerate_all_members,
                     impacted=impacted,
+                    changes_reach_member=change_reaches_query or member_id in members_with_changed_membership,
                 )
             ]
             if not rendered_members:
@@ -162,9 +169,10 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
     async def _map_subscribers_by_member(self, *, definition: DefinitionT, target_branch: str) -> dict[str, str]:
         """Map each member to the id of its existing subscriber for this definition on the branch.
 
-        A member with no resolvable existing subscriber is absent from the map, so it is treated as
-        new and always regenerated; orphan records whose target no longer resolves are skipped. The
-        map lets each member's re-render be decided without a further per-member lookup.
+        A member with no resolvable existing subscriber is absent from the map, so the impact resolution
+        cannot return it and its re-render is decided from the changes alone; orphan records whose
+        target no longer resolves are skipped. The map lets each member's re-render be decided without
+        a further per-member lookup.
         """
         existing = await self.client.filters(
             kind=self.subscriber_kind,
@@ -185,8 +193,19 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         """Return the ids of the members of the definition's live target group on the merge target branch."""
 
     @abstractmethod
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
-        """Whether a single member's subscriber must be regenerated."""
+    def _should_render(
+        self,
+        *,
+        subscriber_id: str | None,
+        regenerate_all_members: bool,
+        impacted: list[str],
+        changes_reach_member: bool,
+    ) -> bool:
+        """Whether a single member's subscriber must be regenerated.
+
+        ``changes_reach_member`` is true when the changes touch data the query reads or the member's
+        group membership, which is the only signal available for a member that has no subscriber.
+        """
 
     @abstractmethod
     def _build_request(self, *, definition: DefinitionT, target_branch: str, members: list[str]) -> RequestT:

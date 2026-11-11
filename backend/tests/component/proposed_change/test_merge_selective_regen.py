@@ -217,6 +217,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
             content_type="text/plain",
             artifact_name="device-config",
             parameters={"value": {"name": "name__value"}},
+            fingerprint="artifact-definition-fingerprint",
         )
         await artdef.save(db=db)
 
@@ -235,6 +236,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
             execute_after_merge=True,
             dependencies=["generators/device.py"],
             dependencies_complete=True,
+            fingerprint="generator-definition-fingerprint",
         )
         await gendef.save(db=db)
 
@@ -242,32 +244,23 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
 
         return {"source_branch": SOURCE_BRANCH, "device1_id": device1.id}
 
-    async def test_relevant_kind_change_selects_matching_definitions(
+    async def _dispatch(
         self,
+        *,
         db: InfrahubDatabase,
-        dataset: dict[str, Any],
+        client: InfrahubClient,
         default_branch: Branch,
         admin_account: CoreAccount,
         memory_cache: MemoryCache,
-        client: InfrahubClient,
         workflow_recorder: WorkflowRecorder,
-    ) -> None:
-        """A data change on a queried kind awaits the generator, then targets artifacts from its output.
-
-        The dispatcher loads the real definitions from the graph, awaits the selected generator, and
-        selects the consuming artifacts from a diff of the generator's writes (stubbed here, since the
-        recorded run performs none). The affected artifact is dispatched by a selective request, never a
-        blanket regeneration.
-        """
-        await DiffSummaryCache(
+        diff_summary: list[NodeDiff],
+    ) -> _StubGeneratorDiffCapturer:
+        """Dispatch the regeneration that follows a merge whose diff is ``diff_summary``."""
+        summary_cache = DiffSummaryCache(
             cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
-        ).set(
-            diff_id=DIFF_CACHE_KEY,
-            diff_summary=[make_node_diff(dataset["device1_id"], "TestNetworkDevice", default_branch.name, ["name"])],
         )
-        capturer = _StubGeneratorDiffCapturer(
-            diff_summary=[make_node_diff(dataset["device1_id"], "TestNetworkDevice", default_branch.name, ["name"])]
-        )
+        await summary_cache.set(diff_id=DIFF_CACHE_KEY, diff_summary=diff_summary)
+        capturer = _StubGeneratorDiffCapturer(diff_summary=diff_summary)
         dispatcher = PostMergeRegenerationDispatcher(
             workflow=workflow_recorder,
             planner=build_merge_selective_regeneration(
@@ -276,9 +269,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
                 log=logging.getLogger("test"),
                 generator_output=GeneratorCascadeOutput(capturer=capturer),
             ),
-            summary_cache=DiffSummaryCache(
-                cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
-            ),
+            summary_cache=summary_cache,
             barrier=RegenerationBarrier(
                 state=WritebackIntentStore(
                     db=db,
@@ -300,12 +291,40 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
             merge_diff_cache_key=DIFF_CACHE_KEY,
             releasing=None,
         )
+        return capturer
+
+    async def test_relevant_kind_change_selects_matching_definitions(
+        self,
+        db: InfrahubDatabase,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A data change on a queried kind awaits the generator, then targets artifacts from its output.
+
+        The dispatcher loads the real definitions from the graph, awaits the selected generator, and
+        selects the consuming artifacts from a diff of the generator's writes (stubbed here, since the
+        recorded run performs none). The affected artifact is dispatched by a selective request, never a
+        blanket regeneration.
+        """
+        capturer = await self._dispatch(
+            db=db,
+            client=client,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[make_node_diff(dataset["device1_id"], "TestNetworkDevice", default_branch.name, ["name"])],
+        )
 
         generator_calls = workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_DEFINITION_RUN)
         assert [call["parameters"]["model"].generator_definition.definition_name for call in generator_calls] == [
             "device-generator"
         ]
-        # No existing subscribers, so every live member is new and the filter collapses to "all".
+        # No member has a generator instance and the change reaches the query, so the filter collapses to "all".
         assert generator_calls[0]["parameters"]["model"].target_members == []
         # The generator is awaited (never submitted) and its output is captured to drive the selection.
         assert workflow_recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
@@ -317,3 +336,27 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
         }
         assert artifact_names == {"device-artifact"}
         assert workflow_recorder.get_submit_calls_for(TRIGGER_ARTIFACT_DEFINITION_GENERATE) == []
+
+    async def test_unread_field_change_runs_no_generator_for_targets_without_an_instance(
+        self,
+        db: InfrahubDatabase,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        client: InfrahubClient,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A merge that changes only a field the query ignores runs no generator, though no target has an instance."""
+        await self._dispatch(
+            db=db,
+            client=client,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[make_node_diff(dataset["device1_id"], "TestNetworkDevice", default_branch.name, ["color"])],
+        )
+
+        assert workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
+        assert workflow_recorder.get_submit_calls_for(REQUEST_GENERATOR_DEFINITION_RUN) == []
