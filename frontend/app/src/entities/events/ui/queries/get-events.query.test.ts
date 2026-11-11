@@ -140,19 +140,67 @@ describe("getEventsQueryOptions", () => {
     });
   });
 
-  it("stops paging when every event of a full page shares the time it was asked up to", async () => {
+  it("skips the events already shown when every event of a full page shares the time it was asked up to", async () => {
     // GIVEN
     const firstPage = eventsFrom("first", countDown(1000, DEFAULT_PAGE_SIZE));
     const boundary = 1000 - DEFAULT_PAGE_SIZE + 1;
+    const olderPage = eventsFrom("older", countDown(900, DEFAULT_PAGE_SIZE));
+    getEventsMock
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(eventsFrom("tied", Array(DEFAULT_PAGE_SIZE).fill(boundary)))
+      .mockResolvedValueOnce(olderPage);
+
+    // WHEN
+    await fetchPages({ level: 0 }, 4);
+
+    // THEN
+    expect(getEventsMock.mock.calls[2]?.[0]).toEqual({
+      level: 0,
+      until: occurredAt(boundary),
+      offset: DEFAULT_PAGE_SIZE + 1,
+    });
+    expect(getEventsMock.mock.calls[3]?.[0]).toEqual({
+      level: 0,
+      until: olderPage.at(-1)?.occurred_at,
+    });
+  });
+
+  it("skips the events already shown at the time of the newest event when the order is ascending", async () => {
+    // GIVEN
+    const firstPage = eventsFrom("first", countUp(100, DEFAULT_PAGE_SIZE));
+    const boundary = 100 + DEFAULT_PAGE_SIZE - 1;
     getEventsMock
       .mockResolvedValueOnce(firstPage)
       .mockResolvedValueOnce(eventsFrom("tied", Array(DEFAULT_PAGE_SIZE).fill(boundary)));
 
     // WHEN
-    await fetchPages({ level: 0 }, 3);
+    await fetchPages({ order: "ASC" }, 3);
 
     // THEN
-    expect(getEventsMock).toHaveBeenCalledTimes(2);
+    expect(getEventsMock.mock.calls[2]?.[0]).toEqual({
+      order: "ASC",
+      since: occurredAt(boundary),
+      offset: DEFAULT_PAGE_SIZE + 1,
+    });
+  });
+
+  it("stops paging when a full page of one time adds no event to the ones already shown", async () => {
+    // GIVEN
+    const firstPage = eventsFrom("first", countDown(1000, DEFAULT_PAGE_SIZE));
+    const tiedPage = eventsFrom(
+      "tied",
+      Array(DEFAULT_PAGE_SIZE).fill(1000 - DEFAULT_PAGE_SIZE + 1)
+    );
+    getEventsMock
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(tiedPage)
+      .mockResolvedValueOnce(tiedPage);
+
+    // WHEN
+    await fetchPages({ level: 0 }, 5);
+
+    // THEN
+    expect(getEventsMock).toHaveBeenCalledTimes(3);
   });
 
   it("asks for the next page from the time of the newest event shown when the order is ascending", async () => {

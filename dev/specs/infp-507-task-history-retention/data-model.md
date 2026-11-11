@@ -94,5 +94,5 @@ The primary node conditions are added to the resource conditions that `event_typ
 | Field | Today | After |
 |---|---|---|
 | `count` | Not selected by the page, yet always computed by the task manager | Computed only when selected |
-| Paging | `offset` | `until` = time of the oldest event shown (`since` = time of the newest, in ascending order), events already shown dropped by ID; `offset` still accepted for API clients |
+| Paging | `offset` | `until` = time of the oldest event shown (`since` = time of the newest, in ascending order), events already shown dropped by ID; when every event of a full page has that time, the next request adds `offset` = the events of that time already shown; `offset` still accepted for API clients |
 | Time window | Prefect's 180-day default | Windows 1 h, 1 d, 7 d, 30 d, then the activity log retention (at least 180 days when the task manager does not delete old events), counted back from `until` or now |

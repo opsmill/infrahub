@@ -66,8 +66,11 @@ and its coverage when upgrading Prefect.
 The GraphQL resolver resolves branch names and constructs resource filters; the task manager's
 `query_events` reads expanding time windows and computes a count only when requested. The default
 window follows retention when event cleanup is enabled, otherwise it spans at least 180 days.
-The frontend continues by timestamp and deduplicates IDs. A full page sharing a timestamp still
-cannot advance; review that limit against FR-023. Review [filter equivalence](data-model.md#activities-filters-changed-expression-same-results)
+The frontend continues by timestamp and deduplicates IDs. When every event of a full page has the
+boundary time, the next request keeps that time and adds an offset, the number of events of that
+time already shown. Prefect orders events of the same time arbitrarily, so inside such a time a
+request can repeat events, which the page drops, and can leave one out when PostgreSQL returns them
+in another order; the page stops when a request adds no new event. Review [filter equivalence](data-model.md#activities-filters-changed-expression-same-results)
 and the [page request](data-model.md#activities-page-request-changed).
 
 ## Technical Context

@@ -221,6 +221,7 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 | Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
 | The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from now |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
+| Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. It stops when a request adds no new event, because the task manager orders events of the same time arbitrarily |
 | A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
 | A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
