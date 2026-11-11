@@ -58,18 +58,19 @@
       "computedHash": "0d6f64095c89d60e548f23fce00071cb7e6d65d105ff0c3f1d194febacd0d4b0",
       "installMode": "copy"
     },
+    "opsmill-product-rebase": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-product/skills/rebase/SKILL.md",
+      "computedHash": "9316d03fc1755c3e11d3d0d42bc1eb36a2e19a75da2851d677ef01bd7d5f9a15",
+      "installMode": "copy"
+    },
     "opsmill-product-writing-infrahub-docs": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
       "skillPath": "opsmill-product/skills/writing-infrahub-docs/SKILL.md",
       "computedHash": "b1e3937b66690ed9e5ffc50cc7fac39377632bb120ce59c0ce2818a8d617c351",
       "installMode": "copy"
-    },
-    "rebase": {
-      "source": "opsmill/opsmill-skills",
-      "sourceType": "github",
-      "skillPath": "opsmill-dev/skills/rebase/SKILL.md",
-      "computedHash": ""
     }
   }
 }
