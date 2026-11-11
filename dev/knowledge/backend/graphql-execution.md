@@ -74,17 +74,19 @@ The GraphQL app opens one session per request and puts it on `GraphqlContext.db`
 
 ## A cache keyed by a GraphQL schema holds it weakly
 
-Keep per-schema cached data in a `weakref.WeakKeyDictionary` keyed by the `GraphQLSchema`, never in an `lru_cache` or a plain dict that takes the schema as a key. Every schema change gives the branch a new `GraphQLSchema`, so a strong reference from a module-level cache keeps each earlier version, with all of its types, in memory for the life of the process.
+Keep per-schema cached data in a `weakref.WeakKeyDictionary` keyed by the `GraphQLSchema`, never in an `lru_cache` or a plain dict that takes the schema as a key, and cache only values that cannot reference the schema. Every schema change gives the branch a new `GraphQLSchema`. A strong reference from a module-level cache keeps earlier versions, with all of their types, in memory until the cache evicts them. A cached value that references its own key keeps that key alive for the life of the process.
 
 ```python
-# ✅ Good - the cached validations are dropped with their schema
-_validations_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, list[GraphQLError]]] = (
+# ✅ Good - the cache holds only documents, and is dropped with its schema
+_valid_documents_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, bool]] = (
     weakref.WeakKeyDictionary()
 )
 
-# ❌ Bad - keeps up to 1024 schema versions alive
+# ❌ Bad - the cache holds the schema itself, until 1024 newer entries evict it
 @lru_cache(maxsize=1024)
 def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]: ...
 ```
 
-graphql-core already stores the result of `validate_schema` on the schema object, so that call needs no cache of its own. `backend/infrahub/graphql/execution.py::cached_validate` is the worked example, and `backend/tests/unit/graphql/test_execution.py::test_schema_is_released_after_executing_queries` checks that a schema is freed once nothing else references it.
+Validation errors are an example of a value that references the schema: an error raised and caught during validation keeps its traceback, which reaches the validation context and its schema. So cache only that a document is valid, not the errors of an invalid one.
+
+graphql-core already stores the result of `validate_schema` on the schema object, so that call needs no cache of its own. `backend/infrahub/graphql/execution.py::cached_validate` is the worked example, and `backend/tests/unit/graphql/test_execution.py::test_schema_is_released_after_executing_queries` checks that a schema is freed after valid and invalid queries once nothing else references it.
