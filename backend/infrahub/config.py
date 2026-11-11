@@ -668,16 +668,16 @@ class CacheSettings(BaseSettings):
         default=60,
         ge=1,
         description=(
-            "Time-to-live in seconds of the record a lock holder in shared mode writes, such as an allocation "
-            "from a number pool. The holder renews it while it runs, so it only expires when the worker dies."
+            "Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder "
+            "renews the record while it runs, so the record only expires when the worker stops."
         ),
     )
     exclusive_lock_wait_secs: int = Field(
         default=30,
         ge=1,
         description=(
-            "Time in seconds a lock request in exclusive mode, such as a change to the ranges of a number pool, "
-            "waits for the holders in shared mode to finish before it fails."
+            "Time in seconds that a request for a lock in exclusive mode waits for the holders of the lock in "
+            "shared mode to finish before it fails."
         ),
     )
 
