@@ -260,6 +260,8 @@ class RepositoryAdder:
                 client=self._client,
                 infrahub_branch_name=model.infrahub_branch_name,
             )
+            # The repository is new, so its imports send their commit events, unlike those of a re-cloned copy.
+            repo.reinitialized = False
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
             repo.create_commit_worktree(commit=default_commit)
             recorded = await repo.read_recorded_import(branch_name=model.infrahub_branch_name)

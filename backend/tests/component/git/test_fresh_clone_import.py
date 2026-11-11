@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.protocols import CoreRepository
@@ -16,6 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
 from infrahub.events.repository_action import CommitUpdatedEvent
+from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.activity.models import RepositoryActivityOperation
 from infrahub.git.constants import UPDATE_SYNC_STATUS_MUTATION
@@ -258,6 +259,73 @@ class TestFreshCloneImport(TestInfrahubApp):
         assert await cache.get(key=activity_last_run_key(repository_id=node.id, operation="add")) is None
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
         assert commit_events(events) == [(head, node.id)]
+
+    async def test_the_add_flow_sends_the_commit_event_of_the_commit_it_imports(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The add flow's clone is the repository's first, so its import sends the event a re-cloned copy does not."""
+        name = "added-and-announced"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
+        events = MemoryInfrahubEvent()
+
+        with override_dependency(build_event_service, lambda: events, dependency_provider=dependency_provider):
+            async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD) as run:
+                added = await adder.add(add_model(node=node, name=name, remote=remote), activity=run)
+
+        assert added.import_error is None
+        assert commit_events(events) == [(head, node.id)]
+
+    async def test_the_fallback_clone_skips_the_import_of_a_commit_the_graph_holds(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A worker whose copy cannot be opened clones the repository again, after the add flow imported it elsewhere."""
+        name = "imported-then-recloned"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+        assert state.is_completed()
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
+        cache = RecordingCache()
+
+        async def refuse_local_copy(cls: type[InfrahubRepository], **kwargs: Any) -> InfrahubRepository:
+            raise RepositoryError(identifier=kwargs["name"], message="the local copy cannot be opened")
+
+        use_another_worker(tmp_path=tmp_path, monkeypatch=monkeypatch, worker="fallback-worker")
+        monkeypatch.setattr(InfrahubRepository, "init", classmethod(refuse_local_copy))
+        async with activity_run(repository_id=node.id, cache=cache) as run:
+            bootstrapped = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    branch_accepts_commit=True,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
+            )
+
+        assert bootstrapped is not None
+        assert bootstrapped.recorded_commit == head
+        assert run_record_writes(cache=cache, repository_id=node.id) == NO_IMPORT
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
 
     async def test_the_add_flow_keeps_the_copy_that_an_import_on_this_worker_reads(
         self,
