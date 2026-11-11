@@ -32,5 +32,3 @@ A finding about behavior cites `file:line` in the source, not an inference from 
 ## Docs
 
 A missing docs update and a language problem are Nit at most and share the five-Nit cap. Rank a docs sentence that the code contradicts first, then a missing docs update, then language. Two docs problems are Important: a missing `COPY` line in `development/Dockerfile` that breaks the container image build, and customer or personal data in the docs.
-
-@.agents/skills/opsmill-product-writing-infrahub-docs/SKILL.md

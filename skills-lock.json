@@ -60,10 +60,9 @@
     },
     "opsmill-product-writing-infrahub-docs": {
       "source": "opsmill/opsmill-skills",
-      "ref": "ds-docs-skill-review-section",
       "sourceType": "github",
       "skillPath": "opsmill-product/skills/writing-infrahub-docs/SKILL.md",
-      "computedHash": "32f8ccc49e1df46fa85867a4c482c9154908a2ebb22ed2e2afa9c36dff857977",
+      "computedHash": "b1e3937b66690ed9e5ffc50cc7fac39377632bb120ce59c0ce2818a8d617c351",
       "installMode": "copy"
     },
     "rebase": {

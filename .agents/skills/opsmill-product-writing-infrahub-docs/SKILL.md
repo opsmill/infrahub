@@ -17,7 +17,7 @@ compatibility: >-
   build/lint (`uv run invoke docs.lint`, Vale) assume the Infrahub docs repo; other repos fall
   back to their own commands.
 metadata:
-  version: 0.7.0
+  version: 0.6.1
   author: OpsMill
 ---
 
@@ -26,28 +26,6 @@ metadata:
 Writes, restructures, or updates Infrahub docs feature pages. **Propose one pull request covering the whole scope of the work** and confirm it with the user — see [Step 1](rules/02-workflow/step-1-preflight.md). Branch discipline and PR creation are delegated to the opsmill-product `commit` / `pr` skills (see [Step 11](rules/02-workflow/step-11-lint-commit-push.md)), so this skill never opens a PR by hand.
 
 The skill defaults to the **Infrahub main repo** (`opsmill/infrahub`). In any other repository it works out the equivalent paths by reading the repository rather than asking the user ([Step 0.5](rules/02-workflow/step-0.5-detect-repo.md)).
-
-## Reviewing a pull request
-
-In a review, apply only this section and skip the writing workflow below. It applies when the pull
-request changes `docs/` or behavior a user can see. For each finding, give the file and line, quote
-the sentence, and give the rewrite. The paths are those of the Infrahub repository.
-
-- Behavior a user can see changed, and the page under `docs/docs/` that describes it did not.
-- A deleted or renamed page has no entry in `docs/redirects-pending/`.
-- A page imports a file from outside `docs/`, and `development/Dockerfile` has no `COPY` line for it.
-- The code, as the pull request leaves it, contradicts a claim: attribute kinds, GraphQL fields,
-  defaults, UI labels. Check SDK claims against the commit the `python_sdk` submodule pins.
-- Customer names, people or real environment data.
-
-Language that Vale does not check:
-
-- A subject that cannot perform its verb, such as a version, a release or a page.
-- Infrahub credited with what the reader achieves: "keeps", "helps", "lets", "enables".
-- Figurative words: "carries" for has, "lives on" for is stored on, "walk", "as it stood".
-- Marketing language: "out of the box", "purpose-built", benefits stacked in a row.
-- A sentence that adds no fact, such as "this page covers".
-- "node" for a populated instance in user-facing text; write "object".
 
 ## Required reads
 
