@@ -373,7 +373,19 @@ class StorageSettings(BaseSettings):
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
     verify_artifact_checksum: bool = Field(
         default=True,
-        description="Refuse to serve an artifact file that does not match the checksum recorded for the artifact",
+        description=(
+            "Refuse to serve an artifact file that does not match the checksum recorded for the artifact. "
+            "Always on while storage encryption is enabled."
+        ),
+    )
+    encryption_enabled: bool = Field(
+        default=False,
+        description=(
+            "Encrypt the artifacts and files stored from now on with a key derived from INFRAHUB_SECURITY_SECRET_KEY, "
+            "and refuse to serve a stored file that fails its integrity check. Files stored before are served only "
+            "if they match their recorded checksum; a file with no recorded checksum is served as it is. Turning "
+            "it off stores new files in plaintext and keeps files encrypted earlier readable."
+        ),
     )
 
 
@@ -1267,7 +1279,13 @@ class SecuritySettings(BaseSettings):
         default=THIRTY_DAYS_IN_SECONDS, description="Lifetime of refresh token in seconds"
     )
     secret_key: str = Field(
-        default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
+        default_factory=generate_uuid,
+        description=(
+            "The secret key used to validate authentication tokens. With storage encryption enabled, it must be set "
+            "explicitly to a random value of at least 32 characters, the same on every API server and not the value "
+            "from the example deployment files. The key that encrypts stored files is derived from it: changing it "
+            "makes those files unreadable."
+        ),
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
