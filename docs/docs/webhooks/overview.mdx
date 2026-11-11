@@ -78,7 +78,7 @@ The same distinction applies to branch lifecycle events. `infrahub.branch.merged
 
 :::warning Branch scope for branch merge events
 
-Set webhooks for `infrahub.branch.merged` to the **All Branches** scope. With the default scope, **Default Branch**, the webhook never fires on a merge.
+Set webhooks for `infrahub.branch.merged` to the **Default Branch** scope, which is the default, or to **All Branches**. With **Other Branches**, the webhook never fires on a merge.
 
 To rebase open branches each time a branch merges, see [Parallel branches](../branches/parallel-branches.mdx).
 
