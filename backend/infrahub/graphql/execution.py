@@ -30,27 +30,40 @@ def cached_parse(query: str | Source) -> DocumentNode:
     Queries containing the @expand directive are not cached because the parser
     mutates the AST to add expanded fields, which would corrupt the cache.
     """
-    query_str = query if isinstance(query, str) else query.body
-    if "@expand" in query_str:
+    query_str = _query_text(query)
+    if _has_expand_directive(query_str):
         return parse(query)
     return _cached_parse(query_str)
 
 
-MAX_CACHED_VALIDATIONS_PER_SCHEMA = 1024
+def _query_text(query: str | Source) -> str:
+    return query if isinstance(query, str) else query.body
 
-_validations_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, list[GraphQLError]]] = (
+
+def _has_expand_directive(query: str) -> bool:
+    return "@expand" in query
+
+
+MAX_CACHED_VALID_DOCUMENTS_PER_SCHEMA = 1024
+
+_valid_documents_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, bool]] = (
     weakref.WeakKeyDictionary()
 )
 
 
 def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]:
-    """Validate a document against a schema, caching the result only for as long as the schema object exists."""
-    validations = _validations_by_schema.get(schema)
-    if validations is None:
-        validations = _validations_by_schema[schema] = LRUCache(maxsize=MAX_CACHED_VALIDATIONS_PER_SCHEMA)
-    errors = validations.get(document_ast)
-    if errors is None:
-        errors = validations[document_ast] = validate(schema, document_ast)
+    """Validate a document against a schema, remembering valid documents for as long as the schema object exists.
+
+    Errors are not cached because the traceback of a raised error can reference the schema and keep it alive.
+    """
+    valid_documents = _valid_documents_by_schema.get(schema)
+    if valid_documents is None:
+        valid_documents = _valid_documents_by_schema[schema] = LRUCache(maxsize=MAX_CACHED_VALID_DOCUMENTS_PER_SCHEMA)
+    if valid_documents.get(document_ast, False):
+        return []
+    errors = validate(schema, document_ast)
+    if not errors:
+        valid_documents[document_ast] = True
     return errors
 
 
@@ -79,7 +92,11 @@ async def execute_graphql_query(
     except GraphQLError as error:
         return ExecutionResult(data=None, errors=[error])
 
-    validation_errors = cached_validate(schema, document)
+    if _has_expand_directive(_query_text(source)):
+        # The document of an @expand query is parsed again and changed on every run, so it would never match a cached one.
+        validation_errors = validate(schema, document)
+    else:
+        validation_errors = cached_validate(schema, document)
     if validation_errors:
         return ExecutionResult(data=None, errors=validation_errors)
 
