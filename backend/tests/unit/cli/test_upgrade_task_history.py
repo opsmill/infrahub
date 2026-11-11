@@ -382,6 +382,28 @@ async def test_an_unreachable_task_manager_is_reported_and_the_upgrade_goes_on()
     assert console.lines == [STARTED, "ERROR ConnectError: All connection attempts failed", RERUN]
 
 
+async def test_an_unexpected_cleanup_error_is_reported_and_the_upgrade_goes_on() -> None:
+    """An error the cleanup does not report itself is printed with how to finish the cleanup, without raising out of the upgrade."""
+
+    def breaks(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/csrf-token":
+            return httpx.Response(status_code=422, json={"detail": "CSRF protection is disabled."})
+        raise RuntimeError("the connection pool is closed")
+
+    console = RecordedConsole()
+
+    async with PrefectClient(api=TASK_MANAGER_API, httpx_settings={"transport": httpx.MockTransport(breaks)}) as client:
+        await clean_up_task_history_for_upgrade(
+            client=client,
+            reading=_reading(old_runs=OLD_RUNS_COUNT_LIMIT),
+            skip=False,
+            console=console.console,
+            poll_interval=timedelta(0),
+        )
+
+    assert console.lines == [STARTED, "ERROR RuntimeError: the connection pool is closed", RERUN]
+
+
 async def test_a_cleanup_that_runs_elsewhere_is_left_to_finish_there(monkeypatch: pytest.MonkeyPatch) -> None:
     """While another cleanup holds the task history, the step waits for a short time only, then leaves it and goes on."""
     clock = FakeClock()

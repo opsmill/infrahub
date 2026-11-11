@@ -219,13 +219,18 @@ async def clean_up_task_history_for_upgrade(
         f"Deleting the finished runs older than the task history retention, because at least "
         f"{UPGRADE_CLEANUP_MIN_OLD_RUNS:,} runs are that old, then rewriting the tables that are mostly free space"
     )
-    exit_code = await flush_old_flow_runs(
-        client=client,
-        rewrite=True,
-        console=console,
-        poll_interval=poll_interval,
-        give_up_after=UPGRADE_CLEANUP_GIVE_UP_AFTER,
-    )
+    try:
+        exit_code = await flush_old_flow_runs(
+            client=client,
+            rewrite=True,
+            console=console,
+            poll_interval=poll_interval,
+            give_up_after=UPGRADE_CLEANUP_GIVE_UP_AFTER,
+        )
+    # Best-effort step after the upgrade's own steps have succeeded: any failure is printed and the upgrade completes.
+    except Exception as exc:  # noqa: BLE001
+        console.log(f"{ERROR_BADGE} {type(exc).__name__}: {exc}")
+        exit_code = 1
     if exit_code:
         console.log(f"The upgrade goes on without the cleanup. To finish it, run: {TASK_HISTORY_REWRITE_COMMAND}")
 
