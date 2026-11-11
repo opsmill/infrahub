@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 
@@ -23,6 +25,7 @@ query GatherArtifactDefinitions {
         }
         targets {
           node {
+            __typename
             id
           }
         }
@@ -113,6 +116,27 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
         parsed.append(artifact_definition)
 
     return parsed
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ArtifactTargetGroup:
+    id: str
+    kind: str
+
+
+def parse_artifact_definition_target_groups(definitions: list[dict]) -> dict[str, ArtifactTargetGroup]:
+    """Return the target group of each artifact definition that has one, keyed by definition id.
+
+    Takes the same edges as the definition parser.
+    """
+    target_groups: dict[str, ArtifactTargetGroup] = {}
+    for definition in definitions:
+        targets = definition["node"]["targets"]
+        if targets and targets["node"]:
+            target_groups[definition["node"]["id"]] = ArtifactTargetGroup(
+                id=targets["node"]["id"], kind=targets["node"]["__typename"]
+            )
+    return target_groups
 
 
 def selects_repository(

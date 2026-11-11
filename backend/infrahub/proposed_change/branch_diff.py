@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 from infrahub.exceptions import ResourceNotFoundError
 from infrahub.git.repository import get_initialized_repo
 from infrahub.message_bus.types import KVTTL
+from infrahub.proposed_change.branch_changes import BranchDiffWindow
 from infrahub.workers.dependencies import get_cache
 
 if TYPE_CHECKING:
@@ -153,3 +154,21 @@ async def get_diff_summary_cache(pipeline_id: UUID) -> list[NodeDiff]:
         raise ResourceNotFoundError(message=f"Diff summary for pipeline {pipeline_id} was not found in the cache")
 
     return cast("list[NodeDiff]", json.loads(summary_payload))
+
+
+def _diff_window_key(pipeline_id: UUID) -> str:
+    return f"proposed_change:pipeline:pipeline_id:{pipeline_id}:diff_window"
+
+
+async def set_diff_window_cache(pipeline_id: UUID, window: BranchDiffWindow, cache: InfrahubCache) -> None:
+    await cache.set(
+        key=_diff_window_key(pipeline_id=pipeline_id), value=window.model_dump_json(), expires=KVTTL.TWO_HOURS
+    )
+
+
+async def get_diff_window_cache(pipeline_id: UUID, cache: InfrahubCache) -> BranchDiffWindow | None:
+    """Return the time window of the branch diff a pipeline run read, or None when the run stored none."""
+    payload = await cache.get(key=_diff_window_key(pipeline_id=pipeline_id))
+    if not payload:
+        return None
+    return BranchDiffWindow.model_validate_json(payload)
