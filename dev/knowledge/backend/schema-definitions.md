@@ -156,9 +156,11 @@ each write class:
 
 - a name **in** the table is dropped and reported as a **warning** — a `READ`-level field, the
   `id`/`state` bookkeeping every internal schema model carries on the nested value models
-  (parameters, choices, computed attribute, extensions), or a field belonging to a sibling
-  variant of a discriminated union. These are all names a schema read back from Infrahub can
-  carry, so accepting them is what keeps the read → edit → load round trip working.
+  (parameters, computed attribute, extensions; on a dropdown choice only `id`), or a field
+  belonging to a sibling variant of a discriminated union. These are all names a schema read
+  back from Infrahub can carry, so accepting them is what keeps the read → edit → load round
+  trip working. `state` on a choice is settable, because `state: absent` is how a schema file
+  removes a single choice; only the write variant declares it, so the read shape leaves it out.
 - a name **not** in the table is an **error**, since the only ways to produce one are a typo and
   a field that no longer exists.
 

@@ -893,7 +893,8 @@ class SdkSchemaGenerator:
     """Render the user-facing write/read schema models into the Python SDK.
 
     Both variants are produced from the same ``internal.py`` definitions by filtering each
-    field on its ``visibility`` classification (write ⊆ read ⊆ internal). The output is
+    field on its ``visibility`` classification (write ⊆ read ⊆ internal), except ``state`` on
+    a dropdown choice, which only the write variant declares. The output is
     self-contained (only pydantic + typing) so it imports with just the SDK installed.
 
     The definitions, the jinja environment and the field building blocks shared by every
@@ -948,6 +949,12 @@ class SdkSchemaGenerator:
                 regex=r"#[0-9a-fA-F]{6}\b",
             ),
             self._field("label", "Text", "Human friendly representation of the choice.", optional=True),
+        ]
+        # `state: absent` is how a schema file removes a choice, while the read API leaves `state` out
+        # of choices like the other nested bookkeeping fields, so only the write variant declares it.
+        attribute_state = next(attribute for attribute in attribute_schema.attributes if attribute.name == "state")
+        self.dropdown_choice_write_fields = [
+            attribute_state.model_copy(update={"description": "Expected state of the choice after loading the schema"})
         ]
 
         self.list_parameters_fields = [
@@ -1205,6 +1212,7 @@ class SdkSchemaGenerator:
         return families
 
     def _pre_families(self, minimum: "Visibility", suffix: str) -> list[dict[str, Any]]:
+        from infrahub.core.constants import Visibility
         from infrahub.core.schema.definitions.internal import SchemaAttribute
 
         base = f"AttributeParameters{suffix}"
@@ -1242,7 +1250,8 @@ class SdkSchemaGenerator:
             {
                 "class_name": f"DropdownChoice{suffix}",
                 "parent": "BaseModel",
-                "attributes": self.dropdown_choice_fields,
+                "attributes": self.dropdown_choice_fields
+                + (self.dropdown_choice_write_fields if minimum is Visibility.WRITE else []),
             },
             {
                 "class_name": f"ComputedAttributeUser{suffix}",
@@ -1340,7 +1349,8 @@ class SdkSchemaGenerator:
 
         The parameters, choice, computed-attribute and extension models are declared in this
         generator rather than derived from internal.py, so they omit the bookkeeping fields every
-        internal schema model carries (``id``, ``state``) and each computed-attribute variant omits
+        internal schema model carries (``id``, ``state``; a choice declares ``state``, which removes
+        it when set to absent) and each computed-attribute variant omits
         the fields of its siblings. All of those names appear in a schema dumped from the internal
         models, so they are tolerated with a warning rather than reported as unknown.
         """

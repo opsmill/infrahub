@@ -751,6 +751,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.process_nodes_state()
         self.process_attributes_state()
+        self.process_dropdown_choices_state()
         self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
@@ -2254,6 +2255,33 @@ class SchemaBranch:
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
+
+    def process_dropdown_choices_state(self) -> None:
+        """Drop the choices marked absent and reject a dropdown attribute left without any choice.
+
+        Raises:
+            ValueError: When a dropdown attribute has no choice left.
+
+        """
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            updated_node: MainSchemaTypes | None = None
+            for index, attribute in enumerate(node.attributes):
+                if attribute.kind != "Dropdown":
+                    continue
+                choices = [choice for choice in attribute.choices or [] if choice.state != HashableModelState.ABSENT]
+                if not choices:
+                    raise ValueError(f"Unable to remove the last dropdown on {node.kind} in attribute {attribute.name}")
+                if len(choices) == len(attribute.choices or []):
+                    continue
+                updated_node = updated_node or node.duplicate()
+                updated_attribute = updated_node.attributes[index]
+                updated_attribute.choices = [
+                    choice for choice in updated_attribute.choices or [] if choice.state != HashableModelState.ABSENT
+                ]
+
+            if updated_node:
+                self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:
