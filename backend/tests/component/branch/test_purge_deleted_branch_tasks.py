@@ -71,6 +71,11 @@ async def test_purge_leaves_the_run_that_deleted_the_branch(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
+    branch_task = await prefect_client.create_flow_run(
+        flow=_noop_flow,
+        tags=[TAG_NAMESPACE, WorkflowTag.BRANCH.render(identifier=branch.name)],
+        state=State(type=StateType.COMPLETED),
+    )
     with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         deletion = await delete_branch(branch=branch.name, context=context, return_state=True)
     deletion_run_id = deletion.state_details.flow_run_id
@@ -78,5 +83,7 @@ async def test_purge_leaves_the_run_that_deleted_the_branch(
     await purge_deleted_branch_tasks(branch_name=branch.name)
 
     adapter = PrefectClientAdapter(client=prefect_client)
-    remaining = await adapter.read_flow_runs(flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[deletion_run_id])))
+    remaining = await adapter.read_flow_runs(
+        flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[deletion_run_id, branch_task.id]))
+    )
     assert (deletion.type, [run.id for run in remaining]) == (StateType.COMPLETED, [deletion_run_id])

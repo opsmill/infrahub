@@ -59,8 +59,8 @@ def _component_shard_targets(shard: str) -> str:
     """Build the pytest path arguments for a component test shard.
 
     The catch-all shard must be expressed with --ignore flags only: pytest drops an
-    explicit child path when an ancestor path is also passed positionally. For the same
-    reason, a named shard ignores the paths that other shards own inside its own paths.
+    explicit child path when an ancestor path is also passed positionally. A named shard
+    ignores the paths that other shards own inside its own paths, so those tests run once.
 
     Raises:
         ValueError: If the shard name is unknown.

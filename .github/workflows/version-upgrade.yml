@@ -83,7 +83,7 @@ jobs:
           for attempt in 1 2 3; do
             uv run invoke demo.pull && exit 0
             echo "::warning::Pulling the external images failed (attempt ${attempt} of 3)"
-            sleep 10
+            if [ "${attempt}" -lt 3 ]; then sleep 10; fi
           done
           exit 1
         env:
