@@ -1347,12 +1347,13 @@ class NodeManager:
                 include_metadata=include_metadata,
             )
 
+        nodes_and_peers_by_id = nodes_by_id | missing_peers
         for node in nodes_by_id.values():
             await cls._enrich_one_node_with_relationships(
                 db=db,
                 node=node,
                 grouped_peer_nodes=grouped_peer_nodes,
-                nodes_by_id=nodes_by_id | missing_peers,
+                nodes_by_id=nodes_and_peers_by_id,
                 cardinality_one_identifiers_by_kind=cardinality_one_identifiers_by_kind,
                 insert_peer_node=prefetch_relationships,
                 prefetch_relationship_names=prefetch_relationship_names,
