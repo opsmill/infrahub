@@ -1,3 +1,5 @@
+import gc
+import weakref
 from typing import Any
 
 from graphql import ExecutionContext, GraphQLError, GraphQLResolveInfo, build_schema
@@ -83,6 +85,34 @@ async def test_overlapping_fields_budget_rejects_repeated_inline_fragments() -> 
         "Query is too complex to validate for overlapping fields: exceeded 250000 field comparisons."
         " Validation was aborted."
     ]
+
+
+async def test_schema_is_released_after_executing_queries() -> None:
+    schema = build_schema("type Query { greeting(name: String): String }")
+    valid = await execute_graphql_query(
+        schema=schema, source='{ greeting(name: "world") }', root_value={"greeting": "hello"}
+    )
+    invalid = await execute_graphql_query(schema=schema, source="{ farewell }")
+    assert valid.data == {"greeting": "hello"}
+    assert [error.message for error in invalid.errors or []] == ["Cannot query field 'farewell' on type 'Query'."]
+
+    released = weakref.ref(schema)
+    del schema, valid, invalid
+    gc.collect()
+
+    assert released() is None
+
+
+async def test_validation_errors_are_reused_for_the_same_schema_and_document() -> None:
+    other_schema = build_schema("type Query { greeting(name: String): String }")
+
+    first = await execute_graphql_query(schema=SCHEMA, source="{ farewell }")
+    second = await execute_graphql_query(schema=SCHEMA, source="{ farewell }")
+    other = await execute_graphql_query(schema=other_schema, source="{ farewell }")
+
+    assert [error.message for error in first.errors or []] == ["Cannot query field 'farewell' on type 'Query'."]
+    assert second.errors is first.errors
+    assert other.errors is not first.errors
 
 
 async def test_truncated_escape_sequence_returns_syntax_error() -> None:

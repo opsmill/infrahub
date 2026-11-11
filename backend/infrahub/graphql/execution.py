@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import weakref
 from functools import lru_cache
 from inspect import isawaitable
 from typing import TYPE_CHECKING, Any, Callable
 
+from cachetools import LRUCache
 from graphql import GraphQLSchema, execute, parse, validate
 from graphql.error import GraphQLError
 from graphql.execution import ExecutionResult
@@ -34,14 +36,22 @@ def cached_parse(query: str | Source) -> DocumentNode:
     return _cached_parse(query_str)
 
 
-@lru_cache(maxsize=1024)
+MAX_CACHED_VALIDATIONS_PER_SCHEMA = 1024
+
+_validations_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, list[GraphQLError]]] = (
+    weakref.WeakKeyDictionary()
+)
+
+
 def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]:
-    return validate(schema, document_ast)
-
-
-@lru_cache(maxsize=1024)
-def cached_validate_schema(schema: GraphQLSchema) -> list[GraphQLError]:
-    return validate_schema(schema)
+    """Validate a document against a schema, caching the result only for as long as the schema object exists."""
+    validations = _validations_by_schema.get(schema)
+    if validations is None:
+        validations = _validations_by_schema[schema] = LRUCache(maxsize=MAX_CACHED_VALIDATIONS_PER_SCHEMA)
+    errors = validations.get(document_ast)
+    if errors is None:
+        errors = validations[document_ast] = validate(schema, document_ast)
+    return errors
 
 
 async def execute_graphql_query(
@@ -58,8 +68,8 @@ async def execute_graphql_query(
     is_awaitable: Callable[[Any], bool] | None = None,
 ) -> ExecutionResult:
     """Execute a query, return asynchronously only if necessary."""
-    # Validate Schema
-    schema_validation_errors = cached_validate_schema(schema)
+    # graphql-core stores the result on the schema object, so only the first call per schema does the work.
+    schema_validation_errors = validate_schema(schema)
     if schema_validation_errors:
         return ExecutionResult(data=None, errors=schema_validation_errors)
 
