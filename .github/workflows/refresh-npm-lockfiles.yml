@@ -1,0 +1,58 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Refresh npm lockfiles
+
+on:
+  schedule:
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-npm-lockfiles
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: stable
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Refresh docs resolutions within existing ranges
+        working-directory: docs
+        run: npm update --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Refresh plugin template resolutions within existing ranges
+        working-directory: frontend/packages/plugins/template
+        run: npm update --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps
+      - name: Verify manifests are unchanged
+        run: git diff --exit-code -- docs/package.json frontend/packages/plugins/template/package.json
+      - name: Create maintenance pull request
+        uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
+        with:
+          token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          branch: automated/refresh-npm-lockfiles
+          base: stable
+          delete-branch: true
+          add-paths: |
+            docs/package-lock.json
+            frontend/packages/plugins/template/package-lock.json
+          commit-message: "chore(deps): refresh npm lockfile resolutions"
+          title: "chore(deps): refresh npm lockfile resolutions"
+          body: |
+            Refresh npm dependency resolutions within existing manifest ranges, including transitive dependencies.
+
+            This complements Dependabot security updates and direct dependency version updates.
+            The plugin template uses legacy peer resolution, as in its existing maintenance process.
+
+            Review the lockfile changes and require CI to pass before merging. No automatic merge is performed.
+          labels: |
+            type/housekeeping
+            ci/skip-changelog
