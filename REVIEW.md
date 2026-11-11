@@ -28,9 +28,3 @@ For a change users can see in the UI, the API, the CLI or the documentation, als
 ## Evidence
 
 A finding about behavior cites `file:line` in the source, not an inference from a name.
-
-## Docs
-
-For a change to `docs/` or to behavior a user can see, check the docs against `.agents/skills/opsmill-product-writing-infrahub-docs/rules/_checklist.md` and the rule files it links. Skip the checklist items about the writing workflow, such as the checks file, the gates and the "Rules read" line.
-
-A missing docs update and a language problem are Nit at most and share the five-Nit cap. Rank a docs sentence that the code contradicts first, then a missing docs update, then language. Two docs problems are Important: a missing `COPY` line in `development/Dockerfile` that breaks the container image build, and customer or personal data in the docs.
