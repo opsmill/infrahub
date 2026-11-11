@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 from prefect import flow
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
-from infrahub.log import suppress_traceback_in_logs
+from infrahub.log import get_run_logger, suppress_traceback_in_logs
 
 from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivityPhase
 from .import_errors import RepositoryImportError, log_import_failure
-from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
+from .repository import CollectedImports, FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -27,6 +27,10 @@ if TYPE_CHECKING:
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
     from .writeback.ports import DeliveryStatePort
+
+MAX_STOPPED_IMPORT_REPAIRS = 3
+"""How many times the periodic sync imports again a default branch whose import keeps stopping partway, such as one
+that runs its worker out of memory, before it records the import as failed."""
 
 
 @dataclass(frozen=True)
@@ -146,8 +150,8 @@ async def import_branch(
     The run of its own keeps the import's logs and failure on the branch it imports into, rather than on
     the branch of the run that started the import. Any failure is returned, logged once, so a failed
     branch never stops the import of the other branches. A failure before the apply starts sets the
-    branch to `ERROR_IMPORT`, because the branch may already read `syncing`; from then on the apply sets
-    the final status.
+    branch to `ERROR_IMPORT`, because the branch may already read `syncing`. A failure once the apply
+    started leaves the status to the apply and to the caller, which can still record the failure.
 
     Raises:
         RepositoryConnectionError: When the remote repository is unreachable.
@@ -314,6 +318,9 @@ class RepositorySyncer:
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
             await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
+            # A run that started after the caller decided, such as a reimport, imports the branch itself.
+            if reimport_default_branch and await activity.another_run_is_active():
+                reimport_default_branch = False
             collected = await repo.collect_pending_imports(
                 staging_branch=staging_branch,
                 graph_commits=graph_commits,
@@ -322,6 +329,8 @@ class RepositorySyncer:
                 state=self._state,
                 reimport_default_branch=reimport_default_branch,
             )
+            if collected.repairs_default_branch:
+                await self._limit_repairs(repo=repo, collected=collected, activity=activity)
 
         failed_imports = list(collected.failed_imports)
         reconciled: list[ReconciledBranch] = []
@@ -363,3 +372,35 @@ class RepositorySyncer:
             advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
         )
         return SyncOutcome(report=report, reconciled=tuple(reconciled), failed=tuple(failed_imports))
+
+    @staticmethod
+    async def _limit_repairs(repo: InfrahubRepository, collected: CollectedImports, activity: ActivityRun) -> None:
+        """Count the repair of the default branch, and turn it into a failed import once it repeated too often.
+
+        Only a repair whose import was collected counts, so a cycle that leaves the branch alone, for example
+        while pushes wait, never brings a healthy branch closer to the limit.
+        """
+        repair = next((pending for pending in collected.imports if pending.on_default_branch), None)
+        if repair is None:
+            return
+        attempt = await activity.count_repair(commit=repair.commit)
+        if attempt <= MAX_STOPPED_IMPORT_REPAIRS:
+            get_run_logger().info(
+                f"Importing the default branch {repo.default_branch} of repository {repo.name} again, attempt "
+                f"{attempt} of {MAX_STOPPED_IMPORT_REPAIRS}: its import stopped partway, and no other run works "
+                "on the repository"
+            )
+            return
+        collected.imports.remove(repair)
+        collected.failed_imports.append(
+            FailedImport(
+                branch_name=repair.git_branch_name or repo.default_branch,
+                infrahub_branch_name=repair.infrahub_branch_name,
+                step=ImportStep.IMPORT,
+                reason=(
+                    f"the import of commit {repair.commit} stopped partway {MAX_STOPPED_IMPORT_REPAIRS} times, "
+                    "so it is not started again; reimport the commit once the cause is fixed"
+                ),
+                on_default_branch=True,
+            )
+        )

@@ -555,8 +555,9 @@ import under way from one whose run stopped.
 - **Set `error-import` on a failure before the apply.** The failure boundary does not cover what
   `import_branch` runs around it: creating the import's flow run, recording the run's phase and
   taking the repository lock. A failure there sets `error-import`
-  (`InfrahubRepositoryIntegrator.mark_import_failed`). Once the apply starts, the apply sets the final
-  status.
+  (`InfrahubRepositoryIntegrator.mark_import_failed`). A failure once the apply started leaves the
+  status to the apply and to the flow that started the import: the add flow keeps `in-sync`, and the
+  periodic sync records `error-import`.
 - **Record a new commit of the default branch with `syncing`, in one write**
   (`InfrahubRepository.record_commit_for_import`). The syncer records the commit under the lock and
   imports it later, so a commit written alone leaves the `in-sync` of the earlier commit when the sync
@@ -567,12 +568,18 @@ import under way from one whose run stopped.
   minutes after its last renewal (see [Repository activity records](#repository-activity-records)).
   The periodic sync checks after the bootstrap (`import_stopped_partway`) and asks the syncer to import
   the branch again (`reimport_default_branch`). It reads the status in its existing query and again
-  after the bootstrap, which can import the branch in between. The cycle's own record does not count,
-  and two periodic syncs never overlap. The repair runs up to about six minutes after a run stops, and
-  again about every six minutes while the import keeps stopping its worker.
-- **Repair only an active repository with no pushes waiting.** The sync leaves the default branch
-  alone otherwise. This also keeps the repair away from the delivery of a merge, which imports the
-  default branch without a record before it clears the push queue.
+  after the bootstrap, which can import the branch in between. The syncer checks for another run once
+  more under the repository lock, so a reimport that started in between imports the branch alone. The
+  cycle's own record does not count, and two periodic syncs never overlap. The repair runs up to about
+  six minutes after a run stops.
+- **Stop after `MAX_STOPPED_IMPORT_REPAIRS` repairs of the same commit.** An import that stops its
+  worker, for example by running it out of memory, would otherwise start again about every six
+  minutes. The syncer counts a repair in the cache only once it collected the import
+  (`ActivityRun.count_repair`), and records the next one as a failed import, which sets `error-import`.
+- **Repair only an active repository.** In a repository that is not active, the trunk goes to a
+  staging branch. While pushes wait, the syncer leaves the default branch alone, which also keeps the
+  repair away from the delivery of a merge: the delivery imports the default branch without a record
+  before it clears the push queue.
 - **Keep a rewrite visible.** The syncer drops the recorded commit only when it is the remote head.
   Otherwise it classifies the head against that commit, so a rewrite of the remote since the stopped
   import is still recorded.

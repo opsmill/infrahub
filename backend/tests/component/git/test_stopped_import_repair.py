@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from infrahub.git.repository import PendingObjectImport
 
 TRUNK = "main"
+STAGING_BRANCH = "staging-x"
 CONFIG_FILES = {".infrahub.yml": "---\n"}
 TRUNK_IMPORT: list[tuple[str | None, str | None]] = [("building", TRUNK), ("applying", TRUNK)]
 
@@ -137,6 +138,102 @@ class TestRepairOfAStoppedImport(TestInfrahubApp):
 
         assert trunk_imports(cache=cache, node=node) == []
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
+
+    async def test_the_syncer_leaves_the_default_branch_to_a_run_that_started_after_the_cycle_decided(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A reimport that starts between the cycle's check and the repository lock imports the branch itself."""
+        name = "run-started-since"
+        node, head, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id, name=name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=build_in_memory_recorder(),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=build_idle_delivery_state(repository_id=node.id),
+        )
+        cache = MemoryCache()
+
+        async with (
+            activity_run(repository_id=node.id, cache=cache) as run,
+            activity_run(repository_id=node.id, operation=RepositoryActivityOperation.REIMPORT, cache=cache),
+        ):
+            outcome = await call_in_flow(
+                lambda: syncer.sync(
+                    repo, activity=run, graph_commits={registry.default_branch: head}, reimport_default_branch=True
+                )
+            )
+
+        assert outcome.report.imported_branches == ()
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
+
+    async def test_the_cycle_stops_repairing_a_default_branch_whose_import_keeps_stopping(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """An import that runs its worker out of memory would otherwise start again every few minutes."""
+        name = "keeps-stopping"
+        node, head, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id, name=name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            for _ in range(3):
+                await sync_remote_repositories()
+                # The import stops again once it has started.
+                await repo.record_commit_for_import(branch_name=registry.default_branch, commit=head)
+            repaired = trunk_imports(cache=cache, node=node)
+            await sync_remote_repositories()
+
+        assert repaired == TRUNK_IMPORT * 3
+        assert trunk_imports(cache=cache, node=node) == repaired
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.ERROR_IMPORT.value)
+
+    async def test_the_cycle_leaves_a_staging_branch_left_syncing_alone(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A repository that is not active imports its trunk into its staging branch, so a repair would import there."""
+        name = "staging-left-syncing"
+        node, head, _ = await add_and_stop_an_import(db=db, client=client, tmp_path=tmp_path, name=name)
+        await client.branch.create(branch_name=STAGING_BRANCH, sync_with_git=False)
+        staging = await InfrahubRepository.init(
+            id=node.id, name=name, client=client, infrahub_branch_name=STAGING_BRANCH
+        )
+        await staging.record_commit_for_import(branch_name=STAGING_BRANCH, commit=head)
+        for branch, internal_status in (
+            (registry.default_branch, RepositoryInternalStatus.INACTIVE),
+            (STAGING_BRANCH, RepositoryInternalStatus.STAGING),
+        ):
+            repository = await client.get(kind=CoreRepository, id=node.id, branch=branch)
+            repository.internal_status.value = internal_status.value
+            await repository.save()
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            await sync_remote_repositories()
+
+        assert [write for write in run_record_writes(cache=cache, repository_id=node.id) if write[1] is not None] == []
 
     async def test_the_repair_records_a_rewrite_of_the_remote_since_the_stopped_import(
         self,

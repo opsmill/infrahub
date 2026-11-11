@@ -38,8 +38,8 @@ async def get_repositories_commit_per_branch(
     """Get a list of all repositories and their commit on each branch.
 
     The repository nodes come from one read on the default branch, restricted to branch-agnostic
-    fields so that no branch's own value can reach a caller through the node. `commit` and
-    `internal_status`, which are per-branch, are resolved separately in fixed-size chunks of branch
+    fields so that no branch's own value can reach a caller through the node. `commit`,
+    `internal_status` and `sync_status`, which are per-branch, are resolved separately in fixed-size chunks of branch
     names, so the read costs a small fixed number of queries for the nodes plus one per chunk rather
     than one per branch. Every query resolves at the same point in time, so a write landing mid-read
     cannot leave one branch of a repository reporting the old commit and another the new one. The

@@ -178,6 +178,8 @@ class CollectedImports:
     failed_imports: list[FailedImport] = field(default_factory=list)
     skipped_branches: list[str] = field(default_factory=list)
     advanced_skipped_branches: list[str] = field(default_factory=list)
+    repairs_default_branch: bool = False
+    """Whether the collection imports the default branch again because its import stopped partway."""
 
     @property
     def reconciled(self) -> list[ReconciledBranch]:
@@ -563,8 +565,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             graph_commits = self._read_graph_commits(graph_commits=graph_commits)
             trunk_commit = graph_commits.get(registry.default_branch)
             # Dropped only when it is the remote head, so a trunk the remote rewrote since is still classified against it.
-            if reimport_default_branch and trunk_commit == self._get_remote_tracking_commit(self.default_branch):
+            if (
+                reimport_default_branch
+                and trunk_commit is not None
+                and trunk_commit == self._get_remote_tracking_commit(self.default_branch)
+            ):
                 graph_commits[registry.default_branch] = None
+                collected.repairs_default_branch = True
             behind_in_graph = await self._find_branches_behind_in_graph(graph_commits=graph_commits)
             updated_branches = sorted({*updated_branches, *behind_in_graph})
 

@@ -440,7 +440,8 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 
     Args:
         activity_run_id: The run, started by the caller in this process, that the synchronization reports to.
-        reimport_default_branch: Import the default branch even when the graph records its remote head.
+        reimport_default_branch: Import the default branch even when the graph records its remote head, unless another
+            run on the repository started since, or its import already stopped partway too often.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -820,7 +821,7 @@ async def sync_remote_repository(
             return
 
         graph_commits = select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches)
-        # The sync leaves the default branch alone in an inactive repository and while pushes wait, so neither is repaired.
+        # In a repository that is not active, dropping the trunk's commit would import the trunk into the staging branch.
         reimport_default_branch = (
             default_internal_status == RepositoryInternalStatus.ACTIVE.value
             and infrahub_branch in graph_commits
@@ -830,13 +831,7 @@ async def sync_remote_repository(
                 cycle_status=repository_data.branch_info[infrahub_branch].sync_status,
                 run=run,
             )
-            and not await has_pending_pushes(state=state, repository_id=repository.id)
         )
-        if reimport_default_branch:
-            get_run_logger().info(
-                f"Importing the default branch of repository {repo_name} again: it reads syncing, "
-                "and no other run works on the repository"
-            )
 
         await sync_repository_from_origin(
             repository=repository,
