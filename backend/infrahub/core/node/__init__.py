@@ -588,11 +588,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # -------------------------------------------
         # Validate Input
         # -------------------------------------------
-        if "updated_at" in fields and "updated_at" not in self._schema.valid_input_names:
+        valid_input_names = set(self._schema.valid_input_names)
+        if "updated_at" in fields and "updated_at" not in valid_input_names:
             # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
             fields.pop("updated_at")
         for field_name in fields.keys():
-            if field_name not in self._schema.valid_input_names:
+            if field_name not in valid_input_names:
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         errors = []
