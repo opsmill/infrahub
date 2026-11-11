@@ -1,0 +1,38 @@
+backend/tests/component/proposed_change/artifact_recheck_harness.py
+  s_36cf0c397fd5b8::t_2a5be39e435ccb 112
+backend/infrahub/proposed_change/tasks.py
+  s_36cf0c397fd5b8::t_c2be9b3fe3a014 855-860,862
+  s_36cf0c397fd5b8::t_f174bfc1921ab7 881,883,889-891,893-894
+  s_36cf0c397fd5b8::t_2c4b2602219ae9 51
+  s_36cf0c397fd5b8::t_987150ba84b3b5 1413-1421,1424-1428
+  s_36cf0c397fd5b8::t_1fb1a65b6acd55 756,760-761,763,768-777,779-785,787
+  s_36cf0c397fd5b8::t_c2186ccc3e5ee5 886-887
+  s_36cf0c397fd5b8::t_f432ef3336076e 143
+  s_36cf0c397fd5b8::t_2aac934cf0377f 1454,1462-1463
+backend/infrahub/core/regeneration/branch_edits.py
+  s_36cf0c397fd5b8::t_f24dd1839a5d48 1-142
+backend/infrahub/core/regeneration/models.py
+  s_36cf0c397fd5b8::t_b24f6fb7958446 211,234-235
+backend/infrahub/git/integrator.py
+  s_36cf0c397fd5b8::t_57303100c805e3 81,2252
+backend/tests/component/git/test_git_repository.py
+  s_36cf0c397fd5b8::t_def4674eca2b91 50,970,1012,1030
+backend/tests/component/proposed_change/test_artifact_regen_recheck.py
+  s_36cf0c397fd5b8::t_f33825b4c5b94e 488-536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1e5f4adfa5cbc9d3b426d277025eff6b11aff38",
+  "prompts": {},
+  "sessions": {
+    "s_36cf0c397fd5b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22c2f218-7d1f-4364-99b6-be065ea755e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
