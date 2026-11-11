@@ -27,10 +27,7 @@ Before starting, make sure you have:
 - Access to Infrahub Enterprise, with the license terms reviewed, as described in [Before you start](./enterprise.mdx#before-you-start)
 - A Kubernetes cluster and [Helm](https://helm.sh/docs/intro/install/)
 - A Neo4j Enterprise instance that accepts Bolt connections from the cluster, on port `7687` or the port you set in Step 3
-- A Neo4j user for Infrahub with the privileges listed in [Least-privilege service credentials](../production-deployment/overview.mdx#neo4j)
-- The database that Infrahub writes to, created in Neo4j
-
-Infrahub writes to the `neo4j` database unless you set another name with `INFRAHUB_DB_DATABASE`. If that database does not exist, Infrahub creates it when it starts, which requires the `CREATE DATABASE` privilege. Create the database beforehand, so that the Infrahub user needs only the privileges listed above.
+- An administrator account on that Neo4j instance, to create the database and the user for Infrahub as described in [Create the Infrahub database and user in Neo4j](#create-the-infrahub-database-and-user-in-neo4j)
 
 ## License settings with your own Neo4j
 
@@ -38,6 +35,31 @@ When you install Infrahub Enterprise with the bundled Neo4j, you set one value f
 
 - **Infrahub license agreement:** accept it by setting `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `"yes"`. You set it for the API server and the task workers in Step 3.
 - **Neo4j license agreement:** do not set `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`. The chart does not install Neo4j, and your own Neo4j license covers your instance.
+
+## Create the Infrahub database and user in Neo4j
+
+Infrahub writes to the `neo4j` database unless you set another name with `INFRAHUB_DB_DATABASE`. If that database does not exist, Infrahub creates it when it starts, which requires the `CREATE DATABASE` privilege. Create the database beforehand, so that the Infrahub user needs only the privileges listed in [Least-privilege service credentials](../production-deployment/overview.mdx#neo4j).
+
+As a Neo4j administrator, run these statements against the `system` database, for example with `cypher-shell -u <admin-user> -d system`. They create a database named `infrahub`, a role named `infrahub` with the privileges that Infrahub needs on that database, and a user named `infrahub` with that role:
+
+```cypher
+CREATE DATABASE infrahub IF NOT EXISTS WAIT;
+
+CREATE ROLE infrahub IF NOT EXISTS;
+GRANT ACCESS ON DATABASE infrahub TO infrahub;
+GRANT MATCH {*} ON GRAPH infrahub TO infrahub;
+GRANT WRITE ON GRAPH infrahub TO infrahub;
+GRANT NAME MANAGEMENT ON DATABASE infrahub TO infrahub;
+GRANT INDEX MANAGEMENT ON DATABASE infrahub TO infrahub;
+GRANT CONSTRAINT MANAGEMENT ON DATABASE infrahub TO infrahub;
+
+CREATE USER infrahub IF NOT EXISTS SET PLAINTEXT PASSWORD '<password>' CHANGE NOT REQUIRED;
+GRANT ROLE infrahub TO infrahub;
+```
+
+To store Infrahub data in a database that already exists, such as `neo4j`, leave out the `CREATE DATABASE` statement, and replace `infrahub` after `ON DATABASE` and `ON GRAPH` with the name of that database.
+
+You use the password in Step 2, and the user name and the database name in Step 3.
 
 ## Step 1: Remove the bundled Neo4j
 
@@ -53,7 +75,13 @@ With the bundled Neo4j removed, the chart no longer sets `INFRAHUB_DB_ADDRESS` a
 
 ## Step 2: Store the Neo4j password in a Kubernetes Secret
 
-Create a Secret that contains the password of the Neo4j user, in the namespace where you install Infrahub. Kubernetes sets one environment variable for each key of the Secret, named after the key, so name the key `INFRAHUB_DB_PASSWORD`:
+The Secret must be in the namespace where you install Infrahub. If that namespace does not exist yet, create it:
+
+```shell
+kubectl create namespace <namespace>
+```
+
+Create a Secret that contains the password of the Neo4j user, in that namespace. Kubernetes sets one environment variable for each key of the Secret, named after the key, so name the key `INFRAHUB_DB_PASSWORD`:
 
 ```shell
 kubectl create secret generic infrahub-neo4j \
@@ -61,7 +89,9 @@ kubectl create secret generic infrahub-neo4j \
   --from-literal=INFRAHUB_DB_PASSWORD='<password>'
 ```
 
-In Step 3, you list the Secret under `envFromExistingSecrets` for the API server and the task workers. The chart sets the same environment variables on its upgrade job as on the API server, so the upgrade job also reads the password from the Secret.
+In Step 3, you list the Secret under `envFromExistingSecrets` for the API server and the task workers.
+
+The chart can also run `infrahub upgrade` in a job after the installation and before each `helm upgrade`. It runs this job only when you set `infrahub.upgrade.enabled` to `true`. The chart sets the same environment variables on the upgrade job as on the API server, so the upgrade job also reads the password from the Secret.
 
 ## Step 3: Connect Infrahub to your Neo4j
 
