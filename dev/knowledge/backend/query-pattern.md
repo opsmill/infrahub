@@ -331,6 +331,8 @@ Every attribute with the same value and the same `is_default` flag links to one 
 
 When writing or modifying a query that selects vertices or edges by a property, follow [Database Indexes](database-indexes.md): check the existing indexes for each label or edge type and property, and declare only the missing indexes in the same change. Adding an index needs no migration. For selective reads across several labels, edge types, or properties, use separate hinted reads and verify their execution plans.
 
+`NodeGetListQuery` enters from an indexed vertex only when a count shows that it reads less. For a filter on an exact attribute value (`<attribute>__value`, `<attribute>__values`) or on peer ids (`<relationship>__id`, `<relationship>__ids`), `NodeGetListIndexStartQuery` (`core/query/index_start.py`) first reads the number of edges on the value vertices or the peers, and the number of nodes of the kind. The list query then enters from the filter with the fewest edges when the kind holds at least `INDEX_START_MIN_KIND_NODES_PER_EDGE` nodes per edge; otherwise its text is the same as without the count, so its plan does not change. The entry ignores the branch and time conditions of the filter, so it returns a superset of the nodes the filter keeps, and the filter subqueries that follow decide the result. Decide from the count, not from the schema: a unique attribute can still share its value vertex with many attributes of other kinds.
+
 ### Cypher Variable Shadowing (Neo4j 5+)
 
 Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
