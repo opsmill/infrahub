@@ -42,7 +42,6 @@ COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
         "core/schema_manager",
         "core/constraint_validators",
         "core/ipam",
-        "core/resource_manager",
         "core/convert_object_type",
         "core/profiles",
         "core/node",
@@ -51,6 +50,7 @@ COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
         "api",
         "computed_attribute",
     ],
+    "resource-manager-git": ["core/resource_manager", "graphql/resource_manager", "git"],
 }
 COMPONENT_TEST_CATCHALL_SHARD = "other"
 
@@ -59,7 +59,8 @@ def _component_shard_targets(shard: str) -> str:
     """Build the pytest path arguments for a component test shard.
 
     The catch-all shard must be expressed with --ignore flags only: pytest drops an
-    explicit child path when an ancestor path is also passed positionally.
+    explicit child path when an ancestor path is also passed positionally. For the same
+    reason, a named shard ignores the paths that other shards own inside its own paths.
 
     Raises:
         ValueError: If the shard name is unknown.
@@ -72,7 +73,17 @@ def _component_shard_targets(shard: str) -> str:
     if shard not in COMPONENT_TEST_SHARDS:
         valid_shards = ", ".join([*COMPONENT_TEST_SHARDS, COMPONENT_TEST_CATCHALL_SHARD])
         raise ValueError(f"Unknown component test shard '{shard}', expected one of: {valid_shards}")
-    return " ".join(f"{COMPONENT_TEST_DIRECTORY}/{path}" for path in COMPONENT_TEST_SHARDS[shard])
+    paths = COMPONENT_TEST_SHARDS[shard]
+    owned_elsewhere = [
+        other_path
+        for other_shard, other_paths in COMPONENT_TEST_SHARDS.items()
+        if other_shard != shard
+        for other_path in other_paths
+        if any(other_path.startswith(f"{path}/") for path in paths)
+    ]
+    targets = [f"{COMPONENT_TEST_DIRECTORY}/{path}" for path in paths]
+    ignore_args = [f"--ignore={COMPONENT_TEST_DIRECTORY}/{path}" for path in owned_elsewhere]
+    return " ".join([*targets, *ignore_args])
 
 
 INTEGRATION_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/integration"
