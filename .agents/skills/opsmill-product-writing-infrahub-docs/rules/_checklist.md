@@ -46,6 +46,7 @@ Every file linked in this section is read by the end of the Draft phase. A line 
 
 - [ ] Every correction in the ledger still holds after the last rewrite: see [corrections-ledger](01-principles/corrections-ledger.md)
 - [ ] No customer or personal data in the prose, code samples or screenshots: see [no-customer-pii](01-principles/no-customer-pii.md)
+- [ ] When the user asked to skip steps or rules: only work that takes the user's time was skipped, and each skipped item is named: see [skip-requests](01-principles/skip-requests.md)
 
 ## Tick these at Step 9, after reading the Ship row
 

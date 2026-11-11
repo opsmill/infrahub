@@ -18,7 +18,7 @@ compatibility: >-
   build/lint (`uv run invoke docs.lint`, Vale) assume the Infrahub docs repo; other repos fall
   back to their own commands.
 metadata:
-  version: 0.6.1
+  version: 0.7.0
   author: OpsMill
 ---
 
@@ -36,6 +36,9 @@ When you can open files, the rule files under `rules/01-principles/` in this ski
 these checks in more depth; their items about gates, checks files and "Rules read" lines are for
 writing, not review. For each finding, give the file and line, quote the sentence, and give the
 rewrite.
+
+The paths below are those of the Infrahub repository. In another OpsMill docs repository, check the
+equivalent paths, or skip a check that has no equivalent.
 
 ### Missing docs updates
 
@@ -92,6 +95,8 @@ only these problems:
   reader can do.
 - Numbered steps outside a how-to guide, or guide steps and topic explanation mixed on one page.
 
+## Writing docs
+
 Writes, restructures, or updates Infrahub docs feature pages. **Propose one pull request covering the whole scope of the work** and confirm it with the user — see [Step 1](rules/02-workflow/step-1-preflight.md). Branch discipline and PR creation are delegated to the opsmill-product `commit` / `pr` skills (see [Step 11](rules/02-workflow/step-11-lint-commit-push.md)), so this skill never opens a PR by hand.
 
 The skill defaults to the **Infrahub main repo** (`opsmill/infrahub`). In any other repository it works out the equivalent paths by reading the repository rather than asking the user ([Step 0.5](rules/02-workflow/step-0.5-detect-repo.md)).
@@ -104,7 +109,7 @@ All paths are under `rules/`. Use case names are the ones from [Use cases](#use-
 
 | Phase, and the point to have read it by | Smaller update (and every use case) | New feature docs: also read | Reorganization: also read |
 |---|---|---|---|
-| **Start**: before the Step 0 gate | `01-principles/gate-discipline.md`, `02-workflow/step-0-triage.md`, `02-workflow/step-0.5-detect-repo.md` | | |
+| **Start**: before the Step 0 gate | `01-principles/gate-discipline.md`, `02-workflow/step-0-triage.md`, `02-workflow/step-0.5-detect-repo.md`. When the user asks to skip steps or rules: `01-principles/skip-requests.md` | | |
 | **Research**: before the Step 2 and Step 2.7 gates | `02-workflow/step-1-preflight.md`, `02-workflow/step-2-audit.md`, `02-workflow/step-2.7-content-audit.md` (for a smaller update, the lightweight pass that file describes; not needed for a [purely mechanical fix](#what-the-smaller-update-shortcut-covers)), `04-infrahub/domain-lifecycles.md`, `01-principles/no-customer-pii.md`, `01-principles/corrections-ledger.md`. When the user gave you an outline or a recommendations doc: `02-workflow/step-2.5-spec-review.md` | | `03-patterns/section-wide-migration.md`, when more than one feature moves |
 | **Plan**: before the Step 3 gate | `02-workflow/step-3-outline.md`, `04-infrahub/docs-navigation-map.md`, `01-principles/product-terminology.md`. When the page introduces a capability (an overview or hub page): `03-patterns/overview-page-content.md`. When the page is a "which of these do I use" page: `03-patterns/comparison-page.md` | `03-patterns/decision-rules.md`, `03-patterns/overview-page-content.md`, the file for the pattern you recommend (`03-patterns/single-page-merge.md`, `03-patterns/hub-and-spokes.md` with `03-patterns/hub-and-spoke-scope.md`, or `03-patterns/tutorial-extraction.md`), and `01-principles/tutorial-shape-test.md` when a tutorial is in scope | `03-patterns/decision-rules.md`, the file for the pattern you recommend (`03-patterns/single-page-merge.md`, `03-patterns/hub-and-spokes.md` with `03-patterns/hub-and-spoke-scope.md`, or `03-patterns/tutorial-extraction.md`), `01-principles/tutorial-shape-test.md` |
 | **Draft**: before writing any prose at Step 4 | `02-workflow/step-4-create-files.md`, `01-principles/voice-and-tone.md`, `01-principles/actors-and-causality.md`, `01-principles/right-altitude.md`, `01-principles/explain-and-describe.md`, `01-principles/steps-vs-sections.md`, `01-principles/failure-modes.md`, `01-principles/checking-prose.md` | | |
@@ -116,9 +121,6 @@ All paths are under `rules/`. Use case names are the ones from [Use cases](#use-
 **Prove what you read.** Every ★ gate summary ends with a "Rules read" line that lists each rule file read since the previous gate, and the PR body carries the same list ([gate-discipline](rules/01-principles/gate-discipline.md), [Step 10](rules/02-workflow/step-10-pr-description.md)). A file in this table that you did not read is named on that line with the reason, the same way a skipped step is.
 
 For the self-review at Step 4 and the audit at Step 9, [rules/_checklist.md](rules/_checklist.md) names each rule in one line with a link to its file. It is an index for checking a page, not a replacement for reading the files above.
-
-When the user asks you to skip the process or the rules, read
-[skip-requests](rules/01-principles/skip-requests.md) before you answer.
 
 ## Non-negotiables, in every repo and every use case
 
