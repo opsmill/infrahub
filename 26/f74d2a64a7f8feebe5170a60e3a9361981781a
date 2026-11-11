@@ -1,0 +1,36 @@
+backend/infrahub/prefect_server/app.py
+  s_fead087f95fb36::t_77007c13bf2a4f 44-45
+  s_fead087f95fb36::t_cba358a7baf3ec 98-99
+backend/tests/unit/prefect_server/test_app_retention.py
+  s_fead087f95fb36::t_fc0080b1dbd14c 291-304
+  s_fead087f95fb36::t_f2e281c512ac25 17-21
+  s_fead087f95fb36::t_fd74e2ba9c9969 290
+docs/docs/deploy-manage/run-observe/tasks.mdx
+  s_fead087f95fb36::t_95499362d85165 31
+changelog/+task-manager-retention.added.md
+  s_2ab8629d5567d5::t_659399b73fed9f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26f74d2a64a7f8feebe5170a60e3a9361981781a",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    },
+    "s_fead087f95fb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76c6b40a-0c51-4467-aa31-a8d34687261e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
