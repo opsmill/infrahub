@@ -47,7 +47,7 @@ When you create a Repository connection, Infrahub:
 1. Clones the repository to local storage
 2. Creates Git worktrees for each branch to enable parallel operations
 3. Tracks the remote branches, and creates an Infrahub branch for each new remote branch, or only for those whose names match the [selective synchronization](./branch-synchronization.mdx) rules when you configure them
-4. Runs background synchronization tasks every few seconds to detect changes
+4. Runs a background synchronization task once a minute to detect changes
 5. Parses the `.infrahub.yml` file to determine which resources to import
 
 When you merge a Proposed Change and the source branch is set to sync with Git, Infrahub merges the corresponding branch in the Git repository and pushes the result to the remote. By default this is a fast-forward when possible, so no merge commit is created (see [merging branches](#merging-branches)). Only the code tracked in Git moves; your infrastructure data stays in the graph.
@@ -107,7 +107,7 @@ This separation ensures that Git operations don't block API requests and enables
 
 **For standard Repositories:**
 
-- Background tasks poll for changes multiple times per minute
+- A background task polls for changes once a minute. While a synchronization is still running, Infrahub skips the next one
 - Each sync operation fetches from origin and compares local vs. remote state
 - New branches automatically trigger Infrahub branch creation
 - Updated branches trigger re-import of changed resources
@@ -452,7 +452,7 @@ Infrahub currently supports only single-level branch hierarchy (branches created
 
 The polling-based synchronization approach:
 
-- Provides near-real-time updates (within seconds)
+- Detects a change on the remote at the next synchronization, which Infrahub starts once a minute
 - Avoids webhook complexity and firewall issues
 - May introduce slight delays compared to push-based systems
 
