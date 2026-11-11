@@ -28,7 +28,7 @@ The tasks indicator at the top right of the Infrahub window is a noticeable feat
 
 ## Task history retention
 
-The task manager stores every task run, with its logs and artifacts, in its own PostgreSQL database. This task history is what the Tasks view lists. Every hour, the task manager deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, 30 days by default, together with their logs and artifacts. The deletion cannot be undone. Runs that are still running or pending are not deleted; see [Runs that stay running or pending](#runs-that-stay-running-or-pending).
+The task manager stores every task run, with its logs and artifacts, in its own PostgreSQL database. This task history is what the Tasks view lists. Every hour, the task manager deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, 30 days by default, together with their logs and artifacts. Each hourly pass that deletes runs logs a line in the task manager's log, or in the log of the background services when they run in a container of their own, such as `Database vacuum: deleted 1200 old flow runs, 11800 logs and 40 artifacts.` The deletion cannot be undone. Runs that are still running or pending are not deleted; see [Runs that stay running or pending](#runs-that-stay-running-or-pending).
 
 ### Set the retention
 

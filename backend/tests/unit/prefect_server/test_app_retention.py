@@ -14,7 +14,11 @@ import pytest
 from prefect.settings import get_current_settings
 
 from infrahub import config
-from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect, create_infrahub_prefect
+from infrahub.prefect_server.app import (
+    PREFECT_CLEANUP_LOGGER,
+    apply_infrahub_settings_to_prefect,
+    create_infrahub_prefect,
+)
 from tests.helpers.task_manager_retention import (
     EVENT_RETENTION_OVERRIDES,
     EVENTS_RETENTION_PERIOD,
@@ -281,6 +285,21 @@ def test_startup_logs_the_retention_prefect_applies(
         f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P14D",
         f"Task manager retention: {EVENT_RETENTION_OVERRIDES}=P1D for 1 event types",
     ]
+
+
+@pytest.mark.usefixtures("task_manager_environment")
+def test_startup_shows_each_pass_of_the_hourly_cleanup(caplog: pytest.LogCaptureFixture) -> None:
+    """Prefect logs a cleanup pass that deletes runs at INFO, which its default server log level hides."""
+    cleanup_log = logging.getLogger(PREFECT_CLEANUP_LOGGER)
+    level = cleanup_log.level
+    cleanup_log.setLevel(logging.WARNING)
+    try:
+        create_infrahub_prefect()
+        cleanup_log.info("Database vacuum: deleted 3 old flow runs, 30 logs and 0 artifacts.")
+    finally:
+        cleanup_log.setLevel(level)
+
+    assert "Database vacuum: deleted 3 old flow runs, 30 logs and 0 artifacts." in caplog.messages
 
 
 @pytest.mark.usefixtures("task_manager_environment")
