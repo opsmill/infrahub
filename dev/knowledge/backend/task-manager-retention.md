@@ -19,13 +19,13 @@ database: it sets Prefect settings, deletes rows in Prefect's existing tables, a
 | `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is already set | It is kept, and one warning per cleanup it turns off (`flow_runs`, `events`) names the retention that is not applied; an empty or blank value is removed first, because Prefect reads it as `false` |
 | `prefect_own_events` is longer than `activity_log` | Every process that loads the configuration refuses to start: the task manager and `background-services`, and the API server, the task workers and the CLI commands that load the whole configuration, because `config.py::Settings` includes the `task_manager` section. A retention outside its range stops the same processes |
 | `PREFECT__SERVER_WEBSERVER_ONLY` is set | The task manager logs at INFO that this process does not run Prefect's background services and names `infrahub tasks background-services` |
-| Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
+| Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events`. Each pass that deletes records writes a `Database vacuum:` line to the log |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
 | `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `if_freed` with `--rewrite`, and prints the runs deleted and the tables rewritten, left as mostly live, still locked, stopped at the time limit and failed with a database error; the task manager refuses it with `403`, and the CLI exits 1, when Prefect's vacuum switch does not turn on `flow_runs` |
 | `infrahub upgrade` | In its task manager step it prints the task history size and the count of old runs from `GET /infrahub/task-history/size`, with the reason when Prefect's vacuum switch keeps old task runs, or why it has no size when the size does not come within 10 s. In its last step, after the branch rebase, it runs the cleanup of `flush flow-runs --rewrite` when the task manager reported at least 100,000 old runs, and otherwise prints why it skipped; a cleanup that fails or cannot start never fails the upgrade; see the upgrade cleanup in [Task history cleanup job](#task-history-cleanup-job) |
 | The task manager has no cleanup route (an older release) | `flush flow-runs` prints that the cleanup is not provided, deletes nothing and exits 0; the upgrade reads no size from it, so it skips its cleanup and prints the command |
 | A retention is lowered | The next hourly run deletes the older records; disk space returns only with `flush flow-runs --rewrite`, which rewrites each task history and activity log table that is mostly free space |
-| A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
+| A run stays RUNNING or PENDING | Nothing deletes it until the zombie check or `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
 | A branch is deleted | `branch-purge-tasks` deletes the finished runs tagged with the branch, independently of the retention |
 | The retention deletes a flow run | Anything built on flow runs loses it: the webhook delivery history no longer lists the delivery, and a retry or cancel of it is refused with `This delivery is no longer available.`; see [ADR-0013](../../adr/0013-webhook-delivery-on-prefect-run-primitives.md) |
 | Tests on the Prefect harness | `backend/tests/helpers/constants.py` sets `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` to `[]`, which takes precedence, so Prefect's vacuum stays off, the task manager logs both turned-off-cleanup warnings, and an event query that sets no start reads 180 days back |
@@ -81,8 +81,10 @@ prefix. `prefect_server/retention.py` turns it into Prefect variables:
 
 ## Task history cleanup job
 
-Prefect's flow-run vacuum deletes the hourly increment well, but it deletes a large backlog roughly
-18 times slower than set-based deletes, and it slows down as it goes. The cleanup job deletes the
+Prefect's flow-run vacuum deletes the hourly increment well, but it deletes a large backlog about
+6 times slower than set-based deletes (1 h 50 min against 17 to 20 minutes on 25.8 GB of task
+history in CI; 18 times slower in a local benchmark of an earlier version), and it slows down as
+it goes. The cleanup job deletes the
 backlog with set-based SQL inside the task manager, the only process connected to Prefect's
 database, and can then rewrite the tables to return the disk space.
 
@@ -233,7 +235,8 @@ The hourly vacuum deletes only runs in a terminal state with an end time, so a r
 PENDING by a dead worker stays. Two mechanisms move such runs to CRASHED, and Prefect's global
 policy then records an end time, after which the vacuum deletes them like any other finished run:
 
-- The `crash-zombie-flows` automation crashes a run whose heartbeats stop; see
+- The `crash-zombie-flow-runs` flow, run every 5 minutes, crashes a RUNNING run whose heartbeats
+  stop; see
   [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
 - `infrahub tasks flush stale-runs` calls `FlowRunRetention.purge(delete=False)` through Prefect's
   API: RUNNING or PENDING runs whose start time is older than `--days-to-keep` (2 by default) are

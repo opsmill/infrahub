@@ -54,7 +54,7 @@ Request gains:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field added by PR #10379, kept under its name and default) |
+| `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field first proposed in PR #10379, which is still an open draft; this pull request adds it under the same name and default) |
 | `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention, or at least 180 days when it does not delete old events | Widest time window; an explicit value must be positive and at most 31,536,000 seconds (365 days) |
 
 Behaviour changes:
@@ -65,7 +65,7 @@ Behaviour changes:
 - A filter that sets `occurred.since` is read from that start instead of the retention; the Infrahub server leaves `since` out of the request when the caller did not set it.
 - A window or retention that reaches before 0001-01-01T00:00:00 UTC starts at that time, so the request returns the events up to `occurred.until` instead of failing.
 - A filter in ascending order is read in one query over the whole range.
-- Every query runs with a plan per query (PR #10379).
+- Every query runs with a plan per query (first proposed in PR #10379, which is still an open draft; carried in this pull request).
 - Response `total` becomes nullable.
 
 ## GraphQL `InfrahubEvent` (no new or changed arguments)
