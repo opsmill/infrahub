@@ -10,7 +10,7 @@ Style: be direct and substantive. Challenge flawed approaches and ask before gue
 
 Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/package.json` / `frontend/app/package.json` (frontend).
 
-- **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
+- **Backend:** Python 3.14, FastAPI, Neo4j 2026.10 (driver 6), Pydantic 2
 - **Frontend:** TypeScript 6, React 19, Vite 8, Tailwind CSS 4
 - **Testing:** pytest 9, Vitest 5, Playwright
 - **Linting:** ruff, mypy 2, Biome 2
