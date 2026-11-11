@@ -85,6 +85,9 @@ async def shared_waits_while_another_worker_holds_it_exclusively(
     shared_release.set()
     await asyncio.wait_for(asyncio.gather(exclusive, holder), timeout=TIMEOUT_SECONDS)
 
+    assert not await worker_a.get(name=name).locked()
+    assert not await worker_a.shared_holder_store.has_holders(key=get_shared_holders_key(name=name))
+
 
 async def the_record_of_a_holder_that_stopped_renewing_it_expires(worker: InfrahubLockRegistry) -> None:
     name = unique_lock_name()
