@@ -182,6 +182,7 @@ class InfrahubDatabase:
         self._is_session_local: bool = False
         self._transaction: AsyncTransaction | None = transaction
         self._transaction_holds: AsyncExitStack | None = None
+        self._transaction_task: asyncio.Task[Any] | None = None
         self.default_neo4j_runtime = default_neo4j_runtime
         self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
@@ -304,6 +305,7 @@ class InfrahubDatabase:
             session = await self.session()
             self._transaction = await session.begin_transaction()
             self._transaction_holds = AsyncExitStack()
+            self._transaction_task = asyncio.current_task()
 
         return self
 
@@ -315,11 +317,15 @@ class InfrahubDatabase:
         """Enter `context` and exit it once the transaction commits or rolls back.
 
         Raises:
-            RuntimeError: When no transaction was opened on this object with `async with`.
+            RuntimeError: When no transaction was opened on this object with `async with`, or when a task other
+                than the one that opened the transaction calls it.
 
         """
         if self._transaction_holds is None:
             raise RuntimeError("No database transaction is open to hold the context until it ends")
+        # Locks record their holder per task, so a context entered by another task cannot be exited at the end.
+        if asyncio.current_task() is not self._transaction_task:
+            raise RuntimeError("Only the task that opened the database transaction can hold a context until it ends")
         await self._transaction_holds.enter_async_context(context)
 
     def _get_open_session(self) -> AsyncSession:
@@ -362,6 +368,7 @@ class InfrahubDatabase:
     async def _release_transaction_holds(self) -> None:
         """Exit every context held until the transaction ended; raises nothing but cancellation."""
         holds, self._transaction_holds = self._transaction_holds, None
+        self._transaction_task = None
         if holds is None:
             return
         try:

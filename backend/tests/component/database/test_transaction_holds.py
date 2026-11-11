@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -70,6 +71,20 @@ async def test_a_held_context_failing_to_exit_leaves_the_commit_in_place(db: Inf
             params={"id": marker},
         )
     assert [result["deleted"] for result in results] == [1]
+
+
+async def test_a_task_other_than_the_one_that_opened_the_transaction_cannot_hold_a_context(
+    db: InfrahubDatabase,
+) -> None:
+    recorded = RecordedHold()
+
+    async with db.start_transaction() as dbt:
+        with pytest.raises(
+            RuntimeError, match=r"^Only the task that opened the database transaction can hold a context until it ends$"
+        ):
+            await asyncio.create_task(dbt.hold_until_transaction_end(recorded.hold()))
+
+    assert recorded.events == []
 
 
 async def test_a_session_cannot_hold_a_context_until_a_transaction_ends(db: InfrahubDatabase) -> None:
