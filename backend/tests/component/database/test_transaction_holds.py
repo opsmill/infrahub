@@ -55,6 +55,21 @@ async def failing_release() -> AsyncGenerator[None]:
     raise ConnectionError("cache unreachable")
 
 
+@asynccontextmanager
+async def cancelled_release() -> AsyncGenerator[None]:
+    yield
+    raise asyncio.CancelledError("cancelled while releasing")
+
+
+async def test_a_cancellation_while_releasing_a_held_context_still_closes_the_session(db: InfrahubDatabase) -> None:
+    with pytest.raises(asyncio.CancelledError, match=r"^cancelled while releasing$"):
+        async with db.start_transaction() as dbt:
+            session = await dbt.session()
+            await dbt.hold_until_transaction_end(cancelled_release())
+
+    assert session.closed()
+
+
 async def test_a_held_context_failing_to_exit_leaves_the_commit_in_place(db: InfrahubDatabase) -> None:
     recorded = RecordedHold()
     marker = str(uuid.uuid4())

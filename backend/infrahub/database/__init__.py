@@ -311,6 +311,7 @@ class InfrahubDatabase:
 
     @property
     def can_hold_until_transaction_end(self) -> bool:
+        """Whether a transaction is open on this object; only the task that opened it can hold a context."""
         return self._transaction_holds is not None
 
     async def hold_until_transaction_end(self, context: AbstractAsyncContextManager[object]) -> None:
@@ -361,9 +362,11 @@ class InfrahubDatabase:
                     finally:
                         await transaction.close()
             finally:
-                await self._release_transaction_holds()
-                if self._is_session_local:
-                    await self._get_open_session().close()
+                try:
+                    await self._release_transaction_holds()
+                finally:
+                    if self._is_session_local:
+                        await self._get_open_session().close()
 
     async def _release_transaction_holds(self) -> None:
         """Exit every context held until the transaction ended; raises nothing but cancellation."""
