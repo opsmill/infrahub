@@ -243,7 +243,7 @@ class RepositoryAdder:
         self._client = client
 
     async def add(self, model: GitRepositoryAdd, activity: ActivityRun) -> AddedRepository:
-        """Clone the repository and import its default branch.
+        """Clone the repository, unless this worker holds a usable copy already, and import its default branch.
 
         A failed default-branch import is returned rather than raised, so the caller can still
         synchronize the other branches. The import is skipped when the graph already holds the cloned
@@ -252,14 +252,13 @@ class RepositoryAdder:
         """
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
             await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
-            repo = await InfrahubRepository.new(
+            # A copy that another flow on this worker cloned is kept, because that flow's import may still read it.
+            repo = await InfrahubRepository.init(
                 id=model.repository_id,
                 name=model.repository_name,
                 location=model.location,
                 client=self._client,
                 infrahub_branch_name=model.infrahub_branch_name,
-                # Recorded below, once the graph is known not to hold or import the commit already.
-                update_commit_value=False,
             )
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
             repo.create_commit_worktree(commit=default_commit)
@@ -269,6 +268,8 @@ class RepositoryAdder:
                     f"Skipped the import of the default branch {repo.default_branch} of repository "
                     f"{repo.name}: commit {default_commit} is already imported or being imported"
                 )
+                # The flow that imports the commit records the outcome of the branch.
+                activity.keep_last_run()
                 return AddedRepository(repository=repo, import_error=None)
             await repo.record_commit_for_import(branch_name=model.infrahub_branch_name, commit=default_commit)
 

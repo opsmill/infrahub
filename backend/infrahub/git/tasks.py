@@ -550,7 +550,8 @@ class BootstrappedRepository:
 
     repository: InfrahubRepository
     recorded_commit: str | None
-    """The commit the graph records on the seeded branch once the bootstrap ran, or None when it seeded nothing."""
+    """The commit that the bootstrap imported, or found imported or being imported, on the seeded branch; None when it
+    imported none, its import failed or the branch refuses a commit write."""
 
 
 async def bootstrap_local_repository(
@@ -572,8 +573,9 @@ async def bootstrap_local_repository(
     seed import. While the repository has pending pushes, a fresh clone that seeds the default branch
     records no commit and skips the seed import, because the import would remove the objects of the
     pending merges. A fresh clone of a commit the graph already holds imported, or is importing, skips
-    the seed import, because another worker or the add flow imports it. A seed import of the first
-    commit of a repository sends the event of that commit, which no other flow then sends.
+    the seed import, because another worker or the add flow imports it. A seed import that records a
+    commit on a branch where the graph recorded none sends the event of that commit, which no other
+    flow then sends.
 
     Args:
         branch_accepts_commit: Whether `infrahub_branch` accepts a commit write. When it does not, the clone
@@ -668,8 +670,11 @@ async def bootstrap_local_repository(
         except (RepositoryConnectionError, RepositoryCredentialsError) as exc:
             log.info(exc.message)
             return None
+        # The syncer of this cycle compares against the recorded commit, so a failed import must not be recorded.
+        if import_error is not None:
+            recorded_commit = None
         # A reinitialized copy announces no commit, and the add flow skips a commit this seed imports.
-        if import_error is None and announces_first_commit:
+        elif announces_first_commit:
             await repo.announce_commit_update(infrahub_branch_name=infrahub_branch, commit=pending_import.commit)
 
     return BootstrappedRepository(repository=repo, recorded_commit=recorded_commit)

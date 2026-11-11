@@ -402,12 +402,16 @@ sets the branch back to `syncing` after the first one set it to `in-sync`.
 - **Check before the flow's own write.** The add flow clones without recording and records the commit
   after the check. The seed import checks only a reinitialized copy, because the fallback clone after
   a failed `init()` records its commit while it clones.
+- **Keep a copy that this worker holds already.** The add flow reuses a usable copy instead of cloning
+  over it, because the seed import that cloned it may still read its files and would then import too
+  few objects or fail after the add flow skipped.
 - **Send the commit event from a seed import of a first commit.** The add flow skips a commit the seed
   imported, so a seed import that records the first commit of a repository sends `CommitUpdatedEvent`
   itself once it succeeds (`InfrahubRepositoryIntegrator.announce_commit_update`).
 - **Give the cycle the seeded commit only when its earlier read held none.** The cycle reads the
   commits before the bootstrap, so without it the syncer imports the seeded commit again
-  (`BootstrappedRepository.recorded_commit`). An earlier commit is kept, so a fresh clone of a
+  (`BootstrappedRepository.recorded_commit`). A seed import that failed gives no commit, so the syncer
+  of the same cycle imports the branch again. An earlier commit is kept, so a fresh clone of a
   rewritten remote is still recorded as a rewrite.
 
 ## Repository activity records
