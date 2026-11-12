@@ -14,9 +14,35 @@ When a merge starts, Infrahub blocks writes to the branch and to the default bra
 
 - A conflict with no resolution selected
 - A delete-versus-modify conflict, which no choice of side can clear
-- A constraint violation, such as a duplicate value in a unique attribute
+- A constraint violation, such as a duplicate value in a unique attribute, or a node on the default branch that does not comply with a schema change made on the branch; see [Schema changes on the branch that the default branch's data breaks](#schema-changes-on-the-branch-that-the-default-branchs-data-breaks)
 
 A merge is not one database transaction. It either completes or is rolled back. If the merge is interrupted, for example because the worker running it stops, Infrahub marks the branch `MERGE_FAILED` until an administrator runs `infrahub recover merge`; see [When a merge fails](#when-a-merge-fails).
+
+## Schema changes on the branch that the default branch's data breaks
+
+When the branch changed the schema since it was created or last rebased, Infrahub checks each of those schema changes against the data that the merge would produce: the current data of the default branch, with the changes of the branch taking precedence. Infrahub refuses the merge when a node does not comply with one of these schema changes made on the branch:
+
+- An attribute made unique, or a uniqueness constraint added
+- An attribute made mandatory
+- A mandatory attribute added without a default value
+- A mandatory relationship added
+- The kind of an attribute changed, for example from `Text` to `Number`
+- A regular expression, an enum or a length limit added or changed
+- An element of a number pool's allocation scope removed or made optional while the pool exists; see [Schema changes refused while a pool uses an element](../resource-manager/allocate-numbers-per-scope.mdx#schema-changes-refused-while-a-pool-uses-an-element)
+
+The error message lists each violation. It names the kind, each node that does not comply and, for a check that reads a value, the value:
+
+```text
+Attribute-level 'enum' constraint violation on schema 'InfraInterface'. Node (InfraInterface: <id>) is not compliant. The error relates to field speed='fast'.
+```
+
+A refused merge changes nothing: the branch stays open, and the schema and data of both branches are unchanged. Change or delete the nodes on the default branch that do not comply, or change the schema on the branch, then merge again.
+
+These checks have limits:
+
+- A dropdown choice removed on the branch is not checked against the nodes created on the default branch after the branch was created or last rebased.
+- A schema change made on the default branch after the branch was created or last rebased is not always checked against the nodes of the branch.
+- The **Schema Integrity** check of a Proposed Change reads the default branch as it was when the branch was created or last rebased, so it can pass while the merge is refused.
 
 ## Before the merge starts: repository imports
 

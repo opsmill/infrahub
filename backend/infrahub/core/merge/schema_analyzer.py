@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -120,4 +121,13 @@ class MergeSchemaAnalyzer:
     async def calculate_validations(self, target_schema: SchemaBranch) -> list[SchemaUpdateConstraintInfo]:
         diff_3way = await self.get_3ways_diff_schema()
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
+        return validation.constraints
+
+    async def calculate_source_validations(self, target_schema: SchemaBranch) -> list[SchemaUpdateConstraintInfo]:
+        """Return the constraints of the source branch's own schema changes, including those their migrations bring."""
+        common_ancestor_schema = await self.get_common_ancestor_schema()
+        validation = SchemaUpdateValidationResult.init(
+            diff=common_ancestor_schema.diff(other=self.source_schema), schema=target_schema
+        )
+        validation.add_validator_for_migration(validator_map=CONSTRAINT_VALIDATOR_MAP)
         return validation.constraints

@@ -286,3 +286,59 @@ async def test_merge_update_schema(
         ],
         key=lambda x: x.path.get_path(),
     )
+
+
+async def test_source_validations_hold_the_branch_changes_with_their_migration_validators(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_schema_db: None,
+    car_accord_main: Node,
+    person_john_main: Node,
+) -> None:
+    schema_main = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.update_schema_branch(
+        db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
+    )
+    branch2 = await create_branch(db=db, branch_name="branch2")
+
+    schema_main = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema_main = schema_main.get(name="TestCar")
+    car_schema_main.attributes.append(AttributeSchema(name="serial", kind="Text", optional=False))
+    schema_main.set(name="TestCar", schema=car_schema_main)
+    schema_main.process()
+    await registry.schema.update_schema_branch(
+        db=db, branch=default_branch, schema=schema_main, limit=["TestCar"], update_db=True
+    )
+
+    schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    person_schema_branch = schema_branch.get(name="TestPerson")
+    height_attr = person_schema_branch.get_attribute(name="height")
+    height_attr.unique = True
+    height_attr.optional = False
+    person_schema_branch.attributes.append(AttributeSchema(name="nickname", kind="Text", optional=False))
+    schema_branch.set(name="TestPerson", schema=person_schema_branch)
+    schema_branch.process()
+    await registry.schema.update_schema_branch(
+        db=db, branch=branch2, schema=schema_branch, limit=["TestPerson"], update_db=True
+    )
+    schema_analyzer = await _get_schema_analyzer(db=db, source_branch=branch2, destination_branch=default_branch)
+
+    validations = await schema_analyzer.calculate_source_validations(
+        target_schema=schema_analyzer.get_candidate_schema()
+    )
+
+    assert sorted(
+        (
+            validation.constraint_name,
+            validation.path.schema_kind,
+            validation.path.field_name,
+            validation.path.property_name,
+        )
+        for validation in validations
+    ) == [
+        ("attribute.optional.update", "TestPerson", "height", "optional"),
+        ("attribute.unique.update", "TestPerson", "height", "unique"),
+        ("node.attribute.add", "TestPerson", "nickname", None),
+        ("node.hierarchical.update", "CoreGroup", "hierarchical", "hierarchical"),
+        ("node.uniqueness_constraints.update", "TestPerson", "uniqueness_constraints", "uniqueness_constraints"),
+    ]
