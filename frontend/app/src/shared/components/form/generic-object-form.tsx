@@ -22,7 +22,7 @@ export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectForm
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <GenericSelector
         currentKind={genericSchema.kind as string}
         kindInheritingFromGeneric={genericSchema.used_by}
@@ -31,6 +31,6 @@ export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectForm
       />
 
       {kindToCreate && <ObjectForm key={kindToCreate} kind={kindToCreate} {...props} />}
-    </>
+    </div>
   );
 };

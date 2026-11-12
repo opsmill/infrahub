@@ -85,15 +85,19 @@ export function DynamicFields({ fields, sections }: Pick<DynamicFormProps, "fiel
     return <DynamicFieldList fields={fields} />;
   }
 
-  return fieldSections.map((section) => (
-    <FormSectionPanel
-      key={section.container.name}
-      label={section.container.label}
-      description={section.container.description}
-    >
-      <DynamicFieldList fields={section.items} />
-    </FormSectionPanel>
-  ));
+  return (
+    <div className="flex flex-col gap-3">
+      {fieldSections.map((section) => (
+        <FormSectionPanel
+          key={section.container.name}
+          label={section.container.label}
+          description={section.container.description}
+        >
+          <DynamicFieldList fields={section.items} />
+        </FormSectionPanel>
+      ))}
+    </div>
+  );
 }
 
 export const DynamicField = (props: DynamicFieldProps) => {
