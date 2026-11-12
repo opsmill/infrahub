@@ -12,6 +12,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipD
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.branch_windows import build_branch_windows_query, render_outranks, render_window_filter
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.schema.order_by import (
     OrderByTargetKind,
@@ -117,6 +118,7 @@ class RelationshipPeersData:
     source_kind: str
     destination_id: UUID
     destination_kind: str
+    window_name: str | None = None
 
     def reversed(self) -> RelationshipPeersData:
         return RelationshipPeersData(
@@ -126,6 +128,7 @@ class RelationshipPeersData:
             source_kind=self.destination_kind,
             destination_id=self.source_id,
             destination_kind=self.source_kind,
+            window_name=self.window_name,
         )
 
 
@@ -1126,8 +1129,18 @@ class RelationshipGetByIdentifierQuery(Query):
         identifiers: list[str] | None = None,
         full_identifiers: list[FullRelationshipIdentifier] | None = None,
         excluded_namespaces: list[str] | None = None,
+        window_source_ids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
+        """Read the links that have one of the identifiers.
+
+        With `window_source_ids`, read only the links of these nodes, once per live branch window in which both
+        `IS_RELATED` edges are the latest and active and both nodes exist, and set the window's name on each row.
+
+        Raises:
+            ValueError: Neither or both of `identifiers` and `full_identifiers` are given.
+
+        """
         if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
             raise ValueError("one and only one of identifiers or full_identifiers is required")
 
@@ -1138,6 +1151,7 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
+        self.window_source_ids = window_source_ids
 
         super().__init__(**kwargs)
 
@@ -1147,6 +1161,10 @@ class RelationshipGetByIdentifierQuery(Query):
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
         ]
         self.params["excluded_namespaces"] = self.excluded_namespaces
+        if self.window_source_ids is not None:
+            self._init_in_windows(source_ids=self.window_source_ids)
+            return
+
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
 
@@ -1175,6 +1193,45 @@ class RelationshipGetByIdentifierQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["src", "dst", "rl"]
 
+    def _init_in_windows(self, source_ids: list[str]) -> None:
+        windows_query, windows_params = build_branch_windows_query(at=self.at, enabled=True)
+        self.params.update(windows_params)
+        self.params["source_ids"] = source_ids
+
+        query = """
+        %(windows_query)s
+        MATCH (src:Node)
+        WHERE src.uuid IN $source_ids
+        AND NOT src.namespace IN $excluded_namespaces
+        MATCH (src)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
+        WHERE rl.name IN $identifiers
+        AND (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] IN $full_identifiers)
+        AND NOT dst.namespace IN $excluded_namespaces
+        AND r1.status = "active" AND r1.from <= $windows_at
+        AND r2.status = "active" AND r2.from <= $windows_at
+        WITH DISTINCT branch_windows, src, rl, dst
+        // Each edge group is read once, so testing it in every window reads nothing more
+        WITH branch_windows, src, rl, dst, [
+            [(src)-[r:IS_RELATED]-(rl) | r {%(edge_fields)s}],
+            [(rl)-[r:IS_RELATED]-(dst) | r {%(edge_fields)s}],
+            [(src)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}],
+            [(dst)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]
+        ] AS edge_groups
+        UNWIND branch_windows AS window
+        WITH src, rl, dst, window, edge_groups
+        WHERE all(edges IN edge_groups WHERE any(edge IN edges WHERE edge.status = "active" AND %(edge_visible)s
+            AND none(r IN edges WHERE %(competitor_visible)s AND %(outranks)s)))
+        WITH src {.uuid, .kind} AS src, dst {.uuid, .kind} AS dst, rl {.uuid, .name} AS rl, window.name AS window_name
+        """ % {
+            "windows_query": windows_query,
+            "edge_fields": ".branch, .branch_level, .from, .to, .status",
+            "edge_visible": render_window_filter(edge="edge"),
+            "competitor_visible": render_window_filter(edge="r"),
+            "outranks": render_outranks(edge="edge"),
+        }
+        self.add_to_query(query)
+        self.return_labels = ["src", "dst", "rl", "window_name"]
+
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
         for result in self.get_results():
             data = RelationshipPeersData(
@@ -1184,6 +1241,7 @@ class RelationshipGetByIdentifierQuery(Query):
                 source_kind=result.get("src").get("kind"),
                 destination_id=result.get("dst").get("uuid"),
                 destination_kind=result.get("dst").get("kind"),
+                window_name=result.get_as_type("window_name", str) if self.window_source_ids is not None else None,
             )
             yield data
 
