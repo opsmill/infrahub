@@ -32,8 +32,6 @@ For more information, see our [Infrahub overview](../overview/overview.mdx).
 
 If you're new to infrastructure automation, Infrahub is a great place to start. It lets you store the intended state of your infrastructure, this is a crucial foundation for any automation you build later. From this intended state, you can generate configurations directly within Infrahub, and also use the data for resource planning, service deployment, invoicing, and more.
 
-Check out the [blog section on our website](https://opsmill.com/blog/) to learn more about our vision and dive deeper into infrastructure automation.
-
 ### How can I see Infrahub in action?
 
 You have many options to quickly try out Infrahub, please refer to the [Explore Infrahub](../overview/explore.mdx) page for more details.
@@ -41,7 +39,7 @@ You have many options to quickly try out Infrahub, please refer to the [Explore 
 Here are some quick ways to get started:
 
 - [Infrahub Sandbox](https://sandbox.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
-- [Getting Started Lab](https://opsmill.instruqt.com/pages/labs) - Online lab to see all Infrahub fundamentals in action.
+- [Getting Started Lab](https://docs.infrahub.app/labs) - Online lab to see all Infrahub fundamentals in action.
 
 ### What are the deployment options for Infrahub?
 
@@ -153,9 +151,7 @@ In production, the most commonly monitored signals are API request latency, late
 
 ### Does the web interface have a dark theme?
 
-Yes, as a pre-release feature. The dark theme is gated behind the `INFRAHUB_EXPERIMENTAL_DARK_THEME` setting (see the [configuration reference](../reference/configuration)): with the setting enabled, the interface follows your operating system's appearance, and the Theme option in the account menu at the bottom of the sidebar switches between System, Light, and Dark, marked *alpha*. The choice is remembered per browser. With the setting disabled — the default — the interface is light-only.
-
-While the theme is in alpha, some surfaces may still render with incorrect colours. Development deployments started from the repository's compose file enable it by default so those get found; production deployments stay light unless an operator opts in.
+Yes, as an alpha feature, so some pages may still show incorrect colors. The **Theme** option in the account menu, at the bottom of the sidebar, offers System, Light, and Dark. System is the default and follows your operating system's appearance.
 
 ### How does Infrahub handle authentication and access control?
 
@@ -235,7 +231,11 @@ The following information is included in telemetry:
 - Infrahub version, deployment type, and platform (Python / OS / architecture)
 - Anonymous counters about the graph, schema, and features in use
 - Adoption counts: active accounts, account groups, and open branches
-- Database, worker, and infrastructure statistics
+- Database, worker, and infrastructure statistics, including the type and version of the task manager database
+- CPU cores and memory that the database, API server, and workers can use, plus:
+  - For the API server and workers, the CPU limit set on their container, once one is set
+  - For the database, the number of cores it can use for parallel queries, once that number is configured
+  - For the database, the heap and page cache sizes it is configured with, once they are set
 - Daily activity over the previous day: logins, validation checks, artifact generation, branch operations, and webhook deliveries
 
 This information is used as aggregated analysis to better understand what and how to improve the project. All information collected is anonymous and the implementation is open source on GitHub.

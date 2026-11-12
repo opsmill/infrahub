@@ -22,13 +22,11 @@ def get_node(db, node_id):
 
 ## Module layout
 
-### constants.py holds constants only
+### Constants
 
-Do not put functions or classes in a file named `constants.py` — only module-level constant values (plain literals, enums, frozen containers). A value that must be computed, read from the environment, or resolved at runtime is not a constant; give it a home in a purpose-named module (e.g. `limits.py`, `settings.py`) instead.
+Follow [Constants and literals](../constants.md) when creating or reusing values that encode a rule.
 
-Why: readers grep and import from `constants.py` expecting inert values with no behavior and no import-time or call-time side effects. A function hiding there muddies that contract and gets overlooked when reasoning about runtime behavior.
-
-If the value genuinely never changes at runtime, prefer an actual constant over a function returning one.
+Keep `constants.py` limited to module-level values (plain literals, enums, frozen containers); do not put functions or other classes there. Prefer a constant over a function returning a fixed value. Put environment reads and runtime computation in a purpose-named module such as `settings.py` or `limits.py`, so importing constants has no behavioral side effects.
 
 ### Imports
 
@@ -78,7 +76,9 @@ by several routes, so cutting one edge rarely frees it. Then fix the dependency 
 - Depend on the narrower interface the code actually uses: a lock that only calls `service.cache`
   takes the cache adapter, not the services container that owns it.
 - When the import only served a runtime `isinstance`, give each accepted type its own parameter so
-  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import.
+  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import. This does not apply
+  when the types are two backends for the same role: those go behind one interface (see
+  [Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations)).
 - Move a helper next to its only caller when that module already sits at the right layer.
 
 ```python
@@ -251,6 +251,19 @@ if offset:
 # ✅ Good - zero is bound like any other value
 if offset is not None:
     query += " SKIP $offset"
+```
+
+`None` must mean one thing. When an optional parameter's `None` would carry two readings — "the value
+is known to be absent" and "the value is unknown, go look it up" — the function is hiding two
+contracts. Split it into two methods, one per contract, and share the common logic privately:
+
+```python
+# ❌ Bad - checksum=None means both "artifact has none: refuse" and "unknown: query for it"
+async def read(self, storage_id: str, checksum: str | None = None) -> bytes: ...
+
+# ✅ Good - one contract each
+async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes: ...  # absent → refuse
+async def read_stored_object(self, storage_id: str) -> bytes: ...                   # look up the recorded checksum
 ```
 
 When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with

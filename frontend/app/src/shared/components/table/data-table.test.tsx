@@ -1,5 +1,7 @@
+import { ScrollArea } from "@infrahub/ui";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { describe, expect, test } from "vitest";
+import type { JSX } from "react";
+import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { DataTable } from "@/shared/components/table/data-table";
 import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
@@ -148,26 +150,63 @@ describe("DataTable first column overflow", () => {
     expect(marker.getBoundingClientRect().width).toBeGreaterThan(0);
   });
 
-  test("keeps the sticky footer above the sticky row actions", async () => {
-    // GIVEN a table that renders its count footer
-    await render(
-      <div className="w-150 overflow-x-auto">
-        <DataTable columns={columns} data={rows} count={rows.length} />
+  test("shows the count footer over the rows and columns scrolled behind it", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <div className="h-60 w-40 overflow-auto" data-testid="scroller">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
       </div>
     );
+    const scroller = component.getByTestId("scroller").element();
 
-    // THEN every footer cell outranks the sticky action cells, so the last row's
-    // action menu cannot punch through the count bar.
-    const grid = document.querySelector('[style*="grid-template-columns"]')!;
-    const footerCells = [...grid.children].filter(
-      (el) => getComputedStyle(el).position === "sticky" && getComputedStyle(el).bottom === "0px"
+    // WHEN
+    scroller.scrollLeft = scroller.scrollWidth;
+
+    // THEN
+    expect(scroller.scrollLeft).toBeGreaterThan(0);
+
+    const countLabel = component.getByText(/^counts?$/).element();
+    const countRect = countLabel.getBoundingClientRect();
+    const footerY = countRect.top + countRect.height / 2;
+    const topmostOverCount = document.elementFromPoint(
+      countRect.left + countRect.width / 2,
+      footerY
     );
-    expect(footerCells.length).toBeGreaterThan(0);
+    expect(countLabel.contains(topmostOverCount)).toBe(true);
 
-    const actionsZ =
-      Number(getComputedStyle(document.querySelector('[data-testid="actions-cell"]')!).zIndex) || 0;
-    for (const cell of footerCells) {
-      expect(Number(getComputedStyle(cell).zIndex) || 0).toBeGreaterThan(actionsZ);
+    const visibleRight =
+      scroller.getBoundingClientRect().left + scroller.clientLeft + scroller.clientWidth;
+    const topmostOverActions = document.elementFromPoint(visibleRight - 10, footerY);
+    expect(topmostOverActions?.closest('[data-testid="actions-cell"]')).toBeNull();
+  });
+
+  test("keeps both scrollbars above the sticky footer and row actions", async () => {
+    // GIVEN
+    const manyRows = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index),
+      __typename: "TestingOverflowDemo",
+      label: SHORT_LABEL,
+    }));
+    const component = await render(
+      <ScrollArea scrollX type="always" className="h-60 w-40">
+        <DataTable columns={columns} data={manyRows} count={manyRows.length} />
+      </ScrollArea>
+    );
+
+    // THEN
+    for (const orientation of ["horizontal", "vertical"]) {
+      const scrollbar = component.container.querySelector(`[data-orientation="${orientation}"]`)!;
+      const rect = scrollbar.getBoundingClientRect();
+      const topmost = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2
+      );
+      expect(scrollbar.contains(topmost), orientation).toBe(true);
     }
   });
 
@@ -224,6 +263,61 @@ describe("DataTable first column tooltip", () => {
 
     // THEN
     await expect.element(component.getByRole("tooltip", { name: LONG_LABEL })).toBeVisible();
+  });
+});
+
+describe("DataTable rows that are not nodes", () => {
+  interface CommitRow {
+    hash: string;
+    summary: string;
+  }
+
+  const commitColumns: ColumnDef<CommitRow>[] = [
+    {
+      id: "hash",
+      header: () => <div>Hash</div>,
+      cell: ({ row }) => <div>{row.original.hash}</div>,
+    },
+    {
+      id: "summary",
+      header: () => <div>Summary</div>,
+      cell: ({ row }) => <div>{row.original.summary}</div>,
+    },
+  ];
+
+  test("renders rows that carry no id when given getRowId", async () => {
+    // GIVEN
+    const commits: CommitRow[] = [
+      { hash: "a1b2c3d", summary: "Add device inventory" },
+      { hash: "e5f6a7b", summary: "Initial import" },
+    ];
+
+    // WHEN
+    const component = await render(
+      <DataTable columns={commitColumns} data={commits} getRowId={(commit) => commit.hash} />
+    );
+
+    // THEN
+    const rows = component.getByTestId("data-table-row");
+    expect(rows.elements()).toHaveLength(2);
+    await expect.element(rows.nth(0).getByText("Add device inventory")).toBeVisible();
+    await expect.element(rows.nth(1).getByText("e5f6a7b")).toBeVisible();
+  });
+
+  test("rejects row selection on non-node rows at the type level", () => {
+    const commits: CommitRow[] = [];
+
+    const table = (
+      <DataTable
+        columns={commitColumns}
+        data={commits}
+        getRowId={(commit: CommitRow) => commit.hash}
+        // @ts-expect-error rows that are not nodes cannot be selected
+        enableRowSelection
+      />
+    );
+
+    expectTypeOf(table).toEqualTypeOf<JSX.Element>();
   });
 });
 

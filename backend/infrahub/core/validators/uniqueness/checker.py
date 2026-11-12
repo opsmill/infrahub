@@ -4,6 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import PathType
+from infrahub.core.constants.schema import SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
@@ -35,8 +36,11 @@ if TYPE_CHECKING:
 def get_attribute_path_from_string(
     path: str, schema: MainSchemaTypes
 ) -> tuple[AttributeSchema | RelationshipSchema, str | None]:
-    if "__" in path:
-        name, property_name = path.split("__")
+    path_parts = path.split("__")
+    if len(path_parts) > SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS:
+        raise ValueError(f"{path} is not valid on {schema.kind}")
+    if len(path_parts) == SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS:
+        name, property_name = path_parts
     else:
         name, property_name = path, None
     attribute_schema = schema.get_attribute_or_none(name=name)

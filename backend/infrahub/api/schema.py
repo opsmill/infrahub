@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from infrahub_sdk.schema.generated.read import (
@@ -71,7 +71,8 @@ from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
 from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from collections.abc import Sequence
+    from typing import Self
 
     from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
@@ -223,7 +224,7 @@ def evaluate_candidate_schemas(
         schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
 
         candidate_schema.load_schema(schema=schema)
-        candidate_schema.process()
+        candidate_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
 
         schema_diff = branch_schema.diff(other=candidate_schema)
         candidate_schema.validate_node_deletions(diff=schema_diff)

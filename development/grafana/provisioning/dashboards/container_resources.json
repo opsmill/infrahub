@@ -145,7 +145,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "expr": "sum(rate(container_network_receive_bytes_total{id!=\"\"}[1m])) by (id)",
@@ -211,7 +211,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "localprometheus"
+            "uid": "${datasource_prometheus}"
           },
           "editorMode": "code",
           "exemplar": false,

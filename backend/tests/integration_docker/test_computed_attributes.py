@@ -187,7 +187,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         final_display_label = "Explorer - Sunrise"
         first_hfid = ["Explorer", "Sunset"]
         final_hfid = ["Explorer", "Sunrise"]
-        data = {
+        data: dict[str, str | InfrahubNode] = {
             "name": "Sunset",
             "description": "A bold, vibrant orange that captures the warmth of the setting sun.",
         }
@@ -270,6 +270,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_transform_based_computed_attribute(self, client: InfrahubClient, remote_repos_dir: Path) -> None:
         src_directory = CURRENT_DIRECTORY / "test_files/repos/computed_attribute"
         repo = GitRepo(name="computed_attribute", src_directory=src_directory, dst_directory=remote_repos_dir)
+        assert repo._repo is not None
         commit = repo._repo.git[repo._repo.git.head()]
         assert len(list(repo._repo.git.get_walker())) == 1
         assert isinstance(commit, Commit)
@@ -564,6 +565,40 @@ class TestComputedAttributes(TestInfrahubDockerClient):
                 break
 
         assert description == expected
+
+    async def test_python_computed_attribute_renders_on_more_than_one_branch(self, client: InfrahubClient) -> None:
+        """A repository-backed Python transform renders on a branch as well as on the default branch.
+
+        The repository commit that pins the transform is resolved once per branch; a branch left out
+        of that resolution gets no automation and its objects keep an empty value.
+        """
+        branch = await client.branch.create(branch_name="python-per-branch")
+
+        branch_site = await client.get(kind="LocationSite", hfid=["par"], branch=branch.name)
+        branch_device = await client.create(
+            kind="InfraDevice",
+            branch=branch.name,
+            data={"device_type": "switch", "instance": 11, "site": branch_site},
+        )
+        await branch_device.save()
+
+        branch_device_name = ""
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            branch_device_name = (
+                await client.get(kind="InfraDevice", id=branch_device.id, branch=branch.name, include=["name"])
+            ).name.value
+            if branch_device_name:
+                break
+
+        assert branch_device_name == "france-par-switch-11"
+
+        # The device the default branch already carries keeps the value its own transform run
+        # produced, and the branch-only device never reaches it.
+        main_devices = await client.all(kind="InfraDevice", branch="main", include=["name"])
+        assert sorted(device.name.value for device in main_devices) == ["swe-sth-router-1"]
 
     async def test_merge_recomputes_created_devices_in_one_dispatch(self, client: InfrahubClient) -> None:
         """A merged branch that built devices refreshes them once, not once per device.

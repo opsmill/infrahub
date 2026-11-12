@@ -28,7 +28,6 @@ describe("RelationshipManyField - common_parent filtering", () => {
     lastFilterQuery = undefined;
     lastAddNewInitialObject = undefined;
     lastEnforceOnIdSearch = undefined;
-    vi.clearAllMocks();
   });
 
   test("filters the peer options by the common_parent chosen in a sibling field", async () => {

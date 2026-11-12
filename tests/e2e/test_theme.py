@@ -1,11 +1,9 @@
-"""Port of frontend/app/tests/e2e/theme.spec.ts.
+"""Theme choice and first paint in the web interface.
 
-Covers the dark-theme rollout behavior: a fresh visitor follows the desktop
-color scheme when the deployment enables the flag, including a desktop that
-changes appearance between visits, an explicit choice from the theme submenu
-applies instantly and survives a reload without flashing (the pre-paint script),
-and a deployment with the flag off renders light regardless of desktop
-preference while retaining any stored choice.
+A fresh visitor follows the desktop color scheme, including a desktop that
+changes appearance between visits, and an explicit choice from the theme
+submenu applies instantly and survives a reload without flashing (the
+pre-paint script).
 
 Every test is a fresh anonymous visitor (the plain ``page`` fixture, no storage
 state): the coldest cache the pre-paint script can meet and the least
@@ -14,7 +12,6 @@ privileged surface the switch must still be reachable on.
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -23,17 +20,7 @@ from playwright.async_api import expect
 pytestmark = pytest.mark.shard_foundation
 
 if TYPE_CHECKING:
-    from playwright.async_api import Locator, Page, Route
-
-
-async def _set_dark_theme_flag(page: Page, enabled: bool) -> None:
-    async def handler(route: Route) -> None:
-        response = await route.fetch()
-        body = await response.json()
-        experimental = {**body.get("experimental_features", {}), "dark_theme": enabled}
-        await route.fulfill(json={**body, "experimental_features": experimental})
-
-    await page.route("*/**/api/config", handler)
+    from playwright.async_api import Locator, Page
 
 
 async def _html_theme(page: Page) -> str:
@@ -62,11 +49,13 @@ async def _open_theme_submenu(page: Page) -> Locator:
 
 
 class TestTheme:
-    async def test_fresh_visitor_on_dark_desktop_lands_dark_when_deployment_enables_it(self, page: Page) -> None:
-        await _set_dark_theme_flag(page, enabled=True)
+    async def test_fresh_visitor_on_dark_desktop_lands_dark_without_flashing(self, page: Page) -> None:
         await page.emulate_media(color_scheme="dark")
 
-        await page.goto("/")
+        # Sampled once on purpose: a visitor who never chose must already be dark before the app boots.
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "dark"
+
         await expect(page.get_by_test_id("sidebar")).to_be_visible()
 
         await expect(_html(page)).to_contain_class("dark")
@@ -80,7 +69,6 @@ class TestTheme:
         await expect(page.get_by_role("menuitemradio", name="Dark")).to_contain_text("alpha")
 
     async def test_fresh_visitor_on_light_desktop_stays_light_with_system_selected(self, page: Page) -> None:
-        await _set_dark_theme_flag(page, enabled=True)
         await page.emulate_media(color_scheme="light")
 
         await page.goto("/")
@@ -94,7 +82,6 @@ class TestTheme:
     async def test_switching_to_light_applies_instantly_and_survives_a_reload_without_flashing(
         self, page: Page
     ) -> None:
-        await _set_dark_theme_flag(page, enabled=True)
         await page.emulate_media(color_scheme="dark")
 
         await page.goto("/")
@@ -120,7 +107,6 @@ class TestTheme:
         await expect(page.get_by_role("menuitemradio", name="Light")).to_have_attribute("aria-checked", "true")
 
     async def test_following_the_desktop_tracks_it_live_and_across_visits_without_flashing(self, page: Page) -> None:
-        await _set_dark_theme_flag(page, enabled=True)
         await page.emulate_media(color_scheme="dark")
 
         await page.goto("/")
@@ -143,24 +129,3 @@ class TestTheme:
         await page.emulate_media(color_scheme="light")
         await page.goto("/", wait_until="domcontentloaded")
         assert await _html_theme(page) == "light"
-
-    async def test_deployment_with_the_theme_off_renders_light_and_offers_no_switch(self, page: Page) -> None:
-        await _set_dark_theme_flag(page, enabled=False)
-        # On a desktop asking for dark: the operating system expresses a preference, not a
-        # permission, and must not reach past an operator who turned the theme off.
-        await page.emulate_media(color_scheme="dark")
-
-        # GIVEN a user who chose dark while the feature was on
-        await page.goto("/")
-        await page.evaluate('() => localStorage.setItem("infrahub.theme.choice", "dark")')
-
-        await page.goto("/")
-        await expect(page.get_by_test_id("sidebar")).to_be_visible()
-        await expect(_html(page)).not_to_contain_class("dark")
-
-        await _open_account_menu(page)
-        await expect(page.get_by_role("menuitem", name="About Infrahub")).to_be_visible()
-        await expect(page.get_by_role("menuitem", name=re.compile(r"theme", re.IGNORECASE))).to_have_count(0)
-
-        # AND the stored choice is retained, never deleted: re-enabling the flag must restore it.
-        assert await page.evaluate('() => localStorage.getItem("infrahub.theme.choice")') == "dark"

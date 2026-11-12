@@ -64,6 +64,8 @@ Infrahub processes configuration sections in a specific order to handle dependen
 5. **Jinja2 transformations**: Loaded after their required queries are available
 6. **Artifact definitions**: Loaded last to reference existing transformations
 
+The import of the branch fails when Infrahub cannot use some entries, such as a schema path that does not exist. See [the entries that fail the import](./overview.mdx#entries-in-infrahubyml-that-fail-the-import).
+
 ### File vs. directory handling
 
 When you specify a directory in any resource list:
@@ -73,6 +75,18 @@ When you specify a directory in any resource list:
 - Subdirectories are processed recursively
 
 This behavior enables you to organize complex repositories while maintaining predictable loading order.
+
+### Removing objects
+
+Objects imported from an object file are tracked per repository, so removing them from the repository removes them from Infrahub. On the next import, any object that is no longer defined is deleted, whether you dropped a single entry, deleted one object file among several, removed the last object file, or cleared the `objects:` list entirely.
+
+:::caution
+
+Removing an object definition deletes the object and its data on the next import.
+
+:::
+
+An object whose deletion the server refuses, because another object still points at it through a mandatory relationship, does not fail the import. The refusal is reported as a warning on the import task, the rest of the import still runs, and the object stays in the repository's tracking group, so the next import retries the deletion once the blocking object is gone.
 
 ### Dependency resolution
 

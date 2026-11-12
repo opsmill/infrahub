@@ -17,7 +17,9 @@ Schema definitions (Python)
        ├──► backend/infrahub/core/protocols.py         (Protocol types)
        ├──► backend/tests/protocols.py                 (Test protocols)
        ├──► python_sdk/infrahub_sdk/protocols.py       (SDK protocols)
-       └──► python_sdk/infrahub_sdk/schema/generated/  (user-facing write/read models + enums)
+       ├──► python_sdk/infrahub_sdk/schema/generated/  (user-facing write/read models + enums)
+       └──► python_sdk/infrahub_sdk/exceptions/catalogue.py  (SDK error bindings, from
+                                                              schema/error-catalogue.json)
 
        │
        ▼
@@ -43,6 +45,7 @@ Schema definitions (Python)
 | New GraphQL queries/mutations in frontend | `pnpm codegen:graphql` (gql.tada types) and/or `pnpm codegen` (graphql-codegen `types.ts`) |
 | New FastAPI route, changed request/response model, or added field on a response model | `uv run invoke schema.generate-jsonschema` (regenerates `schema/openapi.json`), then `cd frontend/app && pnpm codegen:openapi` to regenerate `src/shared/api/rest/types.generated.ts`. Note `pnpm codegen` alone only regenerates GraphQL types — it does **not** touch the REST types. |
 | Changed event classes, schema docstrings, CLI commands, or config | `uv run invoke docs.generate` |
+| Added or changed an error catalogue entry | `uv run invoke frontend.regenerate-error-bindings` for the JSON, the frontend bindings and the docs page, then `uv run invoke backend.generate` for the SDK bindings; commit the SDK file in the submodule and bump its pointer |
 
 Changes that do **not** require regeneration:
 
@@ -67,12 +70,17 @@ Each validation task regenerates the files then checks for uncommitted diffs via
 - `backend/tests/protocols.py`
 - `backend/infrahub/generators/graphql_queries/` and `backend/infrahub/computed_attribute/graphql_queries/`
 - `python_sdk/infrahub_sdk/schema/generated/` and `python_sdk/infrahub_sdk/protocols.py`
+- `python_sdk/infrahub_sdk/exceptions/catalogue.py`
 
-The last two live in the `python_sdk` Git submodule. A `git diff` run from the superproject only
-sees the submodule pointer, not the files inside it, so those two checks run as
-`git -C python_sdk diff --exit-code`. A stale generated file in the submodule therefore fails the
-same task — but committing the fix means a commit inside the submodule plus a pointer bump in the
-superproject.
+The last three live in the `python_sdk` Git submodule. A `git diff` run from the superproject only
+sees the submodule pointer, not the files inside it, so those checks run against the submodule
+itself. A stale generated file in the submodule therefore fails the same task, but committing the
+fix means a commit inside the submodule plus a pointer bump in the superproject.
+
+The error bindings check asks HEAD whether it carries the file at all rather than only diffing it:
+`git diff` reports nothing for a file Git is not tracking, so an artefact that was generated but
+never committed would otherwise read as clean. "Not committed yet" and "committed but stale" are
+reported separately, because they need different fixes.
 
 CI runs these checks to ensure generated files are committed.
 
@@ -96,6 +104,8 @@ uv run invoke docs.validate    # regenerate, then fail on any uncommitted diff (
 
 Adding or changing a field on an event class, a schema model, a CLI command, or a config setting changes the rendered output. Regenerate and commit, or the `validate-generated-documentation` CI job fails. As with the other validators, when `docs.validate` fails the corrected files are already written to disk — just stage and commit them.
 
+The rendering templates live in `docs/_templates/*.j2`. In a template, guard an optional value with `is not none`, never truthiness: `field.default if field.default else "None"` documents a genuine `False`, `0` or `""` default as `None`.
+
 ## Frontend Codegen
 
 Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with:
@@ -103,6 +113,23 @@ Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with
 - **Source**: `schema/schema.graphql` (local file, no instance needed)
 - **Documents**: `src/**/*.{ts,tsx}` (scans for GraphQL operations)
 - **Output**: `src/shared/api/graphql/generated/types.ts`
+
+## Compose Env Block
+
+The root `docker-compose.yml` env block is rendered from the backend settings, so adding a
+setting to `config.py` makes the committed compose file stale. Two traps:
+
+- `release.gen-config-env` writes nothing by default. Its `update_docker_file` parameter is
+  `False`, so the plain invocation silently no-ops — pass `-u` / `--update-docker-file`.
+- `release.validate-dockercomposeenv` regenerates and then runs `git diff --exit-code`, so it
+  reports failure for an *uncommitted* regeneration exactly as it does for a stale one. Commit
+  the regenerated file, then re-run it.
+
+The `update-compose-file-and-chart` workflow regenerates it with `-u` during a release cut, and
+`ci.yml` runs the validation, so a stale file fails CI rather than drifting quietly. Prose that
+describes which compose files carry a given variable goes stale on the same regeneration —
+`dev/knowledge/frontend/theming.md` once claimed the root file had no dark-theme passthrough
+after generation had added one.
 
 ## Key Locations
 
@@ -118,3 +145,13 @@ Configured in `frontend/app/graphql.config.ts`. Uses `@graphql-codegen/cli` with
 - [Schema Definitions](schema-definitions.md) — How to define schemas that feed the pipeline
 - [ADR 0010](../../adr/0010-generated-user-facing-schema-contract.md) — Why the user-facing schema
   contract is generated into the SDK submodule
+
+## Keep generated GraphQL descriptions single-line
+
+A description passed to `Enum.from_enum` (or any GraphQL type built in
+`backend/infrahub/graphql/types/`) must stay on one line. `graphql-core`'s SDL printer dedents
+multi-line descriptions differently across versions, so a wrapped description makes the generated
+`schema/schema.graphql` depend on the environment that produced it — and CI validates that file is
+committed and current, so the mismatch surfaces as an unexplainable diff on someone else's machine.
+
+Write the long form as a single implicitly-concatenated string rather than wrapping the prose.

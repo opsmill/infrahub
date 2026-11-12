@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 from uuid import uuid4
 
 from opentelemetry import trace
@@ -31,6 +31,7 @@ from .model.path import (
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Iterable, Sequence
 
     from structlog.stdlib import BoundLogger
 
@@ -346,6 +347,7 @@ class DiffCoordinator:
         from_time: Timestamp,
         to_time: Timestamp,
         node_kinds: list[str] | None = None,
+        node_uuids: set[str] | None = None,
     ) -> EnrichedDiffRoot:
         """Calculate and enrich the diff of a time range without storing it.
 
@@ -353,6 +355,7 @@ class DiffCoordinator:
 
         Args:
             node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+            node_uuids: Calculate the changes of the diff branch for the nodes with these uuids only.
 
         """
         self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
@@ -366,6 +369,7 @@ class DiffCoordinator:
             ),
             is_incremental_diff=False,
             node_kinds=node_kinds,
+            node_uuids=node_uuids,
         )
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=enriched_diffs.base_branch_diff, branch_diff_root=enriched_diffs.diff_branch_diff
@@ -811,7 +815,11 @@ class DiffCoordinator:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _calculate_enriched_diff(
-        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool, node_kinds: list[str] | None = None
+        self,
+        diff_request: EnrichedDiffRequest,
+        is_incremental_diff: bool,
+        node_kinds: list[str] | None = None,
+        node_uuids: set[str] | None = None,
     ) -> EnrichedDiffs:
         self.logger.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
@@ -822,6 +830,7 @@ class DiffCoordinator:
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
             node_kinds=node_kinds,
+            node_uuids=node_uuids,
         )
         self.logger.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(

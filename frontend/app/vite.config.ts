@@ -3,7 +3,6 @@ import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import monacoEditorPlugin from "vite-plugin-monaco-editor-esm";
 import svgr from "vite-plugin-svgr";
 
 // https://vitejs.dev/config/
@@ -30,17 +29,11 @@ export default defineConfig({
       exclude: ["**/node_modules/**", "**/generated/**", "**/*.generated.ts"],
     }),
     svgr(),
-    monacoEditorPlugin({
-      languageWorkers: ["editorWorkerService", "json"],
-      customWorkers: [
-        {
-          label: "graphql",
-          entry: "monaco-graphql/esm/graphql.worker.js",
-        },
-      ],
-      publicPath: "assets/monaco-editor",
-    }),
   ],
+  optimizeDeps: {
+    // Dev pre-bundling cannot load the `?worker` imports in this module, so the dev server would fail to start.
+    exclude: ["graphiql/setup-workers/vite"],
+  },
   resolve: {
     tsconfigPaths: true,
     // @infrahub/graph declares @xyflow/react as a peer dependency; resolve it

@@ -8,6 +8,7 @@ from .models import ReachedPath
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.graphql.analyzer import ObjectAccess
 
     from .derived_dependencies import DerivedFieldDependencies, DerivedFieldDependencyResolver
@@ -20,10 +21,14 @@ class AnalyzedQuery(Protocol):
     it; ``traversed_kinds`` are the kinds reached through a relationship, including any also read at
     a root, so the overlap stays visible; ``relationship_reached_paths_by_kind`` the chains back from
     each to a root. ``only_has_unique_targets`` is true when the query pins one object per root.
+    ``filtered_fields_by_kind`` maps each kind to the fields its filter arguments select on.
     """
 
     @property
     def requested_read(self) -> Mapping[str, ObjectAccess]: ...
+
+    @property
+    def filtered_fields_by_kind(self) -> Mapping[str, set[str]]: ...
 
     @property
     def only_has_unique_targets(self) -> bool: ...
@@ -38,20 +43,47 @@ class AnalyzedQuery(Protocol):
 class QueryClassifierBuilder:
     """Build a query's impact classifier from its analyzed read surface, on one branch."""
 
-    def __init__(self, *, query_branch: str, dependency_resolver: DerivedFieldDependencyResolver) -> None:
+    def __init__(
+        self, *, query_branch: str, schema_branch: SchemaBranch, dependency_resolver: DerivedFieldDependencyResolver
+    ) -> None:
         self._query_branch = query_branch
+        self._schema_branch = schema_branch
         self._dependency_resolver = dependency_resolver
 
     def build(self, query_report: AnalyzedQuery) -> QueryImpactClassifier:
-        readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
+        readable_fields_by_kind = {kind: set(access.fields) for kind, access in query_report.requested_read.items()}
+        # A change to a filtered field moves which objects answer the query, so it counts as a read.
+        for kind, fields in query_report.filtered_fields_by_kind.items():
+            readable_fields_by_kind.setdefault(kind, set()).update(fields)
+        traversed_kinds = set(query_report.traversed_kinds)
+        self._extend_generic_reads_to_implementations(
+            readable_fields_by_kind=readable_fields_by_kind, traversed_kinds=traversed_kinds
+        )
         dependencies = self._dependency_resolver.resolve(readable_fields_by_kind)
         return self.build_query_classifier(
             only_has_unique_targets=query_report.only_has_unique_targets,
             readable_fields_by_kind=readable_fields_by_kind,
-            traversed_kinds=query_report.traversed_kinds,
+            traversed_kinds=traversed_kinds,
             reached_paths_by_kind=query_report.relationship_reached_paths_by_kind,
             dependencies=dependencies,
         )
+
+    def _extend_generic_reads_to_implementations(
+        self, *, readable_fields_by_kind: dict[str, set[str]], traversed_kinds: set[str]
+    ) -> None:
+        """Count what the query reads off a generic as read off each of its implementations.
+
+        A diff reports a node under its concrete kind, so a field read only through a fragment on a
+        generic would otherwise never match a change. An implementation of a generic reached through a
+        relationship is reached through that relationship too.
+        """
+        generic_kinds = set(self._schema_branch.generic_names)
+        for kind in sorted(readable_fields_by_kind.keys() & generic_kinds):
+            generic = self._schema_branch.get_generic(name=kind, duplicate=False)
+            for concrete_kind in generic.concrete_kinds:
+                readable_fields_by_kind.setdefault(concrete_kind, set()).update(readable_fields_by_kind[kind])
+                if kind in traversed_kinds:
+                    traversed_kinds.add(concrete_kind)
 
     def build_query_classifier(
         self,
@@ -69,7 +101,8 @@ class QueryClassifierBuilder:
         reaches that peer in a way that cannot itself be narrowed, the derived chain alone would miss those
         readers, so the whole query widens to every target instead. A peer whose reading kind is itself
         relationship-reached carries a chain that stops at the reading kind, so it is extended with that kind's
-        chains back to the root.
+        chains back to the root. A peer the query also reads at a root keeps an empty chain besides the derived
+        one, so a change to it maps to itself and to the members reading it.
         """
         merged_readable = {kind: set(fields) for kind, fields in readable_fields_by_kind.items()}
         merged_traversed = set(traversed_kinds)
@@ -78,7 +111,7 @@ class QueryClassifierBuilder:
         for peer in dependencies.peers:
             already_traversed = peer.kind in traversed_kinds
             read_at_root = peer.kind in readable_fields_by_kind and not already_traversed
-            if read_at_root or (already_traversed and peer.kind not in reached_paths_by_kind):
+            if already_traversed and peer.kind not in reached_paths_by_kind:
                 widen = True
                 continue
             if peer.reading_kind in traversed_kinds:
@@ -91,6 +124,8 @@ class QueryClassifierBuilder:
                 )
             else:
                 peer_paths = (peer.path,)
+            if read_at_root:
+                peer_paths = (ReachedPath(hops=()), *peer_paths)
             merged_traversed.add(peer.kind)
             merged_readable.setdefault(peer.kind, set()).add(peer.field_name)
             # Two derived reads can resolve to the same peer path; keep each once so the member

@@ -5,8 +5,7 @@
 
 # testing
 /coverage
-**/__screenshots__
-**/.vitest-attachments
+**/.vitest
 
 # production
 /build

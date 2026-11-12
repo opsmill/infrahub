@@ -19,6 +19,8 @@ export const render = (component: React.ReactElement, options = {}) => {
     defaultOptions: {
       queries: {
         retry: false,
+        // A query with its own retry policy retries at once, so a test doesn't wait on the backoff.
+        retryDelay: 0,
         staleTime: 2000,
       },
     },

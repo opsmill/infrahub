@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { getObjectFile } from "@/entities/nodes/object-file/domain/use-cases/get-object-file";
 
@@ -9,10 +9,6 @@ vi.mock("@/entities/nodes/object-file/api/get-object-file-from-api", () => ({
 }));
 
 describe("getObjectFile", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("rejects with the message the API returned", async () => {
     getObjectFileFromApi.mockResolvedValue({
       error: {

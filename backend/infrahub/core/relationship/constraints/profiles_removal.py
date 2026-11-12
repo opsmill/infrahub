@@ -166,13 +166,22 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         if not relm_update_details.peer_ids_present_database_only:
             return
 
+        await self.validate_related_nodes_removal(
+            profile=profile, profile_schema=profile_schema, node_ids=relm_update_details.peer_ids_present_database_only
+        )
+
+    async def validate_related_nodes_removal(
+        self, profile: Node, profile_schema: ProfileSchema, node_ids: list[str]
+    ) -> None:
+        """Check that the nodes ``node_ids`` can leave the related nodes of ``profile``.
+
+        Raises:
+            ValidationError: If one of the nodes inherits a required attribute or relationship from ``profile``.
+
+        """
         target_kind = profile_schema.get_relationship(name="related_nodes").peer
         target_schema = self.schema_branch.get_node(name=target_kind, duplicate=False)
-        await self._validate_nodes_profile_removal(
-            node_ids=relm_update_details.peer_ids_present_database_only,
-            profile_id=profile.get_id(),
-            schema=target_schema,
-        )
+        await self._validate_nodes_profile_removal(node_ids=node_ids, profile_id=profile.get_id(), schema=target_schema)
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:
         if relm.name == PROFILES_RELATIONSHIP_NAME and isinstance(node_schema, NodeSchema):
@@ -190,8 +199,6 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         if not related_node_ids:
             return
 
-        target_kind = profile_schema.get_relationship(name="related_nodes").peer
-        target_schema = self.schema_branch.get_node(name=target_kind, duplicate=False)
-        await self._validate_nodes_profile_removal(
-            node_ids=related_node_ids, profile_id=profile.get_id(), schema=target_schema
+        await self.validate_related_nodes_removal(
+            profile=profile, profile_schema=profile_schema, node_ids=related_node_ids
         )

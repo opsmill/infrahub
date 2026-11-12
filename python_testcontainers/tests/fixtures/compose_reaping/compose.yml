@@ -1,0 +1,10 @@
+---
+services:
+  idle:
+    image: busybox:1.37
+    command: ["sleep", "3600"]
+    volumes:
+      - data:/data
+
+volumes:
+  data:

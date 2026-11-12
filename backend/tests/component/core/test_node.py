@@ -22,6 +22,7 @@ from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
@@ -1010,7 +1011,9 @@ async def test_node_create_with_object_template_with_profile(
     await template.save(db=db)
 
     # Apply profile to template
-    applier = NodeProfilesApplier(db=db, branch=default_branch)
+    applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
     await applier.apply_profiles(node=template)
     await template.save(db=db)
     assert template.airflow.value == "Rear to front"
@@ -1135,7 +1138,9 @@ async def test_node_create_with_object_template_with_profile_and_components(
     await device_template.profiles.update(db=db, data=[device_profile])
     await device_template.save(db=db)
 
-    applier = NodeProfilesApplier(db=db, branch=default_branch)
+    applier = NodeProfilesApplier(
+        db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+    )
     await applier.apply_profiles(node=device_template)
     await device_template.save(db=db)
 

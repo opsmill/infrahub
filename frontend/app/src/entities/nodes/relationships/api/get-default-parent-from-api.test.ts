@@ -25,7 +25,6 @@ describe("getDefaultParentFromApi", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
     // Schema exposing the child relationship used to derive the parent filter attribute.
     vi.mocked(getSchema).mockReturnValue({
       schema: {

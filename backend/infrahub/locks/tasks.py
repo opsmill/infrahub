@@ -12,6 +12,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 @flow(
     name="clean-up-deadlocks",
     flow_run_name="Clean up deadlocks",
+    persist_result=False,
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
     """Remove stale distributed locks left behind by inactive workers."""

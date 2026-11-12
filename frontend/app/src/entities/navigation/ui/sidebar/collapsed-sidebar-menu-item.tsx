@@ -14,7 +14,7 @@ export function CollapsedSidebarMenuItem({
 }: CollapsedSidebarMenuItemProps) {
   return (
     <Tooltip message={tooltipContent} placement="right">
-      <Button variant="ghost" shape="square" {...props}>
+      <Button variant="ghost" shape="square" aria-label={tooltipContent} {...props}>
         <Icon icon={icon} className="text-base" />
       </Button>
     </Tooltip>
