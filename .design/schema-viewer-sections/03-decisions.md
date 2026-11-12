@@ -13,3 +13,18 @@
   stay on the headings and rows.
 - **Properties tab groups get titles** (2026-11-10, Paul, rev 4). Icon moves from the data group
   to Menu, where it is used.
+- **Direction picked: the Layout tab, named Containers; the prototype stops here** (2026-11-12,
+  Paul). The schema viewer gets a Containers tab between Properties and Attributes. It lists
+  each container as an accordion styled like the attribute and relationship accordions, and
+  each accordion shows only the container's properties (name, label, description, order
+  weight, collapsible, collapsed, inherited), not the fields placed in it. The Properties tab
+  stays as it is on develop. Built on the feature branch `ple-field-sections-ifc-2729`, not
+  promoted from the prototype.
+- **Rejected: changes to the Properties tab** (2026-11-12, Paul). Revisions 1 to 4 put a
+  containers block or summary in the Properties tab. Reading the layout of a kind is a
+  separate task from reading its properties, so it gets its own tab.
+- **Containers gain `collapsible`** (2026-11-12, Paul). Built-in containers (Details,
+  Profile, Template) are not collapsible. A user container is collapsible by default, and
+  `collapsed` sets whether it starts closed only when it is collapsible.
+- **Object page tab renamed from Details to Overview** (2026-11-12, Paul), because the first
+  section card inside it is also called Details.
