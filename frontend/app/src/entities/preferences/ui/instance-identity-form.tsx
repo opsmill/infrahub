@@ -1,6 +1,5 @@
 import React from "react";
 import { useWatch } from "react-hook-form";
-import { toast } from "react-toastify";
 
 import type { InstanceColor } from "@/shared/api/graphql/generated/types";
 import { Row } from "@/shared/components/container";
@@ -10,7 +9,6 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { classNames } from "@/shared/utils/common";
@@ -30,7 +28,11 @@ import {
   normalizeInstanceLabel,
 } from "@/entities/preferences/domain/rules/validate-instance-label";
 import type { UpdateGlobalPreferenceParams } from "@/entities/preferences/domain/use-cases/update-global-preference";
-import { SaveButton, toFieldValue } from "@/entities/preferences/ui/preference-fields";
+import {
+  SaveButton,
+  saveWithToasts,
+  toFieldValue,
+} from "@/entities/preferences/ui/preference-fields";
 import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-global-preferences.query";
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
@@ -69,7 +71,9 @@ function changedFields(
     params.instanceLabel = label;
   }
   const color = colorValue(values.instance_color);
-  if (color !== saved.instanceColor) {
+  // The field shows a saved color this page does not know as empty, so only a picked color counts as a change.
+  const savedColor = isInstanceColor(saved.instanceColor) ? saved.instanceColor : null;
+  if (color !== savedColor) {
     params.instanceColor = color;
   }
   return params;
@@ -176,24 +180,12 @@ export function InstanceIdentityForm() {
         instance_label: toFieldValue(global.instanceLabel),
         instance_color: toFieldValue(global.instanceColor),
       }}
-      onSubmit={async (values) => {
-        try {
-          await updatePreferences.mutateAsync(changedFields(values, global));
-        } catch (mutationError) {
-          toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message={
-                mutationError instanceof Error
-                  ? mutationError.message
-                  : "Failed to update the instance identity"
-              }
-            />
-          );
-          throw mutationError;
-        }
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Instance identity updated" />);
-      }}
+      onSubmit={(values) =>
+        saveWithToasts(() => updatePreferences.mutateAsync(changedFields(values, global)), {
+          success: "Instance identity updated",
+          failure: "Failed to update the instance identity",
+        })
+      }
       className="space-y-0 divide-y"
     >
       <InstanceLabelField defaultLabel={instanceDefaults.label} />

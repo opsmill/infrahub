@@ -4556,7 +4556,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Preset color of the instance badge and bar"
+                        "description": "Preset color of the instance badge, bar and tab icon"
                     }
                 },
                 "type": "object",

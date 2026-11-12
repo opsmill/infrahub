@@ -1,15 +1,13 @@
-import { toast } from "react-toastify";
-
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form } from "@/shared/components/ui/form";
 
 import type { DateFormatKey } from "@/entities/preferences/domain/model/date-format";
 import {
   DateFormatField,
   SaveButton,
+  saveWithToasts,
   TimezoneField,
   toFieldValue,
 } from "@/entities/preferences/ui/preference-fields";
@@ -36,27 +34,16 @@ export function GlobalPreferencesForm() {
         date_format: toFieldValue(global.dateFormat),
         timezone: toFieldValue(global.timezone),
       }}
-      onSubmit={async (formData) => {
-        try {
-          await updatePreferences.mutateAsync({
-            dateFormat: (formData.date_format?.value as DateFormatKey | null) ?? null,
-            timezone: (formData.timezone?.value as string | null) ?? null,
-          });
-        } catch (mutationError) {
-          toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message={
-                mutationError instanceof Error
-                  ? mutationError.message
-                  : "Failed to update global preferences"
-              }
-            />
-          );
-          throw mutationError;
-        }
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Global preferences updated" />);
-      }}
+      onSubmit={(formData) =>
+        saveWithToasts(
+          () =>
+            updatePreferences.mutateAsync({
+              dateFormat: (formData.date_format?.value as DateFormatKey | null) ?? null,
+              timezone: (formData.timezone?.value as string | null) ?? null,
+            }),
+          { success: "Global preferences updated", failure: "Failed to update global preferences" }
+        )
+      }
       className="space-y-0 divide-y"
     >
       <DateFormatField emptyValueLabel={GLOBAL_EMPTY_VALUE_LABEL} />

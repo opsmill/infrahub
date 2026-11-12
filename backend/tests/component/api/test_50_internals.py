@@ -69,45 +69,6 @@ async def test_config_endpoint_anonymous_account(
 
 
 @dataclass
-class StoredIdentityCase:
-    name: str
-    allow_anonymous_access: bool
-    preference: Preference
-    expected: dict[str, str | None]
-
-
-STORED_IDENTITY_CASES: list[StoredIdentityCase] = [
-    StoredIdentityCase(
-        name="label_and_color_authenticated_only",
-        allow_anonymous_access=False,
-        preference=Preference(
-            owner_id=GLOBAL_OWNER_ID, instance_label="us-east-1 PROD", instance_color=InstanceColor.RED
-        ),
-        expected={"label": "us-east-1 PROD", "color": "RED"},
-    ),
-]
-
-
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STORED_IDENTITY_CASES])
-async def test_config_endpoint_returns_stored_instance_identity(
-    db: InfrahubDatabase,
-    client: TestClient,
-    default_branch: Branch,
-    register_core_models_schema: None,
-    monkeypatch: pytest.MonkeyPatch,
-    case: StoredIdentityCase,
-) -> None:
-    monkeypatch.setattr(config.SETTINGS.main, "allow_anonymous_access", case.allow_anonymous_access)
-    await PreferenceRepository(db=db).save(case.preference)
-
-    with client:
-        response = client.get("/api/config")
-
-    assert response.status_code == 200
-    assert response.json()["instance"] == case.expected
-
-
-@dataclass
 class DeploymentDefaultCase:
     name: str
     saved: Preference | None

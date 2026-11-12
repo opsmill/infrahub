@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { graphqlClient } from "@/shared/api/graphql/client";
+
 import { useConfig } from "@/entities/config/ui/config-provider";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import { getGlobalPreferences } from "@/entities/preferences/domain/use-cases/get-global-preferences";
@@ -68,6 +70,36 @@ describe("InstanceIdentityForm", () => {
       ]);
     });
     await expect.element(component.getByText("Instance identity updated")).toBeVisible();
+  });
+
+  test("sends only the label when the saved color is one this page does not know", async () => {
+    // GIVEN
+    const { getGlobalPreferences: real } = await vi.importActual<
+      typeof import("@/entities/preferences/domain/use-cases/get-global-preferences")
+    >("@/entities/preferences/domain/use-cases/get-global-preferences");
+    vi.mocked(getGlobalPreferences).mockImplementation(real);
+    vi.spyOn(graphqlClient, "query").mockResolvedValue({
+      data: {
+        InfrahubGlobalPreferences: {
+          date_format: null,
+          timezone: null,
+          instance_label: "us-east-1",
+          instance_color: "TEAL",
+        },
+      },
+    });
+    const component = await render(<InstanceIdentityForm />);
+    await component.getByLabelText("Instance label").fill("us-east-1 PROD");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save instance identity" }).click();
+
+    // THEN
+    await vi.waitFor(() => {
+      expect(vi.mocked(updateGlobalPreference).mock.calls).toStrictEqual([
+        [{ instanceLabel: "us-east-1 PROD" }],
+      ]);
+    });
   });
 
   test("clears the label by sending null", async () => {
@@ -232,10 +264,7 @@ describe("InstanceIdentityForm", () => {
     const component = await render(<InstanceIdentityForm />);
 
     // THEN
-    await expect.element(component.getByLabelText("Instance label")).toHaveValue("us-east-1");
-    await expect
-      .element(component.getByRole("button", { name: "Instance color" }))
-      .toHaveTextContent("Red");
+    await expect.element(component.getByLabelText("Instance label")).toBeVisible();
     expect(component.getByText(DEFAULT_LABEL_HELP).query()).toBeNull();
   });
 

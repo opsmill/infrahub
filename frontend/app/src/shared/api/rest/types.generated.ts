@@ -1412,7 +1412,7 @@ export interface components {
              * @description Instance label shown in the header badge and the tab title
              */
             label: string | null;
-            /** @description Preset color of the instance badge and bar */
+            /** @description Preset color of the instance badge, bar and tab icon */
             color: components["schemas"]["InstanceColor"] | null;
         };
         /** JSONSchema */

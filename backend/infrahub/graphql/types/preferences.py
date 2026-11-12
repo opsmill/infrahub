@@ -23,7 +23,7 @@ DateFormat = Enum.from_enum(
 InstanceColor = Enum.from_enum(
     InstanceColorEnum,
     description=(
-        "Preset colors for the instance badge and bar. The stored instance_color is one of these keys; "
+        "Preset colors for the instance badge, bar and tab icon. The stored instance_color is one of these keys; "
         "each client maps the key to its own theme."
     ),
 )

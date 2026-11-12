@@ -18694,7 +18694,7 @@ export type InfrahubTaskRetry = {
   task: Maybe<TaskInfo>;
 };
 
-/** Preset colors for the instance badge and bar. The stored instance_color is one of these keys; each client maps the key to its own theme. */
+/** Preset colors for the instance badge, bar and tab icon. The stored instance_color is one of these keys; each client maps the key to its own theme. */
 export const InstanceColor = {
   AMBER: 'AMBER',
   BLUE: 'BLUE',

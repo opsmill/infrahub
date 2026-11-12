@@ -92,6 +92,6 @@ describe("DocumentTitle", () => {
     await component.rerender(<DocumentTitle />);
 
     // THEN
-    expect(document.title).toBe("QA · Infrahub");
+    expect(document.title).toBe(`QA · ${APPLICATION_TITLE}`);
   });
 });
