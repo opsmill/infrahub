@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Three decisions were taken from backend behaviour rather than asked: no Branch column, the member-type fallback wording, and reading the allocation weight from the resource prefix node. They are listed under Assumptions for the reviewer to overturn.
+- Three decisions were taken from backend behaviour rather than asked: no Branch column, the member-type fallback wording, and reading the allocation weight through the weighted pool resource generic. They are listed under Assumptions for the reviewer to overturn.
