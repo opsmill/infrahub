@@ -20,7 +20,7 @@ Teams run several Infrahub instances: one per stage (development, QA, production
 
 ### Session 2026-11-04
 
-- Q: What does the login page show when a label and a color are set? → A: The thin colored bar at the top and the label badge near the Infrahub logo on the login card.
+- Q: What does the login page show when a label and a color are set? → A: The thin colored bar at the top and the label badge above the Infrahub logo.
 - Q: Where does the badge sit in the top header? → A: On the right of the header, next to the task status and repository sync status indicators (tech owner, 2026-11-05, after viewing the design jam mockups).
 
 ### Session 2026-11-10
@@ -45,7 +45,7 @@ A user who works in several Infrahub instances opens one of them. On every page,
 **Acceptance Scenarios**:
 
 1. **Given** the instance label is "us-east-1 PROD" and the color is red, **When** a read-only user opens the branches page, **Then** the top header shows a badge reading "us-east-1 PROD" in the red style and a thin red bar spans the full width at the top of the page.
-2. **Given** the same settings, **When** an anonymous visitor opens the login page, **Then** the login page shows the thin red bar at the top and the badge with the label near the Infrahub logo on the login card, before the visitor enters credentials.
+2. **Given** the same settings, **When** an anonymous visitor opens the login page, **Then** the login page shows the thin red bar at the top and the badge with the label above the Infrahub logo, before the visitor enters credentials.
 3. **Given** the same settings, **When** the user reloads the page or navigates to another page, **Then** the badge and the bar are still shown.
 4. **Given** no label and no color are stored and the deployment sets no default, **When** any user opens any page, **Then** no badge and no bar are rendered, and the layout is identical to today.
 5. **Given** a color is stored but no label, and the deployment sets no default label, **When** a user opens a page, **Then** only the bar is shown, in that color.
@@ -141,6 +141,8 @@ Added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588)).
 
 - The color value is not in the preset list (for example, a hand-written API call sends "pink"): the write is rejected with the GraphQL enum error `Variable '$instance_color' got invalid value 'pink'; Value 'pink' does not exist in 'InstanceColor' enum.`, which does not list the allowed values (the GraphQL schema lists them), and nothing is stored.
 - The label contains a line break, another control character (tab, NUL) or a bidirectional text control: the write is rejected.
+- The label is the text `NULL`: the write is rejected, because the preference node stores that text for an unset value and the label would read back as unset.
+- The configuration cannot be refetched after it loaded once (after a save or when a tab regains focus): the pages keep the values already loaded rather than being replaced by an error screen.
 - The label contains non-ASCII characters (for example "Zürich PROD"): accepted and shown as entered.
 - The settings are read before an administrator ever saved anything: the public read returns the deployment defaults, or "no label, no color" when the deployment sets none, without creating a stored record.
 - Two administrators save at the same time: the last save wins per field, and no duplicate instance record is created.
@@ -168,12 +170,12 @@ Added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/browse/IFC-3588)).
 - **FR-003**: An account MUST be able to change both values only when it holds the "manage global preferences" global permission or is a super administrator. A write by any other account MUST be rejected with the permission error already used for global preferences, and MUST leave the stored values unchanged.
 - **FR-004**: The two values MUST be editable on the existing Global preferences page, in a section of their own next to the date and time settings, with the same save and confirmation behaviour as the existing settings.
 - **FR-005**: A save MUST allow changing one value without touching the other, and MUST allow resetting each value independently.
-- **FR-006**: The label MUST be trimmed of leading and trailing whitespace before validation. An empty or whitespace-only label MUST be treated as a reset. A label longer than 32 characters (counted in code points, as the server counts), or containing a line break, another control character or a bidirectional text control, MUST be rejected with a message that states the rule. Any other character, including non-ASCII, MUST be accepted.
+- **FR-006**: The label MUST be trimmed of leading and trailing whitespace before validation. An empty or whitespace-only label MUST be treated as a reset. A label longer than 32 characters (counted in code points, as the server counts), or containing a line break, another control character or a bidirectional text control, or equal to `NULL` (the text the preference node stores for an unset value), MUST be rejected with a message that states the rule. Any other character, including non-ASCII, MUST be accepted.
 - **FR-007**: A color outside the preset list MUST be rejected with a validation error, and nothing MUST be stored. Through a GraphQL variable the error is the enum coercion error `Variable '$instance_color' got invalid value '<x>'; Value '<x>' does not exist in 'InstanceColor' enum.`, followed by a "Did you mean" hint when the value is close to a member, and it does not list the allowed values, which the GraphQL schema lists.
 - **FR-008**: The instance label and color MUST NOT be settable as personal (per-user) preferences and MUST NOT appear in a user's own preferences; a per-user write of either value MUST be rejected.
 - **FR-009**: Every visitor, including an anonymous visitor on the login page, MUST be able to read the current label and color, without holding any permission, so that the indicator is shown on every page.
 - **FR-010**: A read of the instance settings MUST NOT create a stored record; before the first save, the read returns the deployment defaults (FR-020), or no label and no color when the deployment sets none.
-- **FR-011**: When a label is set, the top header of every page inside the application MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set, and the login page MUST show the same badge near the Infrahub logo on the login card. When no label is set, no badge is rendered. Decision of the tech owner on 2026-11-05: the badge sits on the right of the header, before the task status and repository sync status indicators.
+- **FR-011**: When a label is set, the top header of every page inside the application MUST show a badge with the label, styled in the chosen color, or in the neutral gray style when no color is set, and the login page MUST show the same badge above the Infrahub logo. When no label is set, no badge is rendered. Decision of the tech owner on 2026-11-05: the badge sits on the right of the header, before the task status and repository sync status indicators.
 - **FR-012**: When a color is set, every page inside the application and the login page MUST show a thin bar in that color across the full width of the top of the page, above the sidebar and the header. When no color is set, no bar is rendered and no space is reserved.
 - **FR-013**: A label that exceeds the badge's maximum width MUST be truncated with an ellipsis, and the full label MUST be available in a tooltip.
 - **FR-014**: When a label is set, the browser tab title of every page MUST be "`<label>` · `<page title>`", where the page title is the page's own title or "Infrahub" for pages without one. When no label is set, the tab title MUST be the page title alone, as today.
@@ -207,13 +209,13 @@ Requirements added on 2026-11-10 ([IFC-3588](https://opsmill.atlassian.net/brows
 - **SC-003**: An administrator can set or change the label and color in under one minute from the Global preferences page, with no restart and no help from an operator.
 - **SC-004**: After a restart or an upgrade of Infrahub, the label and color are unchanged in 100% of cases.
 - **SC-005**: No account without the permission can change the label or color, through the UI or the API, in 100% of attempts.
-- **SC-006**: Instances with no label, no color and no deployment default look and behave exactly as before the feature, including the standard tab icon; no existing automated test changes its expectation except where it enumerates the fields of the global settings or the instance configuration. The new form's save button is named "Save instance identity", so tests that locate the "Save" button of the date and time form keep working.
+- **SC-006**: Instances with no label, no color and no deployment default look and behave exactly as before the feature, including the standard tab icon; no existing automated test changes its expectation except where it enumerates the fields of the global settings or the instance configuration. The new form's save button is named "Save instance identity", so the E2E tests that locate the "Save" button of the date and time form keep working; the Vitest locator in `global-preferences-editor.test.tsx` gained `exact: true`.
 
 ## Assumptions
 
 - The existing "manage global preferences" permission is the right gate; no new permission is created (decision of 2026-11-04).
 - The preset list is fixed at red, amber, green, blue, indigo, purple and gray (decision of 2026-11-04). Semantic meanings such as "red means production" are documented suggestions, not enforced.
-- The badge sits in the top header (exact position decided in a design jam) and the bar spans the top of the page above the sidebar and the header (decision of 2026-11-04: badge plus thin bar). On the login page the bar spans the top and the badge sits near the logo on the login card.
+- The badge sits in the top header (exact position decided in a design jam) and the bar spans the top of the page above the sidebar and the header (decision of 2026-11-04: badge plus thin bar). On the login page the bar spans the top and the badge sits above the logo.
 - Label and color are independent; a color without a label shows the bar only, and a label without a color shows the gray badge only (decision of 2026-11-04).
 - The maximum label length is 32 characters, chosen so that a label fits in the header next to the branch selector and leaves room for the page title in a browser tab.
 - The separator in the tab title is " · " (space, middle dot, space).
