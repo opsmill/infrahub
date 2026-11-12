@@ -10,7 +10,15 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from tests.helpers.schema.agnostic_retirement import AGNOSTIC_DELETE_SCHEMA, BADGE_KIND, MEMBER_KIND, TEAM_KIND
+from tests.helpers.schema.agnostic_retirement import (
+    AGNOSTIC_DELETE_SCHEMA,
+    BADGE_KIND,
+    CERTIFICATE_KIND,
+    HOLDER_KIND,
+    MEMBER_KIND,
+    STICKER_KIND,
+    TEAM_KIND,
+)
 
 
 @pytest.fixture
@@ -31,6 +39,21 @@ async def _move_member_to_team(db: InfrahubDatabase, branch: Branch, member: Nod
     await member_on_branch.save(db=db)
 
 
+def _required_peer_message(team: Node, peer_kind: str, peer: Node, branch_names: str) -> str:
+    return (
+        f"Cannot delete {TEAM_KIND} '{team.id}'. It is linked to mandatory relationship team on node"
+        f" {peer_kind} '{peer.id}' on {branch_names} at {peer_kind}.team"
+    )
+
+
+def _cascade_message(team: Node, relationship_name: str, peer_kind: str, peer: Node, branch_names: str) -> str:
+    return (
+        f"Cannot delete {TEAM_KIND} '{team.id}'. Deleting it would also delete {peer_kind} '{peer.id}' through"
+        f" relationship {relationship_name} on {branch_names}, but this delete does not remove that node there"
+        f" at {TEAM_KIND}.{relationship_name}"
+    )
+
+
 async def _count_edges_on_branch(db: InfrahubDatabase, branch_name: str) -> int:
     results = await db.execute_query(
         query="MATCH ()-[e]->() WHERE e.branch = $branch_name RETURN count(e) AS nbr_edges",
@@ -49,10 +72,9 @@ async def test_delete_refused_when_a_branch_holds_a_required_peer(
     with pytest.raises(ValidationError) as exc:
         await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
 
-    message = str(exc.value)
-    assert f"Cannot delete {TEAM_KIND} '{team.id}'" in message
-    assert f"{MEMBER_KIND} '{member.id}'" in message
-    assert f"'{branch.name}'" in message
+    assert str(exc.value) == _required_peer_message(
+        team=team, peer_kind=MEMBER_KIND, peer=member, branch_names=f"branch '{branch.name}'"
+    )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
 
 
@@ -86,12 +108,117 @@ async def test_delete_refused_when_a_cascade_reaches_a_peer_on_another_branch_on
     with pytest.raises(ValidationError) as exc:
         await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
 
-    message = str(exc.value)
-    assert f"Cannot delete {TEAM_KIND} '{team.id}'" in message
-    assert f"{BADGE_KIND} '{badge.id}'" in message
-    assert f"'{branch.name}'" in message
+    assert str(exc.value) == _cascade_message(
+        team=team, relationship_name="badges", peer_kind=BADGE_KIND, peer=badge, branch_names=f"branch '{branch.name}'"
+    )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
     assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
+
+
+async def test_delete_refused_when_a_cascade_reaches_a_peer_that_does_not_declare_the_relationship(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    branch = await create_branch(db=db, branch_name="branch-holds-sticker")
+    sticker = await _create_node(db=db, branch=branch, kind=STICKER_KIND, name="sticker-on-branch")
+    team_on_branch = await NodeManager.get_one(db=db, id=team.id, branch=branch, raise_on_error=True)
+    await team_on_branch.stickers.update(db=db, data=[sticker])  # type: ignore[attr-defined]
+    await team_on_branch.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert str(exc.value) == _cascade_message(
+        team=team,
+        relationship_name="stickers",
+        peer_kind=STICKER_KIND,
+        peer=sticker,
+        branch_names=f"branch '{branch.name}'",
+    )
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+
+async def test_delete_refused_when_a_cascade_target_with_a_required_link_back_stays_on_another_branch(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    certificate = await _create_node(db=db, branch=default_branch, kind=CERTIFICATE_KIND, name="cert", team=team)
+    branch = await create_branch(db=db, branch_name="branch-keeps-certificate")
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert str(exc.value) == _required_peer_message(
+        team=team, peer_kind=CERTIFICATE_KIND, peer=certificate, branch_names=f"branch '{branch.name}'"
+    )
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+    assert await NodeManager.get_one(db=db, id=certificate.id, branch=default_branch) is not None
+
+
+async def test_delete_ignores_a_required_link_to_a_branch_aware_cascade_target_on_another_branch(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    badge = await _create_node(db=db, branch=default_branch, kind=BADGE_KIND, name="badge", team=team)
+    branch = await create_branch(db=db, branch_name="branch-holds-badge-holder")
+    holder = await _create_node(db=db, branch=branch, kind=HOLDER_KIND, name="holder-on-branch", badge=badge)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert {node.id for node in deleted} == {team.id, badge.id}
+    assert await NodeManager.get_one(db=db, id=badge.id, branch=default_branch) is None
+    assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
+    assert await NodeManager.get_one(db=db, id=holder.id, branch=branch) is not None
+
+
+async def test_delete_checks_a_branch_aware_node_deleted_with_a_branch_agnostic_one_on_the_request_branch_only(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    badge = await _create_node(db=db, branch=default_branch, kind=BADGE_KIND, name="badge")
+    branch = await create_branch(db=db, branch_name="branch-holds-badge-holder")
+    holder = await _create_node(db=db, branch=branch, kind=HOLDER_KIND, name="holder-on-branch", badge=badge)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[team, badge])
+
+    assert {node.id for node in deleted} == {team.id, badge.id}
+    assert await NodeManager.get_one(db=db, id=team.id, branch=branch) is None
+    assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
+    assert await NodeManager.get_one(db=db, id=holder.id, branch=branch) is not None
+
+
+async def test_delete_on_a_user_branch_refused_when_the_default_branch_holds_a_required_peer(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    branch = await create_branch(db=db, branch_name="branch-requests-delete")
+    member = await _create_node(db=db, branch=default_branch, kind=MEMBER_KIND, name="member-on-main", team=team)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=branch, nodes=[team])
+
+    assert str(exc.value) == _required_peer_message(
+        team=team, peer_kind=MEMBER_KIND, peer=member, branch_names=f"branch '{default_branch.name}'"
+    )
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+
+async def test_delete_refused_names_every_blocking_branch_in_one_error(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team_1 = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    team_2 = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-2")
+    member = await _create_node(db=db, branch=default_branch, kind=MEMBER_KIND, name="member", team=team_1)
+    await create_branch(db=db, branch_name="branch-b")
+    await create_branch(db=db, branch_name="branch-a")
+    await _move_member_to_team(db=db, branch=default_branch, member=member, team=team_2)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[team_1])
+
+    assert str(exc.value) == _required_peer_message(
+        team=team_1, peer_kind=MEMBER_KIND, peer=member, branch_names="branches 'branch-a', 'branch-b'"
+    )
 
 
 async def test_delete_succeeds_and_cascades_only_on_the_request_branch(

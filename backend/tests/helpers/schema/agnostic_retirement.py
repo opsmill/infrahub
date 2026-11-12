@@ -56,6 +56,9 @@ AGNOSTIC_RETIREMENT_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_WIDGET, AGNOSTIC_GADGET,
 TEAM_KIND = "AgnosticretireTeam"
 MEMBER_KIND = "AgnosticretireMember"
 BADGE_KIND = "AgnosticretireBadge"
+CERTIFICATE_KIND = "AgnosticretireCertificate"
+STICKER_KIND = "AgnosticretireSticker"
+HOLDER_KIND = "AgnosticretireHolder"
 
 # Branch-agnostic, so deleting a team removes it on every branch at once.
 AGNOSTIC_TEAM = NodeSchema(
@@ -75,6 +78,22 @@ AGNOSTIC_TEAM = NodeSchema(
             name="badges",
             peer=BADGE_KIND,
             identifier="agnosticretire_badge__agnosticretire_team",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        RelationshipSchema(
+            name="certificates",
+            peer=CERTIFICATE_KIND,
+            identifier="agnosticretire_certificate__agnosticretire_team",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        RelationshipSchema(
+            name="stickers",
+            peer=STICKER_KIND,
+            identifier="agnosticretire_sticker__agnosticretire_team",
             cardinality=RelationshipCardinality.MANY,
             optional=True,
             on_delete=RelationshipDeleteBehavior.CASCADE,
@@ -114,4 +133,48 @@ AGNOSTIC_BADGE = NodeSchema(
     ],
 )
 
-AGNOSTIC_DELETE_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_TEAM, AGNOSTIC_MEMBER, AGNOSTIC_BADGE])
+# A cascade target whose relationship back to its team is required.
+AGNOSTIC_CERTIFICATE = NodeSchema(
+    name="Certificate",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="team",
+            peer=TEAM_KIND,
+            identifier="agnosticretire_certificate__agnosticretire_team",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+# A cascade target that does not declare the relationship back to its team.
+AGNOSTIC_STICKER = NodeSchema(
+    name="Sticker",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+)
+
+# Requires a badge, which is branch-aware, so deleting a team removes the badge on the request branch only.
+AGNOSTIC_HOLDER = NodeSchema(
+    name="Holder",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="badge",
+            peer=BADGE_KIND,
+            identifier="agnosticretire_badge__agnosticretire_holder",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+AGNOSTIC_DELETE_SCHEMA = SchemaRoot(
+    nodes=[AGNOSTIC_TEAM, AGNOSTIC_MEMBER, AGNOSTIC_BADGE, AGNOSTIC_CERTIFICATE, AGNOSTIC_STICKER, AGNOSTIC_HOLDER]
+)
