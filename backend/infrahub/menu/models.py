@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core.account import GlobalPermission
 from infrahub.core.node import Node

@@ -111,7 +111,7 @@ RETURN n.uuid AS node_uuid, n.kind AS node_kind, bad_attrs
                 BadNodeInfo(
                     node_uuid=str(result.get("node_uuid")),
                     node_kind=str(result.get("node_kind")),
-                    bad_attrs=[str(a) for a in result.get("bad_attrs")],
+                    bad_attrs=result.get_as_list_of_type("bad_attrs", return_type=str),
                 )
             )
         return results

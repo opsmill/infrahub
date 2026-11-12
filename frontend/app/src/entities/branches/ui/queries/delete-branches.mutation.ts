@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { deleteBranches } from "@/entities/branches/domain/use-cases/delete-branches";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
@@ -29,6 +30,7 @@ export function useDeleteBranchesMutation() {
       });
 
       await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all });
     },
   });
 }

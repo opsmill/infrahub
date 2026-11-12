@@ -13,6 +13,7 @@ from infrahub.telemetry.database import (
     get_server_info,
     get_system_info,
 )
+from tests.helpers.db_query_failer import FailingQueryInfrahubDatabase
 
 
 async def test_get_server_info(db: InfrahubDatabase) -> None:
@@ -28,6 +29,18 @@ async def test_get_system_info(db: InfrahubDatabase) -> None:
 async def test_gather_database_information(db: InfrahubDatabase) -> None:
     data = await gather_database_information.fn(db)
     assert data is not None
+
+
+async def test_gather_database_information_survives_system_info_failure(db: InfrahubDatabase) -> None:
+    """A failed system-information read reports ``system_info`` as ``None`` and keeps the rest of the snapshot."""
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"get_system_info"})
+
+    data = await gather_database_information.fn(failing_db)
+
+    assert data.system_info is None
+    assert isinstance(data.servers, list)
+    assert data.node_count["total"] is not None
+    assert data.relationship_count["total"] is not None
 
 
 async def test_gather_database_information_corenode_matches_seeded(

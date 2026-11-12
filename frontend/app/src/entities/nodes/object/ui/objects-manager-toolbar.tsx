@@ -6,6 +6,7 @@ import { ColumnsPicker } from "@/entities/nodes/columns/ui/columns-picker";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterPicker } from "@/entities/nodes/object/ui/filters/filter-picker";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
+import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableSchemaSelector } from "@/entities/nodes/object/ui/object-table/object-table-schema-selector";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -39,7 +40,7 @@ export function ObjectsManagerToolbar() {
           <ColumnsPicker schema={selectedSchema} surface={columnSurface} />
         )}
 
-        <FilterPicker schema={selectedSchema} filters={filters} />
+        <FilterPicker filterDefinitions={getFilterDefinitions(selectedSchema)} filters={filters} />
 
         <ObjectCreateFormTrigger
           schema={selectedSchema}

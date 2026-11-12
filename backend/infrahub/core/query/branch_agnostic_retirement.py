@@ -36,8 +36,8 @@ WITH origin_name, fork_at, collect({
 // -----------------
 // Every Node the deleted branch could read that other branches could not necessarily read: created
 // on this branch, or deleted on the default branch after the fork. Kept as an unaggregated stream:
-// two seeks under UNION ALL rather than one OR. UNION ALL keeps a Node matching both bounds in the
-// stream twice, and the following WITH has no DISTINCT, so that Node is evaluated twice.
+// seeks under UNION ALL rather than one OR. UNION ALL keeps a Node matching several bounds in the
+// stream more than once, and the following WITH has no DISTINCT, so that Node is evaluated again.
 // -----------------
 CALL (origin_name, fork_at) {
     MATCH (reachable_node:Node)-[existence:IS_PART_OF]->()
@@ -52,10 +52,26 @@ CALL (origin_name, fork_at) {
       AND existence.from <= fork_at
       AND existence.to > fork_at
     RETURN reachable_node
+  UNION ALL
+    // -----------------
+    // Every Node owning an attribute with an open IS_RESERVED edge (they're all on the global branch)
+    // whose owning edge is on this branch or was deleted on the default branch after the fork.
+    // -----------------
+    MATCH ()-[is_reserved:IS_RESERVED]->(:Attribute)<-[owning:HAS_ATTRIBUTE]-(reachable_node:Node)
+    WHERE is_reserved.branch = $global_branch_name
+      AND is_reserved.status = "active"
+      AND is_reserved.from <= $at
+      AND is_reserved.to IS NULL
+      AND owning.status = "active"
+      AND ((owning.branch = $branch_name AND owning.to IS NULL)
+          OR (owning.branch = origin_name
+              AND owning.from <= fork_at
+              AND owning.to > fork_at))
+    RETURN DISTINCT reachable_node
 }
 WITH reachable_node, branch_windows
 // -----------------
-// ... that still owns an open branch-agnostic field. Global owning edges exist only for those.
+// ... that still owns an open branch-agnostic field or an attribute with an open IS_RESERVED edge.
 // -----------------
 WHERE EXISTS {
     MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(:Attribute|Relationship)
@@ -64,16 +80,33 @@ WHERE EXISTS {
       AND anchor.from <= $at
       AND anchor.to IS NULL
 }
+OR EXISTS {
+    MATCH (reachable_node)-[:HAS_ATTRIBUTE]->(:Attribute)<-[is_reserved:IS_RESERVED]-()
+    WHERE is_reserved.branch = $global_branch_name
+      AND is_reserved.status = "active"
+      AND is_reserved.from <= $at
+      AND is_reserved.to IS NULL
+}
 
 // -----------------
 // Retention is evaluated and closed per batch of Nodes.
 // -----------------
 CALL (reachable_node, branch_windows) {
-    MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-    WHERE anchor.branch = $global_branch_name
-      AND anchor.status = "active"
-      AND anchor.from <= $at
-      AND anchor.to IS NULL
+    CALL (reachable_node) {
+        MATCH (reachable_node)-[anchor:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+        WHERE anchor.branch = $global_branch_name
+          AND anchor.status = "active"
+          AND anchor.from <= $at
+          AND anchor.to IS NULL
+        RETURN field
+      UNION
+        MATCH (reachable_node)-[:HAS_ATTRIBUTE]->(field:Attribute)<-[is_reserved:IS_RESERVED]-()
+        WHERE is_reserved.branch = $global_branch_name
+          AND is_reserved.status = "active"
+          AND is_reserved.from <= $at
+          AND is_reserved.to IS NULL
+        RETURN field
+    }
     WITH branch_windows, collect(DISTINCT field) AS agnostic_candidates
     %(unretained_evaluation)s
     MATCH (field)-[edge_to_close]-()
@@ -89,16 +122,19 @@ RETURN sum(batch_closed_edges) AS edges_closed
 
 
 class RetireBranchAgnosticFieldsQuery(Query):
-    """Close the open global edges of the branch-agnostic fields only the deleted branch still retained.
+    """Close the open global edges of the fields only the deleted branch still retained.
 
-    Retention is judged across every remaining branch, and a field kept live by any of them is left open.
-    Must run while the branch's IS_PART_OF edges still exist, because the candidate bound reads them.
+    The fields are branch-agnostic fields plus any attribute with an open global IS_RESERVED edge.
+    A branch-aware attribute's only possible global edge is a pool's IS_RESERVED edge, so that is
+    all this closes on it. Retention is judged across every remaining branch, and a field kept live
+    by any of them is left open. Must run while the branch's IS_PART_OF and HAS_ATTRIBUTE edges
+    still exist, and before the branch's own vertex goes, because the candidate bound reads them.
 
     Candidate Nodes are streamed and evaluated in batches of `batch_size`, each batch committing its
-    own closures. A batch expands every candidate to its branch-agnostic fields and every field to
+    own closures. A batch expands every candidate to its global-edged fields and every field to
     its linked peers before multiplying the rows by the branch count, so its transaction memory
-    scales with that fan-out rather than with `batch_size` alone. A Node that matches both candidate
-    bounds is evaluated twice; the second pass finds its edges already closed.
+    scales with that fan-out rather than with `batch_size` alone. A Node that matches several candidate
+    bounds is evaluated once per bound; later passes find its edges already closed.
 
     The writes are batched, so this query cannot run inside an explicit transaction. A failure part
     way through leaves the earlier batches closed, which a re-run completes: retention does not come

@@ -1,5 +1,10 @@
 import type { PaginationParams } from "@/shared/api/types";
 
+import type {
+  NumberPoolAllocationFilters,
+  NumberPoolDivisionSelector,
+} from "@/entities/resource-manager/domain/model/number-pool";
+
 export interface ResourceUtilizationKeysParams {
   poolId: string;
 }
@@ -7,6 +12,33 @@ export interface ResourceUtilizationKeysParams {
 export interface ResourceAllocatedKeysParams extends PaginationParams {
   poolId: string;
   resourceId: string;
+}
+
+export interface NumberPoolKeysParams {
+  poolId: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface NumberPoolUtilizationKeysParams {
+  poolId: string;
+  division?: NumberPoolDivisionSelector;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface NumberPoolDivisionsKeysParams {
+  poolId: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface NumberPoolAllocationsKeysParams extends NumberPoolAllocationFilters {
+  poolId: string;
+  rangeId?: string;
+  division?: NumberPoolDivisionSelector;
+  branchName: string;
+  atDate?: Date | null;
 }
 
 export interface NumberPoolsKeysParams {
@@ -27,6 +59,55 @@ export const resourceManagerQueryKeys = {
       params.resourceId,
       params.limit,
       params.offset,
+    ] as const,
+  numberPool: (params: NumberPoolKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool",
+      params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolUtilization: (params: NumberPoolUtilizationKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-utilization",
+      params.poolId,
+      params.division ?? null,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolDivisions: (params: NumberPoolDivisionsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-divisions",
+      params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolAllocations: (params: NumberPoolAllocationsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-allocations",
+      params.poolId,
+      params.rangeId ?? null,
+      params.division ?? null,
+      params.branch ?? null,
+      params.provenance ?? null,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolAllocationCount: (params: NumberPoolAllocationsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-allocation-count",
+      params.poolId,
+      params.rangeId ?? null,
+      params.division ?? null,
+      params.branch ?? null,
+      params.provenance ?? null,
+      params.branchName,
+      params.atDate,
     ] as const,
   numberPools: (params: NumberPoolsKeysParams) =>
     [

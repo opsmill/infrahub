@@ -53,7 +53,7 @@ The async Prefect path **neutralizes** self-targeting triggers by replacing thei
 
 When a computed attribute template references peer attributes (e.g., `{{ role__name__value }}`), those attributes must be loaded during `resolve_relationships()`. The `_collect_extra_filters()` method reads `relationship_fields` from three sources:
 
-```
+```text
 _collect_extra_filters(schema_branch)
   -> HFID relationship fields       (for new nodes or when HFID is set)
   -> Display label relationship fields (for new nodes or when display_label is set)
@@ -107,7 +107,7 @@ The `ComputedAttributes` facade builds `python_attributes_by_transform`, a `dict
 
 Two independent paths recompute these attributes:
 
-- **Schema change** — a `SchemaUpdatedEvent` runs `computed_attribute_setup_python`, which reconciles the automations and, via `RecomputeScoper`, submits a recompute only for the attributes whose backing fields changed.
+- **Schema change** — a `SchemaUpdatedEvent` runs `computed_attribute_setup_python`, which reconciles the automations and, via `RecomputeScoper`, submits a recompute only for the attributes whose backing fields changed. On the default branch, the selected attributes pass the regeneration barrier first, so an attribute whose transform belongs to a repository with pending pushes waits for the release that follows the push or an abandonment ([merge-recompute.md](merge-recompute.md#held-python-targets)).
 - **Git change** — importing a repository writes each transform's `fingerprint`. That write emits a `CoreTransformPython` node lifecycle event, matched by three builtin triggers:
 
 | Trigger | Event | Match | Action |

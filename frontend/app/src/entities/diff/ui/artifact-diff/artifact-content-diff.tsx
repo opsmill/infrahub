@@ -271,7 +271,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
         {inHoverState && (
           <Button
-            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-gray-200 p-1"
+            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-surface p-1"
             onClick={handleClick}
           >
             <PencilLineIcon className="size-3.5" />

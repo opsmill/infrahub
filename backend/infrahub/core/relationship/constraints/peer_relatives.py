@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.exceptions import ValidationError
@@ -9,6 +9,8 @@ from infrahub.exceptions import ValidationError
 from .interface import RelationshipManagerConstraintInterface
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import io
-from typing import TYPE_CHECKING, Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO, Self
 
 import boto3
 import botocore.exceptions
 import fastapi_storages
-from typing_extensions import Self
 
 from infrahub.exceptions import NodeNotFoundError
 
@@ -62,7 +61,7 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         self._bucket.download_fileobj(name, f)
         f.flush()
         f.seek(0)
-        return f  # type: ignore
+        return f
 
     def delete(self, name: str) -> None:
         self._bucket.Object(name).delete()

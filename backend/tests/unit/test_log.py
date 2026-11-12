@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
+
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 
 from infrahub.log import (
     _TRACEBACK_SUPPRESSED_TYPES,
     PREFECT_RUN_LOGGERS,
     TracebackSuppressionFilter,
+    add_trace_id,
     suppress_traceback_in_logs,
 )
 from infrahub.webhook.classifier import ClassifiedFailure, StatusClass, WebhookDeliveryError
@@ -54,6 +59,16 @@ def test_decorator_registers_type_in_the_shared_registry() -> None:
     assert TracebackSuppressionFilter(_TRACEBACK_SUPPRESSED_TYPES).filter(_record(_ExpectedFailureError())) is False
 
 
+def test_startup_silences_the_http_client_loggers() -> None:
+    """Importing infrahub.log configures logging for the process, which is what pins these loggers.
+
+    httpx logs through both the httpx and httpcore namespaces; both must stay pinned to ERROR or a
+    DEBUG root level floods the logs with per-round-trip transport tracing.
+    """
+    assert logging.getLogger("httpx").level == logging.ERROR
+    assert logging.getLogger("httpcore").level == logging.ERROR
+
+
 def test_startup_installs_the_filter_on_the_prefect_run_loggers() -> None:
     """Importing infrahub.log configures logging for the process, which is what installs the filter."""
     installed_on = [
@@ -82,3 +97,37 @@ def test_traceback_suppression_leaves_logging_state_unchanged() -> None:
 
     assert _run_logger_filters() == filters_before
     assert root_logger.level == level_before
+
+
+def test_line_inside_a_recording_span_carries_its_trace_id() -> None:
+    provider = TracerProvider()
+    with provider.get_tracer(__name__).start_as_current_span("flow run") as span:
+        event = add_trace_id(logger=None, method_name="info", event_dict={"event": "flow started"})
+        expected = format(span.get_span_context().trace_id, "032x")
+
+    assert re.fullmatch(r"[0-9a-f]{32}", event["trace_id"])
+    assert event == {"event": "flow started", "trace_id": expected}
+
+
+def test_line_outside_a_span_has_no_trace_id() -> None:
+    assert add_trace_id(logger=None, method_name="info", event_dict={"event": "flow started"}) == {
+        "event": "flow started"
+    }
+
+
+def test_line_inside_a_span_that_is_not_recorded_has_no_trace_id() -> None:
+    provider = TracerProvider(sampler=ALWAYS_OFF)
+    with provider.get_tracer(__name__).start_as_current_span("flow run"):
+        event = add_trace_id(logger=None, method_name="info", event_dict={"event": "flow started"})
+
+    assert event == {"event": "flow started"}
+
+
+def test_line_that_already_has_a_trace_id_keeps_it() -> None:
+    provider = TracerProvider()
+    with provider.get_tracer(__name__).start_as_current_span("request"):
+        event = add_trace_id(
+            logger=None, method_name="info", event_dict={"event": "request done", "trace_id": "from-the-request"}
+        )
+
+    assert event == {"event": "request done", "trace_id": "from-the-request"}

@@ -16,6 +16,7 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -171,6 +172,7 @@ async def test_create_profile_with_direct_peer_succeeds(
     default_branch: Branch,
     site_schema_with_profile: None,
     ip_dataset_prefix_v4: dict[str, Any],
+    session_admin: AccountSession,
 ) -> None:
     """Test that creating a profile with a direct peer reference (not from_pool) still works."""
     net142 = ip_dataset_prefix_v4["net142"]
@@ -196,7 +198,9 @@ async def test_create_profile_with_direct_peer_succeeds(
 
     default_branch.update_schema_hash()
     service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_admin
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,

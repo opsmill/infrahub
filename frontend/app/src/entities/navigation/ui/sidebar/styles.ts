@@ -1,2 +1,2 @@
 export const menuNavigationItemStyle =
-  "flex items-center outline-hidden gap-2 px-2.5 py-2 rounded-lg font-medium text-subtle hover:bg-highlight focus:bg-highlight group/menu-item data-[state=open]:bg-active/10 data-[state=open]:text-active";
+  "group/menu-item flex w-full items-center gap-2 rounded-lg px-2.5 py-2 font-medium text-subtle outline-hidden hover:bg-highlight focus:bg-highlight aria-expanded:bg-active/10 aria-expanded:text-active";

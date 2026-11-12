@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -12,10 +13,19 @@ if TYPE_CHECKING:
     import httpx
 
 
+@dataclass(frozen=True)
+class RecordedPost:
+    url: str
+    data: Any | None = None
+    json: Any | None = None
+    headers: dict[str, Any] | None = None
+
+
 class MemoryHTTP(InfrahubHTTP):
     def __init__(self) -> None:
         self._get_response: dict[str, httpx.Response] = {}
         self._post_response: dict[str, httpx.Response | Exception] = {}
+        self.posts: list[RecordedPost] = []
 
     def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
         return False
@@ -35,6 +45,7 @@ class MemoryHTTP(InfrahubHTTP):
         headers: dict[str, Any] | None = None,
         verify: bool | None = None,
     ) -> httpx.Response:
+        self.posts.append(RecordedPost(url=url, data=data, json=json, headers=headers))
         registered = self._post_response[url]
         if isinstance(registered, Exception):
             raise registered

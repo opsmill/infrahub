@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 from fast_depends import dependency_provider
 from infrahub_sdk.graphql import Mutation
-from infrahub_sdk.protocols import CoreGeneratorDefinition
+from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreStandardGroup
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import FlowFilter, FlowFilterName, FlowRunFilter, FlowRunFilterTags
 from tests.constants import TestKind
@@ -135,7 +135,7 @@ class TestMutationGenerator(TestInfrahubApp):
             data={"name": "Regera", "color": "Blue", "owner": target.id, "manufacturer": manufacturer.id},
         )
         await car.save()
-        people = await client.get(kind=InfrahubKind.STANDARDGROUP, branch="branch1", name__value="people")
+        people = await client.get(kind=CoreStandardGroup, branch="branch1", name__value="people")
         await people.members.fetch()
         people.members.add(target.id)
         await people.save()

@@ -1,17 +1,11 @@
 import asyncio
 from uuid import uuid4
 
-import pytest
-
-from infrahub import config
 from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache.redis import RedisCache
 
 
 async def test_get(redis: dict[int, int] | None) -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("Must use Redis to run this test")
-
     redis = RedisCache()
     key = f"ci_testing:{uuid4()}"
     value = "I exist"
@@ -27,9 +21,6 @@ async def test_get(redis: dict[int, int] | None) -> None:
 
 
 async def test_list_keys(redis: dict[int, int] | None) -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("Must use Redis to run this test")
-
     redis = RedisCache()
     base_key = f"ci_testing:{uuid4()}"
     iterations = 1005

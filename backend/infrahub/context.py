@@ -1,6 +1,7 @@
+from typing import Self
+
 from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel
-from typing_extensions import Self
 
 from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
