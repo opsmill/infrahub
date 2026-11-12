@@ -45,7 +45,22 @@ other clients can group fields the same way. The schema and the API use `contain
   `collapsible: false` is rejected. The Details card and the cards of the generated Profile and
   Template containers are not collapsible. Form panels are always expanded. Added on 2026-11-12.
 - The schema viewer lists the containers of a kind in a Containers tab, between Properties and
-  Attributes, and the Properties tab does not list them. Added on 2026-11-12.
+  Attributes, and the Properties tab does not list them. Added on 2026-11-12. The schema viewer
+  decisions below come from a design exploration in draft pull request
+  [#11519](https://github.com/opsmill/infrahub/pull/11519), now closed; its record is
+  [03-decisions.md](https://github.com/opsmill/infrahub/blob/bb87b6906250bdc2f7a98bd1771595c5cd2e0bbb/.design/schema-viewer-sections/03-decisions.md):
+  - Each container is an accordion styled like the attribute and relationship accordions. It
+    shows the container's name, label, description, order weight, collapsible, collapsed and
+    inherited values, and not the fields placed in it, because the attribute and relationship
+    accordions already show each field's container.
+  - The viewer says "container", not "section", because it shows the schema definition and
+    authors write `containers:` and `container:`. Renaming the schema key to `sections` was
+    rejected: the backend, the SDK and the documentation already use `container`.
+  - Rejected: a containers block or summary in the Properties tab (revisions 1 to 4 of the
+    exploration). Reading how a kind's fields are grouped is a separate task from reading the
+    kind's properties, so it has its own tab, and the Properties tab stays as it is on develop.
+  - Dropped with it: titles on the Properties tab groups and moving the Icon row to the Menu
+    group, which only made sense while the Properties tab changed.
 - The first tab of the object detail page and of the IPAM detail page is named Overview instead
   of Details. The card of the fields without a container keeps the title Details. Added on
   2026-11-12.
