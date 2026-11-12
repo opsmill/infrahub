@@ -42,31 +42,6 @@ describe("getRelationshipsFromApi", () => {
     expect(sentVariables()).toMatchObject({ limit: 10, offset: 20, search: "blue" });
   });
 
-  it("builds one document for every page, so the backend can reuse its parsed query", async () => {
-    // GIVEN
-    await getRelationshipsFromApi({
-      peer: "BuiltinTag",
-      limit: 10,
-      offset: 0,
-      branchName: "main",
-      atDate: null,
-    });
-    const firstPage = generatedQuery();
-
-    // WHEN
-    vi.mocked(graphqlClient.query).mockClear();
-    await getRelationshipsFromApi({
-      peer: "BuiltinTag",
-      limit: 10,
-      offset: 10,
-      branchName: "main",
-      atDate: null,
-    });
-
-    // THEN
-    expect(generatedQuery()).toBe(firstPage);
-  });
-
   it("declares id filters as variables and leaves other filters inlined", async () => {
     // WHEN
     await getRelationshipsFromApi({

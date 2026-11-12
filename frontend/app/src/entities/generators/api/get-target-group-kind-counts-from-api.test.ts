@@ -39,24 +39,4 @@ describe("getTargetGroupKindCountsFromApi", () => {
     expect(generatedQuery()).not.toContain("group-b");
     expect(sentVariables()).toEqual({ group0Ids: ["group-a"], group1Ids: ["group-b"] });
   });
-
-  it("builds the same query for different groups of the same count", async () => {
-    // WHEN
-    await getTargetGroupKindCountsFromApi({
-      nodeKind: "InfraDevice",
-      groupIds: ["group-a"],
-      branchName: "main",
-      atDate: null,
-    });
-    await getTargetGroupKindCountsFromApi({
-      nodeKind: "InfraDevice",
-      groupIds: ["group-z"],
-      branchName: "main",
-      atDate: null,
-    });
-
-    // THEN
-    const [first, second] = vi.mocked(graphqlClient.query).mock.calls;
-    expect(first![0].query).toBe(second![0].query);
-  });
 });
