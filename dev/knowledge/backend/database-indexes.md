@@ -51,7 +51,7 @@ RETURN sum(num_edges) AS num_edges
 ## Check that the index is used
 
 - Run the query with `EXPLAIN` or `PROFILE` on a graph much larger than what the query returns. Each read shows an index seek, and none starts from `AllNodesScan` or from a scan of a whole label or relationship type.
-- Do not rely on a test to show a missing index. A hint whose index does not exist does not fail the query: Neo4j plans without it and logs a warning, so the result stays correct and only the cost changes.
+- Check that the required indexes exist and are online, then inspect the execution plan. A passing result test does not prove that an index was used: Neo4j can ignore an unfulfillable index hint and emit a warning, or fail the query when `dbms.cypher.hints_error` is enabled.
 - A range that covers most of the graph costs more through the index than one scan of the edges. Use this shape for reads whose range is small against the graph.
 
 ## See Also
