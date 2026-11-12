@@ -314,12 +314,7 @@ The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label 
 
 Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
 
-To select edges by the time they were opened or closed, read each edge type in its own `MATCH` through its `from` or `to` index. Every edge type of `DatabaseEdgeType` has one RANGE index on each of the two properties (`rel_indexes` in `backend/infrahub/core/graph/index.py`), and a relationship index only serves a pattern that names its type: `MATCH (p)-[r]-(q) WHERE r.from >= $from_time` reads every edge of the graph. `DiffCountChanges` (`infrahub/core/query/diff.py`) is the query to read alongside a new instance:
-
-- One `MATCH` per edge type and property, with `USING INDEX SEEK r:TYPE(from)`, joined with `UNION ALL`. One `MATCH` over several types, or `from` and `to` joined with `OR` in one read, does not seek the indexes. Without `SEEK` the planner can choose an index scan.
-- Aggregate inside each read, then combine the aggregates. Passing every edge row to one aggregation after the `UNION ALL` plans several times slower.
-- An edge opened and closed inside the window is in both indexes, so the read on `to` excludes the edges whose `from` is also in the window.
-- A read that returns nodes instead of a count returns `DISTINCT` nodes inside each read, as `DiffFieldNodesQuery` does in the same file. Keep the hints on such a read: without them the planner can start from a scan of every node and expand to the edges.
+When a query selects vertices or edges by a property that has no index yet, such as the edges opened or closed in a time window, follow [Database Indexes](database-indexes.md): add the index with its migration in the same change, and write one hinted read per edge type and property.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
@@ -552,6 +547,7 @@ Specialized base classes for different domains:
 ## See Also
 
 - [Database Schema](database-schema.md) - Neo4j vertex/edge structure and temporal branching rules
+- [Database Indexes](database-indexes.md) - When a query needs an index, how to add one, and the read shape that uses it
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Testing](testing.md) - Query testing patterns
 - [Python Coding Standards](../../guidelines/backend/python.md) - Dataclass conventions
