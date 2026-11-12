@@ -42,24 +42,27 @@ async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerato
         yield client
 
 
-async def emit_heartbeat(flow_run_id: UUID, occurred: DateTime) -> None:
+async def emit_heartbeat(flow_run_id: UUID) -> None:
     async with get_events_client() as events_client:
         await events_client.emit(
             Event(
                 event=FLOW_RUN_HEARTBEAT_EVENT,
-                occurred=occurred,
+                occurred=DateTime.now(tz=UTC),
                 resource=Resource({"prefect.resource.id": f"{FLOW_RUN_RESOURCE_PREFIX}{flow_run_id}"}),
             )
         )
 
 
-async def wait_for_stored_heartbeat(adapter: PrefectClientAdapter, flow_run_id: UUID, since: DateTime) -> bool:
+async def wait_for_stored_heartbeat(
+    adapter: PrefectClientAdapter, flow_run_id: UUID, since: DateTime
+) -> DateTime | None:
     deadline = asyncio.get_running_loop().time() + PREFECT_EVENT_WAIT_SECONDS
     while asyncio.get_running_loop().time() < deadline:
-        if flow_run_id in await adapter.latest_heartbeats(flow_run_ids=[flow_run_id], since=since):
-            return True
+        heartbeats = await adapter.latest_heartbeats(flow_run_ids=[flow_run_id], since=since)
+        if flow_run_id in heartbeats:
+            return heartbeats[flow_run_id]
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
-    return False
+    return None
 
 
 async def wait_until(moment: DateTime) -> None:
@@ -73,17 +76,19 @@ async def test_crashes_the_running_run_that_stopped_sending_heartbeats(prefect_c
     alive = await prefect_client.create_flow_run(flow=_watched_flow, state=State(type=StateType.RUNNING))
     finished = await prefect_client.create_flow_run(flow=_watched_flow, state=State(type=StateType.COMPLETED))
     started = DateTime.now(tz=UTC)
-    await emit_heartbeat(silent.id, occurred=started)
-    assert await wait_for_stored_heartbeat(adapter, silent.id, since=started - TEST_WINDOW)
+    await emit_heartbeat(silent.id)
+    silent_beat = await wait_for_stored_heartbeat(adapter, silent.id, since=started - TEST_WINDOW)
+    assert silent_beat is not None
 
     # The clock cannot be injected into the server, so a full window really passes before the live run beats again.
-    await wait_until(started + TEST_WINDOW + TEST_WINDOW / 5)
+    await wait_until(silent_beat + TEST_WINDOW + TEST_WINDOW / 5)
     beat_again = DateTime.now(tz=UTC)
-    await emit_heartbeat(alive.id, occurred=beat_again)
-    assert await wait_for_stored_heartbeat(adapter, alive.id, since=beat_again - TEST_WINDOW / 5)
+    await emit_heartbeat(alive.id)
+    alive_beat = await wait_for_stored_heartbeat(adapter, alive.id, since=beat_again - TEST_WINDOW / 5)
+    assert alive_beat is not None
 
-    # The server stores events in batches, so by the time it stores the live beat the current time can be a window past it.
-    check = await reaper.crash_zombies(now=beat_again)
+    # Prefect stores events up to a flush interval after they occur, which can exceed the test window.
+    check = await reaper.crash_zombies(now=alive_beat)
 
     assert (check.events_stored, set(check.crashed) & {silent.id, alive.id, finished.id}) == (True, {silent.id})
     silent_state = (await prefect_client.read_flow_run(silent.id)).state

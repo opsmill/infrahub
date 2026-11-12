@@ -3,15 +3,12 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
-    Iterator,
     Literal,
-    Mapping,
     TypeVar,
     overload,
 )
@@ -51,9 +48,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 if TYPE_CHECKING:
+    from typing import Self
     from uuid import UUID
-
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
@@ -872,6 +868,13 @@ class RelationshipValidatorList:
         self._relationships.remove(value)
         self._relationships_count -= 1
 
+    def remove_peers(self, peer_ids: Collection[str]) -> None:
+        kept = [rel for rel in self._relationships if rel.get_peer_id() not in peer_ids]
+        if self.min_count and len(kept) < self.min_count:
+            self._raise_too_few()
+        self._relationships[:] = kept
+        self._relationships_count = len(kept)
+
     def as_list(self) -> list[Relationship]:
         return self._relationships
 
@@ -1287,8 +1290,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         self.has_fetched_relationships = True
 
-        for peer_id in details.peer_ids_present_local_only:
-            await self.remove_locally(peer_id=peer_id, db=db)
+        if details.peer_ids_present_local_only:
+            self._relationships.remove_peers(peer_ids=set(details.peer_ids_present_local_only))
 
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)

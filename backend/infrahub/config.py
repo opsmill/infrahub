@@ -7,7 +7,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -24,7 +24,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
@@ -662,6 +661,23 @@ class CacheSettings(BaseSettings):
         description=(
             "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
             "the lock auto-expires after this period so Infrahub can recover on its own."
+        ),
+    )
+    shared_lock_ttl_secs: int = Field(
+        default=60,
+        ge=1,
+        description=(
+            "Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder "
+            "renews the record while it runs, so the record expires when the worker stops, or when every renewal "
+            "fails for this long."
+        ),
+    )
+    exclusive_lock_wait_secs: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Time in seconds that a request for a lock in exclusive mode waits for the holders of the lock in "
+            "shared mode to finish before it fails."
         ),
     )
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, Sequence, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
@@ -8,6 +8,8 @@ from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinal
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.relationship.model import Relationship
 

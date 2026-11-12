@@ -184,6 +184,8 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_MAX_CONNECTIONS` | Maximum number of connections in each Redis connection pool that an Infrahub process opens for the cache and the locks; with a Sentinel URL, the pools to the Sentinel daemons get the same size. A command that finds every connection of its pool in use fails with MaxConnectionsError. A max_connections query parameter in the cache URL takes precedence. | integer | 1000 |
 | `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` | Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task. | integer | 15 |
 | `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS` | Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, the lock auto-expires after this period so Infrahub can recover on its own. | integer | 20 |
+| `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS` | Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder renews the record while it runs, so the record expires when the worker stops, or when every renewal fails for this long. | integer | 60 |
+| `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS` | Time in seconds that a request for a lock in exclusive mode waits for the holders of the lock in shared mode to finish before it fails. | integer | 30 |
 
 ## Workflow
 

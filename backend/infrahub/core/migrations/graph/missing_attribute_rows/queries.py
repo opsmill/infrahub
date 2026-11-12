@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
     from infrahub.database import InfrahubDatabase
 
 

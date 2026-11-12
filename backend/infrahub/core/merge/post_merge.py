@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core import registry
@@ -27,6 +27,8 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.changelog.models import NodeChangelog

@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
@@ -16,28 +16,36 @@ export const getTargetGroupKindCountsFromApi = async ({
   branchName,
   atDate,
 }: GetTargetGroupKindCountsFromApiParams) => {
-  const fields = Object.fromEntries(
-    groupIds.map((groupId, index) => [
-      `${TARGET_GROUP_ALIAS_PREFIX}${index}`,
-      {
-        __aliasFor: nodeKind,
-        __args: { member_of_groups__ids: [groupId] },
-        count: true,
-      },
-    ])
-  );
+  const aliasedGroupIds = groupIds.map((groupId, index) => ({
+    alias: `${TARGET_GROUP_ALIAS_PREFIX}${index}`,
+    variable: `${TARGET_GROUP_ALIAS_PREFIX}${index}Ids`,
+    groupId,
+  }));
 
   const query = graphql(
     jsonToGraphQLQuery({
       query: {
         __name: "GetTargetGroupKindCounts",
-        ...fields,
+        __variables: Object.fromEntries(aliasedGroupIds.map(({ variable }) => [variable, "[ID]"])),
+        ...Object.fromEntries(
+          aliasedGroupIds.map(({ alias, variable }) => [
+            alias,
+            {
+              __aliasFor: nodeKind,
+              __args: { member_of_groups__ids: new VariableType(variable) },
+              count: true,
+            },
+          ])
+        ),
       },
     })
   );
 
   return graphqlClient.query({
     query,
+    variables: Object.fromEntries(
+      aliasedGroupIds.map(({ variable, groupId }) => [variable, [groupId]])
+    ),
     context: {
       branch: branchName,
       date: atDate,

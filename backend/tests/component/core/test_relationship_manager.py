@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 
 import pytest
@@ -556,3 +557,37 @@ async def test_details_computed_before_the_node_exists_are_not_reused(
     assert details.peer_ids_present_both == [person.id]
     assert details.peer_ids_present_local_only == []
     assert details.peer_ids_present_database_only == []
+
+
+async def test_refresh_drops_unsaved_peers_and_loads_peers_from_database(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await john.new(db=db, name="John", height=180)
+    await john.save(db=db)
+
+    jane = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await jane.new(db=db, name="Jane", height=170)
+    await jane.save(db=db)
+
+    accord = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await accord.new(db=db, name="accord", nbr_seats=5, owner=john.id)
+    await accord.save(db=db)
+
+    unsaved_cars = []
+    for name in ("civic", "jazz"):
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car.new(db=db, name=name, nbr_seats=5, owner=jane.id)
+        await car.save(db=db)
+        unsaved_cars.append(car)
+
+    loaded_john = await NodeManager.get_one(db=db, id=john.id, branch=default_branch, raise_on_error=True)
+    relm = loaded_john.get_relationship("cars")
+    await relm.get_relationships(db=db)
+    for car in unsaved_cars:
+        await relm.add(db=db, data=car)
+
+    # The refresh holds the lock of the manager while it drops the unsaved peers, so a re-entry would hang.
+    relationships = await asyncio.wait_for(relm.get_relationships(db=db, force_refresh=True), timeout=30)
+
+    assert [rel.peer_id for rel in relationships] == [accord.id]

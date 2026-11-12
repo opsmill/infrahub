@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -9,6 +10,7 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
 from infrahub.pools.existing_node_numbers import build_existing_node_number_allocator
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
@@ -113,15 +115,25 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
             allocator = build_existing_node_number_allocator(db=db, branch=branch)
             node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch)
             await node_query.execute(db=db)
-            await allocator.allocate(
-                pool=number_pool,
-                attribute=self.new_attribute_schema,
-                kind=self.new_schema.kind,
-                node_ids=node_query.get_node_ids(),
-                branch=branch,
-                at=at,
-                user_id=migration_input.user_id,
-            )
+            node_ids = node_query.get_node_ids()
+
+            async def allocate() -> None:
+                await allocator.allocate(
+                    pool=number_pool,
+                    attribute=self.new_attribute_schema,
+                    kind=self.new_schema.kind,
+                    node_ids=node_ids,
+                    branch=branch,
+                    at=at,
+                    user_id=migration_input.user_id,
+                )
+
+            # A kind without nodes allocates nothing, so it must not wait for the writes holding the pool.
+            if not node_ids:
+                await allocate()
+                return
+            async with NumberPoolLock(db=db).changing(pool_id=number_pool.get_id(), pool_name=number_pool.name.value):
+                await allocate()
 
         if db.is_transaction:
             await allocate_numbers(db=db)

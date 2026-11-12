@@ -110,26 +110,24 @@ component.getByTestId("element-id"); // Last resort
 - More resilient to refactoring
 - Encourages better component design
 
-### `name:` and adjacent `sr-only` spans: use a chained locator
+### Assert `sr-only` text through the accessible name
 
-Playwright's accessible-name computation (which browser-mode `getByRole` uses) concatenates inline
-descendants **without inserting a space**. So a menu item rendering `<span>Description</span>` next
-to `<span class="sr-only">visible</span>` has the accessible name `Descriptionvisible`, and
+Assert screen-reader text through the accessible name, which is what a screen reader announces:
 
 ```tsx
-component.getByRole("menuitem", { name: "Description visible" }); // never matches
+// ✅ Checks what a screen reader announces
+component.getByRole("button", { name: "Name sorted descending" });
+
+// ❌ Checks only that the text is somewhere inside the button
+component.getByRole("button", { name: "Name" }).getByText("sorted descending");
 ```
 
-silently never matches — a false negative that looks like the state assertion failing. Assert the
-marker with a chained locator instead:
+Playwright's accessible-name computation (which browser-mode `getByRole` uses) puts a space around
+each element whose computed `display` is not `inline`. An `sr-only` span is absolutely positioned,
+so it computes to `block`, as does each child of a flex container. Text in adjacent `inline`
+elements runs together: `<span>Alpha</span><span>beta</span>` is named `Alphabeta`.
 
-```tsx
-await expect
-  .element(component.getByRole("menuitem", { name: "Description" }).getByText("visible"))
-  .toBeVisible();
-```
-
-Example: `src/entities/nodes/columns/ui/columns-editor.test.tsx`.
+Example: `src/entities/nodes/object/ui/object-table/cells/table-column-header.test.tsx`.
 
 ## What to Test
 

@@ -129,6 +129,17 @@ async def test_reconcile(case: ReconcileCase) -> None:
     assert reconciliation.changed is bool(case.expected_writes)
 
 
+@pytest.mark.parametrize("case", RECONCILE_CASES, ids=lambda case: case.name)
+async def test_is_reconciled_only_when_a_reconciliation_would_write_nothing(case: ReconcileCase) -> None:
+    store = InMemoryRangeStore(ranges=case.stored)
+    stored = await store.get_ranges(pool_id=POOL.get_id())
+
+    is_reconciled = NumberPoolRangeReconciler(range_store=store).is_reconciled(stored=stored, declared=case.declared)
+
+    assert is_reconciled is not bool(case.expected_writes)
+    assert store.writes == []
+
+
 @dataclass
 class SingleRangeCase:
     name: str

@@ -22,6 +22,7 @@ from infrahub.core.query.resource_manager import (
     HeldNumber,
     NumberPoolChangeReserved,
     NumberPoolGetAllocated,
+    NumberPoolGetFree,
     NumberPoolGetHeldOutsideRanges,
     NumberPoolGetReserved,
     NumberPoolGetTrackingPool,
@@ -35,6 +36,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -105,6 +107,7 @@ async def do_run_number_pool_validation(db: InfrahubDatabase) -> None:
     snps = SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,
@@ -802,6 +805,7 @@ class TestSchemaPoolRemoval:
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=upserter,
             range_store_factory=NumberPoolRepository,
@@ -1062,3 +1066,203 @@ class TestNumberPoolGetHeldOutsideRanges:
                 ),
             ],
         )
+
+
+@dataclass
+class TwoBranchesDataset:
+    """The incident pool, the holding objects by name, and a time before either branch was created."""
+
+    default_branch: Branch
+    pool: CoreNumberPoolProtocol
+    names_by_id: dict[str, str]
+    before_branches: Timestamp
+
+
+@dataclass(frozen=True)
+class TwoBranchesRowsCase:
+    name: str
+    branch_name: str | None
+    before_branches: bool
+    expected: list[tuple[int, str, str]]
+    include_inherited_branches: bool = True
+
+
+TWO_BRANCHES_ROWS_CASES = [
+    TwoBranchesRowsCase(
+        name="every-branch",
+        branch_name=None,
+        before_branches=False,
+        expected=[
+            (1, "alpha", "kept"),
+            (1, "beta", "kept"),
+            (1, "main", "kept"),
+            (2, "alpha", "deleted-on-main"),
+            (2, "beta", "deleted-on-main"),
+            (3, "beta", "created-on-beta"),
+            (30, "alpha", "renumbered"),
+            (30, "beta", "renumbered"),
+            (30, "main", "renumbered"),
+        ],
+    ),
+    TwoBranchesRowsCase(
+        name="every-branch-open-main-values-on-main-only",
+        branch_name=None,
+        before_branches=False,
+        include_inherited_branches=False,
+        expected=[
+            (1, "main", "kept"),
+            (2, "alpha", "deleted-on-main"),
+            (2, "beta", "deleted-on-main"),
+            (3, "beta", "created-on-beta"),
+            (30, "main", "renumbered"),
+        ],
+    ),
+    TwoBranchesRowsCase(
+        name="main",
+        branch_name="main",
+        before_branches=False,
+        expected=[(1, "main", "kept"), (30, "main", "renumbered")],
+    ),
+    TwoBranchesRowsCase(
+        name="alpha",
+        branch_name="alpha",
+        before_branches=False,
+        expected=[(1, "alpha", "kept"), (2, "alpha", "deleted-on-main"), (30, "alpha", "renumbered")],
+    ),
+    TwoBranchesRowsCase(
+        name="beta",
+        branch_name="beta",
+        before_branches=False,
+        expected=[
+            (1, "beta", "kept"),
+            (2, "beta", "deleted-on-main"),
+            (3, "beta", "created-on-beta"),
+            (30, "beta", "renumbered"),
+        ],
+    ),
+    TwoBranchesRowsCase(
+        name="before-the-branches",
+        branch_name=None,
+        before_branches=True,
+        expected=[
+            (1, "alpha", "kept"),
+            (1, "beta", "kept"),
+            (1, "main", "kept"),
+            (2, "alpha", "deleted-on-main"),
+            (2, "beta", "deleted-on-main"),
+            (2, "main", "deleted-on-main"),
+            (3, "alpha", "renumbered"),
+            (3, "beta", "renumbered"),
+            (3, "main", "renumbered"),
+        ],
+    ),
+]
+
+
+@dataclass(frozen=True)
+class TwoBranchesFreeValueCase:
+    name: str
+    before_branches: bool
+    min_value: int
+    max_value: int
+    expected: int | None
+
+
+TWO_BRANCHES_FREE_VALUE_CASES = [
+    TwoBranchesFreeValueCase(name="lowest-free", before_branches=False, min_value=1, max_value=100, expected=4),
+    TwoBranchesFreeValueCase(
+        name="value-deleted-on-main", before_branches=False, min_value=2, max_value=2, expected=None
+    ),
+    TwoBranchesFreeValueCase(
+        name="lowest-free-before-the-branches", before_branches=True, min_value=1, max_value=100, expected=4
+    ),
+    TwoBranchesFreeValueCase(
+        name="value-renumbered-before-the-branches", before_branches=True, min_value=3, max_value=3, expected=None
+    ),
+]
+
+
+class TestNumberPoolReadsWithTwoLiveBranches:
+    """Every test reads the one dataset of the class and writes nothing.
+
+    On main, `kept` holds 1, `deleted-on-main` holds 2 and `renumbered` holds 3. After `before_branches`, main
+    changes `renumbered` to 30, then `alpha` and `beta` are created. Main then deletes `deleted-on-main`, and
+    `created-on-beta` is created on `beta` and takes 3, which no branch holds any more.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> TwoBranchesDataset:
+        main = default_branch_scope_class
+        do_register_test_schema(branch=main)
+        await do_run_number_pool_validation(db=db)
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=main)
+        pools = await NodeManager.query(db=db, schema=CoreNumberPoolProtocol, branch=main)
+        pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        kept, deleted_on_main, renumbered = await create_objects(
+            db=db, schema=incident_schema, branch=main.name, start=1, end=3
+        )
+        before_branches = Timestamp()
+        renumbered_on_main = await NodeManager.get_one(db=db, id=renumbered.id, branch=main, raise_on_error=True)
+        renumbered_on_main.get_attribute("number").value = 30
+        await renumbered_on_main.save(db=db)
+
+        await create_branch(db=db, branch_name="alpha")
+        beta = await create_branch(db=db, branch_name="beta")
+        await deleted_on_main.delete(db=db)
+        (created_on_beta,) = await create_objects(db=db, schema=incident_schema, branch=beta.name, start=4, end=4)
+
+        assert [
+            node.get_attribute("number").value for node in (kept, deleted_on_main, renumbered, created_on_beta)
+        ] == [1, 2, 3, 3]
+        return TwoBranchesDataset(
+            default_branch=main,
+            pool=pool,
+            names_by_id={
+                kept.id: "kept",
+                deleted_on_main.id: "deleted-on-main",
+                renumbered.id: "renumbered",
+                created_on_beta.id: "created-on-beta",
+            },
+            before_branches=before_branches,
+        )
+
+    @pytest.mark.parametrize("case", TWO_BRANCHES_ROWS_CASES, ids=[case.name for case in TWO_BRANCHES_ROWS_CASES])
+    async def test_allocated_rows(
+        self, db: InfrahubDatabase, dataset: TwoBranchesDataset, case: TwoBranchesRowsCase
+    ) -> None:
+        query = await NumberPoolGetAllocated.init(
+            db=db,
+            pool=dataset.pool,
+            ranges=whole_pool_ranges(dataset.pool),
+            branch_name=case.branch_name,
+            branch=dataset.default_branch,
+            at=dataset.before_branches if case.before_branches else None,
+            include_inherited_branches=case.include_inherited_branches,
+        )
+
+        await query.execute(db=db)
+
+        assert [(row.value, row.branch, dataset.names_by_id[row.id]) for row in query.get_data()] == case.expected
+
+    @pytest.mark.parametrize("case", TWO_BRANCHES_FREE_VALUE_CASES, ids=lambda case: case.name)
+    async def test_free_value(
+        self, db: InfrahubDatabase, dataset: TwoBranchesDataset, case: TwoBranchesFreeValueCase
+    ) -> None:
+        query = await NumberPoolGetFree.init(
+            db=db,
+            pool=dataset.pool,
+            min_value=case.min_value,
+            max_value=case.max_value,
+            branch=dataset.default_branch,
+            at=dataset.before_branches if case.before_branches else None,
+        )
+
+        await query.execute(db=db)
+
+        assert query.get_result_value() == case.expected

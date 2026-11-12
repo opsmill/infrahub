@@ -1,0 +1,1 @@
+Added the INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS setting, which sets how long a request for a lock in exclusive mode waits for the holders of the lock in shared mode to finish before it fails, and the INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS setting, which sets how long the hold of a worker that stopped keeps requests in exclusive mode waiting.

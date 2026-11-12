@@ -20,6 +20,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect f
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
+from infrahub.events.models import EventContext  # noqa: TC001 needed for prefect flow
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
@@ -44,8 +45,9 @@ if TYPE_CHECKING:
     name="generator-run",
     flow_run_name="Run generator {model.generator_definition.definition_name}",
 )
-async def run_generator(model: RequestGeneratorRun) -> None:
+async def run_generator(model: RequestGeneratorRun, context: EventContext) -> None:
     client = get_client()
+    client.request_context = context.to_request_context()
 
     # Each tag update replaces the whole set, so collect the related node ids and send them in one update.
     node_ids = [model.target_id]

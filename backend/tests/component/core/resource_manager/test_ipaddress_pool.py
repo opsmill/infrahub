@@ -1,10 +1,13 @@
 import re
+from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -42,6 +45,80 @@ async def test_get_next(
         db=db, address_type="IpamIPAddress", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+@dataclass
+class UnreadableReservationCase:
+    name: str
+    delete_first_branch: bool
+
+
+UNREADABLE_RESERVATION_CASES: list[UnreadableReservationCase] = [
+    UnreadableReservationCase(name="first-reservation-on-sibling-branch", delete_first_branch=False),
+    UnreadableReservationCase(name="first-reservation-on-deleted-branch", delete_first_branch=True),
+]
+
+
+class TestGetResourceWithUnreadableReservation:
+    @pytest.fixture(scope="class")
+    async def namespace(
+        self,
+        db: InfrahubDatabase,
+        register_core_models_schema_scope_class: SchemaBranch,
+        register_ipam_schema_scope_class: SchemaBranch,
+        default_ipnamespace_scope_class: Node | None,
+    ) -> Node:
+        namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await namespace.new(db=db, name="ns1")
+        await namespace.save(db=db)
+        return namespace
+
+    @pytest.fixture(scope="class")
+    async def pool_prefix(self, db: InfrahubDatabase, namespace: Node) -> Node:
+        prefix = await Node.init(db=db, schema="IpamIPPrefix")
+        await prefix.new(db=db, prefix="10.10.3.0/27", ip_namespace=namespace)
+        await prefix.save(db=db)
+        return prefix
+
+    @pytest.mark.parametrize("case", UNREADABLE_RESERVATION_CASES, ids=lambda case: case.name)
+    async def test_branch_keeps_its_own_address(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        namespace: Node,
+        pool_prefix: Node,
+        case: UnreadableReservationCase,
+    ) -> None:
+        """A branch that cannot read an identifier's first reservation keeps returning its own address."""
+        address_pool_schema = registry.schema.get_node_schema(
+            name=InfrahubKind.IPADDRESSPOOL, branch=default_branch_scope_class
+        )
+        pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db)
+        await pool.new(
+            db=db,
+            name=f"pool-{case.name}",
+            resources=[pool_prefix],
+            ip_namespace=namespace,
+            default_address_type="IpamIPAddress",
+        )
+        await pool.save(db=db)
+
+        branch_a = await create_branch(branch_name=f"{case.name}-a", db=db)
+        branch_b = await create_branch(branch_name=f"{case.name}-b", db=db)
+
+        async def reserve(branch: Branch) -> Node:
+            return await pool.get_resource(db=db, address_type="IpamIPAddress", identifier=case.name, branch=branch)
+
+        address_a = await reserve(branch=branch_a)
+        if case.delete_first_branch:
+            await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch_a)
+
+        first = await reserve(branch=branch_b)
+        second = await reserve(branch=branch_b)
+        third = await reserve(branch=branch_b)
+
+        assert first.id != address_a.id
+        assert [second.id, third.id] == [first.id, first.id]
 
 
 async def test_get_next_weighted(

@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [branch-status.md](branch-status.md), [api-backpressure.md](api-backpressure.md)
 
-How graphql-core decides between synchronous and asynchronous field completion, why per-field hooks such as middleware must stay synchronous on the hot path, and why a query resolver opens its own database session.
+How graphql-core decides between synchronous and asynchronous field completion, why per-field hooks such as middleware must stay synchronous on the hot path, why a query resolver opens its own database session, and why a cache keyed by a GraphQL schema must hold it weakly.
 
 ## Sync vs async completion is decided per field
 
@@ -71,3 +71,22 @@ The GraphQL app opens one session per request and puts it on `GraphqlContext.db`
 - Mutations are different: graphql-core resolves mutation root fields one after another, and each mutation opens its own `start_transaction()`. This rule covers query resolvers.
 
 `backend/tests/unit/graphql/queries/test_resolver_session_convention.py` scans the module of every root query field's resolver and fails on any use of the context database other than `.start_session(` or `.schema`.
+
+## A cache keyed by a GraphQL schema holds it weakly
+
+Keep per-schema cached data in a `weakref.WeakKeyDictionary` keyed by the `GraphQLSchema`, never in an `lru_cache` or a plain dict that takes the schema as a key, and cache only values that cannot reference the schema. Every schema change gives the branch a new `GraphQLSchema`. A strong reference from a module-level cache keeps earlier versions, with all of their types, in memory until the cache evicts them. A cached value that references its own key keeps that key alive for the life of the process.
+
+```python
+# ✅ Good - the cache holds only documents, and is dropped with its schema
+_valid_documents_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, bool]] = (
+    weakref.WeakKeyDictionary()
+)
+
+# ❌ Bad - the cache holds the schema itself, until 1024 newer entries evict it
+@lru_cache(maxsize=1024)
+def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]: ...
+```
+
+Validation errors are an example of a value that references the schema: an error raised and caught during validation keeps its traceback, which reaches the validation context and its schema. So cache only that a document is valid, not the errors of an invalid one.
+
+graphql-core already stores the result of `validate_schema` on the schema object, so that call needs no cache of its own. `backend/infrahub/graphql/execution.py::cached_validate` is the worked example, and `backend/tests/unit/graphql/test_execution.py::test_schema_is_released_after_executing_queries` checks that a schema is freed after valid and invalid queries once nothing else references it.

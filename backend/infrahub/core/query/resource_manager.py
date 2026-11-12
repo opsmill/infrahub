@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator, Unpack
+from typing import TYPE_CHECKING, Any, Unpack
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -12,11 +12,12 @@ from infrahub.core.constants import (
     RelationshipStatus,
 )
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
+from infrahub.core.query.branch_windows import build_branch_windows_query, render_branch_windows_clause
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Generator, Sequence
 
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
@@ -155,6 +156,7 @@ class IPAddressPoolGetReserved(Query):
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
         self.return_labels = ["address"]
+        self.order_by = ["rel.from"]
 
 
 class IPAddressPoolSetReserved(Query):
@@ -441,7 +443,10 @@ class NumberPoolGetReserved(Query):
         branch_variables = ""
         division_filter = ""
         if self.division is not None:
-            live_branches = LIVE_BRANCHES_QUERY
+            live_branches, windows_params = build_branch_windows_query(
+                at=self.at, enabled=True, time_param="at", include_deleting=True
+            )
+            self.params.update(windows_params)
             branch_variables = ", deleting_branches, branch_windows"
             division_filter, division_params = division_on_branch_query(
                 division=self.division, branch_name=self.branch.name
@@ -753,19 +758,6 @@ class NumberPoolChangeReserved(Query):
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
 
-LIVE_BRANCHES_QUERY = """
-    // --------------
-    // Read the branches once: the ones being deleted, and the fork window of every other user branch
-    // --------------
-    MATCH (branch:Branch)
-    WITH collect(branch) AS branches
-    WITH
-        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
-        [b IN branches
-            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
-            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows"""
-
-
 # Reads `edge` and `deleting_branches`: an edge some live branch can see, open now, or closed on the default branch.
 EDGE_IS_LIVE = """edge.status = "active"
             AND edge.from <= $at
@@ -775,7 +767,8 @@ EDGE_IS_LIVE = """edge.status = "active"
 
 # Reads `edge`, `hidden`, and `branch_windows`, keeps every other variable, and adds `edge_branches`: the branches where
 # this edge is visible, ``null`` meaning global branch, so every branch. An edge on the default branch is visible from
-# each user branch that forked while it was open and is not in `hidden`. Rows with an edge no branch sees are dropped.
+# each user branch that forked while it was open and is not in `hidden`; the default branch's window has a NULL
+# `origin_at`, so it never passes the window comparison. Rows with an edge no branch sees are dropped.
 # The edge's properties are read once into variables because a property read in the window comprehension is repeated
 # for each window.
 EDGE_BRANCHES = """WITH *, edge.branch AS edge_branch, edge.from AS edge_from, edge.to AS edge_to
@@ -783,8 +776,8 @@ EDGE_BRANCHES = """WITH *, edge.branch AS edge_branch, edge.from AS edge_from, e
                 WHEN edge_branch = $global_branch_name THEN null
                 WHEN edge_branch <> $default_branch_name THEN [edge_branch]
                 ELSE CASE WHEN edge_to IS NULL OR edge_to > $at THEN [$default_branch_name] ELSE [] END
-                    + [window IN branch_windows WHERE edge_from <= window.fork_at
-                        AND (edge_to IS NULL OR edge_to > window.fork_at)
+                    + [window IN branch_windows WHERE edge_from <= window.origin_at
+                        AND (edge_to IS NULL OR edge_to > window.origin_at)
                         AND NOT window.name IN hidden | window.name]
             END AS edge_branches
             WHERE edge_branches IS NULL OR size(edge_branches) > 0"""
@@ -864,7 +857,7 @@ HELD_BRANCH = """UNWIND CASE
             WHERE value_vertex.value = value
             AND value_edge.status = "active"
             AND value_edge.from <= $at AND (value_edge.to IS NULL OR value_edge.to > $at)
-            AND any(window IN branch_windows WHERE window.name = held_branch AND value_edge.from <= window.fork_at)
+            AND any(window IN branch_windows WHERE window.name = held_branch AND value_edge.from <= window.origin_at)
             AND NOT EXISTS {
                 MATCH (attr)-[hiding:HAS_VALUE]->()
                 WHERE hiding.branch = held_branch
@@ -1246,7 +1239,7 @@ LIVE_ATTRIBUTE_VALUES_QUERY = """
         AND hv.to <= $at
         AND any(
             window IN branch_windows WHERE window.origin_name = hv.branch
-            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+            AND hv.from <= window.origin_at AND window.origin_at < hv.to
         )
         WITH hv, av, branch_windows, COLLECT {
             // --------------
@@ -1262,7 +1255,7 @@ LIVE_ATTRIBUTE_VALUES_QUERY = """
         // The value is held by each branch this HAS_VALUE edge is visible on that has not overridden it
         // --------------
         UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
-            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+            AND hv.from <= window.origin_at AND window.origin_at < hv.to
             AND NOT window.name IN hiding_branches | window.name] AS branch
         RETURN av.value AS value, branch
 """
@@ -1284,7 +1277,7 @@ INHERITED_OPEN_VALUES_QUERY = """
                 RETURN hiding.branch AS branch_name
             } AS hiding_branches
             UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
-                AND hv.from <= window.fork_at
+                AND hv.from <= window.origin_at
                 AND NOT window.name IN hiding_branches | window.name] AS branch
             RETURN av.value AS value, branch
 """
@@ -1318,6 +1311,7 @@ def reserved_values_query(
         "attribute_name": attribute_name,
         "at": at,
         "default_branch_name": default_branch_name,
+        "global_branch_name": GLOBAL_BRANCH_NAME,
     }
     query = """
 %(live_branches)s
@@ -1335,7 +1329,7 @@ def reserved_values_query(
         "division": division_filter,
         "division_candidates": division_candidates,
         "division_values": DIVISION_VALUE_FILTER_QUERY if division_filter else "",
-        "live_branches": LIVE_BRANCHES_QUERY,
+        "live_branches": render_branch_windows_clause(time_param="at", include_deleting=True),
         "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
         "inherited_values": f"            UNION\n{INHERITED_OPEN_VALUES_QUERY}"
         if include_inherited_open_values
@@ -1373,6 +1367,10 @@ class NumberPoolAttributeBranchValuesQuery(Query):
         self.params["at"] = self.at.to_string()
         self.params["default_branch_name"] = registry.default_branch
         self.params["null_value"] = NULL_VALUE
+        live_branches, windows_params = build_branch_windows_query(
+            at=self.at, enabled=True, time_param="at", include_deleting=True
+        )
+        self.params.update(windows_params)
 
         query = """
         %(live_branches)s
@@ -1385,7 +1383,7 @@ class NumberPoolAttributeBranchValuesQuery(Query):
         WITH DISTINCT attr.uuid AS attribute_id, branch, value
         WHERE value <> $null_value
         """ % {
-            "live_branches": LIVE_BRANCHES_QUERY,
+            "live_branches": live_branches,
             "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
             "inherited_values": INHERITED_OPEN_VALUES_QUERY,
         }
@@ -1848,6 +1846,7 @@ class PrefixPoolGetReserved(Query):
         """ % {"prefix_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)
         self.return_labels = ["prefix"]
+        self.order_by = ["rel.from"]
 
 
 class PrefixPoolSetReserved(Query):

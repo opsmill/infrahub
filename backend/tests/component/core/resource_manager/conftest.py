@@ -94,6 +94,14 @@ async def delete_branch(db: InfrahubDatabase, branch: Branch) -> None:
     assert result.branch_deleted
 
 
+async def mark_branches_deleting(db: InfrahubDatabase, branches: list[Branch]) -> None:
+    """Leave the branches part way through their delete: marked as deleting, with all their data still present."""
+    await db.execute_query(
+        query='MATCH (b:Branch) WHERE b.name IN $names SET b.status = "DELETING"',
+        params={"names": [branch.name for branch in branches]},
+    )
+
+
 @pytest.fixture
 async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))

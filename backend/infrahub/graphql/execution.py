@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import weakref
 from functools import lru_cache
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
+from cachetools import LRUCache
 from graphql import GraphQLSchema, execute, parse, validate
 from graphql.error import GraphQLError
 from graphql.execution import ExecutionResult
 from graphql.type import validate_schema
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from graphql import ExecutionContext, GraphQLFieldResolver, GraphQLTypeResolver
     from graphql.execution import Middleware
     from graphql.language import Source
@@ -28,20 +32,41 @@ def cached_parse(query: str | Source) -> DocumentNode:
     Queries containing the @expand directive are not cached because the parser
     mutates the AST to add expanded fields, which would corrupt the cache.
     """
-    query_str = query if isinstance(query, str) else query.body
-    if "@expand" in query_str:
+    query_str = _query_text(query)
+    if _has_expand_directive(query_str):
         return parse(query)
     return _cached_parse(query_str)
 
 
-@lru_cache(maxsize=1024)
+def _query_text(query: str | Source) -> str:
+    return query if isinstance(query, str) else query.body
+
+
+def _has_expand_directive(query: str) -> bool:
+    return "@expand" in query
+
+
+MAX_CACHED_VALID_DOCUMENTS_PER_SCHEMA = 1024
+
+_valid_documents_by_schema: weakref.WeakKeyDictionary[GraphQLSchema, LRUCache[DocumentNode, bool]] = (
+    weakref.WeakKeyDictionary()
+)
+
+
 def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]:
-    return validate(schema, document_ast)
+    """Validate a document against a schema, remembering valid documents for as long as the schema object exists.
 
-
-@lru_cache(maxsize=1024)
-def cached_validate_schema(schema: GraphQLSchema) -> list[GraphQLError]:
-    return validate_schema(schema)
+    Errors are not cached because the traceback of a raised error can reference the schema and keep it alive.
+    """
+    valid_documents = _valid_documents_by_schema.get(schema)
+    if valid_documents is None:
+        valid_documents = _valid_documents_by_schema[schema] = LRUCache(maxsize=MAX_CACHED_VALID_DOCUMENTS_PER_SCHEMA)
+    if valid_documents.get(document_ast, False):
+        return []
+    errors = validate(schema, document_ast)
+    if not errors:
+        valid_documents[document_ast] = True
+    return errors
 
 
 async def execute_graphql_query(
@@ -58,8 +83,8 @@ async def execute_graphql_query(
     is_awaitable: Callable[[Any], bool] | None = None,
 ) -> ExecutionResult:
     """Execute a query, return asynchronously only if necessary."""
-    # Validate Schema
-    schema_validation_errors = cached_validate_schema(schema)
+    # graphql-core stores the result on the schema object, so only the first call per schema does the work.
+    schema_validation_errors = validate_schema(schema)
     if schema_validation_errors:
         return ExecutionResult(data=None, errors=schema_validation_errors)
 
@@ -69,7 +94,11 @@ async def execute_graphql_query(
     except GraphQLError as error:
         return ExecutionResult(data=None, errors=[error])
 
-    validation_errors = cached_validate(schema, document)
+    if _has_expand_directive(_query_text(source)):
+        # The document of an @expand query is parsed again and changed on every run, so it would never match a cached one.
+        validation_errors = validate(schema, document)
+    else:
+        validation_errors = cached_validate(schema, document)
     if validation_errors:
         return ExecutionResult(data=None, errors=validation_errors)
 

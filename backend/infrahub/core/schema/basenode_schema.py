@@ -5,7 +5,7 @@ import keyword
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, overload
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
@@ -25,8 +25,10 @@ from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+    from typing import Self
+
     from pydantic.config import JsonDict
-    from typing_extensions import Self
 
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch

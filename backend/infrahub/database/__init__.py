@@ -4,9 +4,9 @@ import asyncio
 import functools
 import random
 import time
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -27,7 +27,6 @@ from neo4j import (
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
@@ -52,7 +51,7 @@ from .metrics import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable, Coroutine
     from types import TracebackType
 
     # neo4j only exports the concrete trust stores, not the base class the driver accepts.
@@ -181,6 +180,8 @@ class InfrahubDatabase:
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
         self._transaction: AsyncTransaction | None = transaction
+        self._transaction_holds: AsyncExitStack | None = None
+        self._transaction_task: asyncio.Task[Any] | None = None
         self.default_neo4j_runtime = default_neo4j_runtime
         self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
@@ -302,8 +303,30 @@ class InfrahubDatabase:
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
             self._transaction = await session.begin_transaction()
+            self._transaction_holds = AsyncExitStack()
+            self._transaction_task = asyncio.current_task()
 
         return self
+
+    @property
+    def can_hold_until_transaction_end(self) -> bool:
+        """Whether a transaction is open on this object; only the task that opened it can hold a context."""
+        return self._transaction_holds is not None
+
+    async def hold_until_transaction_end(self, context: AbstractAsyncContextManager[object]) -> None:
+        """Enter `context` and exit it once the transaction commits or rolls back.
+
+        Raises:
+            RuntimeError: When no transaction was opened on this object with `async with`, or when a task other
+                than the one that opened the transaction calls it.
+
+        """
+        if self._transaction_holds is None:
+            raise RuntimeError("No database transaction is open to hold the context until it ends")
+        # Locks record their holder per task, so a context entered by another task cannot be exited at the end.
+        if asyncio.current_task() is not self._transaction_task:
+            raise RuntimeError("Only the task that opened the database transaction can hold a context until it ends")
+        await self._transaction_holds.enter_async_context(context)
 
     def _get_open_session(self) -> AsyncSession:
         if self._session is None:
@@ -327,18 +350,34 @@ class InfrahubDatabase:
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             transaction = self._get_open_transaction()
-            if exc_type is not None:
-                await transaction.rollback()
-            else:
+            try:
+                if exc_type is not None:
+                    await transaction.rollback()
+                else:
+                    try:
+                        await transaction.commit()
+                    except Neo4jError as exc:
+                        raise exc
+                    finally:
+                        await transaction.close()
+            finally:
                 try:
-                    await transaction.commit()
-                except Neo4jError as exc:
-                    raise exc
+                    await self._release_transaction_holds()
                 finally:
-                    await transaction.close()
+                    if self._is_session_local:
+                        await self._get_open_session().close()
 
-            if self._is_session_local:
-                await self._get_open_session().close()
+    async def _release_transaction_holds(self) -> None:
+        """Exit every context held until the transaction ended; raises nothing but cancellation."""
+        holds, self._transaction_holds = self._transaction_holds, None
+        self._transaction_task = None
+        if holds is None:
+            return
+        try:
+            await holds.aclose()
+        # Cleanup after the commit or rollback, whose outcome a failed release must not replace.
+        except Exception:
+            log.exception("Failed to release a context held until the end of the transaction")
 
     async def close(self) -> None:
         await self._driver.close()
