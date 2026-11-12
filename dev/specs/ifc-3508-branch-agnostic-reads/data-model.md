@@ -85,6 +85,16 @@ A peer passes when its latest `IS_PART_OF` edge is `active`:
 - in the request branch's view, for a normal read;
 - in the same window as the link, for a branch-agnostic read.
 
-## Delete check result for a branch-agnostic node
+## Delete check result
 
-`RelationshipGetByIdentifierInWindowsQuery`, the window form of `RelationshipGetByIdentifierQuery`, takes the ids of the delete set and returns rows of `RelationshipWindowPeersData`: a frozen pair of a `RelationshipPeersData` and a required `window_name: str`. `RelationshipPeersData` is unchanged. `NodeDeleteValidator` groups the rows by `window_name`. It runs its existing walk on the request branch's window, and in every other window it checks only the branch-agnostic nodes that walk deletes.
+`NodeDeleteCascadeQuery` returns one row, read as `NodeDeleteCascadeQueryResult`:
+
+| Field | Type | Value |
+|---|---|---|
+| `nodes` | list of `DeleteSetNode` | The nodes already known and every node the cascade reached in the request branch's window. `DeleteSetNode` holds `uuid`, `kind` and `is_agnostic`, which is true when the node has an `IS_PART_OF` edge on `-global-`. |
+| `frontier_ids` | list of strings | The nodes reached at the last level, from which the cascade continues when the cascade kinds can loop. |
+| `required_links` | list of `RequiredPeerLink` | The links from a peer outside the delete set with a required relationship to a node in it, on the request branch. Empty while the cascade continues. |
+
+`RequiredPeerLink` is a frozen, ordered dataclass of `deleted_kind`, `deleted_id`, `identifier`, `peer_kind` and `peer_id`.
+
+`NodeDeleteOtherBranchesQuery` runs only when a node of the delete set is branch-agnostic. It returns one `RequiredPeerLinkOnBranches` per blocking link: the `RequiredPeerLink` and the names of the other live branches whose window holds it. Its parameter `required_by_branch` maps each branch name to the `[deleted node kind, relationship identifier, peer kind]` triples of the relationships that branch's schema makes required.

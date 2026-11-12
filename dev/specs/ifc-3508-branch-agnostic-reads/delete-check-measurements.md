@@ -129,6 +129,23 @@ Full delete of 1,011 nodes:
 
 In the 1,011-node full delete with (a), the process memory went from 758 MB to 763 MB during the check and from 742 MB to 1,596 MB while the nodes were deleted. The memory used by a full delete of 10,101 nodes comes from the steps after the check, which are the same for every approach.
 
+## Results for the implementation on commit `ec178f999`
+
+The same script measured `NodeDeleteValidator.get_ids_to_delete` on commit `ec178f999` of branch `agnostic-delete-check-ifc-3508`, which implements (d). The runs ended at 2026-11-12T22:19:48Z.
+
+| Scenario | Delete check | Full delete |
+|---|---|---|
+| S1 | 188 hits, 4.0 ms | 2,646 hits, 48.6 ms |
+| S2 | 697 hits in 2 queries, 8.3 ms | 2,988 hits, 21.3 ms |
+| S5 (refused) | 3,317 hits in 2 queries, 28.3 ms | 4,037 hits, 24.9 ms |
+| S6 (refused) | 1,115 hits in 2 queries, 17.2 ms | 1,583 hits, 16.8 ms |
+| S4, width 5, depth 5 | 14,246 hits, 10.7 ms | 50,719 hits, 130.1 ms |
+| S4, width 10, depth 5 | 54,976 hits, 23.1 ms | 157,279 hits, 275.9 ms |
+| S3, 10,101 nodes | 1,559,323 hits in 2 queries, 538.6 ms, peak process memory 859 MB | not run |
+| S3, 1,011 nodes | not run | 1,121,999 hits, 4,569.5 ms, peak process memory 1,590 MB |
+
+The delete check reads within 7% of the hits measured for (d) in every scenario. The full delete counts for S4 at width 5 differ from those measured for (d) earlier (50,719 against 259,805 hits) although the steps after the check are the same code, so the full delete counts for S4 are not reliable. The delete check counts are.
+
 ## What the measurements show
 
 - (d) reads the fewest hits of all approaches in S1 and S4. It reads fewer hits than (a) in every scenario except two:

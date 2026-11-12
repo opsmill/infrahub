@@ -136,7 +136,9 @@ An administrator deletes a branch-agnostic node, for example an account group. T
 2. **Given** P reaches the node on branch B only through the default branch's edge from before B was created, and B wrote nothing, **When** the node is deleted on the default branch, **Then** the delete is refused.
 3. **Given** a peer would be removed through `on_delete=cascade` on branch B but not on the request branch, and the peer's relationship to the node is optional or not declared, **When** the node is deleted, **Then** the delete succeeds and the peer stays on B.
 4. **Given** no live branch would break a constraint, **When** the node is deleted, **Then** the delete succeeds and cascading deletes write only on the request branch.
-5. **Given** a branch-aware node, **When** it is deleted, **Then** the check behaves as it does today.
+5. **Given** a branch-aware node whose delete reaches no branch-agnostic node, **When** it is deleted, **Then** the delete is refused or allowed as it is today, with the same error, and no other branch is checked.
+6. **Given** a branch-aware node whose cascading delete reaches a branch-agnostic node, and a peer on branch B has a required relationship to that branch-agnostic node, **When** the branch-aware node is deleted, **Then** the delete is refused and the error names B and the peer.
+7. **Given** a relationship to the node is required in branch B's schema only, **When** the node is deleted, **Then** the delete is refused because of B only.
 
 ---
 
@@ -244,10 +246,10 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 **Deleting a branch-agnostic node, the check (User Story 4)**
 
-- **FR-014**: Before deleting a branch-agnostic node, Infrahub MUST check every live branch and refuse the delete when, on any branch, a peer with a required relationship to the node is not also being deleted. Only a required relationship blocks the delete: a peer that `on_delete=cascade` would remove on another branch but not on the request branch blocks it only when its relationship to the node is required.
+- **FR-014**: Before deleting a branch-agnostic node, whether the delete names it or a cascading delete reaches it, Infrahub MUST check every live branch and refuse the delete when, on any branch, a peer with a required relationship to the node is not also being deleted. Only a required relationship blocks the delete: a peer that `on_delete=cascade` would remove on another branch but not on the request branch blocks it only when its relationship to the node is required.
 - **FR-015**: The error MUST name each branch and each peer that blocks the delete.
 - **FR-016**: The check MUST write nothing, and cascading deletes MUST write only on the request branch.
-- **FR-017**: The check for a branch-aware node MUST be unchanged.
+- **FR-017**: When the nodes to delete include no branch-agnostic node, the check MUST refuse and allow the same deletes as before, with the same error, and MUST NOT read other branches. Each live branch MUST be checked against its own schema.
 
 **Peer existence and edges between the same two vertices (User Story 5)**
 
@@ -314,7 +316,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - PR [#11220](https://github.com/opsmill/infrahub/pull/11220) stays as it is and is not ported to `release-1.12`. PRs 5 and 6 start only after it is merged into `stable` and then into `release-1.12`.
 - The earlier branch-agnostic code at commit `7015435c4` (local branch `branch-agnostic-source`) holds the window helpers, the rewrite of the list filter and the branch-agnostic lookup by HFID. PRs 3, 5 and 6 bring it in; it is not cherry-picked as a whole.
 - Branch-agnostic reads are uncommon, so a slower branch-agnostic path is acceptable if it returns correct results. Reads on one branch must not get slower.
-- The check before deleting a branch-agnostic node uses the request branch's schema for every live branch. A branch whose schema made a relationship required or optional differently is checked with the request branch's rule. This is a known limit.
+- The check before deleting a branch-agnostic node reads each live branch's schema from the schema registry, which is assumed to be up to date for every live branch.
 - How PR 1 is disclosed is decided outside this specification. Every PR is planned as a normal PR.
 - The graph migration is a database migration, which needs explicit approval. The plan was approved in the review session; the code still needs review. Removing edges is a hard delete, which the constitution allows only for branch deletion; PR 5 records an explicit exception, because the removed edges break the edge constraints of the database schema and the replacement edges keep the history.
 

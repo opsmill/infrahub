@@ -34,8 +34,10 @@ Message templates (wording to confirm in review):
 | A required peer on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
 | A peer would be removed through cascade on another branch only, and its relationship to the deleted node is optional or not declared | The delete succeeds | The delete succeeds, and the peer stays on that branch |
 | A branch-aware peer removed through cascade on the request branch also exists on another live branch, and its relationship to the deleted node is required | The delete succeeds | `ValidationError` (HTTP 422), because the cascade removes the peer on the request branch only |
+| A branch-aware node is deleted, its cascade reaches a branch-agnostic node, and a required peer of that branch-agnostic node on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
+| A relationship to the deleted node is required in one branch's schema only | The delete succeeds | `ValidationError` (HTTP 422) naming that branch only |
 
-One error is raised per blocking link, and it names every branch where the link blocks the delete, sorted by name: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<branch>'`, or `on branches '<b1>', '<b2>'`. The error path is `<peer kind>.<rel>`.
+One error is raised per blocking link, and it names every branch where the link blocks the delete, sorted by name: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<branch>'`, or `on branches '<b1>', '<b2>'`. The error path is `<peer kind>.<rel>`. When the nodes to delete include no branch-agnostic node, the error is unchanged and names no branch.
 
 A GraphQL delete mutation keys the errors by path, so two blocking peers of the same kind through the same relationship are reported as one error that names the last peer. The single-branch delete already behaves this way.
 

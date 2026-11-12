@@ -113,7 +113,7 @@ The search also found callers the brief does not list:
 - It runs one `RelationshipGetByIdentifierQuery` on the request branch. That query has no branch-agnostic path, and it is not filtered to the ids being deleted.
 - The error is a `ValidationError` with the message `Cannot delete {kind} '{id}'. It is linked to mandatory relationship {rel} on node {peer_kind} '{peer_id}'`.
 
-**Decision.**
+**Decision.** Replaced after the review of PR 4; see "Changed after the review of PR 4" below.
 
 - For a branch-agnostic node, `NodeDeleteValidator` runs `RelationshipGetByIdentifierQuery` once in window mode. The query opens with the windows collection and returns one row per window in which the link is the latest and active, and both ends exist. Each row also carries the window name.
 - The validator then runs its existing walk once per window name, starting from the same delete set, with the same index:
@@ -125,6 +125,18 @@ The search also found callers the brief does not list:
 - In window mode the query starts from the ids in the delete set and is run again for each level of cascade, instead of reading every link of the indexed identifiers. The PR reports the database hits of deleting a `CoreAccountGroup` with 50 live branches and 10,000 group memberships elsewhere in the database.
 
 **Rationale.** One query keeps the cost at one read of the candidate links times the number of windows, and the walk in Python is unchanged. Example in the brief: P reaches G1 on B only through `main`'s edge from before B was created. Only a window read finds it.
+
+**Changed after the review of PR 4.** The window path above is replaced, for three reasons:
+- it took 389 s for a cascade of 10,101 nodes, and a full delete of that cascade passed Neo4j's transaction memory limit;
+- a branch-aware node whose cascade reaches a branch-agnostic node used the single-branch path;
+- every branch was checked with the request branch's schema.
+
+The decision is now:
+- Every delete runs one cascade query in the request branch's window, with one `CALL` subquery per cascade level. A quantified path pattern was measured and rejected, because its cost grows with the number of cascade paths. The query returns the delete set, whether each node is branch-agnostic (its `IS_PART_OF` edge is on `-global-`), and the required peers outside the delete set on the request branch.
+- The number of levels is the longest chain in the cascade kind graph. An explicit `on_delete: cascade` can make that graph loop, so then each query follows 10 levels, and the query runs again from the last level while that level finds new nodes.
+- Only when the delete set holds a branch-agnostic node, a second query reads the required links to those nodes in every other live branch's window. Each branch's own schema decides which relationships are required. Branch-aware nodes of the delete set are deleted on the request branch only, so on other branches they count as peers that remain.
+
+The measurements are in [delete-check-measurements.md](delete-check-measurements.md).
 
 ## R6. Peer existence check (PR 5)
 
