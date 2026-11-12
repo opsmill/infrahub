@@ -63,6 +63,20 @@ class SlowToAbortRenewalStore(RecordingSharedHolderStore):
             raise
 
 
+class SlowRemovalStore(RecordingSharedHolderStore):
+    """Keeps every removal in flight until `finish` is set."""
+
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock=clock)
+        self.removing = asyncio.Event()
+        self.finish = asyncio.Event()
+
+    async def remove(self, key: str, holder: str) -> None:
+        self.removing.set()
+        await self.finish.wait()
+        await super().remove(key=key, holder=holder)
+
+
 async def _wait_until(condition: Callable[[], Awaitable[bool]]) -> None:
     async def _poll() -> None:
         while not await condition():  # noqa: ASYNC110
@@ -151,6 +165,37 @@ async def test_a_holder_cancelled_while_its_renewal_stops_still_removes_its_reco
     with pytest.raises(asyncio.CancelledError, match=r"^$"):
         await asyncio.wait_for(holder, timeout=5)
     assert not await _has_holders(store=store)
+
+
+async def test_a_holder_cancelled_while_it_removes_its_record_still_removes_it(
+    mutex: InfrahubLock, clock: FakeClock
+) -> None:
+    store = SlowRemovalStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME,
+        mutex=mutex,
+        store=store,
+        ttl_seconds=TTL_SECONDS,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            pass
+
+    async def no_holders() -> bool:
+        return not await _has_holders(store=store)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(store.removing.wait(), timeout=5)
+    holder.cancel()
+
+    with pytest.raises(asyncio.CancelledError, match=r"^$"):
+        await asyncio.wait_for(holder, timeout=5)
+    store.finish.set()
+    await _wait_until(no_holders)
 
 
 async def test_an_exclusive_request_waits_until_every_shared_holder_releases(
