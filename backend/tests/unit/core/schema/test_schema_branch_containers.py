@@ -149,6 +149,19 @@ REFUSED_CONTAINER_CASES = [
         message=f"{L2_KIND}.attributes.mtu.container: container 'builtin_profile' is not declared on {L2_KIND}",
     ),
     RefusedContainerCase(
+        name="declaring_the_template_container_on_a_node",
+        schema=_lag_schema_with_l2_containers([{"name": "builtin_template", "label": "Template"}]),
+        message=f"{L2_KIND}.containers: 'builtin_template' starts with the reserved prefix 'builtin_' and cannot be declared",
+    ),
+    RefusedContainerCase(
+        name="attribute_referencing_the_template_container_on_a_node",
+        schema=_lag_schema_with_l2_field(
+            field_list="attributes",
+            field={"name": "mtu", "kind": "Number", "optional": True, "container": "builtin_template"},
+        ),
+        message=f"{L2_KIND}.attributes.mtu.container: container 'builtin_template' is not declared on {L2_KIND}",
+    ),
+    RefusedContainerCase(
         name="attribute_referencing_the_details_container",
         schema=_lag_schema_with_l2_field(
             field_list="attributes",
@@ -200,15 +213,19 @@ def test_container_declaration_is_accepted(case: AcceptedContainerCase) -> None:
     assert [container.name for container in node.containers] == case.container_names
 
 
-def test_generated_profile_shows_its_own_attributes_in_a_profile_container_above_details() -> None:
+def _processed_branch_with_l2_template() -> SchemaBranch:
     schema = copy.deepcopy(LAG_SCHEMA)
     schema["nodes"][L2_INDEX]["generate_template"] = True
     schema_branch = SchemaBranch(cache={}, name="main")
     schema_branch.load_schema(schema=SchemaRoot(**internal_schema))
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.load_schema(schema=SchemaRoot(**schema))
-
     schema_branch.process()
+    return schema_branch
+
+
+def test_generated_profile_shows_its_own_attributes_in_a_profile_container_above_details() -> None:
+    schema_branch = _processed_branch_with_l2_template()
 
     profile = schema_branch.get(name=f"Profile{L2_KIND}", duplicate=False)
     assert [(container.name, container.label, container.order_weight) for container in profile.containers] == [
@@ -229,8 +246,30 @@ def test_generated_profile_shows_its_own_attributes_in_a_profile_container_above
         "mac_address": "layer2",
         "mtu": "layer3",
     }
-    template = schema_branch.get(name=f"Template{L2_KIND}", duplicate=False)
-    assert [container.name for container in template.containers] == ["lacp", "layer2", "layer3"]
+
+
+@pytest.mark.parametrize("node_kind", [L2_KIND, GENERIC_KIND], ids=["node_template", "generic_template"])
+def test_generated_template_shows_its_name_in_a_template_container_above_details(node_kind: str) -> None:
+    schema_branch = _processed_branch_with_l2_template()
+
+    template = schema_branch.get(name=f"Template{node_kind}", duplicate=False)
+    assert [(container.name, container.label, container.order_weight) for container in template.containers] == [
+        ("builtin_template", "Template", -100),
+        ("lacp", "LACP", 100),
+        ("layer2", "Layer 2", 200),
+        ("layer3", "Layer 3", 300),
+    ]
+    assert template.containers[0].collapsed is False
+    assert {attribute.name: attribute.container for attribute in template.attributes} == {
+        "template_name": "builtin_template",
+        "name": None,
+        "description": None,
+        "lacp_rate": "lacp",
+        "lacp_mode": "lacp",
+        "l2_mode": "layer2",
+        "mac_address": "layer2",
+        "mtu": "layer3",
+    }
 
 
 def test_reference_to_a_declared_advanced_container_is_accepted() -> None:

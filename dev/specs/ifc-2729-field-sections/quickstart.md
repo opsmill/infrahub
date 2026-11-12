@@ -36,6 +36,9 @@ The schema and the demo data load without error.
 7. Create a profile of kind `ProfileInfraLagInterfaceL2`: the form shows a Profile panel with
    Profile Name and Profile Priority above the Details panel. Save it and open it: the Profile
    card comes first, above the Details card.
+8. Create an object template of kind `TemplateInfraDevice`: the form shows a Template panel with
+   Template Name above the Details panel. Save it and open it: the Template card comes first,
+   above the Details card.
 
 ## Run the tests
 

@@ -205,7 +205,11 @@ Profiles and object templates generated from a node get the sections of that nod
 
 ## The Profile section of a profile
 
-A Profile generated from a node also gets a **Profile** section, named `builtin_profile`, with `order_weight: -100`. It holds the profile name and the profile priority, so the detail page and the forms of a Profile show them above **Details**. The attributes that the Profile copies from the node keep their sections. Object templates do not get this section, and a field of a node or a generic cannot reference `builtin_profile`.
+A Profile generated from a node also gets a **Profile** section, named `builtin_profile`, with `order_weight: -100`. It holds the profile name and the profile priority, so the detail page and the forms of a Profile show them above **Details**. The attributes that the Profile copies from the node keep their sections. A field of a node or a generic cannot reference `builtin_profile`.
+
+## The Template section of an object template
+
+An object template generated from a node or a generic also gets a **Template** section, named `builtin_template`, with `order_weight: -100`. It holds the template name, so the detail page and the forms of an object template show it above **Details**. The attributes and relationships that the object template copies from the node keep their sections. A field of a node or a generic cannot reference `builtin_template`.
 
 ## Change sections when you load the schema again
 
@@ -241,7 +245,7 @@ attributes:
 
 Infrahub rejects a schema with a section error and returns one of these messages:
 
-- A field references a section that the node neither declares nor inherits, or references `details` or `builtin_profile`:
+- A field references a section that the node neither declares nor inherits, or references `details`, `builtin_profile` or `builtin_template`:
 
   ```text
   InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2
@@ -272,7 +276,7 @@ A section without `label`, or with a `name` that breaks the naming rules, fails 
 ## Data access and the API
 
 - The GraphQL schema and GraphQL queries do not change. Sections do not affect how you read or write data.
-- The schema REST API returns `containers` on nodes, generics, Profiles and object templates, and `container` on attributes and relationships. A Profile lists its `builtin_profile` section first. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
+- The schema REST API returns `containers` on nodes, generics, Profiles and object templates, and `container` on attributes and relationships. A Profile lists its `builtin_profile` section first, and an object template lists its `builtin_template` section first. A kind without sections returns an empty `containers` list and `container: null` on every field. Each section has `inherited: true` when the node takes it from a generic, and `infrahubctl schema export` leaves these sections out of the node.
 - Sections do not restrict access. To control who can view or change data, use [permissions and roles](../deploy-manage/user-management/permissions-roles/overview).
 
 ## Related concepts

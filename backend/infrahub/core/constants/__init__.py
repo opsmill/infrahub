@@ -518,6 +518,10 @@ PROFILE_CONTAINER_NAME = f"{BUILTIN_CONTAINER_PREFIX}profile"
 PROFILE_CONTAINER_LABEL = "Profile"
 # Negative so that the Profile section of a generated profile renders above Details.
 PROFILE_CONTAINER_ORDER_WEIGHT = -100
+TEMPLATE_CONTAINER_NAME = f"{BUILTIN_CONTAINER_PREFIX}template"
+TEMPLATE_CONTAINER_LABEL = "Template"
+# Negative so that the Template section of a generated object template renders above Details.
+TEMPLATE_CONTAINER_ORDER_WEIGHT = -100
 DEFAULT_DESCRIPTION_LENGTH = 128
 
 DEFAULT_NAME_MAX_LENGTH = 32

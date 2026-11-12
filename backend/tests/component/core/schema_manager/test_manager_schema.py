@@ -4857,8 +4857,12 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     test_object_template_thing = schema_branch.get_template(f"Template{TestKind.THING}", duplicate=False)
     assert test_object_template_thing.human_friendly_id == ["template_name__value"]
     assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
-    assert test_object_template_thing.containers == [ContainerSchema(name="grading", label="Grading", order_weight=100)]
-    assert test_object_template_thing.containers[0].inherited is False
+    assert test_object_template_thing.containers == [
+        ContainerSchema(name="builtin_template", label="Template", order_weight=-100),
+        ContainerSchema(name="grading", label="Grading", order_weight=100),
+    ]
+    assert test_object_template_thing.containers[1].inherited is False
+    assert test_object_template_thing.get_attribute("template_name").container == "builtin_template"
     assert test_object_template_thing.get_attribute("color").container == "grading"
     assert test_object_template_thing.get_relationship(THING_WITH_TEMPLATE.relationships[0].name).container == "grading"
     assert sorted(

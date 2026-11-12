@@ -46,7 +46,9 @@ other clients can group fields the same way. The schema and the API use `contain
 - Generated profiles and object templates copy the node's containers. Generated profiles also get
   a Profile container (`builtin_profile`, label Profile, order weight -100, not collapsed) that
   holds `profile_name` and `profile_priority`, so a profile shows its name and priority above
-  Details. Object templates do not get it. The product owner added this on 2026-11-10.
+  Details. The product owner added this on 2026-11-10. Generated object templates also get a
+  Template container (`builtin_template`, label Template, order weight -100, not collapsed) that
+  holds `template_name`, so a template shows its name above Details. This was added on 2026-11-12.
 - The demo schema (`models/base/dcim.yml`) carries LACP, Layer 2 and Layer 3 containers on the
   `InfraLagInterface` generic, and the end-to-end test uses it.
 
@@ -121,7 +123,8 @@ is an extra field of Layer 2, so it appears only after they switch on Extra in t
    **Then** no card is shown for it.
 6. **Given** a profile or object template of a node with containers, **When** its detail page
    opens, **Then** it shows the same sections as the node. A profile also shows a Profile card,
-   with the profile name and priority, above the Details card.
+   with the profile name and priority, above the Details card, and an object template shows a
+   Template card, with the template name, above the Details card.
 
 ### User Story 4 - Edit a node by section (P2)
 
@@ -132,7 +135,8 @@ the same as without panels.
 1. **Given** the create or edit form of a node with containers, **When** it opens, **Then** the
    fields are grouped into bordered panels, one per container in order weight order, headed with
    the container label, and the panels of containers with a negative order weight come before the
-   Details panel. The form of a profile shows the Profile panel first.
+   Details panel. The form of a profile shows the Profile panel first, and the form of an object
+   template shows the Template panel first.
 2. **Given** a container whose fields are all read-only or left out of the form, **When** the form
    opens, **Then** no panel is shown for it.
 3. **Given** a sectioned form, **When** the operator saves, **Then** the request is identical to
@@ -197,8 +201,9 @@ errors.
   value; `container: ""` moves the field back to Details.
 - **FR-003**: A container `name` MUST follow the attribute name format and length rules, MUST be
   unique among the containers a node declares, MUST NOT be `details` and MUST NOT start with
-  `builtin_`. A field MUST NOT reference `details`, and only the fields of a generated profile can
-  reference `builtin_profile`.
+  `builtin_`. A field MUST NOT reference `details`, only the fields of a generated profile can
+  reference `builtin_profile`, and only the fields of a generated template can reference
+  `builtin_template`.
 - **FR-004**: Schema loading MUST reject a field whose `container` is not a container of the node
   after inheritance. For a field declared on a generic, the message names the generic.
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
@@ -220,14 +225,17 @@ errors.
 - **FR-010**: Processing a schema twice MUST yield the same containers.
 - **FR-011**: Generated profiles and object templates MUST carry the node's containers. Generated
   profiles MUST also carry the `builtin_profile` container (label Profile, order weight -100) and
-  place `profile_name` and `profile_priority` in it; object templates MUST NOT carry it.
+  place `profile_name` and `profile_priority` in it. Generated object templates, of a node or of
+  a generic, MUST also carry the `builtin_template` container (label Template, order weight -100)
+  and place `template_name` in it.
 
 ### Schema API and SDK
 
 - **FR-012**: The schema API MUST return `containers` on nodes, generics, profiles and templates
   (empty list when none) and `container` on attributes and relationships (`null` when unset),
   after inheritance, with `inherited: true` on each container a node takes from a generic.
-  `details` MUST NOT be listed; a profile lists `builtin_profile`. Infrahub stores only the
+  `details` MUST NOT be listed; a profile lists `builtin_profile` and a template lists
+  `builtin_template`. Infrahub stores only the
   containers a node declares and rebuilds the inherited ones on load.
 - **FR-013**: The schema load endpoint and the SDK offline validation MUST accept both properties.
   The SDK formatter MUST place them in a fixed position, and the SDK export MUST leave out

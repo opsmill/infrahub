@@ -13,7 +13,8 @@ schema-branch validator checks names and references, and generated profiles and 
 containers. The backend, SDK, OpenAPI, REST type and reference doc files are regenerated. In the
 frontend, one partition rule feeds the detail page (one card per section) and the forms (one panel
 per section). Details is the only built-in section of a node or generic and sits at order weight
-0, generated profiles add a Profile section above it, and the GraphQL schema does not change.
+0, generated profiles add a Profile section above it, generated object templates add a Template
+section above it, and the GraphQL schema does not change.
 
 ## Design decisions
 
@@ -53,7 +54,8 @@ change was needed. Existing schemas keep their layout unless a container has a n
 **The `builtin_` prefix is reserved.** The product owner decided on 2026-11-10 that a node or
 generic cannot declare a container whose name starts with `builtin_`
 (`BUILTIN_CONTAINER_PREFIX`), so a generated container never collides with a declared one.
-`ContainerValidator` accepts `builtin_profile` only on a `ProfileSchema`.
+`ContainerValidator` accepts `builtin_profile` only on a `ProfileSchema` and `builtin_template`
+only on a kind in the `Template` namespace.
 
 **Profiles get a generated Profile container.** The product owner asked on 2026-11-10 that a
 profile show its name and priority first. `generate_profile_from_node` adds `builtin_profile`
@@ -62,7 +64,22 @@ profile show its name and priority first. `generate_profile_from_node` adds `bui
 keep the node's containers. Profiles are generated on every process and are not stored
 (`SchemaManager.load_schema_to_db` stores nodes and generics), and `SchemaBranch.diff` and
 `SchemaBranch.get_hash` compare nodes and generics only, so the container is never reported as a
-schema change or a merge conflict. Object templates do not get it.
+schema change or a merge conflict.
+
+**Object templates get a generated Template container.** Added on 2026-11-12 so that a template
+shows its name first, as a profile does. `generate_object_template_from_node` adds
+`builtin_template` (label Template, order weight -100, not collapsed) before the node's copied
+containers and sets `container: builtin_template` on `template_name`, for both the `TemplateSchema`
+of a node and the `GenericSchema` generated for a generic. Only the negative weight places it above
+Details; the frontend has no rule for `builtin_` containers. Templates are generated on every
+process and are not stored (`SchemaManager.load_schema_to_db` stores
+`node_names + generic_names_without_templates`). `SchemaBranch.diff` compares the kinds of
+`get_all_kind_id_map(nodes_and_generics_only=True)`, which leaves out the `Template` namespace, so
+the container is never reported as a schema change or a merge conflict. Unlike a profile, the
+template generated for a generic is stored in `SchemaBranch.generics`, so `SchemaBranch.get_hash`
+includes it, together with the node containers it already copied. `ContainerValidator` identifies
+templates by the `Template` namespace rather than by `TemplateSchema`, because the template
+generated for a generic is a `GenericSchema`.
 
 **No migration.** The three properties use `UpdateSupport.ALLOWED` and `Visibility.WRITE`, as
 `display` and `order_weight` do: sections only affect rendering. A schema stored before the change

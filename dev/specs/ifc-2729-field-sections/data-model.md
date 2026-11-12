@@ -11,7 +11,7 @@ internal schema definitions and stored with the schema of each branch.
 
 | Field | Type | Default | Rule |
 |---|---|---|---|
-| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details`; never starts with `builtin_`, except the `builtin_profile` container of a generated profile |
+| `name` | `str` | required | `NAME_REGEX`, `DEFAULT_NAME_MIN_LENGTH` to `DEFAULT_NAME_MAX_LENGTH` characters; unique among the containers a kind declares; never `details`; never starts with `builtin_`, except the `builtin_profile` container of a generated profile and the `builtin_template` container of a generated template |
 | `label` | `str` | required | Section title |
 | `description` | `str \| None` | `None` | Muted text under the title |
 | `order_weight` | `int \| None` | `None` | Lowest first; Details sits at 0, so a negative weight places the container above Details and 0 or more below it; containers without a weight follow the weighted ones, in declaration order; no lower bound; the backend does not fill it |
@@ -43,8 +43,9 @@ constraint check (FR-005).
 Valid `container` values: a container of the kind after inheritance. `None` means the Details
 section. `details` (`DETAILS_CONTAINER_NAME` in `backend/infrahub/core/constants/__init__.py`) is
 not valid. `advanced` is valid only when the kind declares or inherits a container of that name.
-`builtin_profile` (`PROFILE_CONTAINER_NAME`) is valid only on a generated profile, the only kind
-that has it.
+`builtin_profile` (`PROFILE_CONTAINER_NAME`) is valid only on a generated profile, and
+`builtin_template` (`TEMPLATE_CONTAINER_NAME`) only on a generated template: they are the only
+kinds that have these containers.
 
 The SDK generator in `tasks/backend.py` lists `container_schema_fields`: `name`, `label`,
 `description`, `order_weight`, `collapsed`, `state` (`Visibility.WRITE`, enum class `SchemaState`,
@@ -94,13 +95,17 @@ with:
 2. A declared container named `details` (`DETAILS_CONTAINER_NAME`):
    `<Kind>.containers: 'details' is a built-in container and cannot be declared`
 3. A declared container whose name starts with `builtin_` (`BUILTIN_CONTAINER_PREFIX`), other than
-   `builtin_profile` on a profile:
+   `builtin_profile` on a profile and `builtin_template` on a kind in the `Template` namespace
+   (`TEMPLATE_NAMESPACE`). The namespace covers the `TemplateSchema` of a node and the
+   `GenericSchema` generated for a generic; a schema cannot declare a kind in that namespace
+   (`RESTRICTED_NAMESPACES`):
    `<Kind>.containers: '<x>' starts with the reserved prefix 'builtin_' and cannot be declared`
 4. A field that references a container the kind does not have:
    `<Kind>.attributes.<name>.container: container '<x>' is not declared on <Kind>`, or the same with
    `relationships`. Inherited fields are skipped, so a wrong reference on a generic's field names
    the generic. `container: details` fails this rule, and so do `container: advanced` on a kind
-   without a container of that name and `container: builtin_profile` on a node or generic.
+   without a container of that name and `container: builtin_profile` or
+   `container: builtin_template` on a node or generic.
 
 `evaluate_candidate_schemas` in `backend/infrahub/api/schema.py` turns the `ValueError` into a
 422; the bodies are in [contracts/schema-api.md](contracts/schema-api.md).
@@ -119,8 +124,15 @@ copies already carry `container`; `add_relationships_to_profile` and
 `order_weight=PROFILE_CONTAINER_ORDER_WEIGHT` (-100), `collapsed=False`, all in
 `backend/infrahub/core/constants/__init__.py`. It sets `container` to `builtin_profile` on the
 profile's `profile_name` and `profile_priority`. The attributes copied from the node keep the
-node's `container`. The template generator does not add it. The product owner asked for it on
-2026-11-10.
+node's `container`. The product owner asked for it on 2026-11-10.
+
+`generate_object_template_from_node` puts a Template container first in the template's
+`containers`, for the `TemplateSchema` of a node and for the `GenericSchema` generated for a
+generic: `name=TEMPLATE_CONTAINER_NAME` (`builtin_template`), `label=TEMPLATE_CONTAINER_LABEL`
+(`Template`), `order_weight=TEMPLATE_CONTAINER_ORDER_WEIGHT` (-100), `collapsed=False`, all in
+`backend/infrahub/core/constants/__init__.py`. It sets `container` to `builtin_template` on the
+template's `template_name`. The attributes and relationships copied from the node keep the node's
+`container`. Added on 2026-11-12.
 
 ## Reload merge
 

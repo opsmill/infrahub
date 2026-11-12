@@ -17,7 +17,9 @@ are left out.
   A profile also returns, first,
   `{"name": "builtin_profile", "label": "Profile", "description": null, "order_weight": -100, "collapsed": false, "state": "present", "inherited": false}`,
   and its `profile_name` and `profile_priority` attributes have `"container": "builtin_profile"`.
-  Templates do not return it.
+  A template, generated for a node or for a generic, also returns, first,
+  `{"name": "builtin_template", "label": "Template", "description": null, "order_weight": -100, "collapsed": false, "state": "present", "inherited": false}`,
+  and its `template_name` attribute has `"container": "builtin_template"`.
 - `details` is never listed. A container named `advanced` is listed like any other container.
 - Attributes and relationships carry `container`: the container name, or `null` for the Details
   section.
@@ -99,8 +101,8 @@ Each rejection is a 422 with the body
 `{"data": null, "errors": [{"message": "<message>", "extensions": {"code": 422}}]}`:
 
 - A field references a container the kind does not have after inheritance, `details`,
-  `advanced` on a kind without a container of that name, or `builtin_profile` on a node or
-  generic:
+  `advanced` on a kind without a container of that name, or `builtin_profile` or
+  `builtin_template` on a node or generic:
   `InfraLagInterfaceL2.attributes.mtu.container: container 'layer4' is not declared on InfraLagInterfaceL2`.
   A relationship gives `relationships.<name>.container`. For a field declared on a generic, the
   message names the generic.

@@ -13,6 +13,7 @@ import {
   generateAttributeSchema,
   generateContainerSchema,
   generateProfileSchema,
+  generateTemplateSchema,
 } from "../../../../tests/fake/schema";
 
 function buildAttributeField(
@@ -110,6 +111,49 @@ describe("DynamicForm", () => {
       .elements()
       .map((region) => region.querySelector("h2")?.textContent);
     expect(regionNames).toEqual(["Profile", "Details", "Layer 2"]);
+  });
+
+  test("renders the Template panel of an object template above Details", async () => {
+    const templateSchema = generateTemplateSchema({
+      containers: [
+        generateContainerSchema({
+          name: "builtin_template",
+          label: "Template",
+          order_weight: -100,
+        }),
+        layer2,
+      ],
+      attributes: [
+        generateAttributeSchema({
+          name: "template_name",
+          label: "Template Name",
+          order_weight: 100,
+          container: "builtin_template",
+        }),
+        generateAttributeSchema({ name: "name", label: "Name", order_weight: 300 }),
+        generateAttributeSchema({
+          name: "vlan",
+          label: "VLAN",
+          order_weight: 400,
+          container: "layer2",
+        }),
+      ],
+      relationships: [],
+    });
+    const component = await render(
+      <DynamicForm
+        fields={getFormFieldsFromSchema({ schema: templateSchema })}
+        sections={templateSchema.containers}
+      />
+    );
+
+    const template = component.getByRole("region", { name: "Template", exact: true });
+    await expect.element(template.getByLabelText("Template Name")).toBeVisible();
+    const regionNames = component
+      .getByRole("region")
+      .elements()
+      .map((region) => region.querySelector("h2")?.textContent);
+    expect(regionNames).toEqual(["Template", "Details", "Layer 2"]);
   });
 
   test("renders no panel when all its fields are filtered out", async () => {

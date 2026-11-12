@@ -441,6 +441,53 @@ describe("ObjectDetails sections", () => {
     ).toEqual(["builtin_profile", "addressing", "lacp", "management"]);
   });
 
+  it("renders the Template container of an object template above Details", async () => {
+    const component = await render(
+      <ObjectDetails
+        objectSchema={generateTemplateSchema({
+          containers: [
+            generateContainerSchema({
+              name: "builtin_template",
+              label: "Template",
+              order_weight: -100,
+            }),
+            ...sectionContainers,
+          ],
+          attributes: [
+            generateAttributeSchema({
+              name: "template_name",
+              label: "Template Name",
+              order_weight: 100,
+              container: "builtin_template",
+            }),
+            ...sectionedAttributes,
+          ],
+          relationships: sectionedRelationships,
+        })}
+        objectData={{
+          ...sectionedData,
+          __typename: "TemplateInfraInterface",
+          template_name: generateNodeAttributeWithMetadata({ value: "access-port" }),
+        }}
+        permission={permission}
+      />
+    );
+
+    const template = component.getByRole("region", { name: "Template", exact: true });
+    await expect.element(template.getByText("Template Name", { exact: true })).toBeVisible();
+    expect(
+      template
+        .element()
+        .compareDocumentPosition(component.getByRole("region", { name: "Details" }).element())
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      component
+        .getByTestId("object-details-section")
+        .elements()
+        .map((card) => card.getAttribute("data-section"))
+    ).toEqual(["builtin_template", "addressing", "lacp", "management"]);
+  });
+
   it.each([
     ["a profile", generateProfileSchema, "ProfileInfraInterface"],
     ["an object template", generateTemplateSchema, "TemplateInfraInterface"],

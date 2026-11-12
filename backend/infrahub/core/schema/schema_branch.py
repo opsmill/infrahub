@@ -29,6 +29,9 @@ from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     SUBTEMPLATE_EXCLUDED_KINDS,
+    TEMPLATE_CONTAINER_LABEL,
+    TEMPLATE_CONTAINER_NAME,
+    TEMPLATE_CONTAINER_ORDER_WEIGHT,
     BranchSupportType,
     ComputedAttributeKind,
     HashableModelState,
@@ -3089,6 +3092,15 @@ class SchemaBranch:
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
         template_name_attr = name_attr_schema_class(**core_name_attr.model_dump(exclude={"id", "inherited"}))
         template_name_attr.branch = node.branch
+        template_name_attr.container = TEMPLATE_CONTAINER_NAME
+        template_containers = [
+            ContainerSchema(
+                name=TEMPLATE_CONTAINER_NAME,
+                label=TEMPLATE_CONTAINER_LABEL,
+                order_weight=TEMPLATE_CONTAINER_ORDER_WEIGHT,
+            ),
+            *self._copy_containers(node=node),
+        ]
 
         template: TemplateSchema | GenericSchema
         need_template_kinds = [n.kind for n in need_templates]
@@ -3104,7 +3116,7 @@ class SchemaBranch:
                 include_in_menu=False,
                 display_label="template_name__value",
                 human_friendly_id=["template_name__value"],
-                containers=self._copy_containers(node=node),
+                containers=template_containers,
                 attributes=[template_name_attr],
             )
 
@@ -3123,7 +3135,7 @@ class SchemaBranch:
                 human_friendly_id=["template_name__value"],
                 uniqueness_constraints=[["template_name__value"]],
                 inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.NODE, core_template_schema.kind],
-                containers=self._copy_containers(node=node),
+                containers=template_containers,
                 attributes=[template_name_attr],
                 relationships=[
                     RelationshipSchema(
