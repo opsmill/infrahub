@@ -7,7 +7,8 @@ are left out.
 ## What GET /api/schema and GET /api/schema/{kind} return
 
 - Nodes, generics, profiles and templates carry `containers`: a list of
-  `{name, label, description, order_weight, collapsed, state, inherited}` items, `[]` when none.
+  `{name, label, description, order_weight, collapsible, collapsed, state, inherited}` items, `[]`
+  when none.
   `state` is `present` on every item a read returns.
 - On a node, the list is the result of inheritance: the inherited containers first, in the order
   of the generics in `inherit_from` and of each generic's list, then the node's own containers. A
@@ -15,10 +16,10 @@ are left out.
 - `inherited` is `true` on a copy taken from a generic and `false` on a container the kind
   declares. Profiles and templates return the containers of their node with `inherited: false`.
   A profile also returns, first,
-  `{"name": "builtin_profile", "label": "Profile", "description": null, "order_weight": -100, "collapsed": false, "state": "present", "inherited": false}`,
+  `{"name": "builtin_profile", "label": "Profile", "description": null, "order_weight": -100, "collapsible": false, "collapsed": false, "state": "present", "inherited": false}`,
   and its `profile_name` and `profile_priority` attributes have `"container": "builtin_profile"`.
   A template, generated for a node or for a generic, also returns, first,
-  `{"name": "builtin_template", "label": "Template", "description": null, "order_weight": -100, "collapsed": false, "state": "present", "inherited": false}`,
+  `{"name": "builtin_template", "label": "Template", "description": null, "order_weight": -100, "collapsible": false, "collapsed": false, "state": "present", "inherited": false}`,
   and its `template_name` attribute has `"container": "builtin_template"`.
 - `details` is never listed. A container named `advanced` is listed like any other container.
 - Attributes and relationships carry `container`: the container name, or `null` for the Details
@@ -34,9 +35,9 @@ Example `GET /api/schema/InfraLagInterface` (abridged):
 {
   "kind": "InfraLagInterface",
   "containers": [
-    {"name": "lacp", "label": "LACP", "description": "Link aggregation settings", "order_weight": 100, "collapsed": false, "state": "present", "inherited": false},
-    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsed": false, "state": "present", "inherited": false},
-    {"name": "layer3", "label": "Layer 3", "description": "Addressing and MTU", "order_weight": 300, "collapsed": true, "state": "present", "inherited": false}
+    {"name": "lacp", "label": "LACP", "description": "Link aggregation settings", "order_weight": 100, "collapsible": true, "collapsed": false, "state": "present", "inherited": false},
+    {"name": "layer2", "label": "Layer 2", "description": "Switching settings of the bundle", "order_weight": 200, "collapsible": true, "collapsed": false, "state": "present", "inherited": false},
+    {"name": "layer3", "label": "Layer 3", "description": "Addressing and MTU", "order_weight": 300, "collapsible": true, "collapsed": true, "state": "present", "inherited": false}
   ],
   "attributes": [
     {"name": "lacp", "kind": "Text", "container": "lacp"},
@@ -55,7 +56,8 @@ A kind without sections returns `"containers": []` and `"container": null` on ev
 ## What POST /api/schema/load accepts
 
 - `containers` on a node or generic: items with a required `name` and `label` and an optional
-  `description`, `order_weight`, `collapsed` and `state`. `"state": "absent"` removes the item.
+  `description`, `order_weight`, `collapsible`, `collapsed` and `state`. `"state": "absent"`
+  removes the item. `collapsible` defaults to `true`.
   `inherited` is read-only: a load that sends it gets the warning
   `'containers.inherited' is a read-only field, the submitted value is ignored`. An unknown key
   inside an item fails the write contract with a 422.
@@ -112,6 +114,8 @@ Each rejection is a 422 with the body
   `InfraLagInterface.containers: 'details' is a built-in container and cannot be declared`.
 - A container name starts with `builtin_`:
   `InfraLagInterface.containers: 'builtin_x' starts with the reserved prefix 'builtin_' and cannot be declared`.
+- A container sets `collapsed: true` with `collapsible: false`:
+  `InfraLagInterface.containers.summary: collapsed requires collapsible`.
 
 A container item without `label`, or with a `name` outside the attribute name rules, fails the
 write contract's Pydantic validation with the standard FastAPI `detail` body, before the validator
@@ -127,4 +131,4 @@ runs.
   `inherited` and `state`. A kind without its own containers has no `containers` key.
 - `infrahubctl schema format` places `containers` after `uniqueness_constraints` and `container`
   last before the trailing `order_weight` of an attribute or relationship. Container item keys are
-  ordered `name`, `label`, `description`, `order_weight`, `collapsed`, `state`.
+  ordered `name`, `label`, `description`, `order_weight`, `collapsible`, `collapsed`, `state`.

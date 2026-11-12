@@ -39,15 +39,24 @@ other clients can group fields the same way. The schema and the API use `contain
   the node declares or inherits a container of that name.
 - Container names that start with `builtin_` are reserved for the containers Infrahub generates:
   a node or generic cannot declare one. The product owner added this rule on 2026-11-10.
-- `collapsed` applies to the detail view only; form panels are always expanded.
+- A container has a `collapsible` flag, true by default. Only the detail card of a collapsible
+  container has a collapse control. `collapsed` sets the initial state of that card, applies to
+  the detail view only and requires `collapsible`: a load that sets `collapsed: true` with
+  `collapsible: false` is rejected. The Details card and the cards of the generated Profile and
+  Template containers are not collapsible. Form panels are always expanded. Added on 2026-11-12.
+- The schema viewer lists the containers of a kind in a Containers tab, between Properties and
+  Attributes, and the Properties tab does not list them. Added on 2026-11-12.
+- The first tab of the object detail page and of the IPAM detail page is named Overview instead
+  of Details. The card of the fields without a container keeps the title Details. Added on
+  2026-11-12.
 - The Extra toggle is per section.
 - Containers inherited from a generic merge by name; the node's definition wins, then the first
   generic in `inherit_from`.
 - Generated profiles and object templates copy the node's containers. Generated profiles also get
-  a Profile container (`builtin_profile`, label Profile, order weight -100, not collapsed) that
+  a Profile container (`builtin_profile`, label Profile, order weight -100, not collapsible) that
   holds `profile_name` and `profile_priority`, so a profile shows its name and priority above
   Details. The product owner added this on 2026-11-10. Generated object templates also get a
-  Template container (`builtin_template`, label Template, order weight -100, not collapsed) that
+  Template container (`builtin_template`, label Template, order weight -100, not collapsible) that
   holds `template_name`, so a template shows its name above Details. This was added on 2026-11-12.
 - The demo schema (`models/base/dcim.yml`) carries LACP, Layer 2 and Layer 3 containers on the
   `InfraLagInterface` generic, and the end-to-end test uses it.
@@ -62,8 +71,8 @@ description, status, role, device and tags keep no container. The load succeeds.
 a container name, the load fails with a message that names the node, the field and the container.
 
 1. **Given** a node with three containers and fields that reference them, **When** it is loaded,
-   **Then** reading it back returns the containers with name, label, description, order weight and
-   collapsed flag, and each field with its container name.
+   **Then** reading it back returns the containers with name, label, description, order weight,
+   collapsible and collapsed flags, and each field with its container name.
 2. **Given** a field whose `container` the node does not declare, **When** it is loaded, **Then**
    the load is rejected with
    `<Kind>.attributes.<name>.container: container '<x>' is not declared on <Kind>` (or
@@ -81,6 +90,13 @@ a container name, the load fails with a message that names the node, the field a
    **Then** the container stays; removing it needs `state: absent` on the item.
 7. **Given** a schema with containers, **When** a container label changes or a field moves to
    another container, **Then** the load needs no migration and no constraint check.
+8. **Given** a container with `collapsed: true` and `collapsible: false`, **When** it is loaded,
+   **Then** the load is rejected with `<Kind>.containers.<name>: collapsed requires collapsible`.
+9. **Given** a loaded schema with containers, **When** the designer opens the kind in the schema
+   viewer, **Then** a Containers tab between Properties and Attributes lists one closed accordion
+   per container, titled with its label and name. Opening one shows its name, label, description,
+   order weight, collapsible, collapsed and inherited values, and not the fields it holds. A kind
+   without containers shows "No container". The Properties tab does not list the containers.
 
 ### User Story 2 - Inherit sections from a generic (P1)
 
@@ -105,7 +121,7 @@ interface nodes show the same sections.
 
 ### User Story 3 - View a node by section (P1)
 
-An operator opens the detail page of LAG interface `bond0`. They view a Details card, then LACP,
+An operator opens the Overview tab of LAG interface `bond0`. They view a Details card, then LACP,
 Layer 2 and Layer 3 cards. They collapse Layer 2. The MAC address
 is an extra field of Layer 2, so it appears only after they switch on Extra in that card.
 
@@ -113,18 +129,24 @@ is an extra field of Layer 2, so it appears only after they switch on Extra in t
    per container with a negative order weight, then a Details card with the fields without a
    container, then one card per other container, each group in order weight order and each card
    listing its fields in order weight order.
-2. **Given** a container with `collapsed: true`, **When** the page opens, **Then** that card shows
-   only its header, and selecting the header expands it.
-3. **Given** a section with fields marked `display: extra`, **When** the page opens, **Then** those
+2. **Given** a collapsible container with `collapsed: true`, **When** the page opens, **Then** that
+   card shows only its header, and selecting the header expands it.
+3. **Given** a container with `collapsible: false`, **When** the page opens, **Then** its card has
+   no collapse control and is expanded. The Details card and the Profile and Template cards are
+   never collapsible.
+4. **Given** a section with fields marked `display: extra`, **When** the page opens, **Then** those
    fields are hidden behind that card's own Extra control; a card without extra fields has none.
-4. **Given** a node without sectioned fields, **When** the detail page opens, **Then** it shows the
+5. **Given** a node without sectioned fields, **When** the detail page opens, **Then** it shows the
    single Details card as before.
-5. **Given** a container for which the node has no visible field, **When** the page opens,
+6. **Given** a container for which the node has no visible field, **When** the page opens,
    **Then** no card is shown for it.
-6. **Given** a profile or object template of a node with containers, **When** its detail page
+7. **Given** a profile or object template of a node with containers, **When** its detail page
    opens, **Then** it shows the same sections as the node. A profile also shows a Profile card,
    with the profile name and priority, above the Details card, and an object template shows a
    Template card, with the template name, above the Details card.
+8. **Given** the detail page of an object or of an object opened from the IPAM pages, **When** it
+   opens, **Then** its first tab is named Overview and the card of the fields without a container
+   is titled Details.
 
 ### User Story 4 - Edit a node by section (P2)
 
@@ -192,10 +214,10 @@ errors.
 ### Schema contract
 
 - **FR-001**: A node or generic schema MUST accept an optional `containers` list. Each item has a
-  required `name` and `label`, an optional `description` and `order_weight`, a `collapsed` flag
-  (default false, detail view only) and a `state` (default `present`, `absent` removes the item on
-  reload). The API also returns a read-only `inherited` flag; a load that sends it gets a
-  read-only warning and the value is not used.
+  required `name` and `label`, an optional `description` and `order_weight`, a `collapsible` flag
+  (default true), a `collapsed` flag (default false, detail view only) and a `state` (default
+  `present`, `absent` removes the item on reload). The API also returns a read-only `inherited`
+  flag; a load that sends it gets a read-only warning and the value is not used.
 - **FR-002**: An attribute or relationship schema MUST accept an optional `container` text value.
   Unset, the field belongs to Details. A reload that leaves `container` out keeps the stored
   value; `container: ""` moves the field back to Details.
@@ -203,7 +225,7 @@ errors.
   unique among the containers a node declares, MUST NOT be `details` and MUST NOT start with
   `builtin_`. A field MUST NOT reference `details`, only the fields of a generated profile can
   reference `builtin_profile`, and only the fields of a generated template can reference
-  `builtin_template`.
+  `builtin_template`. A container MUST NOT set `collapsed: true` with `collapsible: false`.
 - **FR-004**: Schema loading MUST reject a field whose `container` is not a container of the node
   after inheritance. For a field declared on a generic, the message names the generic.
 - **FR-005**: Changing containers or container assignments MUST NOT require a migration or a
@@ -224,9 +246,11 @@ errors.
   field MAY set another container.
 - **FR-010**: Processing a schema twice MUST yield the same containers.
 - **FR-011**: Generated profiles and object templates MUST carry the node's containers. Generated
-  profiles MUST also carry the `builtin_profile` container (label Profile, order weight -100) and
+  profiles MUST also carry the `builtin_profile` container (label Profile, order weight -100, not
+  collapsible) and
   place `profile_name` and `profile_priority` in it. Generated object templates, of a node or of
-  a generic, MUST also carry the `builtin_template` container (label Template, order weight -100)
+  a generic, MUST also carry the `builtin_template` container (label Template, order weight -100,
+  not collapsible)
   and place `template_name` in it.
 
 ### Schema API and SDK
@@ -249,13 +273,17 @@ errors.
   `order_weight`, and MUST omit a card without a visible field.
 - **FR-016**: Each section card MUST use the rows of the Details card, titled with the container
   label, with its fields ordered by `order_weight`.
-- **FR-017**: Each container card MUST be collapsible from its header and start collapsed when its
-  container says so. Details is not collapsible.
+- **FR-017**: The card of a container with `collapsible: true` MUST be collapsible from its header
+  and start collapsed when the container sets `collapsed: true`. The card of a container with
+  `collapsible: false` MUST have no collapse control and MUST always be expanded. The Details card
+  and the cards of `builtin_profile` and `builtin_template` are not collapsible.
 - **FR-018**: Each section card MUST have its own Extra control, shown only when the section has a
   `display: extra` field.
 - **FR-019**: A node without sectioned fields MUST render the single Details card as before. The
   object detail page and the IPAM detail page render sections; the other pages that reuse the
-  Details card (repository, GraphQL query, user profile) keep the single card.
+  Details card (repository, GraphQL query, user profile) keep the single card. The first tab of
+  the object detail page and of the IPAM detail page MUST be named Overview; the card of the
+  fields without a container keeps the title Details.
 - **FR-020**: The section header MUST show the container label and, when set, the description as
   muted text under it, in the detail card and in the form panel.
 
@@ -274,7 +302,13 @@ errors.
 
 ### Schema viewer and documentation
 
-- **FR-026**: The schema viewer MUST list a node's containers and show each field's container.
+- **FR-026**: The schema viewer MUST list a kind's containers in a Containers tab placed between
+  the Properties and Attributes tabs, as one accordion per container styled like the attribute
+  accordions, closed by default and titled with the container label and name. An open accordion
+  MUST show the name, label, description, order weight, collapsible, collapsed and inherited
+  values, and MUST NOT list the container's fields. A kind without containers MUST show
+  "No container". The Properties tab MUST NOT list containers. Each attribute and relationship
+  accordion MUST show the field's container.
 - **FR-027**: The generated schema reference MUST describe both properties, a schema guide MUST
   explain sections with an example, and changelog fragments MUST describe the change.
 

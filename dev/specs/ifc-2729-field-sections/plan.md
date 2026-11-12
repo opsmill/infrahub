@@ -14,7 +14,9 @@ containers. The backend, SDK, OpenAPI, REST type and reference doc files are reg
 frontend, one partition rule feeds the detail page (one card per section) and the forms (one panel
 per section). Details is the only built-in section of a node or generic and sits at order weight
 0, generated profiles add a Profile section above it, generated object templates add a Template
-section above it, and the GraphQL schema does not change.
+section above it, and the GraphQL schema does not change. Only the detail cards of containers with
+`collapsible: true` can be collapsed, the schema viewer lists containers in a Containers tab, and
+the first tab of the object and IPAM detail pages is named Overview.
 
 ## Design decisions
 
@@ -59,7 +61,7 @@ only on a kind in the `Template` namespace.
 
 **Profiles get a generated Profile container.** The product owner asked on 2026-11-10 that a
 profile show its name and priority first. `generate_profile_from_node` adds `builtin_profile`
-(label Profile, order weight -100, not collapsed) before the node's copied containers and sets
+(label Profile, order weight -100, not collapsible) before the node's copied containers and sets
 `container: builtin_profile` on `profile_name` and `profile_priority`. The copied node attributes
 keep the node's containers. Profiles are generated on every process and are not stored
 (`SchemaManager.load_schema_to_db` stores nodes and generics), and `SchemaBranch.diff` and
@@ -68,7 +70,7 @@ schema change or a merge conflict.
 
 **Object templates get a generated Template container.** Added on 2026-11-12 so that a template
 shows its name first, as a profile does. `generate_object_template_from_node` adds
-`builtin_template` (label Template, order weight -100, not collapsed) before the node's copied
+`builtin_template` (label Template, order weight -100, not collapsible) before the node's copied
 containers and sets `container: builtin_template` on `template_name`, for both the `TemplateSchema`
 of a node and the `GenericSchema` generated for a generic. Only the negative weight places it above
 Details; the frontend has no rule for `builtin_` containers. Templates are generated on every
@@ -96,6 +98,26 @@ in its own tab) is dropped. The form reads the container from the schema attache
 Rejected: a `container` prop on form fields or a name-to-container map, which duplicate data the
 field already holds.
 
+**A `collapsible` flag decides which cards collapse.** Added on 2026-11-12. `ContainerSchema`
+has `collapsible` (default true) next to `collapsed`. `ObjectDetailsCard` renders a `Disclosure`
+only for a section with `collapsible: true`; `collapsed` sets its initial state. A section with
+`collapsible: false`, like `DETAILS_SECTION`, renders the plain header, so the Details, Profile and
+Template cards are always expanded. `ContainerValidator` refuses `collapsed: true` with
+`collapsible: false`, so a stored schema never asks for a collapsed card that cannot open. The
+generated `builtin_profile` and `builtin_template` containers set `collapsible=False`. Rejected:
+deciding collapsibility in the frontend from the `builtin_` prefix, which the API would not
+expose to other clients.
+
+**Schema viewer Containers tab.** Added on 2026-11-12. The schema viewer lists containers in
+their own tab, between Properties and Attributes, with one `ContainerDisplay` accordion per
+container built on `AccordionStyled`, so containers look like attributes and relationships. The
+Properties tab stays as on `develop`. The accordion does not list the container's fields: the
+Container row of each attribute and relationship already shows them.
+
+**Overview tab.** Added on 2026-11-12. The first tab of the object detail page and of the IPAM
+detail layout is named Overview, so it no longer shares its name with the Details card it
+contains. Only the label changes; the route stays the same.
+
 **Collapsible card with react-aria `Disclosure`.** `@infrahub/ui` already depends on
 `react-aria-components`, and the repository activity card uses `Disclosure`. The Extra button stays
 a sibling of the trigger because a button cannot nest in a button. Rejected: the Radix accordion,
@@ -110,7 +132,7 @@ and the L3 node no Layer 2 card, which tests the empty-section rule. Rejected: c
 
 Backend:
 
-- Model and constants: `backend/infrahub/core/schema/container.py`,
+- Model and constants: `backend/infrahub/core/schema/container.py` (with `collapsible`),
   `backend/infrahub/core/schema/__init__.py`, `backend/infrahub/core/constants/__init__.py`.
 - Schema definitions: `backend/infrahub/core/schema/definitions/internal.py`,
   `backend/templates/basenodeschema_imports.j2`.
@@ -143,18 +165,20 @@ Frontend (`frontend/app/src/`):
 - Section model and rule: `entities/nodes/object/domain/model/field-section.ts`,
   `entities/nodes/object/domain/rules/group-fields-by-section.ts`.
 - Detail view: `object-details-sections.tsx`, `object-details-card.tsx`, `section-title.tsx`,
-  `object-details.tsx`, `object-data-display/object-data-display.tsx` under
-  `entities/nodes/object/ui/object-details/`, and `pages/ipam/ipam-details-page.tsx`.
+  `object-details.tsx`, `object-details-tabs.tsx`, `object-data-display/object-data-display.tsx`
+  under `entities/nodes/object/ui/object-details/`, `pages/ipam/ipam-details-page.tsx` and
+  `pages/ipam/ipam-details-layout.tsx`.
 - Forms: `shared/components/form/dynamic-form.tsx`, `form-section-panel.tsx`, `node-form.tsx`,
   `core-file-form.tsx`.
-- Schema viewer: `entities/schema/ui/schema-viewer.tsx`, `attribute-display.tsx`,
-  `relationship-display.tsx`; type in `entities/schema/domain/model/schema.ts`.
+- Schema viewer: `entities/schema/ui/schema-viewer.tsx`, `schema-viewer-modal.tsx`,
+  `container-display.tsx`, `attribute-display.tsx`, `relationship-display.tsx`; type in
+  `entities/schema/domain/model/schema.ts`.
 - Generated: `shared/api/rest/types.generated.ts`, `frontend/app/.betterer.results`.
 
 Demo, end-to-end and documentation:
 
 - `models/base/dcim.yml`, `tests/e2e/data/sites.py`, `tests/e2e/objects/test_object_containers.py`,
-  `tests/e2e/README.md`.
+  `tests/e2e/README.md`, and `tests/e2e/ipam/test_ip_prefix_list.py` for the Overview tab.
 - `docs/docs/schema/field-sections.mdx`, `docs/docs/schema/overview.mdx`, `docs/sidebars.ts`.
 - `dev/knowledge/backend/schema-definitions.md`, `dev/knowledge/frontend/shared-components.md`.
 - Changelog fragments `changelog/+ifc-2729-*.md`.
