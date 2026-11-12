@@ -28,7 +28,7 @@ def build_branch_windows_query(
 def render_window_filter(*, edge: str, window: str = "window", time_param: str = "windows_at") -> str: ...
 ```
 
-The rendered predicate is true when the edge is visible in the window, as defined in data-model.md. For a single window, it accepts the same edges as `Branch.get_query_filter_path(is_isolated=True)` for that branch.
+The rendered predicate is true when the edge is visible in the window, as defined in data-model.md. For a single window, it accepts the same edges as `Branch.get_query_filter_path(is_isolated=True)` for that branch once PR 5 applies FR-043. Until then, `get_query_filter_path` also accepts a `-global-` edge closed by setting only its `to` between the branch's `branched_from` and the read time, which the window does not accept (research R14).
 
 ## Ranking two edges
 

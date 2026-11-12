@@ -169,6 +169,7 @@ After PRs 5 and 6, no pair of vertices holds both a `-global-` edge and a branch
 8. **Given** a branch-agnostic node deleted on the default branch while branch B only inherited a link to it, **When** B is rebased, **Then** the link is closed on B and B writes no edge of its own for it.
 9. **Given** the same situation, **When** B is merged instead, **Then** the merge writes nothing for the link.
 10. **Given** a link that branch B added to a branch-agnostic node, and that B lost when the node was deleted, **When** B is merged, **Then** the default branch has no active link.
+11. **Given** a `-global-` edge that existed when branch B was created and that was later closed by setting only its `to`, **When** it is read on B, **Then** it is not returned, as on every other branch.
 
 ---
 
@@ -260,6 +261,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - **FR-025**: A graph migration MUST convert the existing `-global-` `deleted` edges on branch-aware links into what the new delete writes, keeping the original `from`, and MUST remove the existing `deleted` edges on the default branch or a user branch on branch-agnostic relationships, whether a delete or a merge wrote them. It MUST log the count of mixed pairs that match neither shape and leave them unchanged. The migration ships in PR 6.
 - **FR-026**: Every read MUST give the same answer before and after the migration, at every point in time.
 - **FR-027**: The internal documentation of the database schema MUST state the rule of FR-024, the peer existence check, and that a branch-agnostic relationship has no branch edges.
+- **FR-043**: A read on a user branch MUST read `-global-` edges at the read time only, so that every change on `-global-`, including an edge closed by setting only its `to`, is visible on every branch at once.
 
 **Branch-agnostic relationship reads (User Story 6)**
 
@@ -308,7 +310,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - The branch support of a node, attribute or relationship cannot change after the schema is first loaded.
 - Merge and rebase do not write `-global-` edges.
 - A link on a branch-agnostic relationship is always written on `-global-`, including from a mutation on a branch. The one exception today, the delete on a branch, is removed by FR-023, which ships in PR 6.
-- A normal read on a user branch already includes `-global-` edges up to the read time, so a change on `-global-` is visible on every branch at once.
+- A change on `-global-` is visible on every branch at once. Today this holds for an edge added on `-global-`, but not for an edge closed by setting only its `to`: a normal read on a user branch also reads `-global-` together with the origin branch at `branched_from`, so it still returns such an edge on every branch created before the close. FR-043 fixes this in PR 5 (research R14).
 - PR [#11220](https://github.com/opsmill/infrahub/pull/11220) stays as it is and is not ported to `release-1.12`. PRs 5 and 6 start only after it is merged into `stable` and then into `release-1.12`.
 - The earlier branch-agnostic code at commit `7015435c4` (local branch `branch-agnostic-source`) holds the window helpers, the rewrite of the list filter and the branch-agnostic lookup by HFID. PRs 3, 5 and 6 bring it in; it is not cherry-picked as a whole.
 - Branch-agnostic reads are uncommon, so a slower branch-agnostic path is acceptable if it returns correct results. Reads on one branch must not get slower.

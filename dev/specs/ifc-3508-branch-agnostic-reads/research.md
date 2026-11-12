@@ -323,3 +323,32 @@ PR 6's reads work with or without shape 2 edges. In B's window the branch edge h
 - Keep FR-023 and shape 2 in PR 5, and bring PR 6's chosen-branch reads into PR 5. Rejected: that moves most of PR 6 into PR 5.
 - Keep them in PR 5 with a temporary check that hides the peer on B, removed in PR 6. Rejected: the check is written only to be removed, and it contradicts the clarified rule while it exists.
 - Merge PRs 5 and 6 into one PR. Rejected: both are large, and the feature branch gives the same release result with two reviews.
+
+## R14. Reading `-global-` edges on a user branch (PR 5)
+
+**Finding.**
+
+- For a user branch, `core/branch/models.py::Branch.get_branches_and_times_to_query_global` returns two groups:
+  - `-global-` and the origin branch, read at `min(branched_from, at)`;
+  - `-global-` and the branch itself, read at `at`.
+- `get_query_filter_path` (84 calls under `backend/infrahub/`) and `get_query_filter_relationships` accept an edge that is visible in either group.
+- A `-global-` edge created before `branched_from` and closed after it, by setting only its `to`, is still visible in the first group. A read on that branch therefore returns it, while the default branch and every branch created after the close do not.
+- When a newer `-global-` edge replaces the closed one, as for an updated branch-agnostic attribute, queries that rank edges pick the newer edge, so the wrong edge is returned only when nothing replaces it.
+- The branch window rule (data-model.md, "Branch window") reads `-global-` at `at` only, so window-based reads, including the delete check of PR 4, do not return the closed edge.
+- Found while testing the PR 4 delete check: updating a declared branch-agnostic relationship on a branch closed its `-global-` edge this way. No committed test covers it yet.
+
+**Decision.**
+
+- Remove `-global-` from the origin group. A user branch reads the origin branch at `min(branched_from, at)`, and `-global-` with the branch itself at `at`. The default branch is unchanged.
+- The query text does not change, only the branch lists passed as parameters, so reads on one branch should cost the same (FR-039, SC-004). PR 5 measures it.
+- Before the change, list:
+  - every write that closes a `-global-` edge by setting only its `to`;
+  - every query that builds its own branch filter with `-global-` instead of calling these helpers.
+- `get_branches_and_times_for_range`, used by the diff, does not include `-global-` and does not change.
+
+**Rationale.** FR-043. The `-global-` part of the origin group adds nothing a correct read needs:
+- an edge still open is visible in the second group;
+- an edge closed before `branched_from` is visible in neither;
+- for a read time before `branched_from`, both groups use the same time.
+
+Its only effect is to return an edge closed after the branch was created.

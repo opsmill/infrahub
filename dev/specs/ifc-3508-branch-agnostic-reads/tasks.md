@@ -271,6 +271,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - the peer existence check (FR-018 to FR-020);
 - the new delete writes and ranking for a branch-agnostic node (FR-021, FR-022);
 - the object conversion peer list (FR-040);
+- reading `-global-` edges at the read time on a user branch (FR-043);
 - the documentation (FR-027).
 
 **Independent Test**: a role is linked to group G1 on the default branch; B is created; the role is removed from G1 on the default branch; G1 is deleted. Reading the role's groups on either branch does not return G1 and raises no error.
@@ -282,6 +283,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [ ] T060 [US5] Confirm PR 3 and PR #11220 are merged into `origin/release-1.12` (see T002). Then create the feature branch `branch-agnostic-links-ifc-3508` from it, and a worktree for `peer-existence-check-ifc-3508` from the feature branch.
 - [ ] T062 [US5] Gate for open question 2: present research R7's evidence and recommendation (on the default branch, set `to` and write a `deleted` edge with the same `from`, as every user delete does) to the user, and stop. Record the answer under "Open Questions" in `spec.md` and in research R7. T075, T080, T128 and T130 depend on it.
 - [ ] T063 [US5] List every query under `backend/infrahub/` that reads `IS_RELATED` (`rg -l IS_RELATED backend/infrahub`). For each, record whether it can read a branch-agnostic relationship or a relationship to a branch-agnostic kind, and whether it needs the check, in a table appended to `research.md` R6. Include `RelationshipCountPerNodeQuery`, the targeted uniqueness validation query, `DependentNodesQuery` and `backend/infrahub/core/validators/relationship/count.py`.
+- [ ] T133 [US5] List every write under `backend/infrahub/` that closes a `-global-` edge by setting only its `to`, and every query that builds its own branch filter with `-global-` instead of calling `Branch.get_query_filter_path` or `Branch.get_query_filter_relationships` (research R14). Record both lists in the PR description.
 
 ### Tests for User Story 5
 
@@ -298,6 +300,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   Confirm the tests that check today's wrong results fail.
 - [ ] T066 [P] [US5] Add `test_query_text_unchanged_for_branch_aware_relationships` to `backend/tests/component/core/test_relationship_query.py`. It asserts that `RelationshipGetPeerQuery` and `NodeListGetRelationshipsQuery`, for a branch-aware relationship between branch-aware kinds, render the same Cypher as on the base branch (FR-020).
 - [ ] T067 [P] [US5] Add a test to `backend/tests/component/core/convert_object_type/` where a former peer is not counted when validating an object conversion (FR-040), and confirm it fails.
+- [ ] T134 [P] [US5] Add a test to `backend/tests/component/core/test_branch.py` for spec US5 scenario 11: a `-global-` edge that existed when branch B was created is closed by setting only its `to`, and a read on B no longer returns it. Use a write from T133's list where one exists. Confirm it fails.
 
 ### Implementation for User Story 5
 
@@ -320,7 +323,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - apply the same rules to `IS_PROTECTED`, `HAS_OWNER` and `HAS_SOURCE`.
 
   Update `backend/infrahub/core/node/__init__.py::Node.delete` only where the call needs new arguments. Depends on T062.
-- [ ] T076 [US5] Run T064-T067, plus:
+- [ ] T135 [US5] In `backend/infrahub/core/branch/models.py::Branch.get_branches_and_times_to_query_global`, return the origin branch alone at `min(branched_from, at)`, and `-global-` with the branch itself at `at` (FR-043, research R14). Fix any query from T133's list that builds its own filter the same way.
+- [ ] T076 [US5] Run T064-T067 and T134, plus:
   - `backend/tests/component/core/test_node_manager_delete.py`
   - `backend/tests/component/core/relationship/`
   - `backend/tests/component/core/test_relationship_query.py`
@@ -329,6 +333,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - `backend/tests/component/core/test_branch_merge.py`
   - `backend/tests/component/core/test_branch_rebase.py`
   - `backend/tests/component/graphql/`
+  - `backend/tests/component/core/test_branch.py`, and the rest of `backend/tests/component/`, because T135 changes the filter that nearly every query uses
 
   All pass.
 
@@ -339,14 +344,15 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
   - `CoreStandardGroup.members` with 5,000 members;
   - a branch-aware relationship between branch-aware kinds.
 
-  Record the database hits before and after in the PR description. The third read must not change (SC-004).
+  Record the database hits before and after in the PR description. The third read must not change (SC-004). Also record the three reads on a user branch before and after T135; they must not change (FR-039).
 - [ ] T080 [US5] Update `dev/knowledge/backend/database-schema.md`, next to the paragraph on retirement:
   - the peer existence check, and that it applies only to branch-aware relationships whose peer kind is branch-agnostic or a generic with a branch-agnostic implementation;
   - that a branch-agnostic node's delete writes no `-global-` edge on its branch-aware links;
   - the "Soft Deletes" correction that follows from T062.
 - [ ] T082 [P] [US5] Add changelog fragments:
   - `fixed`: reading the groups of a role after a group was deleted no longer fails, and relationships no longer return a node deleted in the read's branch;
-  - `fixed`: validating an object conversion no longer counts former peers.
+  - `fixed`: validating an object conversion no longer counts former peers;
+  - `fixed`: a branch created before a change on the global branch now sees a removed branch-agnostic link or value as removed, as every other branch does.
 - [ ] T083 [US5] Run the pre-push checks in `quickstart.md`, including `uv run invoke docs.validate`, and open the PR against the feature branch. The description states the T063 table, the answer to open question 2, and the benchmark results.
 
 **Checkpoint**: US5 is complete. US6 can start.
@@ -576,7 +582,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - Inside US1: T004-T007 together, then T009 and T010 together.
 - Inside US2: T018-T023 together.
 - Inside US3: T029-T033 together; T035 alongside T036-T038; T047-T049 alongside T039-T044.
-- Inside US5: T064-T067 together.
+- Inside US5: T064-T067 and T134 together.
 - Inside US6: T086-T089 and T126 together; T104, T105 and T131 alongside the implementation.
 - Inside PR 7: T111-T114 together; T123 and T124 alongside T115-T121.
 
