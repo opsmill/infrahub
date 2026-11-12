@@ -29,7 +29,7 @@ class TestIpPrefixList:
             .get_by_role("link", name="203.111.0.0/16")
             .click()
         )
-        await page.get_by_role("link", name="Details").click()
+        await page.get_by_role("link", name="Overview").click()
         object_details = page.get_by_test_id("object-details")
         await expect(object_details.get_by_text("Details", exact=True)).to_be_visible()
         await expect(object_details.get_by_text("Prefix203.111.0.0/16")).to_be_visible()

@@ -50,7 +50,7 @@ describe("ObjectDetailsTabs", () => {
     const component = await renderTabs("BuiltinTag", []);
 
     // THEN
-    await expect.element(component.getByRole("link", { name: "Details" })).toBeVisible();
+    await expect.element(component.getByRole("link", { name: "Overview" })).toBeVisible();
     expect(component.getByRole("link", { name: /^Commits/ }).query()).toBeNull();
     expect(getRepositoryCommitsFromApi).not.toHaveBeenCalled();
   });

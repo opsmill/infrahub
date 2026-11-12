@@ -32,7 +32,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
           <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
-            Details
+            Overview
           </LinkTab>
           {relationshipsTabs.map((tab) => (
             <RelationshipTab
