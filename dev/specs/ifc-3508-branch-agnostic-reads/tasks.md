@@ -228,10 +228,12 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
 **Base**: PR 3's branch, rebased on `release-1.12` once PR 3 merges. Branch: `agnostic-delete-check-ifc-3508`.
 
-- [ ] T051 [US4] Create a worktree for `agnostic-delete-check-ifc-3508` from `branch-windows-ip-pools-ifc-3508`.
-- [ ] T052 [P] [US4] Add `backend/tests/component/core/test_node_manager_delete_agnostic.py`, with one test per acceptance scenario 1-5 of spec US4, including the case where P reaches G1 on B only through the default branch's edge from before B was created.
+- [X] T051 [US4] Create a worktree for `agnostic-delete-check-ifc-3508` from `branch-windows-ip-pools-ifc-3508`. Result: created at `.claude/worktrees/agnostic-delete-check-ifc-3508` from `956c9aa27`. PR 3 (#11433) now targets `stable` and its branch sits directly on `origin/stable`, so this PR targets `stable` too, stacked on PR 3.
+- [X] T052 [P] [US4] Add `backend/tests/component/core/test_node_manager_delete_agnostic.py`, with one test per acceptance scenario 1-5 of spec US4, including the case where P reaches G1 on B only through the default branch's edge from before B was created.
   - First look for an existing schema fixture with a required relationship from a branch-aware kind to a branch-agnostic kind, and with a cascade. Only if none exists, add those kinds to `backend/tests/helpers/schema/agnostic_retirement.py`.
   - Confirm scenarios 1-3 fail.
+
+  Result: no existing fixture combined a required branch-aware link to a branch-agnostic kind with a cascade, so `AGNOSTIC_DELETE_SCHEMA` (`AgnosticretireTeam`, `AgnosticretireMember`, `AgnosticretireBadge`) is added next to the unchanged `AGNOSTIC_RETIREMENT_SCHEMA`. Scenarios 1-3 fail with `DID NOT RAISE`; scenarios 4 and 5 pass.
 - [ ] T053 [US4] Add a window mode to `RelationshipGetByIdentifierQuery` in `backend/infrahub/core/query/relationship.py`:
   - the windows clause opens the query;
   - it starts from the ids of the delete set;
