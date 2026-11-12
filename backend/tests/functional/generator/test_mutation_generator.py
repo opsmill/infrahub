@@ -17,6 +17,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from infrahub.actions.tasks import _run_generators
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.constants import WorkflowTag
 
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from tests.adapters.message_bus import BusSimulator
 
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
 
 
@@ -170,7 +172,7 @@ class TestMutationGenerator(TestInfrahubApp):
         assert branch_tag in tags
 
     async def test_execute_generator_action(
-        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, admin_account: CoreAccount
     ) -> None:
         generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
 
@@ -184,8 +186,58 @@ class TestMutationGenerator(TestInfrahubApp):
                 node_ids=[person_john.id],
                 generator_definition_id=generator.id,
                 client=client,
-                context=None,
+                context=EventContext(branch=EventBranchContext(name="branch1"), account_id=admin_account.id),
             )
 
         tags = await client.all(kind="TestingTag", branch="branch1")
         assert "bill-jesko" in [tag.name.value for tag in tags]
+
+    async def test_generator_writes_are_attributed_to_the_triggering_account(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+    ) -> None:
+        """A generator run records its writes against the account that triggered it, not the worker's."""
+        account = await client.create(
+            kind=InfrahubKind.ACCOUNT,
+            data={"name": "generator-runner", "password": "runnerPassword123", "account_type": "User"},
+        )
+        await account.save()
+
+        manufacturer = await client.get(kind=TestKind.MANUFACTURER, branch="branch1", name__value="Koenigsegg")
+        target = await client.create(kind=TestKind.PERSON, branch="branch1", data={"name": "Ingrid", "height": 165})
+        await target.save()
+        car = await client.create(
+            kind=TestKind.CAR,
+            branch="branch1",
+            data={"name": "Gemera", "color": "Green", "owner": target.id, "manufacturer": manufacturer.id},
+        )
+        await car.save()
+        people = await client.get(kind=InfrahubKind.STANDARDGROUP, branch="branch1", name__value="people")
+        await people.members.fetch()
+        people.members.add(target.id)
+        await people.save()
+
+        generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
+        mutation = Mutation(
+            mutation="CoreGeneratorDefinitionRun",
+            input_data={"data": {"id": generator.id, "nodes": [target.id]}, "context": {"account": {"id": account.id}}},
+            query={"ok": None},
+        )
+        response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
+        assert response["CoreGeneratorDefinitionRun"]["ok"]
+
+        query = """
+        query GetGeneratedNodes($target_id: ID!) {
+            TestingTag(name__value: "ingrid-gemera") {
+                edges { node_metadata { created_by { id } } }
+            }
+            CoreGeneratorInstance(object__ids: [$target_id]) {
+                edges { node_metadata { created_by { id } updated_by { id } } }
+            }
+        }
+        """
+        result = await client.execute_graphql(query=query, variables={"target_id": target.id}, branch_name="branch1")
+
+        assert result["TestingTag"]["edges"] == [{"node_metadata": {"created_by": {"id": account.id}}}]
+        assert result["CoreGeneratorInstance"]["edges"] == [
+            {"node_metadata": {"created_by": {"id": account.id}, "updated_by": {"id": account.id}}}
+        ]
