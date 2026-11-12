@@ -393,12 +393,13 @@ class SchemaBranch:
     ) -> None:
         """Rebuild the ``used_by`` of each generic, which the schema diff leaves out.
 
-        A kind in ``changed_kinds``, or a profile or template kind of one, takes its membership from ``schema``; any
-        other kind keeps its membership from ``destination_used_by``.
+        A kind in ``changed_kinds`` that inherits from the generics ``schema`` gives it, with its profile and template
+        kinds, takes its membership from ``schema``; any other kind keeps its membership from ``destination_used_by``.
         """
         source_kinds = {
             derived_kind
             for kind in changed_kinds
+            if self._inherits_as_in(kind=kind, schema=schema)
             for derived_kind in (kind, get_profile_kind(node_kind=kind), get_object_template_kind(node_kind=kind))
         }
         for name in self.generic_names:
@@ -413,6 +414,16 @@ class SchemaBranch:
                 generic = generic.duplicate()
                 generic.used_by = merged_used_by
                 self.set(name=name, schema=generic)
+
+    def _inherits_as_in(self, kind: str, schema: SchemaBranch) -> bool:
+        """Return whether ``kind`` inherits here from the generics ``schema`` gives it, or one side does not hold it."""
+        if not self.has(name=kind) or not schema.has(name=kind):
+            return True
+        local_item = self.get(name=kind, duplicate=False)
+        source_item = schema.get(name=kind, duplicate=False)
+        if not isinstance(local_item, NodeSchema) or not isinstance(source_item, NodeSchema):
+            return True
+        return local_item.inherit_from == source_item.inherit_from
 
     def _find_kind(self, kind_id: str | None, kind: str) -> str | None:
         if kind_id:

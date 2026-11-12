@@ -706,6 +706,23 @@ class TestApplyChangesSince:
         assert candidate.get_generic(name="TestVehicle").used_by == ["TestBike", "TestCar", "TestTruck"]
         assert {"ProfileTestBike", "ProfileTestTruck"} <= set(candidate.get_generic(name="CoreProfile").used_by)
 
+    def test_keeps_in_the_used_by_of_a_generic_a_node_the_destination_made_inherit_it(
+        self, car_person_schema_root: SchemaRoot
+    ) -> None:
+        vehicle_root = _with_vehicle_generic(car_person_schema_root, wheels_description="Number of wheels")
+        base_root = vehicle_root.model_copy(deep=True)
+        next(node for node in base_root.nodes if node.name == "Car").inherit_from = []
+        base = _load_processed_branch(schema_root=base_root)
+        destination = _load_processed_branch(schema_root=vehicle_root)
+        source = base.duplicate()
+        _set_attribute(source, "TestCar", "color", description="Set on the source")
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        assert candidate.get(name="TestCar").inherit_from == ["TestVehicle"]
+        assert candidate.get(name="TestCar").get_attribute(name="color").description == "Set on the source"
+        assert candidate.get_generic(name="TestVehicle").used_by == ["TestCar"]
+
     def test_leaves_out_of_the_used_by_of_a_generic_the_nodes_either_branch_removed(
         self, car_person_schema_root: SchemaRoot
     ) -> None:
