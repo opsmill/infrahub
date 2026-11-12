@@ -42,14 +42,12 @@ class TestInstanceIdentity:
     async def test_admin_sets_the_label_and_color_and_every_user_views_them(
         self, admin_page: Page, read_only_page: Page
     ) -> None:
-        # An administrator names and colors the instance.
         await admin_page.goto("/global-preferences")
         await admin_page.get_by_label("Instance label").fill(INSTANCE_LABEL)
         await select_combobox_option(admin_page, "Instance color", "Red")
         await admin_page.get_by_role("button", name="Save instance identity").click()
         await expect(admin_page.get_by_text("Instance identity updated")).to_be_visible()
 
-        # A user without any permission views the badge, the bar and the tab title.
         await read_only_page.goto("/branches")
         await _expect_identity_on_branches_page(read_only_page)
 

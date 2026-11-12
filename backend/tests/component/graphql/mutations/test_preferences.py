@@ -286,6 +286,31 @@ async def test_global_denied_for_normal_account(
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 
+async def test_global_instance_identity_denied_for_normal_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA", instance_color=InstanceColor.BLUE)
+    )
+
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "GLOBAL", "instance_label": "PROD", "instance_color": "RED"},
+    )
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == ["You are not allowed to manage global preferences"]
+
+    global_pref = await _stored_global(db)
+    assert (global_pref.instance_label, global_pref.instance_color) == ("QA", InstanceColor.BLUE)
+
+
 async def test_global_allowed_for_manager(
     db: InfrahubDatabase,
     default_branch: Branch,

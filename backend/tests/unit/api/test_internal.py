@@ -35,22 +35,15 @@ READ_FAILURE_CASES: list[ReadFailureCase] = [
 
 
 @pytest.mark.parametrize("case", READ_FAILURE_CASES, ids=lambda case: case.name)
-async def test_a_failed_read_serves_no_identity_rather_than_the_defaults(case: ReadFailureCase) -> None:
+async def test_a_failed_read_serves_no_identity_and_still_serves_the_deployment_defaults(case: ReadFailureCase) -> None:
     resolver = InstanceIdentityResolver(
         repository=FailingPreferenceRepository(error=case.error),
         defaults=InstanceIdentityAPI(label="staging", color=InstanceColor.AMBER),
     )
 
-    assert await resolver.resolve() == InstanceIdentityAPI(label=None, color=None)
-
-
-async def test_a_failed_read_still_serves_the_deployment_defaults() -> None:
-    defaults = InstanceIdentityAPI(label="staging", color=InstanceColor.AMBER)
-    resolver = InstanceIdentityResolver(
-        repository=FailingPreferenceRepository(error=DatabaseError(message="Unable to connect to the database")),
-        defaults=defaults,
-    )
-
     response = await get_config(instance_resolver=resolver)
 
-    assert (response.instance, response.instance_defaults) == (InstanceIdentityAPI(label=None, color=None), defaults)
+    assert (response.instance, response.instance_defaults) == (
+        InstanceIdentityAPI(label=None, color=None),
+        InstanceIdentityAPI(label="staging", color=InstanceColor.AMBER),
+    )

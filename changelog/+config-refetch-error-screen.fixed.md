@@ -1,0 +1,1 @@
+Fixed the whole web interface being replaced by an error screen when the configuration fails to reload after it loaded once, for example after saving the instance label or color, or when a browser tab regains focus: the pages now keep the values already loaded.

@@ -32,6 +32,9 @@ _BIDI_CONTROL_CHARACTERS = frozenset(map(chr, (0x061C, 0x200E, 0x200F, *range(0x
 # and paragraph separators.
 _CONTROL_CATEGORIES = frozenset({"Cc", "Zl", "Zp"})
 
+# Preference nodes store an unset property as this string, so a label equal to it would read back as unset.
+_STORED_NULL_MARKER = "NULL"
+
 
 def _contains_control_character(value: str) -> bool:
     return any(unicodedata.category(char) in _CONTROL_CATEGORIES or char in _BIDI_CONTROL_CHARACTERS for char in value)
@@ -41,7 +44,8 @@ def validate_instance_label(value: str | None, field_name: str = "instance_label
     """Validate an instance label for storage; it is stripped, and an empty result becomes None.
 
     Raises:
-        ValidationError: the stripped value contains a control character or exceeds the length limit.
+        ValidationError: the stripped value equals the stored null marker, contains a control character or
+            exceeds the length limit.
 
     """
     if value is None:
@@ -49,6 +53,8 @@ def validate_instance_label(value: str | None, field_name: str = "instance_label
     stripped = value.strip()
     if not stripped:
         return None
+    if stripped == _STORED_NULL_MARKER:
+        raise ValidationError(input_value=f'{field_name} cannot be "{_STORED_NULL_MARKER}", which marks an unset value')
     if _contains_control_character(stripped):
         raise ValidationError(input_value=f"{field_name} cannot contain control characters")
     if len(stripped) > INSTANCE_LABEL_MAX_LENGTH:

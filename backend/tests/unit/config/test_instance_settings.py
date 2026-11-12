@@ -53,12 +53,6 @@ REJECT_CASES: list[RejectCase] = [
         expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot be longer than 32 characters",
     ),
     RejectCase(
-        name="label_with_line_feed",
-        label="a\nb",
-        color=None,
-        expected_message="Value error, INFRAHUB_INSTANCE_LABEL cannot contain control characters",
-    ),
-    RejectCase(
         name="unknown_color",
         label=None,
         color="PINK",

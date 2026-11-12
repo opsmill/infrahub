@@ -41,7 +41,7 @@ class InstanceIdentityAPI(BaseModel):
     """A label and a color that identify this instance to every visitor."""
 
     label: str | None = Field(description="Instance label shown in the header badge and the tab title")
-    color: InstanceColor | None = Field(description="Preset color of the instance badge and bar")
+    color: InstanceColor | None = Field(description="Preset color of the instance badge, bar and tab icon")
 
 
 class ConfigAPI(BaseModel):

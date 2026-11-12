@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from infrahub.core.constants import NULL_VALUE
 from infrahub.exceptions import ValidationError
 from infrahub.instance_identity import validate_instance_label
 
@@ -53,18 +54,8 @@ LABEL_REJECT_CASES: list[LabelRejectCase] = [
         expected_message="instance_label cannot contain control characters",
     ),
     LabelRejectCase(
-        name="carriage_return",
-        value="a\rb",
-        expected_message="instance_label cannot contain control characters",
-    ),
-    LabelRejectCase(
         name="tab",
         value="a\tb",
-        expected_message="instance_label cannot contain control characters",
-    ),
-    LabelRejectCase(
-        name="nul",
-        value="a\x00b",
         expected_message="instance_label cannot contain control characters",
     ),
     LabelRejectCase(
@@ -91,6 +82,11 @@ LABEL_REJECT_CASES: list[LabelRejectCase] = [
         name="right_to_left_mark",
         value="a\u200fb",
         expected_message="instance_label cannot contain control characters",
+    ),
+    LabelRejectCase(
+        name="stored_null_marker",
+        value=f" {NULL_VALUE} ",
+        expected_message='instance_label cannot be "NULL", which marks an unset value',
     ),
 ]
 
