@@ -66,7 +66,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 | `peer.field.tsx` | Single relationship |
 | `node-kind.field.tsx` | Schema kind selector |
 | `relationships/relationship.field.tsx` | Dispatcher — picks generic or regular relationship field |
-| `relationships/generic-relationship.field.tsx` | Relationship to a generic kind |
+| `relationships/generic-relationship.field.tsx` | Relationship to a generic kind: the user picks a kind, then one node, or several nodes of that kind when the relationship is cardinality many. `DynamicForm` sends cardinality many to `relationship-many.field.tsx`, so render this field directly to get the kind picker for several nodes |
 | `relationships/regular-relationship.field.tsx` | Relationship to a concrete node kind |
 | `relationships/relationship-many.field.tsx` | Many-cardinality relationship |
 | `relationships/relationship-hierarchical.field.tsx` | Hierarchical relationship |
