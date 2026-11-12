@@ -91,8 +91,14 @@ BUCKETS: list[tuple[str, str]] = [
         "docker-pull-lease",
         r"unable to lease content: lease does not exist[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*##\[error\]Process completed with exit code 1\.",
     ),
-    # Matched in the server container's output, because a unit test raises the same message on purpose.
-    ("redis-read-timeout", r"infrahub-server-\d+\s+\|\s+redis\.exceptions\.TimeoutError: Timeout reading from"),
+    # Matched only in the server's output (Compose-prefixed, or inside the server-log step up to the next
+    # step), because a unit test raises the same message on purpose.
+    (
+        "redis-read-timeout",
+        r"infrahub-server-\d+\s+\|\s+redis\.exceptions\.TimeoutError: Timeout reading from"
+        r'|##\[group\]Run docker logs "\$\{INFRAHUB_BUILD_NAME\}-server-1"[^\n]*\n'
+        r"(?:(?!\S+ ##\[group\]Run )[^\n]*\n)*?[^\n]*redis\.exceptions\.TimeoutError: Timeout reading from",
+    ),
 ]
 
 LEDGER_FIELDS = (
