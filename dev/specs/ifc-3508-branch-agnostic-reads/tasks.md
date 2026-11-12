@@ -257,8 +257,8 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 - [X] T057 [US4] Add `backend/tests/benchmark/test_delete_agnostic_node.py`. It deletes a `CoreAccountGroup` with 50 live branches and 10,000 group memberships elsewhere in the database. Record the database hits before and after in the PR description.
 
   Result: replaced by a local measurement at the user's request; no benchmark test is committed. With 50 live branches, 10,000 group memberships and 1,000 `CoreGroupAction` nodes, the check for a `CoreAccountGroup` delete went from 72,424 database hits (44.6 ms median) to 359 (2.7 ms). A refused delete with 20 required peers costs 1,380 hits. A `CoreStandardGroup` delete runs the same query as before (72,424 hits).
-- [ ] T058 [P] [US4] Add a `fixed` changelog fragment: deleting a branch-agnostic object is refused when another branch still requires it, and the error names the branch and the object.
-- [ ] T059 [US4] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12` once PR 3 is merged.
+- [X] T058 [P] [US4] Add a `fixed` changelog fragment: deleting a branch-agnostic object is refused when another branch still requires it, and the error names the branch and the object. Result: `changelog/+agnostic-node-delete-branch-check.fixed.md`.
+- [ ] T059 [US4] Run the pre-push checks in `quickstart.md` and open the PR against `release-1.12` once PR 3 is merged. Result: the PR targets `stable`, stacked on PR 3 (#11433). The pre-push checks pass for this PR's code. The whole-repo `ruff check` and `ruff format --check` fail only on `.specify/extensions/` scripts that commit `76e23741d` already put on `stable`. Nothing is pushed and the PR is not opened.
 
 **Checkpoint**: US4 is complete.
 
