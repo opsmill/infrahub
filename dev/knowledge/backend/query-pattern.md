@@ -325,7 +325,7 @@ A read that filters a kind on an exact attribute value or on peer ids can start 
 - **Decide in Python and leave the other path byte-identical.** One statement that holds both starts in a `UNION` changes the text of every query: the planner can plan the previous start differently inside it, and the part that is not used can still scan the kind. With the choice made in Python, a query that keeps the previous start keeps its text and its plan.
 - **Prove it with the new start forced on.** Set the margin to zero so every query that qualifies takes the new start, run the existing tests, and compare the returned ids with the previous start. Profile one filter that few nodes match and one that most nodes match.
 
-`NodeGetListQuery` with `NodeGetListIndexStartQuery` (`core/query/index_start.py`) is the instance to read alongside a new one.
+`NodeGetListQuery` with `NodeGetListIndexStartQuery` (`backend/infrahub/core/query/index_start.py`) is the instance to read alongside a new one.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
