@@ -85,11 +85,25 @@ async def _read_page(
     return (await session.scalars(statement)).all()
 
 
+async def _newest_event_time(session: AsyncSession, filter: EventFilter, since: datetime) -> datetime | None:
+    """Return the time of the newest event in the filter's range that has one of its event types, if any."""
+    conditions = [Event.occurred >= since, Event.occurred <= filter.occurred.until]
+    if filter.event:
+        conditions.extend(filter.event.build_where_clauses())
+    return await session.scalar(sa.select(sa.func.max(Event.occurred)).where(*conditions))
+
+
 async def _read_newest_first(
     session: AsyncSession, filter: EventFilter, since: datetime, page_size: int, offset: int | None
 ) -> Sequence[Event]:
-    """Read the page newest first, one window at a time, until the windows read so far fill it."""
-    until = filter.occurred.until
+    """Read the page newest first, one window at a time, until the windows read so far fill it.
+
+    The windows are counted back from the newest event of the filter's event types, not from the end of the range, so
+    the first window holds events however old the newest one is.
+    """
+    until = await _newest_event_time(session=session, filter=filter, since=since)
+    if until is None:
+        return []
     page_limit = max(0, min(page_size, filter.logical_limit))
     one_per_resource = bool(filter.resource and filter.resource.distinct)
     # An offset and the one event kept per resource are counted from `until`, so such a read starts there.

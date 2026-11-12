@@ -56,15 +56,6 @@ def _per_type_retention_in_effect() -> Generator[None]:
         yield
 
 
-@pytest.fixture
-def database(task_manager_database_path: Path) -> Generator[PrefectDBInterface, None, None]:
-    # Prefect picks how it writes events from the configured database, not from the session it is given.
-    with temporary_settings(
-        updates={"server.database.connection_url": f"sqlite+aiosqlite:///{task_manager_database_path}"}
-    ):
-        yield task_manager_database(task_manager_database_path)
-
-
 async def _store_events(db: PrefectDBInterface, event_types: list[str]) -> None:
     events = [
         ReceivedEvent(

@@ -64,7 +64,8 @@ and its coverage when upgrading Prefect.
 ### Activities results and paging
 
 The GraphQL resolver resolves branch names and constructs resource filters; the task manager's
-`query_events` reads expanding time windows and computes a count only when requested. The default
+`query_events` reads expanding time windows, counted back from the newest event of the requested
+event types, and computes a count only when requested. The default
 window follows retention when event cleanup is enabled, otherwise it spans at least 180 days.
 The frontend continues by timestamp and deduplicates IDs. When every event of a full page has the
 boundary time, the next request keeps that time and adds an offset, the number of events of that
