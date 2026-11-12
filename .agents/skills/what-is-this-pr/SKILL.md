@@ -3,8 +3,7 @@ name: what-is-this-pr
 description: >-
   Explains simply the purpose of a pull request. TRIGGER when: the user shares a pull request URL or
   number and asks what it is for, what it does or why it exists. DO NOT TRIGGER when: the user wants
-  bugs found → reviewing-pull-requests; the user asks what code a pull request does not need →
-  simplifying-pull-requests.
+  bugs found → reviewing-pull-requests.
 argument-hint: <pull request URL or number>
 ---
 
