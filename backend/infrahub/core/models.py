@@ -429,8 +429,10 @@ class HashableModel(BaseModel):
         """
         values = []
         md5hash = hashlib.md5(usedforsecurity=False)
+        # Pydantic serves a private attribute through a slow __getattr__, so read it once.
+        exclude_from_hash = self._exclude_from_hash
         for field_name in sorted(self.__class__.model_fields.keys()):
-            if field_name.startswith("_") or field_name in self._exclude_from_hash:
+            if field_name.startswith("_") or field_name in exclude_from_hash:
                 continue
 
             value = getattr(self, field_name)
