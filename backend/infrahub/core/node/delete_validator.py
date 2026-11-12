@@ -1,78 +1,32 @@
 from collections import defaultdict
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Mapping
 from enum import Enum
-from typing import Self
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDeleteBehavior
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipDeleteBehavior
 from infrahub.core.node import Node
-from infrahub.core.query.relationship import (
-    FullRelationshipIdentifier,
-    RelationshipGetByIdentifierInWindowsQuery,
-    RelationshipGetByIdentifierQuery,
-    RelationshipPeersData,
+from infrahub.core.query.node_delete import (
+    DeleteSetNode,
+    NodeDeleteCascadeQuery,
+    NodeDeleteCascadeQueryResult,
+    NodeDeleteOtherBranchesQuery,
+    RelationshipTriple,
+    RequiredPeerLink,
+    RequiredPeerLinkOnBranches,
 )
 from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
+CASCADE_LEVELS_PER_QUERY_WITH_LOOP = 10
+"""The cascade levels one query follows when cascades can loop, so a longer chain takes one query per this many."""
+
 
 class DeleteRelationshipType(Enum):
     CASCADE_DELETE = "cascade"
     DEPENDENT_NODE = "dependent"
-
-
-@dataclass
-class DeleteWalk:
-    """What deleting the start nodes reaches through one set of links."""
-
-    node_ids_to_delete: set[str] = field(default_factory=set)
-    dependents: defaultdict[str, list[RelationshipPeersData]] = field(default_factory=lambda: defaultdict(list))
-    """The links of each peer that has a required relationship to a node being deleted, keyed by peer id."""
-    cascades: defaultdict[str, list[RelationshipPeersData]] = field(default_factory=lambda: defaultdict(list))
-    """The cascading links that reach each node, keyed by the id of the node reached."""
-
-    def get_dependents_left_behind(self) -> list[RelationshipPeersData]:
-        return [
-            peer_data
-            for peer_id, peers_data in self.dependents.items()
-            if peer_id not in self.node_ids_to_delete
-            for peer_data in peers_data
-        ]
-
-
-@dataclass(frozen=True)
-class DeleteBlock:
-    """A link that keeps a node from being deleted."""
-
-    deleted_kind: str
-    deleted_id: str
-    identifier: str
-    peer_kind: str
-    peer_id: str
-
-    @property
-    def sort_key(self) -> tuple[str, ...]:
-        return (
-            self.deleted_kind,
-            self.deleted_id,
-            self.identifier,
-            self.peer_kind,
-            self.peer_id,
-        )
-
-    @classmethod
-    def from_peer_data(cls, peer_data: RelationshipPeersData) -> Self:
-        return cls(
-            deleted_kind=peer_data.source_kind,
-            deleted_id=str(peer_data.source_id),
-            identifier=peer_data.identifier,
-            peer_kind=peer_data.destination_kind,
-            peer_id=str(peer_data.destination_id),
-        )
 
 
 def _format_branch_names(branch_names: Iterable[str]) -> str:
@@ -81,6 +35,37 @@ def _format_branch_names(branch_names: Iterable[str]) -> str:
     if len(sorted_names) == 1:
         return f"branch {quoted_names}"
     return f"branches {quoted_names}"
+
+
+def _get_schema_kinds(all_schemas_map: Mapping[str, MainSchemaTypes], schema_kind: str) -> set[str]:
+    schema = all_schemas_map[schema_kind]
+    if schema.is_node_schema:
+        return {schema_kind}
+    used_by = getattr(schema, "used_by", None)
+    if schema.is_generic_schema and used_by:
+        return set(used_by)
+    return set()
+
+
+def _get_required_triples(
+    all_schemas_map: Mapping[str, MainSchemaTypes], deleted_kinds: set[str]
+) -> list[RelationshipTriple]:
+    """Return the links of a required relationship to one of `deleted_kinds`, from the deleted node's side."""
+    deleted_kinds_and_generics = set(deleted_kinds)
+    for kind in deleted_kinds:
+        schema = all_schemas_map.get(kind)
+        if isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema)):
+            deleted_kinds_and_generics.update(schema.inherit_from)
+    triples: set[RelationshipTriple] = set()
+    for schema in all_schemas_map.values():
+        for relationship_schema in schema.relationships:
+            if relationship_schema.optional is True or relationship_schema.peer not in deleted_kinds_and_generics:
+                continue
+            triples.update(
+                (deleted_kind, relationship_schema.get_identifier(), schema.kind)
+                for deleted_kind in _get_schema_kinds(all_schemas_map, relationship_schema.peer) & deleted_kinds
+            )
+    return sorted(triples)
 
 
 class NodeDeleteIndex:
@@ -92,15 +77,6 @@ class NodeDeleteIndex:
     def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
         cascade_kinds = self._index_cascading_deletes(start_schemas=start_schemas)
         self._index_dependent_schema(cascade_kinds=cascade_kinds)
-
-    def _get_schema_kinds(self, schema_kind: str) -> set[str]:
-        schema = self._all_schemas_map[schema_kind]
-        if schema.is_node_schema:
-            return {schema_kind}
-        used_by = getattr(schema, "used_by", None)
-        if schema.is_generic_schema and used_by:
-            return set(used_by)
-        return set()
 
     def _add_to_dependency_graph(
         self, kind: str, relationship_type: DeleteRelationshipType, relationship_identifier: str, peer_kinds: set[str]
@@ -126,7 +102,7 @@ class NodeDeleteIndex:
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.on_delete != RelationshipDeleteBehavior.CASCADE:
                     continue
-                peer_kinds = self._get_schema_kinds(schema_kind=relationship_schema.peer)
+                peer_kinds = _get_schema_kinds(self._all_schemas_map, relationship_schema.peer)
                 self._add_to_dependency_graph(
                     kind=kind_to_check,
                     relationship_type=DeleteRelationshipType.CASCADE_DELETE,
@@ -150,7 +126,7 @@ class NodeDeleteIndex:
                 if relationship_schema.optional is True or relationship_schema.peer not in start_schema_kinds:
                     continue
 
-                for peer_kind in self._get_schema_kinds(schema_kind=relationship_schema.peer):
+                for peer_kind in _get_schema_kinds(self._all_schemas_map, relationship_schema.peer):
                     self._add_to_dependency_graph(
                         kind=peer_kind,
                         relationship_type=DeleteRelationshipType.DEPENDENT_NODE,
@@ -158,29 +134,46 @@ class NodeDeleteIndex:
                         peer_kinds={node_schema.kind},
                     )
 
-    def get_relationship_identifiers(self) -> list[FullRelationshipIdentifier]:
-        full_relationship_identifiers = []
-        for node_kind, relationship_type_details in self._dependency_graph.items():
-            for relationship_map in relationship_type_details.values():
-                for relationship_identifier, peer_kinds in relationship_map.items():
-                    full_relationship_identifiers.extend(
-                        [
-                            FullRelationshipIdentifier(
-                                source_kind=node_kind, identifier=relationship_identifier, destination_kind=peer_kind
-                            )
-                            for peer_kind in peer_kinds
-                        ]
-                    )
-        return full_relationship_identifiers
+    def get_triples(self, relationship_type: DeleteRelationshipType) -> list[RelationshipTriple]:
+        """Return the indexed links of `relationship_type`, from the deleted node's side."""
+        return sorted(
+            (kind, relationship_identifier, peer_kind)
+            for kind, relationship_type_details in self._dependency_graph.items()
+            for relationship_identifier, peer_kinds in relationship_type_details.get(relationship_type, {}).items()
+            for peer_kind in peer_kinds
+        )
 
-    def get_relationship_types(self, src_kind: str, relationship_identifier: str) -> set[DeleteRelationshipType]:
-        relationship_types: set[DeleteRelationshipType] = set()
-        if src_kind not in self._dependency_graph:
-            return relationship_types
-        for relationship_type, relationships_map in self._dependency_graph[src_kind].items():
-            if relationship_identifier in relationships_map:
-                relationship_types.add(relationship_type)
-        return relationship_types
+    def get_cascade_depth(self, start_kinds: Iterable[str]) -> int | None:
+        """Return the number of links in the longest cascade from `start_kinds`, or None when a cascade can loop."""
+        cascade_peer_kinds: defaultdict[str, set[str]] = defaultdict(set)
+        for kind, _, peer_kind in self.get_triples(relationship_type=DeleteRelationshipType.CASCADE_DELETE):
+            cascade_peer_kinds[kind].add(peer_kind)
+        depth_by_kind: dict[str, int] = {}
+        kinds_in_progress: set[str] = set()
+
+        def get_depth(kind: str) -> int | None:
+            if kind in depth_by_kind:
+                return depth_by_kind[kind]
+            if kind in kinds_in_progress:
+                return None
+            kinds_in_progress.add(kind)
+            depth = 0
+            for peer_kind in cascade_peer_kinds[kind]:
+                peer_depth = get_depth(peer_kind)
+                if peer_depth is None:
+                    return None
+                depth = max(depth, peer_depth + 1)
+            kinds_in_progress.discard(kind)
+            depth_by_kind[kind] = depth
+            return depth
+
+        max_depth = 0
+        for kind in start_kinds:
+            depth = get_depth(kind)
+            if depth is None:
+                return None
+            max_depth = max(max_depth, depth)
+        return max_depth
 
 
 class NodeDeleteValidator:
@@ -192,200 +185,122 @@ class NodeDeleteValidator:
         self.index: NodeDeleteIndex = NodeDeleteIndex(all_schemas_map=self._all_schemas_map)
 
     async def get_ids_to_delete(self, nodes: Iterable[Node], at: Timestamp | str | None = None) -> set[str]:
+        """Return the ids of `nodes` and of every node a delete cascades to on the request branch.
+
+        A branch-agnostic node is deleted on every live branch, so for those the check also covers every other live
+        branch, where the branch-aware nodes of the delete set still exist.
+
+        Raises:
+            ValidationError: A peer outside the delete set has a required relationship to a node in it.
+
+        """
         start_schemas = {node.get_schema() for node in nodes}
         self.index.index(start_schemas=start_schemas)
         at = Timestamp(at)
-
-        if any(schema.branch == BranchSupportType.AGNOSTIC for schema in start_schemas):
-            return await self._analyze_delete_dependencies_in_windows(start_nodes=nodes, at=at)
-        return await self._analyze_delete_dependencies(start_nodes=nodes, at=at)
-
-    async def _analyze_delete_dependencies(self, start_nodes: Iterable[Node], at: Timestamp) -> set[str]:
-        full_relationship_identifiers = self.index.get_relationship_identifiers()
-        if not full_relationship_identifiers:
-            return {node.get_id() for node in start_nodes}
-
-        query = await RelationshipGetByIdentifierQuery.init(
-            db=self.db, full_identifiers=full_relationship_identifiers, branch=self.branch, at=at
-        )
-        await query.execute(db=self.db)
-
-        peer_data_by_source_id = self._build_peer_data_map(peers_datas=query.get_peers())
-        walk = self._walk(
-            start_ids={node.get_id() for node in start_nodes}, peer_data_by_source_id=peer_data_by_source_id
-        )
-
-        missing_delete_peers_data = walk.get_dependents_left_behind()
-        if not missing_delete_peers_data:
-            return walk.node_ids_to_delete
-        raise ValidationError(
-            [
-                self._build_required_peer_error(block=DeleteBlock.from_peer_data(peer_data=peer_data))
-                for peer_data in missing_delete_peers_data
-            ]
-        )
-
-    async def _analyze_delete_dependencies_in_windows(self, start_nodes: Iterable[Node], at: Timestamp) -> set[str]:
-        """Check the delete in the window of every live branch, because a branch-agnostic node is deleted on all of them.
-
-        A branch-aware node is deleted on the request branch only, so the request branch's window decides the nodes to
-        delete, and every other window loses only the branch-agnostic nodes among them.
-
-        Raises:
-            ValidationError: A window keeps a peer with a required relationship to a node deleted in it.
-
-        """
-        start_kind_by_id = {node.get_id(): node.get_schema().kind for node in start_nodes}
-        start_ids = set(start_kind_by_id)
-        full_relationship_identifiers = self.index.get_relationship_identifiers()
-        if not full_relationship_identifiers:
-            return start_ids
-
+        start_ids = {node.get_id() for node in nodes}
         request_window_name = registry.default_branch if self.branch.name == GLOBAL_BRANCH_NAME else self.branch.name
-        peer_data_by_window = await self._get_peer_data_by_window(
+
+        delete_set = await self._get_delete_set(
             start_ids=start_ids,
-            full_identifiers=full_relationship_identifiers,
+            start_kinds={schema.kind for schema in start_schemas},
             request_window_name=request_window_name,
             at=at,
         )
-        request_walk = self._walk(
-            start_ids=start_ids, peer_data_by_source_id=peer_data_by_window.get(request_window_name, {})
-        )
+        request_links = set(delete_set.required_links)
+        blocking_branch_names: defaultdict[RequiredPeerLink, set[str]] = defaultdict(set)
+        for link in request_links:
+            blocking_branch_names[link].add(request_window_name)
 
-        blocking_branch_names: defaultdict[DeleteBlock, set[str]] = defaultdict(set)
-        for peer_data in request_walk.get_dependents_left_behind():
-            blocking_branch_names[DeleteBlock.from_peer_data(peer_data=peer_data)].add(request_window_name)
-
-        agnostic_ids = self._get_branch_agnostic_ids(start_kind_by_id=start_kind_by_id, request_walk=request_walk)
-        for window_name, peer_data_by_source_id in peer_data_by_window.items():
-            if window_name == request_window_name:
-                continue
-            for block in self._get_blocks_in_other_window(
-                agnostic_ids=agnostic_ids, peer_data_by_source_id=peer_data_by_source_id
+        agnostic_nodes = [node for node in delete_set.nodes if node.is_agnostic]
+        if agnostic_nodes:
+            for link_on_branches in await self._get_links_on_other_branches(
+                agnostic_nodes=agnostic_nodes, request_window_name=request_window_name, at=at
             ):
-                blocking_branch_names[block].add(window_name)
+                blocking_branch_names[link_on_branches.link].update(link_on_branches.branch_names)
 
         if blocking_branch_names:
             raise ValidationError(
                 [
-                    self._build_required_peer_error(block=block, branch_names=blocking_branch_names[block])
-                    for block in sorted(blocking_branch_names, key=lambda block: block.sort_key)
+                    self._build_required_peer_error(
+                        link=link,
+                        schema_branch_name=self.branch.name if link in request_links else min(branch_names),
+                        branch_names=branch_names if agnostic_nodes else None,
+                    )
+                    for link, branch_names in sorted(blocking_branch_names.items())
                 ]
             )
-        return request_walk.node_ids_to_delete
+        return start_ids | {node.uuid for node in delete_set.nodes}
 
-    async def _get_peer_data_by_window(
-        self,
-        start_ids: set[str],
-        full_identifiers: list[FullRelationshipIdentifier],
-        request_window_name: str,
-        at: Timestamp,
-    ) -> defaultdict[str, defaultdict[str, list[RelationshipPeersData]]]:
-        """Read the links of the start nodes and of every node a cascade reaches in the request branch's window.
-
-        Return the links keyed by window name, then by the id of the node they start from.
-        """
-        peer_data_by_window: defaultdict[str, defaultdict[str, list[RelationshipPeersData]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
-        queried_ids: set[str] = set()
-        ids_to_query = set(start_ids)
-        while ids_to_query:
-            query = await RelationshipGetByIdentifierInWindowsQuery.init(
+    async def _get_delete_set(
+        self, start_ids: set[str], start_kinds: set[str], request_window_name: str, at: Timestamp
+    ) -> NodeDeleteCascadeQueryResult:
+        cascade_depth = self.index.get_cascade_depth(start_kinds=start_kinds)
+        known_ids = sorted(start_ids)
+        frontier_ids = known_ids
+        while True:
+            query = await NodeDeleteCascadeQuery.init(
                 db=self.db,
-                full_identifiers=full_identifiers,
-                source_ids=sorted(ids_to_query),
                 branch=self.branch,
                 at=at,
+                request_window_name=request_window_name,
+                known_ids=known_ids,
+                frontier_ids=frontier_ids,
+                cascade_triples=self.index.get_triples(relationship_type=DeleteRelationshipType.CASCADE_DELETE),
+                required_triples=self.index.get_triples(relationship_type=DeleteRelationshipType.DEPENDENT_NODE),
+                levels=CASCADE_LEVELS_PER_QUERY_WITH_LOOP if cascade_depth is None else cascade_depth,
+                levels_cover_cascade=cascade_depth is not None,
             )
             await query.execute(db=self.db)
-            queried_ids |= ids_to_query
-            ids_to_query = set()
-            for window_peer_data in query.get_peers():
-                peer_data = window_peer_data.peer_data
-                peer_data_by_window[window_peer_data.window_name][str(peer_data.source_id)].append(peer_data)
-                if window_peer_data.window_name == request_window_name and self._is_cascade(peer_data=peer_data):
-                    ids_to_query.add(str(peer_data.destination_id))
-            ids_to_query -= queried_ids
-        return peer_data_by_window
+            delete_set = query.get_data()
+            if cascade_depth is not None or not delete_set.frontier_ids:
+                return delete_set
+            known_ids = [node.uuid for node in delete_set.nodes]
+            frontier_ids = delete_set.frontier_ids
 
-    def _get_branch_agnostic_ids(self, start_kind_by_id: dict[str, str], request_walk: DeleteWalk) -> set[str]:
-        kind_by_id = dict(start_kind_by_id)
-        for peer_id, peers_data in request_walk.cascades.items():
-            kind_by_id[peer_id] = peers_data[0].destination_kind
-        return {
-            node_id
-            for node_id, kind in kind_by_id.items()
-            if self._all_schemas_map[kind].branch == BranchSupportType.AGNOSTIC
-        }
+    async def _get_links_on_other_branches(
+        self, agnostic_nodes: list[DeleteSetNode], request_window_name: str, at: Timestamp
+    ) -> list[RequiredPeerLinkOnBranches]:
+        """Return the required links to `agnostic_nodes` on each live branch other than the request branch.
 
-    def _get_blocks_in_other_window(
-        self, agnostic_ids: set[str], peer_data_by_source_id: dict[str, list[RelationshipPeersData]]
-    ) -> list[DeleteBlock]:
-        """Return the links that block the delete in a window other than the request branch's.
-
-        Only the branch-agnostic nodes are deleted in that window, because a cascade deletes a branch-aware node on the
-        request branch only.
+        Each branch decides from its own schema which relationships are required.
         """
-        return [
-            DeleteBlock.from_peer_data(peer_data=peer_data)
-            for node_id in agnostic_ids
-            for peer_data in peer_data_by_source_id.get(node_id, [])
-            if DeleteRelationshipType.DEPENDENT_NODE in self._get_relationship_types(peer_data=peer_data)
-            and str(peer_data.destination_id) not in agnostic_ids
-        ]
-
-    def _get_relationship_types(self, peer_data: RelationshipPeersData) -> set[DeleteRelationshipType]:
-        return self.index.get_relationship_types(
-            src_kind=peer_data.source_kind, relationship_identifier=peer_data.identifier
-        )
-
-    def _is_cascade(self, peer_data: RelationshipPeersData) -> bool:
-        return DeleteRelationshipType.CASCADE_DELETE in self._get_relationship_types(peer_data=peer_data)
-
-    def _walk(self, start_ids: set[str], peer_data_by_source_id: dict[str, list[RelationshipPeersData]]) -> DeleteWalk:
-        walk = DeleteWalk()
-        node_ids_to_check = set(start_ids)
-        while node_ids_to_check:
-            node_id = node_ids_to_check.pop()
-            walk.node_ids_to_delete.add(node_id)
-            for peer_data in peer_data_by_source_id.get(node_id, []):
-                relationship_types = self._get_relationship_types(peer_data=peer_data)
-                peer_id = str(peer_data.destination_id)
-                if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-                    walk.cascades[peer_id].append(peer_data)
-                    if peer_id not in walk.node_ids_to_delete:
-                        node_ids_to_check.add(peer_id)
-                if DeleteRelationshipType.DEPENDENT_NODE in relationship_types:
-                    walk.dependents[peer_id].append(peer_data)
-        return walk
-
-    def _build_peer_data_map(
-        self, peers_datas: Iterable[RelationshipPeersData]
-    ) -> dict[str, list[RelationshipPeersData]]:
-        peer_data_by_source_id: dict[str, list[RelationshipPeersData]] = {}
-        for peer_data in peers_datas:
-            source_id = str(peer_data.source_id)
-            if source_id not in peer_data_by_source_id:
-                peer_data_by_source_id[source_id] = []
-            peer_data_by_source_id[source_id].append(peer_data)
-            # check if this relationship also needs to be tracked going the other way
-            if not self.index.get_relationship_types(
-                src_kind=peer_data.destination_kind, relationship_identifier=peer_data.identifier
-            ):
+        agnostic_kinds = {node.kind for node in agnostic_nodes}
+        triples_by_schema_hash: dict[str, list[RelationshipTriple]] = {}
+        required_triples_by_branch: dict[str, list[RelationshipTriple]] = {}
+        for branch_name in registry.branch:
+            if branch_name in {GLOBAL_BRANCH_NAME, request_window_name}:
                 continue
-            dest_id = str(peer_data.destination_id)
-            if dest_id not in peer_data_by_source_id:
-                peer_data_by_source_id[dest_id] = []
-            peer_data_by_source_id[dest_id].append(peer_data.reversed())
-        return peer_data_by_source_id
+            schema_branch = registry.schema.get_schema_branch(name=branch_name)
+            schema_hash = schema_branch.get_hash()
+            if schema_hash not in triples_by_schema_hash:
+                triples_by_schema_hash[schema_hash] = _get_required_triples(
+                    all_schemas_map=schema_branch.get_all(duplicate=False), deleted_kinds=agnostic_kinds
+                )
+            if triples_by_schema_hash[schema_hash]:
+                required_triples_by_branch[branch_name] = triples_by_schema_hash[schema_hash]
+        if not required_triples_by_branch:
+            return []
 
-    def _build_required_peer_error(self, block: DeleteBlock, branch_names: set[str] | None = None) -> ValidationError:
-        peer_rel_name = self._all_schemas_map[block.peer_kind].get_relationship_by_identifier(block.identifier).name
-        err_msg = f"Cannot delete {block.deleted_kind} '{block.deleted_id}'."
-        err_msg += (
-            f" It is linked to mandatory relationship {peer_rel_name} on node {block.peer_kind} '{block.peer_id}'"
+        query = await NodeDeleteOtherBranchesQuery.init(
+            db=self.db,
+            branch=self.branch,
+            at=at,
+            request_window_name=request_window_name,
+            agnostic_ids=sorted(node.uuid for node in agnostic_nodes),
+            required_triples_by_branch=required_triples_by_branch,
         )
+        await query.execute(db=self.db)
+        return query.get_data()
+
+    def _build_required_peer_error(
+        self, link: RequiredPeerLink, schema_branch_name: str, branch_names: set[str] | None
+    ) -> ValidationError:
+        peer_schema = registry.schema.get_schema_branch(name=schema_branch_name).get(
+            name=link.peer_kind, duplicate=False
+        )
+        peer_rel_name = peer_schema.get_relationship_by_identifier(link.identifier).name
+        err_msg = f"Cannot delete {link.deleted_kind} '{link.deleted_id}'."
+        err_msg += f" It is linked to mandatory relationship {peer_rel_name} on node {link.peer_kind} '{link.peer_id}'"
         if branch_names:
             err_msg += f" on {_format_branch_names(branch_names)}"
-        return ValidationError({f"{block.peer_kind}.{peer_rel_name}": err_msg})
+        return ValidationError({f"{link.peer_kind}.{peer_rel_name}": err_msg})

@@ -17,12 +17,8 @@ def _cascade_closure(index: NodeDeleteIndex, root_kind: str) -> set[str]:
     resolve cascades), rather than reaching into the index's internal graph.
     """
     cascade_edges: dict[str, set[str]] = defaultdict(set)
-    for full_identifier in index.get_relationship_identifiers():
-        relationship_types = index.get_relationship_types(
-            src_kind=full_identifier.source_kind, relationship_identifier=full_identifier.identifier
-        )
-        if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-            cascade_edges[full_identifier.source_kind].add(full_identifier.destination_kind)
+    for source_kind, _, destination_kind in index.get_triples(relationship_type=DeleteRelationshipType.CASCADE_DELETE):
+        cascade_edges[source_kind].add(destination_kind)
 
     reachable: set[str] = set()
     stack = [root_kind]
@@ -68,7 +64,6 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.ARTIFACTCHECK,
         InfrahubKind.ARTIFACTDEFINITION,
         InfrahubKind.ARTIFACTVALIDATOR,
-        InfrahubKind.CHECK,
         InfrahubKind.CHECKDEFINITION,
         InfrahubKind.DATACHECK,
         InfrahubKind.FILECHECK,
@@ -81,7 +76,6 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.REPOSITORYGROUP,
         InfrahubKind.SCHEMACHECK,
         InfrahubKind.STANDARDCHECK,
-        InfrahubKind.TRANSFORM,
         InfrahubKind.TRANSFORMJINJA2,
         InfrahubKind.TRANSFORMPYTHON,
         InfrahubKind.USERVALIDATOR,
@@ -108,9 +102,10 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
     index = _index_for(InfrahubKind.ACCOUNT)
 
     assert {
-        (full_id.source_kind, full_id.identifier, full_id.destination_kind)
-        for full_id in index.get_relationship_identifiers()
-        if full_id.destination_kind.startswith("Internal")
+        triple
+        for relationship_type in DeleteRelationshipType
+        for triple in index.get_triples(relationship_type=relationship_type)
+        if triple[2].startswith("Internal")
     } == {
         (InfrahubKind.ACCOUNT, "account__external_identity", InfrahubKind.EXTERNALIDENTITY),
         (InfrahubKind.ACCOUNT, "account__token", InfrahubKind.ACCOUNTTOKEN),
