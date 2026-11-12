@@ -48,12 +48,35 @@ Infrahub does not serve an encrypted file that was modified or that was encrypte
 
 To repair a file object, upload the file again. To repair an artifact, delete it and regenerate its artifact definition.
 
+## Check the encryption of an artifact
+
+Each artifact has a read-only `encryption` attribute with one of three values:
+
+- `plaintext`: Infrahub stored the file without encryption.
+- `encrypted`: Infrahub stored the file encrypted, and the current key can read it.
+- `unreadable`: the file is encrypted, but the current key cannot read it. For example, the key changed after Infrahub stored the file.
+
+Infrahub sets the value when it generates the artifact. The artifact page shows a notice for each value:
+
+- A warning when encryption is enabled and the artifact is `plaintext`.
+- A green notice when a check of the file has just confirmed that the artifact is `encrypted`.
+- An error when the artifact is `unreadable`. When the check ran, the error also gives the reason.
+
+Each time a signed-in user opens the artifact page, the UI sends a check request. The check reads only the first bytes of the stored file. These bytes name the key that encrypted the file, so the check finds a file that another key encrypted and a file that is incomplete. It does not decrypt the file, so it does not find a file whose content was modified: Infrahub refuses that file when it serves it. When the result differs from the stored value, Infrahub updates the stored value if the user may update artifacts. A user who is not signed in sees the stored value and no green notice.
+
+To check an artifact through the API, send `POST /api/artifact/{artifact_id}/encryption`. The response has these fields:
+
+- `encryption`: the value found by the check.
+- `reason`: why the file is `unreadable`: `no_key`, `unknown_key`, `unsupported_format` or `truncated`. When the file is missing from the storage, the reason is `missing` and the stored value stays as it is.
+- `updated`: whether the check changed the stored value.
+
 ## Limitations
 
 - Changing the key that applies makes the files encrypted with the previous value unreadable: they are refused until the previous value is restored. This includes setting `INFRAHUB_STORAGE_ENCRYPTION_KEY` after files were encrypted with a key derived from `INFRAHUB_SECURITY_SECRET_KEY`, and removing it again.
 - An older encrypted copy of a file, put back under the same storage identifier, is served: only the storage identifier is authenticated, not the version of the file.
 - Infrahub refuses a file stored before encryption when it looks like an encrypted file but does not decrypt. While encryption is on, that is any file that starts with the four bytes `IHSE`. While it is off, it is a file that starts with `IHSE`, has the format version byte `1` and is at least 41 bytes long.
 - The API server holds a whole file in memory while it encrypts or decrypts it: about twice the size of the file at the peak, for example about 100 MB for a 50 MB file. Without encryption, an upload is written in chunks and a download holds the file once.
+- The stored `encryption` value of an artifact can be out of date until the next check. For example, after the key changes, an artifact stays `encrypted` until a check finds that the file is unreadable.
 - Files stored before encryption was enabled stay in plaintext in the storage, and so do their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots.
 
 ## Back up and restore

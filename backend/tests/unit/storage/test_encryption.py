@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.config import FileSystemStorageSettings, StorageSettings
+from infrahub.core.constants import ArtifactEncryption
 from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError, StorageIntegrityError
 from infrahub.storage import InfrahubObjectStorage, StoredContent
 from infrahub.storage_encryption.crypto import StorageKey, seal
+from infrahub.storage_encryption.status import HEADER_PEEK_LENGTH, EncryptionCheck, UnreadableReason
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -186,3 +188,31 @@ def test_encrypted_storage_without_a_key_refuses_to_write_or_open_an_envelope(tm
     with pytest.raises(StorageEncryptionError, match=message):
         storage.read(identifier=IDENTIFIER)
     assert sorted(entry.name for entry in tmp_path.iterdir()) == [IDENTIFIER]
+
+
+def test_header_of_a_stored_object_is_its_first_bytes(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=True, key=KEY)
+    storage.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
+
+    header = storage.read_header(identifier=IDENTIFIER)
+
+    assert header == (tmp_path / IDENTIFIER).read_bytes()[:HEADER_PEEK_LENGTH]
+
+
+def test_header_of_a_missing_object_is_none(tmp_path: Path) -> None:
+    assert build_storage(tmp_path, encryption_enabled=True, key=KEY).read_header(identifier=IDENTIFIER) is None
+
+
+def test_inspection_follows_the_key_of_the_storage(tmp_path: Path) -> None:
+    sealed_with_key = build_storage(tmp_path, encryption_enabled=True, key=KEY)
+    sealed_with_key.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
+
+    with_key = sealed_with_key.inspect_encryption(identifier=IDENTIFIER)
+    other_key = build_storage(tmp_path, encryption_enabled=True, key=OTHER_KEY).inspect_encryption(
+        identifier=IDENTIFIER
+    )
+
+    assert (with_key, other_key) == (
+        EncryptionCheck(encryption=ArtifactEncryption.ENCRYPTED, reason=None),
+        EncryptionCheck(encryption=ArtifactEncryption.UNREADABLE, reason=UnreadableReason.UNKNOWN_KEY),
+    )
