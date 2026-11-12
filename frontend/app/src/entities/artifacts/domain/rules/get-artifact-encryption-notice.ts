@@ -10,7 +10,6 @@ const UNREADABLE_REASONS: Record<string, string> = {
   no_key: "No encryption key is configured.",
   unsupported_format: "The file is in a format this version cannot read.",
   truncated: "The file is incomplete.",
-  missing: "The file is missing from the storage.",
 };
 
 export interface GetArtifactEncryptionNoticeParams {
@@ -27,6 +26,13 @@ export function getArtifactEncryptionNotice({
   isEncryptionEnabled,
   isVerified,
 }: GetArtifactEncryptionNoticeParams): ArtifactEncryptionNotice | null {
+  // A missing file says nothing about its encryption: only an artifact already known as unreadable has a notice.
+  if (reason === "missing") {
+    return encryption === "unreadable"
+      ? { level: "error", message: "The file of this artifact is missing from the storage." }
+      : null;
+  }
+
   if (encryption === "unreadable") {
     const detail = reason ? UNREADABLE_REASONS[reason] : undefined;
     return {
