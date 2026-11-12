@@ -67,7 +67,9 @@ The orchestrator created the worktree (T051) before the first chunk. After each 
   - `cbb9b29a1` is `09ca2bbdf`;
   - `2acbbce84` is `7607c75e2`.
 - At the user's request, a cascade on another branch no longer blocks the delete by itself. Only a required relationship blocks it, on every branch (commit `0934010e0`). The cascade error message is removed. Scenario 3 of the spec, FR-014, the contract, research R5 and T054 were updated to match.
-- Known limit found while testing this change: after the delete, a node on another branch keeps its optional link to the deleted branch-agnostic node, and resolving that link raises `NodeNotFoundError`. The check on `stable` does not look at other branches, so this predates this PR. It applies to every optional link, not only to cascades.
+- Found while testing this change: after the delete, a node on another branch keeps its optional link to the deleted branch-agnostic node, and resolving that link raises `NodeNotFoundError`. The check on `stable` does not look at other branches, so this predates this PR, and it applies to every optional link, not only to cascades. User Story 5 (PR 5) fixes it:
+  - FR-021 (T075): the delete writes a `deleted` edge on each user branch whose own latest edge for the link is `active`;
+  - FR-018 (T069): a read of a branch-aware relationship whose peer kind is branch-agnostic returns the peer only if it exists in the read's view.
 
 ## Behavior on the head commit
 

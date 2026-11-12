@@ -313,7 +313,6 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - The earlier branch-agnostic code at commit `7015435c4` (local branch `branch-agnostic-source`) holds the window helpers, the rewrite of the list filter and the branch-agnostic lookup by HFID. PRs 3, 5 and 6 bring it in; it is not cherry-picked as a whole.
 - Branch-agnostic reads are uncommon, so a slower branch-agnostic path is acceptable if it returns correct results. Reads on one branch must not get slower.
 - The check before deleting a branch-agnostic node uses the request branch's schema for every live branch. A branch whose schema made a relationship required or optional differently is checked with the request branch's rule. This is a known limit.
-- After a branch-agnostic node is deleted, a node on another live branch keeps its optional link to it, and resolving that link raises `NodeNotFoundError`. The check before this feature did not look at other branches, so this predates it. This is a known limit.
 - How PR 1 is disclosed is decided outside this specification. Every PR is planned as a normal PR.
 - The graph migration is a database migration, which needs explicit approval. The plan was approved in the review session; the code still needs review. Removing edges is a hard delete, which the constitution allows only for branch deletion; PR 5 records an explicit exception, because the removed edges break the edge constraints of the database schema and the replacement edges keep the history.
 
