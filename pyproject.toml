@@ -99,7 +99,7 @@ dev = [
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.15.0",
+    "ruff==0.15.12",
     "invoke==2.2.1",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
@@ -624,12 +624,55 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
+"backend/infrahub/core/convert_object_type/object_conversion.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PERF102", # When using only the values of a dict use the `values()` method
+]
+
+"backend/infrahub/core/query/node.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF070",  # Unnecessary assignment before `yield` statement
+    "RUF073",  # `%` operator used on an f-string
+]
+
+"backend/infrahub/core/query/relationship.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF070",  # Unnecessary assignment before `yield` statement
+]
+
+"backend/infrahub/core/registry.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "D420",    # Docstring sections are in the wrong order
+]
+
+"backend/infrahub/core/utils.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "B043",    # Do not call `delattr` with a constant attribute value
+]
 
 "backend/infrahub/graphql/app.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
+    "PERF102", # When using only the values of a dict use the `values()` method
     "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/mutations/proposed_change.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PERF102", # When using only the values of a dict use the `values()` method
 ]
 
 "backend/infrahub/graphql/manager.py" = [
@@ -998,6 +1041,181 @@ allow-dunder-method-names = [
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "SLF001",   # Private member accessed
     "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"backend/tests/component/conftest.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF100",  # Unused `noqa` directive
+]
+
+"backend/tests/helpers/prefect_diagnostics.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF100",  # Unused `noqa` directive
+]
+
+"backend/tests/component/core/convert_object_type/test_convert_object_type.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PERF102", # When using only the values of a dict use the `values()` method
+]
+
+"backend/tests/component/core/test_node_query.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PERF102", # When using only the values of a dict use the `values()` method
+]
+
+"backend/tests/component/core/diff/repository/test_diff_repository.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF070",  # Unnecessary assignment before `yield` statement
+]
+
+"backend/tests/component/core/migrations/graph/test_061_link_proposed_changes_to_diff_roots.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF070",  # Unnecessary assignment before `yield` statement
+]
+
+"backend/tests/component/core/migrations/schema/test_node_attribute_add.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "F507",    # `%`-format string has a different number of placeholders and substitutions
+]
+
+"backend/tests/component/api/test_admission_middleware.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/api/test_trace_sample_ratio.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/core/ipam/test_ipam_utilization.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/core/resource_manager/test_number_pool.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/core/resource_manager/test_number_pool_ranges_allocation.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/graphql/queries/test_resource_pool.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/component/templates/test_template_reads.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/functional/ipam/test_ipam_utilization.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/api/admission/test_observers.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/api/admission/test_retry_policy.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/config/test_config.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/config/test_ldap_settings.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/config/test_trace_settings.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/database/test_load_signal.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/database/test_load_signal_metrics.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/task_manager/flow_run/test_service.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/test_trace.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
+]
+
+"backend/tests/unit/webhook/test_capture.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "RUF069",  # Unreliable floating point equality comparison
 ]
 
 "models/**.py" = [
