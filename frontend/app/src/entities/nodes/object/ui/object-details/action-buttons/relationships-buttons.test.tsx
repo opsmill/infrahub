@@ -20,6 +20,9 @@ vi.mock("@/shared/components/form/object-form", () => ({
 vi.mock("@/shared/components/form/dynamic-form", () => ({
   default: () => <div data-testid="associate-form">associate form</div>,
 }));
+vi.mock("@/entities/groups/ui/add-group-members-form", () => ({
+  AddGroupMembersForm: () => <div data-testid="add-group-members-form">add members form</div>,
+}));
 
 describe("RelationshipsButtons", () => {
   const genericDevice = generateGenericSchema({
@@ -118,5 +121,42 @@ describe("RelationshipsButtons", () => {
     // THEN the associate/relate form is shown.
     await expect.element(component.getByTestId("associate-form")).toBeVisible();
     await expect.poll(() => component.getByTestId("object-create-form").query()).toBeNull();
+  });
+
+  test("opens the multi-select members form on a group's members relationship", async () => {
+    // GIVEN a group node that inherits the members relationship from CoreGroup.
+    const groupSchema = generateNodeSchema({
+      kind: "TestStandardGroup",
+      name: "StandardGroup",
+      label: "Standard Group",
+      inherit_from: ["CoreGroup"],
+      relationships: [
+        generateRelationshipSchema({
+          name: "members",
+          peer: "CoreNode",
+          kind: "Generic",
+          cardinality: "many",
+        }),
+      ],
+    });
+    store.set(nodeSchemasAtom, [groupSchema]);
+
+    const component = await render(
+      <RelationshipsButtons
+        permission={permission}
+        schema={groupSchema}
+        objectDetailsData={
+          { id: "group-1", __typename: "TestStandardGroup" } as unknown as NodeObject
+        }
+        relationshipName="members"
+      />
+    );
+
+    // WHEN opening the add drawer
+    await component.getByTestId("open-relationship-form-button").click();
+
+    // THEN the members form is shown instead of the single-peer associate form.
+    await expect.element(component.getByTestId("add-group-members-form")).toBeVisible();
+    await expect.poll(() => component.getByTestId("associate-form").query()).toBeNull();
   });
 });

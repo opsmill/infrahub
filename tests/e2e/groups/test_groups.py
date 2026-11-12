@@ -65,19 +65,13 @@ class TestCoreGroup:
         await expect(admin_page.get_by_role("option", name="Tag Builtin")).to_be_hidden()
         await admin_page.get_by_label("Tag", exact=True).click()
         await admin_page.get_by_role("option", name="blue").click()
+        await admin_page.get_by_role("option", name="red").click()
+        await admin_page.keyboard.press("Escape")
 
         await save_screenshot_for_docs(admin_page, "group_tagconfig_grp_adding_members")
 
         await admin_page.get_by_role("button", name="Save").click()
-        await admin_page.get_by_test_id("close-alert").click()
-
-        await admin_page.get_by_test_id("open-relationship-form-button").click()
-        await admin_page.get_by_role("combobox", name="Kind").click()
-        await admin_page.get_by_role("option", name="Tag Builtin").click()
-        await admin_page.get_by_label("Tag", exact=True).click()
-        await admin_page.get_by_role("option", name="red").click()
-        await expect(admin_page.get_by_role("option", name="red")).not_to_be_visible()
-        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("2 members added")).to_be_visible()
         await admin_page.get_by_text("Members2").click()
 
         await save_screenshot_for_docs(admin_page, "group_tagconfig_grp_new_members")

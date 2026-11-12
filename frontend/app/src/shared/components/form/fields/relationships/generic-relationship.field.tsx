@@ -13,6 +13,7 @@ import type {
 } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -27,6 +28,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { resolveSchema } from "@/entities/schema/domain/rules/resolve-schema";
 import {
@@ -67,6 +69,10 @@ const toRelationshipInputValue = (
   return { ...value, display_label: value.display_label ?? "" };
 };
 
+const toRelationshipManyInputValue = (
+  fieldData: FormRelationshipValue | undefined
+): Array<NodeCore> | null => (Array.isArray(fieldData?.value) ? fieldData.value : null);
+
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
 }
@@ -94,11 +100,12 @@ export const GenericRelationshipField = ({
     defaultSelectedGeneric as GenericOption | null
   );
 
-  const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const parentRelationship = selectedGeneric?.id ? getParentRelationship(selectedGeneric.id) : null;
   const commonParent = useCommonParentFilter(relationship, name);
   // When common_parent drives the filter from a sibling field, the manual "Parent" picker
   // is redundant — hide it and source the peer filter from the sibling value instead.
   const showManualParent = !commonParent.isActive && !!parentRelationship;
+  const isMany = relationship.cardinality === "many";
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -209,6 +216,52 @@ export const GenericRelationshipField = ({
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
           };
 
+          const renderObjectInput = (peer: string) => {
+            if (isMany) {
+              const manualParentFilterQuery =
+                parentRelationship && selectedParent?.id
+                  ? { [`${parentRelationship.name}__ids`]: [selectedParent.id] }
+                  : undefined;
+
+              return (
+                <RelationshipManyInput
+                  {...field}
+                  peer={peer}
+                  value={toRelationshipManyInputValue(fieldData)}
+                  onChange={(nodes) => {
+                    field.onChange(
+                      updateRelationshipFieldValue(nodes.length > 0 ? nodes : null, defaultValue)
+                    );
+                  }}
+                  filterQuery={
+                    commonParent.isActive ? commonParent.filterQuery : manualParentFilterQuery
+                  }
+                  enforceFilterQueryOnIdSearch={commonParent.isActive}
+                  addNewInitialObject={commonParent.addNewInitialObject}
+                  disabled={props.disabled}
+                />
+              );
+            }
+
+            return (
+              <RelationshipInput
+                {...field}
+                {...props}
+                options={undefined}
+                value={toRelationshipInputValue(fieldData)}
+                onChange={onChange}
+                peer={peer}
+                parent={
+                  commonParent.isActive
+                    ? commonParent.parent
+                    : { name: parentRelationship?.name, value: selectedParent?.id }
+                }
+                addNewInitialObject={commonParent.addNewInitialObject}
+                disabled={props.disabled}
+              />
+            );
+          };
+
           const renderObjectValue = () => {
             if (!selectedGeneric?.id) {
               return (
@@ -238,23 +291,7 @@ export const GenericRelationshipField = ({
                   variant="small"
                 />
                 <Col className="gap-2">
-                  <FormInput>
-                    <RelationshipInput
-                      {...field}
-                      {...props}
-                      options={undefined}
-                      value={toRelationshipInputValue(fieldData)}
-                      onChange={onChange}
-                      peer={selectedGeneric.id}
-                      parent={
-                        commonParent.isActive
-                          ? commonParent.parent
-                          : { name: parentRelationship?.name, value: selectedParent?.id }
-                      }
-                      addNewInitialObject={commonParent.addNewInitialObject}
-                      disabled={props.disabled}
-                    />
-                  </FormInput>
+                  <FormInput>{renderObjectInput(selectedGeneric.id)}</FormInput>
 
                   <FormMessage />
                 </Col>
@@ -271,7 +308,8 @@ export const GenericRelationshipField = ({
               required={!!rules?.required}
               fieldData={fieldData}
               defaultValue={defaultValue}
-              pool={pool}
+              // A pool allocates a single peer, so it cannot satisfy a cardinality-many relationship.
+              pool={isMany ? undefined : pool}
               allocatableKinds={genericOptions.map((option) => ({
                 kind: option.id,
                 label: option.display_label,
