@@ -255,13 +255,14 @@ implements with two locks:
 
 | Lock | Taken by | Mode |
 |------|----------|------|
-| `resource_pool.<pool id>` | range create, update and delete, pool create and delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools | exclusive (`changing`) |
-| `resource_pool.<pool id>` | allocation, attaching a supplied number, editing a tracked number | shared (`holding`) |
+| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools | exclusive (`changing`) |
+| `resource_pool.<pool id>` | allocation that picks a new number, attaching a supplied number, editing a tracked number | shared (`holding`) |
 | `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
 
 Pool create and update, and range create and update, also take `number_pool_target.<kind>.<attribute>`
 before the pool's exclusive lock, so two pools on the same unique attribute cannot gain overlapping ranges
-at the same time. Allocations never take it.
+at the same time. Allocations never take it. Pool create takes only this lock: no other request can read
+the new pool before its transaction commits, so no write can hold it.
 
 - **Shared holders run in parallel.** Each one records an entry that expires, at
   `lock.shared.<lock name>.<holder id>`, adds its id to the set `lock.shared.<lock name>`, and renews
@@ -274,7 +275,8 @@ at the same time. Allocations never take it.
   mutation lock, such as template components and migrations.
 - **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
   queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
-  it releases the mutex and the range change fails with a retry message.
+  it releases the mutex and the range change fails with a retry message. The lock error, which names
+  the setting, is logged as a warning, so that the API message does not name a server setting.
 - **The division's lock comes before the pool's shared hold.** A write that holds the pool until its
   commit and then waits for a division's lock can wait on an allocation that is itself queued behind a
   range change, so allocations take `picking` first. Template components are the exception: they
@@ -282,6 +284,11 @@ at the same time. Allocations never take it.
   still form until the waiting range change reaches its wait limit and fails.
 - **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
+- **An allocation that returns its identifier's reservation does not hold the pool.** The reserved
+  number is already tracked, so the range check already counts it.
+- **The schema-pool synchronizer locks only the pools it changes.** It runs on every schema load and
+  every merge, so it first reads a pool's ranges and shorthand without the lock, and skips the pool when
+  both match the declaration.
 - **The schema-pool synchronizer reports a range change it could not apply** and moves on to the other
   pools; the flow raises the refusals once every pool was processed.
 - **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,

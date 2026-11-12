@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub import lock
 from infrahub.exceptions import LockWaitTimeoutError, ValidationError
+from infrahub.log import get_logger
 from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.scope import Division
+
+log = get_logger()
 
 RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 UNSCOPED_PICKING_KEY = "all"
@@ -76,6 +79,7 @@ class NumberPoolLock:
         try:
             await pool_lock.acquire_exclusive()
         except LockWaitTimeoutError as exc:
+            log.warning(exc.message, pool_id=pool_id)
             raise ValidationError(
                 input_value=f"Numbers are still being allocated from the pool {pool_name}; retry the change."
             ) from exc

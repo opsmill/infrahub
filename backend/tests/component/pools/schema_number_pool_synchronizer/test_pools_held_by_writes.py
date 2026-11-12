@@ -99,6 +99,24 @@ async def test_a_range_change_to_a_pool_held_by_a_write_is_reported_and_the_othe
     assert result.updated_branches == {ticket_branch.name}
 
 
+async def test_a_pool_already_matching_its_declaration_is_left_alone_while_a_write_holds_it(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    short_exclusive_lock_wait: None,
+) -> None:
+    pool_id = await provision_pool(
+        db=db, branch=default_branch, parameters=NumberPoolParameters(start_range=1, end_range=100)
+    )
+
+    async with held_by_a_write(pool_id=pool_id):
+        result = await run_synchronizer(db=db)
+
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    assert result.refused_changes == []
+    assert [(item.start.value, item.end.value) for item in ranges] == [(1, 100)]
+
+
 async def test_a_scope_rename_on_a_pool_held_by_a_write_is_reported_and_the_other_pools_are_renamed(
     db: InfrahubDatabase,
     default_branch: Branch,

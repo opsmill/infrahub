@@ -13,7 +13,7 @@ from infrahub.database import within_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
-from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror, is_mirrored
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import AllocationScopeResolver
 
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
     from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema.attribute_parameters import NumberPoolRangeParameters
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -195,6 +196,9 @@ class SchemaNumberPoolSynchronizer:
 
         declared_ranges = attribute.parameters.effective_ranges()
         pool_id = schema_number_pool.get_id()
+        # Every schema load and merge runs this, and holding the pool alone would wait for the writes reading its ranges.
+        if await self._matches_declaration(pool=schema_number_pool, declared=declared_ranges):
+            return
 
         # One timestamp and one transaction, so the pool never shows a half-reconciled range set.
         async with (
@@ -216,6 +220,14 @@ class SchemaNumberPoolSynchronizer:
             await NumberPoolShorthandMirror(repository=repository).sync(
                 pool=pool_node, ranges=reconciliation.ranges, at=at, user_id=user_id
             )
+
+    async def _matches_declaration(self, pool: CoreNumberPool, declared: list[NumberPoolRangeParameters]) -> bool:
+        """Return whether the pool's ranges and shorthand already match the declaration, read without holding the pool."""
+        repository = self._range_store_factory(db=self.db)
+        stored = await repository.get_ranges(pool_id=pool.get_id())
+        return NumberPoolRangeReconciler(range_store=repository).is_reconciled(
+            stored=stored, declared=declared
+        ) and is_mirrored(pool=pool, ranges=stored)
 
     async def _process_all_branches(self, user_id: str) -> SchemaNumberPoolSyncResult:
         """Process all branches to create any missing number pools.

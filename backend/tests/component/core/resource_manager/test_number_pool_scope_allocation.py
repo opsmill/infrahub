@@ -174,8 +174,11 @@ async def test_devices_of_two_sites_each_receive_the_first_number_of_a_pool_the_
     assert (vlan_id(device_a1), vlan_id(device_b1), vlan_id(device_a2)) == (1, 1, 2)
 
 
-async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
-    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number_without_holding_the_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
 ) -> None:
     """Asking the pool again for a node retrieves the reservation it holds in its division, not a new number."""
     site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
@@ -188,6 +191,8 @@ async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
         values=(site_b.id,),
     )
 
+    start = recording_lock_timeline.checkpoint("ask again")
+
     number = await site_scoped_pool.get_resource(
         db=db,
         branch=default_branch,
@@ -199,6 +204,11 @@ async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
 
     assert attribute.value == 1
     assert number == 1
+    assert [
+        event.name
+        for event in recording_lock_timeline.events
+        if event.seq > start and event.name == f"resource_pool.{site_scoped_pool.id}:shared"
+    ] == []
 
 
 async def test_two_writers_in_one_division_receive_two_numbers_under_one_lock(

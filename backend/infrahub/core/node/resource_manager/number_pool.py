@@ -49,7 +49,7 @@ class CoreNumberPool(Node):
         picker = NumberPoolNumberPicker(number_reader=repository)
         locker = NumberPoolLock(db=db)
         # The picking lock comes first, as in a mutation, so a range change never waits on a holder queued behind it.
-        async with locker.picking(pool=self, division=division), locker.holding(pool_id=self.get_id()):
+        async with locker.picking(pool=self, division=division):
             if attribute_id is not None and reuse_reservation:
                 reservation = await repository.get_reservation(
                     pool_id=self.get_id(),
@@ -58,17 +58,19 @@ class CoreNumberPool(Node):
                     division=division,
                 )
                 if reservation is not None:
+                    # A reserved number is already tracked, so a range change checks it without the pool being held.
                     return reservation
 
-            # If we have not returned a value we need to find one if avaiable
-            number = await picker.next_number(pool=self, branch=branch, attribute=attribute, division=division)
-            if attribute_id is not None:
-                await repository.reserve(
-                    pool_id=self.get_id(),
-                    identifier=identifier,
-                    attribute_id=attribute_id,
-                    allocated_value=number,
-                    at=at,
-                    user_id=user_id,
-                )
-            return number
+            async with locker.holding(pool_id=self.get_id()):
+                # If we have not returned a value we need to find one if avaiable
+                number = await picker.next_number(pool=self, branch=branch, attribute=attribute, division=division)
+                if attribute_id is not None:
+                    await repository.reserve(
+                        pool_id=self.get_id(),
+                        identifier=identifier,
+                        attribute_id=attribute_id,
+                        allocated_value=number,
+                        at=at,
+                        user_id=user_id,
+                    )
+                return number
