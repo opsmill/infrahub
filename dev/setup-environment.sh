@@ -165,15 +165,15 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# Set Environment Variables (if ENV_FILE is provided)
+# Set Environment Variables (if CLAUDE_ENV_FILE is provided)
 # ------------------------------------------------------------------------------
-if [ -n "$ENV_FILE" ]; then
+if [ -n "$CLAUDE_ENV_FILE" ]; then
     echo ""
     echo "Setting environment variables..."
     {
         echo "export INFRAHUB_PROJECT_DIR=\"$PROJECT_DIR\""
         echo "export PATH=\"$PROJECT_DIR/.venv/bin:\$PATH\""
-    } >> "$ENV_FILE"
+    } >> "$CLAUDE_ENV_FILE"
     echo "Environment variables configured"
 fi
 
