@@ -1,0 +1,1 @@
+Allocating from an IP prefix or IP address pool on a branch where the pool's namespace does not exist, or where none of its source prefixes exist, now fails with an error that names the pool and the branch. An IP prefix pool with no room left now raises a `PoolExhaustedError`, the error type an IP address pool raises, instead of an unhandled `IndexError`.

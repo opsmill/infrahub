@@ -10,7 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 
 async def test_get_next(
@@ -369,7 +369,7 @@ async def test_get_all_resources(
     prefix3 = await pool.get_resource(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=another_branch
     )
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
         )
@@ -518,7 +518,7 @@ async def test_ipv4_small_prefix_pool_full_allocation(
 
     The prefix 255.255.255.240/28 contains 16 addresses.
     Allocating 8 x /31 prefixes (2 addresses each) should fill the pool completely.
-    The 9th allocation should fail with IndexError.
+    The 9th allocation should fail with PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -562,7 +562,7 @@ async def test_ipv4_small_prefix_pool_full_allocation(
     for i, prefix in enumerate(allocated_prefixes):
         assert prefix.prefix.value == expected_prefixes[i]
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=31,
@@ -580,7 +580,7 @@ async def test_ipv6_small_prefix_pool_full_allocation(
 
     The prefix ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124 contains 16 addresses.
     Allocating 8 x /127 prefixes (2 addresses each) should fill the pool completely.
-    The 9th allocation should fail with IndexError.
+    The 9th allocation should fail with PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -624,7 +624,7 @@ async def test_ipv6_small_prefix_pool_full_allocation(
     for i, prefix in enumerate(allocated_prefixes):
         assert prefix.prefix.value == expected_prefixes[i]
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=127,
@@ -641,7 +641,7 @@ async def test_ipv4_same_prefixlen_pool_exhaustion(
     """Test that a pool whose resource prefix length equals the requested allocation length.
 
     Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
-    A /30 parent has room for exactly one /30 allocation. The second request must raise IndexError.
+    A /30 parent has room for exactly one /30 allocation. The second request must raise PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -669,7 +669,7 @@ async def test_ipv4_same_prefixlen_pool_exhaustion(
     )
     assert first.prefix.value == "172.16.0.0/30"
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=30,
@@ -726,7 +726,7 @@ async def test_mixed_prefixlen_allocation_two_resources(
     assert first_30.prefix.value == "192.168.0.4/30"
 
     # second /30 is exhausted, first /30 can't fit another /30 — fails
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=30,
@@ -754,7 +754,7 @@ async def test_ipv6_same_prefixlen_pool_exhaustion(
     """Test that a pool whose resource prefix length equals the requested allocation length.
 
     Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
-    A /127 parent has room for exactly one /127 allocation. The second request must raise IndexError.
+    A /127 parent has room for exactly one /127 allocation. The second request must raise PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -782,7 +782,7 @@ async def test_ipv6_same_prefixlen_pool_exhaustion(
     )
     assert first.prefix.value == "2001:db8::/127"
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=127,
