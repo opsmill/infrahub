@@ -2,12 +2,13 @@
 
 The count answers two questions: whether an incremental diff update has anything to calculate, and how many
 changes a stored diff does not cover yet. Each scenario writes a sequence of changes, records the time between
-them, and compares the two counts over every window those times delimit.
+them, and compares the two counts over every window those times delimit, then over windows that start and end
+on the exact time an edge was opened or closed.
 """
 
 from __future__ import annotations
 
-from itertools import combinations
+from itertools import combinations, pairwise
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,13 +17,16 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.initialization import create_branch
+from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.diff import DiffCountChanges
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.agnostic_edges import create_gadget, create_widget
+from tests.helpers.number_pool import add_pool_range, create_range_only_pool
+from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, BEACON_KIND
 
 if TYPE_CHECKING:
@@ -39,6 +43,21 @@ AND (
 )
 AND (p.branch_support = "aware" OR q.branch_support = "aware")
 RETURN diff_rel.branch AS branch_name, count(*) AS num_changes
+"""
+
+EDGE_TIMES = """
+MATCH ()-[edge]->()
+WHERE edge.branch IN $branch_names
+UNWIND [edge.from, edge.to] AS edge_time
+WITH DISTINCT edge_time
+WHERE edge_time IS NOT NULL
+RETURN edge_time
+"""
+
+OWNER_SOURCE_AND_RESERVATION_EDGE_TYPES = """
+MATCH ()-[edge:HAS_OWNER|HAS_SOURCE|IS_RESERVED]->()
+WHERE edge.branch IN $branch_names
+RETURN DISTINCT type(edge) AS edge_type
 """
 
 
@@ -77,13 +96,32 @@ async def indexed_count(
     return query.get_num_changes_by_branch()
 
 
+async def boundary_windows(
+    db: InfrahubDatabase, timeline: Timeline, branch_names: list[str]
+) -> list[tuple[Timestamp, Timestamp]]:
+    """Consecutive windows whose bounds are the times an edge of these branches was opened or closed.
+
+    Each of those times starts one window and ends the one before it, so an edge is expected in the window
+    that starts on its time and not in the window that ends on it.
+    """
+    rows = await db.execute_query(query=EDGE_TIMES, params={"branch_names": branch_names}, name="test_edge_times")
+    first_mark, last_mark = timeline.marks[0], timeline.marks[-1]
+    edge_times = sorted(
+        edge_time for edge_time in (Timestamp(row["edge_time"]) for row in rows) if first_mark < edge_time < last_mark
+    )
+    assert len(edge_times) > 0
+    return list(pairwise([first_mark, *edge_times, last_mark]))
+
+
 async def assert_counts_match_in_every_window(
     db: InfrahubDatabase, timeline: Timeline, branch_name_sets: list[list[str]]
 ) -> dict[str, int]:
-    """Compare the two counts over every window of the timeline and return the largest count seen per branch."""
+    """Compare the two counts over every window of the scenario and return the largest count seen per branch."""
+    every_branch_name = sorted({branch_name for branch_names in branch_name_sets for branch_name in branch_names})
+    windows = timeline.windows() + await boundary_windows(db=db, timeline=timeline, branch_names=every_branch_name)
     largest: dict[str, int] = {}
     for branch_names in branch_name_sets:
-        for from_time, to_time in timeline.windows():
+        for from_time, to_time in windows:
             expected = await full_scan_count(db=db, branch_names=branch_names, from_time=from_time, to_time=to_time)
             actual = await indexed_count(db=db, branch_names=branch_names, from_time=from_time, to_time=to_time)
             assert actual == expected, f"{branch_names} from {from_time.to_string()} to {to_time.to_string()}"
@@ -306,3 +344,58 @@ async def test_count_matches_for_branch_local_nodes(
     )
     assert largest[branch.name] > 0
     assert largest[default_branch.name] > 0
+
+
+@pytest.fixture
+async def ticket_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+
+async def test_count_matches_for_owner_source_and_pool_reservation_edges(
+    db: InfrahubDatabase, default_branch: Branch, ticket_schema: None
+) -> None:
+    timeline = Timeline()
+    pool = await create_range_only_pool(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    timeline.mark()
+    branch = await create_branch(db=db, branch_name="count-changes-lineage")
+    timeline.mark()
+
+    # a pool records the number it allocates with an edge on the global branch
+    ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
+    await ticket.new(db=db, title="pooled", ticket_id={"from_pool": {"id": pool.id}})
+    await ticket.save(db=db)
+    timeline.mark()
+
+    reference = await Node.init(db=db, schema=TICKET.kind, branch=branch)
+    await reference.new(db=db, title="reference")
+    await reference.save(db=db)
+    timeline.mark()
+
+    ticket.title.source = reference
+    ticket.title.owner = reference
+    await ticket.save(db=db)
+    timeline.mark()
+    ticket.title.clear_source()
+    ticket.title.clear_owner()
+    await ticket.save(db=db)
+    timeline.mark()
+
+    # deleting the only object that holds the number closes the edge of the pool
+    await ticket.delete(db=db)
+    timeline.mark()
+
+    name_sets = branch_name_sets(default_branch, branch)
+    edge_types = await db.execute_query(
+        query=OWNER_SOURCE_AND_RESERVATION_EDGE_TYPES,
+        params={"branch_names": [GLOBAL_BRANCH_NAME, default_branch.name, branch.name]},
+        name="test_edge_types",
+    )
+    assert {row["edge_type"] for row in edge_types} == {"HAS_OWNER", "HAS_SOURCE", "IS_RESERVED"}
+
+    largest = await assert_counts_match_in_every_window(db=db, timeline=timeline, branch_name_sets=name_sets)
+    assert largest[branch.name] > 0
+    assert largest[GLOBAL_BRANCH_NAME] > 0
