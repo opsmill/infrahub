@@ -29,18 +29,23 @@ class NodeConstraintRunner:
         async with self.db.start_session(read_only=False) as db:
             await node.resolve_relationships(db=db)
 
-            if not skip_uniqueness_check:
-                await self.uniqueness_constraint.check(node, filters=field_filters)
-
             node_schema = node.get_schema()
             effective_filters = field_filters
             if effective_filters:
                 for constraint in self.relationship_manager_constraints:
                     effective_filters = constraint.expand_filters(effective_filters, node_schema)
+            relationship_names = [
+                name for name in node_schema.relationship_names if not effective_filters or name in effective_filters
+            ]
 
-            for relationship_name in node_schema.relationship_names:
-                if effective_filters and relationship_name not in effective_filters:
-                    continue
+            if not skip_uniqueness_check:
+                await self.uniqueness_constraint.check(node, filters=field_filters)
+
+            # The peers named by an id are read once here for every constraint, label and write that
+            # follows; each would otherwise read them on its own.
+            await node.read_peers_not_in_hand(db=db, relationship_names=relationship_names)
+
+            for relationship_name in relationship_names:
                 relationship_manager: RelationshipManager = getattr(node, relationship_name)
                 await relationship_manager.refresh_update_details(db=db)
                 for relationship_constraint in self.relationship_manager_constraints:

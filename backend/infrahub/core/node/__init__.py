@@ -1185,6 +1185,33 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             await relm.resolve(db=db, fields=query_filter, user_id=user_id)
 
+    async def read_peers_not_in_hand(self, db: InfrahubDatabase, relationship_names: Sequence[str]) -> None:
+        """Read in one query the peers the named relationships hold only the id of, and hand each its node.
+
+        The constraint checks, the labels computed from a peer and the write of the relationships all need
+        the peer; reading them together is what spares one read of each peer per consumer. Branch-agnostic
+        relationships are read apart, as their peers are read on the global branch.
+        """
+        relationships_by_mode: dict[bool, list[Relationship]] = {}
+        for name in relationship_names:
+            if name not in self._relationships:
+                continue
+            relm: RelationshipManager = getattr(self, name)
+            branch_agnostic = relm.schema.branch is BranchSupportType.AGNOSTIC
+            relationships_by_mode.setdefault(branch_agnostic, []).extend(relm.relationships_holding_only_a_peer_id())
+
+        for branch_agnostic, relationships in relationships_by_mode.items():
+            peers = await registry.manager.get_many(
+                db=db,
+                ids=list({rel.get_peer_id() for rel in relationships}),
+                branch=self._branch,
+                branch_agnostic=branch_agnostic,
+                include_metadata=MetadataOptions.LINKED_NODES,
+            )
+            for rel in relationships:
+                if rel.peer_id in peers:
+                    rel.set_peer(value=peers[rel.peer_id])
+
     async def load(
         self,
         db: InfrahubDatabase,
