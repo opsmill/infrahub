@@ -71,7 +71,7 @@ class TestCoreGroup:
         await save_screenshot_for_docs(admin_page, "group_tagconfig_grp_adding_members")
 
         await admin_page.get_by_role("button", name="Save").click()
-        await expect(admin_page.get_by_text("2 members added")).to_be_visible()
+        await expect(admin_page.get_by_text("Members added")).to_be_visible()
         await admin_page.get_by_text("Members2").click()
 
         await save_screenshot_for_docs(admin_page, "group_tagconfig_grp_new_members")
