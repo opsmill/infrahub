@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from .helpers import RunGraphQL
+from .option_2 import Option2
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session")
 def rack_option() -> RackOptionFixture:
-    pytest.skip("No rack model on this branch")
+    return Option2()
 
 
 @pytest.fixture

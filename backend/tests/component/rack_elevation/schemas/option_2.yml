@@ -1,0 +1,131 @@
+---
+version: "1.0"
+generics:
+  - name: PhysicalDevice
+    namespace: Dcim
+    description: Anything that can be mounted in a rack.
+    include_in_menu: false
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: position
+        kind: Number
+        optional: true
+      - name: rack_face
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: front
+          - name: rear
+    relationships:
+      - name: location
+        peer: LocationRack
+        optional: true
+        cardinality: one
+        kind: Attribute
+    rack_elevation:
+      role: mountable
+      rack: location
+      position: position__value
+      face: rack_face__value
+nodes:
+  - name: Rack
+    namespace: Location
+    include_in_menu: false
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: height
+        kind: Number
+    rack_elevation:
+      role: rack
+      u_height: height__value
+  - name: DeviceType
+    namespace: Dcim
+    include_in_menu: false
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: height
+        kind: Number
+      - name: full_depth
+        kind: Boolean
+      - name: weight
+        kind: Number
+        optional: true
+    rack_elevation:
+      role: mountable_type
+      u_height: height__value
+      full_depth: full_depth__value
+      weight: weight__value
+  - name: RackAccessoryType
+    namespace: Dcim
+    include_in_menu: false
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: height
+        kind: Number
+      - name: full_depth
+        kind: Boolean
+      - name: weight
+        kind: Number
+        optional: true
+    rack_elevation:
+      role: mountable_type
+      u_height: height__value
+      full_depth: full_depth__value
+      weight: weight__value
+  - name: Device
+    namespace: Dcim
+    include_in_menu: false
+    inherit_from:
+      - DcimPhysicalDevice
+    attributes:
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: leaf
+            color: "#4d90fe"
+          - name: server
+            color: "#00d25b"
+          - name: pdu
+            color: "#ff9800"
+    relationships:
+      - name: device_type
+        peer: DcimDeviceType
+        optional: true
+        cardinality: one
+        kind: Attribute
+    rack_elevation:
+      role: mountable
+      rack: location
+      position: position__value
+      face: rack_face__value
+      type: device_type
+  - name: RackAccessory
+    namespace: Dcim
+    include_in_menu: false
+    inherit_from:
+      - DcimPhysicalDevice
+    relationships:
+      - name: accessory_type
+        peer: DcimRackAccessoryType
+        optional: true
+        cardinality: one
+        kind: Attribute
+    rack_elevation:
+      role: mountable
+      rack: location
+      position: position__value
+      face: rack_face__value
+      type: accessory_type

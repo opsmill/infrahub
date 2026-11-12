@@ -25,6 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
 from infrahub.core.node.proposed_change import CoreProposedChange
+from infrahub.core.node.rack import RackElevationRackNode
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -42,6 +43,7 @@ from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission
+from infrahub.rack_elevation.constants import RACK_ELEVATION_RACK_NODE_KEY
 from infrahub.storage import InfrahubObjectStorage
 
 if TYPE_CHECKING:
@@ -124,6 +126,7 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
     registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
     registry.node[InfrahubKind.PROPOSEDCHANGE] = CoreProposedChange
+    registry.node[RACK_ELEVATION_RACK_NODE_KEY] = RackElevationRackNode
 
     # ---------------------------------------------------
     # Instantiate permission backends

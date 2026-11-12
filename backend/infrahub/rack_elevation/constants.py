@@ -8,6 +8,9 @@ PERCENT = 100
 
 RACK_ELEVATION_LOCK_NAMESPACE = "rack_elevation"
 
+ATTRIBUTE_VALUE_PATH_SUFFIX = "__value"
+RACK_ELEVATION_RACK_NODE_KEY = "RackElevationRackNode"
+
 
 class RackConstraint(InfrahubStringEnum):
     POSITION_OUT_OF_RANGE = "RACK_POSITION_OUT_OF_RANGE"
@@ -26,3 +29,18 @@ class RackPlaceArgument(InfrahubStringEnum):
     RACK = "rack"
     POSITION = "position"
     FACE = "face"
+
+
+class RackTotalAttribute(InfrahubStringEnum):
+    """Names of the calculated attributes Infrahub adds to every rack kind."""
+
+    USED_UNITS = "rack_used_units"
+    UTILIZATION = "rack_utilization"
+    TOTAL_WEIGHT = "rack_total_weight"
+
+
+RACK_TOTAL_DESCRIPTIONS = {
+    RackTotalAttribute.USED_UNITS.value: "Units of the rack used on at least one face",
+    RackTotalAttribute.UTILIZATION.value: "Percentage of the rack units in use, rounded down",
+    RackTotalAttribute.TOTAL_WEIGHT.value: "Total weight of the items in the rack",
+}

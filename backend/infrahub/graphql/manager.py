@@ -22,6 +22,7 @@ from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttrib
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.graphql.types.metadata import OrderInput
+from infrahub.rack_elevation.models import RackRole
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
@@ -39,6 +40,7 @@ from .mutations.ipam import (
 from .mutations.main import InfrahubMutation
 from .mutations.menu import InfrahubCoreMenuMutation
 from .mutations.proposed_change import InfrahubProposedChangeMutation
+from .mutations.rack_elevation_mapped import InfrahubMappedRackMountableMutation
 from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager.number_pools.pool import InfrahubNumberPoolMutation
 from .mutations.resource_manager.number_pools.pool_range import InfrahubNumberPoolRangeMutation
@@ -627,6 +629,12 @@ class GraphQLSchemaManager:
                 base_class = InfrahubIPAddressMutation
             elif isinstance(node_schema, ProfileSchema):
                 base_class = InfrahubProfileMutation
+            elif (
+                isinstance(node_schema, NodeSchema)
+                and node_schema.rack_elevation is not None
+                and node_schema.rack_elevation.role == RackRole.MOUNTABLE
+            ):
+                base_class = InfrahubMappedRackMountableMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 

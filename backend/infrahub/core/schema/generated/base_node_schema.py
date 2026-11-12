@@ -7,6 +7,7 @@ from pydantic import Field
 from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TC001
+from infrahub.core.schema.rack_elevation_schema import RackElevationSchema  # noqa: TC001
 from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TC001
 
 
@@ -96,6 +97,11 @@ class GeneratedBaseNodeSchema(HashableModel):
     documentation: str | None = Field(
         default=None,
         description="Link to a documentation associated with this object, can be internal or external.",
+        json_schema_extra={"update": "allowed"},
+    )
+    rack_elevation: RackElevationSchema | None = Field(
+        default=None,
+        description="Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type",
         json_schema_extra={"update": "allowed"},
     )
     state: HashableModelState = Field(

@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from types import GenericAlias
-from typing import Any
+from typing import Any, TypeAliasType
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import NotRequired, TypedDict
@@ -43,6 +43,7 @@ from infrahub.core.schema.attribute_parameters import (
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
+from infrahub.core.schema.rack_elevation_schema import RackElevationSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
@@ -57,7 +58,7 @@ class SchemaAttribute(BaseModel):
     kind: str
     description: str
     extra: ExtraField
-    internal_kind: type[Any] | GenericAlias | list[type[Any]] | None = None
+    internal_kind: type[Any] | GenericAlias | TypeAliasType | list[type[Any]] | None = None
     regex: str | None = None
     unique: bool | None = None
     optional: bool | None = None
@@ -190,6 +191,7 @@ class SchemaAttribute(BaseModel):
             RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
             DropdownChoice: "list[DropdownChoice__VARIANT__]",
             ComputedAttribute: "ComputedAttribute__VARIANT__",
+            RackElevationSchema: "dict[str, Any]",
         }
         internal = self.internal_kind
         if isinstance(internal, list):
@@ -494,6 +496,14 @@ base_node_schema = SchemaNode(
             name="documentation",
             kind="URL",
             description="Link to a documentation associated with this object, can be internal or external.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="rack_elevation",
+            kind="JSON",
+            internal_kind=RackElevationSchema,
+            description="Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),

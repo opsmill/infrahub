@@ -45,6 +45,8 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.rack_elevation.constants import RACK_ELEVATION_RACK_NODE_KEY
+from infrahub.rack_elevation.models import RackRole
 from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
@@ -60,6 +62,7 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
 
     If there is a class in the registry matching the name Kind, use it
     If there is a class in the registry matching one of the node Parent, use it
+    If the node is a rack, use the rack node class
     Otherwise use Node
     """
     if node.schema.kind in registry.node:
@@ -69,6 +72,9 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
         for parent in node.schema.inherit_from:
             if parent in registry.node:
                 return registry.node[parent]
+
+    if node.schema.rack_elevation is not None and node.schema.rack_elevation.role == RackRole.RACK:
+        return registry.node[RACK_ELEVATION_RACK_NODE_KEY]
 
     return Node
 

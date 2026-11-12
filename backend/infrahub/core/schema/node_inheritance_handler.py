@@ -23,6 +23,7 @@ class NodeInheritanceHandler:
             "uniqueness_constraints",
             "icon",
             "order_by",
+            "rack_elevation",
         ]
         for prop_name in properties_to_inherit:
             if getattr(interface, prop_name) and not getattr(node, prop_name):

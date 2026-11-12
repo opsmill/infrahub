@@ -26,6 +26,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     SUBTEMPLATE_EXCLUDED_KINDS,
+    AllowOverrideType,
     BranchSupportType,
     ComputedAttributeKind,
     HashableModelState,
@@ -73,8 +74,12 @@ from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
     DeclaredScopeValidator,
     scope_refusal_reason,
 )
+from infrahub.core.validators.schema_branch.rack_elevation_validator import RackElevationValidator
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
+from infrahub.rack_elevation.constants import RACK_TOTAL_DESCRIPTIONS, RackTotalAttribute
+from infrahub.rack_elevation.mapped.mapping import is_calculated_total
+from infrahub.rack_elevation.models import RackRole
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
@@ -784,6 +789,7 @@ class SchemaBranch:
         self.manage_profile_relationships()
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
+        self.add_rack_elevation_attributes()
 
         # profile and template management can add schemas (such as CoreProfile)
         # leaving some of their attributes unresolved
@@ -808,6 +814,7 @@ class SchemaBranch:
         # Cant move DisplayLabelValidator into the validators yet as the validation sequence would be broken
         # validate_uniqueness_constraints needs to run before display label validation
         DisplayLabelValidator().check(schema_branch=self)
+        RackElevationValidator().check(schema_branch=self)
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
@@ -2627,6 +2634,38 @@ class SchemaBranch:
                         children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
+
+    def add_rack_elevation_attributes(self) -> None:
+        """Give every rack kind its calculated attributes and take them away from a kind that is no longer a rack."""
+        for name in self.all_names:
+            schema = self.get(name=name, duplicate=False)
+            is_rack = schema.rack_elevation is not None and schema.rack_elevation.role == RackRole.RACK
+            if is_rack:
+                missing = [item for item in RackTotalAttribute.available_types() if item not in schema.attribute_names]
+                if not missing:
+                    continue
+                schema = self.get(name=name, duplicate=True)
+                number_class = get_attribute_schema_class_for_kind(kind="Number")
+                for attribute_name in missing:
+                    schema.attributes.append(
+                        number_class(
+                            name=attribute_name,
+                            kind="Number",
+                            description=RACK_TOTAL_DESCRIPTIONS[attribute_name],
+                            read_only=True,
+                            optional=True,
+                            allow_override=AllowOverrideType.NONE,
+                        )
+                    )
+                self.set(name=name, schema=schema)
+                continue
+
+            stale = [item.name for item in schema.local_attributes if is_calculated_total(item)]
+            if stale:
+                schema = self.get(name=name, duplicate=True)
+                for attribute_name in stale:
+                    schema.get_attribute(name=attribute_name).state = HashableModelState.ABSENT
+                self.set(name=name, schema=schema)
 
     def add_relationships_to_profile(self, profile: ProfileSchema, node: NodeSchema | GenericSchema) -> None:
         # Remove previous relationships to account for new ones

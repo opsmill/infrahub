@@ -4011,6 +4011,19 @@
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
+                    },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
@@ -4333,6 +4346,19 @@
                         ],
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
+                    },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
                     },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",
@@ -5779,6 +5805,19 @@
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
+                    },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
@@ -6122,6 +6161,19 @@
                         ],
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
+                    },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
                     },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",
@@ -7799,6 +7851,19 @@
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
+                    },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
@@ -9072,6 +9137,19 @@
                         ],
                         "title": "Documentation",
                         "description": "Link to a documentation associated with this object, can be internal or external."
+                    },
+                    "rack_elevation": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rack Elevation",
+                        "description": "Role of the kind in a rack elevation and where each value is found, set on a rack, a mounted item or an item type"
                     },
                     "state": {
                         "$ref": "#/components/schemas/SchemaState",

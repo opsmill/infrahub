@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.rack_elevation.mapped.mapping import RackMappingIndex
+from infrahub.rack_elevation.mapped.provider import MappedRackElevationProvider
+
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.timestamp import Timestamp
@@ -32,31 +35,6 @@ class RackElevationProvider(Protocol):
         ...
 
 
-class UnavailableRackElevationProvider:
-    """Provider for a branch without a rack model: no kind takes part and no rack can be read or written."""
-
-    def list_kinds(self) -> list[RackElevationKindEntry]:
-        return []
-
-    async def load_rack(self, rack_id: str) -> tuple[RackSnapshot, list[RackItemSnapshot]]:
-        raise NotImplementedError("No rack model on this branch")
-
-    async def load_item(self, item_id: str) -> RackItemSnapshot:
-        raise NotImplementedError("No rack model on this branch")
-
-    async def place(
-        self,
-        item_id: str,
-        rack_id: str,
-        position: int | None,
-        face: RackFace | None,
-    ) -> RackItemSnapshot:
-        raise NotImplementedError("No rack model on this branch")
-
-
-def build_rack_elevation_provider(
-    db: InfrahubDatabase,  # noqa: ARG001
-    branch: Branch,  # noqa: ARG001
-    at: Timestamp | None,  # noqa: ARG001
-) -> RackElevationProvider:
-    return UnavailableRackElevationProvider()
+def build_rack_elevation_provider(db: InfrahubDatabase, branch: Branch, at: Timestamp | None) -> RackElevationProvider:
+    index = RackMappingIndex.from_schema_branch(schema_branch=db.schema.get_schema_branch(name=branch.name))
+    return MappedRackElevationProvider(db=db, branch=branch, at=at, index=index)
