@@ -32,7 +32,7 @@ This feature rebuilds the IP pool page on the number pool page's layout. The bac
 
 ### User Story 1 - Read the pool's namespace and defaults at a glance (Priority: P1)
 
-The engineer opens an IP prefix pool or an IP address pool. The header shows the pool's name, description, metadata, ID, a refresh button and an Actions menu, laid out like the number pool header. Under the title, one line names the namespace and the pool's defaults, separated by dots, for example: "In namespace default · Prefix kind defaults to IpamIPPrefix · Prefix length defaults to /31 · Member type defaults to Address".
+The engineer opens an IP prefix pool or an IP address pool. The header shows the pool's name, description, metadata, ID, a refresh button and an Actions menu, laid out like the number pool header. Under the title, one line names the pool type, the namespace and the pool's defaults, separated by dots, for example: "IP Prefix Pool in namespace default · Prefix kind defaults to IpamIPPrefix · Prefix length defaults to /31 · Member type defaults to Address".
 
 **Why this priority**: This is the information the engineer reads first, and the current page hides it in a card of raw attribute values.
 
@@ -40,8 +40,8 @@ The engineer opens an IP prefix pool or an IP address pool. The header shows the
 
 **Acceptance Scenarios**:
 
-1. **Given** an IP prefix pool in namespace `default` with a default prefix type of `IpamIPPrefix`, a default prefix length of 31 and a default member type of `address`, **When** the engineer opens the pool, **Then** the line reads "In namespace default · Prefix kind defaults to IpamIPPrefix · Prefix length defaults to /31 · Member type defaults to Address".
-2. **Given** an IP address pool with a default address type of `IpamIPAddress` and a default prefix length of 32, **When** the engineer opens the pool, **Then** the line reads "In namespace default · Address kind defaults to IpamIPAddress · Prefix length defaults to /32".
+1. **Given** an IP prefix pool in namespace `default` with a default prefix type of `IpamIPPrefix`, a default prefix length of 31 and a default member type of `address`, **When** the engineer opens the pool, **Then** the line reads "IP Prefix Pool in namespace default · Prefix kind defaults to IpamIPPrefix · Prefix length defaults to /31 · Member type defaults to Address".
+2. **Given** an IP address pool with a default address type of `IpamIPAddress` and a default prefix length of 32, **When** the engineer opens the pool, **Then** the line reads "IP Address Pool in namespace default · Address kind defaults to IpamIPAddress · Prefix length defaults to /32".
 3. **Given** an IP prefix pool whose default prefix type and default prefix length are not set, **When** the engineer opens the pool, **Then** the line reads "Prefix kind has no default · Prefix length has no default" for those two entries, because an allocation request has to set them.
 4. **Given** an IP address pool whose default prefix length is not set, **When** the engineer opens the pool, **Then** the entry reads "Prefix length follows the resource prefix", because the backend gives the address the prefix length of the resource prefix it comes from.
 5. **Given** the kind named in the line exists in the schema, **When** the engineer selects it, **Then** the schema viewer opens on that kind.
@@ -69,7 +69,7 @@ The engineer scans the resource prefix list on the left. Each resource prefix sh
 
 ### User Story 3 - Review what a resource prefix holds and share a link to it (Priority: P1)
 
-The engineer selects a resource prefix. The main area shows a table of what it holds, with the columns Prefix (or Address on an IP address pool), Identifier and Kind. More rows load as the engineer scrolls. The selected resource prefix is part of the page link, so a colleague who opens the same link sees the same resource prefix.
+The engineer selects a resource prefix. The main area shows a table of what it holds, with the columns Prefix (or Address on an IP address pool), Identifier, Kind and ID. More rows load as the engineer scrolls. The selected resource prefix is part of the page link, so a colleague who opens the same link sees the same resource prefix.
 
 **Why this priority**: This replaces the paged side panel, which is the pain the ticket describes.
 
@@ -117,7 +117,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 
 - **FR-001**: The IP prefix pool page and the IP address pool page MUST use the number pool page's layout: a header, a resource prefix list on the left and the allocated table in the main area.
 - **FR-002**: The header MUST show the pool's name, description, metadata popover, ID with a copy button, a refresh button and an Actions menu. Below the defaults line, it MUST show each attribute and each single relationship that a schema extension adds to the pool, and MUST show nothing more when the pool schema has none.
-- **FR-003**: The header MUST show one line with the namespace and the defaults, separated by dots, in this order: namespace, then for a prefix pool the prefix kind, the prefix length and the member type, and for an address pool the address kind and the prefix length.
+- **FR-003**: The header MUST show one line with the pool type, the namespace and the defaults, separated by dots, in this order: pool type and namespace, then for a prefix pool the prefix kind, the prefix length and the member type, and for an address pool the address kind and the prefix length.
 - **FR-004**: Each default MUST be worded as "<Label> defaults to <value>" when set. When not set, a prefix pool's prefix kind and prefix length MUST read "has no default", an address pool's prefix length MUST read "follows the resource prefix", and a prefix pool's member type MUST read "has no default".
 - **FR-005**: The kind in the defaults line MUST open the schema viewer when its schema is loaded, and MUST be plain text otherwise.
 - **FR-006**: The namespace in the defaults line MUST link to the IPAM page filtered on that namespace.
@@ -126,7 +126,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-009**: The resource prefix list MUST be ordered by allocation weight, highest first, with a missing weight counting as 0, and then by prefix.
 - **FR-010**: Selecting a resource prefix MUST change the page link so that it names the resource prefix, and opening such a link MUST select that resource prefix.
 - **FR-011**: When the link names no resource prefix, the first resource prefix in list order MUST be selected.
-- **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier and Kind, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button.
+- **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier, Kind and ID, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button.
 - **FR-013**: The allocated table header MUST show the number of allocations and the selected resource prefix, which MUST link to the resource prefix's IPAM details page.
 - **FR-014**: Each prefix or address in the table MUST link to its IPAM details page on the branch the engineer is viewing.
 - **FR-015**: The Kind column MUST show the schema label of the kind when the schema is loaded, and the kind name otherwise.
@@ -134,7 +134,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-017**: The Actions menu MUST offer Copy ID, Copy HFID, Tasks, View schema, GraphQL sandbox, Documentation (when the schema has a documentation link), Edit, Groups and Delete, with Edit, Groups and Delete disabled when the engineer lacks the permission.
 - **FR-018**: Edit MUST open the existing IP prefix pool form or IP address pool form, and saving MUST refresh the page.
 - **FR-019**: The page MUST read the pool, the utilization and the allocations on the branch and at the date the engineer is viewing.
-- **FR-020**: The breadcrumb's resource selector MUST keep working with the new page.
+- **FR-020**: The breadcrumb's resource selector MUST keep working with the new page, and MUST read the pool usage itself so that it does not depend on the page having loaded it.
 - **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button when loading more rows fails.
 
 ### Key Entities
