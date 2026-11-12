@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from infrahub.storage_encryption.codec import StoredContent, StoredContentCodec
     from infrahub.storage_encryption.status import EncryptionCheck
 
+S3_MISSING_OBJECT_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
+
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
     AWS_CA_BUNDLE: str | None = None
@@ -114,14 +116,23 @@ class InfrahubObjectStorage:
         self._storage.write(self._codec.encode(identifier=identifier, content=content), identifier)
 
     def read_header(self, identifier: str) -> bytes | None:
-        """Return the first bytes of a stored object, or None when no object is stored under `identifier`."""
+        """Return the first bytes of a stored object, or None when no object is stored under `identifier`.
+
+        Raises:
+            botocore.exceptions.ClientError: If the storage fails for a reason other than a missing object.
+
+        """
         try:
             if isinstance(self._storage, InfrahubS3ObjectStorage):
                 return self._storage.read_head(identifier, HEADER_PEEK_LENGTH)
             with self._storage.open(identifier) as f:
                 return f.read(HEADER_PEEK_LENGTH)
-        except (FileNotFoundError, botocore.exceptions.ClientError):
+        except FileNotFoundError:
             return None
+        except botocore.exceptions.ClientError as err:
+            if err.response.get("Error", {}).get("Code") in S3_MISSING_OBJECT_CODES:
+                return None
+            raise
 
     def inspect_encryption(self, identifier: str) -> EncryptionCheck:
         """Tell from its header whether a stored object is encrypted and readable with the current key."""
