@@ -1,4 +1,9 @@
-from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import (
+    BranchSupportType,
+    RelationshipCardinality,
+    RelationshipDeleteBehavior,
+    RelationshipKind,
+)
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 
 RELATIONSHIP_IDENTIFIER = "agnosticretire_widget__agnosticretire_gadget"
@@ -47,3 +52,66 @@ AGNOSTIC_BEACON = NodeSchema(
 )
 
 AGNOSTIC_RETIREMENT_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_WIDGET, AGNOSTIC_GADGET, AGNOSTIC_BEACON])
+
+TEAM_KIND = "AgnosticretireTeam"
+MEMBER_KIND = "AgnosticretireMember"
+BADGE_KIND = "AgnosticretireBadge"
+
+# Branch-agnostic, so deleting a team removes it on every branch at once.
+AGNOSTIC_TEAM = NodeSchema(
+    name="Team",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AGNOSTIC,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="members",
+            peer=MEMBER_KIND,
+            identifier="agnosticretire_member__agnosticretire_team",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+        ),
+        RelationshipSchema(
+            name="badges",
+            peer=BADGE_KIND,
+            identifier="agnosticretire_badge__agnosticretire_team",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+    ],
+)
+
+AGNOSTIC_MEMBER = NodeSchema(
+    name="Member",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="team",
+            peer=TEAM_KIND,
+            identifier="agnosticretire_member__agnosticretire_team",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+AGNOSTIC_BADGE = NodeSchema(
+    name="Badge",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="team",
+            peer=TEAM_KIND,
+            identifier="agnosticretire_badge__agnosticretire_team",
+            cardinality=RelationshipCardinality.ONE,
+            optional=True,
+        ),
+    ],
+)
+
+AGNOSTIC_DELETE_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_TEAM, AGNOSTIC_MEMBER, AGNOSTIC_BADGE])
