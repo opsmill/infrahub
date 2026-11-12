@@ -11,6 +11,7 @@ from .preferences import (
     InfrahubUserPreferences,
 )
 from .proposed_change import ProposedChangeAvailableActions
+from .rack_elevation import InfrahubRackElevation, InfrahubRackElevationKinds
 from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
 from .repository_git_state import (
@@ -37,6 +38,8 @@ __all__ = [
     "InfrahubNumberPoolDivisions",
     "InfrahubNumberPoolUtilization",
     "InfrahubPathTraversal",
+    "InfrahubRackElevation",
+    "InfrahubRackElevationKinds",
     "InfrahubReachableNodes",
     "InfrahubRepositoryActivity",
     "InfrahubRepositoryCommits",

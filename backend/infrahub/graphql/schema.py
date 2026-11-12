@@ -30,6 +30,7 @@ from .mutations.proposed_change import (
     ProposedChangeRequestRunCheck,
     ProposedChangeReview,
 )
+from .mutations.rack_elevation import RackElevationPlace
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import (
     ProcessRepository,
@@ -57,6 +58,8 @@ from .queries import (
     InfrahubNumberPoolDivisions,
     InfrahubNumberPoolUtilization,
     InfrahubPathTraversal,
+    InfrahubRackElevation,
+    InfrahubRackElevationKinds,
     InfrahubReachableNodes,
     InfrahubRepositoryActivity,
     InfrahubRepositoryCommits,
@@ -127,6 +130,9 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubNumberPoolDivisions = InfrahubNumberPoolDivisions
     InfrahubNumberPoolAllocations = InfrahubNumberPoolAllocations
 
+    RackElevationKinds = InfrahubRackElevationKinds
+    RackElevation = InfrahubRackElevation
+
     FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
 
@@ -184,5 +190,6 @@ class InfrahubBaseMutation(ObjectType):
     ConvertObjectType = ConvertObjectType.Field()
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()
+    RackElevationPlace = RackElevationPlace.Field(required=True)
 
     InfrahubSetPreferences = InfrahubSetPreferences.Field()

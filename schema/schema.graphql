@@ -10321,6 +10321,10 @@ type Mutation {
   ProfileIpamNamespaceUpdate(context: ContextInput, data: ProfileIpamNamespaceUpdateInput!): ProfileIpamNamespaceUpdate
   """Profile for IpamNamespace"""
   ProfileIpamNamespaceUpsert(context: ContextInput, data: ProfileIpamNamespaceUpsertInput!): ProfileIpamNamespaceUpsert
+  """
+  Move an item into a rack at a unit and face, or keep it in the rack without a unit.
+  """
+  RackElevationPlace(face: RackFace, item: String!, position: Int, rack: String!): RackElevationPlaceResult!
   RelationshipAdd(context: ContextInput, data: RelationshipNodesInput!): RelationshipAdd
   RelationshipRemove(context: ContextInput, data: RelationshipNodesInput!): RelationshipRemove
   ResolveDiffConflict(context: ContextInput, data: ResolveDiffConflictInput!): ResolveDiffConflict
@@ -27657,7 +27661,86 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
+  """The items of a rack, their position, and the rack totals."""
+  RackElevation(color_by: String, label_by: String, rack: String!): RackElevation!
+  """Kinds that take part in rack elevations, with the role each one plays."""
+  RackElevationKinds: [RackElevationKind!]!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+type RackElevation {
+  """
+  Ordered by position descending, then unpositioned items, then 0U items.
+  """
+  items: [RackElevationItem!]!
+  rack: RackElevationRack!
+}
+
+type RackElevationItem {
+  """Hex color of the color_by dropdown choice, or null."""
+  color: String
+  display_label: String!
+  """Null unless the item is mounted."""
+  face: RackFace
+  full_depth: Boolean!
+  id: String!
+  kind: String!
+  """Value of label_by, or display_label."""
+  label: String!
+  placement: RackItemPlacement!
+  """Lowest unit the item uses. Null unless the item is mounted."""
+  position: Int
+  type_display_label: String
+  type_id: String
+  """Height from the type. 0 for a 0U type."""
+  u_height: Int!
+  """Weight in kg, from the type."""
+  weight: Int
+}
+
+type RackElevationKind {
+  kind: String!
+  role: RackElevationRole!
+}
+
+"""
+Move an item into a rack at a unit and face, or keep it in the rack without a unit.
+"""
+type RackElevationPlaceResult {
+  item: RackElevationItem!
+  ok: Boolean!
+}
+
+type RackElevationRack {
+  display_label: String!
+  id: String!
+  kind: String!
+  """
+  Weight in kg of every item in the rack. Null when no item has a weight.
+  """
+  total_weight: Int
+  u_height: Int!
+  used_units: Int!
+  """Percent of the units in use, rounded down."""
+  utilization: Int!
+}
+
+"""The part a kind plays in rack elevations."""
+enum RackElevationRole {
+  MOUNTABLE
+  MOUNTABLE_TYPE
+  RACK
+}
+
+enum RackFace {
+  FRONT
+  REAR
+}
+
+enum RackItemPlacement {
+  MOUNTED
+  UNPOSITIONED
+  ZERO_U
 }
 
 """
