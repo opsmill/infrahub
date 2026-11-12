@@ -1,3 +1,5 @@
+import { atomWithStorage } from "jotai/utils";
+
 export interface ParallelQueryConfig {
   enabled: boolean;
   pageSize: number;
@@ -12,20 +14,10 @@ const defaultConfig: ParallelQueryConfig = {
   delayMs: 0,
 };
 
-const STORAGE_KEY = "graphiql-parallel-mode";
-
-export function getParallelQueryConfig(): ParallelQueryConfig {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : defaultConfig;
-  } catch {
-    return defaultConfig;
-  }
-}
-
-export function setParallelQueryConfig(partial: Partial<ParallelQueryConfig>): ParallelQueryConfig {
-  const current = getParallelQueryConfig();
-  const next = { ...current, ...partial };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  return next;
-}
+// Read on init so the transport, which reads outside React, never sees the default before a saved value.
+export const parallelQueryConfigAtom = atomWithStorage<ParallelQueryConfig>(
+  "graphiql-parallel-mode",
+  defaultConfig,
+  undefined,
+  { getOnInit: true }
+);

@@ -67,7 +67,7 @@ doc_files: &doc_files
 release_files: &release_files
   - "changelog/*.md"
   - CHANGELOG.md
-  - "docs/docs/release_notes/infrahub/*.mdx"
+  - "docs/docs/release-notes/infrahub/*.mdx"
 
 python_all: &python_all
   - "**/*.py"
@@ -129,6 +129,7 @@ error_catalogue_all:
 
 observability_standalone_all:
   - "development/docker-compose-observability.yml"
+  - "development/docker-compose-observability-tracing.yml"
   - "development/convert_compose_standalone.py"
   - "development/alloy/**"
   - "development/grafana/**"

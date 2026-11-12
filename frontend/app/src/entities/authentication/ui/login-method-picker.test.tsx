@@ -40,7 +40,6 @@ beforeEach(() => {
 
 afterEach(() => {
   localStorage.clear();
-  vi.clearAllMocks();
 });
 
 describe("LoginMethodPicker", () => {

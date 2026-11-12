@@ -89,95 +89,96 @@ async def reachable_nodes_resolver(
     if max_paths < 1:
         raise GraphQLError(f"max_paths must be >= 1, got {max_paths}")
 
-    source_node: Node | None = await NodeManager.get_one(
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        at=graphql_context.at,
-        id=source_id,
-    )
-    if not source_node:
-        raise GraphQLError(f"Source node not found: {source_id}")
+    async with graphql_context.db.start_session(read_only=True) as db:
+        source_node: Node | None = await NodeManager.get_one(
+            db=db,
+            branch=graphql_context.branch,
+            at=graphql_context.at,
+            id=source_id,
+        )
+        if not source_node:
+            raise GraphQLError(f"Source node not found: {source_id}")
 
-    schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
-    for kind in target_kinds:
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+        for kind in target_kinds:
+            try:
+                schema_branch.get(name=kind, duplicate=False)
+            except SchemaNotFoundError as exc:
+                raise GraphQLError(f"Unknown target kind: {kind}") from exc
+
+        user_filters = UserFilters.from_graphql_input(data)
         try:
-            schema_branch.get(name=kind, duplicate=False)
-        except SchemaNotFoundError as exc:
-            raise GraphQLError(f"Unknown target kind: {kind}") from exc
-
-    user_filters = UserFilters.from_graphql_input(data)
-    try:
-        planner = SchemaPlanner(
-            schema_branch=schema_branch,
-            branch=graphql_context.branch,
-            permission_resolver=graphql_context.active_permissions.resolver,
-        )
-        plan = planner.plan(
-            source_kind=source_node.get_kind(),
-            terminal_predicate=TerminalByKinds(kinds=frozenset(target_kinds)),
-            max_depth=int(max_depth),
-            user_filters=user_filters,
-        )
-    except ValueError as exc:
-        raise GraphQLError(str(exc)) from exc
-
-    reachable_data: list[ReachableNodeData] = []
-    if not plan.is_empty:
-        executor = ReachableNodesExecutor(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            renderer=GraphTraversalCypherRenderer(
+            planner = SchemaPlanner(
+                schema_branch=schema_branch,
                 branch=graphql_context.branch,
-                default_branch_name=registry.default_branch,
-            ),
-            timeout_seconds=config.SETTINGS.database.reachable_nodes_query_timeout,
-        )
-        try:
-            reachable_data = await executor.run(
-                plan=plan,
-                source_id=source_id,
-                max_targets=max_results,
-                max_paths=max_paths,
-                shortest_paths_only=shortest_paths_only,
-                at=graphql_context.at,
+                permission_resolver=graphql_context.active_permissions.resolver,
+            )
+            plan = planner.plan(
+                source_kind=source_node.get_kind(),
+                terminal_predicate=TerminalByKinds(kinds=frozenset(target_kinds)),
+                max_depth=int(max_depth),
+                user_filters=user_filters,
             )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
-        except QueryTimeoutError as exc:
-            raise GraphQLError(
-                "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
-                "max_results/max_paths, or narrow target_kinds to reduce the search space."
-            ) from exc
 
-    all_ids: set[str] = {source_id}
-    for n in reachable_data:
-        all_ids.add(n.node.uuid)
-        all_ids.update(hop.node.uuid for hop in n.path.hops)
+        reachable_data: list[ReachableNodeData] = []
+        if not plan.is_empty:
+            executor = ReachableNodesExecutor(
+                db=db,
+                branch=graphql_context.branch,
+                renderer=GraphTraversalCypherRenderer(
+                    branch=graphql_context.branch,
+                    default_branch_name=registry.default_branch,
+                ),
+                timeout_seconds=config.SETTINGS.database.reachable_nodes_query_timeout,
+            )
+            try:
+                reachable_data = await executor.run(
+                    plan=plan,
+                    source_id=source_id,
+                    max_targets=max_results,
+                    max_paths=max_paths,
+                    shortest_paths_only=shortest_paths_only,
+                    at=graphql_context.at,
+                )
+            except ValueError as exc:
+                raise GraphQLError(str(exc)) from exc
+            except QueryTimeoutError as exc:
+                raise GraphQLError(
+                    "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
+                    "max_results/max_paths, or narrow target_kinds to reduce the search space."
+                ) from exc
 
-    labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_ids)
+        all_ids: set[str] = {source_id}
+        for n in reachable_data:
+            all_ids.add(n.node.uuid)
+            all_ids.update(hop.node.uuid for hop in n.path.hops)
 
-    source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
+        labels_map = await _get_node_labels(db=db, graphql_context=graphql_context, node_ids=all_ids)
 
-    relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
-    dependencies = [
-        {
-            "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
-            "depth": n.depth,
-            "path": _path_data_to_result(
-                path_data=n.path,
-                labels_map=labels_map,
-                graphql_context=graphql_context,
-                relationship_cache=relationship_cache,
-            ),
+        source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
+
+        relationship_cache: dict[tuple[str, str, str], dict[str, str]] = {}
+        dependencies = [
+            {
+                "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
+                "depth": n.depth,
+                "path": _path_data_to_result(
+                    path_data=n.path,
+                    labels_map=labels_map,
+                    graphql_context=graphql_context,
+                    relationship_cache=relationship_cache,
+                ),
+            }
+            for n in reachable_data
+        ]
+
+        return {
+            "source": source_info,
+            "dependencies": dependencies,
+            "count": len(dependencies),
         }
-        for n in reachable_data
-    ]
-
-    return {
-        "source": source_info,
-        "dependencies": dependencies,
-        "count": len(dependencies),
-    }
 
 
 InfrahubReachableNodes = Field(

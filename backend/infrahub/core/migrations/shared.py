@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
@@ -20,6 +20,8 @@ from infrahub.database import is_retriable_db_error, retry_db_transaction
 from .query import MigrationBaseQuery  # noqa: TC001
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase

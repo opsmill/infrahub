@@ -39,7 +39,7 @@ safe-outputs:
   noop:
     report-as-issue: false
   add-labels:
-    max: 2
+    max: 3
     target: triggering
     # Enumerated on purpose, not a group/* + category/* wildcard: this is the
     # enforcement boundary, so it must be a closed set. rest.issues.addLabels
@@ -63,6 +63,7 @@ safe-outputs:
       - category/error-reporting
       - category/permissions
       - category/pools
+      - category/derived-values
   missing-tool:
 ---
 
@@ -95,7 +96,9 @@ here, and the only labels you may apply are the ones in the allowed list.
 2. Pick the `group/*` label, weighing the body's symptoms together with the
    Component dropdown value if the body has one. If a `group/*` label is already
    present, leave it alone.
-3. Decide the `category/*` label. If one is already present, leave it alone.
+3. Decide the primary `category/*` label, and whether `category/derived-values` applies.
+   Leave a category that is already present alone, but still add
+   `category/derived-values` when it applies and is missing.
 4. If the body is too vague to classify with confidence (for example a one-line report
    with no reproduction and no area named), apply nothing and stop. Do not guess.
 5. Apply the labels you have decided on. Do not post a comment explaining yourself.

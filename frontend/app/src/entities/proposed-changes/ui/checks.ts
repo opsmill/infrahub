@@ -41,27 +41,27 @@ export const getValidatorsStats = (validators: any[]) => {
     successValidators.length && {
       name: CHECKS_LABEL.SUCCESS,
       value: successValidators.length,
-      className: "fill-green-400",
+      className: "text-success-strong",
     },
     inProgressValidators.length && {
       name: CHECKS_LABEL.IN_PROGRESS,
       value: inProgressValidators.length,
-      className: "fill-orange-400",
+      className: "text-warning-strong",
     },
     failedValidators.length && {
       name: CHECKS_LABEL.FAILURE,
       value: failedValidators.length,
-      className: "fill-danger",
+      className: "text-danger-strong",
     },
     queuedValidators.length && {
       name: CHECKS_LABEL.QUEUED,
       value: queuedValidators.length,
-      className: "fill-yellow-300",
+      className: "text-info",
     },
     unknownValidators.length && {
       name: CHECKS_LABEL.UNKNOWN,
       value: unknownValidators.length,
-      className: "fill-gray-400",
+      className: "text-foreground-muted",
     },
   ].filter(Boolean);
 };

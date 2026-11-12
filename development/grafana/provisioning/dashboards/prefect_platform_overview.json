@@ -155,7 +155,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "count(prefect_info_flow_runs)",
+            "expr": "sum(prefect_info_flow_runs)",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -221,7 +221,7 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(prefect_info_flow_runs == 1)",
+            "expr": "sum(prefect_info_flow_runs{state_name=\"Running\"})",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -418,7 +418,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "count by (state_name) (prefect_info_flow_runs)",
+            "expr": "sum by (state_name) (prefect_info_flow_runs)",
             "instant": false,
             "legendFormat": "{{label_name}}",
             "range": true,
@@ -584,79 +584,14 @@
                 }
               ]
             },
-            "unit": "s"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 4,
-          "x": 8,
-          "y": 6
-        },
-        "id": 49,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "center",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto",
-          "wideLayout": true
-        },
-        "pluginVersion": "10.2.2",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "avg(prefect_flow_runs_total_run_time_total)",
-            "instant": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Flow Runs average run time",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
             "unit": "none"
           },
           "overrides": []
         },
         "gridPos": {
           "h": 5,
-          "w": 4,
-          "x": 12,
+          "w": 8,
+          "x": 8,
           "y": 6
         },
         "id": 51,
@@ -782,7 +717,7 @@
                   "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(probe_success{instance=~\".*prefect.*health\"})",
+                "expr": "max(up{job=~\"$task_manager_job\"})",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
@@ -851,14 +786,14 @@
                   "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(kube_pod_info{namespace=\"$namespace\", pod=~\"prefect-server.*\"})",
+                "expr": "count(container_last_seen{container_label_com_docker_compose_service=~\"$task_manager_service\"} > time() - 60)",
                 "instant": false,
                 "legendFormat": "__auto",
                 "range": true,
                 "refId": "A"
               }
             ],
-            "title": "Prefect Server replicas",
+            "title": "Prefect Server containers",
             "type": "stat"
           },
           {
@@ -897,325 +832,6 @@
             ],
             "title": "Logs",
             "type": "logs"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "custom": {
-                  "align": "auto",
-                  "cellOptions": {
-                    "type": "auto"
-                  },
-                  "filterable": false,
-                  "inspect": false
-                },
-                "decimals": 2,
-                "displayName": "",
-                "mappings": [],
-                "noValue": "-",
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                },
-                "unit": "short"
-              },
-              "overrides": [
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Time"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Time"
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #A"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Usage"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #B"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Requests"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #C"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Requests %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #D"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Limits"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #E"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "CPU Limits %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Pod"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "links",
-                      "value": [
-                        {
-                          "targetBlank": false,
-                          "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                }
-              ]
-            },
-            "gridPos": {
-              "h": 6,
-              "w": 12,
-              "x": 0,
-              "y": 19
-            },
-            "id": 25,
-            "interval": "1m",
-            "links": [],
-            "options": {
-              "cellHeight": "sm",
-              "footer": {
-                "countRows": false,
-                "fields": "",
-                "reducer": [
-                  "sum"
-                ],
-                "show": false
-              },
-              "showHeader": true,
-              "sortBy": [
-                {
-                  "desc": true,
-                  "displayName": "CPU Usage"
-                }
-              ]
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "C"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "D"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "E"
-              }
-            ],
-            "title": "CPU Quota",
-            "transformations": [
-              {
-                "id": "merge",
-                "options": {
-                  "reducers": []
-                }
-              },
-              {
-                "id": "organize",
-                "options": {
-                  "excludeByName": {
-                    "Time": true
-                  },
-                  "indexByName": {},
-                  "renameByName": {}
-                }
-              }
-            ],
-            "type": "table"
           },
           {
             "datasource": {
@@ -1362,7 +978,7 @@
             "gridPos": {
               "h": 6,
               "w": 12,
-              "x": 12,
+              "x": 0,
               "y": 19
             },
             "id": 42,
@@ -1388,500 +1004,15 @@
                   "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
+                "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$task_manager_service\"}[$__rate_interval])) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "{{pod}}",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
               }
             ],
             "title": "CPU Usage",
             "type": "timeseries"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "fieldConfig": {
-              "defaults": {
-                "color": {
-                  "mode": "thresholds"
-                },
-                "custom": {
-                  "align": "auto",
-                  "cellOptions": {
-                    "type": "auto"
-                  },
-                  "filterable": false,
-                  "inspect": false
-                },
-                "decimals": 2,
-                "displayName": "",
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                },
-                "unit": "short"
-              },
-              "overrides": [
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Time"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Time"
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #A"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #B"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Requests"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #C"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Requests %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #D"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Limits"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #E"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Limits %"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "percentunit"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #F"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (RSS)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #G"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (Cache)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Value #H"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Mem Usage (Swap)"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "bytes"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "displayName",
-                      "value": "Pod"
-                    },
-                    {
-                      "id": "unit",
-                      "value": "short"
-                    },
-                    {
-                      "id": "decimals",
-                      "value": 2
-                    },
-                    {
-                      "id": "links",
-                      "value": [
-                        {
-                          "targetBlank": false,
-                          "title": "Drill down",
-                          "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "custom.align"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Pod"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width",
-                      "value": 208
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Requests"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage (RSS)"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width"
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Mem Usage (Cache)"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.width",
-                      "value": 162
-                    }
-                  ]
-                }
-              ]
-            },
-            "gridPos": {
-              "h": 6,
-              "w": 12,
-              "x": 0,
-              "y": 25
-            },
-            "id": 46,
-            "interval": "1m",
-            "links": [],
-            "options": {
-              "cellHeight": "sm",
-              "footer": {
-                "countRows": false,
-                "enablePagination": false,
-                "fields": "",
-                "reducer": [
-                  "sum"
-                ],
-                "show": false
-              },
-              "showHeader": true,
-              "sortBy": [
-                {
-                  "desc": false,
-                  "displayName": "Mem Requests"
-                }
-              ]
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "A"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "B"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "C"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "D"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"prefect-server.*\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "E"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "F"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "G"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource_prometheus}"
-                },
-                "editorMode": "code",
-                "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\"}) by (pod)",
-                "format": "table",
-                "instant": true,
-                "intervalFactor": 2,
-                "legendFormat": "",
-                "refId": "H"
-              }
-            ],
-            "title": "Memory Quota",
-            "transformations": [
-              {
-                "id": "merge",
-                "options": {
-                  "reducers": []
-                }
-              },
-              {
-                "id": "organize",
-                "options": {
-                  "excludeByName": {
-                    "Time": true
-                  },
-                  "indexByName": {},
-                  "renameByName": {}
-                }
-              }
-            ],
-            "type": "table"
           },
           {
             "datasource": {
@@ -2029,7 +1160,7 @@
               "h": 6,
               "w": 12,
               "x": 12,
-              "y": 25
+              "y": 19
             },
             "id": 27,
             "interval": "1m",
@@ -2054,15 +1185,14 @@
                   "uid": "${datasource_prometheus}"
                 },
                 "editorMode": "code",
-                "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-server.*\", container!=\"\", image!=\"\"}) by (pod)",
+                "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$task_manager_service\"}) by (name)",
                 "format": "time_series",
-                "intervalFactor": 2,
-                "legendFormat": "{{pod}}",
+                "legendFormat": "{{name}}",
                 "range": true,
                 "refId": "A"
               }
             ],
-            "title": "Memory Usage (w/o cache)",
+            "title": "Memory Usage (WSS)",
             "type": "timeseries"
           }
         ],
@@ -2141,14 +1271,14 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "sum(kube_deployment_status_replicas{deployment=~\".*agent|.*worker\"})",
+            "expr": "count(container_last_seen{container_label_com_docker_compose_service=~\"$task_worker_service\"} > time() - 60)",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Agents/Worker total",
+        "title": "Task workers",
         "type": "stat"
       },
       {
@@ -2187,325 +1317,6 @@
         ],
         "title": "Logs",
         "type": "logs"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "align": "auto",
-              "cellOptions": {
-                "type": "auto"
-              },
-              "filterable": false,
-              "inspect": false
-            },
-            "decimals": 2,
-            "displayName": "",
-            "mappings": [],
-            "noValue": "-",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Time"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Time"
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #A"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "CPU Usage"
-                },
-                {
-                  "id": "unit",
-                  "value": "short"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #B"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "CPU Requests"
-                },
-                {
-                  "id": "unit",
-                  "value": "short"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #C"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "CPU Requests %"
-                },
-                {
-                  "id": "unit",
-                  "value": "percentunit"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #D"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "CPU Limits"
-                },
-                {
-                  "id": "unit",
-                  "value": "short"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #E"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "CPU Limits %"
-                },
-                {
-                  "id": "unit",
-                  "value": "percentunit"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "pod"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Pod"
-                },
-                {
-                  "id": "unit",
-                  "value": "short"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "links",
-                  "value": [
-                    {
-                      "targetBlank": false,
-                      "title": "Drill down",
-                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
-                    }
-                  ]
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 6,
-          "w": 12,
-          "x": 0,
-          "y": 20
-        },
-        "id": 41,
-        "interval": "1m",
-        "links": [],
-        "options": {
-          "cellHeight": "sm",
-          "footer": {
-            "countRows": false,
-            "fields": "",
-            "reducer": [
-              "sum"
-            ],
-            "show": false
-          },
-          "showHeader": true,
-          "sortBy": [
-            {
-              "desc": true,
-              "displayName": "CPU Usage"
-            }
-          ]
-        },
-        "pluginVersion": "10.2.2",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "C"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "D"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod) / sum(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "E"
-          }
-        ],
-        "title": "CPU Quota",
-        "transformations": [
-          {
-            "id": "merge",
-            "options": {
-              "reducers": []
-            }
-          },
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {
-                "Time": true
-              },
-              "indexByName": {},
-              "renameByName": {}
-            }
-          }
-        ],
-        "type": "table"
       },
       {
         "datasource": {
@@ -2652,7 +1463,7 @@
         "gridPos": {
           "h": 6,
           "w": 12,
-          "x": 12,
+          "x": 0,
           "y": 20
         },
         "id": 24,
@@ -2678,500 +1489,15 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\"prefect-agent.*\"}) by (pod)",
+            "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$task_worker_service\"}[$__rate_interval])) by (name)",
             "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "{{pod}}",
+            "legendFormat": "{{name}}",
             "range": true,
             "refId": "A"
           }
         ],
         "title": "CPU Usage",
         "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "custom": {
-              "align": "auto",
-              "cellOptions": {
-                "type": "auto"
-              },
-              "filterable": false,
-              "inspect": false
-            },
-            "decimals": 2,
-            "displayName": "",
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Time"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Time"
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #A"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Usage"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #B"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Requests"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #C"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Requests %"
-                },
-                {
-                  "id": "unit",
-                  "value": "percentunit"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #D"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Limits"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #E"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Limits %"
-                },
-                {
-                  "id": "unit",
-                  "value": "percentunit"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #F"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Usage (RSS)"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #G"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Usage (Cache)"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Value #H"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Mem Usage (Swap)"
-                },
-                {
-                  "id": "unit",
-                  "value": "bytes"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "pod"
-              },
-              "properties": [
-                {
-                  "id": "displayName",
-                  "value": "Pod"
-                },
-                {
-                  "id": "unit",
-                  "value": "short"
-                },
-                {
-                  "id": "decimals",
-                  "value": 2
-                },
-                {
-                  "id": "links",
-                  "value": [
-                    {
-                      "targetBlank": false,
-                      "title": "Drill down",
-                      "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=${datasource_prometheus}&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell"
-                    }
-                  ]
-                },
-                {
-                  "id": "custom.align"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Pod"
-              },
-              "properties": [
-                {
-                  "id": "custom.width",
-                  "value": 208
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Mem Usage"
-              },
-              "properties": [
-                {
-                  "id": "custom.width"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Mem Requests"
-              },
-              "properties": [
-                {
-                  "id": "custom.width"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Mem Usage (RSS)"
-              },
-              "properties": [
-                {
-                  "id": "custom.width"
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Mem Usage (Cache)"
-              },
-              "properties": [
-                {
-                  "id": "custom.width",
-                  "value": 162
-                }
-              ]
-            }
-          ]
-        },
-        "gridPos": {
-          "h": 6,
-          "w": 12,
-          "x": 0,
-          "y": 26
-        },
-        "id": 43,
-        "interval": "1m",
-        "links": [],
-        "options": {
-          "cellHeight": "sm",
-          "footer": {
-            "countRows": false,
-            "enablePagination": false,
-            "fields": "",
-            "reducer": [
-              "sum"
-            ],
-            "show": false
-          },
-          "showHeader": true,
-          "sortBy": [
-            {
-              "desc": false,
-              "displayName": "Mem Requests"
-            }
-          ]
-        },
-        "pluginVersion": "10.2.2",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_requests{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "C"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "D"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\", image!=\"\"}) by (pod) / sum(cluster:namespace:pod_memory:active:kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "E"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_rss{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "F"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_cache{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "G"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "sum(container_memory_swap{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"(prefect-agent.*|prefect-worker.*)\", container!=\"\"}) by (pod)",
-            "format": "table",
-            "instant": true,
-            "intervalFactor": 2,
-            "legendFormat": "",
-            "refId": "H"
-          }
-        ],
-        "title": "Memory Quota",
-        "transformations": [
-          {
-            "id": "merge",
-            "options": {
-              "reducers": []
-            }
-          },
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {
-                "Time": true
-              },
-              "indexByName": {},
-              "renameByName": {}
-            }
-          }
-        ],
-        "type": "table"
       },
       {
         "datasource": {
@@ -3319,7 +1645,7 @@
           "h": 6,
           "w": 12,
           "x": 12,
-          "y": 26
+          "y": 20
         },
         "id": 44,
         "interval": "1m",
@@ -3344,15 +1670,14 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\"prefect-agent.*\", container!=\"\", image!=\"\"}) by (pod)",
+            "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$task_worker_service\"}) by (name)",
             "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "{{pod}}",
+            "legendFormat": "{{name}}",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Memory Usage (w/o cache)",
+        "title": "Memory Usage (WSS)",
         "type": "timeseries"
       },
       {
@@ -3361,7 +1686,7 @@
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 32
+          "y": 26
         },
         "id": 10,
         "panels": [
@@ -3667,7 +1992,7 @@
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 33
+          "y": 27
         },
         "id": 9,
         "panels": [
@@ -3806,7 +2131,7 @@
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 34
+          "y": 28
         },
         "id": 8,
         "panels": [
@@ -4025,12 +2350,15 @@
     "templating": {
       "list": [
         {
-          "current": {},
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource_prometheus}"
+          "current": {
+            "text": "prefect",
+            "value": "prefect"
           },
-          "definition": "label_values(namespace)",
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource_loki}"
+          },
+          "definition": "",
           "hide": 0,
           "includeAll": false,
           "label": "Namespace",
@@ -4038,8 +2366,10 @@
           "name": "namespace",
           "options": [],
           "query": {
-            "query": "label_values(namespace)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            "label": "namespace",
+            "refId": "LokiVariableQueryEditor-VariableQuery",
+            "stream": "",
+            "type": 1
           },
           "refresh": 1,
           "regex": "",
@@ -4124,6 +2454,63 @@
           "regex": "",
           "skipUrlSync": false,
           "type": "datasource"
+        },
+        {
+          "current": {
+            "text": "task-manager",
+            "value": "task-manager"
+          },
+          "description": "Docker Compose service of the Prefect server (task manager), as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+          "hide": 2,
+          "label": "Task manager service",
+          "name": "task_manager_service",
+          "options": [
+            {
+              "selected": true,
+              "text": "task-manager",
+              "value": "task-manager"
+            }
+          ],
+          "query": "task-manager",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "task-worker",
+            "value": "task-worker"
+          },
+          "description": "Docker Compose service of the task workers, as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+          "hide": 2,
+          "label": "Task worker service",
+          "name": "task_worker_service",
+          "options": [
+            {
+              "selected": true,
+              "text": "task-worker",
+              "value": "task-worker"
+            }
+          ],
+          "query": "task-worker",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "task-manager",
+            "value": "task-manager"
+          },
+          "description": "Prometheus job label of the Prefect server metrics. Change it to match your scrape configuration.",
+          "hide": 2,
+          "label": "Task manager job",
+          "name": "task_manager_job",
+          "options": [
+            {
+              "selected": true,
+              "text": "task-manager",
+              "value": "task-manager"
+            }
+          ],
+          "query": "task-manager",
+          "type": "textbox"
         }
       ]
     },

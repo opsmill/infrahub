@@ -29,7 +29,7 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 | `Tree` (`TreeItem`, `TreeItemContent`, `TreeItemLoader`) | Expandable tree with lazy loading. |
 | `SortableList` / `SortableItem` | Drag-and-drop reorderable list (react-aria `useDragAndDrop`). |
 | `ResizablePanelGroup` / `ResizablePanel` / `ResizableHandle` | Split panes built on `react-resizable-panels`. |
-| `ScrollArea` | Styled scroll container. |
+| `ScrollArea` | Styled scroll container. Without `scrollX`, its content is never wider than the area, so long text has to truncate or wrap. |
 | `Meter` | Progress/utilization bar. |
 | `Spinner` | Loading indicator. |
 | `DismissGuardContext` / `useDismissGuard` | Hook + context to block overlay dismissal (used by `Sheet`; consumers such as dirty forms mark themselves undismissable). |
@@ -71,7 +71,7 @@ If a component needs a slot the package doesn't expose yet, **extend the package
 
 ## When to consume from `shared/components/ui/`
 
-`frontend/app/src/shared/components/ui/` contains primitives that have not yet been migrated. They are still the canonical implementation for now. Examples: `combobox`, `popover`, `dropdown-menu`, `badge`, `alert`, `accordion`, `pagination`, `command` (`tooltip` and `resizable` have already moved to `@infrahub/ui`).
+`frontend/app/src/shared/components/ui/` contains primitives that have not yet been migrated. They are still the canonical implementation for now. Examples: `combobox`, `popover`, `badge`, `alert`, `accordion`, `pagination`, `command` (`tooltip` and `resizable` have already moved to `@infrahub/ui`).
 
 **Popover exists in both places.** `shared/components/ui/popover.tsx` is Radix-based (`@radix-ui/react-popover`), adds `PopoverAnchor` and `PopoverTabs*` subcomponents, and marks its content with `data-react-aria-top-layer` so clicking inside it does not count as an outside interaction for an enclosing react-aria overlay such as the package `Sheet`. `@infrahub/ui` exports a separate react-aria `Popover` / `PopoverDialog` / `PopoverTrigger`. Both are actively used in the app (roughly 23 vs 26 importing files); the dismiss guard itself lives in `@infrahub/ui` (`Sheet` + `useDismissGuard`), not in either popover.
 

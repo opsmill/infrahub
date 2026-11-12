@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { type EdgeStyle, GraphControls, type LayoutDirection } from "./graph-controls";
@@ -14,10 +14,6 @@ const reactFlow = vi.hoisted(() => ({
 vi.mock("@xyflow/react", () => ({
   useReactFlow: () => reactFlow,
 }));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 const onEdgeStyleChangeMock = () => vi.fn<(style: EdgeStyle) => void>();
 const onLayoutMock = () => vi.fn<(direction: LayoutDirection) => void>();

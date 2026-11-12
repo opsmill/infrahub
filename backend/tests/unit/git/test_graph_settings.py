@@ -12,14 +12,25 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git.graph_settings import resolve_graph_settings
 
 
-class StubString(String):
-    def __init__(self, value: str) -> None:
-        self.value = value
+@dataclass
+class StubAttribute:
+    """Sets every member of the SDK attribute protocol so the stubs below are concrete."""
+
+    value: str
+    name: str = ""
+    id: str | None = None
+    is_default: bool | None = None
+    is_from_profile: bool | None = None
+    is_inherited: bool | None = None
+    updated_at: str | None = None
+    is_protected: bool | None = None
+    is_loaded: bool = True
 
 
-class StubDropdown(Dropdown):
-    def __init__(self, value: str) -> None:
-        self.value = value
+class StubString(StubAttribute, String): ...
+
+
+class StubDropdown(StubAttribute, Dropdown): ...
 
 
 class StubRepositoryNode(CoreRepository):

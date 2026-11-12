@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import contextlib
+import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
+from typing import TYPE_CHECKING, Any
 
 import ujson
 
@@ -14,14 +15,19 @@ from infrahub import config
 from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
     GLOBAL_BRANCH_NAME,
+    HFID_ATTRIBUTE_NAME,
     NULL_VALUE,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+    RelationshipStatus,
 )
 from infrahub.core.constants import (
     NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
@@ -34,8 +40,15 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
+from infrahub.core.query.resource_manager import TrackingPool
+from infrahub.core.query.subquery import (
+    build_subquery_filter,
+    build_subquery_order,
+    build_subquery_order_metadata,
+    ranks_latest_value,
+)
 from infrahub.core.query.utils import find_node_schema
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByMetadataField,
@@ -52,6 +65,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Generator, Iterable
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -69,6 +84,20 @@ if TYPE_CHECKING:
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
 NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
+
+IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
+
+
+def _compress_ipv6(text: str) -> str:
+    """Return a complete IPv6 address or interface in its compressed form.
+
+    Raises:
+        ValueError: When the text is not a complete IPv6 address or interface.
+
+    """
+    if "/" in text:
+        return ipaddress.IPv6Interface(text).with_prefixlen
+    return str(ipaddress.IPv6Address(text))
 
 
 @dataclass
@@ -110,6 +139,8 @@ class AttributeFromDB:
 
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
+    tracking_pool: TrackingPool | None = None
+    tracking_pool_loaded: bool = False
 
     updated_at: Timestamp | None = None
     updated_by: str | None = None
@@ -258,9 +289,20 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["node_branch_prop"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
-            "status": "active",
+            "status": RelationshipStatus.ACTIVE.value,
             "from": at.to_string(),
             "from_user_id": self.user_id,
+        }
+
+        # A number pool's reservation record lives on the global branch.
+        global_branch = registry.get_global_branch()
+        self.params["pool_rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": at.to_string(),
+            "from_user_id": self.user_id,
+            "identifier": self.node.id,
         }
 
         # set all the property strings that we reuse
@@ -276,6 +318,21 @@ class NodeCreateAllQuery(NodeQuery):
             "{ branch: rel.branch, branch_level: rel.branch_level, "
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
+        pool_reservation_subquery = """
+            WITH *
+            CALL (a, attr) {
+                UNWIND attr.pool_prop AS prop
+                MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                // -------------------
+                // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+                // -------------------
+                SET pool._number_pool_lock = TRUE
+                REMOVE pool._number_pool_lock
+                CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
+                SET reserved.allocated_values = CASE WHEN prop.allocated_value IS NULL THEN [] ELSE [prop.allocated_value] END
+                %(stamp_pool)s
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:
             rel_vertex_prop_str += ", created_at: $at, created_by: $user_id, updated_at: $at, updated_by: $user_id"
@@ -337,7 +394,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_indexed_query = """
         WITH distinct n
@@ -359,7 +421,12 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
-        }""" % {"attr_edge": attr_edge_prop_str, "attr_vertex": attr_vertex_prop_str}
+%(pool_reservation)s
+        }""" % {
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
+        }
 
         attrs_iphost_query = """
         WITH distinct n
@@ -383,11 +450,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "iphost_prop": ", ".join(iphost_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         attrs_ipnetwork_query = """
@@ -412,11 +481,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
             )
+%(pool_reservation)s
         }
         """ % {
             "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
+            "pool_reservation": pool_reservation_subquery,
         }
 
         deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
@@ -564,7 +635,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     def get_self_ids(self) -> tuple[str, str]:
         result = self.get_result()
-        node = result.get("n")
+        node = result.get_optional_node("n") if result else None
 
         if node is None:
             rendered = self.render()
@@ -575,9 +646,9 @@ class NodeCreateAllQuery(NodeQuery):
     def get_ids(self) -> dict[str, tuple[str, str]]:
         data = {}
         for result in self.get_results():
-            node = result.get("rn")
+            node = result.get_node("rn")
             if "Relationship" in node.labels:
-                peer = result.get("rv")
+                peer = result.get_node("rv")
                 name = f"{node.get('name')}::{peer.get('uuid')}"
             elif "Attribute" in node.labels:
                 name = node.get("name")
@@ -707,11 +778,20 @@ class NodeListGetAttributeQuery(Query):
         ids: list[str],
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
+        tracking_pool_attribute_names: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
+        """Read the attributes of the nodes `ids` name.
+
+        `tracking_pool_attribute_names` limits the tracking pool read to the attributes it names; None reads
+        it on every attribute, and an empty collection skips it.
+        """
         self.ids = ids
         self.fields = fields
         self.include_metadata = include_metadata
+        self.tracking_pool_attribute_names = (
+            frozenset(tracking_pool_attribute_names) if tracking_pool_attribute_names is not None else None
+        )
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
     @property
@@ -723,6 +803,12 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & MetadataOptions.OWNER)
 
     @property
+    def _include_tracking_pool(self) -> bool:
+        if not self.include_metadata & MetadataOptions.TRACKING_POOL:
+            return False
+        return self.tracking_pool_attribute_names is None or bool(self.tracking_pool_attribute_names)
+
+    @property
     def _include_updated_metadata(self) -> bool:
         return bool(self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY))
 
@@ -731,6 +817,7 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        """Resolve the source a user set on the attribute; the number pool tracking it is read separately."""
         if not self._include_source:
             return
         source_query = """
@@ -765,6 +852,39 @@ WITH *,
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])
+
+    def _add_tracking_pool_to_query(self) -> None:
+        """Read the number pool tracking the attribute and if the branch's value is allocated.
+
+        The record is on the global branch, so every branch reads the same pool; the provenance compares
+        the value this branch holds with the numbers the pool allocated to the attribute.
+        """
+        if not self._include_tracking_pool:
+            return
+        attribute_filter = ""
+        if self.tracking_pool_attribute_names is not None:
+            attribute_filter = "a.name IN $tracking_pool_attribute_names AND "
+            self.params["tracking_pool_attribute_names"] = sorted(self.tracking_pool_attribute_names)
+        tracking_pool_query = """
+CALL (a, av) {
+    OPTIONAL MATCH (tracking_pool:Node:%(number_pool)s)-[reserved:IS_RESERVED]->(a)
+    WHERE %(attribute_filter)sreserved.branch = $global_branch_name
+      AND reserved.status = "active"
+      AND reserved.from <= $tracking_pool_at
+      AND (reserved.to IS NULL OR reserved.to > $tracking_pool_at)
+    RETURN
+        tracking_pool.uuid AS tracking_pool_uuid,
+        reserved.allocated_values IS NOT NULL
+            AND NOT coalesce(toInteger(av.value) IN reserved.allocated_values, FALSE)
+            AS tracking_pool_is_provided
+    ORDER BY reserved.from DESC
+    LIMIT 1
+}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "attribute_filter": attribute_filter}
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["tracking_pool_at"] = self.at.to_string()
+        self.add_to_query(tracking_pool_query)
+        self.return_labels.extend(["tracking_pool_uuid", "tracking_pool_is_provided"])
 
     def _add_created_metadata_to_query(self) -> None:
         if not self._include_created_metadata:
@@ -901,6 +1021,7 @@ CALL (a) {
 
         self._add_source_to_query(branch_filter_str=branch_filter)
         self._add_owner_to_query(branch_filter_str=branch_filter)
+        self._add_tracking_pool_to_query()
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
@@ -945,7 +1066,7 @@ CALL (a) {
             content=attr_value._properties,
             branch=self.branch.name,
             flag_properties={
-                "is_protected": result.get("isp").get("value"),
+                "is_protected": result.get_node("isp").get("value"),
             },
         )
 
@@ -969,6 +1090,18 @@ CALL (a) {
             data.node_properties["owner"] = AttributeNodePropertyFromDB(
                 uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
             )
+
+        if self._include_tracking_pool and (
+            self.tracking_pool_attribute_names is None or data.name in self.tracking_pool_attribute_names
+        ):
+            data.tracking_pool_loaded = True
+            data.tracking_pool = None
+            if tracking_pool_uuid := result.get_as_optional_type("tracking_pool_uuid", return_type=str):
+                is_provided = result.get_as_type("tracking_pool_is_provided", return_type=bool)
+                data.tracking_pool = TrackingPool(
+                    pool_id=tracking_pool_uuid,
+                    provenance=PoolRecordProvenance.PROVIDED if is_provided else PoolRecordProvenance.ALLOCATED,
+                )
 
         return data
 
@@ -1279,29 +1412,29 @@ CALL (rel) {
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()
         for result in self.get_results():
-            node_id = result.get("n_uuid")
-            rel_name = result.get("rel_name")
-            peer_id = result.get("peer_uuid")
+            node_id = result.get_as_type("n_uuid", return_type=str)
+            rel_name = result.get_as_type("rel_name", return_type=str)
+            peer_id = result.get_as_type("peer_uuid", return_type=str)
             peer_kind = result.get_as_type("peer_kind", return_type=str)
             direction = str(result.get("direction"))
 
             created_at = None
             if self.include_metadata & MetadataOptions.CREATED_AT:
-                created_at_str = result.get("created_at")
+                created_at_str = result.get_as_optional_type("created_at", return_type=str)
                 created_at = Timestamp(created_at_str) if created_at_str else None
 
             created_by_str = None
             if self.include_metadata & MetadataOptions.CREATED_BY:
-                created_by_str = result.get("created_by")
+                created_by_str = result.get_as_optional_type("created_by", return_type=str)
 
             updated_at = None
             if self.include_metadata & MetadataOptions.UPDATED_AT:
-                updated_at_str = result.get("updated_at")
+                updated_at_str = result.get_as_optional_type("updated_at", return_type=str)
                 updated_at = Timestamp(updated_at_str) if updated_at_str else None
 
             updated_by_str = None
             if self.include_metadata & MetadataOptions.UPDATED_BY:
-                updated_by_str = result.get("updated_by")
+                updated_by_str = result.get_as_optional_type("updated_by", return_type=str)
 
             is_protected: bool | None = None
             if self.include_metadata & MetadataOptions.IS_PROTECTED:
@@ -1373,19 +1506,35 @@ WITH node_id, head(collect(node_kind)) AS node_kind
         return node_kind_map
 
 
-class NodeListGetDisplayLabelQuery(Query):
-    """Read the display label stored on a list of nodes without instantiating the nodes.
+@dataclass(frozen=True)
+class NodeStoredLabels:
+    """The labels stored on a node, read from the graph without instantiating the node."""
 
-    The stored ``display_label`` attribute is what ``Node.get_display_label`` returns when it is
-    populated, so this is the cheap way to label many nodes at once. A node that is not active on
-    the branch, or that has no display label stored, is absent from the result.
+    kind: str
+    """The kind of the node vertex active on the branch."""
+
+    display_label: str | None
+    """The stored display label, or None when it is empty, absent or not requested."""
+
+    hfid: list[str] | None
+    """The stored human-friendly ID, or None when it is empty, absent or not requested."""
+
+
+class NodeListGetStoredLabelsQuery(Query):
+    """Read the labels stored on a list of nodes without instantiating the nodes.
+
+    The stored ``display_label`` and ``human_friendly_id`` attributes are what ``Node`` returns
+    for its labels when they are populated, so this is the cheap way to label many nodes at once.
+    Only the requested label attributes are read. A node that is not active on the branch is absent
+    from the result; an active node is present even when none of its labels is stored.
     """
 
-    name = "node_list_get_display_label"
+    name = "node_list_get_stored_labels"
     type = QueryType.READ
 
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], label_names: list[str], **kwargs: Any) -> None:
         self.ids = ids
+        self.label_names = label_names
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -1394,6 +1543,7 @@ class NodeListGetDisplayLabelQuery(Query):
         )
         self.params.update(branch_params)
         self.params["ids"] = self.ids
+        self.params["label_names"] = self.label_names
 
         query = """
         MATCH (n:Node)
@@ -1411,50 +1561,73 @@ class NodeListGetDisplayLabelQuery(Query):
         }
         WITH n
         WHERE root_edge.status = "active"
-        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "display_label"})
-        // a deleted or migrated node holds several edges to the same attribute: resolve each pair once
-        WITH DISTINCT n, attr
-        CALL (n, attr) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
-            WHERE %(branch_filter)s
-            RETURN r AS attr_edge
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr
-        WHERE attr_edge.status = "active"
         // --------------------------
-        // Resolve the value active on the branch at the requested point in time
+        // Collect the value of each requested label attribute active on the branch, one row per node
         // --------------------------
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN r AS value_edge, av
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
+        CALL (n) {
+            UNWIND $label_names AS attr_name
+            // resolve each requested name to a single attribute, even if several claim to be active
+            CALL (n, attr_name) {
+                MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: attr_name})
+                WHERE %(branch_filter)s
+                RETURN attr, r AS attr_edge
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH attr
+            WHERE attr_edge.status = "active"
+            CALL (attr) {
+                MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+                WHERE %(branch_filter)s
+                RETURN r AS value_edge, av
+                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+                LIMIT 1
+            }
+            WITH attr, av
+            WHERE value_edge.status = "active"
+            RETURN collect([attr.name, av.value]) AS stored_values
         }
-        WITH n, av
-        WHERE value_edge.status = "active"
         """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid AS node_id", "av.value AS display_label"]
+        self.return_labels = ["n.uuid AS node_id", "n.kind AS node_kind", "stored_values"]
 
-    def get_display_label_map(self) -> dict[str, str]:
-        """Return the stored display label of every node that has a non-empty one, keyed by node id.
+    def get_stored_labels(self) -> dict[str, NodeStoredLabels]:
+        """Return the labels stored on every node active on the branch, keyed by node id.
 
-        An empty stored label, including the ``NULL_VALUE`` sentinel a kind without a template
-        stores, is left out on purpose: whether it should read as an empty string or as the node's
-        default representation depends on the node's schema, which ``Node.get_display_label`` knows
-        and this query does not.
+        An empty stored value, including the ``NULL_VALUE`` sentinel an unset label stores, reads as
+        None on purpose: whether it should read as empty or be computed from the node's fields
+        depends on the node's schema, which ``Node`` knows and this query does not.
         """
-        display_label_map: dict[str, str] = {}
+        stored_labels: dict[str, NodeStoredLabels] = {}
         for result in self.get_results():
-            display_label = result.get("display_label")
-            if not display_label or display_label == NULL_VALUE:
-                continue
-            display_label_map[str(result.get("node_id"))] = str(display_label)
-        return display_label_map
+            stored_values: list[list[Any]] = result.get_as_type(label="stored_values", return_type=list)
+            values = {str(name): value for name, value in stored_values}
+            stored_labels[result.get_as_type(label="node_id", return_type=str)] = NodeStoredLabels(
+                kind=result.get_as_type(label="node_kind", return_type=str),
+                display_label=_stored_display_label(values.get(DISPLAY_LABEL_ATTRIBUTE_NAME)),
+                hfid=_stored_hfid(values.get(HFID_ATTRIBUTE_NAME)),
+            )
+        return stored_labels
+
+
+def _stored_display_label(raw: Any) -> str | None:
+    if not raw or raw == NULL_VALUE:
+        return None
+    return str(raw)
+
+
+def _stored_hfid(raw: Any) -> list[str] | None:
+    """Parse a stored HFID, a JSON-encoded list, keeping its non-null items as ``Node.get_hfid`` does."""
+    if not isinstance(raw, str) or raw == NULL_VALUE:
+        return None
+    try:
+        parsed = ujson.loads(raw)
+    except ujson.JSONDecodeError:
+        return None
+    if not isinstance(parsed, list) or not parsed:
+        return None
+    return [item for item in parsed if item is not None]
 
 
 class NodeListGetInfoQuery(Query):
@@ -1665,6 +1838,25 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, attr, av
         WHERE r.status = "active"
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
+        // --------------------------
+        // Keep the HFID only if it is the latest value of the attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
+        // --------------------------
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(latest_av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r, latest_av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r, latest_av
+        WHERE r.status = "active" AND latest_av.value = av.value
+        """
+        else:
+            query += """
         // --------------------------
         // Filter HAS_VALUE edges to resolve the active value
         // on the correct branch at the requested point in time
@@ -1678,7 +1870,8 @@ class NodeGetByHFIDQuery(Query):
         }
         WITH n, av, r
         WHERE r.status = "active"
-        """ % {
+        """
+        query %= {
             "branch_filter": branch_filter,
             "node_kind": self.node_kind,
         }
@@ -1964,12 +2157,22 @@ WITH %(tracked_vars)s,
         )
         self.params.update(branch_params)
 
+        node_labels = self.schema.kind
+        node_ids_where = ""
+        if self.filters and ("id" in self.filters or "ids" in self.filters):
+            self.params["node_ids"] = [self.filters["id"]] if self.has_filter_by_id else self.filters["ids"]
+            # Of a node vertex's labels only Node carries the uuid index, and the uuid check has to be in the
+            # first MATCH for Neo4j to use that index instead of reading every node of the kind.
+            node_labels = f"Node:{self.schema.kind}"
+            node_ids_where = "n.uuid IN $node_ids"
+
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
         if not self.branch.is_default:
             topquery = """
-            MATCH (n:%(node_kind)s)
+            MATCH (n:%(node_labels)s)
+            %(node_ids_where)s
             CALL (n) {
                 MATCH (root:Root)<-[r:IS_PART_OF]-(n)
                 WHERE %(branch_filter)s
@@ -1979,20 +2182,25 @@ WITH %(tracked_vars)s,
             }
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "branch_filter": branch_filter,
+                "node_labels": node_labels,
+                "node_ids_where": f"WHERE {node_ids_where}" if node_ids_where else "",
+            }
             self.add_to_query(topquery)
         else:
             topquery = """
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
-            WHERE %(branch_filter)s
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_labels)s)
+            WHERE %(where)s
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "where": f"{node_ids_where} AND ({branch_filter})" if node_ids_where else branch_filter,
+                "node_labels": node_labels,
+            }
             self.add_to_query(topquery)
 
-        if self.has_filter_by_id and self.filters:
-            self.params["uuid"] = self.filters["id"]
-            self.add_to_query(" AND n.uuid = $uuid")
+        if self.has_filter_by_id:
             return
 
         # Determine ordering behavior
@@ -2014,10 +2222,6 @@ WITH %(tracked_vars)s,
             # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
             self.order_by = ["n.uuid"]
             return
-
-        if self.filters and "ids" in self.filters:
-            self.add_to_query("AND n.uuid IN $node_ids")
-            self.params["node_ids"] = self.filters["ids"]
 
         # Get unified field requirements for filtering and ordering
         field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
@@ -2077,6 +2281,7 @@ WITH %(tracked_vars)s,
                 subquery_idx=far.index,
                 partial_match=self.partial_match,
                 extra_tail_properties=extra_tail_properties,
+                branch_agnostic=self.branch_agnostic,
             )
             for query_var in extra_tail_properties:
                 self._track_variable(query_var)
@@ -2223,14 +2428,53 @@ WITH %(tracked_vars)s,
         index: int,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for an attribute/relationship filter."""
+        if isinstance(attr_value, Enum):
+            attr_value = attr_value.value
         return FieldAttributeRequirement(
             field_name=field_name,
             field=field,
             field_attr_name=attr_name,
-            field_attr_value=attr_value.value if isinstance(attr_value, Enum) else attr_value,
+            field_attr_value=self._normalize_ip_filter_value(
+                field_name=field_name, field=field, attr_name=attr_name, attr_value=attr_value
+            ),
             index=index,
             types=[FieldAttributeRequirementType.FILTER],
         )
+
+    def _normalize_ip_filter_value(
+        self,
+        field_name: str,
+        field: AttributeSchema | RelationshipSchema | None,
+        attr_name: str,
+        attr_value: Any,
+    ) -> Any:
+        """Return an IP filter value in the form IP values are saved in, so any valid notation of it matches.
+
+        A value that does not parse as an IP is returned unchanged.
+        """
+        if attr_name not in ("value", "values"):
+            return attr_value
+
+        normalize: Callable[[str], str]
+        if field is None and field_name in ("any", "attribute"):
+            normalize = _compress_ipv6
+        elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
+            # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.
+            normalize = _compress_ipv6 if self.partial_match else field.get_class()._normalize_value
+        else:
+            return attr_value
+
+        def _normalize(value: Any) -> Any:
+            if not isinstance(value, str):
+                return value
+            try:
+                return normalize(value)
+            except ValueError:
+                return value
+
+        if isinstance(attr_value, list):
+            return [_normalize(value) for value in attr_value]
+        return _normalize(attr_value)
 
     def _get_filter_requirements(self, start_index: int) -> list[FieldAttributeRequirement]:
         """Build filter requirements from self.filters.
@@ -2504,6 +2748,27 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
         WHERE %(search_predicate)s %(kind_filter)s
+        """
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            query += """
+        // --------------------------
+        // Search the latest value of each candidate attribute:
+        // on a branch, the default branch's edge to a replaced value stays open
+        // --------------------------
+        WITH DISTINCT n, attr
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            WHERE %(branch_filter)s
+            RETURN r, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, av, r
+        WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
+        WITH n, attr
+        """
+        else:
+            query += """
         WITH DISTINCT n, attr, av
         // --------------------------
         // filter HAS_VALUE edges
@@ -2517,6 +2782,8 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr
         WHERE r.status = "active"
+        """
+        query += """
         // --------------------------
         // filter HAS_ATTRIBUTE edges
         // --------------------------
@@ -2529,7 +2796,8 @@ class NodeGetListByAttributeValueQuery(Query):
         }
         WITH n, attr, r
         WHERE r.status = "active"
-        """ % {
+        """
+        query %= {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
@@ -2751,12 +3019,12 @@ class NodeGetHierarchyQuery(Query):
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            data = result.get("peer").get("uuid")
+            data = result.get_node("peer").get("uuid")
             yield data
 
     def get_relatives(self) -> Generator[PeerInfo, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            peer_node = result.get("peer")
+            peer_node = result.get_node("peer")
             yield PeerInfo(
                 uuid=peer_node.get("uuid"),
                 kind=peer_node.get("kind"),

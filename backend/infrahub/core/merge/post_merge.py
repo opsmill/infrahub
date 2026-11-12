@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core import registry
@@ -27,6 +27,8 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.changelog.models import NodeChangelog
@@ -39,6 +41,7 @@ if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
 
     from .recompute_coalescing import PythonTargetResolver
+    from .regeneration_barrier import RegenerationBarrier
     from .repository_merge_dispatcher import RepositoryMergeDispatcher
 
 
@@ -56,6 +59,7 @@ class PostMergeDispatcher:
         event_service: InfrahubEventService,
         default_branch: Branch,
         python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.repository_merge_dispatcher = repository_merge_dispatcher
@@ -63,6 +67,7 @@ class PostMergeDispatcher:
         self.event_service = event_service
         self.default_branch = default_branch
         self.python_resolver = python_resolver
+        self.barrier = barrier
         self.log = logger or get_logger()
 
     async def run_follow_ups(
@@ -74,16 +79,16 @@ class PostMergeDispatcher:
         ipam_node_details: list[IpamNodeDetails] | None,
         merge_diff_cache_key: str | None = None,
     ) -> None:
-        # The repository merge issues a GraphQL write to the default branch, so it must run after the
-        # write block is lifted; while protected it would be rejected as a write to the merging branch.
-        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
-            await self.repository_merge_dispatcher.merge_repositories()
-
         # The user-visible merge is already done, so the follow-up trees must not inherit its
         # priority from the caller's context: each runs from a context stamped with its own lane,
         # which trickles down to all of its subtasks.
         medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
         low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
+        # The repository merge issues a GraphQL write to the default branch, so it must run after the
+        # write block is lifted; while protected it would be rejected as a write to the merging branch.
+        with log_exception_guard(self.log, "Repository merge failed after branch merge committed"):
+            await self.repository_merge_dispatcher.merge_repositories(context=medium_context)
 
         # Trigger the reconciliation of IPAM data now that the graph merge is complete.
         if ipam_node_details:
@@ -179,6 +184,7 @@ class PostMergeDispatcher:
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
                 submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
                 python_resolver=self.python_resolver,
+                barrier=self.barrier,
             )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
 

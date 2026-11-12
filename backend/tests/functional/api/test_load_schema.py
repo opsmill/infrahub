@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
-from infrahub_sdk.schema import validate_schema
+from infrahub_sdk.schema import NodeSchemaAPI, validate_schema
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.initialization import create_account
@@ -565,7 +565,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         }
 
         country_schema_node = schema_dict["nodes"][1]
-        assert country_schema_node["name"] == "Country"  # type: ignore
+        assert country_schema_node["name"] == "Country"  # type: ignore[index]
         for field_name in OPTIONAL_TEXT_FIELDS:
             assert field_name in country_schema_node
 
@@ -574,6 +574,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert not creation.errors
 
         schema = await client.schema.get(kind="TestCountry", refresh=True)
+        assert isinstance(schema, NodeSchemaAPI)
         assert schema.default_filter == "name__value"
         assert schema.description == "test description"
         assert schema.label == "MyPersonLabel"
@@ -582,18 +583,19 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert schema.parent == "TestContinent"
         assert schema.children == "TestContinent"
 
-        country_schema_node["default_filter"] = ""  # type: ignore
-        country_schema_node["description"] = ""  # type: ignore
-        country_schema_node["label"] = ""  # type: ignore
-        country_schema_node["menu_placement"] = ""  # type: ignore
-        country_schema_node["documentation"] = ""  # type: ignore
-        country_schema_node["parent"] = ""  # type: ignore
-        country_schema_node["children"] = ""  # type: ignore
+        country_schema_node["default_filter"] = ""  # type: ignore[index]
+        country_schema_node["description"] = ""  # type: ignore[index]
+        country_schema_node["label"] = ""  # type: ignore[index]
+        country_schema_node["menu_placement"] = ""  # type: ignore[index]
+        country_schema_node["documentation"] = ""  # type: ignore[index]
+        country_schema_node["parent"] = ""  # type: ignore[index]
+        country_schema_node["children"] = ""  # type: ignore[index]
 
         creation = await client.schema.load(schemas=[schema_dict])
         assert creation.schema_updated
 
         schema = await client.schema.get(kind="TestCountry", refresh=True)
+        assert isinstance(schema, NodeSchemaAPI)
         assert schema.default_filter is None
         assert schema.description is None
         assert schema.label == "Country"

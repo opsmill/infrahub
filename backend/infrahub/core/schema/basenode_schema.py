@@ -5,13 +5,19 @@ import keyword
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, overload
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants.schema import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
+    HFID_ATTRIBUTE_NAME,
+    SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS,
+    SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS,
+)
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
@@ -19,15 +25,17 @@ from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+    from typing import Self
+
     from pydantic.config import JsonDict
-    from typing_extensions import Self
 
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
-NODE_PROPERTY_ATTRIBUTES = ["display_label", "human_friendly_id"]
+NODE_PROPERTY_ATTRIBUTES = [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME]
 INHERITED = "INHERITED"
 
 OPTIONAL_TEXT_FIELDS = [
@@ -317,10 +325,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
-        if name == "human_friendly_id":
-            return AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=self.branch)
-        if name == "display_label":
-            return AttributeSchema(name="display_label", kind="Text", optional=True, branch=self.branch)
+        if name == HFID_ATTRIBUTE_NAME:
+            return AttributeSchema(name=HFID_ATTRIBUTE_NAME, kind="List", optional=True, branch=self.branch)
+        if name == DISPLAY_LABEL_ATTRIBUTE_NAME:
+            return AttributeSchema(name=DISPLAY_LABEL_ATTRIBUTE_NAME, kind="Text", optional=True, branch=self.branch)
 
         for item in self.attributes:
             if item.name == name:
@@ -481,7 +489,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         If neither display_label nor display_labels is defined, we return None which equal to everything.
         """
-        return self._generate_fields_for_derived_field(field_name="display_label")
+        return self._generate_fields_for_derived_field(field_name=DISPLAY_LABEL_ATTRIBUTE_NAME)
 
     def generate_fields_for_hfid(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required.
@@ -490,7 +498,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         If human_friendly_id is not defined, we return None which equal to everything.
         """
-        return self._generate_fields_for_derived_field(field_name="human_friendly_id")
+        return self._generate_fields_for_derived_field(field_name=HFID_ATTRIBUTE_NAME)
 
     def _generate_fields_for_derived_field(self, field_name: str) -> dict | None:
         paths = self.get_derived_field_paths(field_name=field_name)
@@ -518,7 +526,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if field_name not in NODE_PROPERTY_ATTRIBUTES:
             raise ValueError(f"{field_name} is not a derived node property of {self.kind}")
 
-        if field_name == "human_friendly_id":
+        if field_name == HFID_ATTRIBUTE_NAME:
             return list(self.human_friendly_id) if self.human_friendly_id else None
 
         if self.display_labels:
@@ -562,6 +570,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             property_piece = path_parts[2] if len(path_parts) > 2 else None
         else:
             raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
+
+        max_parts = SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS if relationship_piece else SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS
+        if len(path_parts) > max_parts:
+            raise AttributePathParsingError(f"{path} has too many segments on schema {self.kind}")
 
         if relationship_piece and not schema:
             raise AttributePathParsingError("schema must be provided in order to check a path with a relationship")

@@ -39,8 +39,9 @@ The retry behavior and its relation to zombie detection are documented in
 
 ### Neutral
 
-- The zombie-detection window is sized above this fixed backoff, a relationship that holds because
-  the delay is fixed and known.
+- The zombie-detection window does not depend on this backoff: zombie detection judges a run waiting
+  between attempts only once its retry was due more than the window ago, so the delay can change
+  without touching the window.
 
 ## Alternatives Considered
 

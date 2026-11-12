@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import load_schema
 from tests.integration.proposed_change.artifact_regen_harness import ArtifactRegenGateHarness
 
@@ -91,7 +92,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         )
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -155,6 +156,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         transform_python = await client.get(kind=CoreTransformPython, id=dataset["transform_python_id"])
 
         assert transform_jinja.dependencies_complete.value is True
+        assert transform_jinja.dependencies.value is not None
         assert set(transform_jinja.dependencies.value) == {
             "templates/device.j2",
             "partials/header.j2",
@@ -163,6 +165,7 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
         # The Python transform declares one of its siblings through `watch.files`; the others
         # sit in the same directory and stay out of the closure.
         assert transform_python.dependencies_complete.value is True
+        assert transform_python.dependencies.value is not None
         assert set(transform_python.dependencies.value) == {
             "transforms/foo/foo.py",
             "transforms/foo/helpers.py",

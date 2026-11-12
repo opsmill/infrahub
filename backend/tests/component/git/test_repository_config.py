@@ -11,6 +11,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.exceptions import RepositoryConfigurationError
+from tests.helpers.flow import call_in_flow
 from tests.helpers.git import clone_repository
 from tests.helpers.test_client import dummy_async_request
 
@@ -177,7 +178,7 @@ schemas: []
         repo_without_config.create_commit_worktree(commit)
 
         with pytest.raises(RepositoryConfigurationError) as exc_info:
-            await repo_without_config.get_repository_config(branch_name="main", commit=commit)
+            await call_in_flow(lambda: repo_without_config.get_repository_config(branch_name="main", commit=commit))
 
         assert repo_without_config.name in str(exc_info.value)
         assert "missing a configuration file" in str(exc_info.value)
@@ -192,7 +193,7 @@ schemas: []
         repo_with_invalid_yaml.create_commit_worktree(commit)
 
         with pytest.raises(RepositoryConfigurationError) as exc_info:
-            await repo_with_invalid_yaml.get_repository_config(branch_name="main", commit=commit)
+            await call_in_flow(lambda: repo_with_invalid_yaml.get_repository_config(branch_name="main", commit=commit))
 
         assert repo_with_invalid_yaml.name in str(exc_info.value)
         assert "could not be parsed as valid YAML" in str(exc_info.value)
@@ -205,7 +206,9 @@ schemas: []
         repo_with_invalid_format.create_commit_worktree(commit)
 
         with pytest.raises(RepositoryConfigurationError) as exc_info:
-            await repo_with_invalid_format.get_repository_config(branch_name="main", commit=commit)
+            await call_in_flow(
+                lambda: repo_with_invalid_format.get_repository_config(branch_name="main", commit=commit)
+            )
 
         assert repo_with_invalid_format.name in str(exc_info.value)
         assert "format is not valid" in str(exc_info.value)
@@ -217,7 +220,9 @@ schemas: []
         commit = repo_with_valid_config.get_commit_value(branch_name="main")
         repo_with_valid_config.create_commit_worktree(commit)
 
-        config = await repo_with_valid_config.get_repository_config(branch_name="main", commit=commit)
+        config = await call_in_flow(
+            lambda: repo_with_valid_config.get_repository_config(branch_name="main", commit=commit)
+        )
 
         assert config is not None
 

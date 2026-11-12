@@ -136,6 +136,8 @@ Resolve each remaining hit (or explicitly note it as out-of-scope in the PR desc
 
 ## Constants
 
+Follow [Constants and literals](../constants.md) when creating or reusing values that encode a rule.
+
 - Module-level: `SCREAMING_SNAKE_CASE`
 - Object/array constants: `PascalCase` with `as const`
 

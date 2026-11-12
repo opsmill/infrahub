@@ -37,3 +37,19 @@ class RecordingImporter(RepositoryImporter):
 
     async def apply_branch_import(self, repo: InfrahubRepository, plan: ObjectImportPlan) -> None:
         self._timeline.checkpoint("apply")
+
+
+class FailingImporter(RepositoryImporter):
+    """Raises the given error when building the import of any branch."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def build_branch_import(
+        self, repo: InfrahubRepository, pending_import: PendingObjectImport
+    ) -> ObjectImportPlan:
+        # Each raise starts a fresh traceback, or later branches would show the frames of earlier ones.
+        raise self.error.with_traceback(None)
+
+    async def apply_branch_import(self, repo: InfrahubRepository, plan: ObjectImportPlan) -> None:
+        raise self.error.with_traceback(None)

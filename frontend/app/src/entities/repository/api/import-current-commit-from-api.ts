@@ -25,6 +25,7 @@ export const importCurrentCommitFromApi = async ({
     variables: {
       repositoryId,
     },
-    context: { branch: branchName },
+    // Each caller's error toast shows the refusal message, so the global toast would repeat it.
+    context: { branch: branchName, processErrorMessage: () => {} },
   });
 };

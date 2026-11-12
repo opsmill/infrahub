@@ -9,9 +9,11 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface SortPickerProps {
   schema: ModelSchema;
+  /** How many sort keys the surface can honour; unlimited when absent. */
+  maxSorts?: number;
 }
 
-export function SortPicker({ schema }: SortPickerProps) {
+export function SortPicker({ schema, maxSorts }: SortPickerProps) {
   const { customSort } = useSort(schema);
 
   return (
@@ -22,7 +24,7 @@ export function SortPicker({ schema }: SortPickerProps) {
       </Button>
 
       <Popover placement="bottom start">
-        <SortEditor schema={schema} />
+        <SortEditor schema={schema} maxSorts={maxSorts} />
       </Popover>
     </PopoverTrigger>
   );

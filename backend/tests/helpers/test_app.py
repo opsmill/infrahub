@@ -40,6 +40,7 @@ from infrahub.workers.dependencies import (
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.adapters.workflow import HoldingWorkflowExecution
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
@@ -147,7 +148,6 @@ class TestInfrahubAppBase(TestInfrahub):
         db_class: InfrahubDatabase,
         initialize_registry: None,
         redis: dict[int, int] | None,
-        nats: dict[int, int] | None,
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while
@@ -322,6 +322,19 @@ class TestInfrahubApp(TestInfrahubAppBase):
         self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
     ) -> InfrahubServices:
         return app.state.service
+
+
+class TestInfrahubAppHoldingWorkflows(TestInfrahubApp):
+    """Runs submitted workflows in process, except those a test holds to run them in an order of its own."""
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def workflow_local(
+        self, prefect: Generator[str, None, None], dependency_provider: Provider
+    ) -> AsyncGenerator[HoldingWorkflowExecution, None]:
+        workflow = HoldingWorkflowExecution()
+        await setup_task_manager_once()
+        with override_workflow(workflow, dependency_provider=dependency_provider):
+            yield workflow
 
 
 class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):

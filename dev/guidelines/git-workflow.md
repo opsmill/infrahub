@@ -14,6 +14,8 @@ Git workflow and commit conventions for the project.
   minor. A fix that changes observable behavior (which branch an event fires on, a value that is no
   longer accepted) defaults to `develop` with a changelog fragment — shipping it in a patch release
   is a deliberate call for an urgent fix, not the default
+- **Neo4j and Prefect upgrades:** target `develop`, also for a patch version of either. The
+  `upgrading-infrastructure-dependencies` skill covers the whole upgrade
 - **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
   converting call sites, changing behavior a new lint rule now gates — since what the code emits at
   runtime changed regardless of how enabling it was triggered. Target `stable` when the diff has no
@@ -30,6 +32,25 @@ Git workflow and commit conventions for the project.
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
+
+### Stacked PRs
+
+A PR that targets another feature branch rather than `develop` does not see what `develop` has
+fixed since the two diverged. GitHub runs CI on the **merge ref** — the head merged into its own
+target — so the lower PR silently picks up `develop`'s fixes while the stacked one does not. Two
+PRs holding identical code can therefore disagree about whether CI passes, which reads like a
+flake and is not one.
+
+Before recording a failure on a stacked PR as inherited or pre-existing, check whether the
+ultimate base already fixes it:
+
+```bash
+git log HEAD..origin/develop --oneline -- <failing file>   # fixes the stack's head never saw
+git diff HEAD origin/develop -- <failing file>
+```
+
+A fix that exists on `develop` is cherry-picked onto the stack, not documented as a known
+failure.
 
 ## Versioning
 
