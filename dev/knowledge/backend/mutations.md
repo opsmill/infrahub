@@ -289,7 +289,9 @@ the new pool before its transaction commits, so no write can hold it.
   It allocates a number to every existing node in one transaction, and holds `changing` from before its
   first allocation until the commit, so that no other allocation picks a number the migration drew but
   has not committed yet, and no range changes under it. When writes still hold the pool after
-  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails and the schema update is rolled back.
+  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails. The Prefect task that runs it retries it
+  up to 3 times, and the schema update is rolled back only when the last attempt also fails. A kind with
+  no nodes allocates nothing and takes no pool lock.
 - **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
 - **An allocation that returns its identifier's reservation does not hold the pool.** The reserved

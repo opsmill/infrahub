@@ -684,6 +684,33 @@ async def test_migration_numberpool_attribute_holds_the_pool_alone_until_its_com
     ]
 
 
+async def test_migration_numberpool_attribute_on_a_kind_without_nodes_does_not_hold_the_pool(
+    db: InfrahubDatabase,
+    branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    server_schema_without_numberpool: NodeSchema,
+    server_schema_with_numberpool: NodeSchema,
+    recording_lock_registry: RecordingLockRegistry,
+) -> None:
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[server_schema_without_numberpool]), branch=branch.name)
+    pool = await create_schema_number_pool(db=db, node="TestServer", node_attribute="rack_unit")
+    pool_lock = f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool.get_id()}"
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=server_schema_with_numberpool,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=server_schema_with_numberpool, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+
+    assert not execution_result.errors
+    assert recording_lock_registry.timeline.acquire_sequence(prefix=f"{pool_lock}:exclusive") == []
+
+
 async def test_migration_numberpool_attribute_from_ranges_declaration(
     db: InfrahubDatabase,
     branch: Branch,
