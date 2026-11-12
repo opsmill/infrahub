@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import re
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.exceptions import LockError, LockWaitTimeoutError
-from infrahub.lock import InfrahubLock, InfrahubSharedLock, get_shared_holders_key
+from infrahub.lock import InfrahubLock, InfrahubLockRegistry, InfrahubSharedLock, get_shared_holders_key
 from infrahub.locks.shared_holders.local import LocalSharedHolderStore
 
 if TYPE_CHECKING:
@@ -437,3 +438,44 @@ async def test_an_exclusive_request_waits_for_the_holder_of_a_lock_named_with_gl
         await asyncio.wait_for(exclusive, timeout=5)
     holder_release.set()
     await holder
+
+
+async def _collect_garbage() -> None:
+    # The loop keeps a released hold's finished renewal task queued until its next iteration.
+    await asyncio.sleep(0)
+    gc.collect()
+
+
+async def test_the_registry_keeps_a_shared_lock_while_it_is_held_and_drops_it_once_released() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    async with (
+        lock_registry.get_shared(name="pool-1", namespace="resource_pool").shared(),
+        lock_registry.get_shared(name="pool-2", namespace="resource_pool").exclusive(),
+    ):
+        await _collect_garbage()
+
+        assert set(lock_registry.shared_locks) == {"resource_pool.pool-1", "resource_pool.pool-2"}
+        assert lock_registry.get(name="pool-2", namespace="resource_pool").held_by_current_task()
+
+    await _collect_garbage()
+
+    assert dict(lock_registry.shared_locks) == {}
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_a_shared_hold_keeps_its_lock_in_the_registry_when_the_holder_keeps_no_reference_to_it() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    await lock_registry.get_shared(name="pool-1", namespace="resource_pool").acquire_shared()
+    await _collect_garbage()
+
+    assert set(lock_registry.shared_locks) == {"resource_pool.pool-1"}
+
+    await lock_registry.get_shared(name="pool-1", namespace="resource_pool").release_shared()
+    await _collect_garbage()
+
+    assert dict(lock_registry.shared_locks) == {}
+    assert not await lock_registry.shared_holder_store.has_holders(
+        key=get_shared_holders_key(name="resource_pool.pool-1")
+    )

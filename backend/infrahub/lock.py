@@ -600,7 +600,8 @@ class InfrahubLockRegistry:
         self.locks: weakref.WeakValueDictionary[str, InfrahubLock] = weakref.WeakValueDictionary()
         """Locks that something in this process still references, since names built from node IDs would otherwise pile up."""
         self._process_locks: dict[str, InfrahubLock] = {}
-        self.shared_locks: dict[str, InfrahubSharedLock] = {}
+        self.shared_locks: weakref.WeakValueDictionary[str, InfrahubSharedLock] = weakref.WeakValueDictionary()
+        """Shared locks that something in this process still references; each keeps its mutex in `locks`."""
         self.name_generator = name_generator or LockNameGenerator()
         self.shared_holder_store = build_shared_holder_store(connection=self.connection)
 
@@ -647,9 +648,12 @@ class InfrahubLockRegistry:
 
     def get_shared(self, name: str, namespace: str | None = None) -> InfrahubSharedLock:
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace)
-        if lock_name not in self.shared_locks:
-            self.shared_locks[lock_name] = self._create_shared_lock(name=lock_name)
-        return self.shared_locks[lock_name]
+        existing = self.shared_locks.get(lock_name)
+        if existing is not None:
+            return existing
+        new_lock = self._create_shared_lock(name=lock_name)
+        self.shared_locks[lock_name] = new_lock
+        return new_lock
 
     def _create_shared_lock(self, name: str) -> InfrahubSharedLock:
         return InfrahubSharedLock(
