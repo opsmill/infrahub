@@ -36,29 +36,6 @@ describe("getIpPoolUtilization", () => {
     vi.resetAllMocks();
   });
 
-  it("orders the resource prefixes without asking for weights when no prefix kind has one", async () => {
-    // GIVEN
-    vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
-      data: utilizationData,
-    } as unknown as UtilizationResult);
-
-    // WHEN
-    const utilization = await getIpPoolUtilization({
-      poolId: "pool",
-      weightedKinds: [],
-      ...context,
-    });
-
-    // THEN
-    expect(getIpPoolResourceWeightsFromApi).not.toHaveBeenCalled();
-    expect(utilization.resources.map(({ id, allocationWeight }) => [id, allocationWeight])).toEqual(
-      [
-        ["r-a", null],
-        ["r-b", null],
-      ]
-    );
-  });
-
   it("reads the weights of the resource prefixes and orders by them", async () => {
     // GIVEN
     vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({

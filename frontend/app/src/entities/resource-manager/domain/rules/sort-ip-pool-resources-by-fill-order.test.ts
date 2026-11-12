@@ -40,6 +40,45 @@ describe("sortIpPoolResourcesByFillOrder", () => {
     ]);
   });
 
+  it("orders IPv6 prefixes by their hexadecimal value", () => {
+    // GIVEN
+    const resources = [resource("2001:db8:10::/48", null), resource("2001:db8:a::/48", null)];
+
+    // WHEN
+    const sorted = sortIpPoolResourcesByFillOrder(resources);
+
+    // THEN
+    expect(sorted.map(({ display_label }) => display_label)).toEqual([
+      "2001:db8:a::/48",
+      "2001:db8:10::/48",
+    ]);
+  });
+
+  it("orders IPv4 prefixes before IPv6 prefixes", () => {
+    // GIVEN
+    const resources = [resource("::/0", null), resource("255.0.0.0/8", null)];
+
+    // WHEN
+    const sorted = sortIpPoolResourcesByFillOrder(resources);
+
+    // THEN
+    expect(sorted.map(({ display_label }) => display_label)).toEqual(["255.0.0.0/8", "::/0"]);
+  });
+
+  it("orders prefixes with the same network address by length, shortest first", () => {
+    // GIVEN
+    const resources = [resource("10.0.0.0/24", null), resource("10.0.0.0/16", null)];
+
+    // WHEN
+    const sorted = sortIpPoolResourcesByFillOrder(resources);
+
+    // THEN
+    expect(sorted.map(({ display_label }) => display_label)).toEqual([
+      "10.0.0.0/16",
+      "10.0.0.0/24",
+    ]);
+  });
+
   it("puts a resource prefix without a weight after the weighted ones", () => {
     // GIVEN
     const resources = [resource("10.0.0.0/8", null), resource("172.16.0.0/12", 1)];
