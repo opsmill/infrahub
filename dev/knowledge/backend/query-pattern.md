@@ -319,6 +319,7 @@ To select edges by the time they were opened or closed, read each edge type in i
 - One `MATCH` per edge type and property, with `USING INDEX SEEK r:TYPE(from)`, joined with `UNION ALL`. One `MATCH` over several types, or `from` and `to` joined with `OR` in one read, does not seek the indexes. Without `SEEK` the planner can choose an index scan.
 - Aggregate inside each read, then combine the aggregates. Passing every edge row to one aggregation after the `UNION ALL` plans several times slower.
 - An edge opened and closed inside the window is in both indexes, so the read on `to` excludes the edges whose `from` is also in the window.
+- A read that returns nodes instead of a count returns `DISTINCT` nodes inside each read, as `DiffFieldNodesQuery` does in the same file. Keep the hints on such a read: without them the planner can start from a scan of every node and expand to the edges.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
