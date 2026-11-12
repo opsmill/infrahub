@@ -13,11 +13,10 @@ describe("ReactAriaRouterProvider", () => {
 
   test("loads a same-origin absolute link as a full page", async () => {
     // GIVEN
-    // Only a link on the test page's own origin is handed to the provider.
     const authorizeUrl = `${window.location.origin}/api/oidc/provider1/authorize?final_url=%2F`;
-    const loadPage = vi.fn();
+    const browserNavigate = vi.fn();
     const component = await render(
-      <ReactAriaRouterProvider loadPage={loadPage}>
+      <ReactAriaRouterProvider browserNavigate={browserNavigate}>
         <Link href={authorizeUrl}>Continue with SSO</Link>
       </ReactAriaRouterProvider>
     );
@@ -26,15 +25,15 @@ describe("ReactAriaRouterProvider", () => {
     await component.getByRole("link", { name: "Continue with SSO" }).click();
 
     // THEN
-    expect(loadPage).toHaveBeenCalledExactlyOnceWith(authorizeUrl);
+    expect(browserNavigate).toHaveBeenCalledExactlyOnceWith(authorizeUrl);
     expect(window.location.pathname + window.location.search).toBe(initialUrl);
   });
 
   test("opens a relative link with the client-side router", async () => {
     // GIVEN
-    const loadPage = vi.fn();
+    const browserNavigate = vi.fn();
     const component = await render(
-      <ReactAriaRouterProvider loadPage={loadPage}>
+      <ReactAriaRouterProvider browserNavigate={browserNavigate}>
         <Link href="/branches">Branches</Link>
       </ReactAriaRouterProvider>
     );
@@ -44,6 +43,6 @@ describe("ReactAriaRouterProvider", () => {
 
     // THEN
     await expect.poll(() => window.location.pathname).toBe("/branches");
-    expect(loadPage).not.toHaveBeenCalled();
+    expect(browserNavigate).not.toHaveBeenCalled();
   });
 });
