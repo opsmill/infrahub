@@ -118,7 +118,7 @@ The search also found callers the brief does not list:
 - For a branch-agnostic node, `NodeDeleteValidator` runs `RelationshipGetByIdentifierQuery` once in window mode. The query opens with the windows collection and returns one row per window in which the link is the latest and active, and both ends exist. Each row also carries the window name.
 - The validator then runs its existing walk once per window name, starting from the same delete set, with the same index:
   - A required peer left behind in any window raises the error, with `on branch '{name}'` added to the message.
-  - A peer reached through a cascade in some window but not in the request branch's window also raises it, with the same branch suffix.
+  - A peer reached through a cascade in some window but not in the request branch's window also raises it, with the same branch suffix. Removed after the review of PR 4, at the user's request: only a required relationship blocks the delete.
 
   Changed during the review of PR 4: only the request branch's window runs the full walk. In every other window, only the branch-agnostic nodes of that walk's delete set count as deleted, because a cascade removes a branch-aware node on the request branch only. A branch-aware cascade target that keeps a required relationship to a deleted node on another branch therefore blocks the delete. Errors are grouped per blocking link and list every branch where it blocks (see `contracts/user-visible-behavior.md`).
 - A branch-aware node keeps today's single-branch query and walk.

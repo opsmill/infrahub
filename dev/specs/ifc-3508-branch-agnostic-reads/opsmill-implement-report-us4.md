@@ -6,8 +6,8 @@
 | Spec directory | `dev/specs/ifc-3508-branch-agnostic-reads/` |
 | Scope of this run | Phase 6 of [tasks.md](tasks.md): T051 to T059 |
 | Code branch | `agnostic-delete-check-ifc-3508`, local only, in the worktree `.claude/worktrees/agnostic-delete-check-ifc-3508`, with no upstream |
-| Base commit of the code branch | `956c9aa27`, the tip of PR 3 ([#11433](https://github.com/opsmill/infrahub/pull/11433), branch `branch-windows-ip-pools-ifc-3508`), which sits directly on `origin/stable` |
-| Head commit of the code branch | `2acbbce84` |
+| Base commit of the code branch | `11928e7c4` on `origin/stable`, the merge of PR 3 ([#11433](https://github.com/opsmill/infrahub/pull/11433)). The branch was first built on PR 3's tip `956c9aa27`; see "Changes after the report" |
+| Head commit of the code branch | `0934010e0` |
 | Base commit of `branch-agnostic-reads` | `4e344f789` |
 | Wall-clock time | 2026-11-12T05:45Z to about 06:55Z |
 | Status | DONE for T051 to T058. T059 is partly done: the pre-push checks pass for this PR's code, and the PR is not opened. Nothing is pushed. |
@@ -56,15 +56,24 @@ The orchestrator created the worktree (T051) before the first chunk. After each 
   - `data-model.md`
   - `tasks.md`
 
+## Changes after the report
+
+- The branch was rebased onto `origin/stable` at `11928e7c4`, after PR 3 was merged. Two import conflicts in `delete_validator.py` came from `aff8c6ba2`, which moved `Iterable` to `collections.abc`, and were resolved by keeping both changes. The earlier commits now have new ids:
+  - `034a06bb9` is `9cd03ae67`;
+  - `966834af6` is `bf634cfe8`;
+  - `4c1ff0cc2` is `dfe94156c`;
+  - `4fb189cc1` is `9d9dd79bc`;
+  - `cbaf4acb2` is `50a38af9e`;
+  - `cbb9b29a1` is `09ca2bbdf`;
+  - `2acbbce84` is `7607c75e2`.
+- At the user's request, a cascade on another branch no longer blocks the delete by itself. Only a required relationship blocks it, on every branch (commit `0934010e0`). The cascade error message is removed. Scenario 3 of the spec, FR-014, the contract, research R5 and T054 were updated to match.
+- Known limit found while testing this change: after the delete, a node on another branch keeps its optional link to the deleted branch-agnostic node, and resolving that link raises `NodeNotFoundError`. The check on `stable` does not look at other branches, so this predates this PR. It applies to every optional link, not only to cascades.
+
 ## Behavior on the head commit
 
 - Deleting a branch-agnostic node runs the existing walk in the request branch's window. That walk decides which nodes are deleted.
-- In every other live branch's window, only the branch-agnostic nodes of that delete set count as deleted, because a cascade removes a branch-aware node on the request branch only (FR-016). The delete is refused in either of these cases:
-  - a node with a required relationship to a deleted node remains on that branch;
-  - a cascade from a deleted node reaches a node there that the request branch's walk does not reach.
-- One error is raised per blocking link. It names every branch where the link blocks the delete, sorted by name:
-  - Required peer: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<b>'`, or `on branches '<b1>', '<b2>'`.
-  - Cascade: `Cannot delete <kind> '<id>'. Deleting it would also delete <peer kind> '<peer id>' through relationship <rel> on branch '<b>', but this delete does not remove that node there`.
+- In every other live branch's window, only the branch-agnostic nodes of that delete set count as deleted, because a cascade removes a branch-aware node on the request branch only (FR-016). The delete is refused when a node with a required relationship to a deleted node remains on that branch.
+- One error is raised per blocking link. It names every branch where the link blocks the delete, sorted by name: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<b>'`, or `on branches '<b1>', '<b2>'`.
 - Deleting only branch-aware nodes runs the same query and walk as before (FR-017).
 - The window mode is its own query class, `RelationshipGetByIdentifierInWindowsQuery`, with rows of type `RelationshipWindowPeersData`. The single-branch `RelationshipGetByIdentifierQuery` renders the same Cypher as on the base.
 
@@ -84,9 +93,11 @@ The window mode costs less than the base because it starts from the ids being de
 
 ## Tasks not completed
 
-- T059: the pre-push checks pass, but the PR is not opened, because this run does not push. If it is opened, it must be a draft against `stable`, stacked on PR 3.
+- T059: the pre-push checks pass, but the PR is not opened, because this run does not push. If it is opened, it must be a draft against `stable`.
 
 ## Local-pass evidence
+
+After the rebase and the cascade change, all of `test_node_manager_delete_agnostic.py`, `test_node_manager_delete.py` and `test_relationship_query.py` were run from the repository root with `uv run pytest <the three files> -q -p no:cacheprovider -rA`. The run ended at 2026-11-12T16:49:45Z with `75 passed, 17 warnings in 115.95s (0:01:55)`, and every test of `test_node_manager_delete_agnostic.py` is listed as PASSED.
 
 All runs were from `backend/`, against Neo4j 2026.05.0-enterprise started by testcontainers.
 
@@ -96,7 +107,7 @@ The command for the orchestrator's verification run was `uv run --no-sync pytest
 |---|---|---|---|---|---|
 | `test_node_manager_delete_agnostic.py::test_delete_refused_when_a_branch_holds_a_required_peer` | component | verification run | 2026-11-12T06:43:50Z (06:39:11Z by the fix subagent) | testcontainers Neo4j | `62 passed, 17 deselected, 17 warnings in 110.97s (0:01:50)` |
 | `test_node_manager_delete_agnostic.py::test_delete_refused_when_a_branch_inherits_the_required_link_from_before_it_was_created` | component | verification run | 2026-11-12T06:43:50Z (06:39:11Z by the fix subagent) | testcontainers Neo4j | `62 passed, 17 deselected, 17 warnings in 110.97s (0:01:50)` |
-| `test_node_manager_delete_agnostic.py::test_delete_refused_when_a_cascade_reaches_a_peer_on_another_branch_only` | component | verification run | 2026-11-12T06:43:50Z (06:39:11Z by the fix subagent) | testcontainers Neo4j | `62 passed, 17 deselected, 17 warnings in 110.97s (0:01:50)` |
+| `test_node_manager_delete_agnostic.py::test_delete_keeps_a_cascade_target_with_an_optional_link_back_on_another_branch` | component | run after the rebase | 2026-11-12T16:49:45Z (end of run) | testcontainers Neo4j | `PASSED backend/tests/component/core/test_node_manager_delete_agnostic.py::test_delete_keeps_a_cascade_target_with_an_optional_link_back_on_another_branch` |
 | `test_node_manager_delete_agnostic.py::test_delete_succeeds_and_cascades_only_on_the_request_branch` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_succeeds_and_cascades_only_on_the_request_branch` |
 | `test_node_manager_delete_agnostic.py::test_delete_of_a_branch_aware_node_checks_only_the_request_branch` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_of_a_branch_aware_node_checks_only_the_request_branch` |
 | `test_node_manager_delete_agnostic.py::test_delete_refused_when_a_cascade_target_with_a_required_link_back_stays_on_another_branch` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_refused_when_a_cascade_target_with_a_required_link_back_stays_on_another_branch` (failed before the fix at 06:29:33Z with `DID NOT RAISE`) |
@@ -104,7 +115,7 @@ The command for the orchestrator's verification run was `uv run --no-sync pytest
 | `test_node_manager_delete_agnostic.py::test_delete_checks_a_branch_aware_node_deleted_with_a_branch_agnostic_one_on_the_request_branch_only` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_checks_a_branch_aware_node_deleted_with_a_branch_agnostic_one_on_the_request_branch_only` |
 | `test_node_manager_delete_agnostic.py::test_delete_on_a_user_branch_refused_when_the_default_branch_holds_a_required_peer` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_on_a_user_branch_refused_when_the_default_branch_holds_a_required_peer` |
 | `test_node_manager_delete_agnostic.py::test_delete_refused_names_every_blocking_branch_in_one_error` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_refused_names_every_blocking_branch_in_one_error` |
-| `test_node_manager_delete_agnostic.py::test_delete_refused_when_a_cascade_reaches_a_peer_that_does_not_declare_the_relationship` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_node_manager_delete_agnostic.py::test_delete_refused_when_a_cascade_reaches_a_peer_that_does_not_declare_the_relationship` |
+| `test_node_manager_delete_agnostic.py::test_delete_keeps_a_cascade_target_that_does_not_declare_the_relationship_on_another_branch` | component | run after the rebase | 2026-11-12T16:49:45Z (end of run) | testcontainers Neo4j | `PASSED backend/tests/component/core/test_node_manager_delete_agnostic.py::test_delete_keeps_a_cascade_target_that_does_not_declare_the_relationship_on_another_branch` |
 | `test_relationship_query.py::test_query_RelationshipGetByIdentifierQuery_returns_each_window_holding_the_link` | component | verification run | 2026-11-12T06:43:50Z | testcontainers Neo4j | `PASSED tests/component/core/test_relationship_query.py::test_query_RelationshipGetByIdentifierQuery_returns_each_window_holding_the_link` |
 | `tests/component/graphql/mutations/ -k delete` (existing suite) | component | `uv run --no-sync pytest tests/component/graphql/mutations/ -k delete -p no:randomly -q` | 2026-11-12T06:41:12Z (fix subagent) | testcontainers Neo4j | `15 passed, 173 deselected` |
 
@@ -118,7 +129,7 @@ The review ran the six aspects of `speckit-review-run` (code, tests, errors, com
 |---|---|---|---|
 | High | `delete_validator.py` | In another branch's window, a branch-aware node reached by a cascade counted as deleted, so its required link to the deleted node on that branch was not checked | Fixed in `cbb9b29a1`, test in `cbaf4acb2` |
 | High | `delete_validator.py` | One error per branch and per peer: 10,000 required peers on 50 branches would build about 510,000 errors | Fixed: one error per link, listing the branches |
-| High | `delete_validator.py` | A cascade block said "mandatory relationship" for an optional relationship, and named a path the peer kind does not have | Fixed: separate cascade message, path `<kind>.<rel>` |
+| High | `delete_validator.py` | A cascade block said "mandatory relationship" for an optional relationship, and named a path the peer kind does not have | Fixed: separate cascade message, path `<kind>.<rel>`. The cascade error was later removed at the user's request (see "Changes after the report") |
 | High | `query/relationship.py` | `window_source_ids=None` switched between two queries, so `window_name` was optional, and `get_as_type` would turn a null into `"None"` | Fixed: separate query class with a required `window_name` |
 | High | tests | The fallback to the deleted node's relationship and a delete requested on a user branch were not tested | Fixed: tests added |
 | High | `errors/validation.py` (GraphQL) | A delete mutation keys errors by path, so two blocking peers of the same kind through the same relationship show as one error | Deferred: the single-branch delete already behaves this way; the grouping per link reduces it to one entry per peer |
@@ -148,4 +159,4 @@ The review ran the six aspects of `speckit-review-run` (code, tests, errors, com
 1. Review the behavior change and the grouped error format above.
 2. Decide whether to address the deferred findings in this PR, in particular the schema of other branches and the branch-aware start node that cascades into a branch-agnostic node.
 3. Run `/pre-ci` in the code worktree.
-4. Push the branch and open the PR as a draft against `stable`, stacked on PR 3 (#11433), with the performance table above in the description.
+4. Push the branch and open the PR as a draft against `stable`, with the performance table above in the description.
