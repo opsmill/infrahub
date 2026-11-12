@@ -141,7 +141,7 @@ describe("getAttributesVisibleInListView", () => {
     expect(result.map((attribute) => attribute.name)).toEqual(["visible"]);
   });
 
-  it("should return List, JSON, Any and Password attributes only when they are revealed", () => {
+  it("should return List, JSON and Any attributes only when they are revealed, and never a password", () => {
     // GIVEN
     const attributes: AttributeSchema[] = [
       generateAttributeSchema({ name: "tags", kind: "List", display: "default" }),
@@ -151,17 +151,11 @@ describe("getAttributesVisibleInListView", () => {
       generateAttributeSchema({ name: "hashed", kind: "HashedPassword", display: "default" }),
     ];
     const revealed = new Set(["tags", "payload", "anything", "secret", "hashed"]);
-    // A HashedPassword column would fetch every row's hash only to mask it.
 
     // WHEN
     const result = getAttributesVisibleInListView(attributes, revealed);
 
     // THEN
-    expect(result.map((attribute) => attribute.name)).toEqual([
-      "tags",
-      "payload",
-      "anything",
-      "secret",
-    ]);
+    expect(result.map((attribute) => attribute.name)).toEqual(["tags", "payload", "anything"]);
   });
 });

@@ -141,6 +141,8 @@ export function ListElementsTable({
       ) : (
         <div className="max-h-96 overflow-auto rounded-lg border bg-table-frame">
           <DataTable
+            // Without the table's `min-w-max`, the Value track shrinks to the dialog and truncates.
+            className="grid content-start"
             columns={getColumns(attributeLabel, hasTypeColumn)}
             data={shownElements}
             getRowId={(element) => String(element.position)}

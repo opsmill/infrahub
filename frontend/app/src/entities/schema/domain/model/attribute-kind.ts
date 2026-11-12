@@ -44,13 +44,12 @@ export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.DATETIME,
 ];
 
-/** The default kinds, plus kinds whose values are too large or too sensitive to show unasked. */
+/** The default kinds, plus kinds whose values are too large to show unasked. */
 export const ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW: readonly AttributeKind[] = [
   ...ATTRIBUTE_KINDS_FOR_LIST_VIEW,
   ATTRIBUTE_KIND.LIST,
   ATTRIBUTE_KIND.JSON,
   ATTRIBUTE_KIND.ANY,
-  ATTRIBUTE_KIND.PASSWORD,
 ];
 
 /** Kinds whose values have no meaningful or safe ordering, and that the column filter has no input for. */

@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Display List, JSON, Any and Password attributes in table views
+# Specification Quality Checklist: Display List, JSON and Any attributes in table views
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-06

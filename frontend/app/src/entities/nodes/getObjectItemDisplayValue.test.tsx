@@ -77,12 +77,32 @@ describe("ObjectAttributeValue for a List", () => {
     );
 
     // WHEN
-    await component.getByRole("button", { name: "View all 12" }).click();
+    await component.getByRole("button", { name: "View all 12 elements of Uplinks" }).click();
 
     // THEN
     await expect
       .element(component.getByRole("dialog").getByText("Ethernet1/12", { exact: true }))
       .toBeInTheDocument();
+  });
+
+  test("opens a short List from View all when an element is an object", async () => {
+    // GIVEN
+    const component = await render(
+      <ObjectAttributeValue
+        attributeSchema={listSchema}
+        attributeData={attributeValue(["mgmt0", { speed: 100 }])}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "View all 2 elements of Uplinks" }).click();
+
+    // THEN
+    await expect
+      .element(
+        component.getByRole("dialog").getByRole("button", { name: "View Uplinks element 2" })
+      )
+      .toBeVisible();
   });
 
   test("renders an empty List as a dash", async () => {

@@ -103,15 +103,29 @@ export function ListValueCell({ values, attributeLabel }: ListValueProps) {
 
 export function ListValueDetail({ values, attributeLabel }: ListValueProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const shownElements = getListElements(values.slice(0, LIST_DETAIL_MAX_BADGES), isKnownKind);
+  const hasHiddenContent =
+    values.length > LIST_DETAIL_MAX_BADGES ||
+    shownElements.some((element) => element.type === "Object" || element.type === "Array");
 
   return (
-    <span className="flex flex-wrap items-center gap-1">
-      {getListElements(values.slice(0, LIST_DETAIL_MAX_BADGES), isKnownKind).map((element) => (
-        <ListElementBadge key={element.position} element={element} className="max-w-full" />
+    <span className="flex min-w-0 flex-wrap items-center gap-1">
+      {shownElements.map((element) => (
+        <ListElementBadge
+          key={element.position}
+          element={element}
+          isTruncated={element.type === "Object" || element.type === "Array"}
+          className="max-w-full"
+        />
       ))}
 
-      {values.length > LIST_DETAIL_MAX_BADGES && (
-        <Button variant="ghost" size="xxs" onPress={() => setIsOpen(true)}>
+      {hasHiddenContent && (
+        <Button
+          variant="ghost"
+          size="xxs"
+          onPress={() => setIsOpen(true)}
+          aria-label={`View all ${pluralize(values.length, "element")} of ${attributeLabel}`}
+        >
           View all {values.length}
         </Button>
       )}

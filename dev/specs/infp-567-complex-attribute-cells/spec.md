@@ -1,4 +1,4 @@
-# Feature Specification: Display List, JSON, Any and Password attributes in table views
+# Feature Specification: Display List, JSON and Any attributes in table views
 
 **Feature Branch**: `ple-complex-attribute-cells-ifc-2498`
 **Created**: 2026-11-06
@@ -7,10 +7,9 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Show a List, JSON, Any or Password attribute as a column (Priority: P1)
+### User Story 1 - Show a List, JSON or Any attribute as a column (Priority: P1)
 
-A user views a table of nodes whose schema has an attribute of kind List, JSON, Any or Password.
-Today these attributes are not offered in the column picker, so the user has to open each node
+A user views a table of nodes whose schema has an attribute of kind List, JSON or Any. Today these attributes are not offered in the column picker, so the user has to open each node
 one by one to read the value. With this feature, the user turns the attribute on in
 the column picker and reads its value for every node in the table.
 
@@ -21,7 +20,7 @@ picker, turn the attribute on, and check that the column appears with each node'
 
 **Acceptance Scenarios**:
 
-1. **Given** a schema with a List, JSON, Any or Password attribute, **When** the user opens the
+1. **Given** a schema with a List, JSON or Any attribute, **When** the user opens the
    column picker, **Then** the attribute is offered and is off by default.
 2. **Given** the user turns such an attribute on, **When** the table loads, **Then** the column
    shows the value of each node, and the column stays on when the link is shared or reloaded.
@@ -50,20 +49,6 @@ values of each shape, and check each cell.
    **When** the user activates the "more" indicator with the mouse or the keyboard, **Then** every
    element is shown, without opening the edit form.
 
-### User Story 3 - Know that a password is set without reading it (Priority: P2)
-
-The user checks which nodes have a password set.
-
-**Why this priority**: It completes the set of attribute kinds, with less value than lists and JSON.
-
-**Independent Test**: Load a table with one node that has a password and one that has none.
-
-**Acceptance Scenarios**:
-
-1. **Given** a Password value, **When** the cell renders, **Then** it shows masked characters and
-   never the value.
-2. **Given** no value, **When** the cell renders, **Then** it shows `-`.
-
 ### Edge Cases
 
 - An empty list, an empty JSON object or array, and a null value each render `-`.
@@ -80,8 +65,8 @@ The user checks which nodes have a password set.
 
 ### Functional Requirements
 
-- **FR-001**: The column picker MUST offer attributes of kind List, JSON, Any and Password, turned
-  off by default. It MUST NOT offer HashedPassword attributes.
+- **FR-001**: The column picker MUST offer attributes of kind List, JSON and Any, turned off by
+  default. It MUST NOT offer Password or HashedPassword attributes.
 - **FR-002**: The default columns of every table MUST stay the same as before this feature.
 - **FR-003**: When the user turns such a column on, the table MUST fetch the attribute's value and
   render it.
@@ -93,18 +78,21 @@ The user checks which nodes have a password set.
   reachable with the keyboard.
 - **FR-006**: An Any cell MUST render an array as a List, an object as a JSON value, and any other
   value as text.
-- **FR-007**: A Password cell MUST show masked characters when a value exists and MUST NOT show
-  the value.
+- **FR-007**: A table that renders a Password or HashedPassword cell MUST show masked characters
+  when a value exists and MUST NOT show the value.
 - **FR-008**: An empty or null value MUST render `-`, as for the other kinds.
 - **FR-009**: Every cell MUST stay on one line, so the row height does not change.
 - **FR-010**: Filters, relationship tabs and the other views that use the default column list MUST
   keep their current behavior. A column of these kinds MUST NOT offer a filter or a sort.
+- **FR-010a**: IP address and IP prefix tables MUST NOT show List, JSON, Any, Password or
+  HashedPassword columns. These tables cannot reveal hidden columns, so the user cannot turn them
+  on there.
 - **FR-011**: The user documentation that describes how each attribute kind displays in the web
   interface MUST describe the new behavior.
 
 ### Key Entities
 
-- **Attribute kind**: the kind set in the schema (List, JSON, Any, Password), which
+- **Attribute kind**: the kind set in the schema (List, JSON, Any), which
   decides how a cell renders.
 - **Column picker choice**: the set of columns the user turned on, kept in the page link.
 
@@ -112,7 +100,7 @@ The user checks which nodes have a password set.
 
 ### Measurable Outcomes
 
-- **SC-001**: Every attribute of kind List, JSON, Any and Password can be shown as a column, and a
+- **SC-001**: Every attribute of kind List, JSON and Any can be shown as a column, and a
   cell with a value is never empty.
 - **SC-002**: A user reads a list or JSON value for 10 nodes from one table, without opening any
   node.
@@ -134,5 +122,11 @@ The user checks which nodes have a password set.
   kinds are out of scope.
 - HashedPassword was removed from the column picker on 2026-11-06 (Paul Leménager): its column would
   fetch every row's hash only to show masked characters, and the detail view does not show it either.
+- Password was removed from the column picker on 2026-11-12 (Paul Leménager): its column fetched
+  every row's password in plain text only to show masked characters. Showing only whether a
+  password is set needs a field that the GraphQL API does not have.
+- IP address and IP prefix tables chose their columns by attribute name only, so before this
+  feature they showed empty List, JSON, Any, Password and HashedPassword columns. On 2026-11-12
+  (Paul Leménager) these kinds were removed from those tables (FR-010a).
 - No change to the backend or to the GraphQL schema: the values are already available.
 - The people who use these tables work on a desktop screen.

@@ -7,10 +7,16 @@ import { RelationshipNodeDisplay } from "@/entities/nodes/object/ui/object-table
 export interface ListElementBadgeProps {
   element: ListElement;
   isLink?: boolean;
+  isTruncated?: boolean;
   className?: string;
 }
 
-export function ListElementBadge({ element, isLink, className }: ListElementBadgeProps) {
+export function ListElementBadge({
+  element,
+  isLink,
+  isTruncated = true,
+  className,
+}: ListElementBadgeProps) {
   if (element.type === "Node") {
     return (
       <RelationshipNodeDisplay
@@ -28,7 +34,7 @@ export function ListElementBadge({ element, isLink, className }: ListElementBadg
       className={classNames("min-w-0 font-normal", className)}
       title={element.text}
     >
-      <span className="truncate">{element.text}</span>
+      <span className={isTruncated ? "truncate" : "wrap-anywhere"}>{element.text}</span>
     </Badge>
   );
 }

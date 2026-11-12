@@ -71,7 +71,7 @@ instead of fixing instances as they are found.
 
 Reveal looks broken until you know where to point it. `show_columns` means something for a field a
 schema author marked `display: "extra"`, and for an attribute of a kind that is never a default
-column (`List`, `JSON`, `Any`, `Password`; see
+column (`List`, `JSON`, `Any`; see
 [the extra-field tier](entities-structure.md#schema-driven-rendering-the-extra-field-tier)). The
 quickest check of the second case is `/objects/CoreGeneratorDefinition`, whose picker offers
 **Parameters** (`JSON`) unchecked. For the first, the `models/` directory sets `display` nowhere.

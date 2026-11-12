@@ -30,7 +30,13 @@ describe("getListElements", () => {
 
   it("should type a node reference as Node and label it with its display label", () => {
     // GIVEN
-    const values = [{ id: "18e5-1", __typename: "BuiltinTag", display_label: "blue" }];
+    const values = [
+      {
+        id: "18e58040-c2d1-f5e4-35cd-c51803239164",
+        __typename: "BuiltinTag",
+        display_label: "blue",
+      },
+    ];
 
     // WHEN
     const result = getListElements(values, isKnownKind);
