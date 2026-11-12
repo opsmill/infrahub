@@ -81,8 +81,11 @@ describe("sortIpPoolResourcesByFillOrder", () => {
 
   it("orders labels that are not prefixes after the prefixes, whatever the input order", () => {
     // GIVEN
-    const labels = ["::/0", "custom prefix", "255.0.0.0/8"];
-    const orders = [labels, [...labels].reverse(), [labels[1], labels[2], labels[0]]];
+    const orders = [
+      ["::/0", "custom prefix", "255.0.0.0/8"],
+      ["255.0.0.0/8", "custom prefix", "::/0"],
+      ["custom prefix", "255.0.0.0/8", "::/0"],
+    ];
 
     // WHEN
     const sorted = orders.map((order) =>
