@@ -81,7 +81,7 @@ describe("AddGroupMembersForm", () => {
       relationshipName: "members",
       relationshipIds: ["device-1", "device-2"],
     });
-    await expect.element(component.getByText("2 members added")).toBeVisible();
+    await expect.element(component.getByText("Members added")).toBeVisible();
   });
 
   test("closes the member list with Escape and keeps the drawer open", async () => {

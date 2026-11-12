@@ -8,7 +8,6 @@ import type { FormRelationshipValue } from "@/shared/components/form/type";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { pluralize } from "@/shared/utils/string";
 
 import { GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
@@ -43,9 +42,8 @@ export function AddGroupMembersForm({
       relationshipIds: value.map(({ id }) => id),
     });
 
-    toast(
-      <Alert type={ALERT_TYPES.SUCCESS} message={`${pluralize(value.length, "member")} added`} />
-    );
+    // The backend skips nodes that are already members, so the number selected can exceed the number added.
+    toast(<Alert type={ALERT_TYPES.SUCCESS} message="Members added" />);
 
     onSuccess();
   };
