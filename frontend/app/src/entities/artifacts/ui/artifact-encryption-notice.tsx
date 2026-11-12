@@ -28,7 +28,7 @@ export function ArtifactEncryptionNotice({ artifact }: ArtifactEncryptionNoticeP
     encryption: check?.encryption ?? artifact.encryption?.value,
     reason: check?.reason,
     isEncryptionEnabled: appInfo?.storage_encryption_enabled ?? false,
-    isVerified: check !== undefined,
+    isVerified: check !== undefined && check.reason !== "missing",
   });
 
   if (!notice || isDismissed) return null;

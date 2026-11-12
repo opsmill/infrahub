@@ -10,6 +10,7 @@ const UNREADABLE_REASONS: Record<string, string> = {
   no_key: "No encryption key is configured.",
   unsupported_format: "The file is in a format this version cannot read.",
   truncated: "The file is incomplete.",
+  missing: "The file is missing from the storage.",
 };
 
 export interface GetArtifactEncryptionNoticeParams {
