@@ -972,6 +972,8 @@ describe("getRelationshipDefaultValue", () => {
 
   describe("when adding a child to a hierarchical parent", () => {
     // Country (child, parent cardinality "one") under Continent (parent, children "many").
+    // Both of the child's hierarchy relationships accept the Continent parent, so cardinality is
+    // the only thing that separates the "parent" field from the "children" field.
     const buildHierarchySchemas = () => {
       const childSchema = generateNodeSchema({
         kind: "LocationCountry",
@@ -990,7 +992,7 @@ describe("getRelationshipDefaultValue", () => {
             kind: "Hierarchy",
             name: "children",
             cardinality: "many",
-            peer: "LocationSite",
+            peer: "LocationGeneric",
           },
         ],
       });
