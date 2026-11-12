@@ -1,0 +1,21 @@
+.github/file-filters.yml
+  s_2832a8840ec75a::t_05880f7db9c2c8 130-134
+.github/workflows/ci.yml
+  s_2832a8840ec75a::t_2e57e9ff2315d6 61,586,1134-1164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03d44963eb4731119d8c0ff606fb23696aada8da",
+  "prompts": {},
+  "sessions": {
+    "s_2832a8840ec75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7d1f7e-6964-4887-b1af-453442d66f4d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
