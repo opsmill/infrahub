@@ -79,6 +79,24 @@ describe("sortIpPoolResourcesByFillOrder", () => {
     ]);
   });
 
+  it("orders labels that are not prefixes after the prefixes, whatever the input order", () => {
+    // GIVEN
+    const labels = ["::/0", "custom prefix", "255.0.0.0/8"];
+    const orders = [labels, [...labels].reverse(), [labels[1], labels[2], labels[0]]];
+
+    // WHEN
+    const sorted = orders.map((order) =>
+      sortIpPoolResourcesByFillOrder(order.map((label) => resource(label, null))).map(
+        ({ display_label }) => display_label
+      )
+    );
+
+    // THEN
+    for (const result of sorted) {
+      expect(result).toEqual(["255.0.0.0/8", "::/0", "custom prefix"]);
+    }
+  });
+
   it("puts a resource prefix without a weight after the weighted ones", () => {
     // GIVEN
     const resources = [resource("10.0.0.0/8", null), resource("172.16.0.0/12", 1)];

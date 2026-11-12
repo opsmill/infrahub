@@ -42,21 +42,31 @@ const parsePrefix = (label: string): ParsedPrefix | null => {
 
 const compareBigInt = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
 
-const compareByPrefix = (a: IpPoolResource, b: IpPoolResource): number => {
-  const prefixA = parsePrefix(a.display_label);
-  const prefixB = parsePrefix(b.display_label);
-  if (!prefixA || !prefixB) {
-    return a.display_label.localeCompare(b.display_label, undefined, { numeric: true });
+type SortEntry = { resource: IpPoolResource; weight: number; prefix: ParsedPrefix | null };
+
+// An unparsed label ranks after every parsed one so the order stays total when labels mix.
+const compareByPrefix = (a: SortEntry, b: SortEntry): number => {
+  if (!a.prefix || !b.prefix) {
+    if (a.prefix) return -1;
+    if (b.prefix) return 1;
+    return a.resource.display_label.localeCompare(b.resource.display_label, undefined, {
+      numeric: true,
+    });
   }
   return (
-    prefixA.version - prefixB.version ||
-    compareBigInt(prefixA.network, prefixB.network) ||
-    prefixA.length - prefixB.length
+    a.prefix.version - b.prefix.version ||
+    compareBigInt(a.prefix.network, b.prefix.network) ||
+    a.prefix.length - b.prefix.length
   );
 };
 
-const weightOf = (resource: IpPoolResource) => resource.allocationWeight ?? 0;
-
-// The server fills the heaviest resource prefix first and defines no order between equal weights, so ties are ordered by prefix.
+// The server defines no order between resource prefixes of equal weight.
 export const sortIpPoolResourcesByFillOrder = (resources: IpPoolResource[]): IpPoolResource[] =>
-  [...resources].sort((a, b) => weightOf(b) - weightOf(a) || compareByPrefix(a, b));
+  resources
+    .map((resource) => ({
+      resource,
+      weight: resource.allocationWeight ?? 0,
+      prefix: parsePrefix(resource.display_label),
+    }))
+    .sort((a, b) => b.weight - a.weight || compareByPrefix(a, b))
+    .map(({ resource }) => resource);
