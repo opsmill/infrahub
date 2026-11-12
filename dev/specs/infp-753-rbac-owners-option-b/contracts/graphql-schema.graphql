@@ -1,0 +1,162 @@
+# GraphQL contract for owner and source metadata (Community side).
+# The storage option does not change this contract.
+# Names are proposals. An API review fixes them before the SDK change (spec, "Open questions").
+# Source of the owner shape: product meeting of 2026-11-09, engineering design section 2.
+# The shapes of `sources` and `permissions` are proposals of the plan (research R-8 and R-16).
+
+# ---------- Output types ----------
+
+enum OwnerState {
+  OWNERS
+  NO_OWNER
+  INHERIT
+}
+
+enum OwnerOrigin {
+  SELF
+  PROFILE
+  TEMPLATE
+  PARENT
+  OBJECT
+}
+
+"""A node that metadata refers to: an owner, a source, or the origin of owners."""
+type InfrahubMetadataNode {
+  id: String!
+  kind: String
+  display_label: String
+  hfid: [String!]
+  is_deleted: Boolean!
+}
+
+"""Owner state of a node or a field, and the owners that apply to it."""
+type InfrahubOwnership {
+  """What a user set on the item itself. A copy from an object template is INHERIT."""
+  state: OwnerState!
+  """Where the owners that apply come from. Null when nothing applies."""
+  origin: OwnerOrigin
+  """The profile, template, parent or node that holds the owners."""
+  origin_node: InfrahubMetadataNode
+  """Owners that apply, own or inherited. A deleted owner has is_deleted: true."""
+  owners: [InfrahubMetadataNode!]!
+}
+
+type InfrahubFieldOwnership {
+  field: String!
+  ownership: InfrahubOwnership!
+}
+
+# Added to InfrahubNodeMetadata (`node_metadata` on the edges of list queries and on detail queries):
+#   ownership: InfrahubOwnership
+#   sources: [InfrahubMetadataNode!]!
+#   permissions: InfrahubNodePermissions
+#
+# Added to InfrahubNodeMetadata of profiles and object templates only:
+#   target_ownership: InfrahubOwnership
+#   target_field_ownership(fields: [String!]): [InfrahubFieldOwnership!]
+#
+# Added to every attribute type and every relationship field type:
+#   ownership: InfrahubOwnership
+#
+# Removed from the earlier drafts: `from_template`, and the `field_owners` output of `node_metadata`.
+
+# ---------- Deprecations (behaviour does not change) ----------
+#
+# Attribute `owner`: deprecated. Returns the own owner when the attribute has exactly one, else null.
+#   A write replaces the own owners of the attribute.
+# Attribute `is_protected` and its filter: deprecated.
+# `properties { owner }` on relationship links: unchanged, not deprecated.
+
+# ---------- Permission report of each node (FR-049) ----------
+
+type InfrahubFieldPermission {
+  field: String!
+  update: BranchRelativePermissionDecision!
+}
+
+type InfrahubNodePermissions {
+  update: BranchRelativePermissionDecision!
+  delete: BranchRelativePermissionDecision!
+  """The action for changing owners."""
+  hand_over: BranchRelativePermissionDecision!
+  """Without `fields`, all attributes and relationships of the node."""
+  fields(fields: [String!]): [InfrahubFieldPermission!]!
+}
+
+# In Infrahub Community, each value is the decision for the kind, as today.
+
+# ---------- Input types ----------
+
+"""An owner or a source. Give `id`, or `hfid` with `kind`."""
+input MetadataNodeInput {
+  id: String
+  hfid: [String!]
+  kind: String
+}
+
+input FieldOwnersInput {
+  """Name of an attribute or a relationship."""
+  field: String!
+  """null: inherit. []: no owner. List: own owners."""
+  owners: [MetadataNodeInput!]
+}
+
+input NodeMetadataInput {
+  """Left out: no change. null: inherit. []: no owner. List: own owners."""
+  owners: [MetadataNodeInput!]
+  field_owners: [FieldOwnersInput!]
+  """Profiles and object templates only: the owners given to their nodes. null: gives nothing."""
+  target_owners: [MetadataNodeInput!]
+  """Profiles and object templates only: the owners given to one field of their nodes."""
+  target_field_owners: [FieldOwnersInput!]
+  """Left out: no change. null or []: no sources."""
+  sources: [MetadataNodeInput!]
+}
+
+# Added to the `data` input of every create, update and upsert mutation:
+#   node_metadata: NodeMetadataInput
+#
+# Added to every attribute input, next to `value`:
+#   owners: [MetadataNodeInput!]
+#
+# No new mutation.
+
+# ---------- Filters on list and count queries ----------
+#
+#   node_metadata__owners__ids: [ID]         A node matches if any owner that applies matches, own or inherited.
+#   node_metadata__owners__isnull: Boolean   true: the nodes with no live owner, own or inherited.
+#   node_metadata__sources__ids: [ID]        A node matches if any of its sources matches.
+#
+# The filters apply before pagination, so `count` is correct.
+# The existing `<attribute>__owner__id` filter does not change.
+
+# ---------- Object permission (from the core schema) ----------
+#
+# CoreObjectPermission gets:
+#   applies_to: TextAttribute   # all_objects | owned_objects | objects_without_owners, default all_objects
+# Its action enum gets one value for changing owners: hand_over
+# CoreGlobalPermission.action gets the choice: manage_ownership
+#
+# Infrahub Community refuses to save applies_to other than all_objects, hand_over and manage_ownership.
+# The message says that the value needs Infrahub Enterprise.
+
+# ---------- Errors ----------
+#
+# An owner that is not valid refuses the whole mutation (FR-003). One case each:
+#   the owner is not found
+#   the owner is of another kind than an account or an account group
+#   the kind is unknown
+#   the reference has neither an id nor a kind with an hfid
+#   the hfid has the wrong length
+#
+# A refusal of the change check gives one entry in `errors` for each refused item (FR-045):
+# {
+#   "message": "<the reason that the check gave>",
+#   "path": ["InfraDeviceUpdate"],
+#   "extensions": {
+#     "code": "PERMISSION_DENIED",
+#     "http_status": 403,
+#     "data": {"kind": "InfraDevice", "node_id": "...", "field": "ip_addresses", "action": "update"}
+#   }
+# }
+# Infrahub Community never produces this error, because its change check allows everything.
