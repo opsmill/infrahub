@@ -5,11 +5,11 @@ import { classNames } from "@/shared/utils/common";
 
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { SchemaViewer } from "@/entities/schema/ui/schema-viewer";
+import { SchemaViewer, type SchemaViewerTab } from "@/entities/schema/ui/schema-viewer";
 
 interface SchemaViewerModalProps extends Omit<ModalProps, "children"> {
   schema: ModelSchema;
-  defaultTab?: "properties" | "attributes" | "relationships";
+  defaultTab?: SchemaViewerTab;
   targetField?: string;
 }
 

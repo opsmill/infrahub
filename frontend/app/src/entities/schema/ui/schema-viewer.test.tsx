@@ -343,7 +343,7 @@ describe("SchemaViewer Component", () => {
     await expect.element(component.getByText("extra", { exact: true }).first()).toBeVisible();
   });
 
-  test("lists the containers of a node", async () => {
+  test("lists the containers of a node in the Containers tab, closed", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       name: "Node",
@@ -355,33 +355,92 @@ describe("SchemaViewer Component", () => {
           order_weight: 2000,
           collapsed: true,
           description: "Link aggregation",
+          inherited: true,
         }),
-        generateContainerSchema({ name: "vlan", label: "VLAN settings" }),
+        generateContainerSchema({ name: "vlan", label: "VLAN settings", collapsible: false }),
       ],
     });
 
     const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
+    // WHEN
+    await component.getByRole("tab", { name: "Containers" }).click();
+
     // THEN
-    await expect.element(component.getByText("Containers", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("lacp", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("LACP settings", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("Order weight2000")).toBeVisible();
-    await expect.element(component.getByText("Collapsedtrue")).toBeVisible();
+    await expect.element(component.getByText("LACP settings lacp")).toBeVisible();
     await expect.element(component.getByText("Link aggregation", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("vlan", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("VLAN settings", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("VLAN settings vlan")).toBeVisible();
+    expect(component.getByText("Order weight2000").query()).toBeNull();
+
+    // WHEN
+    await component.getByText("LACP settings lacp").click();
+
+    // THEN
+    await expect.element(component.getByText("Namelacp", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("LabelLACP settings", { exact: true })).toBeVisible();
+    await expect
+      .element(component.getByText("DescriptionLink aggregation", { exact: true }))
+      .toBeVisible();
+    await expect.element(component.getByText("Order weight2000", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Collapsibletrue", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Collapsedtrue", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Inheritedtrue", { exact: true })).toBeVisible();
+
+    // WHEN
+    await component.getByText("VLAN settings vlan").click();
+
+    // THEN
+    await expect.element(component.getByText("Collapsiblefalse", { exact: true })).toBeVisible();
   });
 
-  test("shows no Containers block for a node without containers", async () => {
+  test("does not list the fields of a container in the Containers tab", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      containers: [generateContainerSchema({ name: "lacp", label: "LACP settings" })],
+      attributes: [
+        generateAttributeSchema({ name: "lacp_rate", label: "LACP rate", container: "lacp" }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByRole("tab", { name: "Containers" }).click();
+    await component.getByText("LACP settings lacp").click();
+
+    // THEN
+    await expect.element(component.getByText("Namelacp", { exact: true })).toBeVisible();
+    expect(component.getByText("LACP rate").query()).toBeNull();
+  });
+
+  test("shows No container for a node without containers", async () => {
     // GIVEN
     const schema = generateNodeSchema({ name: "Node", namespace: "Test", containers: [] });
 
     const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
+    // WHEN
+    await component.getByRole("tab", { name: "Containers" }).click();
+
+    // THEN
+    await expect.element(component.getByText("No container", { exact: true })).toBeVisible();
+  });
+
+  test("does not list the containers in the Properties tab", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      containers: [generateContainerSchema({ name: "lacp", label: "LACP settings" })],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
     // THEN
     await expect.element(component.getByText("Kind", { exact: true })).toBeVisible();
-    expect(component.getByText("Containers", { exact: true }).query()).toBeNull();
+    expect(component.getByText("LACP settings").query()).toBeNull();
   });
 
   test("shows the container of an attribute and of a relationship", async () => {

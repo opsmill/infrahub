@@ -9,7 +9,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
-import type { ContainerSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/domain/rules/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/domain/rules/is-profile-schema";
@@ -21,9 +21,12 @@ import {
 } from "@/entities/schema/stores/schema.atom";
 
 import { AttributeDisplay } from "./attribute-display";
+import { ContainerDisplay } from "./container-display";
 import { RelationshipDisplay } from "./relationship-display";
 import { SchemaHelpMenu } from "./schema-help-menu";
-import { PropertyRow, PropertyTitle, SchemaKindDisplay, TabPanelStyled, TabStyled } from "./styled";
+import { PropertyRow, SchemaKindDisplay, TabPanelStyled, TabStyled } from "./styled";
+
+export type SchemaViewerTab = "properties" | "containers" | "attributes" | "relationships";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
@@ -81,7 +84,7 @@ export const SchemaViewer = ({
   onKindClick?: (kind: string) => void;
   onClose: () => void;
   style?: CSSProperties;
-  defaultTab?: "properties" | "attributes" | "relationships";
+  defaultTab?: SchemaViewerTab;
   targetField?: string;
 }) => {
   return (
@@ -167,19 +170,30 @@ const SchemaViewerDetails = ({
 }: {
   schema: ModelSchema;
   onKindClick?: (kind: string) => void;
-  defaultTab: "properties" | "attributes" | "relationships";
+  defaultTab: SchemaViewerTab;
   targetField?: string;
 }) => {
   return (
     <Tabs defaultSelectedKey={defaultTab} className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
         <TabStyled id="properties">Properties</TabStyled>
+        <TabStyled id="containers">Containers</TabStyled>
         <TabStyled id="attributes">Attributes</TabStyled>
         <TabStyled id="relationships">Relationships</TabStyled>
       </TabList>
 
       <TabPanelStyled id="properties">
         <Properties schema={schema} onKindClick={onKindClick} />
+      </TabPanelStyled>
+
+      <TabPanelStyled id="containers">
+        {schema.containers && schema.containers.length > 0 ? (
+          schema.containers.map((container) => (
+            <ContainerDisplay key={container.name} container={container} />
+          ))
+        ) : (
+          <div className="flex h-32 items-center justify-center">No container</div>
+        )}
       </TabPanelStyled>
 
       <TabPanelStyled id="attributes">
@@ -284,8 +298,6 @@ const Properties = ({
         </div>
       )}
 
-      {"containers" in schema && <ContainersBlock containers={schema.containers} />}
-
       <div>
         <PropertyRow title="Included in menu" value={schema.include_in_menu} />
         <PropertyRow title="Menu placement" value={schema.menu_placement} />
@@ -310,28 +322,6 @@ const Properties = ({
 
       <div>
         <PropertyRow title="Documentation" value={schema.documentation} />
-      </div>
-    </div>
-  );
-};
-
-const ContainersBlock = ({ containers }: { containers?: ContainerSchema[] }) => {
-  if (!containers?.length) return null;
-
-  return (
-    <div>
-      <PropertyTitle title="Containers" />
-
-      <div className="divide-y pl-4">
-        {containers.map((container) => (
-          <div key={container.name}>
-            <PropertyRow title="Name" value={container.name} />
-            <PropertyRow title="Label" value={container.label} />
-            <PropertyRow title="Order weight" value={container.order_weight} />
-            <PropertyRow title="Collapsed" value={container.collapsed} />
-            <PropertyRow title="Description" value={container.description} />
-          </div>
-        ))}
       </div>
     </div>
   );
