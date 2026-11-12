@@ -1389,6 +1389,7 @@ async def test_render_artifact_unchanged_stores_a_bad_stored_file_again_when_che
     mock_gql_query_03: HTTPXMock,
     mock_upload_content: HTTPXMock,
     mock_update_artifact: HTTPXMock,
+    mock_artifact_encryption_check: HTTPXMock,
     main_branch: Branch,
     event_recorder: MemoryInfrahubEvent,
     httpx_mock: HTTPXMock,
@@ -1417,6 +1418,8 @@ async def test_render_artifact_unchanged_stores_a_bad_stored_file_again_when_che
         method="POST", match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
     )
     assert len(updates) == 1
+    checks = httpx_mock.get_requests(method="POST", match_headers={"X-Infrahub-Tracker": "artifact-encryption-check"})
+    assert [str(check.url.path) for check in checks] == [f"/api/artifact/{artifact_node_02.id}/encryption"]
     assert re.search(
         r'storage_id: \{\s+value: "ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a"\s+\}', json.loads(updates[0].content)["query"]
     )
