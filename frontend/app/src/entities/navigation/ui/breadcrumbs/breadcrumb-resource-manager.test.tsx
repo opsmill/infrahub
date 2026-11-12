@@ -48,7 +48,7 @@ describe("BreadcrumbResourceManager", () => {
     store.set(genericSchemasAtom, initialGenericSchemas);
   });
 
-  it("links the resource prefix named in the address", async () => {
+  it("links the resource prefix selected in the URL", async () => {
     // GIVEN
     store.set(genericSchemasAtom, [generateGenericSchema({ kind: RESOURCE_GENERIC_KIND })]);
     vi.mocked(useGetIpPoolUtilization).mockReturnValue({

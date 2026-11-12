@@ -32,7 +32,7 @@ const ResourcePoolDetailsPage = () => {
 
   if (isPending) return <LoadingIndicator className="h-full" />;
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !data) return <ErrorScreen message={error.message} />;
 
   const objectKind = data.__typename;
   return (
