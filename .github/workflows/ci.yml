@@ -58,6 +58,7 @@ jobs:
       error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
       observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
+      agent_skills: ${{ steps.changes.outputs.agent_skills_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -582,6 +583,7 @@ jobs:
       - validate-dev-guideline-links
       - validate-documentation-style
       - validate-release-notes-style
+      - validate-skills-lock
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -1128,6 +1130,37 @@ jobs:
             --config dev/lychee.toml
             --files-from dev/lychee-files.txt
           fail: true
+
+  validate-skills-lock:
+    if: needs.files-changed.outputs.agent_skills == 'true'
+    needs:
+      - files-changed
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    env:
+      SKILLS_CLI_VERSION: "1.8.1"
+      DISABLE_TELEMETRY: "1"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # A skill whose lock entry has an empty hash has no pinned content to compare against, so it is reported but not checked.
+      - name: "Check skills installed from skills-lock.json against their locked hash"
+        run: |
+          npx --yes "skills@${SKILLS_CLI_VERSION}" list --json > "$RUNNER_TEMP/skills.json"
+          unpinned=$(jq -c '[.skills | to_entries[] | select(.value.computedHash == "") | .key]' skills-lock.json)
+          jq -r --argjson unpinned "$unpinned" '$unpinned[] | "::notice::\(.) has no hash in skills-lock.json and is not checked"' -n
+          drifted=$(jq -r --argjson unpinned "$unpinned" \
+            '.[] | select(.status == "modified" or .status == "missing") | select(.name as $n | $unpinned | index($n) | not) | "\(.name): \(.status)"' \
+            "$RUNNER_TEMP/skills.json")
+          if [ -n "$drifted" ]; then
+            echo "These skills differ from skills-lock.json. Reinstall them with the skills tool instead of editing them:"
+            echo "$drifted"
+            exit 1
+          fi
 
   validate-documentation-style:
     if: |

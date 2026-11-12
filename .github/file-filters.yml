@@ -127,6 +127,11 @@ graphql_schema_all:
 error_catalogue_all:
   - *error_catalogue_files
 
+agent_skills_all:
+  - ".agents/skills/**"
+  - "skills-lock.json"
+  - *ci_config
+
 observability_standalone_all:
   - "development/docker-compose-observability.yml"
   - "development/docker-compose-observability-tracing.yml"
