@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Jira**: [INFP-759](https://opsmill.atlassian.net/browse/INFP-759) (idea), [IFC-3573](https://opsmill.atlassian.net/browse/IFC-3573) (epic) with tasks IFC-3574 (header, list, Actions menu), IFC-3575 (allocated table), IFC-3576 (end-to-end tests), IFC-3577 (documentation)
+**Jira**: [INFP-759](https://opsmill.atlassian.net/browse/INFP-759) (idea), [IFC-3573](https://opsmill.atlassian.net/browse/IFC-3573) (epic), [IFC-3582](https://opsmill.atlassian.net/browse/IFC-3582) (delivery ticket), with tasks IFC-3574 (header, list, Actions menu), IFC-3575 (allocated table), IFC-3576 (end-to-end tests), IFC-3577 (documentation)
 
 **Input**: User description: *"Take the prototype on branch `bab-proto-ip-pool-design` (its Dots variant) and build it with what the backend already provides."* The prototype is commit `8827d389b5`, files under `frontend/app/src/proto/ip-pool-defaults/`.
 
@@ -20,7 +20,13 @@ The number pool page already answers these questions with a header, a list of ra
 - What a resource prefix holds opens in a narrow side panel beside the list, and the engineer pages through it.
 - The page is laid out differently from the number pool page, so an engineer who manages both kinds of pool works with two layouts.
 
-This feature rebuilds the IP pool page on the number pool page's layout. The backend does not change: the page reads the pool node, the per-resource utilization query and the paginated allocations query that exist today.
+This feature rebuilds the IP pool page on the number pool page's layout. The backend does not change. The page reads what the backend already provides:
+
+- the pool node
+- the per-resource utilization query
+- the paginated allocations query
+- the allocation weights, through the `CoreWeightedPoolResource` generic
+- the pool's extra fields, when a schema extension adds fields to the pool
 
 ## Design Principles
 
@@ -61,8 +67,8 @@ The engineer scans the resource prefix list on the left. Each resource prefix sh
 
 1. **Given** a pool with three resource prefixes, **When** the engineer opens the pool on the default branch, **Then** each resource prefix shows its prefix, a usage bar and the usage percentage, and the tooltip of the bar reads the default-branch share.
 2. **Given** a resource prefix that received an allocation on branch `b1`, **When** the engineer views the pool on `b1`, **Then** the bar shows the extra usage of `b1` as a second, lighter segment, and the tooltip names it as usage on this branch only.
-3. **Given** resource prefixes whose kind has an allocation weight and whose weights are 100, 100 and 50, **When** the engineer reads the list, **Then** the list shows "Weight 100", "Weight 100", "Weight 50" in that order, and resource prefixes with the same weight are ordered by their prefix.
-4. **Given** resource prefixes whose kind has no allocation weight, **When** the engineer reads the list, **Then** no weight is shown and the list is ordered by prefix.
+3. **Given** resource prefixes whose kind has an allocation weight and whose weights are 100, 100 and 50, **When** the engineer reads the list, **Then** the list shows "Weight 100", "Weight 100", "Weight 50" in that order, which is the order in which the backend fills them, and the two resource prefixes with weight 100 are ordered by prefix: IP version, then address, then prefix length.
+4. **Given** resource prefixes whose kind has no allocation weight, **When** the engineer reads the list, **Then** no weight is shown and the list is ordered by prefix: IP version, then address, then prefix length.
 5. **Given** a pool with no resource prefix, **When** the engineer opens it, **Then** the list is replaced by a card that says the pool cannot allocate until it has a resource prefix, and no allocated table is shown.
 
 ---
@@ -106,10 +112,11 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 ### Edge Cases
 
 - A pool whose resource kind has an allocation weight on some resource prefixes and not on others: resource prefixes without a weight count as weight 0 and sort last, which is how the backend allocates.
-- A resource prefix whose kind is not in the schema the engineer can read: the Kind column shows the kind name.
+- An allocation whose kind is not in the schema the engineer can read: the Kind column shows the kind name.
 - The pool node loads but the utilization query fails: the header stays and the body shows the error.
 - Viewing the pool at a past date or on a branch: the pool node, the utilization and the allocations are all read on that branch and at that date.
 - The page is open while the engineer edits the pool: after saving, the header and the resource prefix list refresh.
+- A refresh fails after the page loaded: the header, the resource prefixes, the allocations and the breadcrumb already loaded stay.
 
 ## Requirements *(mandatory)*
 
@@ -123,7 +130,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-006**: The namespace in the defaults line MUST link to the IPAM page filtered on that namespace.
 - **FR-007**: The resource prefix list MUST show, for each resource prefix, its prefix, a usage bar with the default-branch share and the viewing-branch share, and the usage percentage. Above the list, it MUST show the whole pool's usage the same way, under "All resource prefixes" with the number of resource prefixes.
 - **FR-008**: When every resource prefix kind in the pool inherits the weighted pool resource generic, the resource prefix list MUST show "Weight N" for each resource prefix whose weight is set. When one kind has none, the list MUST show no weight, because the backend then ignores weights.
-- **FR-009**: The resource prefix list MUST be ordered by allocation weight, highest first, with a missing weight counting as 0, and then by prefix.
+- **FR-009**: The resource prefix list MUST be ordered by allocation weight, highest first, with a missing weight counting as 0, which is the order in which the backend fills resource prefixes. Resource prefixes with the same weight MUST be ordered by prefix: IP version, then address, then prefix length. This tie order is the page's choice, not the backend's.
 - **FR-010**: Selecting a resource prefix MUST change the page link so that it names the resource prefix, and opening such a link MUST select that resource prefix.
 - **FR-011**: When the link names no resource prefix, the first resource prefix in list order MUST be selected.
 - **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier, Kind and ID, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button.
@@ -135,7 +142,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-018**: Edit MUST open the existing IP prefix pool form or IP address pool form, and saving MUST refresh the page.
 - **FR-019**: The page MUST read the pool, the utilization and the allocations on the branch and at the date the engineer is viewing.
 - **FR-020**: The breadcrumb's resource selector MUST keep working with the new page, and MUST read the pool usage itself so that it does not depend on the page having loaded it.
-- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button when loading more rows fails.
+- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded when a refresh fails, and MUST keep them, stop requesting more rows and offer a Retry button when loading more rows fails.
 
 ### Key Entities
 
