@@ -1020,20 +1020,43 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
+        changed_node = """
+    AND q.branch_support = $branch_aware
+    AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
+    RETURN DISTINCT p.uuid AS node_uuid
+        """
+        # without the hints the planner can read every node of the graph instead of the edges in the window
+        edge_reads = []
+        for edge_type in (DatabaseEdgeType.HAS_ATTRIBUTE, DatabaseEdgeType.IS_RELATED):
+            edge_reads.append(
+                """
+    MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
+    USING INDEX SEEK diff_rel:%(edge_type)s(from)
+    WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+    AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
+    %(changed_node)s
+                """
+                % {"edge_type": edge_type.value, "changed_node": changed_node}
+            )
+            edge_reads.append(
+                """
+    MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
+    USING INDEX SEEK diff_rel:%(edge_type)s(to)
+    WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+    %(changed_node)s
+                """
+                % {"edge_type": edge_type.value, "changed_node": changed_node}
+            )
         query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
 // -------------------------------------
-MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
-WHERE q.branch_support = $branch_aware
-AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
-AND (
-    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
-    OR ($from_time <= diff_rel.to < $to_time)
-)
-        """
+CALL () {
+    %(edge_reads)s
+}
+        """ % {"edge_reads": "UNION ALL".join(edge_reads)}
         self.add_to_query(query)
-        self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
+        self.return_labels = ["collect(DISTINCT node_uuid) AS node_uuids"]
 
 
 class DiffPropertyNodesQuery(DiffChangedNodesQuery):
