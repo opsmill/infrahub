@@ -62,7 +62,7 @@ Infrahub checks the branch before it writes anything, so a refused rebase change
 
 1. Infrahub refreshes the branch's diff against the default branch.
 2. If a conflict needs a resolution or a change to the data, Infrahub refuses the rebase. The error lists each conflict and what it needs. See [Resolve conflicts](./resolve-conflicts.mdx).
-3. Infrahub checks uniqueness and the other schema constraints against the data the branch would hold after the rebase, and refuses the rebase on a violation.
+3. Infrahub checks uniqueness and the other schema constraints against the data the branch would hold after the rebase, and refuses the rebase on a violation. When the branch changed the schema since it was created or last rebased, this includes each of those schema changes; see [Schema changes on the branch that the default branch's data breaks](./merge.mdx#schema-changes-on-the-branch-that-the-default-branchs-data-breaks).
 4. Under the global graph lock, in one database transaction, Infrahub moves `branched_from` to the end time of the diff from step 1 and sets the branch status to `OPEN`. Infrahub keeps the current values of the branch's own changes and drops their history from before the new `branched_from`.
 5. If the branch changed the schema, Infrahub then applies the schema migrations that follow from it.
 
@@ -108,6 +108,7 @@ Each refusal has its own fix. The message of a refused rebase names the conflict
 | Relationship conflict | A rebase cannot keep the branch's side of a relationship conflict | Update the data so that both branches agree |
 | Delete versus modify | One branch deleted an object that the other changed. Choosing a side does not clear it | Update the data so that both branches agree, for example by deleting the object on the branch as well |
 | Duplicate unique value | During the rebase, Infrahub checks uniqueness and the other constraints against the data the branch would hold after it | Change the value on one of the branches |
+| Schema change on the branch that nodes on the default branch break | Infrahub checks each schema change made on the branch since it was created or last rebased against the data the branch would hold after the rebase, including nodes created or changed on the default branch since then | Change or delete those nodes on the default branch, or change the schema on the branch |
 
 For each conflict type in more detail, see [Resolve conflicts](./resolve-conflicts.mdx).
 
