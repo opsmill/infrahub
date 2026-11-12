@@ -19,6 +19,7 @@ from infrahub.workers.dependencies import build_database
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.repository_sync import flow_run_id_of
 
 
 @flow
@@ -87,3 +88,33 @@ async def test_purge_leaves_the_run_that_deleted_the_branch(
         flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[deletion_run_id, branch_task.id]))
     )
     assert (deletion.type, [run.id for run in remaining]) == (StateType.COMPLETED, [deletion_run_id])
+
+
+async def test_failed_deletion_tags_its_run_with_the_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    workflow_recorder: WorkflowRecorder,
+    prefect_client: PrefectClient,
+) -> None:
+    """A deletion that fails before removing the branch starts no purge, so its run stays in the branch's task list."""
+    proposed_change_id = "18a6e1c0-6f4b-4c1e-9d6a-3f2b7c8d9e01"
+    context = InfrahubContext.init(
+        branch=default_branch,
+        account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        deletion = await delete_branch(
+            branch=default_branch.name, context=context, proposed_change_id=proposed_change_id, return_state=True
+        )
+
+    run = await prefect_client.read_flow_run(flow_run_id_of(deletion))
+
+    assert (run.state_type, sorted(run.tags)) == (
+        StateType.FAILED,
+        [
+            "infrahub.app",
+            "infrahub.app/branch/main",
+            "infrahub.app/node/18a6e1c0-6f4b-4c1e-9d6a-3f2b7c8d9e01",
+        ],
+    )
