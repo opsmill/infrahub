@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
 
-# Entering from an index reads every edge of the indexed vertices, whatever kind is on the other side,
-# so it only replaces the read of every node of the kind when the kind holds this many nodes per edge.
+# A start from an index reads every edge of the indexed vertices, whatever kind is on the other side; in query
+# profiles that reads more than a read of every node of the kind at one node per edge, and less at two.
 INDEX_START_MIN_KIND_NODES_PER_EDGE = 2
 
 ATTRIBUTE_LIST_KIND = "List"
