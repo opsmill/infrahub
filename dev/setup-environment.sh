@@ -170,9 +170,11 @@ fi
 if [ -n "$CLAUDE_ENV_FILE" ]; then
     echo ""
     echo "Setting environment variables..."
+    # The file is sourced as shell code, so the path is single-quoted to keep spaces, quotes and $ literal.
+    quoted_project_dir="'$(printf '%s' "$PROJECT_DIR" | sed "s/'/'\\\\''/g")'"
     {
-        echo "export INFRAHUB_PROJECT_DIR=\"$PROJECT_DIR\""
-        echo "export PATH=\"$PROJECT_DIR/.venv/bin:\$PATH\""
+        echo "export INFRAHUB_PROJECT_DIR=$quoted_project_dir"
+        echo "export PATH=$quoted_project_dir/.venv/bin:\"\$PATH\""
     } >> "$CLAUDE_ENV_FILE"
     echo "Environment variables configured"
 fi

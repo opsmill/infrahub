@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_DIR"' EXIT
 
-PROJECT_DIR="$TEST_DIR/project with spaces"
+PROJECT_DIR="$TEST_DIR/project with spaces, 'single' and \"double\" quotes, \$(echo substitution) and \`echo backticks\`"
 SESSION_ENV_FILE="$TEST_DIR/session env"
 mkdir -p "$TEST_DIR/bin" "$PROJECT_DIR/dev" "$PROJECT_DIR/python_sdk" \
     "$PROJECT_DIR/frontend/app" "$PROJECT_DIR/frontend/packages/schema-visualizer"
