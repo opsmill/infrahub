@@ -1,0 +1,21 @@
+docs/docs/release-notes/infrahub/release-1_12_1.mdx
+  s_b1107c760afcb5::t_af7157ab78b7ff 1-36
+CHANGELOG.md
+  s_b1107c760afcb5::t_7841a56808216c 14-29,1809
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a8c9cb57ba9595a0ceb258ab9331ef05a1035bf",
+  "prompts": {},
+  "sessions": {
+    "s_b1107c760afcb5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d11320a-c2af-4db7-bc57-fcbac6a0b441",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
