@@ -38,10 +38,12 @@ class IndexStartData:
         return self.main if name == MAIN else self.branch
 
     def resolve_filters(self, filters: dict[str, Any]) -> dict[str, Any]:
-        """Replace the person names of the relationship filters with the ids of these persons."""
+        """Replace the person names of the relationship filters and the car names of `ids` with node ids."""
         resolved: dict[str, Any] = {}
         for key, value in filters.items():
-            if key.endswith("__ids"):
+            if key == "ids":
+                resolved[key] = [self.car_ids[name] for name in value]
+            elif key.endswith("__ids"):
                 resolved[key] = [self.person_ids[name] for name in value]
             elif key.endswith("__id"):
                 resolved[key] = self.person_ids[value]
@@ -306,6 +308,111 @@ INDEX_START_SELECTION_TEST_CASES: list[IndexStartSelectionTestCase] = [
 
 
 @dataclass
+class QueryTextTestCase:
+    name: str
+    filters: dict[str, Any]
+    """Relationship filters name the persons and `ids` names the cars, the test replaces the names with ids."""
+    expected: list[str]
+    """The lines the text of the list query starts with."""
+    branch: str = MAIN
+
+
+QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
+    QueryTextTestCase(
+        name="value_of_one_node",
+        filters={"name__value": "car-0"},
+        expected=[
+            "MATCH (av:AttributeValueIndexed { value: $filter1_value })",
+            "WITH collect(av) AS index_start_vertices",
+            "UNWIND index_start_vertices AS av",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av)",
+            "WITH DISTINCT n",
+            "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
+        ],
+    ),
+    QueryTextTestCase(
+        name="values_of_two_nodes",
+        filters={"name__values": ["car-0", "car-2"]},
+        expected=[
+            "MATCH (av:AttributeValueIndexed)",
+            "WHERE av.value IN $filter1_value",
+            "WITH collect(av) AS index_start_vertices",
+            "UNWIND index_start_vertices AS av",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av)",
+            "WITH DISTINCT n",
+            "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
+        ],
+    ),
+    QueryTextTestCase(
+        name="peer_id_with_few_nodes",
+        filters={"owner__id": "john"},
+        expected=[
+            "MATCH (peer:Node { uuid: $filter1_peer_id })",
+            "WITH collect(peer) AS index_start_vertices",
+            "UNWIND index_start_vertices AS peer",
+            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer)",
+            "WITH DISTINCT n",
+            "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
+        ],
+    ),
+    QueryTextTestCase(
+        name="peer_with_few_nodes_on_branch",
+        filters={"owner__ids": ["jane"]},
+        expected=[
+            "MATCH (peer:Node)",
+            "WHERE peer.uuid IN $filter1_peer_ids",
+            "WITH collect(peer) AS index_start_vertices",
+            "UNWIND index_start_vertices AS peer",
+            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer)",
+            "WITH DISTINCT n",
+            "CALL (n) {",
+        ],
+        branch=BRANCH,
+    ),
+    QueryTextTestCase(
+        name="filter_with_fewest_edges_listed_last",
+        filters={"owner__ids": ["john"], "name__value": "car-0"},
+        expected=[
+            "MATCH (av:AttributeValueIndexed { value: $filter2_value })",
+            "WITH collect(av) AS index_start_vertices",
+            "UNWIND index_start_vertices AS av",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av)",
+            "WITH DISTINCT n",
+            "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
+        ],
+    ),
+    QueryTextTestCase(
+        name="value_listed_after_metadata_filter",
+        filters={"node_metadata__created_at__before": "2100-01-01T00:00:00.000000Z", "name__value": "car-0"},
+        expected=[
+            "MATCH (av:AttributeValueIndexed { value: $filter2_value })",
+            "WITH collect(av) AS index_start_vertices",
+            "UNWIND index_start_vertices AS av",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av)",
+            "WITH DISTINCT n",
+            "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
+        ],
+    ),
+    QueryTextTestCase(
+        name="value_that_most_nodes_hold",
+        filters={"nbr_seats__value": 4},
+        expected=["MATCH (root:Root)<-[r:IS_PART_OF]-(n:TestCar)"],
+    ),
+    QueryTextTestCase(
+        name="value_that_most_nodes_hold_on_branch",
+        filters={"nbr_seats__value": 4},
+        expected=["MATCH (n:TestCar)", "CALL (n) {"],
+        branch=BRANCH,
+    ),
+    QueryTextTestCase(
+        name="value_of_one_node_with_node_ids",
+        filters={"ids": ["car-0", "car-2"], "name__value": "car-0"},
+        expected=["MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node:TestCar)"],
+    ),
+]
+
+
+@dataclass
 class NoIndexStartTestCase:
     name: str
     field_name: str
@@ -390,6 +497,20 @@ class TestNodeGetListQueryIndexStart:
         await query.execute(db=db)
 
         assert index_start_data.car_names(node_ids=query.get_node_ids()) == ["car-0", "car-1", "car-branch"]
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in QUERY_TEXT_TEST_CASES])
+    async def test_query_text(
+        self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: QueryTextTestCase
+    ) -> None:
+        branch = index_start_data.get_branch(name=test_case.branch)
+        query = await NodeGetListQuery.init(
+            db=db,
+            branch=branch,
+            schema=db.schema.get_node_schema(name="TestCar", branch=branch),
+            filters=index_start_data.resolve_filters(filters=test_case.filters),
+        )
+
+        assert query.get_query().splitlines()[: len(test_case.expected)] == test_case.expected
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in INDEX_START_SELECTION_TEST_CASES])
     async def test_selected_index_start(
