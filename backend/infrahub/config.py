@@ -669,7 +669,8 @@ class CacheSettings(BaseSettings):
         ge=1,
         description=(
             "Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder "
-            "renews the record while it runs, so the record only expires when the worker stops."
+            "renews the record while it runs, so the record expires when the worker stops, or when every renewal "
+            "fails for this long."
         ),
     )
     exclusive_lock_wait_secs: int = Field(

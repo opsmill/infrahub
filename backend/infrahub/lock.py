@@ -485,8 +485,11 @@ class InfrahubSharedLock:
 
         self._hold.set(None)
         hold.renewal.cancel()
-        await asyncio.gather(hold.renewal, return_exceptions=True)
-        await self._remove_record(holder=hold.holder)
+        try:
+            await asyncio.gather(hold.renewal, return_exceptions=True)
+        finally:
+            # Removed even when this task is cancelled while the renewal stops, or the record outlives the hold.
+            await self._remove_record(holder=hold.holder)
 
     async def _remove_record(self, holder: str) -> None:
         """Remove the holder's record; raises nothing but cancellation."""

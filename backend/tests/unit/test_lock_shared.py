@@ -43,6 +43,26 @@ class RecordingSharedHolderStore(LocalSharedHolderStore):
         await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
 
 
+class SlowToAbortRenewalStore(RecordingSharedHolderStore):
+    """Keeps every renewal in flight, and lets a cancelled renewal finish only once `aborted` is set."""
+
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock=clock)
+        self.renewing = asyncio.Event()
+        self.aborted = asyncio.Event()
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+        if len(self.added) == 1:
+            return
+        self.renewing.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            await self.aborted.wait()
+            raise
+
+
 async def _wait_until(condition: Callable[[], Awaitable[bool]]) -> None:
     async def _poll() -> None:
         while not await condition():  # noqa: ASYNC110
@@ -102,6 +122,35 @@ async def _hold_exclusively(shared_lock: InfrahubSharedLock, inside: asyncio.Eve
     async with shared_lock.exclusive():
         inside.set()
         await asyncio.wait_for(release.wait(), timeout=5)
+
+
+async def test_a_holder_cancelled_while_its_renewal_stops_still_removes_its_record(
+    mutex: InfrahubLock, clock: FakeClock
+) -> None:
+    store = SlowToAbortRenewalStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME,
+        mutex=mutex,
+        store=store,
+        ttl_seconds=TTL_SECONDS,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            await asyncio.wait_for(store.renewing.wait(), timeout=5)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(store.renewing.wait(), timeout=5)
+    await _let_other_tasks_run()
+    holder.cancel()
+    store.aborted.set()
+
+    with pytest.raises(asyncio.CancelledError, match=r"^$"):
+        await asyncio.wait_for(holder, timeout=5)
+    assert not await _has_holders(store=store)
 
 
 async def test_an_exclusive_request_waits_until_every_shared_holder_releases(
