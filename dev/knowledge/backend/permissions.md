@@ -181,7 +181,11 @@ Four query classes in `core/account.py`:
 - `AccountRoleGlobalPermissionQuery` — Role -> GlobalPermission (for anonymous access)
 - `AccountRoleObjectPermissionQuery` — Role -> ObjectPermission (for anonymous access)
 
-Permissions are loaded per-request with no caching.
+Each API server process keeps the permissions it loaded for an (account, branch) pair for
+`security.auth_cache_ttl_seconds` (5 s by default, 0 disables) in `permissions/cache.py`, so a burst
+of requests from one account runs the two queries once per window; a permission change takes
+effect within that window. The same setting bounds how long `auth/token_cache.py` keeps the account
+an API token resolved to.
 
 ## Helper Functions
 

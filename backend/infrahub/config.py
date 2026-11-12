@@ -43,6 +43,9 @@ log = get_logger()
 # Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
 VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
+# Short enough that a revoked token or a permission change is not served for long, long enough to
+# absorb the burst of requests one client sends while loading or writing data.
+DEFAULT_AUTH_CACHE_TTL_SECONDS = 5
 
 
 def default_cors_allow_methods() -> list[str]:
@@ -1291,6 +1294,14 @@ class SecuritySettings(BaseSettings):
     oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
     restrict_untrusted_jinja2_filters: bool = Field(
         default=True, description="Indicates if untrusted Jinja2 filters should be disallowed for computed attributes"
+    )
+    auth_cache_ttl_seconds: int = Field(
+        default=DEFAULT_AUTH_CACHE_TTL_SECONDS,
+        ge=0,
+        description="Seconds for which each API server process reuses the account an API token resolved to "
+        "and the permissions loaded for an account on a branch, instead of reading them from the database "
+        "on every request. A revoked token, a deactivated account or a permission change takes effect within "
+        "this window. 0 disables the cache.",
     )
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)

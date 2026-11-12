@@ -17,6 +17,7 @@ from infrahub.auth.auth_groups import (
     DisabledAutoCreateEventEmitter,
     LiveAutoCreateEventEmitter,
 )
+from infrahub.auth.cache_registry import get_account_token_cache
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.config import (
@@ -580,11 +581,15 @@ async def validate_jwt_refresh_token(db: InfrahubDatabase, token: str) -> models
 
 
 async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
-    account_id = await validate_token(token=token, db=db)
-    if not account_id:
-        raise AuthorizationError("Invalid token")
-
-    await validate_active_account(db=db, account_id=str(account_id))
+    token_cache = get_account_token_cache()
+    account_id = token_cache.get_account_id(token=token)
+    if account_id is None:
+        resolved_account_id = await validate_token(token=token, db=db)
+        if not resolved_account_id:
+            raise AuthorizationError("Invalid token")
+        account_id = str(resolved_account_id)
+        await validate_active_account(db=db, account_id=account_id)
+        token_cache.set_account_id(token=token, account_id=account_id)
 
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
