@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import redis.asyncio as redis
 import ujson
+from opentelemetry.trace import SpanKind
 
 from infrahub import config
 from infrahub.components import ComponentType
@@ -20,14 +21,16 @@ from infrahub.message_bus.messages.send_echo_request import SendEchoRequestRespo
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus.redis import RedisMessageBus, StreamSubscription
+from infrahub.services.adapters.message_bus.redis import RedisMessageBus, StreamEntry, StreamSubscription
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
+from tests.helpers.trace import recorded_spans
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
 
     from fast_depends import Provider
+    from opentelemetry.sdk.trace import ReadableSpan
 
     from infrahub.config import BrokerSettings
     from tests.adapters.log import FakeLogger
@@ -428,6 +431,149 @@ async def test_redis_event_broadcast(redis_api: RedisManager, fake_log: FakeLogg
             await git_bus.shutdown()
 
     assert fake_log.error_logs == ["Invalid message received", "Invalid message received"]
+
+
+def _named_spans(spans: tuple[ReadableSpan, ...], name: str) -> list[ReadableSpan]:
+    return [span for span in spans if span.name == name]
+
+
+def _parent_id(span: ReadableSpan) -> int | None:
+    return span.parent.span_id if span.parent else None
+
+
+def _span_id(span: ReadableSpan) -> int | None:
+    return span.context.span_id if span.context else None
+
+
+async def test_redis_event_is_traced_from_its_publisher_to_every_worker(
+    redis_api: RedisManager, fake_log: FakeLogger
+) -> None:
+    """An event records a producer span, and each worker that handles it a consumer span under it."""
+    events_stream = f"{redis_api.namespace}:events"
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    git_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+
+    with (
+        recorded_spans() as exported,
+        patch("infrahub.services.adapters.message_bus.redis.get_logger", return_value=fake_log),
+    ):
+        try:
+            await api_bus.publish(
+                message=messages.SendEchoRequest(message="traced"), routing_key="refresh.registry.invalid"
+            )
+            await wait_until(lambda: len(_named_spans(exported.get_finished_spans(), "on_callback")) == 2)
+        finally:
+            await api_bus.shutdown()
+            await git_bus.shutdown()
+        spans = exported.get_finished_spans()
+
+    conn = await redis_api.get_connection()
+    entries = await conn.xrange(events_stream)
+    assert isinstance(entries, list)
+    ((entry_id, _fields),) = entries
+    (published,) = _named_spans(spans, "publish_message")
+    handled = _named_spans(spans, "on_callback")
+
+    assert published.kind is SpanKind.PRODUCER
+    assert dict(published.attributes or {}) == {
+        "messaging.system": "redis",
+        "messaging.destination.name": events_stream,
+        "messaging.operation.type": "send",
+        "messaging.message.id": entry_id,
+        "routing_key": "refresh.registry.invalid",
+    }
+    assert [span.kind for span in handled] == [SpanKind.CONSUMER, SpanKind.CONSUMER]
+    assert [_parent_id(span) for span in handled] == [_span_id(published), _span_id(published)]
+    for span in handled:
+        assert dict(span.attributes or {}) == {
+            "messaging.system": "redis",
+            "messaging.destination.name": events_stream,
+            "messaging.operation.type": "process",
+            "messaging.message.id": entry_id,
+            "routing_key": "refresh.registry.invalid",
+        }
+
+
+async def test_redis_rpc_is_traced_through_the_request_and_the_reply(
+    redis_api: RedisManager, dependency_provider: Provider
+) -> None:
+    """An RPC records a producer and a consumer span for the request, then for the reply, each under the one before."""
+    rpcs_stream = f"{redis_api.namespace}:rpcs"
+    callback_stream = f"{redis_api.namespace}:callback:{WORKER_IDENTITY}"
+    api_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.API_SERVER)
+    # A second process, so the worker reads its own callback stream instead of the caller's.
+    with patch("infrahub.services.adapters.message_bus.redis.WORKER_IDENTITY", "replying-worker"):
+        git_bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.GIT_AGENT)
+
+    with dependency_provider.scope(build_message_bus, lambda: git_bus), recorded_spans() as exported:
+        try:
+            await asyncio.wait_for(
+                api_bus.rpc(message=messages.SendEchoRequest(message="traced"), response_class=SendEchoRequestResponse),
+                timeout=10.0,
+            )
+            await wait_until(lambda: _named_spans(exported.get_finished_spans(), "on_callback"))
+        finally:
+            await git_bus.shutdown()
+            await api_bus.shutdown()
+        spans = exported.get_finished_spans()
+
+    (request,) = _named_spans(spans, "publish_message")
+    (handled,) = _named_spans(spans, "on_message")
+    (reply,) = _named_spans(spans, "publish_reply")
+    (answered,) = _named_spans(spans, "on_callback")
+    parents = {_span_id(span): _parent_id(span) for span in spans}
+    reply_ancestors = set()
+    ancestor = _parent_id(reply)
+    while ancestor is not None:
+        reply_ancestors.add(ancestor)
+        ancestor = parents.get(ancestor)
+    request_attributes = dict(request.attributes or {})
+    reply_attributes = dict(reply.attributes or {})
+    correlation_id = request_attributes.get("messaging.message.conversation_id")
+
+    assert [request.kind, handled.kind, reply.kind, answered.kind] == [
+        SpanKind.PRODUCER,
+        SpanKind.CONSUMER,
+        SpanKind.PRODUCER,
+        SpanKind.CONSUMER,
+    ]
+    assert _parent_id(handled) == _span_id(request)
+    assert _span_id(handled) in reply_ancestors
+    assert _parent_id(answered) == _span_id(reply)
+    assert correlation_id
+    assert request_attributes == {
+        "messaging.system": "redis",
+        "messaging.destination.name": rpcs_stream,
+        "messaging.operation.type": "send",
+        "messaging.message.id": request_attributes.get("messaging.message.id"),
+        "messaging.message.conversation_id": correlation_id,
+        "routing_key": "send.echo.request",
+    }
+    assert dict(handled.attributes or {}) == {
+        "messaging.system": "redis",
+        "messaging.destination.name": rpcs_stream,
+        "messaging.consumer.group.name": RedisMessageBus.RPCS_GROUP,
+        "messaging.operation.type": "process",
+        "messaging.message.id": request_attributes["messaging.message.id"],
+        "messaging.message.conversation_id": correlation_id,
+        "routing_key": "send.echo.request",
+    }
+    assert reply_attributes == {
+        "messaging.system": "redis",
+        "messaging.destination.name": callback_stream,
+        "messaging.operation.type": "send",
+        "messaging.message.id": reply_attributes.get("messaging.message.id"),
+        "messaging.message.conversation_id": correlation_id,
+        "routing_key": callback_stream,
+    }
+    assert dict(answered.attributes or {}) == {
+        "messaging.system": "redis",
+        "messaging.destination.name": callback_stream,
+        "messaging.operation.type": "process",
+        "messaging.message.id": reply_attributes["messaging.message.id"],
+        "messaging.message.conversation_id": correlation_id,
+        "routing_key": callback_stream,
+    }
 
 
 async def test_redis_event_binding_filter(redis_api: RedisManager, fake_log: FakeLogger) -> None:
@@ -1183,7 +1329,7 @@ async def test_redis_shutdown_cancels_a_handler_started_while_the_consumers_stop
     bus = await RedisMessageBus.new(settings=redis_api.settings, component_type=ComponentType.NONE)
     started_handlers: list[asyncio.Task] = []
 
-    async def runs_until_cancelled(message_data: dict) -> None:
+    async def runs_until_cancelled(entry: StreamEntry) -> None:
         await asyncio.Event().wait()
 
     subscription = StreamSubscription(

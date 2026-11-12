@@ -11,6 +11,7 @@ import ujson
 from infrahub_sdk.uuidt import UUIDT
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
+from opentelemetry.trace import SpanKind
 from prefect_redis.connection import aclose_redis_client
 
 from infrahub import config
@@ -37,6 +38,18 @@ if TYPE_CHECKING:
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+# Span attributes of the OpenTelemetry semantic conventions for messaging, which trace backends read to link services.
+MESSAGING_SYSTEM = "messaging.system"
+MESSAGING_SYSTEM_REDIS = "redis"
+MESSAGING_DESTINATION_NAME = "messaging.destination.name"
+MESSAGING_CONSUMER_GROUP_NAME = "messaging.consumer.group.name"
+MESSAGING_MESSAGE_ID = "messaging.message.id"
+MESSAGING_MESSAGE_CONVERSATION_ID = "messaging.message.conversation_id"
+MESSAGING_OPERATION_TYPE = "messaging.operation.type"
+MESSAGING_OPERATION_SEND = "send"
+MESSAGING_OPERATION_PROCESS = "process"
+ROUTING_KEY_ATTRIBUTE = "routing_key"
 
 # Each entry is removed right after its own XADD, because a script error does not undo the commands that already ran.
 DELIVER_DUE_MESSAGES_LUA = """
@@ -80,6 +93,20 @@ return {retried, dead}
 """
 
 
+def _entry_id_text(entry_id: bytes | str) -> str:
+    return entry_id.decode() if isinstance(entry_id, bytes) else entry_id
+
+
+@dataclass(frozen=True)
+class StreamEntry:
+    """An entry read from a Redis stream, with the consumer group it was read through, if any."""
+
+    stream: str
+    entry_id: bytes
+    fields: dict
+    group: str | None = None
+
+
 @dataclass
 class StreamSubscription:
     """Describes how one consumer task reads a Redis stream.
@@ -96,7 +123,7 @@ class StreamSubscription:
 
     stream: str
     consumer: str
-    callback: Callable[[dict], Awaitable[None]]
+    callback: Callable[[StreamEntry], Awaitable[None]]
     group: str | None = None
     ack_messages: bool = False
     start_id: str = "0"
@@ -467,8 +494,11 @@ class RedisMessageBus(InfrahubMessageBus):
             subscription: The stream subscription the message was read for.
 
         """
+        entry = StreamEntry(
+            stream=subscription.stream, entry_id=message_id, fields=message_data, group=subscription.group
+        )
         try:
-            await subscription.callback(message_data)
+            await subscription.callback(entry)
         # Per-entry boundary: one failing entry is logged instead of stopping the consumer.
         except Exception:  # noqa: BLE001
             get_logger().exception("Error processing message", message_id=message_id)
@@ -709,23 +739,35 @@ class RedisMessageBus(InfrahubMessageBus):
         return decoded
 
     @contextlib.contextmanager
-    def _traced_message(self, message_data: dict, span_name: str) -> Iterator[tuple[dict, dict, Span]]:
-        """Decode a raw stream entry and set up its tracing context.
+    def _traced_message(self, entry: StreamEntry, span_name: str) -> Iterator[tuple[dict, dict]]:
+        """Decode a stream entry and handle it in a consumer span that continues the trace of its publisher.
 
-        Yields the decoded entry data, its parsed headers, and the active
-        span; the propagated trace context is detached again on exit.
+        Yields the decoded entry data and its parsed headers; the propagated trace context is detached again on exit.
         """
-        data = self._decode_message_data(message_data)
+        data = self._decode_message_data(entry.fields)
         headers = ujson.loads(data.get("headers", "{}"))
         if is_instrumentation_enabled() and headers:
             token = context.attach(propagate.extract(headers))
         else:
             token = None
 
+        attributes = {
+            MESSAGING_SYSTEM: MESSAGING_SYSTEM_REDIS,
+            MESSAGING_DESTINATION_NAME: entry.stream,
+            MESSAGING_MESSAGE_ID: _entry_id_text(entry.entry_id),
+            MESSAGING_OPERATION_TYPE: MESSAGING_OPERATION_PROCESS,
+            ROUTING_KEY_ATTRIBUTE: data.get("routing_key", ""),
+        }
+        if entry.group:
+            attributes[MESSAGING_CONSUMER_GROUP_NAME] = entry.group
+        if correlation_id := headers.get("correlation_id"):
+            attributes[MESSAGING_MESSAGE_CONVERSATION_ID] = correlation_id
+
         try:
-            with trace.get_tracer(__name__).start_as_current_span(span_name) as span:
-                span.set_attribute("routing_key", data.get("routing_key", ""))
-                yield data, headers, span
+            with trace.get_tracer(__name__).start_as_current_span(
+                span_name, kind=SpanKind.CONSUMER, attributes=attributes
+            ):
+                yield data, headers
         finally:
             if token is not None:
                 context.detach(token)
@@ -744,20 +786,15 @@ class RedisMessageBus(InfrahubMessageBus):
         # nothing to do with the returned TTL here.
         await execute_message(routing_key=routing_key, message_body=body, message_bus=self)
 
-    async def on_callback(self, message_data: dict) -> None:
+    async def on_callback(self, entry: StreamEntry) -> None:
         """Handle callback messages (responses and events).
 
         An entry carrying a correlation id is an RPC reply and resolves the
         future awaiting it; anything else is dispatched as a regular message.
-
-        Args:
-            message_data: The raw message data from Redis.
-
         """
-        with self._traced_message(message_data, "on_callback") as (data, headers, span):
+        with self._traced_message(entry, "on_callback") as (data, headers):
             correlation_id = headers.get("correlation_id")
             if correlation_id:
-                span.set_attribute("correlation_id", correlation_id)
                 future = self.futures.pop(correlation_id, None)
                 if future and not future.done():
                     future.set_result(data)
@@ -767,17 +804,13 @@ class RedisMessageBus(InfrahubMessageBus):
 
             await self._dispatch(data)
 
-    async def on_message(self, message_data: dict) -> None:
+    async def on_message(self, entry: StreamEntry) -> None:
         """Handle work queue messages (RPCs).
 
         RPC requests carry a correlation id for their reply, so unlike
         callback entries they are always dispatched to a handler.
-
-        Args:
-            message_data: The raw message data from Redis.
-
         """
-        with self._traced_message(message_data, "on_message") as (data, _headers, _span):
+        with self._traced_message(entry, "on_message") as (data, _headers):
             await self._dispatch(data)
 
     async def _subscribe_events(self, identity: str, bindings: list[str]) -> None:
@@ -933,10 +966,8 @@ class RedisMessageBus(InfrahubMessageBus):
             is_retry: Whether this is a retry of a previously failed message.
 
         """
-        with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
-            span.set_attribute("routing_key", routing_key)
-
-            stream = self._get_stream_for_routing_key(routing_key)
+        stream = self._get_stream_for_routing_key(routing_key)
+        with self._producer_span("publish_message", stream=stream, routing_key=routing_key, message=message) as span:
             if delay and stream == self.events_stream:
                 # Every worker reads the events stream, so each worker that fails a delayed event would multiply it.
                 get_logger().warning(
@@ -956,10 +987,31 @@ class RedisMessageBus(InfrahubMessageBus):
             }
             if delay:
                 await self._schedule_delayed(stream=stream, fields=fields, delay=delay)
-            elif stream == self.events_stream:
-                await self.connection.xadd(stream, fields, maxlen=self.EVENTS_STREAM_MAXLEN, approximate=True)
+                return
+            if stream == self.events_stream:
+                entry_id = await self.connection.xadd(
+                    stream, fields, maxlen=self.EVENTS_STREAM_MAXLEN, approximate=True
+                )
             else:
-                await self.connection.xadd(stream, fields)
+                entry_id = await self.connection.xadd(stream, fields)
+            span.set_attribute(MESSAGING_MESSAGE_ID, _entry_id_text(entry_id))
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _producer_span(span_name: str, stream: str, routing_key: str, message: InfrahubMessage) -> Iterator[Span]:
+        """Open the producer span of a message bound for `stream`; headers built inside it make its readers children."""
+        attributes = {
+            MESSAGING_SYSTEM: MESSAGING_SYSTEM_REDIS,
+            MESSAGING_DESTINATION_NAME: stream,
+            MESSAGING_OPERATION_TYPE: MESSAGING_OPERATION_SEND,
+            ROUTING_KEY_ATTRIBUTE: routing_key,
+        }
+        if message.meta.correlation_id:
+            attributes[MESSAGING_MESSAGE_CONVERSATION_ID] = message.meta.correlation_id
+        with trace.get_tracer(__name__).start_as_current_span(
+            span_name, kind=SpanKind.PRODUCER, attributes=attributes
+        ) as span:
+            yield span
 
     def _get_stream_for_routing_key(self, routing_key: str) -> str:
         """Determine the appropriate stream for a routing key.
@@ -1004,16 +1056,18 @@ class RedisMessageBus(InfrahubMessageBus):
             routing_key: The callback stream name (from message.meta.reply_to).
 
         """
-        await self.connection.xadd(
-            routing_key,
-            {
-                "routing_key": routing_key,
-                "body": message.body,
-                "headers": ujson.dumps(self._build_headers(message)),
-            },
-        )
-        # Renewed with the same expiry the stream's owner keeps renewing, so a reply never shortens it.
-        await self.connection.expire(routing_key, self.CALLBACK_STREAM_TTL)
+        with self._producer_span("publish_reply", stream=routing_key, routing_key=routing_key, message=message) as span:
+            entry_id = await self.connection.xadd(
+                routing_key,
+                {
+                    "routing_key": routing_key,
+                    "body": message.body,
+                    "headers": ujson.dumps(self._build_headers(message)),
+                },
+            )
+            span.set_attribute(MESSAGING_MESSAGE_ID, _entry_id_text(entry_id))
+            # Renewed with the same expiry the stream's owner keeps renewing, so a reply never shortens it.
+            await self.connection.expire(routing_key, self.CALLBACK_STREAM_TTL)
 
     async def rpc(
         self,
@@ -1047,8 +1101,8 @@ class RedisMessageBus(InfrahubMessageBus):
         Reading the work queue stream without its consumer group leaves the group's deliveries unchanged.
         """
 
-        async def forward(message_data: dict) -> None:
-            data = self._decode_message_data(message_data)
+        async def forward(entry: StreamEntry) -> None:
+            data = self._decode_message_data(entry.fields)
             routing_key = data.get("routing_key", "")
             if topic_matches(topic, routing_key):
                 body = data.get("body", "")
