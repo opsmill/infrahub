@@ -109,7 +109,9 @@ Pass-through cases that bypass admission entirely:
 - The kill-switch: when `backpressure_enabled` is false, every request passes through.
 - Excluded paths — liveness/scrape/probe/static/docs: `/health`, `/metrics`, `/api/config`,
   `/assets`, `/favicons`, `/docs`, `/api/schema`. Liveness, scraping, and the config probe must
-  never be shed.
+  never be shed. `/api/config` is not I/O-free: it reads the global preference row on each call
+  (no per-query timeout), so these reads take no admission slot and a stalled database
+  can hold the request open.
 - CORS preflights (`OPTIONS` advertising `access-control-request-method`) — see
   [Known limitations](#known-limitations).
 - Page navigations — a `GET` whose `Accept` lists `text/html` as a media range of its own. The frontend is served by

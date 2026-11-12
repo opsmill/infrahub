@@ -132,7 +132,7 @@ The two settings are independent:
 
 ### Allowed values
 
-- Instance label: free text of at most 32 characters. Infrahub removes the spaces, tabs and line breaks at the start and at the end of the label before it checks it, so a label made of spaces only resets the label. A label is rejected when it contains, inside it, a line break, a tab or another control character, a Unicode line or paragraph separator (U+2028, U+2029), or a bidirectional control character such as U+202E.
+- Instance label: free text of at most 32 characters. Infrahub removes the spaces, tabs and line breaks at the start and at the end of the label before it checks it, so a label made of spaces only resets the label. A label is rejected when it contains, inside it, a line break, a tab or another control character, a Unicode line or paragraph separator (U+2028, U+2029), or a bidirectional control character such as U+202E. The label `NULL` is also rejected, because Infrahub stores that text to mark an unset value.
 - Instance color: one of **Red**, **Amber**, **Green**, **Blue**, **Indigo**, **Purple**, or **Gray** in the web interface. The GraphQL API takes the same colors as the uppercase enum values `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, and `GRAY`.
 
 Infrahub does not attach a meaning to any color. A convention that teams can adopt is red for production, amber for staging, and green for development; choose the one that fits your instances.
@@ -146,7 +146,7 @@ Infrahub does not attach a meaning to any color. A convention that teams can ado
 2. In the **Instance identity** card, enter an **Instance label** and select an **Instance color**.
 3. Click **Save instance identity**.
 
-The badge, the bar, and the tab title update in your own session as soon as the save completes. Tabs that other users already have open pick the change up the next time the tab regains focus, unless the tab loaded the settings less than two seconds before. No restart of Infrahub is needed.
+The badge, the bar, and the tab title update in your own session as soon as the save completes. Tabs that other users already have open load the change the next time the tab regains focus, unless the tab loaded the settings less than two seconds before. No restart of Infrahub is needed.
 
 To reset the label, clear the field and save. To reset the color, open the color picker, select the color that is already selected so that the picker clears it, and save. Each value can be changed or reset on its own; saving one leaves the other, and the date and time defaults, unchanged.
 
@@ -165,7 +165,7 @@ mutation {
 }
 ```
 
-An omitted argument leaves that value unchanged. An explicit `null` resets it. A label longer than 32 characters once the surrounding whitespace is removed, a label with a control character, a Unicode line or paragraph separator, or a bidirectional control character inside it, or a color outside the list is rejected and nothing is stored. The mutation rejects `instance_label` and `instance_color` with `scope: USER`.
+An omitted argument leaves that value unchanged. An explicit `null` resets it. A label longer than 32 characters once the surrounding whitespace is removed, a label with a control character, a Unicode line or paragraph separator, or a bidirectional control character inside it, the label `NULL`, or a color outside the list is rejected and nothing is stored. The mutation rejects `instance_label` and `instance_color` with `scope: USER`.
 
 Read the stored values with `InfrahubGlobalPreferences`, which also requires the `manage_global_preferences` permission:
 
@@ -197,12 +197,12 @@ Infrahub checks both values when it starts. An empty value counts as not set. A 
 Infrahub resolves the label and the color separately, in this order:
 
 1. The value saved in the web interface or with `InfrahubSetPreferences` using `scope: GLOBAL`.
-2. The deployment default from the environment variable.
+2. The deployment default, from the environment variable or the `[instance]` section of `infrahub.toml`.
 3. No value.
 
 For example, with a saved label and no saved color, the badge shows the saved label in the default color of the deployment.
 
-When the deployment sets a default label, an empty label field in the **Instance identity** card shows that label as its placeholder, with the line `Leave empty to use the deployment default: <label>.` When the deployment sets a default color and no color is saved, the color picker shows `Deployment default: <color>`; without a default color it shows the placeholder text `No color`. To return to the deployment default after you saved a value, reset the saved value: clear the label and save, or reset the color and save. While a deployment sets a default, the web interface can replace it with another value but cannot remove it; to show no label or no color, remove the environment variable and restart Infrahub.
+When the deployment sets a default label, an empty label field in the **Instance identity** card shows that label as its placeholder, with the line `Leave empty to use the deployment default: <label>.` When the deployment sets a default color and no color is saved, the color picker shows `Deployment default: <color>`; without a default color it shows the placeholder text `No color`. To return to the deployment default after you saved a value, reset the saved value: clear the label and save, or reset the color and save. While a deployment sets a default, the web interface can replace it with another value but cannot remove it; to show no label or no color, remove the environment variable or the `[instance]` setting and restart Infrahub.
 
 `InfrahubGlobalPreferences` returns the saved values only, with `null` for a value that is not saved, even when the deployment sets a default.
 
@@ -217,7 +217,7 @@ Every client loads the public `GET /api/config` endpoint before it renders a pag
 }
 ```
 
-When Infrahub cannot read the saved values, for example during a database outage, `instance` returns `null` for the label and the color rather than the deployment defaults, because a default could name a different stage than the saved value. The pages then show no badge and no bar until the read succeeds.
+When Infrahub cannot read the saved values, for example during a database outage, `instance` returns `null` for the label and the color rather than the deployment defaults, because a default could name a different stage than the saved value. The pages then show no badge, no bar, no label in the tab title and the standard tab icon until the read succeeds.
 
 This endpoint requires no authentication, which is how the login page shows the badge and the bar before a visitor signs in. Reading it never creates a stored preference.
 

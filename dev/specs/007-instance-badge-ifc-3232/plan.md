@@ -2,7 +2,7 @@
 
 **Branch**: `ple-instance-badge-ifc-3232` | **Date**: 2026-11-05 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/007-instance-badge-ifc-3232/spec.md`, a design jam of four prototyped header directions (prototype removed before the PR, not kept in the repository), and three planning framings (minimal change, clean boundaries, test-first) merged on 2026-11-05.
+**Input**: Feature specification from `dev/specs/007-instance-badge-ifc-3232/spec.md`, a design jam of four prototyped header directions (prototype removed before the PR, not kept in the repository), and three planning framings (minimal change, clean boundaries, test-first) merged on 2026-11-05.
 
 ## Summary
 
@@ -26,9 +26,9 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 
 **Performance Goals**: `/api/config` performs one read-only `get_for_owner` per call; no polling is added, the other open tabs refetch `["config"]` on window focus
 
-**Constraints**: No inline styles or arbitrary Tailwind values (theme tokens only); no `cast`, `any` or `type: ignore`; generated files regenerated, never edited; the E2E test is the last task and the feature is not complete until it passes
+**Constraints**: No inline styles or arbitrary Tailwind values (theme tokens only); no new `cast`, `any` or `type: ignore` (the existing `type: ignore[call-arg]` on the mutation return is kept); generated files regenerated, never edited; the E2E test is the last task and the feature is not complete until it passes
 
-**Scale/Scope**: 12 tasks for IFC-3232; about 10 backend files, about 20 frontend files, 1 E2E file, 2 docs files. IFC-3588 adds 12 tasks (T013 to T024): 11 done, including the review fixes of T021, T023 and T024, and 1 open (T022).
+**Scale/Scope**: 12 tasks for IFC-3232; about 10 backend files, about 20 frontend files, 1 E2E file, 2 docs files. IFC-3588 adds 13 tasks (T013 to T025): 12 done, including the review fixes of T021, T023, T024 and T025, and 1 open (T022).
 
 ## Decisions
 
@@ -45,9 +45,9 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 
 ## Constitution Check
 
-- **I. Schema-driven integrity**: no core schema change; `Preference` is a StandardNode. Generated files (`schema/schema.graphql`, `schema/openapi.json`, `frontend/app/src/shared/api/**`) are regenerated in T4 and T7, never edited. PASS.
-- **II. Branch-safe**: the row is read and written without branch filters, like the existing date and timezone fields; the setting belongs to the instance, not to a branch (FR-002), and `dev/knowledge/backend/preferences.md` states it (T11). PASS.
-- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceIdentityAPI`, generated TypeScript); `Optional[X]` on the two new model fields matches the two adjacent fields of `Preference` for consistency; no `cast`, `any` or `type: ignore`. PASS.
+- **I. Schema-driven integrity**: no core schema change; `Preference` is a StandardNode. Generated files (`schema/schema.graphql`, `schema/openapi.json`, `frontend/app/src/shared/api/**`) are regenerated in T004 and T007, never edited. PASS.
+- **II. Branch-safe**: the row is read and written without branch filters, like the existing date and timezone fields; the setting belongs to the instance, not to a branch (FR-002), and `dev/knowledge/backend/preferences.md` states it (T011). PASS.
+- **III. Type safety**: the enum is typed end to end (model, graphene `Enum.from_enum`, Pydantic `InstanceIdentityAPI`, generated TypeScript); `Optional[X]` on the two new model fields matches the two adjacent fields of `Preference` for consistency; no new `cast`, `any` or `type: ignore`. PASS.
 - **IV. Test discipline**: validation in `tests/unit/`; repository, mutation, query and REST in `tests/component/`; Vitest for rules, hooks and components; `tests/e2e/preferences/test_instance_identity.py` last. PASS.
 - **V. Query performance**: the only Cypher change adds two return columns to `_RETURN_LABELS`; user input reaches the database only through `StandardNode.save`, which binds parameters. PASS.
 - **VI. Security**: the write is gated by `raise_for_permission` before any read; the public read exposes only the label and color, which are meant for every visitor. PASS.
@@ -60,7 +60,7 @@ No violations; the Complexity Tracking table is empty.
 ### Documentation (this feature)
 
 ```text
-specs/007-instance-badge-ifc-3232/
+dev/specs/007-instance-badge-ifc-3232/
 ├── plan.md              # This file
 ├── spec.md
 ├── data-model.md        # Fields, enum, validation rules
@@ -111,15 +111,15 @@ changelog/+ifc-3232-instance-badge.added.md
 
 | Group | Tasks | Mode |
 |---|---|---|
-| 1 Backend | T1 → (T2 ∥ T3) → T4 | T2 and T3 in parallel after T1 |
-| 2 Frontend foundations | T5 ∥ T6 → T7 | after T4 |
-| 3 Frontend surfaces | T8 ∥ T9 | after T5 and T7 |
-| 4 Closing | T10 → T12; T11 any time after T3 | E2E last |
+| 1 Backend | T001 → (T002 ∥ T003) → T004 | T002 and T003 in parallel after T001 |
+| 2 Frontend foundations | T005 ∥ T006 → T007 | after T004 |
+| 3 Frontend surfaces | T008 ∥ T009 | after T005 and T007 |
+| 4 Closing | T010 → T012; T011 any time after T003 | E2E last |
 
 ## Surviving risks
 
 - Stale title on pages without `useTitle`: mitigated by the single `DocumentTitle` owner, which falls back to `<label> · Infrahub` when no page registers a title and recomputes the title whenever the label or the registered title changes; guarded by the `DocumentTitle` tests, including "label changed while a page is open" and "page unmounts".
-- Two Save buttons on the Global preferences page: the new form's button is named "Save instance identity" so the existing `name="Save", exact=True` locators in the E2E and component tests stay unique; each form submits only its own keys, asserted by the form tests.
+- Two Save buttons on the Global preferences page: the new form's button is named "Save instance identity" so the existing `name="Save", exact=True` E2E locators stay unique and the Vitest locator in `global-preferences-editor.test.tsx` gained `exact: true`; each form submits only its own keys, asserted by the form tests.
 - Database read on `/api/config`: one read-only call, no row created, asserted by the REST test. Any exception on that read is logged and the identity is served as unset, so the login page still renders during an outage. IFC-3588 keeps this behavior and does not serve the deployment defaults in this case. No caching is added on purpose: the row is tiny and a cache would delay propagation to other sessions.
 - The return type of `InfrahubGlobalPreferences` changes from `RawPreferencesType` to `GlobalPreferencesType` (a superset); the frontend query uses no fragment, so no client breaks. This GraphQL schema change and the `/api/config` contract change were approved by the tech owner on 2026-11-04 as part of the "new global setting" decision.
 - Hand-written USER-scope guard: runs before any read; the mutation and query tests pin the error and the absence of the fields on user types.
@@ -200,7 +200,7 @@ changelog/+ifc-3232-instance-badge.added.md   # extended; the IFC-3588 fragment 
 
 - **I. Schema-driven integrity**: no core schema change and no GraphQL schema change. `schema/openapi.json`, the REST types, the configuration reference and the compose environment blocks are regenerated. PASS.
 - **III. Type safety**: `InstanceColor | None` on the settings, the REST model and the generated TypeScript type; no `cast`, `any` or `type: ignore`. PASS.
-- **IV. Test discipline**: settings and label rules in `tests/unit/`; read failure in `tests/unit/api/test_internal.py`; resolution and reset in `tests/component/api/test_50_internals.py`; Vitest for the form hints, the recolor rule and `InstanceFavicon`. No E2E covers the defaults or the tab icon (see T022). PARTIAL.
+- **IV. Test discipline**: settings and label rules in `backend/tests/unit/`; read failure in `backend/tests/unit/api/test_internal.py`; resolution and reset in `backend/tests/component/api/test_50_internals.py`; Vitest for the form hints, the recolor rule and `InstanceFavicon`. No E2E covers the defaults or the tab icon (see T022). PARTIAL.
 - **VII. Simplicity**: one new module and one settings section; no new package or dependency. PASS.
 
 ### Surviving risks of the extension
