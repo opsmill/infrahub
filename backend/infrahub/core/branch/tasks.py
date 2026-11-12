@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import httpx
 from opentelemetry import trace
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
-from prefect.exceptions import ObjectNotFound
 from prefect.states import Completed, Failed
 
 from infrahub import config, lock
@@ -588,25 +586,8 @@ async def _do_merge_branch(
 async def delete_branch(
     branch: str, context: InfrahubContext, delete_from_git: bool = False, proposed_change_id: str | None = None
 ) -> None:
-    related_nodes = [proposed_change_id] if proposed_change_id else None
-    # Only a failed deletion is tagged with the branch, because the purge a successful one starts removes
-    # the branch's settled runs while a caller can still be waiting on this one.
-    await add_tags(nodes=related_nodes)
-    try:
-        await _run_branch_deletion(
-            branch=branch, context=context, delete_from_git=delete_from_git, proposed_change_id=proposed_change_id
-        )
-    except Exception:
-        try:
-            await add_tags(branches=[branch], nodes=related_nodes)
-        except (httpx.HTTPError, ObjectNotFound, OSError):
-            get_run_logger().exception(f"Could not tag the failed deletion of branch {branch} with the branch")
-        raise
-
-
-async def _run_branch_deletion(
-    branch: str, context: InfrahubContext, delete_from_git: bool, proposed_change_id: str | None
-) -> None:
+    # No branch tag: deleting the branch purges its settled runs, and a caller can still be waiting on this one.
+    await add_tags(nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
     workflow = get_workflow()
     event_service = await get_event_service()
