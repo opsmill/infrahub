@@ -78,18 +78,24 @@ const cases: Array<Case> = [
     expected: null,
   },
   {
-    name: "reports an unreadable artifact whose file is missing with that reason",
+    name: "reports an unreadable artifact whose file is missing as a missing file",
     params: {
       encryption: "unreadable",
       reason: "missing",
       isEncryptionEnabled: true,
       isVerified: false,
     },
-    expected: {
-      level: "error",
-      message:
-        "This artifact is encrypted but cannot be read with the current encryption key. The file is missing from the storage.",
+    expected: { level: "error", message: "The file of this artifact is missing from the storage." },
+  },
+  {
+    name: "does not warn about a plaintext artifact whose file is missing",
+    params: {
+      encryption: "plaintext",
+      reason: "missing",
+      isEncryptionEnabled: true,
+      isVerified: false,
     },
+    expected: null,
   },
   {
     name: "says nothing when the artifact has no encryption value",
