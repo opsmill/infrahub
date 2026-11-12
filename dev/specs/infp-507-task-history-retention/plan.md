@@ -68,9 +68,9 @@ The GraphQL resolver resolves branch names and constructs resource filters; the 
 window follows retention when event cleanup is enabled, otherwise it spans at least 180 days.
 The frontend continues by timestamp and deduplicates IDs. When every event of a full page has the
 boundary time, the next request keeps that time and adds an offset, the number of events of that
-time already shown. Prefect orders events of the same time arbitrarily, so inside such a time a
-request can repeat events, which the page drops, and can leave one out when PostgreSQL returns them
-in another order; the page stops when a request adds no new event. Review [filter equivalence](data-model.md#activities-filters-changed-expression-same-results)
+time already shown. The task manager orders the events of one time by ID, so the offset skips
+exactly the events already shown; the page stops if a request adds no new event, so that it never
+sends the same request twice. Review [filter equivalence](data-model.md#activities-filters-changed-expression-same-results)
 and the [page request](data-model.md#activities-page-request-changed).
 
 ## Technical Context

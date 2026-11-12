@@ -221,7 +221,7 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 | Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
 | The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from now |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
-| Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. It stops when a request adds no new event, because the task manager orders events of the same time arbitrarily |
+| Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
 | A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
 | A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
@@ -239,8 +239,9 @@ Events can be queried through:
 
 The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one time window
 at a time (1 hour, 1 day, 7 days, 30 days, then the whole range, back from the filter's `until`),
-and runs an unbounded `count(*)` over the whole range when asked. The range starts at the filter's
-`since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
+and runs an unbounded `count(*)` over the whole range when asked. Within one time, events are
+ordered by ID, so an `offset` skips the same events in every request. The range starts at the
+filter's `since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
 manager's event retention, or at least 180 days when the task manager does not delete old events,
 back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of the request so
 that this default applies. A wider window reads only the events older than the window before it,

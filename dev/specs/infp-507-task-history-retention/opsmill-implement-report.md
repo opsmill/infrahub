@@ -31,7 +31,7 @@ The review fixes rebased the stack after the chunks ran, and the quickstart fix 
 | 3 | Client, CLI, upgrade (PR 2) | T011, T012, T013, T017, T018, T019, T020; rewrite modes | 7 ✅ | `d30a15539`, `024366bf2` | Rewrite modes `never` / `if_freed` / `always` (see §6). |
 | 3b-3d | Review rounds on PR 2 | review fixes | ✅ | `18ec67104` … `f966842a5` | A running job's rewrite mode is raised in the task manager; the job lifecycle lives in one place. |
 | 4 | Activities backend (PR 3) | T025 (cherry-pick of #10379), T026-T028, T030-T033 | 8 ✅ | `64ca3a132`, `fb9150270` (#10379), `3425a2efb`, `2cf6487d5` | The "Primary Node" filter keeps label matching unless the request lists event types (see §6). `include_total` keeps #10379's name. |
-| 5 | Activities frontend and E2E (PR 3) | T029, T034, T035, T036 | 4 ✅ | `53a9595a6`, `728ba0b4a` | No tie offset, because Prefect orders events by time only. The proposed-change timeline pages with `since`. |
+| 5 | Activities frontend and E2E (PR 3) | T029, T034, T035, T036 | 4 ✅ | `53a9595a6`, `728ba0b4a` | No tie offset, because Prefect orders events by time only (changed later: the page continues inside one time with an offset, and the task manager orders the events of one time by ID). The proposed-change timeline pages with `since`. |
 | 6 | Event-type guard (PR 4) | T040, T044, T045 | 3 ✅ | `acc2f37f4`, `7d8538e97` | T044 needed no production code. T045's sizing guidance went to the docs (T053). |
 | 7 | Background services (PR 5) | T048, T049 | 2 ✅ | `07ab66069`, `fb02857f8`, `abb986066` | The background services now log at `INFRAHUB_LOG_LEVEL` (INFO), not Prefect's WARNING. |
 | 8 | Documentation (PR 6) | T051-T056 | 6 ✅ | `6d49951f4`, `ce333c6fb`, `2fa5a51d6`, `0e8cf8453` | Findings are listed in §7. |

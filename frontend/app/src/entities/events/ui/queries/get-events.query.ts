@@ -68,7 +68,7 @@ export function getEventsQueryOptions(filters: GetEventsParams) {
       // The next request skips the events of that time already shown.
       const shownAtBoundary = countShownAt(allPages, boundary);
 
-      // The server orders events of the same time arbitrarily, so a page can repeat events instead of adding new ones.
+      // A page that adds no event of that time would make the next request the same as this one.
       if (shownAtBoundary === lastPageParam.shownAtBoundary) return;
 
       return { boundary, shownAtBoundary };

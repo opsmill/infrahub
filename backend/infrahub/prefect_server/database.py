@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
+from prefect.server.database.orm_models import Event
 from prefect.server.events.filters import EventOccurredFilter, EventOrder
 from prefect.server.events.schemas.events import ReceivedEvent
 from prefect.server.events.storage import INTERACTIVE_PAGE_SIZE
@@ -14,7 +15,6 @@ from .models import InfrahubDatabaseVersion
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from prefect.server.database.orm_models import ORMEvent
     from prefect.server.events.filters import EventFilter
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,21 +68,33 @@ def newest_first_ranges(since: datetime, until: datetime) -> list[tuple[datetime
 
 async def _read_page(
     session: AsyncSession, filter: EventFilter, since: datetime, until: datetime, page_size: int, offset: int | None
-) -> Sequence[ORMEvent]:
+) -> Sequence[Event]:
     between = _between(filter=filter, since=since, until=until)
-    return await read_events(session, between, limit=page_size, offset=offset)  # type: ignore[attr-defined]
+    if between.resource and between.resource.distinct:
+        return await read_events(session, between, limit=page_size, offset=offset)  # type: ignore[attr-defined]
+    order = sa.desc if between.order == EventOrder.DESC else sa.asc
+    # The ID orders the events of one time, so an offset skips the same events in every request.
+    statement = (
+        sa.select(Event)
+        .where(*between.build_where_clauses())
+        .order_by(order(Event.occurred), order(Event.id))
+        .limit(max(0, min(page_size, between.logical_limit)))
+    )
+    if offset is not None:
+        statement = statement.offset(offset)
+    return (await session.scalars(statement)).all()
 
 
 async def _read_newest_first(
     session: AsyncSession, filter: EventFilter, since: datetime, page_size: int, offset: int | None
-) -> Sequence[ORMEvent]:
+) -> Sequence[Event]:
     """Read the page newest first, one window at a time, until the windows read so far fill it."""
     until = filter.occurred.until
     page_limit = max(0, min(page_size, filter.logical_limit))
     one_per_resource = bool(filter.resource and filter.resource.distinct)
     # An offset and the one event kept per resource are counted from `until`, so such a read starts there.
     from_until = bool(offset) or one_per_resource
-    page: list[ORMEvent] = []
+    page: list[Event] = []
     for range_since, range_until in newest_first_ranges(since=since, until=until):
         if from_until:
             rows = await _read_page(

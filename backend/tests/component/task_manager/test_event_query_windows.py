@@ -28,6 +28,9 @@ SPARSE_ACCOUNT = str(uuid4())
 BOUNDARY_ACCOUNT = str(uuid4())
 REPEATED_NODE_ACCOUNT = str(uuid4())
 REPEATED_NODE_IDS = (str(uuid4()), str(uuid4()))
+SAME_TIME_ACCOUNT = str(uuid4())
+# Neither ascending nor descending, so the order the events are stored in is not the order of their IDs.
+SAME_TIME_STORE_ORDER = [2, 0, 4, 1, 5, 3]
 BRANCH_ID = str(uuid4())
 
 DENSE_AGES = [timedelta(minutes=4 * index + 1) for index in range(12)] + [
@@ -104,6 +107,16 @@ async def seeded(prefect_client: PrefectClient) -> Seeded:
         for node_id, age in REPEATED_NODE_EVENTS
     ]
     return Seeded(now=now, dense=dense, sparse=sparse, boundary=boundary, repeated_node=repeated_node)
+
+
+@pytest.fixture(scope="module")
+async def same_time_events(prefect_client: PrefectClient) -> list[str]:
+    """IDs, in ascending order, of events of one account that all occurred at the same time."""
+    occurred = datetime.now(UTC) - timedelta(minutes=30)
+    events = sorted((_event(SAME_TIME_ACCOUNT) for _ in SAME_TIME_STORE_ORDER), key=lambda event: event.meta.id)
+    for index in SAME_TIME_STORE_ORDER:
+        await seed_infrahub_event(event=events[index], occurred=occurred)
+    return [str(event.meta.id) for event in events]
 
 
 @dataclass
@@ -232,6 +245,24 @@ async def test_windows_return_the_events_of_a_single_read(
         limit=test_case.limit,
         offset=test_case.offset,
     )
+
+
+@pytest.mark.parametrize("order", [EventSortOrder.DESC, EventSortOrder.ASC])
+async def test_events_of_one_time_are_paged_in_the_order_of_their_ids(
+    order: EventSortOrder, same_time_events: list[str], prefect_client: PrefectClient
+) -> None:
+    """Events of one time are ordered by ID, so pages read with an offset return each of them once."""
+    event_filter = InfrahubEventFilter.from_filters(order=order, account__ids=[SAME_TIME_ACCOUNT])
+
+    pages = [
+        await filter_event_ids(
+            client=prefect_client, event_filter=event_filter, limit=2, offset=offset, retention=timedelta(days=365)
+        )
+        for offset in (None, 2, 4)
+    ]
+
+    in_order = same_time_events if order == EventSortOrder.ASC else same_time_events[::-1]
+    assert pages == [in_order[0:2], in_order[2:4], in_order[4:6]]
 
 
 async def test_one_event_per_resource_is_the_newest_of_the_whole_range(
