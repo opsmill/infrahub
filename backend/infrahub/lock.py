@@ -530,6 +530,9 @@ class InfrahubSharedLock:
     async def release_exclusive(self) -> None:
         await self._mutex.release()
 
+    def held_exclusively_by_current_task(self) -> bool:
+        return self._mutex.held_by_current_task()
+
     async def _renew(self, holder: str, token: str) -> None:
         while True:
             await sleep(self._ttl_seconds / SHARED_LOCK_RENEWALS_PER_TTL)

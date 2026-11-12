@@ -255,7 +255,7 @@ implements with two locks:
 
 | Lock | Taken by | Mode |
 |------|----------|------|
-| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools | exclusive (`changing`) |
+| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools, the schema migration that adds a NumberPool attribute | exclusive (`changing`) |
 | `resource_pool.<pool id>` | allocation that picks a new number, attaching a supplied number, editing a tracked number | shared (`holding`) |
 | `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
 
@@ -269,10 +269,10 @@ the new pool before its transaction commits, so no write can hold it.
   the entry while it holds the lock, so allocations in different divisions never wait for each other.
   Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
   expired.
-- **A shared hold lasts until the commit.** Inside a transaction, `holding` hands its release to
-  `InfrahubDatabase.hold_until_transaction_end`, because a number only becomes visible to the range
-  check once it is committed. This also covers allocations that run inside a transaction outside the
-  mutation lock, such as template components and migrations.
+- **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
+  to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
+  other writes once it is committed. This also covers allocations that run inside a transaction outside
+  the mutation lock, such as template components and migrations.
 - **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
   queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
   it releases the mutex and the range change fails with a retry message. The lock error, which names
@@ -282,6 +282,16 @@ the new pool before its transaction commits, so no write can hold it.
   range change, so allocations take `picking` first. Template components are the exception: they
   allocate inside the template's transaction without taking the division's lock first, so the cycle can
   still form until the waiting range change reaches its wait limit and fails.
+- **A task that holds the pool exclusively skips `picking`.** Every other allocation picks inside its
+  shared hold, so none can pick while the pool is held exclusively, and skipping the division's lock keeps
+  the exclusive holder from waiting on an allocation that is itself queued behind it.
+- **The schema migration that adds a NumberPool attribute holds the pool exclusively until its commit.**
+  It allocates a number to every existing node in one transaction, and holds `changing` from before its
+  first allocation until the commit, so that no other allocation picks a number the migration drew but
+  has not committed yet, and no range changes under it. When writes still hold the pool after
+  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails. The Prefect task that runs it retries it
+  up to 3 times, and the schema update is rolled back only when the last attempt also fails. A kind with
+  no nodes allocates nothing and takes no pool lock.
 - **A dead worker makes range changes fail until its entry expires**, after
   `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
 - **An allocation that returns its identifier's reservation does not hold the pool.** The reserved

@@ -20,7 +20,10 @@ GATE_TIMEOUT_SECONDS = 30
 
 
 class RecordingLock(InfrahubLock):
-    """A local lock that logs its real (non-re-entrant) waits, acquires and releases to a timeline."""
+    """A local lock that logs its real (non-re-entrant) waits, acquires and releases to a timeline.
+
+    A gate registered for ``<name>:release`` holds the first task that releases the lock, right after the release.
+    """
 
     def __init__(
         self,
@@ -31,9 +34,11 @@ class RecordingLock(InfrahubLock):
         ttl: int | None = None,
         *,
         timeline: LockTimeline,
+        gates: dict[str, LockGate],
     ) -> None:
         super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
         self._timeline = timeline
+        self._gates = gates
 
     async def acquire(self) -> None:
         if self._recursion_var.get() is not None:
@@ -51,8 +56,12 @@ class RecordingLock(InfrahubLock):
     async def release(self) -> None:
         will_release = self._recursion_var.get() == 1
         await super().release()
-        if will_release:
-            self._timeline.record(self.name, LockAction.RELEASE)
+        if not will_release:
+            return
+        self._timeline.record(self.name, LockAction.RELEASE)
+        gate = self._gates.pop(f"{self.name}:release", None)
+        if gate is not None:
+            await gate.hold()
 
 
 class LockGate:
@@ -141,7 +150,7 @@ class RecordingLockRegistry(InfrahubLockRegistry):
         self.gates: dict[str, LockGate] = {}
 
     def gate(self, name: str) -> LockGate:
-        """Return a gate holding the first task that next takes the lock ``name`` in the mode its suffix names."""
+        """Return a gate holding the first task that next takes the lock, or releases it, as the suffix of ``name`` says."""
         gate = LockGate()
         self.gates[name] = gate
         return gate
@@ -165,6 +174,7 @@ class RecordingLockRegistry(InfrahubLockRegistry):
             metrics=metrics,
             ttl=ttl,
             timeline=self.timeline,
+            gates=self.gates,
         )
 
 
