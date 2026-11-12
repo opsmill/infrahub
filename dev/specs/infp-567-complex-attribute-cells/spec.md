@@ -9,9 +9,9 @@
 
 ### User Story 1 - Show a List, JSON, Any or Password attribute as a column (Priority: P1)
 
-A user views a table of nodes whose schema has an attribute of kind List, JSON, Any, Password or
-HashedPassword. Today these attributes are not offered in the column picker, so the user has to
-open each node one by one to read the value. With this feature, the user turns the attribute on in
+A user views a table of nodes whose schema has an attribute of kind List, JSON, Any or Password.
+Today these attributes are not offered in the column picker, so the user has to open each node
+one by one to read the value. With this feature, the user turns the attribute on in
 the column picker and reads its value for every node in the table.
 
 **Why this priority**: Without it, the other stories have no column to render in.
@@ -52,7 +52,7 @@ values of each shape, and check each cell.
 
 ### User Story 3 - Know that a password is set without reading it (Priority: P2)
 
-The user checks which nodes have a password or a hashed password set.
+The user checks which nodes have a password set.
 
 **Why this priority**: It completes the set of attribute kinds, with less value than lists and JSON.
 
@@ -60,8 +60,8 @@ The user checks which nodes have a password or a hashed password set.
 
 **Acceptance Scenarios**:
 
-1. **Given** a Password or HashedPassword value, **When** the cell renders, **Then** it shows masked
-   characters and never the value.
+1. **Given** a Password value, **When** the cell renders, **Then** it shows masked characters and
+   never the value.
 2. **Given** no value, **When** the cell renders, **Then** it shows `-`.
 
 ### Edge Cases
@@ -70,9 +70,11 @@ The user checks which nodes have a password or a hashed password set.
 - A list with one very long element, or many elements, stays on one line and does not widen the row.
 - A JSON value that is a string, a number or `false` renders its preview like any other JSON value.
 - A JSON value with thousands of lines opens in the dialog, which scrolls.
-- A list element that is a number, a boolean or null renders as monospace text with its type. An
-  object or an array opens its own JSON. An object with a string `id` and the `__typename` of a
-  kind in the schema renders as a link to that object.
+- In the table cell, every list element renders as a badge, and a node element renders as its
+  label with its kind's icon.
+- In the dialog, a list element that is a number, a boolean or null renders as monospace text with
+  its type. An object or an array opens its own JSON. An object with a string `id` and the
+  `__typename` of a kind in the schema renders as a link to that node.
 
 ## Requirements *(mandatory)*
 
@@ -91,8 +93,8 @@ The user checks which nodes have a password or a hashed password set.
   reachable with the keyboard.
 - **FR-006**: An Any cell MUST render an array as a List, an object as a JSON value, and any other
   value as text.
-- **FR-007**: A Password or HashedPassword cell MUST show masked characters when a value exists and
-  MUST NOT show the value.
+- **FR-007**: A Password cell MUST show masked characters when a value exists and MUST NOT show
+  the value.
 - **FR-008**: An empty or null value MUST render `-`, as for the other kinds.
 - **FR-009**: Every cell MUST stay on one line, so the row height does not change.
 - **FR-010**: Filters, relationship tabs and the other views that use the default column list MUST
@@ -102,7 +104,7 @@ The user checks which nodes have a password or a hashed password set.
 
 ### Key Entities
 
-- **Attribute kind**: the kind set in the schema (List, JSON, Any, Password, HashedPassword), which
+- **Attribute kind**: the kind set in the schema (List, JSON, Any, Password), which
   decides how a cell renders.
 - **Column picker choice**: the set of columns the user turned on, kept in the page link.
 
