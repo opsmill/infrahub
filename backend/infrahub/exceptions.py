@@ -117,7 +117,10 @@ class LockWaitTimeoutError(LockError):
     def __init__(self, name: str, wait_seconds: float) -> None:
         self.name = name
         self.wait_seconds = wait_seconds
-        self.message = f"The lock {name} was still held in shared mode after {wait_seconds} seconds"
+        self.message = (
+            f"The lock {name} was still held in shared mode after {wait_seconds} seconds; "
+            "INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS sets this wait limit"
+        )
         super().__init__(self.message)
 
 

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 LOCK_NAME = "resource_pool.pool-1"
 TTL_SECONDS = 1
 WAIT_SECONDS = 30
+WAIT_LIMIT_HINT = "INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS sets this wait limit"
 
 
 class FakeClock:
@@ -172,7 +173,7 @@ async def test_an_exclusive_request_still_shared_at_the_wait_limit_fails_and_lea
 
     with pytest.raises(
         LockWaitTimeoutError,
-        match=rf"^The lock {LOCK_NAME} was still held in shared mode after {WAIT_SECONDS} seconds$",
+        match=rf"^The lock {LOCK_NAME} was still held in shared mode after {WAIT_SECONDS} seconds; {WAIT_LIMIT_HINT}$",
     ):
         await asyncio.wait_for(exclusive, timeout=5)
     assert not await mutex.locked()
@@ -433,7 +434,10 @@ async def test_an_exclusive_request_waits_for_the_holder_of_a_lock_named_with_gl
 
     with pytest.raises(
         LockWaitTimeoutError,
-        match=rf"^The lock {re.escape(name)} was still held in shared mode after {WAIT_SECONDS} seconds$",
+        match=(
+            rf"^The lock {re.escape(name)} was still held in shared mode after {WAIT_SECONDS} seconds; "
+            rf"{WAIT_LIMIT_HINT}$"
+        ),
     ):
         await asyncio.wait_for(exclusive, timeout=5)
     holder_release.set()
