@@ -65,11 +65,12 @@ from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
-from tests.adapters.lock import LockTimeline, install_recording_lock_registry
+from tests.adapters.lock import LockTimeline, RecordingLockRegistry, install_recording_lock_registry
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
     INFRAHUB_USE_TEST_CONTAINERS,
+    LOCK_WAIT_TIMEOUT_SECONDS,
     NEO4J_IMAGE,
     PORT_BOLT_NEO4J,
     PORT_CLIENT_RABBITMQ,
@@ -1388,6 +1389,26 @@ def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
         yield timeline
     finally:
         lock.registry = original
+
+
+@pytest.fixture
+def recording_lock_registry(recording_lock_timeline: LockTimeline) -> RecordingLockRegistry:
+    """The recording lock registry the timeline belongs to, to hold a task at a lock with a gate."""
+    assert isinstance(lock.registry, RecordingLockRegistry)
+    assert lock.registry.timeline is recording_lock_timeline
+    return lock.registry
+
+
+@pytest.fixture
+def exclusive_lock_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give an exclusive lock request the full test timeout to wait for shared holders, whatever the environment sets."""
+    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", LOCK_WAIT_TIMEOUT_SECONDS)
+
+
+@pytest.fixture
+def short_exclusive_lock_wait(exclusive_lock_wait: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Refuse an exclusive lock request after one second of waiting for shared holders."""
+    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", 1)
 
 
 @pytest.fixture

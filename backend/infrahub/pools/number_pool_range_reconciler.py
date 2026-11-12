@@ -133,6 +133,11 @@ class NumberPoolRangeReconciler[RangeT: StoredRange, PoolT: Identified]:
             pool_id=pool_id, stored_ranges=stored_ranges, created=created, updated=updated, deleted=deleted
         )
 
+    def is_reconciled(self, stored: Sequence[RangeT], declared: Sequence[NumberPoolRangeParameters]) -> bool:
+        """Return whether the stored ranges already match the declared set, so a reconciliation would write nothing."""
+        changes = self._plan_changes(declared=declared, stored_by_id={item.get_id(): item for item in stored})
+        return not (changes.to_create or changes.to_reweight or changes.to_delete)
+
     async def rewrite_single_range(
         self,
         pool: PoolT,
