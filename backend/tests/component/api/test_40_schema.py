@@ -25,7 +25,13 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.conftest import BusRPCMock, TestHelper
 from tests.helpers.schema.lag_interface import LAG_SCHEMA
 
-CONTAINER_DEFAULTS = {"description": None, "collapsed": False, "state": "present", "inherited": False}
+CONTAINER_DEFAULTS = {
+    "description": None,
+    "collapsible": True,
+    "collapsed": False,
+    "state": "present",
+    "inherited": False,
+}
 LAG_GENERIC_CONTAINERS: list[dict[str, Any]] = [
     {**CONTAINER_DEFAULTS, "name": "lacp", "label": "LACP", "order_weight": 100},
     {
@@ -140,7 +146,16 @@ async def test_schema_read_endpoint_visibility(
             assert "container" in relationship
         assert isinstance(node["containers"], list)
         for container in node["containers"]:
-            assert set(container) == {"name", "label", "description", "order_weight", "collapsed", "state", "inherited"}
+            assert set(container) == {
+                "name",
+                "label",
+                "description",
+                "order_weight",
+                "collapsible",
+                "collapsed",
+                "state",
+                "inherited",
+            }
         return saw_inherited
 
     saw_inherited_attribute = False

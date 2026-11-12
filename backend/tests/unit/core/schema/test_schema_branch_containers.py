@@ -162,6 +162,13 @@ REFUSED_CONTAINER_CASES = [
         message=f"{L2_KIND}.attributes.mtu.container: container 'builtin_template' is not declared on {L2_KIND}",
     ),
     RefusedContainerCase(
+        name="collapsed_container_that_is_not_collapsible",
+        schema=_lag_schema_with_generic_containers(
+            [{"name": "summary", "label": "Summary", "collapsible": False, "collapsed": True}]
+        ),
+        message=f"{GENERIC_KIND}.containers.summary: collapsed requires collapsible",
+    ),
+    RefusedContainerCase(
         name="attribute_referencing_the_details_container",
         schema=_lag_schema_with_l2_field(
             field_list="attributes",
@@ -187,6 +194,12 @@ ACCEPTED_CONTAINER_CASES = [
     AcceptedContainerCase(
         name="container_with_a_negative_order_weight",
         schema=_lag_schema_with_generic_containers([{"name": "summary", "label": "Summary", "order_weight": -50}]),
+        kind=L2_KIND,
+        container_names=["lacp", "layer2", "layer3", "summary"],
+    ),
+    AcceptedContainerCase(
+        name="container_that_is_not_collapsible",
+        schema=_lag_schema_with_generic_containers([{"name": "summary", "label": "Summary", "collapsible": False}]),
         kind=L2_KIND,
         container_names=["lacp", "layer2", "layer3", "summary"],
     ),
@@ -234,6 +247,7 @@ def test_generated_profile_shows_its_own_attributes_in_a_profile_container_above
         ("layer2", "Layer 2", 200),
         ("layer3", "Layer 3", 300),
     ]
+    assert profile.containers[0].collapsible is False
     assert profile.containers[0].collapsed is False
     assert {attribute.name: attribute.container for attribute in profile.attributes} == {
         "profile_name": "builtin_profile",
@@ -259,6 +273,7 @@ def test_generated_template_shows_its_name_in_a_template_container_above_details
         ("layer2", "Layer 2", 200),
         ("layer3", "Layer 3", 300),
     ]
+    assert template.containers[0].collapsible is False
     assert template.containers[0].collapsed is False
     assert {attribute.name: attribute.container for attribute in template.attributes} == {
         "template_name": "builtin_template",
@@ -305,6 +320,20 @@ def test_removing_a_container_from_the_generic_refuses_its_field_on_the_next_loa
         ),
     ):
         schema_branch.process()
+
+
+def test_containers_are_collapsible_unless_declared_otherwise() -> None:
+    schema_branch = _processed_branch(
+        schema=_lag_schema_with_generic_containers([{"name": "summary", "label": "Summary", "collapsible": False}])
+    )
+
+    node = schema_branch.get(name=L2_KIND, duplicate=False)
+    assert [(container.name, container.collapsible) for container in node.containers] == [
+        ("lacp", True),
+        ("layer2", True),
+        ("layer3", True),
+        ("summary", False),
+    ]
 
 
 def _reload_generic(schema_branch: SchemaBranch, generic: dict[str, Any]) -> None:

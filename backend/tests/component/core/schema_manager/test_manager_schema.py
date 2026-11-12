@@ -915,7 +915,7 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one: dict[str, Any
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.containers == [
-        ContainerSchema(name="builtin_profile", label="Profile", order_weight=-100),
+        ContainerSchema(name="builtin_profile", label="Profile", order_weight=-100, collapsible=False),
         ContainerSchema(name="grading", label="Grading", order_weight=100),
     ]
     assert node_profile.containers[1].inherited is False
@@ -4858,7 +4858,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
     assert test_object_template_thing.human_friendly_id == ["template_name__value"]
     assert test_object_template_thing.uniqueness_constraints == [["template_name__value"]]
     assert test_object_template_thing.containers == [
-        ContainerSchema(name="builtin_template", label="Template", order_weight=-100),
+        ContainerSchema(name="builtin_template", label="Template", order_weight=-100, collapsible=False),
         ContainerSchema(name="grading", label="Grading", order_weight=100),
     ]
     assert test_object_template_thing.containers[1].inherited is False

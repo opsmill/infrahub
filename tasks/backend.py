@@ -977,9 +977,16 @@ class SdkSchemaGenerator:
                 optional=True,
             ),
             self._field(
+                "collapsible",
+                "Boolean",
+                "Whether the section can be collapsed on the detail page.",
+                optional=True,
+                default_value=True,
+            ),
+            self._field(
                 "collapsed",
                 "Boolean",
-                "Whether the section starts collapsed on the detail page.",
+                "Whether the section starts collapsed on the detail page. Requires collapsible.",
                 optional=True,
                 default_value=False,
             ),

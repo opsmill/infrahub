@@ -831,8 +831,14 @@ export interface components {
              */
             order_weight?: number | null;
             /**
+             * Collapsible
+             * @description Whether the section can be collapsed on the detail page.
+             * @default true
+             */
+            collapsible: boolean;
+            /**
              * Collapsed
-             * @description Whether the section starts collapsed on the detail page.
+             * @description Whether the section starts collapsed on the detail page. Requires collapsible.
              * @default false
              */
             collapsed: boolean;
@@ -871,8 +877,14 @@ export interface components {
              */
             order_weight?: number | null;
             /**
+             * Collapsible
+             * @description Whether the section can be collapsed on the detail page.
+             * @default true
+             */
+            collapsible: boolean;
+            /**
              * Collapsed
-             * @description Whether the section starts collapsed on the detail page.
+             * @description Whether the section starts collapsed on the detail page. Requires collapsible.
              * @default false
              */
             collapsed: boolean;

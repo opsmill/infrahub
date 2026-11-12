@@ -11,6 +11,7 @@ class ContainerSchema(HashableModel):
     label: str
     description: str | None = None
     order_weight: int | None = None
+    collapsible: bool = True
     collapsed: bool = False
     inherited: bool = False
 

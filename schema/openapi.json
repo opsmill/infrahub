@@ -3141,10 +3141,16 @@
                         "title": "Order Weight",
                         "description": "Position of the section among the sections of the node, lowest first. A negative weight places the section above Details."
                     },
+                    "collapsible": {
+                        "type": "boolean",
+                        "title": "Collapsible",
+                        "description": "Whether the section can be collapsed on the detail page.",
+                        "default": true
+                    },
                     "collapsed": {
                         "type": "boolean",
                         "title": "Collapsed",
-                        "description": "Whether the section starts collapsed on the detail page.",
+                        "description": "Whether the section starts collapsed on the detail page. Requires collapsible.",
                         "default": false
                     },
                     "state": {
@@ -3205,10 +3211,16 @@
                         "title": "Order Weight",
                         "description": "Position of the section among the sections of the node, lowest first. A negative weight places the section above Details."
                     },
+                    "collapsible": {
+                        "type": "boolean",
+                        "title": "Collapsible",
+                        "description": "Whether the section can be collapsed on the detail page.",
+                        "default": true
+                    },
                     "collapsed": {
                         "type": "boolean",
                         "title": "Collapsed",
-                        "description": "Whether the section starts collapsed on the detail page.",
+                        "description": "Whether the section starts collapsed on the detail page. Requires collapsible.",
                         "default": false
                     },
                     "state": {

@@ -2805,6 +2805,7 @@ class SchemaBranch:
                     name=PROFILE_CONTAINER_NAME,
                     label=PROFILE_CONTAINER_LABEL,
                     order_weight=PROFILE_CONTAINER_ORDER_WEIGHT,
+                    collapsible=False,
                 ),
                 *self._copy_containers(node=node),
             ],
@@ -3098,6 +3099,7 @@ class SchemaBranch:
                 name=TEMPLATE_CONTAINER_NAME,
                 label=TEMPLATE_CONTAINER_LABEL,
                 order_weight=TEMPLATE_CONTAINER_ORDER_WEIGHT,
+                collapsible=False,
             ),
             *self._copy_containers(node=node),
         ]

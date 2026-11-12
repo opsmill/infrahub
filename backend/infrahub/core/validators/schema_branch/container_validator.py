@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class ContainerValidator(SchemaBranchValidator):
-    """Refuse a schema whose containers collide or whose fields reference a container the kind does not have."""
+    """Refuse containers that collide or set conflicting flags, and fields that reference an unknown container."""
 
     def check(self, schema_branch: SchemaBranch) -> None:
         for name in schema_branch.all_names:
@@ -31,7 +31,8 @@ class ContainerValidator(SchemaBranchValidator):
 
     def _validate_declarations(self, node: MainSchemaTypes) -> None:
         # An inherited copy was already checked on the generic that declares it.
-        container_names = [container.name for container in node.containers if not container.inherited]
+        declared_containers = [container for container in node.containers if not container.inherited]
+        container_names = [container.name for container in declared_containers]
         if duplicated := duplicates(container_names):
             raise ValueError(f"{node.kind}.containers: container names must be unique, duplicate '{duplicated[0]}'")
         if DETAILS_CONTAINER_NAME in container_names:
@@ -45,6 +46,9 @@ class ContainerValidator(SchemaBranchValidator):
                     f"{node.kind}.containers: '{container_name}' starts with the reserved prefix "
                     f"'{BUILTIN_CONTAINER_PREFIX}' and cannot be declared"
                 )
+        for container in declared_containers:
+            if container.collapsed and not container.collapsible:
+                raise ValueError(f"{node.kind}.containers.{container.name}: collapsed requires collapsible")
 
     @staticmethod
     def _generated_container_names(node: MainSchemaTypes) -> set[str]:
