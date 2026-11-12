@@ -663,6 +663,23 @@ class CacheSettings(BaseSettings):
             "the lock auto-expires after this period so Infrahub can recover on its own."
         ),
     )
+    shared_lock_ttl_secs: int = Field(
+        default=60,
+        ge=1,
+        description=(
+            "Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder "
+            "renews the record while it runs, so the record expires when the worker stops, or when every renewal "
+            "fails for this long."
+        ),
+    )
+    exclusive_lock_wait_secs: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Time in seconds that a request for a lock in exclusive mode waits for the holders of the lock in "
+            "shared mode to finish before it fails."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:

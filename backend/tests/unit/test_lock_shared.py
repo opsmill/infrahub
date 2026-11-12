@@ -1,0 +1,579 @@
+from __future__ import annotations
+
+import asyncio
+import gc
+import re
+from typing import TYPE_CHECKING
+
+import pytest
+
+from infrahub.exceptions import LockError, LockWaitTimeoutError
+from infrahub.lock import InfrahubLock, InfrahubLockRegistry, InfrahubSharedLock, get_shared_holders_key
+from infrahub.locks.shared_holders.local import LocalSharedHolderStore
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+LOCK_NAME = "resource_pool.pool-1"
+TTL_SECONDS = 1
+WAIT_SECONDS = 30
+WAIT_LIMIT_HINT = "INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS sets this wait limit"
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+class RecordingSharedHolderStore(LocalSharedHolderStore):
+    """Keeps the holders in this process and records every holder written, renewals included."""
+
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock=clock)
+        self.added: list[str] = []
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        self.added.append(holder)
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+
+
+class SlowToAbortRenewalStore(RecordingSharedHolderStore):
+    """Keeps every renewal in flight, and lets a cancelled renewal finish only once `aborted` is set."""
+
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock=clock)
+        self.renewing = asyncio.Event()
+        self.aborted = asyncio.Event()
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+        if len(self.added) == 1:
+            return
+        self.renewing.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            await self.aborted.wait()
+            raise
+
+
+class SlowRemovalStore(RecordingSharedHolderStore):
+    """Keeps every removal in flight until `finish` is set."""
+
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock=clock)
+        self.removing = asyncio.Event()
+        self.finish = asyncio.Event()
+
+    async def remove(self, key: str, holder: str) -> None:
+        self.removing.set()
+        await self.finish.wait()
+        await super().remove(key=key, holder=holder)
+
+
+async def _wait_until(condition: Callable[[], Awaitable[bool]]) -> None:
+    async def _poll() -> None:
+        while not await condition():  # noqa: ASYNC110
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(_poll(), timeout=5)
+
+
+@pytest.fixture
+def clock() -> FakeClock:
+    return FakeClock()
+
+
+@pytest.fixture
+def store(clock: FakeClock) -> RecordingSharedHolderStore:
+    return RecordingSharedHolderStore(clock=clock)
+
+
+@pytest.fixture
+def mutex() -> InfrahubLock:
+    return InfrahubLock(name=LOCK_NAME)
+
+
+@pytest.fixture
+def shared_lock(mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: FakeClock) -> InfrahubSharedLock:
+    return InfrahubSharedLock(
+        name=LOCK_NAME,
+        mutex=mutex,
+        store=store,
+        ttl_seconds=TTL_SECONDS,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+
+async def _has_holders(store: RecordingSharedHolderStore) -> bool:
+    return await store.has_holders(key=get_shared_holders_key(name=LOCK_NAME))
+
+
+async def test_two_shared_holders_hold_the_lock_at_the_same_time(shared_lock: InfrahubSharedLock) -> None:
+    both_inside = asyncio.Barrier(2)
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            await asyncio.wait_for(both_inside.wait(), timeout=5)
+
+    await asyncio.gather(hold(), hold())
+
+
+async def _let_other_tasks_run() -> None:
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+
+async def _hold_exclusively(shared_lock: InfrahubSharedLock, inside: asyncio.Event, release: asyncio.Event) -> None:
+    async with shared_lock.exclusive():
+        inside.set()
+        await asyncio.wait_for(release.wait(), timeout=5)
+
+
+async def test_a_holder_cancelled_while_its_renewal_stops_still_removes_its_record(
+    mutex: InfrahubLock, clock: FakeClock
+) -> None:
+    store = SlowToAbortRenewalStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME,
+        mutex=mutex,
+        store=store,
+        ttl_seconds=TTL_SECONDS,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            await asyncio.wait_for(store.renewing.wait(), timeout=5)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(store.renewing.wait(), timeout=5)
+    await _let_other_tasks_run()
+    holder.cancel()
+    store.aborted.set()
+
+    with pytest.raises(asyncio.CancelledError, match=r"^$"):
+        await asyncio.wait_for(holder, timeout=5)
+    assert not await _has_holders(store=store)
+
+
+async def test_a_holder_cancelled_while_it_removes_its_record_still_removes_it(
+    mutex: InfrahubLock, clock: FakeClock
+) -> None:
+    store = SlowRemovalStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME,
+        mutex=mutex,
+        store=store,
+        ttl_seconds=TTL_SECONDS,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            pass
+
+    async def no_holders() -> bool:
+        return not await _has_holders(store=store)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(store.removing.wait(), timeout=5)
+    holder.cancel()
+
+    with pytest.raises(asyncio.CancelledError, match=r"^$"):
+        await asyncio.wait_for(holder, timeout=5)
+    store.finish.set()
+    await _wait_until(no_holders)
+
+
+async def test_an_exclusive_request_waits_until_every_shared_holder_releases(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock
+) -> None:
+    holder_inside = asyncio.Event()
+    holder_release = asyncio.Event()
+    exclusive_inside = asyncio.Event()
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            holder_inside.set()
+            await asyncio.wait_for(holder_release.wait(), timeout=5)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(holder_inside.wait(), timeout=5)
+    exclusive = asyncio.create_task(
+        _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=asyncio.Event())
+    )
+    await _wait_until(mutex.locked)
+    await _let_other_tasks_run()
+
+    assert not exclusive_inside.is_set()
+
+    holder_release.set()
+    await asyncio.wait_for(exclusive_inside.wait(), timeout=5)
+    await holder
+    exclusive.cancel()
+    await asyncio.gather(exclusive, return_exceptions=True)
+    assert not await mutex.locked()
+
+
+async def test_a_shared_request_waits_while_the_lock_is_held_exclusively(
+    shared_lock: InfrahubSharedLock, store: RecordingSharedHolderStore
+) -> None:
+    exclusive_inside = asyncio.Event()
+    exclusive_release = asyncio.Event()
+    shared_inside = asyncio.Event()
+
+    async def hold_shared() -> None:
+        async with shared_lock.shared():
+            shared_inside.set()
+
+    exclusive = asyncio.create_task(
+        _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=exclusive_release)
+    )
+    await asyncio.wait_for(exclusive_inside.wait(), timeout=5)
+    shared = asyncio.create_task(hold_shared())
+    await _let_other_tasks_run()
+
+    assert not shared_inside.is_set()
+    assert store.added == []
+
+    exclusive_release.set()
+    await asyncio.wait_for(asyncio.gather(exclusive, shared), timeout=5)
+
+    assert shared_inside.is_set()
+    assert len(store.added) == 1
+
+
+async def test_an_exclusive_request_still_shared_at_the_wait_limit_fails_and_leaves_the_lock_free(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    await store.add(key=get_shared_holders_key(name=LOCK_NAME), holder="holder", token="token", ttl_seconds=3600)
+    exclusive = asyncio.create_task(shared_lock.acquire_exclusive())
+    await _wait_until(mutex.locked)
+
+    clock.advance(WAIT_SECONDS)
+
+    with pytest.raises(
+        LockWaitTimeoutError,
+        match=rf"^The lock {LOCK_NAME} was still held in shared mode after {WAIT_SECONDS} seconds; {WAIT_LIMIT_HINT}$",
+    ):
+        await asyncio.wait_for(exclusive, timeout=5)
+    assert not await mutex.locked()
+
+
+async def test_the_record_of_a_holder_that_stopped_renewing_it_expires(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    await store.add(
+        key=get_shared_holders_key(name=LOCK_NAME), holder="dead-holder", token="token", ttl_seconds=TTL_SECONDS
+    )
+    exclusive_inside = asyncio.Event()
+    exclusive = asyncio.create_task(
+        _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=asyncio.Event())
+    )
+    await _wait_until(mutex.locked)
+    await _let_other_tasks_run()
+
+    assert not exclusive_inside.is_set()
+
+    clock.advance(TTL_SECONDS)
+
+    await asyncio.wait_for(exclusive_inside.wait(), timeout=5)
+    exclusive.cancel()
+    await asyncio.gather(exclusive, return_exceptions=True)
+    assert not await mutex.locked()
+
+
+async def test_a_shared_holder_renews_its_record_while_it_holds_the_lock(
+    shared_lock: InfrahubSharedLock, store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    async with shared_lock.shared():
+        clock.advance(TTL_SECONDS * 0.9)
+
+        async def renewed() -> bool:
+            return len(store.added) == 2
+
+        await _wait_until(renewed)
+        clock.advance(TTL_SECONDS * 0.5)
+
+        assert store.added[0] == store.added[1]
+
+        assert await _has_holders(store)
+
+    assert not await _has_holders(store)
+
+
+class FailingOnceSharedHolderStore(RecordingSharedHolderStore):
+    """Fails the first renewal of a record, as an unreachable cache would."""
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+        if len(self.added) == 2:
+            raise ConnectionError("cache unreachable")
+
+
+async def test_a_shared_holder_keeps_renewing_its_record_after_a_failed_renewal(
+    mutex: InfrahubLock, clock: FakeClock
+) -> None:
+    store = FailingOnceSharedHolderStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME, mutex=mutex, store=store, ttl_seconds=TTL_SECONDS, wait_seconds=WAIT_SECONDS, clock=clock
+    )
+
+    async def renewed_after_the_failure() -> bool:
+        return len(store.added) == 3
+
+    async with shared_lock.shared():
+        await _wait_until(renewed_after_the_failure)
+
+        assert store.added[0] == store.added[1] == store.added[2]
+
+    assert not await _has_holders(store)
+
+
+async def test_a_shared_request_from_a_task_already_holding_it_returns_at_once(
+    shared_lock: InfrahubSharedLock, store: RecordingSharedHolderStore
+) -> None:
+    async with shared_lock.shared():
+        async with shared_lock.shared():
+            assert await _has_holders(store)
+        assert await _has_holders(store)
+
+    assert not await _has_holders(store)
+
+
+async def test_a_shared_request_from_a_task_holding_it_exclusively_returns_at_once(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore
+) -> None:
+    async with shared_lock.exclusive():
+        async with shared_lock.shared():
+            assert await _has_holders(store)
+        assert await mutex.locked()
+
+    assert not await mutex.locked()
+    assert not await _has_holders(store)
+
+
+async def test_an_exclusive_request_under_a_shared_hold_granted_from_an_exclusive_one_returns_at_once(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock
+) -> None:
+    async with shared_lock.exclusive():
+        async with shared_lock.shared(), shared_lock.exclusive():
+            assert await mutex.locked()
+        assert await mutex.locked()
+
+    assert not await mutex.locked()
+
+
+async def test_a_shared_hold_outlasting_the_exclusive_hold_it_was_granted_under_keeps_exclusive_requests_waiting(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock, store: RecordingSharedHolderStore
+) -> None:
+    shared_inside = asyncio.Event()
+    shared_release = asyncio.Event()
+    exclusive_inside = asyncio.Event()
+
+    async def hold_shared_past_the_exclusive_hold() -> None:
+        await shared_lock.acquire_exclusive()
+        await shared_lock.acquire_shared()
+        await shared_lock.release_exclusive()
+        shared_inside.set()
+        await asyncio.wait_for(shared_release.wait(), timeout=5)
+        await shared_lock.release_shared()
+
+    holder = asyncio.create_task(hold_shared_past_the_exclusive_hold())
+    await asyncio.wait_for(shared_inside.wait(), timeout=5)
+    exclusive = asyncio.create_task(
+        _hold_exclusively(shared_lock=shared_lock, inside=exclusive_inside, release=asyncio.Event())
+    )
+    await _wait_until(mutex.locked)
+    await _let_other_tasks_run()
+
+    assert not exclusive_inside.is_set()
+
+    shared_release.set()
+    await asyncio.wait_for(exclusive_inside.wait(), timeout=5)
+    await holder
+    exclusive.cancel()
+    await asyncio.gather(exclusive, return_exceptions=True)
+
+    assert not await mutex.locked()
+    assert not await _has_holders(store)
+
+
+async def test_an_exclusive_request_from_a_task_holding_it_shared_is_refused(
+    shared_lock: InfrahubSharedLock, mutex: InfrahubLock
+) -> None:
+    async with shared_lock.shared():
+        with pytest.raises(
+            LockError, match=rf"^The lock {LOCK_NAME} is held in shared mode by this task and cannot be made exclusive$"
+        ):
+            await shared_lock.acquire_exclusive()
+
+    assert not await mutex.locked()
+
+
+class FailingRemovalSharedHolderStore(RecordingSharedHolderStore):
+    """Fails every removal of a record, as an unreachable cache would."""
+
+    async def remove(self, key: str, holder: str) -> None:
+        raise ConnectionError("cache unreachable")
+
+
+@pytest.fixture
+def failing_removal_lock(
+    mutex: InfrahubLock, clock: FakeClock
+) -> tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore]:
+    store = FailingRemovalSharedHolderStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME, mutex=mutex, store=store, ttl_seconds=TTL_SECONDS, wait_seconds=WAIT_SECONDS, clock=clock
+    )
+    return shared_lock, store
+
+
+async def test_a_failed_record_removal_leaves_the_holder_work_successful_and_the_record_to_expire(
+    failing_removal_lock: tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore], clock: FakeClock
+) -> None:
+    shared_lock, store = failing_removal_lock
+
+    async with shared_lock.shared():
+        pass
+
+    assert await _has_holders(store)
+    clock.advance(TTL_SECONDS)
+    assert not await _has_holders(store)
+
+
+async def test_a_failed_record_removal_keeps_the_error_of_the_holder_work(
+    failing_removal_lock: tuple[InfrahubSharedLock, FailingRemovalSharedHolderStore],
+) -> None:
+    shared_lock, _ = failing_removal_lock
+
+    with pytest.raises(ValueError, match=r"^the work failed$"):
+        async with shared_lock.shared():
+            raise ValueError("the work failed")
+
+
+class FailingAfterWriteSharedHolderStore(RecordingSharedHolderStore):
+    """Writes each record and then fails, as a cache that times out after applying the write would."""
+
+    async def add(self, key: str, holder: str, token: str, ttl_seconds: int) -> None:
+        await super().add(key=key, holder=holder, token=token, ttl_seconds=ttl_seconds)
+        raise ConnectionError("cache timed out")
+
+
+async def test_a_failed_shared_request_removes_the_record_it_wrote(mutex: InfrahubLock, clock: FakeClock) -> None:
+    store = FailingAfterWriteSharedHolderStore(clock=clock)
+    shared_lock = InfrahubSharedLock(
+        name=LOCK_NAME, mutex=mutex, store=store, ttl_seconds=TTL_SECONDS, wait_seconds=WAIT_SECONDS, clock=clock
+    )
+
+    with pytest.raises(ConnectionError, match=r"^cache timed out$"):
+        await shared_lock.acquire_shared()
+
+    assert len(store.added) == 1
+    assert not await _has_holders(store)
+    assert not await mutex.locked()
+
+
+def _shared_lock_named(name: str, store: RecordingSharedHolderStore, clock: FakeClock) -> InfrahubSharedLock:
+    return InfrahubSharedLock(
+        name=name,
+        mutex=InfrahubLock(name=name),
+        store=store,
+        ttl_seconds=3600,
+        wait_seconds=WAIT_SECONDS,
+        poll_seconds=0.01,
+        clock=clock,
+    )
+
+
+async def test_an_exclusive_request_ignores_the_holders_of_a_lock_whose_name_extends_its_own(
+    shared_lock: InfrahubSharedLock, store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    async with _shared_lock_named(name=f"{LOCK_NAME}.child", store=store, clock=clock).shared():
+        await asyncio.wait_for(shared_lock.acquire_exclusive(), timeout=5)
+        await shared_lock.release_exclusive()
+
+
+async def test_an_exclusive_request_waits_for_the_holder_of_a_lock_named_with_glob_characters(
+    store: RecordingSharedHolderStore, clock: FakeClock
+) -> None:
+    name = "resource_pool.[pool-1]*?"
+    shared_lock = _shared_lock_named(name=name, store=store, clock=clock)
+    holder_inside = asyncio.Event()
+    holder_release = asyncio.Event()
+
+    async def hold() -> None:
+        async with shared_lock.shared():
+            holder_inside.set()
+            await asyncio.wait_for(holder_release.wait(), timeout=5)
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(holder_inside.wait(), timeout=5)
+    exclusive = asyncio.create_task(shared_lock.acquire_exclusive())
+    await _let_other_tasks_run()
+    clock.advance(WAIT_SECONDS)
+
+    with pytest.raises(
+        LockWaitTimeoutError,
+        match=(
+            rf"^The lock {re.escape(name)} was still held in shared mode after {WAIT_SECONDS} seconds; "
+            rf"{WAIT_LIMIT_HINT}$"
+        ),
+    ):
+        await asyncio.wait_for(exclusive, timeout=5)
+    holder_release.set()
+    await holder
+
+
+async def _collect_garbage() -> None:
+    # The loop keeps a released hold's finished renewal task queued until its next iteration.
+    await asyncio.sleep(0)
+    gc.collect()
+
+
+async def test_the_registry_keeps_a_shared_lock_while_it_is_held_and_drops_it_once_released() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    async with (
+        lock_registry.get_shared(name="pool-1", namespace="resource_pool").shared(),
+        lock_registry.get_shared(name="pool-2", namespace="resource_pool").exclusive(),
+    ):
+        await _collect_garbage()
+
+        assert set(lock_registry.shared_locks) == {"resource_pool.pool-1", "resource_pool.pool-2"}
+        assert lock_registry.get(name="pool-2", namespace="resource_pool").held_by_current_task()
+
+    await _collect_garbage()
+
+    assert dict(lock_registry.shared_locks) == {}
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_a_shared_hold_keeps_its_lock_in_the_registry_when_the_holder_keeps_no_reference_to_it() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    await lock_registry.get_shared(name="pool-1", namespace="resource_pool").acquire_shared()
+    await _collect_garbage()
+
+    assert set(lock_registry.shared_locks) == {"resource_pool.pool-1"}
+
+    await lock_registry.get_shared(name="pool-1", namespace="resource_pool").release_shared()
+    await _collect_garbage()
+
+    assert dict(lock_registry.shared_locks) == {}
+    assert not await lock_registry.shared_holder_store.has_holders(
+        key=get_shared_holders_key(name="resource_pool.pool-1")
+    )
