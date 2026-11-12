@@ -28,7 +28,7 @@ export function IpPoolDetailsPage({ poolId, schema, permission }: IpPoolDetailsP
   // requested here so it loads alongside the pool instead of after it
   useGetIpPoolUtilization(poolId);
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !pool) return <ErrorScreen message={error.message} />;
 
   if (isPending) {
     return (
@@ -56,7 +56,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
 
   if (isPending) return <LoadingIndicator className="flex-1" />;
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !utilization) return <ErrorScreen message={error.message} />;
 
   const { usage, resources } = utilization;
   const selectedResourceId = resourceId ?? resources[0]?.id ?? null;

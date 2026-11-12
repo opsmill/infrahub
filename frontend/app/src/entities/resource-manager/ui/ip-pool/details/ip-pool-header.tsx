@@ -1,7 +1,11 @@
+import { useAtomValue } from "jotai";
+
 import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
@@ -13,8 +17,6 @@ import { PoolId } from "@/entities/resource-manager/ui/pool/pool-id";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-const REFRESHED_QUERY_KEYS = [resourceManagerQueryKeys.all, objectQueryKeys.all];
-
 export interface IpPoolHeaderProps {
   pool: IpPoolData;
   schema: ModelSchema;
@@ -22,6 +24,13 @@ export interface IpPoolHeaderProps {
 }
 
 export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
+  const { currentBranch } = useCurrentBranch();
+  const atDate = useAtomValue(datetimeAtom);
+  const refreshedQueryKeys = [
+    resourceManagerQueryKeys.all,
+    objectQueryKeys.lists({ objectKind: pool.__typename, branchName: currentBranch.name, atDate }),
+  ];
+
   return (
     <header className="px-3 py-2 text-sm">
       <Row className="mb-4 items-start">
@@ -38,7 +47,7 @@ export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
         </Col>
 
         <PoolId id={pool.id} className="h-8" />
-        <RefreshButton queryKeys={REFRESHED_QUERY_KEYS} />
+        <RefreshButton queryKeys={refreshedQueryKeys} />
         <IpPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>
 

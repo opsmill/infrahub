@@ -197,4 +197,19 @@ describe("IpPoolDetailsPage", () => {
       .toBeVisible();
     await expect.element(component.getByText("Utilization unavailable")).toBeVisible();
   });
+
+  it("keeps the loaded resource prefixes when a refresh of the usage fails", async () => {
+    // GIVEN
+    mockPool();
+    mockUtilization(utilization, new Error("Utilization unavailable"));
+
+    // WHEN
+    const component = await renderPage();
+
+    // THEN
+    await expect
+      .element(component.getByRole("option", { name: /^10\.10\.0\.0\/22/ }))
+      .toBeVisible();
+    await expect.element(component.getByText("Utilization unavailable")).not.toBeInTheDocument();
+  });
 });

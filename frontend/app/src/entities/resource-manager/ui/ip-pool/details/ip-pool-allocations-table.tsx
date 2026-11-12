@@ -51,6 +51,12 @@ function SkeletonRows() {
           <div className="px-3">
             <Skeleton className={classNames("h-3", width)} />
           </div>
+          <div className="px-3">
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <div className="px-3">
+            <Skeleton className="h-3 w-48" />
+          </div>
         </Row>
       ))}
     </div>
