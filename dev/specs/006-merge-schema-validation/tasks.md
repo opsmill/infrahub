@@ -75,7 +75,7 @@ branches unchanged.
 
 ### Implementation for User Story 1
 
-- [X] T017 [US1] In `backend/infrahub/core/validators/node/attribute.py`, add `NodeAttributeValueMissingValidatorQuery` (active nodes of the kind whose attribute is missing, inactive, null or `NULL_VALUE`, with the attribute matched in an optional subquery and the standard edge ordering, reading `self.is_isolated`), returning only `n.uuid` and the root edge's branch name, and make `NodeAttributeAddChecker` use it and pass `request.is_isolated`; keep `NodeNotPresentValidatorQuery` for the relationship check. Run `EXPLAIN` on the query and keep the plan for the pull request (depends on T006)
+- [X] T017 [US1] In `backend/infrahub/core/validators/node/attribute.py`, add `NodeAttributeValueMissingValidatorQuery` (active nodes of the kind whose attribute is missing, inactive, null or `NULL_VALUE`, with the attribute matched in an optional subquery and the standard edge ordering, reading `self.is_isolated`), returning only `n.uuid` and the root edge's branch name, and make `NodeAttributeAddChecker` use it and pass `request.is_isolated`. The relationship check gets its own query in T032, after which `NodeNotPresentValidatorQuery` has no caller and is deleted. Run `EXPLAIN` on the query and keep the plan for the pull request (depends on T006)
 - [X] T018 [P] [US1] Make `AttributeOptionalUpdateValidatorQuery` and `AttributeKindUpdateValidatorQuery` pass `is_isolated=self.is_isolated` to `get_query_filter_path`, and their checkers pass `is_isolated=request.is_isolated`, in `backend/infrahub/core/validators/attribute/optional.py` and `backend/infrahub/core/validators/attribute/kind.py` (depends on T006)
 - [ ] T019 [US1] In `MergeConstraintValidator.validate` in `backend/infrahub/core/merge/constraints.py`, send `SchemaValidateMigrationData` with `is_isolated=False` (depends on T003)
 - [ ] T020 [US1] In `GraphMerger._validate_constraints` in `backend/infrahub/core/merge/graph_merger.py`, await the async merged schema and gate the schema-diff constraints on the analyzer's gate method; replace the comment with a one-sentence reason (depends on T012)
@@ -152,13 +152,13 @@ only on the default branch.
 
 ---
 
-## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3, second pull request)
+## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3, a later pull request)
 
 **Goal**: the four remaining queries read the requested view.
 
 - [ ] T039 [P] [US5] Add the two-view component test to `backend/tests/component/core/constraint_validators/test_attribute_regex_update.py`, `test_attribute_enum_update.py`, `test_attribute_length.py` and `test_attribute_choices_update.py`
-- [ ] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated` (depends on T039)
-- [ ] T041 [US5] Add one integration refusal (a regex added on the branch, a non-matching value created on the default branch after branching) to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`, a changelog fragment, and open the second pull request
+- [ ] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated`, and remove the exception for these four checks from the `is_isolated` descriptions in `backend/infrahub/core/validators/model.py` and `backend/infrahub/core/validators/models/validate_migration.py` (depends on T039)
+- [ ] T041 [US5] Add integration refusals to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: a regex added on the branch with a non-matching value created on the default branch after branching, and the three scenarios of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (a dropdown choice removed on the branch, merged and rebased, and an enum value removed on the branch, merged, each while a node created on the default branch after branching uses the value). Add a changelog fragment, and open the pull request, which closes [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (GitHub [#11229](https://github.com/opsmill/infrahub/issues/11229))
 
 ---
 
@@ -205,7 +205,7 @@ working, validated by the local matrix.
 2. Phase 3: user story 1, the reported defect.
 3. Phases 4–5: user stories 2 and 3, then the matrix.
 4. Phases 6–8: the proposed-change check, the suspected gaps, docs and delivery of the first pull request.
-5. Phase 9: the second pull request.
+5. Phase 9: a later pull request.
 
 ## Notes
 

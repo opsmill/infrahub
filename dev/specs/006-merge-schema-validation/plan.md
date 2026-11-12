@@ -101,7 +101,7 @@ backend/infrahub/
 │   ├── attribute/optional.py         # read the requested view
 │   ├── attribute/kind.py             # read the requested view
 │   ├── node/attribute.py             # new-attribute value query; checker reads the requested view
-│   └── attribute/{regex,enum,length,choices}.py   # second pull request
+│   └── attribute/{regex,enum,length,choices}.py   # later pull request
 ├── proposed_change/tasks.py      # schema integrity check: analyzer's merged schema and constraints, merge view
 ├── api/schema.py                 # schema load and schema check: branch view, stated explicitly
 └── cli/db.py                     # core schema update: branch view, stated explicitly

@@ -165,6 +165,10 @@ default branch after branching that break the new rule refuse the merge, as the 
 **Why this priority**: The same gap as user story 1 for four more properties. It is planned as a separate pull
 request so the first change stays focused.
 
+This user story also fixes the first cause of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491): a merge or a rebase accepts the removal of a dropdown choice
+or an enum value that a node created on the default branch after branching still uses. The merged schema built by
+`apply_changes_since` fixes its second cause, a merged schema that keeps the dropdown choice the branch removed.
+
 **Independent Test**: For each of the four properties, tighten the rule on a branch, create a violating value on the
 default branch after branching, and merge.
 
@@ -172,6 +176,8 @@ default branch after branching, and merge.
 
 1. **Given** a branch that adds a regex and a value on the default branch created after branching that does not
    match, **When** the user merges, **Then** the merge is refused.
+2. **Given** a branch that removes a dropdown choice or an enum value, and a node created on the default branch
+   after branching that uses it, **When** the user merges or rebases, **Then** the merge or the rebase is refused.
 
 ---
 
@@ -294,6 +300,10 @@ first, and fixed only if confirmed.
 - Re-running a proposed change's checks automatically after the data is fixed.
 - Warning, when a schema change is loaded on the default branch, about open branches whose merge it would block.
 - Changing how schema conflicts between the two branches are detected or resolved.
+- Keeping the default branch's changes to the profile and template kinds of a kind that the branch renamed. In that
+  case the merged schema takes the branch's profile and template kinds whole. Project F2 of
+  [INFP-719](https://opsmill.atlassian.net/browse/INFP-719) plans to build the merged schema by replaying the stored
+  schema changes, matched by kind and name, instead of comparing the schemas of the two branches.
 
 ## Behavior Changes
 

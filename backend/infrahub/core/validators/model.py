@@ -24,7 +24,7 @@ class SchemaConstraintValidatorRequest(BaseModel):
         default=True,
         description=(
             "Whether to read the default branch as it was when the branch was created or last rebased; False reads its "
-            "current data, which a merge or a rebase produces"
+            "current data, which a merge or a rebase produces, except in the regex, length, enum and choices checks"
         ),
     )
 

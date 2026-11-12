@@ -12,6 +12,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.attribute_schema import TextAttributeSchema
+from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, build_profile_schema
 
@@ -722,6 +723,34 @@ class TestApplyChangesSince:
         assert candidate.get(name="TestCar").inherit_from == ["TestVehicle"]
         assert candidate.get(name="TestCar").get_attribute(name="color").description == "Set on the source"
         assert candidate.get_generic(name="TestVehicle").used_by == ["TestCar"]
+
+    def test_leaves_out_a_dropdown_choice_removed_on_the_source(self, base: SchemaBranch) -> None:
+        widget_root = SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Widget",
+                    namespace="Test",
+                    attributes=[
+                        AttributeSchema(
+                            name="status",
+                            kind="Dropdown",
+                            choices=[DropdownChoice(name="active"), DropdownChoice(name="retired")],
+                        )
+                    ],
+                )
+            ]
+        )
+        base.load_schema(schema=widget_root)
+        base.process()
+        destination = base.duplicate()
+        source = base.duplicate()
+        _set_attribute(source, "TestWidget", "status", choices=[DropdownChoice(name="active")])
+
+        candidate = _candidate(base=base, destination=destination, source=source)
+
+        status = candidate.get(name="TestWidget").get_attribute(name="status")
+        assert status.choices is not None
+        assert [choice.name for choice in status.choices] == ["active"]
 
     def test_leaves_out_of_the_used_by_of_a_generic_the_nodes_either_branch_removed(
         self, car_person_schema_root: SchemaRoot
