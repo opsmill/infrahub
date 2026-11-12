@@ -95,6 +95,19 @@ class ObjectConflictValidatorRecorder:
         await self.finalize_validator(validator, is_success)
         return current_checks
 
+    async def clear_failure(self, proposed_change_id: str) -> None:
+        """Record a passing result on the validator when its last recorded result is a failure."""
+        try:
+            proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+                id=proposed_change_id, kind=CoreProposedChange, db=self.db
+            )
+        except NodeNotFoundError:
+            return
+        validator = await self.get_validator(proposed_change=proposed_change)
+        if validator is None or validator.conclusion.value.value != ValidatorConclusion.FAILURE.value:
+            return
+        await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=[])
+
     async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
         validations = await proposed_change.validations.get_peers(db=self.db)
 
