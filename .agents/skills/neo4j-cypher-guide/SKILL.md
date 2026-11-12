@@ -1,6 +1,6 @@
 ---
 name: neo4j-cypher-guide
-description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, and Quantified Path Patterns (QPP) for efficient graph traversal.
+description: Comprehensive guide for writing modern Neo4j Cypher queries. Essential for text2cypher MCP tools and LLMs generating Cypher queries. Covers removed/deprecated syntax, modern replacements, CALL subqueries for reads, COLLECT patterns, sorting best practices, set-based writes, Quantified Path Patterns (QPP) for efficient graph traversal, and how to choose the entry point of a query so the plan starts with an index seek instead of a label scan.
 ---
 
 # Neo4j Modern Cypher Query Guide
@@ -165,6 +165,12 @@ Load the appropriate reference file when:
 - Working with paths longer than 3-4 hops
 - Complex pattern matching requirements
 
+### references/entry-points.md
+
+- A plan starts with `NodeByLabelScan` or `UnionNodeByLabelsScan` where you expected an index seek
+- Writing a query that starts from a relationship's `branch` index
+- The indexed edge is not the first hop of the pattern
+
 ## Query Generation Checklist
 
 Before finalizing any generated query:
@@ -209,6 +215,43 @@ Before finalizing any generated query:
 4. **Limit expansion depth** - Use reasonable upper bounds in quantifiers
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
+7. **Leave indexed properties unwrapped** - `toString(n.uuid) IN $ids` cannot use the `uuid` index
+
+## Entry Point of a Branch-Scoped Query
+
+Build one query text per entry point, and check the first operator of each plan with `EXPLAIN`.
+Neo4j plans a query text once per parameter type, such as `null` or a list, and per length range of
+a list or string, then reuses the plan for every value of that type and range. A
+`$ids IS NULL OR n.uuid IN $ids` check plans a `NodeByLabelScan` instead of the `Node(uuid)` seek
+whether `$ids` is `null` or a list, and a `{branch: $branch_name}` seek gets the same plan on a
+small branch and on the default branch.
+
+- **The node uuids are known**: keep the `:Node` label and pass one list, `WHERE n.uuid IN $ids`,
+  so the plan starts with a `NodeIndexSeek` on `Node(uuid)`. Use this entry whenever the query can
+  run on the default branch, where a `branch` index seek reads nearly every edge of the type.
+- **Only the branch is known**: match the indexed edge without node labels. A small label, such as
+  a kind label, or `:Root` or `:Node` on an instance with few branches, can make the plan start
+  with a `NodeByLabelScan`. Check the labels after a `CALL () { ... }` subquery, or after `WITH DISTINCT`
+  on the start node when a second `MATCH` expands from it. A label check in the same `MATCH`, or
+  after a plain `WITH`, brings the scan back.
+- The `branch` index exists only for the edge types listed in `backend/infrahub/core/graph/index.py`.
+  A type union such as `HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}` plans one seek per type.
+
+```cypher
+// ❌ A kind label with few vertices makes the plan start with NodeByLabelScan
+MATCH (n:InfraDevice)-[r:HAS_ATTRIBUTE {branch: $branch_name}]->(a:Attribute)
+
+// ✅ The seek runs first, and the labels filter its rows
+CALL () {
+    MATCH (n)-[r:HAS_ATTRIBUTE {branch: $branch_name}]->(a)
+    RETURN n, r, a
+}
+WITH n, r, a
+WHERE n:InfraDevice AND a:Attribute
+```
+
+Load `references/entry-points.md` for why the planner prefers the label scan, which plan operators
+to look for, and patterns where the indexed edge is not the first hop.
 
 ## Modern Cypher Features
 

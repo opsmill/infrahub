@@ -155,7 +155,7 @@ R2).
 
 ### Write-block signal: `merge:protected` cache key (new)
 
-**Source**: the existing distributed cache (`service.cache`, Redis or NATS — `services/adapters/cache/`),
+**Source**: the existing distributed cache (`service.cache`, Redis — `services/adapters/cache/`),
 accessed through the `MergeWriteBlocker` component (`core/merge/write_blocker.py`: `set`/`get`/`delete`).
 
 The immediately-consistent signal every worker reads on the write path (research R11). It is **not**

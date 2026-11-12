@@ -8,6 +8,7 @@ import pytest
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.mandatory_fields_checker import (
     ProfileIdentifiers,
     ProfilesMandatoryFieldGetter,
@@ -88,7 +89,9 @@ class TestGetMandatoryFieldsFromProfiles:
         """When no profiles are provided, returns empty sets."""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=None,
@@ -110,7 +113,9 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", color="blue", profile_priority=1000)
         await profile.save(db=db)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
@@ -132,7 +137,9 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", profile_priority=1000)
         await profile.save(db=db)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
@@ -158,7 +165,9 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", profile_priority=1000, owner=child.id)
         await profile.save(db=db)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
@@ -189,7 +198,9 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile2.new(db=db, profile_name="profile2", profile_priority=2000, owner=child.id)
         await profile2.save(db=db)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile1.id}, {"id": profile2.id}],
@@ -208,7 +219,9 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="my_profile", color="green", profile_priority=1000)
         await profile.save(db=db)
 
-        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"hfid": ["my_profile"]}],

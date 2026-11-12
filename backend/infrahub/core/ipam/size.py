@@ -2,6 +2,9 @@ from infrahub.core.node import Node
 
 from .constants import PrefixMemberType
 
+PREFIX_SPACE_ATTRIBUTES = ("prefix", "member_type", "is_pool")
+"""Attributes of an IP prefix that its number of usable addresses depends on."""
+
 
 def get_prefix_space(ip_prefix: Node) -> int:
     prefix_space = ip_prefix.prefix.num_addresses  # type: ignore[attr-defined]

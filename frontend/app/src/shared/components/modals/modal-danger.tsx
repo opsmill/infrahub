@@ -14,6 +14,7 @@ interface ModalDangerProps {
   isLoading?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
+  className?: string;
 }
 
 export function ModalDanger({
@@ -25,6 +26,7 @@ export function ModalDanger({
   isLoading,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  className,
 }: ModalDangerProps) {
   return (
     <Modal
@@ -32,6 +34,7 @@ export function ModalDanger({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       data-testid="modal-delete"
+      className={className}
     >
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">

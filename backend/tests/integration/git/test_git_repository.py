@@ -6,7 +6,15 @@ import yaml
 from fast_depends import dependency_provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
-from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
+from infrahub_sdk.protocols import (
+    CoreCheckDefinition,
+    CoreGeneratorAction,
+    CoreGeneratorDefinition,
+    CoreGraphQLQuery,
+    CoreNodeTriggerRule,
+    CoreTransformJinja2,
+    CoreTransformPython,
+)
 
 from infrahub import config
 from infrahub.core import registry
@@ -23,6 +31,7 @@ from infrahub.utils import get_models_dir
 from infrahub.workers.dependencies import build_database, clear_singletons
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
@@ -65,9 +74,7 @@ class TestInfrahubClient:
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
-    async def base_dataset(
-        self, db: InfrahubDatabase, redis: dict[int, int] | None, nats: dict[int, int] | None
-    ) -> None:
+    async def base_dataset(self, db: InfrahubDatabase, redis: dict[int, int] | None) -> None:
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
         await load_infrastructure_schema(db=db)
@@ -143,9 +150,9 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await call_in_flow(lambda: repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file))
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -153,11 +160,11 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         config_file.schemas = [Path("schemas")]
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await call_in_flow(lambda: repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file))
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -165,7 +172,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -205,7 +212,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -285,7 +292,7 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
         await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
@@ -335,7 +342,7 @@ class TestInfrahubClient:
         validator too, so the delete succeeds and the import completes instead of aborting.
         """
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # A check definition present in the graph but not in the repository config, so the
@@ -414,11 +421,11 @@ class TestInfrahubClient:
         """
         await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")  # type: ignore[call-overload]
 
-        generator_definition = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
-        action = await client.get(kind="CoreGeneratorAction", name__value="run-tags-generator")
+        generator_definition = await client.get(kind=CoreGeneratorDefinition, name__value="tags_generator")
+        action = await client.get(kind=CoreGeneratorAction, name__value="run-tags-generator")
         assert action.generator.id == generator_definition.id
 
-        trigger = await client.get(kind="CoreNodeTriggerRule", name__value="trigger-tags-generator-update")
+        trigger = await client.get(kind=CoreNodeTriggerRule, name__value="trigger-tags-generator-update")
         assert trigger.action.id == action.id
 
 

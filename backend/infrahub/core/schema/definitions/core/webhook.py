@@ -28,6 +28,7 @@ core_webhook = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     restricted_namespaces=["Core"],
     uniqueness_constraints=[["name__value"]],
+    documentation="/webhooks/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
         Attr(
@@ -119,6 +120,7 @@ core_standard_webhook = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
+    documentation="/webhooks/overview/",
     attributes=[
         Attr(
             name="shared_key",
@@ -143,6 +145,7 @@ core_custom_webhook = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     inherit_from=[InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
+    documentation="/webhooks/overview/",
     attributes=[
         Attr(
             name="shared_key",

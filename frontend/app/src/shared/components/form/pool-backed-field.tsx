@@ -33,6 +33,7 @@ export interface PoolBackedFieldProps {
   /** Every kind the allocation may target. Omitted when the field pins the kind. */
   allocatableKinds?: Array<PoolKindOption>;
   valueTabLabel: "Value" | "Object";
+  initialTab?: FieldTab;
   disabled?: boolean;
   untabbedClassName?: string;
   onPoolChange: (value: PoolValue | null) => void;
@@ -59,12 +60,13 @@ export const PoolBackedField = ({
   valueTabLabel,
   disabled,
   untabbedClassName,
+  initialTab = VALUE_TAB,
   onPoolChange,
   onTabSwitch,
   children,
 }: PoolBackedFieldProps) => {
   const form = useFormContext();
-  const [activeTab, setActiveTab] = useState<FieldTab>(VALUE_TAB);
+  const [activeTab, setActiveTab] = useState<FieldTab>(initialTab);
 
   // Restoring the default rather than emptying leaves the field out of the mutation, so merely
   // visiting the other tab is a no-op.

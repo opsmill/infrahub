@@ -15,5 +15,5 @@ class CliContext:
 
     # This method is inherited for Infrahub Enterprise.
     @staticmethod
-    async def init_db(retry: int) -> InfrahubDatabase:  # type:ignore  # noqa
+    async def init_db(retry: int) -> InfrahubDatabase:  # noqa
         return await get_database()

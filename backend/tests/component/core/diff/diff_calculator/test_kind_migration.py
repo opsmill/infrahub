@@ -1519,12 +1519,19 @@ class MigratedKindPagesTestCase:
     name: str
     node_kinds: list[str] | None
     expected_car_kinds: set[str]
+    only_changed_cars: bool = False
 
 
 MIGRATED_KIND_PAGES_TEST_CASES: list[MigratedKindPagesTestCase] = [
     MigratedKindPagesTestCase(name="every_kind", node_kinds=None, expected_car_kinds={"TestCar", "Test2NewCar"}),
     MigratedKindPagesTestCase(name="new_kind_only", node_kinds=["Test2NewCar"], expected_car_kinds={"Test2NewCar"}),
     MigratedKindPagesTestCase(name="unrelated_kind", node_kinds=["TestPerson"], expected_car_kinds=set()),
+    MigratedKindPagesTestCase(
+        name="changed_cars_only",
+        node_kinds=None,
+        expected_car_kinds={"TestCar", "Test2NewCar"},
+        only_changed_cars=True,
+    ),
 ]
 
 
@@ -1567,12 +1574,15 @@ async def test_migrated_kind_nodes_on_every_page_of_the_requested_kinds(
         car.color.value = "#112233"
         await car.save(db=db)
 
+    expected_car_ids = set(first_page_car_ids) if test_case.only_changed_cars else car_ids
+
     calculated_diffs = await DiffCalculator(db=db).calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
         from_time=Timestamp(branch.get_branched_from()),
         to_time=Timestamp(),
         node_kinds=test_case.node_kinds,
+        node_uuids=expected_car_ids if test_case.only_changed_cars else None,
     )
 
     migrated_flags = {
@@ -1580,4 +1590,6 @@ async def test_migrated_kind_nodes_on_every_page_of_the_requested_kinds(
         for node in calculated_diffs.diff_branch_diff.nodes
         if node.uuid in car_ids
     }
-    assert migrated_flags == {(car_id, kind): True for car_id in car_ids for kind in test_case.expected_car_kinds}
+    assert migrated_flags == {
+        (car_id, kind): True for car_id in expected_car_ids for kind in test_case.expected_car_kinds
+    }

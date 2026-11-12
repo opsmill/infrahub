@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { removeRelationshipsFromApi } from "@/entities/nodes/relationships/api/remove-relationships-from-api";
 
@@ -7,10 +7,6 @@ import { removeRelationships } from "./remove-relationships";
 vi.mock("@/entities/nodes/relationships/api/remove-relationships-from-api");
 
 describe("removeRelationships", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should call removeRelationshipsFromApi with correctly transformed relationshipIds", async () => {
     // GIVEN
     const params = {

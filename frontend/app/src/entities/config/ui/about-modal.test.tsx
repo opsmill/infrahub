@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
@@ -49,10 +49,6 @@ describe("AboutModal", () => {
       deployment_id: "abc-123-def",
       license: generateLicenseInfoWithoutLicense(),
     });
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   test("should display version, edition, and deployment ID", async () => {

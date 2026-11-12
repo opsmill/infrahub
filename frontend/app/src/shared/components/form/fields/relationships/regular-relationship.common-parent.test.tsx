@@ -50,7 +50,6 @@ describe("NodeRelationshipField - common_parent", () => {
   afterEach(() => {
     lastParent = undefined;
     lastAddNewInitialObject = undefined;
-    vi.clearAllMocks();
   });
 
   test("hides the manual parent picker and filters by the sibling when common_parent is set", async () => {

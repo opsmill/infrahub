@@ -14,7 +14,13 @@ from infrahub.core.regeneration.impact_classifier import (
     ReachedChange,
     RelationshipReachedChanges,
 )
-from infrahub.core.regeneration.models import ReachedPath, RelationshipHop, Widening, WideningReason
+from infrahub.core.regeneration.models import (
+    ExcludedChange,
+    ReachedPath,
+    RelationshipHop,
+    Widening,
+    WideningReason,
+)
 from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
@@ -51,6 +57,18 @@ IP_PATH = ReachedPath(
         RelationshipHop(
             node_kind="TestDevice",
             relationship_identifier="device__interface",
+            relationship_direction=RelationshipDirection.OUTBOUND,
+        ),
+    )
+)
+
+# A device read at the root and through its ``peers`` relationship: a changed device walks back to the
+# devices listing it as a peer.
+PEER_PATH = ReachedPath(
+    hops=(
+        RelationshipHop(
+            node_kind="TestDevice",
+            relationship_identifier="device__peer",
             relationship_direction=RelationshipDirection.OUTBOUND,
         ),
     )
@@ -131,12 +149,24 @@ ASSESS_CASES = [
         readable_fields_by_kind={"TestCar": {"name"}, "TestElectricCar": {"name"}, "TestGazCar": {"name"}},
     ),
     AssessCase(
-        name="unique_targets_kind_read_at_root_and_through_a_relationship_widens",
+        name="unique_targets_kind_read_at_root_and_through_a_relationship_without_a_chain_widens",
         only_has_unique_targets=True,
         diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
         expected=relationship_reached("TestDevice"),
         traversed_kinds={"TestDevice"},
         readable_fields_by_kind={"TestDevice": {"name", "peers"}},
+    ),
+    AssessCase(
+        name="unique_targets_kind_read_at_root_and_through_a_relationship_narrows_through_both_reads",
+        only_has_unique_targets=True,
+        diff_summary=[node_diff(node_id="dev2", kind="TestDevice", branch=BRANCH, field_names=["name"])],
+        expected=RelationshipReachedChanges(
+            direct_member_node_ids=[],
+            reached=[ReachedChange(node_ids=["dev2"], paths=(ReachedPath(hops=()), PEER_PATH))],
+        ),
+        traversed_kinds={"TestDevice"},
+        readable_fields_by_kind={"TestDevice": {"name", "peers"}},
+        reached_paths_by_kind={"TestDevice": (ReachedPath(hops=()), PEER_PATH)},
     ),
     AssessCase(
         name="a_traversed_kind_the_query_reads_no_field_from_is_skipped",
@@ -294,7 +324,7 @@ def test_assess(case: AssessCase) -> None:
         depends_on_everything=case.depends_on_everything,
     )
 
-    assessment = classifier.assess(diff_summary=case.diff_summary)
+    assessment = classifier.assess(diff_summary=case.diff_summary, excluded_changes=frozenset())
 
     assert assessment == case.expected
 
@@ -313,7 +343,8 @@ def test_a_read_kind_that_is_also_traversed_loses_its_direct_membership() -> Non
     )
 
     assessment = classifier.assess(
-        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])]
+        diff_summary=[node_diff(node_id="intf1", kind="TestInterface", branch=BRANCH, field_names=["description"])],
+        excluded_changes=frozenset(),
     )
 
     assert assessment == RelationshipReachedChanges(
@@ -321,3 +352,20 @@ def test_a_read_kind_that_is_also_traversed_loses_its_direct_membership() -> Non
         reached=[ReachedChange(node_ids=["intf1"], paths=(INTERFACE_PATH,))],
     )
     assert "intf1" not in assessment.direct_member_node_ids
+
+
+def test_an_excluded_change_selects_no_member() -> None:
+    classifier = QueryImpactClassifier(
+        query_branch=BRANCH,
+        only_has_unique_targets=True,
+        traversed_kinds={"TestInterface"},
+        readable_fields_by_kind={"TestDevice": {"name", "interfaces"}, "TestInterface": {"description"}},
+        reached_paths_by_kind={"TestInterface": (INTERFACE_PATH,)},
+    )
+
+    assessment = classifier.assess(
+        diff_summary=[node_diff(node_id="dev1", kind="TestDevice", branch=BRANCH, field_names=["interfaces"])],
+        excluded_changes=frozenset({ExcludedChange(node_id="dev1", field_name="interfaces")}),
+    )
+
+    assert assessment == ChangedNodes(node_ids=[])

@@ -287,7 +287,7 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(prefect_info_flow_runs == 1)",
+            "expr": "sum(prefect_info_flow_runs{state_name=\"Running\"})",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -325,7 +325,7 @@
         },
         "gridPos": {
           "h": 5,
-          "w": 4,
+          "w": 8,
           "x": 12,
           "y": 1
         },
@@ -352,7 +352,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "count(prefect_info_flow_runs)",
+            "expr": "sum(prefect_info_flow_runs)",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -360,70 +360,6 @@
           }
         ],
         "title": "Flow Runs total",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "s"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 5,
-          "w": 4,
-          "x": 16,
-          "y": 1
-        },
-        "id": 60,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "center",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "pluginVersion": "10.1.5",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "avg(prefect_flow_runs_total_run_time_total)",
-            "instant": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Flow Runs average run time",
         "type": "stat"
       },
       {
@@ -548,7 +484,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "count by (state_name) (prefect_info_flow_runs)",
+            "expr": "sum by (state_name) (prefect_info_flow_runs)",
             "instant": false,
             "legendFormat": "{{label_name}}",
             "range": true,
@@ -598,7 +534,7 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 4,
+          "h": 12,
           "w": 3,
           "x": 0,
           "y": 7
@@ -626,7 +562,7 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "count(prefect_info_flow_runs{flow_name=~\"$flow_name\"})",
+            "expr": "sum(prefect_info_flow_runs{flow_name=~\"$flow_name\"})",
             "instant": false,
             "legendFormat": "__auto",
             "range": true,
@@ -921,135 +857,6 @@
         "type": "table"
       },
       {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "description": "Last 24h",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 4,
-          "w": 3,
-          "x": 0,
-          "y": 11
-        },
-        "id": 56,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "center",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "pluginVersion": "10.1.5",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "max(max(max_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\".*$flow_name.*\"}[$__range])) by (pod))",
-            "instant": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "CPU usage peak",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "description": "Last 24h",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "bytes"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 4,
-          "w": 3,
-          "x": 0,
-          "y": 15
-        },
-        "id": 55,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "center",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "pluginVersion": "10.1.5",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "max(max(max_over_time(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", container!=\"\", image!=\"\"}[$__range])) by (pod))",
-            "instant": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "MEM usage peak",
-        "type": "stat"
-      },
-      {
         "collapsed": false,
         "gridPos": {
           "h": 1,
@@ -1061,167 +868,6 @@
         "panels": [],
         "title": "Flows",
         "type": "row"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "description": "Last 24h",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                }
-              ]
-            },
-            "unit": "s"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 3,
-          "x": 0,
-          "y": 20
-        },
-        "id": 58,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "center",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "pluginVersion": "10.1.5",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "avg by (flow_name) (prefect_flow_runs_total_run_time_total{flow_name=~\"$flow_name\"})",
-            "instant": false,
-            "legendFormat": "__auto",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Average time",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource_prometheus}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "min": 0,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "s"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 21,
-          "x": 3,
-          "y": 20
-        },
-        "id": 61,
-        "options": {
-          "legend": {
-            "calcs": [],
-            "displayMode": "list",
-            "placement": "bottom",
-            "showLegend": false
-          },
-          "tooltip": {
-            "mode": "single",
-            "sort": "none"
-          }
-        },
-        "pluginVersion": "10.1.5",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "avg by (flow_name) (prefect_flow_runs_total_run_time_total{flow_name=~\"$flow_name\"})",
-            "instant": false,
-            "legendFormat": "{{flow_run_name}}",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Flow Run total run time",
-        "type": "timeseries"
       },
       {
         "datasource": {
@@ -1272,7 +918,7 @@
           "h": 10,
           "w": 24,
           "x": 0,
-          "y": 28
+          "y": 20
         },
         "id": 12,
         "options": {
@@ -1485,7 +1131,7 @@
           "h": 7,
           "w": 13,
           "x": 0,
-          "y": 38
+          "y": 30
         },
         "id": 53,
         "interval": "1m",
@@ -1510,41 +1156,14 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "avg(sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\", pod=~\".*$flow_name.*\"}) by (pod))",
+            "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"$task_worker_service\"}[$__rate_interval])) by (name)",
             "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "usage",
+            "legendFormat": "{{name}}",
             "range": true,
             "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"cpu\"}\n",
-            "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "requests",
-            "range": true,
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"cpu\"}\n",
-            "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "limits",
-            "range": true,
-            "refId": "C"
           }
         ],
-        "title": "CPU Usage $flow_name",
+        "title": "Task Worker CPU Usage",
         "type": "timeseries"
       },
       {
@@ -1683,7 +1302,7 @@
           "h": 7,
           "w": 11,
           "x": 13,
-          "y": 38
+          "y": 30
         },
         "id": 54,
         "interval": "1m",
@@ -1708,41 +1327,14 @@
               "uid": "${datasource_prometheus}"
             },
             "editorMode": "code",
-            "expr": "avg(sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", container!=\"\", image!=\"\"}) by (pod))",
+            "expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"$task_worker_service\"}) by (name)",
             "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "usage",
+            "legendFormat": "{{name}}",
             "range": true,
             "refId": "A"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"memory\"}",
-            "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "requests",
-            "range": true,
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource_prometheus}"
-            },
-            "editorMode": "code",
-            "expr": "kube_pod_container_resource_limits{job=\"kube-state-metrics\", namespace=\"$namespace\", pod=~\".*$flow_name.*\", resource=\"memory\"}",
-            "format": "time_series",
-            "intervalFactor": 2,
-            "legendFormat": "limits",
-            "range": true,
-            "refId": "C"
           }
         ],
-        "title": "Memory Usage (WSS)",
+        "title": "Task Worker Memory Usage (WSS)",
         "type": "timeseries"
       },
       {
@@ -1755,7 +1347,7 @@
           "h": 18,
           "w": 24,
           "x": 0,
-          "y": 45
+          "y": 37
         },
         "id": 46,
         "options": {
@@ -1789,7 +1381,7 @@
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 63
+          "y": 55
         },
         "id": 8,
         "panels": [
@@ -2010,12 +1602,15 @@
     "templating": {
       "list": [
         {
-          "current": {},
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource_prometheus}"
+          "current": {
+            "text": "prefect",
+            "value": "prefect"
           },
-          "definition": "label_values(namespace)",
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource_loki}"
+          },
+          "definition": "",
           "hide": 0,
           "includeAll": false,
           "label": "Namespace",
@@ -2023,8 +1618,10 @@
           "name": "namespace",
           "options": [],
           "query": {
-            "query": "label_values(namespace)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            "label": "namespace",
+            "refId": "LokiVariableQueryEditor-VariableQuery",
+            "stream": "",
+            "type": 1
           },
           "refresh": 1,
           "regex": "",
@@ -2050,29 +1647,6 @@
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "refresh": 1,
-          "regex": "",
-          "skipUrlSync": false,
-          "sort": 0,
-          "type": "query"
-        },
-        {
-          "current": {},
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource_prometheus}"
-          },
-          "definition": "label_values(prefect_info_flow_runs{flow_name=\"$flow_name\"},flow_run_name)",
-          "hide": 0,
-          "includeAll": false,
-          "label": "Flow Run Name",
-          "multi": false,
-          "name": "flow_run_name",
-          "options": [],
-          "query": {
-            "query": "label_values(prefect_info_flow_runs{flow_name=\"$flow_name\"},flow_run_name)",
-            "refId": "PrometheusVariableQueryEditor-VariableQuery"
-          },
-          "refresh": 2,
           "regex": "",
           "skipUrlSync": false,
           "sort": 0,
@@ -2152,6 +1726,25 @@
           "regex": "",
           "skipUrlSync": false,
           "type": "datasource"
+        },
+        {
+          "current": {
+            "text": "task-worker",
+            "value": "task-worker"
+          },
+          "description": "Docker Compose service of the task workers, as cAdvisor reports it in the container_label_com_docker_compose_service label. Change it to match your deployment.",
+          "hide": 2,
+          "label": "Task worker service",
+          "name": "task_worker_service",
+          "options": [
+            {
+              "selected": true,
+              "text": "task-worker",
+              "value": "task-worker"
+            }
+          ],
+          "query": "task-worker",
+          "type": "textbox"
         }
       ]
     },

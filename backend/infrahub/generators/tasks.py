@@ -4,7 +4,12 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.protocols import CoreGeneratorInstance
+from infrahub_sdk.protocols import (
+    CoreGeneratorDefinition,
+    CoreGeneratorInstance,
+    CoreReadOnlyRepository,
+    CoreRepository,
+)
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import State, flow, get_run_logger, task
 from prefect.cache_policies import NONE
@@ -13,6 +18,7 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
@@ -149,22 +155,32 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
 async def run_generator_definition(
-    branch: str, context: InfrahubContext, source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN
+    branch: str,
+    context: InfrahubContext,
+    source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
 ) -> None:
     await add_tags(branches=[branch])
 
     client = get_client()
     client.request_context = context.to_request_context()
     generators = await client.filters(
-        kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
+        kind=CoreGeneratorDefinition, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
     generator_definitions: list[ProposedChangeGeneratorDefinition] = []
 
     for generator in generators:
         if (
-            source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value
-        ) or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value):
+            (source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value)
+            or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value)
+            or not selects_repository(
+                repository_id=generator.repository.peer.id,
+                exclude_repository_ids=exclude_repository_ids,
+                include_repository_ids=include_repository_ids,
+            )
+        ):
             continue
 
         generator_definitions.append(
@@ -175,7 +191,6 @@ async def run_generator_definition(
                 file_path=generator.file_path.value,
                 query_name=generator.query.peer.name.value,
                 query_id=generator.query.peer.id,
-                query_models=generator.query.peer.models.value,
                 query_payload=generator.query.peer.query.value,
                 repository_id=generator.repository.peer.id,
                 parameters=generator.parameters.value,
@@ -224,15 +239,15 @@ async def request_generator_definition_run(
         log=get_run_logger(),
     )
 
-    repository = await client.get(
-        kind=InfrahubKind.REPOSITORY,
+    repository: CoreRepository | CoreReadOnlyRepository | None = await client.get(
+        kind=CoreRepository,
         branch=model.branch,
         id=model.generator_definition.repository_id,
         raise_when_missing=False,
     )
     if not repository:
         repository = await client.get(
-            kind=InfrahubKind.READONLYREPOSITORY,
+            kind=CoreReadOnlyRepository,
             branch=model.branch,
             id=model.generator_definition.repository_id,
             raise_when_missing=True,

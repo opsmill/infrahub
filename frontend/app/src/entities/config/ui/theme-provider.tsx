@@ -1,7 +1,6 @@
 import React from "react";
 
 import { type ResolvedTheme, type Theme, ThemeSchema } from "@/entities/config/domain/model/theme";
-import { useFeatureFlag } from "@/entities/config/ui/hooks/use-feature-flag";
 import { useSystemTheme } from "@/entities/config/ui/hooks/use-system-theme";
 
 const THEME_STORAGE_KEY = "infrahub.theme.choice";
@@ -72,19 +71,11 @@ function useStoredTheme(): [Theme | null, (theme: Theme) => void] {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const isDarkThemeEnabled = useFeatureFlag("dark_theme");
   const systemTheme = useSystemTheme();
   const [storedTheme, storeTheme] = useStoredTheme();
 
-  const theme: Theme = isDarkThemeEnabled ? (storedTheme ?? "system") : "light";
+  const theme: Theme = storedTheme ?? "system";
   const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme;
-
-  // The pre-paint script only reads storage, so a visitor who never chose needs "system" saved.
-  React.useEffect(() => {
-    if (isDarkThemeEnabled && storedTheme === null) {
-      writeStoredTheme("system");
-    }
-  }, [isDarkThemeEnabled, storedTheme]);
 
   // Before the browser paints, so no frame this provider commits shows the wrong palette.
   React.useLayoutEffect(() => {

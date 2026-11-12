@@ -6,7 +6,7 @@ from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 
-@flow(name="merge-watcher", flow_run_name="Detect failed merges")
+@flow(name="merge-watcher", flow_run_name="Detect failed merges", persist_result=False)
 async def detect_failed_merges(service: InfrahubServices) -> None:
     """Flag merges whose worker died mid-flight and keep the write-protection key in sync.
 

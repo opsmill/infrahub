@@ -3,14 +3,12 @@ from prefect import flow
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-from infrahub.exceptions import (
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
-    RepositoryError,
-    RepositoryPermissionError,
-)
+from infrahub.exceptions import RepositoryError
+from infrahub.git.base import operational_status_for_error
+from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
 from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
+from infrahub.git.state.warm_up import fetch_if_no_fetch_time
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -48,11 +46,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
         )
         response_data.success = False
         response_data.message = exc.message
-        response_data.operational_status = {
-            RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
-            RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
-            RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
-        }.get(type(exc), RepositoryOperationalStatus.ERROR).value
+        response_data.operational_status = operational_status_for_error(error=exc).value
 
     if message.reply_requested:
         response = GitRepositoryConnectivityResponse(
@@ -62,10 +56,11 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
         await message_bus.reply_if_initiator_meta(message=response, initiator=message)
 
 
-@flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
-async def fetch(message: messages.RefreshGitFetch) -> None:
+@flow(name="refresh-git-clone", flow_run_name="Clone git repository {message.repository_name} on " + WORKER_IDENTITY)
+async def clone(message: messages.RefreshGitClone) -> None:
+    """Create this worker's local copy if it has none, and fetch a copy never fetched, without moving any local branch."""
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
+        log.info("Ignoring git clone request originating from self", worker=WORKER_IDENTITY)
         return
 
     repo = await get_initialized_repo(
@@ -75,26 +70,19 @@ async def fetch(message: messages.RefreshGitFetch) -> None:
         repository_kind=message.repository_kind,
         infrahub_branch_name=message.infrahub_branch_name,
     )
+    await fetch_if_no_fetch_time(
+        repo=repo, lock=lock.registry.get(name=message.repository_name, namespace="repository")
+    )
 
-    # Hold the repo lock so the hard reset doesn't interleave with other git
-    # operations on the same on-disk tree (merges, syncs, branch creation).
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        await repo.fetch()
-        if message.commit:
-            await repo.reset_to_commit(
-                branch_name=message.infrahub_branch_name,
-                commit=message.commit,
-                branch_id=message.infrahub_branch_id,
-                create_if_missing=True,
-                update_commit_value=False,
-            )
-        else:
-            await repo.pull(
-                branch_name=message.infrahub_branch_name,
-                branch_id=message.infrahub_branch_id,
-                create_if_missing=True,
-                update_commit_value=False,
-            )
+
+@flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
+async def fetch(message: messages.RefreshGitFetch) -> None:
+    converger = WorktreeConverger(
+        lock_registry=lock.registry,
+        loader=InitializedRepositoryLoader(client_provider=get_client),
+        worker_identity=WORKER_IDENTITY,
+    )
+    await converger.converge(message)
 
 
 @flow(

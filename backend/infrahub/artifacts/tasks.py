@@ -1,4 +1,4 @@
-from infrahub_sdk.protocols import CoreArtifactCheck, CoreArtifactValidator
+from infrahub_sdk.protocols import CoreArtifactCheck
 from prefect import flow
 
 from infrahub.artifacts.models import CheckArtifactCreate
@@ -16,8 +16,6 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
 
     client = get_client()
     client.request_context = model.context.to_request_context()
-
-    validator = await client.get(kind=CoreArtifactValidator, id=model.validator_id, include=["checks"])
 
     repo = await get_initialized_repo(
         client=client,
@@ -58,7 +56,9 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
 
     check = None
     check_name = f"{model.artifact_name}: {model.target_name}"
-    existing_check = await client.filters(kind=CoreArtifactCheck, validator__ids=validator.id, name__value=check_name)
+    existing_check = await client.filters(
+        kind=CoreArtifactCheck, validator__ids=[model.validator_id], name__value=check_name
+    )
     if existing_check:
         check = existing_check[0]
 

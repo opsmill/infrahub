@@ -1,18 +1,18 @@
-import type { NavigateFunction } from "react-router";
+import type { NavigateFunction, NavigateOptions } from "react-router";
 import { useNavigate } from "react-router";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { QSP } from "@/shared/config/qsp";
 
 export function buildNavigateToPage(navigate: NavigateFunction) {
-  return (listPath: string, deletedBranchName?: string) => {
+  return (listPath: string, deletedBranchName?: string, options?: NavigateOptions) => {
     const currentBranch = getCurrentQsp().get(QSP.BRANCH);
     const path =
       deletedBranchName && currentBranch === deletedBranchName
         ? constructPath(listPath, [{ name: QSP.BRANCH, exclude: true }])
         : constructPath(listPath);
 
-    navigate(path);
+    navigate(path, options);
   };
 }
 

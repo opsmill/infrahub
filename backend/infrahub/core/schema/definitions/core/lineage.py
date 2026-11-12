@@ -6,7 +6,7 @@ lineage_owner = GenericSchema(
     description="Any Entities that is responsible for some data.",
     label="Owner",
     include_in_menu=False,
-    documentation="/topics/metadata",
+    documentation="/objects/metadata/",
 )
 
 lineage_source = GenericSchema(
@@ -15,5 +15,5 @@ lineage_source = GenericSchema(
     description="Any Entities that stores or produces data.",
     label="Source",
     include_in_menu=False,
-    documentation="/topics/metadata",
+    documentation="/objects/metadata/",
 )
