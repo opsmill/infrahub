@@ -70,8 +70,8 @@ The user checks which nodes have a password set.
 - A list with one very long element, or many elements, stays on one line and does not widen the row.
 - A JSON value that is a string, a number or `false` renders its preview like any other JSON value.
 - A JSON value with thousands of lines opens in the dialog, which scrolls.
-- In the table cell, every list element renders as a badge, and a node element renders as its
-  label with its kind's icon.
+- In the table cell, the first 8 list elements render as badges, clipped at the cell edge, and a
+  node element renders as its label with its kind's icon.
 - In the dialog, a list element that is a number, a boolean or null renders as monospace text with
   its type. An object or an array opens its own JSON. An object with a string `id` and the
   `__typename` of a kind in the schema renders as a link to that node.
@@ -125,11 +125,12 @@ The user checks which nodes have a password set.
 
 - The design step chose badges for List values, the start of the value as the JSON trigger, and one
   dialog for List and JSON values. In that dialog, List elements show as a table with their
-  position, value, type and a copy button.
+  position, value and a copy button, plus a type column when at least one element is not text.
 - Sorting and filtering on these kinds stay out of scope; [INFP-567](https://opsmill.atlassian.net/browse/INFP-567)
   lists them as an open question.
 - The detail view is out of scope, except for List values: they show up to 10 elements as badges
-  and "View all" (FR-004a), decided in the design step. The TextArea, ID, NodeKind and Checkbox
+  and "View all" (FR-004a), decided in the design step. The detail view also renders an empty JSON
+  or Any value (`{}` or `[]`) as `-`, because it shares the empty check with the table. The TextArea, ID, NodeKind and Checkbox
   kinds are out of scope.
 - HashedPassword was removed from the column picker on 2026-11-06 (Paul Leménager): its column would
   fetch every row's hash only to show masked characters, and the detail view does not show it either.

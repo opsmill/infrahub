@@ -53,7 +53,7 @@ export const ATTRIBUTE_KINDS_REVEALABLE_IN_LIST_VIEW: readonly AttributeKind[] =
   ATTRIBUTE_KIND.PASSWORD,
 ];
 
-/** Kinds whose values have no meaningful or safe ordering, and that no filter can match. */
+/** Kinds whose values have no meaningful or safe ordering, and that the column filter has no input for. */
 export const COMPLEX_ATTRIBUTE_KINDS: readonly string[] = [
   ATTRIBUTE_KIND.JSON,
   ATTRIBUTE_KIND.LIST,
