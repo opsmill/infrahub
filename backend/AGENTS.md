@@ -63,6 +63,8 @@ When writing or modifying Cypher queries, **read `dev/knowledge/backend/database
 
 Also see `dev/knowledge/backend/query-pattern.md` for the Query class pattern used to execute Cypher queries.
 
+When a query selects vertices or edges by a property (a value, a name, a time window on `from` or `to`), check that an index on that property exists and add it in the same change: `dev/knowledge/backend/database-indexes.md`.
+
 ## Testing
 
 See `dev/knowledge/backend/testing.md` for the test infrastructure; read it before writing a
@@ -120,6 +122,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/architecture.md` - Backend architecture overview; read first for layer responsibilities and entry points
 - `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
+- `dev/knowledge/backend/database-indexes.md` - Which indexes exist, how to add one with its migration, and the read shape that uses it; read before writing a query that selects vertices or edges by a property
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
 - `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
