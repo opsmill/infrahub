@@ -7,7 +7,7 @@
 | `owner_id` | `str` | no | `"__global__"` for the instance-wide row |
 | `date_format` | `Optional[DateFormat]` | no | unchanged |
 | `timezone` | `Optional[str]` | no | unchanged |
-| `instance_label` | `Optional[str]` | yes | trimmed; `None` when unset; at most 32 characters; no control character |
+| `instance_label` | `Optional[str]` | yes | trimmed; `None` when unset; at most 32 characters; no control character; not `NULL` |
 | `instance_color` | `Optional[InstanceColor]` | yes | one of the presets or `None` |
 
 The two new fields are meaningful on the global row only. A per-user row never carries them: the mutation rejects them for `scope: USER`, and the user and effective GraphQL types do not expose them. `EffectivePreferences` is unchanged.
@@ -22,7 +22,7 @@ The enum, the constant and the label validator were first written in `backend/in
 
 ## Validation (`backend/infrahub/instance_identity.py`)
 
-`validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None`: strips surrounding whitespace; an empty result becomes `None`; a control character (Unicode category Cc, the line and paragraph separators U+2028 and U+2029 in categories Zl and Zp, or a bidirectional text control) or a length over 32 raises `ValidationError` whose message starts with `field_name` and names the rule. The mutation uses the default; `InstanceSettings` passes `"INFRAHUB_INSTANCE_LABEL"`. It runs on the write path and when the deployment settings load, never on the model, so a stored value never breaks a read.
+`validate_instance_label(value: str | None, field_name: str = "instance_label") -> str | None`: strips surrounding whitespace; an empty result becomes `None`; a control character (Unicode category Cc, the line and paragraph separators U+2028 and U+2029 in categories Zl and Zp, or a bidirectional text control) a length over 32, or a value equal to `NULL` (the text the preference node stores for an unset value) raises `ValidationError` whose message starts with `field_name` and names the rule. The mutation uses the default; `InstanceSettings` passes `"INFRAHUB_INSTANCE_LABEL"`. It runs on the write path and when the deployment settings load, never on the model, so a stored value never breaks a read.
 
 The color needs no validator on the write path: the GraphQL enum rejects an unknown member with the graphql-core message `Variable '$instance_color' got invalid value '<x>'; Value '<x>' does not exist in 'InstanceColor' enum.`, followed by a "Did you mean" hint when the value is close to a member, which does not list the allowed values (the schema does). The deployment setting validates the color in `InstanceSettings` with its own message (see below).
 

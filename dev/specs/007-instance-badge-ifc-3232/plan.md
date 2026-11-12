@@ -24,7 +24,7 @@ On 2026-11-10 the scope was extended with IFC-3588, shipped in the same pull req
 
 **Project Type**: Web application (backend + frontend)
 
-**Performance Goals**: `/api/config` performs one read-only `get_for_owner` per call; no polling is added, the other open tabs refetch `["config"]` on window focus
+**Performance Goals**: `/api/config` performs one `get_for_owner` read per call, with no write; no polling is added, the other open tabs refetch `["config"]` on window focus
 
 **Constraints**: No inline styles or arbitrary Tailwind values (theme tokens only); no new `cast`, `any` or `type: ignore` (the existing `type: ignore[call-arg]` on the mutation return is kept); generated files regenerated, never edited; the E2E test is the last task and the feature is not complete until it passes
 
@@ -120,7 +120,7 @@ changelog/+ifc-3232-instance-badge.added.md
 
 - Stale title on pages without `useTitle`: mitigated by the single `DocumentTitle` owner, which falls back to `<label> · Infrahub` when no page registers a title and recomputes the title whenever the label or the registered title changes; guarded by the `DocumentTitle` tests, including "label changed while a page is open" and "page unmounts".
 - Two Save buttons on the Global preferences page: the new form's button is named "Save instance identity" so the existing `name="Save", exact=True` E2E locators stay unique and the Vitest locator in `global-preferences-editor.test.tsx` gained `exact: true`; each form submits only its own keys, asserted by the form tests.
-- Database read on `/api/config`: one read-only call, no row created, asserted by the REST test. Any exception on that read is logged and the identity is served as unset, so the login page still renders during an outage. IFC-3588 keeps this behavior and does not serve the deployment defaults in this case. No caching is added on purpose: the row is tiny and a cache would delay propagation to other sessions.
+- Database read on `/api/config`: one read, no row created, asserted by the REST test. Any exception on that read is logged and the identity is served as unset, so the login page still renders during an outage. IFC-3588 keeps this behavior and does not serve the deployment defaults in this case. No caching is added on purpose: the row is tiny and a cache would delay propagation to other sessions.
 - The return type of `InfrahubGlobalPreferences` changes from `RawPreferencesType` to `GlobalPreferencesType` (a superset); the frontend query uses no fragment, so no client breaks. This GraphQL schema change and the `/api/config` contract change were approved by the tech owner on 2026-11-04 as part of the "new global setting" decision.
 - Hand-written USER-scope guard: runs before any read; the mutation and query tests pin the error and the absence of the fields on user types.
 - Two generated `InstanceColor` types agree only because name == value; the form imports `InstanceColor` from the generated GraphQL types and narrows the REST string with `isInstanceColor`, so a REST value that the GraphQL enum does not know is treated as no color.
