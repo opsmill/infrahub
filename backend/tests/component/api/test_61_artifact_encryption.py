@@ -140,6 +140,36 @@ async def test_check_of_a_missing_file_leaves_the_stored_value(
     )
 
 
+async def test_check_of_a_deleted_file_leaves_an_encrypted_value_stored(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
+    encryption_enabled: StorageKey,
+) -> None:
+    artifact = await create_artifact(db=db, car_person_data_generic=car_person_data_generic)
+    url = f"/api/artifact/{artifact.id}/encryption"
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+        identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT)
+    )
+
+    with client:
+        found = client.post(url=url, headers=admin_headers)
+        (local_storage_dir / ARTIFACT_ID).unlink()
+        missing = client.post(url=url, headers=admin_headers)
+
+    assert [(response.status_code, response.json()) for response in (found, missing)] == [
+        (200, {"encryption": "encrypted", "reason": None, "updated": True}),
+        (200, {"encryption": "encrypted", "reason": "missing", "updated": False}),
+    ]
+    assert await stored_artifact_encryption(db=db, artifact_id=artifact.id) == "encrypted"
+
+
 async def test_check_of_an_unknown_artifact_is_refused(
     db: InfrahubDatabase,
     client: TestClient,

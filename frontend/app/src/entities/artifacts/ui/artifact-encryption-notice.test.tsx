@@ -61,6 +61,19 @@ describe("ArtifactEncryptionNotice", () => {
     await expect.element(component.getByText("This artifact is encrypted.")).toBeVisible();
   });
 
+  test("does not reassure when the check found the file missing", async () => {
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(
+      check({ encryption: "encrypted", reason: "missing", updated: false })
+    );
+
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("encrypted")} />);
+
+    await expect
+      .element(component.getByTestId("artifact-encryption-notice"))
+      .not.toBeInTheDocument();
+  });
+
   test("does not reassure from the stored value when no check answered", async () => {
     vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
 

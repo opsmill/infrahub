@@ -98,9 +98,7 @@ async def check_artifact_encryption(
         NodeNotFoundError: If the artifact does not exist on the branch.
 
     """
-    artifact = await registry.manager.get_one(
-        db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at, kind=CoreArtifact
-    )
+    artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, kind=CoreArtifact)
     if not artifact:
         raise NodeNotFoundError(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
