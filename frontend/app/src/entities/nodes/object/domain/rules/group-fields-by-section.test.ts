@@ -26,7 +26,7 @@ describe("groupFieldsBySection", () => {
     // THEN
     expect(sectionNames(sections)).toEqual(["details", "lacp"]);
     expect(sections[0]).toEqual({
-      container: { name: "details", label: "Details", collapsed: false },
+      container: { name: "details", label: "Details", collapsible: false, collapsed: false },
       items: [items[1]],
     });
   });
@@ -173,7 +173,10 @@ describe("groupFieldsBySection", () => {
 
     // THEN
     expect(sections).toEqual([
-      { container: { name: "details", label: "Details", collapsed: false }, items },
+      {
+        container: { name: "details", label: "Details", collapsible: false, collapsed: false },
+        items,
+      },
     ]);
   });
 

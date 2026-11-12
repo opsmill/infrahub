@@ -10,7 +10,15 @@ import { generateAttributeSchema, generateNodeSchema } from "../../../../../../t
 
 const permission = generatePermission();
 
-const lacpSection = { name: "lacp", label: "LACP", collapsed: false };
+const lacpSection = { name: "lacp", label: "LACP", collapsible: true, collapsed: false };
+
+const profileSection = {
+  name: "builtin_profile",
+  label: "Profile",
+  description: "Name and priority of the profile",
+  collapsible: false,
+  collapsed: false,
+};
 
 const schemaWithCommit = generateNodeSchema({
   attributes: [generateAttributeSchema({ name: "commit", label: "Commit", order_weight: 1000 })],
@@ -171,6 +179,30 @@ describe("ObjectDetailsCard", () => {
     await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
   });
 
+  it("has no collapse button and stays expanded when its section is not collapsible", async () => {
+    const component = await render(
+      <ObjectDetailsCard
+        section={{ ...profileSection, collapsed: true }}
+        objectSchema={schemaWithExtraField}
+        objectData={objectDataWithExtraField}
+        permission={permission}
+      />
+    );
+
+    const card = component.getByRole("region", { name: "Profile" });
+    await expect.element(card).toHaveAttribute("data-testid", "object-details-section");
+    await expect.element(card).toHaveAttribute("data-section", "builtin_profile");
+    await expect.element(component.getByText("Name and priority of the profile")).toBeVisible();
+    expect(component.getByRole("button", { name: "Profile" }).elements()).toHaveLength(0);
+    await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Extra" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Internal status", { exact: true })).toBeVisible();
+  });
+
   it("has no button in its title when given no section", async () => {
     const component = await render(
       <ObjectDetailsCard
@@ -219,7 +251,7 @@ describe("ObjectDetailsCard", () => {
           permission={permission}
         />
         <ObjectDetailsCard
-          section={{ name: "layer2", label: "Layer 2", collapsed: false }}
+          section={{ name: "layer2", label: "Layer 2", collapsible: true, collapsed: false }}
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}

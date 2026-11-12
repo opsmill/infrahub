@@ -394,6 +394,7 @@ describe("ObjectDetails sections", () => {
               name: "builtin_profile",
               label: "Profile",
               order_weight: -100,
+              collapsible: false,
             }),
             ...sectionContainers,
           ],
@@ -428,6 +429,10 @@ describe("ObjectDetails sections", () => {
     const profile = component.getByRole("region", { name: "Profile", exact: true });
     await expect.element(profile.getByText("Profile Name", { exact: true })).toBeVisible();
     await expect.element(profile.getByText("Profile Priority", { exact: true })).toBeVisible();
+    expect(component.getByRole("button", { name: "Profile", exact: true }).elements()).toHaveLength(
+      0
+    );
+    expect(component.getByRole("button", { name: "Details" }).elements()).toHaveLength(0);
     expect(
       profile
         .element()
@@ -450,6 +455,7 @@ describe("ObjectDetails sections", () => {
               name: "builtin_template",
               label: "Template",
               order_weight: -100,
+              collapsible: false,
             }),
             ...sectionContainers,
           ],
@@ -475,6 +481,10 @@ describe("ObjectDetails sections", () => {
 
     const template = component.getByRole("region", { name: "Template", exact: true });
     await expect.element(template.getByText("Template Name", { exact: true })).toBeVisible();
+    expect(
+      component.getByRole("button", { name: "Template", exact: true }).elements()
+    ).toHaveLength(0);
+    expect(component.getByRole("button", { name: "Details" }).elements()).toHaveLength(0);
     expect(
       template
         .element()

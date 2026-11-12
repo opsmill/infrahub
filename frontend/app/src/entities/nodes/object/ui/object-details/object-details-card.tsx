@@ -77,9 +77,7 @@ export function ObjectDetailsCard({
     >
       <SectionTitle
         label={
-          section === undefined ? (
-            title
-          ) : (
+          section?.collapsible ? (
             <DisclosureTrigger
               slot="trigger"
               aria-describedby={description ? descriptionId : undefined}
@@ -94,6 +92,8 @@ export function ObjectDetailsCard({
               />
               {section.label}
             </DisclosureTrigger>
+          ) : (
+            (section?.label ?? title)
           )
         }
         description={description}
@@ -113,12 +113,7 @@ export function ObjectDetailsCard({
         ? { "data-testid": "object-details" }
         : { "data-testid": "object-details-section", "data-section": section.name })}
     >
-      {section === undefined ? (
-        <>
-          {header(true)}
-          {dataDisplay}
-        </>
-      ) : (
+      {section?.collapsible ? (
         // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
         <Disclosure defaultExpanded={!section.collapsed} className="rounded-[inherit]">
           {({ isExpanded }) => (
@@ -128,6 +123,11 @@ export function ObjectDetailsCard({
             </>
           )}
         </Disclosure>
+      ) : (
+        <>
+          {header(true)}
+          {dataDisplay}
+        </>
       )}
     </Card>
   );

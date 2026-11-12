@@ -998,7 +998,9 @@ export const generateContainerSchema = (overrides?: Partial<ContainerSchema>): C
   label: "LACP",
   description: null,
   order_weight: null,
+  collapsible: true,
   collapsed: false,
   state: "present",
+  inherited: false,
   ...overrides,
 });
