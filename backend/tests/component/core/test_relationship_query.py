@@ -22,6 +22,7 @@ from infrahub.core.query.relationship import (
     RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
     RelationshipDeleteQuery,
+    RelationshipGetByIdentifierInWindowsQuery,
     RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
     RelationshipPeerData,
@@ -1331,7 +1332,7 @@ async def test_query_RelationshipGetByIdentifierQuery_returns_each_window_holdin
     await moved_member_main.team.update(db=db, data=team_2)  # type: ignore[attr-defined]
     await moved_member_main.save(db=db)
 
-    query = await RelationshipGetByIdentifierQuery.init(
+    query = await RelationshipGetByIdentifierInWindowsQuery.init(
         db=db,
         branch=default_branch,
         full_identifiers=[
@@ -1341,11 +1342,14 @@ async def test_query_RelationshipGetByIdentifierQuery_returns_each_window_holdin
                 destination_kind=MEMBER_KIND,
             )
         ],
-        window_source_ids=[team_1.id],
+        source_ids=[team_1.id],
     )
     await query.execute(db=db)
 
-    assert {(str(peer.source_id), str(peer.destination_id), peer.window_name) for peer in query.get_peers()} == {
+    assert {
+        (str(peer.peer_data.source_id), str(peer.peer_data.destination_id), peer.window_name)
+        for peer in query.get_peers()
+    } == {
         (team_1.id, moved_member.id, branch.name),
         (team_1.id, branch_member.id, branch.name),
     }

@@ -118,7 +118,6 @@ class RelationshipPeersData:
     source_kind: str
     destination_id: UUID
     destination_kind: str
-    window_name: str | None = None
 
     def reversed(self) -> RelationshipPeersData:
         return RelationshipPeersData(
@@ -128,8 +127,14 @@ class RelationshipPeersData:
             source_kind=self.destination_kind,
             destination_id=self.source_id,
             destination_kind=self.source_kind,
-            window_name=self.window_name,
         )
+
+
+@dataclass(frozen=True)
+class RelationshipWindowPeersData:
+    peer_data: RelationshipPeersData
+    window_name: str
+    """The name of the branch whose window holds the link."""
 
 
 @dataclass
@@ -1120,8 +1125,9 @@ RETURN updated_at, updated_by
             yield data
 
 
-class RelationshipGetByIdentifierQuery(Query):
-    name = "relationship_get_identifier"
+class RelationshipIdentifierQuery(Query):
+    """Base of the queries that read the links that have one of the given relationship identifiers."""
+
     type = QueryType.READ
 
     def __init__(
@@ -1129,13 +1135,9 @@ class RelationshipGetByIdentifierQuery(Query):
         identifiers: list[str] | None = None,
         full_identifiers: list[FullRelationshipIdentifier] | None = None,
         excluded_namespaces: list[str] | None = None,
-        window_source_ids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
-        """Read the links that have one of the identifiers.
-
-        With `window_source_ids`, read only the links of these nodes, once per live branch window in which both
-        `IS_RELATED` edges are the latest and active and both nodes exist, and set the window's name on each row.
+        """Read the links named by one of `identifiers`, or by one of `full_identifiers` between the given kinds.
 
         Raises:
             ValueError: Neither or both of `identifiers` and `full_identifiers` are given.
@@ -1151,20 +1153,33 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
-        self.window_source_ids = window_source_ids
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    def _add_identifier_params(self) -> None:
         self.params["identifiers"] = self.identifiers
         self.params["full_identifiers"] = [
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
         ]
         self.params["excluded_namespaces"] = self.excluded_namespaces
-        if self.window_source_ids is not None:
-            self._init_in_windows(source_ids=self.window_source_ids)
-            return
 
+    @staticmethod
+    def _build_peers_data(result: QueryResult) -> RelationshipPeersData:
+        return RelationshipPeersData(
+            id=result.get("rl").get("uuid"),
+            identifier=result.get("rl").get("name"),
+            source_id=result.get("src").get("uuid"),
+            source_kind=result.get("src").get("kind"),
+            destination_id=result.get("dst").get("uuid"),
+            destination_kind=result.get("dst").get("kind"),
+        )
+
+
+class RelationshipGetByIdentifierQuery(RelationshipIdentifierQuery):
+    name = "relationship_get_identifier"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self._add_identifier_params()
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
 
@@ -1193,10 +1208,28 @@ class RelationshipGetByIdentifierQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["src", "dst", "rl"]
 
-    def _init_in_windows(self, source_ids: list[str]) -> None:
+    def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
+        for result in self.get_results():
+            yield self._build_peers_data(result=result)
+
+
+class RelationshipGetByIdentifierInWindowsQuery(RelationshipIdentifierQuery):
+    """Read the links of the given nodes once per live branch window that holds them.
+
+    A window holds a link when both `IS_RELATED` edges are the latest and active in it and both nodes exist in it.
+    """
+
+    name = "relationship_get_identifier_in_windows"
+
+    def __init__(self, source_ids: list[str], **kwargs: Any) -> None:
+        self.source_ids = source_ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self._add_identifier_params()
         windows_query, windows_params = build_branch_windows_query(at=self.at, enabled=True)
         self.params.update(windows_params)
-        self.params["source_ids"] = source_ids
+        self.params["source_ids"] = self.source_ids
 
         query = """
         %(windows_query)s
@@ -1232,18 +1265,12 @@ class RelationshipGetByIdentifierQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["src", "dst", "rl", "window_name"]
 
-    def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
+    def get_peers(self) -> Generator[RelationshipWindowPeersData, None, None]:
         for result in self.get_results():
-            data = RelationshipPeersData(
-                id=result.get("rl").get("uuid"),
-                identifier=result.get("rl").get("name"),
-                source_id=result.get("src").get("uuid"),
-                source_kind=result.get("src").get("kind"),
-                destination_id=result.get("dst").get("uuid"),
-                destination_kind=result.get("dst").get("kind"),
-                window_name=result.get_as_type("window_name", str) if self.window_source_ids is not None else None,
+            yield RelationshipWindowPeersData(
+                peer_data=self._build_peers_data(result=result),
+                window_name=result.get_as_type("window_name", str),
             )
-            yield data
 
 
 @dataclass(frozen=True)
