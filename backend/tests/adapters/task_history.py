@@ -120,6 +120,55 @@ class FailingRewriter:
         raise RuntimeError("rewrite rejected")
 
 
+class UnansweredRewriter:
+    """Measures 1000 bytes and a runs table with no live rows, and starts a rewrite that reports no table.
+
+    Once cancelled, the rewrite ends only when the test lets it, as a query cancelled while the database does not answer.
+    """
+
+    def __init__(self) -> None:
+        self._rewriting = asyncio.Event()
+        self._answered = asyncio.Event()
+        self._ended = asyncio.Event()
+
+    @property
+    def tables(self) -> tuple[str, ...]:
+        return ("flow_run",)
+
+    @property
+    def ended(self) -> bool:
+        return self._ended.is_set()
+
+    async def total_size(self) -> int:
+        return 1000
+
+    async def space(self, table: str) -> TableSpace:
+        return TableSpace(disk_bytes=1000, live_bytes=0)
+
+    async def rewrite(self, tables: list[str], on_table: Callable[[str, TableOutcome], None]) -> None:
+        self._rewriting.set()
+        try:
+            async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
+                await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
+                await self._answered.wait()
+            raise
+        finally:
+            self._ended.set()
+
+    async def wait_until_rewriting(self) -> None:
+        async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
+            await self._rewriting.wait()
+
+    def answer(self) -> None:
+        self._answered.set()
+
+    async def wait_until_ended(self) -> None:
+        async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
+            await self._ended.wait()
+
+
 class LosableCleanupLock:
     """A cleanup lock the test can take from its holder, as a database that ends the holding session does."""
 

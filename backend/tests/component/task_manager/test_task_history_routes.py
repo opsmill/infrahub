@@ -12,7 +12,13 @@ from fastapi import FastAPI
 from prefect.server.database import provide_database_interface
 from prefect.server.schemas.states import StateType
 from prefect.settings import temporary_settings
-from tests.adapters.task_history import FailingRewriter, LockedDayTables, LosableCleanupLock, RecordingRewriter
+from tests.adapters.task_history import (
+    FailingRewriter,
+    LockedDayTables,
+    LosableCleanupLock,
+    RecordingRewriter,
+    UnansweredRewriter,
+)
 from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manager_database
 
 from infrahub.prefect_server.app import router
@@ -84,7 +90,7 @@ def app(db: PrefectDBInterface, cleanup_lock: ProcessCleanupLock) -> Generator[F
     """Infrahub's task manager routes on the test's own database, cleanup registry and cleanup lock."""
     app = FastAPI()
     app.include_router(router)
-    jobs = CleanupJobs()
+    jobs = CleanupJobs(cancelled_step_time_limit=timedelta(seconds=30))
     app.dependency_overrides[provide_database_interface] = lambda: db
     app.dependency_overrides[get_cleanup_jobs] = lambda: jobs
     app.dependency_overrides[get_cleanup_lock] = lambda: cleanup_lock
@@ -316,6 +322,45 @@ async def test_a_cleanup_that_loses_its_lock_fails_keeps_its_deletes_and_lets_th
         "total_size",
     ]
     assert await _flow_run_ids(db=db) == recent_runs
+
+
+async def test_a_cleanup_that_loses_its_lock_fails_without_waiting_for_a_step_that_does_not_stop(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """A cleanup that loses its lock fails while its cancelled rewrite still waits for the database to answer.
+
+    The next start takes the lock and runs to its end.
+    """
+    await _seed_old_run(db=db)
+    lock = LosableCleanupLock()
+    jobs = CleanupJobs(cancelled_step_time_limit=timedelta(milliseconds=50))
+    app.dependency_overrides[get_cleanup_lock] = lambda: lock
+    app.dependency_overrides[get_cleanup_jobs] = lambda: jobs
+    rewriter = UnansweredRewriter()
+    _rewrite_through(app=app, db=db, rewriter=rewriter)
+
+    async with _client(app) as client:
+        first = (await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})).json()
+        await rewriter.wait_until_rewriting()
+        lock.lose()
+        failed = await _finished_job(client=client, job_id=first["id"])
+        rewrite_ended_before_the_job = rewriter.ended
+        second = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        assert second.status_code == 202, second.json()
+        completed = await _finished_job(client=client, job_id=second.json()["id"])
+    rewriter.answer()
+    await rewriter.wait_until_ended()
+
+    assert rewrite_ended_before_the_job is False
+    assert failed == first | {
+        "state": "failed",
+        "deleted_runs": 1,
+        "current_day": "2026-01-15",
+        "size_before": 1000,
+        "error": LOST_LOCK_ERROR,
+    }
+    assert second.json()["id"] != first["id"]
+    assert completed == second.json() | {"state": "completed", "size_before": 1000, "size_after": 1000}
 
 
 async def test_a_cleanup_stopped_by_runs_locked_elsewhere_fails_naming_their_day_and_frees_the_lock(

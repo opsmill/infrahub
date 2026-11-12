@@ -167,7 +167,11 @@ database, and can then rewrite the tables to return the disk space.
   no answer within 30 seconds, in which case the connection is closed without waiting for the
   server, the job cancels its current step and fails with `The cleanup stopped, because it could not
   confirm that it holds the cleanup lock; start it again`: the deletes not committed roll back, and a
-  rewrite in progress leaves its table as it was. A connection pooler in transaction mode can run
+  rewrite in progress leaves its table as it was. The job waits at most 30 seconds
+  (`_CANCELLED_STEP_TIME_LIMIT`) for the cancelled step to end, because a step cancelled during a
+  query waits for the server's answer without a limit. A step that has not ended by then is left
+  behind and keeps one connection of the cleanup's pool until the server answers or the connection
+  drops, and the task manager logs when it ends. A connection pooler in transaction mode can run
   the check on a session other than the one that took the lock, so the job stops there. The same
   replica returns its running job and raises its mode to a stronger request's (`never` < `if_freed`). The job decides about the rewrite once its deletes end,
   decides again when `if_freed` arrives after a decision with `never`, and never rewrites twice. The mode change and the job's final check take the registry's

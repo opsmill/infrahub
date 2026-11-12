@@ -63,6 +63,8 @@ _SQLSTATE_QUERY_CANCELED = "57014"
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
 # Shorter than the usual idle timeouts that end a quiet database session, so the checks also keep the session open.
 _CLEANUP_LOCK_CHECK_INTERVAL = timedelta(seconds=30)
+# A step cancelled while the database does not answer ends only once it answers, so the job stops waiting for it after this long.
+_CANCELLED_STEP_TIME_LIMIT = timedelta(seconds=30)
 # Outlasts any maintenance statement and keys an engine of its own, since Prefect 3.8.6 caches engines by timeout: an omitted
 # timeout gives the API's 10 s engine, and None the one-connection engine of Prefect's vacuum.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
@@ -621,9 +623,15 @@ class TaskHistoryCleanup:
 
 
 class CleanupJobs:
-    """The cleanups this task manager process ran, of which at most one runs at a time."""
+    """The cleanups this task manager process ran, of which at most one runs at a time.
 
-    def __init__(self) -> None:
+    Args:
+        cancelled_step_time_limit: How long a job that lost the cleanup lock waits for its cancelled step to end.
+
+    """
+
+    def __init__(self, cancelled_step_time_limit: timedelta) -> None:
+        self._cancelled_step_time_limit = cancelled_step_time_limit
         self._jobs: dict[str, CleanupJob] = {}
         self._running: CleanupJob | None = None
         self._tasks: set[asyncio.Task[None]] = set()
@@ -658,7 +666,7 @@ class CleanupJobs:
     async def _run(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> None:
         """Run the job to its end, deciding the rewrite again whenever a start raised its mode after the decision."""
         try:
-            await _stop_when_lost(step=cleanup.delete(job=job), lock=lock)
+            await _stop_when_lost(step=cleanup.delete(job=job), lock=lock, stop_within=self._cancelled_step_time_limit)
             decided: CleanupRewrite | None = None
             while True:
                 # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
@@ -669,7 +677,9 @@ class CleanupJobs:
                         job.state = CleanupJobState.COMPLETED
                         return
                     decided = job.rewrite
-                await _stop_when_lost(step=cleanup.rewrite(job=job, mode=decided), lock=lock)
+                await _stop_when_lost(
+                    step=cleanup.rewrite(job=job, mode=decided), lock=lock, stop_within=self._cancelled_step_time_limit
+                )
         except CleanupLockLostError:
             # The check of the lock already logged why it could not confirm the lock, so a traceback adds nothing.
             log.error(
@@ -696,8 +706,10 @@ class CleanupJobs:
                     await lock.release()
 
 
-async def _stop_when_lost(step: Awaitable[None], lock: CleanupLock) -> None:
+async def _stop_when_lost(step: Awaitable[None], lock: CleanupLock, stop_within: timedelta) -> None:
     """Run the step, cancelling it once the lock can no longer be confirmed as held.
+
+    A cancelled step that has not ended within `stop_within` is left to end on its own.
 
     Raises:
         CleanupLockLostError: When the lock can no longer be confirmed as held before the step ends.
@@ -711,10 +723,24 @@ async def _stop_when_lost(step: Awaitable[None], lock: CleanupLock) -> None:
         work_ended = work.done()
         lost.cancel()
         work.cancel()
-        await asyncio.wait((work,))
+        # Bounded, because a step cancelled during a query waits for the server's answer without a limit.
+        await asyncio.wait((work,), timeout=stop_within.total_seconds())
     if not work_ended:
+        if not work.done():
+            log.warning(
+                f"Task history cleanup: the cancelled step did not end within {stop_within.total_seconds():.0f} s, "
+                "so the cleanup stopped waiting for it; the step keeps its database connection until it ends"
+            )
+            work.add_done_callback(_log_late_end)
         raise CleanupLockLostError
     work.result()
+
+
+def _log_late_end(step: asyncio.Future[None]) -> None:
+    # Reading the error keeps asyncio from logging it as never retrieved.
+    error = None if step.cancelled() else step.exception()
+    outcome = "" if error is None else f" with {type(error).__name__}: {error}"
+    log.info(f"Task history cleanup: the cancelled step that the cleanup stopped waiting for has ended{outcome}")
 
 
 class _MaintenancePostgresConfiguration(AsyncPostgresConfiguration):
@@ -740,7 +766,7 @@ def _maintenance_database(db: PrefectDBInterface) -> PrefectDBInterface:
     return maintenance
 
 
-_CLEANUP_JOBS = CleanupJobs()
+_CLEANUP_JOBS = CleanupJobs(cancelled_step_time_limit=_CANCELLED_STEP_TIME_LIMIT)
 _PROCESS_CLEANUP_LOCK = ProcessCleanupLock()
 
 
