@@ -87,7 +87,6 @@ class TestCreateRepository(TestInfrahubApp):
             ("error: pathspec", RepositoryOperationalStatus.ERROR),
             ("SSL certificate problem", RepositoryOperationalStatus.ERROR_CONNECTION),
             ("authentication failed for", RepositoryOperationalStatus.ERROR_CRED),
-            ("Need to specify how to reconcile", RepositoryOperationalStatus.ERROR),
             ("fatal: could not read Username for | terminal prompts disable", RepositoryOperationalStatus.ERROR_CRED),
         ],
     )
@@ -117,14 +116,17 @@ class TestCreateRepository(TestInfrahubApp):
             infrahub_branch_name="main",
         )
 
-        with patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)):
-            try:
-                await infrahub_repo.fetch()
-            except RepositoryError:
-                r: CoreRepository = await NodeManager.get_one(
-                    db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
-                )
-                assert r.operational_status.value == expected_operational_status.value
+        with (
+            patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)),
+            pytest.raises(RepositoryError) as exc,
+        ):
+            await infrahub_repo.fetch()
+
+        assert "conflict" not in exc.value.message.lower()
+        r: CoreRepository = await NodeManager.get_one(
+            db=db, id=client_repository.id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert r.operational_status.value == expected_operational_status.value
 
 
 class TestRepositoryChangedFiles(TestInfrahubApp):

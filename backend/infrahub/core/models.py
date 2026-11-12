@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
 from rich import print as rprint
-from typing_extensions import Self
 
 from infrahub.core.constants import (
     HashableModelState,

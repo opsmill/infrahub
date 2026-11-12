@@ -3,6 +3,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
@@ -349,3 +350,34 @@ def test_get_excluded_values() -> None:
 
     with pytest.raises(ValueError, match="Excluded ranges cannot overlap"):
         parameters = NumberAttributeParameters(excluded_values="100-200,200-250")
+
+
+async def test_query_on_branch_finds_value_created_on_main_after_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    branch = await create_branch(db=db, branch_name="branch-before-person")
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Tall", height=400)
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson")
+    height_attr = person_schema.get_attribute(name="height")
+    assert isinstance(height_attr.parameters, NumberAttributeParameters)
+    height_attr.parameters.max_value = 300
+    schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height")
+
+    query = await AttributeNumberUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
+
+    assert (await query.get_paths()).get_all_data_paths() == [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=person.id,
+            kind="TestPerson",
+            field_name="height",
+            value=400,
+        )
+    ]

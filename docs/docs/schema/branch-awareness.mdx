@@ -8,8 +8,8 @@ By default, user defined schema elements are **branch-aware**: changes are local
 
 An element can also be configured as:
 
-- **branch agnostic**: changes are immediately propagated to all branches.
-- **branch local**: changes stay local to the branch and are excluded from Diff and Merge operations.
+- **branch-agnostic**: changes are immediately propagated to all branches.
+- **branch-local**: changes stay local to the branch and are excluded from Diff and Merge operations. See [Branch local](#branch-local).
 
 ## Summary
 
@@ -18,6 +18,24 @@ An element can also be configured as:
 | **Aware**      | All changes will be local to the branch and can be merged back into the main branch. | Yes  | Yes   | Yes    |
 | **Agnostic**   | All changes will automatically be available in all branches                          | No   | No    | No     |
 | **Local**      | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
+
+```mermaid
+flowchart LR
+  W["A value changes
+on a branch"] --> Q{"branch setting"}
+  Q -->|agnostic| G["Every branch
+sees it at once
+not in the diff,
+merge or rebase"]
+  Q -->|aware| A["Stays on the branch
+in the diff and the merge
+kept by a rebase"]
+  Q -->|local| L["Stays on the branch
+never in the diff or merge
+kept by a rebase"]
+```
+
+A branch-agnostic object can still appear in a branch diff when it has branch-aware attributes and one of those attributes changes on the branch. The diff then shows the branch-aware attribute, not branch-agnostic data.
 
 ## Branch agnostic
 
@@ -35,6 +53,26 @@ nodes:
         name: name
         branch: agnostic
 ```
+
+## Branch local
+
+A branch-local node, attribute or relationship keeps its value on the branch where you set it. Infrahub leaves it out of the branch diff, so merging the branch never copies it to the default branch.
+
+When you [rebase](../branches/rebase.mdx) the branch, a branch-local value stays on the branch with its current value. As with every other change on the branch, Infrahub drops the value's history from before the rebase point.
+
+To configure a model as **branch-local**, set the option `branch` to `local` in the schema file and load the schema with `infrahubctl schema load`:
+
+```yaml {4} showLineNumbers
+nodes:
+  - name: Fruit
+    namespace: Example
+    branch: local
+    attributes:
+      - kind: Text
+        name: name
+```
+
+To make a single attribute or relationship branch-local, set `branch: local` on that field, as described in [Attributes and relationships](#attributes-and-relationships).
 
 ## Attributes and relationships
 

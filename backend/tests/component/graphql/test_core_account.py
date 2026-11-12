@@ -11,6 +11,7 @@ from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.error_formatter import catalogue_error_formatter
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -56,6 +57,27 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     updated_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
     assert bcrypt.checkpw(new_password.encode("UTF-8"), updated_account.password.value.encode("UTF-8"))
     assert updated_account.description.value == new_description
+
+
+async def test_self_update_without_account_session(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    query = """
+    mutation {
+        InfrahubAccountSelfUpdate(data: {description: "new description"}) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(schema=gql_params.schema, source=query, context_value=gql_params.context)
+
+    assert result.errors
+    assert [error.message for error in result.errors] == ["An account_session is mandatory to execute this mutation"]
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 401
 
 
 async def _attach_external_identity(db: InfrahubDatabase, account: Node) -> Node:

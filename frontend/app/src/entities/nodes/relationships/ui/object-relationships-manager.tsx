@@ -1,7 +1,6 @@
 import { Navigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
@@ -48,19 +47,19 @@ export function ObjectRelationshipsManager({
 
   return (
     <ObjectTableProvider schema={relationshipSchema}>
-      <Row className="justify-end p-2">
-        <RelationshipsButtons
-          permission={permission}
-          schema={parentNodeSchema}
-          objectDetailsData={parentNodeData}
-          relationshipName={relationshipName}
-        />
-      </Row>
       <RelationshipTable
         parentKind={parentNodeSchema.kind!}
         parentId={parentNodeData.id}
         relationshipName={relationshipName}
         relationshipSchema={relationshipSchema}
+        toolbarEndActions={
+          <RelationshipsButtons
+            permission={permission}
+            schema={parentNodeSchema}
+            objectDetailsData={parentNodeData}
+            relationshipName={relationshipName}
+          />
+        }
       />
     </ObjectTableProvider>
   );

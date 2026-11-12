@@ -80,7 +80,7 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
-The same goes for named accessors: read a relationship manager with `node.get_relationship(name)`, not `getattr(node, name)` — the accessor is typed and greppable, and `getattr` hides the read from both. When the field is optional, use the raising accessor instead of coercing: `str(rel_schema.identifier)` turns a missing identifier into the literal string `"None"`, which then matches nothing downstream — `rel_schema.get_identifier()` raises at the fault instead.
+The same goes for named accessors: read a relationship manager with `node.get_relationship(name)` and an attribute with `node.get_attribute(name)`, not `getattr(node, name)` or dotted access — a `Node`'s attributes are attached dynamically, so `pool.start_range` only type-checks behind a `# type: ignore[attr-defined]`, while the accessor returns a typed `BaseAttribute` and is greppable. When the field is optional, use the raising accessor instead of coercing: `str(rel_schema.identifier)` turns a missing identifier into the literal string `"None"`, which then matches nothing downstream — `rel_schema.get_identifier()` raises at the fault instead.
 
 ## Narrow with a check that returns the value, never with `cast()`
 
@@ -112,11 +112,79 @@ Three signs that you are reaching for the escape hatch instead of the fix:
   `isinstance` can change the order in which mypy resolves an import cycle; errors that appear
   elsewhere are a second defect to root-cause, usually an ambiguous import, not a reason to fall back.
 - **The real check needs an import that closes a cycle.** The type lives in a layer above the
-  module, and neither a function-local import nor `cast()` fixes that: give each accepted type its
-  own parameter so the branch narrows on `None`, or depend on the narrower interface — see
-  [Imports](python.md#imports).
+  module, and neither a function-local import nor `cast()` fixes that: depend on the narrower
+  interface — see [Imports](python.md#imports).
 - **The suppression needs a paragraph.** A `# type: ignore[code]` carries its reason on the same
   line; when justifying one takes a docstring, remove it instead of documenting it.
+
+Narrow only a union that is the real contract. A union of two backends' clients for one role, such as
+the `redis.Redis | InfrahubServices` connection above, is a missing interface: narrowing it, or
+splitting it into one parameter per backend, satisfies the checker and leaves the component tied to
+each backend. See
+[Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations).
+
+## Don't widen to `Any` to make a wrong annotation type-check
+
+Clearing a suppression often exposes an annotation that was never true, such as a result wrapper
+declaring `list[Node | Relationship]` for columns that also carry paths, scalars and nulls. Do not
+repair it with `Any`: `Any` matches everything, so it hides every mismatch downstream, and ruff's
+`ANN401` is ignored for `backend/infrahub/**`, so nothing flags it. Declare the closed set the value
+can hold, and narrow to one member where a caller needs it. The neo4j driver annotates every `Record`
+column as `Any` because it cannot know the query; the wrapper can, since Cypher has a closed set of
+value types.
+
+```python
+# ❌ Bad - the checker is satisfied because nothing is checked any more
+def _get(self, label: str) -> Any: ...
+
+# ✅ Good - the closed set the column can hold, narrowed where a caller needs one member
+# (abridged: a full alias also lists the driver's temporal and spatial types)
+CypherValue = Node | Relationship | Path | str | int | float | bool | None | list["CypherValue"] | dict[str, "CypherValue"]
+
+def _get(self, label: str) -> CypherValue: ...
+
+def get_node(self, label: str) -> Node:
+    value = self._get(label=label)
+    if isinstance(value, Node):
+        return value
+    raise ValueError(f"{label} is not a Node")
+```
+
+If the correct type causes many errors in callers, keep the callers' annotation for now, retype it in
+a separate change, and say so in the PR.
+
+## A change that makes a type real retires its suppressions
+
+CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore[code]` that no longer suppresses
+anything stays, and later hides a real error on the same line. ty checks only the ignores it reads
+(a bare `# type: ignore`, a `ty:` code, a `# ty: ignore`), and counts only the rules enabled for the
+file, so a rule that a `[[tool.ty.overrides]]` block turns off does not keep an ignore in use. When a
+change lets the checker see a type it could not before, run
+`uv run mypy --warn-unused-ignores backend` and delete every ignore it reports as unused, including
+in files the change does not otherwise touch. Then run `uv run ty check .`: a bare ignore, or one
+that carries a `ty:` code, can still suppress a ty error, so restore any deletion that ty fails on.
+
+## Name the mypy error code in every `# type: ignore`
+
+Never write a bare `# type: ignore`: ty reads it as its own blanket ignore, so it also hides every ty
+error on that line. ty skips a `# type: ignore[code]` whose codes have no `ty:` prefix, so the coded
+form acts on mypy only. A line that needs both checkers silenced takes a separate `# ty: ignore[rule]`
+comment, placed after the mypy one: mypy reads `# type: ignore` only when it is the first comment on
+the line. mypy reports a `ty:` code inside its own brackets as unused when `--warn-unused-ignores` is on.
+
+```python
+# ❌ Bad - hides every mypy and ty error on the line
+result = build()  # type: ignore
+
+# ❌ Bad - mypy reports ty:missing-argument as an unused ignore code
+result = build()  # type: ignore[call-arg, ty:missing-argument]
+
+# ❌ Bad - mypy skips a type: ignore that follows another comment and reports call-arg
+result = build()  # ty: ignore[missing-argument]  # type: ignore[call-arg]
+
+# ✅ Good - each checker reads only its own comment
+result = build()  # type: ignore[call-arg]  # ty: ignore[missing-argument]
+```
 
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 

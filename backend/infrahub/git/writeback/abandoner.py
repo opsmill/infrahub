@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from infrahub.git.writeback.models import AbandonmentRecord
+from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE, release_under_lease
+from infrahub.log import get_run_logger
+
+if TYPE_CHECKING:
+    from infrahub.git.writeback.models import Actor
+    from infrahub.git.writeback.ports import (
+        AbandonmentGitPort,
+        Clock,
+        DeliveryStatePort,
+        LeaseRenewalPort,
+        RegenerationReleasePort,
+        RepositoryRef,
+    )
+    from infrahub.lock import InfrahubLockRegistry
+
+log = get_run_logger()
+
+
+class WritebackAbandoner:
+    """Drop the queued merges of one repository at a user's request, then release the regeneration held for them."""
+
+    def __init__(
+        self,
+        repository: RepositoryRef,
+        state: DeliveryStatePort,
+        git: AbandonmentGitPort,
+        releaser: RegenerationReleasePort,
+        lease_renewal: LeaseRenewalPort,
+        lock_registry: InfrahubLockRegistry,
+        clock: Clock,
+        release_renew_seconds: float,
+    ) -> None:
+        self.repository = repository
+        self.state = state
+        self.git = git
+        self.releaser = releaser
+        self.lease_renewal = lease_renewal
+        self.lock_registry = lock_registry
+        self.clock = clock
+        self.release_renew_seconds = release_renew_seconds
+
+    async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord:
+        """Remove every queued merge and the owed import of the repository, and return the record that names them.
+
+        It pushes nothing, deletes no remote branch and imports nothing. It tells the workers that each source
+        branch flagged for deletion is gone, so they drop their local copy.
+
+        Raises:
+            DeliveryQueueChangedError: The queue is no longer at `queue_version`.
+            NothingPendingError: The queue is empty.
+            DeliveryStateUnavailableError: The lock of the delivery state was not acquired in time.
+            RuntimeError: The state saved no record of the abandonment.
+            Exception: The release of the held regeneration, or the clear of its lease, failed after the abandonment
+                was saved; the items stay held, and a later delivery run of the repository releases them.
+
+        """
+        async with self.lock_registry.get(name=self.repository.name, namespace=REPOSITORY_LOCK_NAMESPACE):
+            recorded = await self.git.recorded_commit()
+            abandoned, lease = await self.state.abandon(
+                repository_id=self.repository.id,
+                queue_version=queue_version,
+                record=AbandonmentRecord(
+                    abandoned_at=self.clock(),
+                    account_id=actor.account_id,
+                    account_name=actor.account_name,
+                    queue_version=queue_version,
+                    # A repository that records no readable commit can still queue merges, and a user must be able to drop them.
+                    recorded_commit=recorded or "",
+                ),
+                actor=actor,
+            )
+            record = abandoned.last_abandonment
+            if record is None:
+                raise RuntimeError(f"The abandonment of repository {self.repository.name} saved no record.")
+            log.info(
+                "%s abandoned the merges %s of repository %s, with the release lease %s.",
+                actor.account_name,
+                sorted(record.entry_ids),
+                self.repository.name,
+                lease.lease_id if lease else None,
+            )
+            await self._notify_deleted_branches(record=record)
+        if lease is not None:
+            try:
+                # A release awaits generator runs, which take the repository lock to fetch a commit they lack.
+                await release_under_lease(
+                    repository=self.repository,
+                    lease=lease,
+                    state=self.state,
+                    releaser=self.releaser,
+                    lease_renewal=self.lease_renewal,
+                    renew_seconds=self.release_renew_seconds,
+                )
+            except Exception:
+                # The run fails with the error of the release, so this line tells the user that nothing is left to abandon.
+                log.error(
+                    "The merges %s of repository %s are abandoned, but the release of their held regeneration failed. "
+                    "The barrier no longer holds the repository, so to regenerate now, run its artifact and generator "
+                    "definitions and its computed attributes by hand. A later delivery run of the repository also "
+                    "releases the held regeneration.",
+                    sorted(record.entry_ids),
+                    self.repository.name,
+                )
+                raise
+            try:
+                await self.state.clear_released(repository_id=self.repository.id, lease_id=lease.lease_id)
+            except Exception:
+                # The items stay held under the lease, so a later run releases them again once it expires.
+                log.error(
+                    "The merges %s of repository %s are abandoned and their held regeneration is released, but the "
+                    "release lease %s was not cleared; a later delivery run of the repository releases it again once "
+                    "the lease expires.",
+                    sorted(record.entry_ids),
+                    self.repository.name,
+                    lease.lease_id,
+                )
+                raise
+            log.info(
+                "Released the held regeneration of lease %s for repository %s.", lease.lease_id, self.repository.name
+            )
+        return record
+
+    async def _notify_deleted_branches(self, *, record: AbandonmentRecord) -> None:
+        flagged = {entry.source_git_branch for entry in record.entries if entry.delete_source_git_branch}
+        for git_branch in sorted(flagged):
+            try:
+                await self.git.notify_branch_deleted(git_branch=git_branch)
+            except Exception:
+                # The queue is already dropped, so a worker that missed the message keeps a local branch and nothing else.
+                log.warning(
+                    "Failed to tell the workers that the branch %s of repository %s is gone.",
+                    git_branch,
+                    self.repository.name,
+                    exc_info=True,
+                )

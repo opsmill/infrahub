@@ -1,11 +1,14 @@
 import sys
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
 
 import pydantic
 import pytest
+from infrahub_sdk.schema.generated.read import NodeSchemaRead
 
 from infrahub import config
+from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -25,15 +28,26 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
+from infrahub.schema.read_schema import build_read_schema
+from tests.helpers.schema import load_schema
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+from tests.helpers.schema.ticket import TICKET
 
 
 def build_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSynchronizer:
     """Helper to build a SchemaNumberPoolSynchronizer with its dependencies."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-    return SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    return SchemaNumberPoolSynchronizer(
+        db=db,
+        scope_reader=ScopedNumberPoolReader(db=db),
+        schema_manager=registry.schema,
+        upserter=upserter,
+        range_store_factory=NumberPoolRepository,
+    )
 
 
 def test_number_pool_with_range() -> None:
@@ -82,6 +96,55 @@ def test_number_pool_get_pool_size() -> None:
     assert NumberPoolParameters(start_range=10, end_range=25).get_pool_size() == 16
     assert NumberPoolParameters(start_range=10).get_pool_size() == sys.maxsize - 9
     assert NumberPoolParameters(end_range=25).get_pool_size() == 25
+
+
+def build_number_pool_node_schema(parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": "NumberAttribute",
+        "namespace": "Test",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {
+                "name": "assigned_number",
+                "kind": "NumberPool",
+                "optional": False,
+                "unique": True,
+                "read_only": True,
+                "parameters": parameters,
+            },
+        ],
+    }
+
+
+def load_number_pool_parameters(parameters: dict[str, Any]) -> NumberPoolParameters:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[NodeSchema(**build_number_pool_node_schema(parameters))]))
+    schema_branch.process()
+    loaded = schema_branch.get_node(name="TestNumberAttribute").get_attribute("assigned_number").parameters
+    assert isinstance(loaded, NumberPoolParameters)
+    return loaded
+
+
+async def test_number_pool_ranges_declaration_round_trips_through_database(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    node_schema = NodeSchema(
+        **build_number_pool_node_schema(
+            {"ranges": [{"start": 100, "end": 200, "weight": 10}, {"start": 205, "end": 300}]}
+        )
+    )
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(nodes=[node_schema]))
+
+    await registry.schema.load_schema_to_db(
+        db=db, branch=default_branch, schema=schema_branch, limit=["TestNumberAttribute"]
+    )
+    reloaded_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+
+    reloaded = reloaded_branch.get_node(name="TestNumberAttribute").get_attribute("assigned_number").parameters
+    assert isinstance(reloaded, NumberPoolParameters)
+    assert reloaded.start_range is None
+    assert reloaded.end_range is None
+    assert [(r.start, r.end, r.weight) for r in reloaded.effective_ranges()] == [(100, 200, 10), (205, 300, None)]
 
 
 def test_number_pool_optional() -> None:
@@ -590,3 +653,133 @@ async def test_list_attribute_regex_parameter_validation(
     another_node = await Node.init(db=db, schema=schema)
     with pytest.raises(ValidationError, match=r"ftp must conform with the regex"):
         await another_node.new(db=db, name="test-single", protocols=["ftp"])
+
+
+@dataclass(frozen=True)
+class DeclaredScopeCase:
+    name: str
+    attribute: str
+    expected_scope: list[str] | None
+    """The scope the reloaded parameters carry; None when the attribute must read back as unscoped."""
+
+
+DECLARED_SCOPE_CASES: list[DeclaredScopeCase] = [
+    DeclaredScopeCase(name="site", attribute="site_index", expected_scope=["title"]),
+    DeclaredScopeCase(name="absent", attribute="plain_index", expected_scope=None),
+    DeclaredScopeCase(name="empty", attribute="empty_index", expected_scope=None),
+]
+
+
+class TestNumberPoolAllocationScopeParameters:
+    """A NumberPool attribute's allocation_scope survives the write to and the reload from the database.
+
+    The schema is loaded once for the class, with one pooled attribute per declaration shape.
+    """
+
+    @pytest.fixture(scope="class")
+    async def reloaded_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> SchemaBranch:
+        ticket = deepcopy(TICKET)
+        ticket.attributes.extend(
+            [
+                AttributeSchema(
+                    name="site_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=["title"]),
+                ),
+                AttributeSchema(
+                    name="plain_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100),
+                ),
+                AttributeSchema(
+                    name="empty_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=[]),
+                ),
+            ]
+        )
+        await load_schema(db=db, schema=SchemaRoot(nodes=[ticket]), update_db=True)
+        return await registry.schema.load_schema_from_db(db=db, branch=default_branch_scope_class)
+
+    @pytest.mark.parametrize("case", DECLARED_SCOPE_CASES, ids=lambda case: case.name)
+    async def test_declared_scope_round_trips_through_the_database(
+        self, reloaded_schema: SchemaBranch, case: DeclaredScopeCase
+    ) -> None:
+        parameters = (
+            reloaded_schema.get_node(name=TICKET.kind, duplicate=False).get_attribute(case.attribute).parameters
+        )
+
+        assert isinstance(parameters, NumberPoolParameters)
+        if case.expected_scope is None:
+            assert not parameters.allocation_scope
+        else:
+            assert parameters.allocation_scope == case.expected_scope
+
+
+@dataclass(frozen=True)
+class SchemaApiScopeCase:
+    name: str
+    scope_parameters: dict[str, Any]
+    expected_scope: list[str] | None
+
+
+ALLOCATION_SCOPE_CASES = [
+    SchemaApiScopeCase(name="scoped", scope_parameters={"allocation_scope": ["site"]}, expected_scope=["site"]),
+    SchemaApiScopeCase(name="absent", scope_parameters={}, expected_scope=None),
+    SchemaApiScopeCase(name="empty", scope_parameters={"allocation_scope": []}, expected_scope=[]),
+]
+
+
+def _scoped_number_pool_payload(scope_parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {"name": "Site", "namespace": "Testing", "attributes": [{"name": "name", "kind": "Text", "unique": True}]},
+            {
+                "name": "Device",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "number",
+                        "kind": "NumberPool",
+                        "optional": False,
+                        "read_only": True,
+                        "parameters": {"start_range": 1, "end_range": 100} | scope_parameters,
+                    },
+                ],
+                "relationships": [
+                    {"name": "site", "peer": "TestingSite", "cardinality": "one", "optional": False},
+                ],
+            },
+        ],
+    }
+
+
+@pytest.mark.parametrize("case", ALLOCATION_SCOPE_CASES, ids=lambda case: case.name)
+async def test_number_pool_allocation_scope_round_trips_through_schema_api(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case: SchemaApiScopeCase,
+) -> None:
+    submitted = SchemaLoadAPI.model_validate(_scoped_number_pool_payload(case.scope_parameters))
+    await load_schema(db=db, schema=submitted.internal_schema, update_db=True)
+
+    reloaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    read = build_read_schema(model=NodeSchemaRead, schema=reloaded.get_node(name="TestingDevice", duplicate=False))
+
+    number = next(attribute for attribute in read.attributes if attribute.name == "number")
+    read_scope = number.model_dump()["parameters"]["allocation_scope"]
+    assert read_scope == case.expected_scope

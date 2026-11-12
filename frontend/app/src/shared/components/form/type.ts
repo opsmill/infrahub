@@ -5,11 +5,7 @@ import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
-import type {
-  IpPoolKind,
-  NumberPoolKind,
-  PoolKind,
-} from "@/entities/resource-manager/domain/model/pool";
+import type { IpPoolKind, NumberPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import type {
   AttributeKind,
   AttributeSchema,
@@ -23,8 +19,6 @@ export type EmptyFieldValue = {
   source: null;
   value: null;
 };
-
-export type { PoolKind };
 
 type PoolSourceBase = {
   type: "pool";
@@ -88,7 +82,15 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string; prefixLength?: number; allocatedKind?: string } };
+  value: {
+    from_pool: {
+      id: string;
+      prefixLength?: number;
+      allocatedKind?: string;
+      /** Applies only to a `CoreNumberPool` source. */
+      number?: number | null;
+    };
+  };
 };
 
 export type AttributeValueForCheckbox = {

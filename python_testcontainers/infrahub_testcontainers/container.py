@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import socket
 import time
 import urllib.request
 import uuid
@@ -12,10 +13,17 @@ from http import HTTPStatus
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
+from testcontainers.core.config import testcontainers_config
+from testcontainers.core.container import Reaper
 from testcontainers.core.exceptions import ContainerIsNotRunning
 from typing_extensions import Self
 
 from infrahub_testcontainers import __version__ as infrahub_version
+from infrahub_testcontainers.reaper import ComposeProjectReaper
+
+RYUK_PORT = 8080
+RYUK_CONNECTION_TIMEOUT_SECONDS = 10.0
+RYUK_ACKNOWLEDGEMENT_TIMEOUT_SECONDS = 10.0
 
 
 @dataclass
@@ -35,7 +43,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:4.2.1-management",
     "CACHE_DOCKER_IMAGE": "redis:8.4.0",
-    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-community",
+    "NEO4J_DOCKER_IMAGE": "neo4j:2026.10.1-community",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
@@ -84,11 +92,30 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 }
 
 
+def connect_to_ryuk() -> socket.socket:
+    """Open a connection to the Ryuk container of this process, starting Ryuk when it is not running yet."""
+    Reaper.get_instance()
+    # testcontainers>=4.8,<4.9 exposes the running Ryuk container only through this private attribute.
+    ryuk = Reaper._container
+    if ryuk is None:
+        raise ConnectionError("testcontainers returned a Reaper without a Ryuk container")
+    return socket.create_connection(
+        address=(ryuk.get_container_host_ip(), int(ryuk.get_exposed_port(RYUK_PORT))),
+        timeout=RYUK_CONNECTION_TIMEOUT_SECONDS,
+    )
+
+
+COMPOSE_PROJECT_REAPER = ComposeProjectReaper(
+    connect=connect_to_ryuk, acknowledgement_timeout=RYUK_ACKNOWLEDGEMENT_TIMEOUT_SECONDS
+)
+
+
 @dataclass
 class InfrahubDockerCompose(DockerCompose):
     project_name: str | None = None
     env_vars: dict[str, str] = field(default_factory=dict)
     deployment_type: str | None = None
+    compose_project_reaper: ComposeProjectReaper = field(default=COMPOSE_PROJECT_REAPER, repr=False, compare=False)
 
     @classmethod
     def init(
@@ -170,7 +197,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.05.0-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.10.1-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):
@@ -195,6 +222,22 @@ class InfrahubDockerCompose(DockerCompose):
                 self.env_vars[key] = env_var_value
 
         return env_file.absolute()
+
+    def start(self) -> None:
+        """Start the stack after registering it with Ryuk, which removes it once this process exits."""
+        self._register_with_ryuk()
+        super().start()
+
+    def _register_with_ryuk(self) -> None:
+        if not self.project_name or testcontainers_config.ryuk_disabled:
+            return
+        try:
+            self.compose_project_reaper.register(project_name=self.project_name)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not register the compose project {self.project_name} with Ryuk, the testcontainers cleanup "
+                "container; set TESTCONTAINERS_RYUK_DISABLED=true to start the stack without it"
+            ) from exc
 
     def restart(self) -> None:
         """
@@ -279,6 +322,7 @@ class InfrahubDockerCompose(DockerCompose):
 
         TODO Would be good to contribute this upstream
         """
+        self._register_with_ryuk()
         base_cmd = self.compose_command_property or []
 
         # pull means running a separate command before starting

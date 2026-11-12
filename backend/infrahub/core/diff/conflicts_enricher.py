@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import ujson
 
-from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, InitializationError, SchemaNotFoundError
@@ -20,6 +20,16 @@ from .model.path import (
 # Attribute kinds whose value is a JSON collection that an "ordered=False" schema flag can make
 # order-insensitive during conflict detection.
 _UNORDERED_CAPABLE_KINDS = {"List", "JSON"}
+
+# The repository import computes these from the commit each branch imported, so neither branch's value
+# is a choice a person can make.
+_IMPORT_COMPUTED_ATTRIBUTES = {
+    (InfrahubKind.GRAPHQLQUERY, "fingerprint"),
+    (InfrahubKind.TRANSFORMJINJA2, "fingerprint"),
+    (InfrahubKind.TRANSFORMPYTHON, "fingerprint"),
+    (InfrahubKind.ARTIFACTDEFINITION, "fingerprint"),
+    (InfrahubKind.GENERATORDEFINITION, "fingerprint"),
+}
 
 
 class ConflictsEnricher:
@@ -81,7 +91,10 @@ class ConflictsEnricher:
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
         order_insensitive_attrs = self._get_order_insensitive_attrs(node_kind=branch_node.kind)
         for branch_attribute in branch_node.attributes:
-            if branch_attribute.name in common_attribute_names:
+            if (
+                branch_attribute.name in common_attribute_names
+                and (branch_node.kind, branch_attribute.name) not in _IMPORT_COMPUTED_ATTRIBUTES
+            ):
                 base_attribute = base_attribute_map[branch_attribute.name]
                 self._add_attribute_conflicts(
                     base_attribute=base_attribute,

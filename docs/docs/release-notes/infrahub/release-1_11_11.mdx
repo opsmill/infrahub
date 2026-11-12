@@ -1,0 +1,62 @@
+---
+title: Release 1.11.11
+release_date: 2026-11-06
+release_type: security
+description: "Infrahub 1.11.11 fixes GraphQL subscriptions bypassing authentication and saved-query permissions, an account signed in with a JWT token being able to delete the API token of another account, and vulnerabilities in dependencies, and removes the experimental NATS JetStream driver for the message bus and the cache. It also reduces the load that proposed change checks put on the API server and the task manager, and fixes time-range diffs of the default branch, global permissions changed on a branch, and flows failing when the Redis connection pool is full."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.11.11</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 6th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.11.11](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.11.11)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Fixed GraphQL subscriptions bypassing authentication and saved-query permissions. WebSocket connections now require a bearer token, API key or session cookie when `allow_anonymous_access` is disabled, and each run of a subscribed saved query is checked against the permissions of the connected account, or of the anonymous role when no credentials are sent. A subscription ends when its credentials expire or are revoked.
+- Fixed an issue where an account signed in with a JWT token could delete an API token that belongs to another account, including an administrator account, if it knew the ID of that token.
+- Fixed security vulnerabilities in frontend rendering, tracing, documentation, and development dependencies.
+
+### Removed
+
+- Removed the experimental NATS JetStream driver for the message bus and the cache, so a deployment that sets `INFRAHUB_BROKER_DRIVER` or `INFRAHUB_CACHE_DRIVER` to `nats` now fails to load its configuration and must use RabbitMQ and Redis.
+
+### Added
+
+- Added the `--performance-result-compress`, `--performance-result-required` and `--performance-result-file` options to the `infrahub-testcontainers` pytest plugin, which send the performance results gzip-compressed, fail a passing session when the results cannot be stored, and also write them to a file.
+
+### Changed
+
+- Reduced the load that the artifact checks of a proposed change put on the API server, which grew with the square of the number of artifacts to check.
+- Reduced the load that the user checks of a proposed change put on the API server, which grew with the square of the number of members in the group that a check definition targets.
+- Rewrote the key concepts documentation with concise explanations, infrastructure examples, and diagrams.
+- Shortened the validation of a proposed change with many checks and reduced the requests it sends to the task manager: Infrahub now reads the state of all the runs a validation waits on together, once a second, instead of reading each run separately.
+
+### Fixed
+
+- Fixed proposed change Generator checks that failed when a Generator instance remained after its target object was deleted. ([#6293](https://github.com/opsmill/infrahub/issues/6293))
+- Fixed the JSON schema endpoint returning a 500 error for kinds with a `List` or `Any` attribute, such as `CoreGraphQLQuery`. ([#10685](https://github.com/opsmill/infrahub/issues/10685))
+- Fixed the IPAM tree crashing with "Invalid array length", or hiding prefixes, when scrolling loaded more prefixes. ([#10719](https://github.com/opsmill/infrahub/issues/10719))
+- Fixed branch creation waiting for an unrelated branch merge to finish when it ran on the task worker executing that merge. ([#10845](https://github.com/opsmill/infrahub/issues/10845))
+- Fixed the task worker that ran a branch merge occasionally treating the merged branch as still merging until its next registry refresh. ([#10850](https://github.com/opsmill/infrahub/issues/10850))
+- Fixed the list view search and the IP prefix and IP address filters returning no result when an IPv6 value was typed with leading zeros or in its full form. ([#10926](https://github.com/opsmill/infrahub/issues/10926))
+- Fixed schema loads accepting malformed human-friendly ID paths and reporting unclear errors for invalid stored uniqueness constraints. ([#10942](https://github.com/opsmill/infrahub/issues/10942))
+- Fixed time-range diffs of the default branch reporting a node deleted by a branch merge as updated instead of removed. ([#11344](https://github.com/opsmill/infrahub/issues/11344))
+- Fixed time-range diffs of the default branch reporting the first value ever, instead of the value at the start of the range, as the previous value of a deleted node. ([#11345](https://github.com/opsmill/infrahub/issues/11345))
+- Fixed time-range diffs of the default branch reporting the first value ever, instead of the value at the start of the range, as the previous value of a property of a removed relationship peer. ([#11358](https://github.com/opsmill/infrahub/issues/11358))
+- Fixed flows failing with `MaxConnectionsError: Too many connections` when many of them used Redis at once: the Redis connection pools of the cache and the locks now hold up to 1000 connections by default, set with `INFRAHUB_CACHE_MAX_CONNECTIONS`. ([#11423](https://github.com/opsmill/infrahub/issues/11423))
+- Fixed a task worker occasionally using the previous status of a branch until its next registry refresh, after the worker rolled back, flagged or recovered a failed merge of that branch, or migrated the branch to a new graph version.
+- Fixed an account's global permissions changing before a branch is merged, when the members of an account group, the roles of a group or the global permissions of a role were changed on that branch. Global permissions and the roles listed at login now come from the default branch, whatever branch the request is sent to.
+- Fixed the `infrahub-testcontainers` pytest plugin losing the performance results after one failed upload: it now retries the upload up to 3 times, a number that `--performance-result-retries` changes.
+- Fixed the artifact checks of a proposed change crashing with `httpx.PoolTimeout` and staying in progress when the artifact definition targets about a thousand objects.
+- Improved performance for queries that look up nodes with the top-level ids filter

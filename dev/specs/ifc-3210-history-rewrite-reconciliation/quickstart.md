@@ -13,7 +13,11 @@ locally-running Neo4j. The unit tests need no database at all.
 
 1. A running Docker daemon. The component, integration and live-remote tests start their services
    through testcontainers.
-2. A worktree with the submodules initialised and the SDK reinstalled in editable mode.
+2. A worktree with the submodules initialised and the SDK reinstalled in editable mode through the
+   root package: `uv sync --all-groups --reinstall-package infrahub-server`. Do not install
+   `python_sdk` on its own with `uv pip install -e`. Its `tests` package then hides `backend/tests`
+   from the Prefect test server process, and every component test that needs Prefect fails at
+   setup with "Timed out while attempting to connect to ephemeral Prefect API server".
 3. **Unset every `INFRAHUB_*` variable in the shell before running tests.** A dev-shell
    `INFRAHUB_USE_TEST_CONTAINERS=false`, or leftover credentials, makes the suite hit an external
    Neo4j or fail the SDK login.
@@ -47,24 +51,25 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 |---|---|
 | Classifier, unchanged | The remote head equals the imported commit, so the result is `UNCHANGED`. |
 | Classifier, fast-forward | The imported commit is an ancestor, so the result is `FAST_FORWARD` and nothing is recorded. |
-| Classifier, locally ahead | The remote head is an ancestor of the imported commit, so the result is `LOCAL_AHEAD`. Nothing is reset and nothing is recorded. |
+| Classifier, rewound remote | The remote head is an ancestor of the imported commit, so the result is `REWRITE`. With the target changed it is `RETARGET`. |
 | Classifier, remote absent | The remote carries no such ref, so the result is `REMOTE_ABSENT`. |
 | Classifier, rewrite | Neither is an ancestor and the target did not change, so the result is `REWRITE`. |
 | Classifier, re-target | Neither is an ancestor and the target changed, so the result is `RETARGET`. |
 | Classifier, missing object | The imported commit is gone from the object database and the target did not change, so the result is `REWRITE`. With the target changed it is `RETARGET`. |
+| Classifier, missing remote head | The remote head is gone from the object database, so the classification raises a `RepositoryError` instead of reporting a rewrite. |
 | Classifier, never imported | No imported commit, so the result is never `REWRITE` or `RETARGET`. |
-| Suppression, present | A present marker makes `target_changed` true and is gone afterwards. |
-| Suppression, absent | An absent marker makes `target_changed` false. |
-| Suppression, consumed once | A second classification after the same marker is not suppressed. |
+| Suppression, present | A marker that names the git branch the cycle synchronises makes `target_changed` true. Reading it leaves it in place. |
+| Suppression, absent | An absent marker, or one that names another git branch, makes `target_changed` false. |
+| Suppression, cleared once | The marker is cleared once a cycle leaves the trunk on the remote head of the branch it names, so a later genuine rewrite is recorded. |
 | Recorder, last-write-wins | A second rewrite overwrites the first record. |
 | Recorder, increment | The count goes from absent to 1, then 1 to 2. |
 | Recorder, precondition | Every classification other than `REWRITE` writes nothing. The recorder never reads the cache. |
 | Recorder, signal | A rewrite of the configured default branch emits the event once and never twice. Any other branch emits none. |
 | Handler fan-out | N branch-and-commit pairs are reset inside one lock acquisition and one fetch. |
 
-The negative cases carry as much weight as the positive ones. A fast-forward, a locally-ahead
-branch and a deliberate re-target must all come out clean. The locally-ahead case is the one that
-would discard a user's unpushed commit if it were wrong.
+The negative cases carry as much weight as the positive ones. A fast-forward, a deliberate
+re-target and an absent remote ref must all come out clean. The re-target is the one that would
+report an ordinary configuration change as a rewrite if it were wrong.
 
 ---
 

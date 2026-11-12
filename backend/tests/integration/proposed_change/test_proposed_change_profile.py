@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.protocols import CoreProposedChange
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.manager import NodeManager
@@ -62,7 +63,7 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
 
     async def test_pipeline(self, db: InfrahubDatabase, update_profile: None, client: InfrahubClient) -> None:
         proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": "update_profile", "destination_branch": "main", "name": "PC1"},
         )
         await proposed_change_create.save()
@@ -79,5 +80,5 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
             validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values()
         )
 
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        proposed_change_create.state.value = "merged"
         await proposed_change_create.save()

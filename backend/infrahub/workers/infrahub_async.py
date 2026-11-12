@@ -1,8 +1,9 @@
 import contextlib
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from anyio.abc import TaskStatus
@@ -15,6 +16,7 @@ from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
+from prefect_redis import RedisDatabase
 from prometheus_client import start_http_server
 
 from infrahub import __version__ as infrahub_version
@@ -29,8 +31,10 @@ from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.license.reporting import log_license_state
 from infrahub.lock import initialize_lock
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     get_cache,
     get_component,
@@ -43,11 +47,17 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.metrics import observe_start_delay, track_flow_run
+from infrahub.workers.reservations import CacheFlowRunReservations
+from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY, SubmissionWindow
 from infrahub.workers.utils import get_parameter_name, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
+if TYPE_CHECKING:
+    from prefect.client.schemas.responses import WorkerFlowRunResponse
+
 WORKER_QUERY_SECONDS = "2"
-WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
+WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"{RedisDatabase.get_block_type_slug()}/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 
 
@@ -113,6 +123,7 @@ class InfrahubWorkerAsync(BaseWorker):
     _description = "Infrahub worker designed to run the flow in the main async loop."
     service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
     component_type = ComponentType.GIT_AGENT
+    _submission_window: SubmissionWindow
 
     async def setup(
         self,
@@ -143,6 +154,7 @@ class InfrahubWorkerAsync(BaseWorker):
                 service="infrahub-task-worker",
                 version=infrahub_version,
                 exporter_type=config.SETTINGS.trace.exporter_type,
+                sample_ratio=config.SETTINGS.trace.sample_ratio,
                 exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
                 exporter_protocol=config.SETTINGS.trace.exporter_protocol,
                 insecure=config.SETTINGS.trace.insecure,
@@ -156,21 +168,27 @@ class InfrahubWorkerAsync(BaseWorker):
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
-        await super().setup(**kwargs)
-
+        # Entered before the base setup so that the polling client it creates also skips the CSRF token request,
+        # which the task manager refuses since it runs without CSRF protection.
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
                 updates={
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
                     prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
-                }
+                },
+                set_defaults={prefect_settings.PREFECT_CLIENT_CSRF_SUPPORT_ENABLED: False},
             )
         )
+        await super().setup(**kwargs)
 
         set_component_type(component_type=self.component_type)
         await self.set_git_global_config()
         await self._init_services(client=client)
+        self._submission_window = SubmissionWindow(
+            capacity=SUBMISSION_WINDOW_CAPACITY,
+            reservations=CacheFlowRunReservations(cache=self.service.cache, owner=WORKER_IDENTITY, ttl=KVTTL.FIFTEEN),
+        )
 
         if not registry.schema_has_been_initialized():
             initialize_lock(service=self.service)
@@ -210,11 +228,59 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
-            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
-            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        observe_start_delay(
+            flow=flow_func.name,
+            queue=flow_run.work_queue_name,
+            expected_start_time=flow_run.expected_start_time,
+            started_at=datetime.now(UTC),
+        )
+        with track_flow_run(flow=flow_func.name, queue=flow_run.work_queue_name):
+            async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+                ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+                await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
+
+    async def _submit_scheduled_flow_runs(self, flow_run_response: list["WorkerFlowRunResponse"]) -> list[FlowRun]:
+        # Runs left out of the window stay scheduled on the server, where the next poll orders them by priority again.
+        self._submission_window.replace_candidates(entries=flow_run_response)
+        return await self._fill_submission_window()
+
+    async def _submit_from_window(self) -> list[FlowRun]:
+        entries = await self._submission_window.take()
+        if not entries:
+            return []
+        try:
+            submitted = await super()._submit_scheduled_flow_runs(flow_run_response=entries)
+        except BaseException:
+            # A run already handed to the run task group frees its own slot once its submission finishes.
+            self._submission_window.abandon(
+                flow_run_ids=[
+                    entry.flow_run.id for entry in entries if entry.flow_run.id not in self._submitting_flow_run_ids
+                ]
+            )
+            raise
+        submitted_ids = {flow_run.id for flow_run in submitted}
+        await self._submission_window.return_unsubmitted(
+            flow_run_ids=[entry.flow_run.id for entry in entries if entry.flow_run.id not in submitted_ids]
+        )
+        return submitted
+
+    async def _submit_run(self, flow_run: FlowRun) -> None:
+        try:
+            await super()._submit_run(flow_run)
+        finally:
+            self._submission_window.complete(flow_run_id=flow_run.id)
+            if self._runs_task_group is not None:
+                self._runs_task_group.start_soon(self._fill_submission_window)
+
+    async def _fill_submission_window(self) -> list[FlowRun]:
+        # A failed submission must not stop the poll loop or the run task group, since the next poll submits again.
+        try:
+            return await self._submit_from_window()
+        except Exception:
+            self._logger.exception("Unable to submit the next scheduled flow runs, waiting for the next poll")
+            return []
 
     def _init_logger(self) -> None:
         """Initialize loggers to use the API handle provided by Prefect."""

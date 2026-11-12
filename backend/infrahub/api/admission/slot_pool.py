@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-from typing import TYPE_CHECKING, Callable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.log import get_logger
 
@@ -11,6 +11,7 @@ from .priority import Priority
 
 if TYPE_CHECKING:
     from asyncio import Future
+    from collections.abc import Callable
 
 log = get_logger()
 

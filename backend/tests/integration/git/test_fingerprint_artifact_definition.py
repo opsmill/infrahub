@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import CoreArtifactDefinition
+from infrahub_sdk.protocols import CoreArtifactDefinition, CoreStandardGroup
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from tests.constants import TestKind
 from tests.integration.git.fingerprint_base import FingerprintImportTestBase
@@ -38,7 +37,7 @@ class TestFingerprintArtifactDefinition(FingerprintImportTestBase):
         newcomer = await Node.init(schema=TestKind.PERSON, db=db)
         await newcomer.new(db=db, name="Jane", height=165, age=30)
         await newcomer.save(db=db)
-        people = await client.get(kind=InfrahubKind.STANDARDGROUP, name__value="people")
+        people = await client.get(kind=CoreStandardGroup, name__value="people")
         await people.members.fetch()
         people.members.add(newcomer.id)
         await people.save()

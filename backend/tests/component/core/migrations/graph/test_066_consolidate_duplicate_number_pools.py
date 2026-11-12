@@ -15,6 +15,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import NodeNotFoundError
+from tests.helpers.number_pool import add_pool_range
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -58,6 +59,7 @@ class TestMigration066:
                 pool_type=NumberPoolType.SCHEMA.value,
             )
             await pool.save(db=db)
+            await add_pool_range(db=db, pool=pool, start=1, end=1000)
             pool_uuids.append(pool.id)
 
             # Load a TestDevice schema with serial_number referencing this pool
@@ -127,12 +129,20 @@ class TestMigration066:
         reservations = query.get_data()
         assert {r.identifier for r in reservations} == set(device_ids)
 
-        # All HAS_SOURCE edges should now point to the oldest pool
+        # Every device now reads the oldest pool as its tracking pool, and none stores a pool as its source
         for branch, device_id in zip(branches, device_ids, strict=True):
             device = await NodeManager.get_one(
-                db=db, id=device_id, branch=branch, include_metadata=MetadataOptions.LINKED_NODES, raise_on_error=True
+                db=db,
+                id=device_id,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                raise_on_error=True,
             )
-            assert device.get_attribute("serial_number").source_id == oldest_uuid
+            serial_number = device.get_attribute("serial_number")
+            assert serial_number.source_id is None
+            tracking_pool = serial_number.tracking_pool
+            assert tracking_pool is not None
+            assert tracking_pool.pool_id == oldest_uuid
 
         # SchemaAttribute parameters should all reference the oldest pool
         for branch in branches:

@@ -26,17 +26,17 @@ class TestObjectActivities:
         await admin_page.goto("/objects/InfraDevice")
         await admin_page.get_by_role("link", name="atl1-edge1").click()
 
+        # The page fetches the activities once, so it shows none until a reload after the events are stored.
+        view_more_button = admin_page.get_by_role("button", name="View more").first
         deadline = Deadline("the atl1-edge1 activity log to be populated")
-        while await admin_page.get_by_text("No activity found for this").is_visible():
+        while await view_more_button.is_hidden():
             await deadline.tick()
-            await admin_page.reload()
-            await expect(admin_page.get_by_test_id("activities-container").get_by_text("Loading...")).to_be_hidden()
+            if await admin_page.get_by_text("No activity found for this object.").is_visible():
+                await admin_page.reload()
 
         await save_screenshot_for_docs(admin_page, "topics/activity-logs/activity_log_device")
 
         # Open additional details via the 'View more' button
-        view_more_button = admin_page.get_by_role("button", name="View more").first
-        await expect(view_more_button).to_be_visible()
         await view_more_button.click()
 
         popover_content = admin_page.get_by_role("dialog")
