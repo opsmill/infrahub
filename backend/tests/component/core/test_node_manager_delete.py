@@ -15,6 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.delete_validator import CASCADE_LEVELS_PER_QUERY_WITH_LOOP
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -24,6 +25,7 @@ from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema.cascade_loop import CASCADE_LOOP_SCHEMA, LOOP_FIRST_KIND, LOOP_SECOND_KIND
 from tests.helpers.test_app import TestInfrahubApp
 
 
@@ -916,3 +918,25 @@ async def test_delete_repository_repository_group_cascade(
     assert node_map == {}
 
     await verify_graph(db=db)
+
+
+async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_other(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    registry.schema.register_schema(schema=CASCADE_LOOP_SCHEMA, branch=default_branch.name)
+    chain_length = 2 * CASCADE_LEVELS_PER_QUERY_WITH_LOOP + 3
+    chain: list[Node] = []
+    next_node: Node | None = None
+    for position in reversed(range(chain_length)):
+        node = await Node.init(
+            db=db, schema=LOOP_FIRST_KIND if position % 2 == 0 else LOOP_SECOND_KIND, branch=default_branch
+        )
+        await node.new(db=db, name=f"link-{position}", next=next_node)
+        await node.save(db=db)
+        chain.insert(0, node)
+        next_node = node
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[chain[0]])
+
+    assert {node.id for node in deleted} == {node.id for node in chain}
+    assert await NodeManager.get_many(db=db, ids=[node.id for node in chain], branch=default_branch) == {}

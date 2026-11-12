@@ -179,3 +179,45 @@ AGNOSTIC_HOLDER = NodeSchema(
 AGNOSTIC_DELETE_SCHEMA = SchemaRoot(
     nodes=[AGNOSTIC_TEAM, AGNOSTIC_MEMBER, AGNOSTIC_BADGE, AGNOSTIC_CERTIFICATE, AGNOSTIC_STICKER, AGNOSTIC_HOLDER]
 )
+
+ROSTER_KIND = "AgnosticretireRoster"
+GUARDIAN_KIND = "AgnosticretireGuardian"
+
+# Branch-aware, and cascades to branch-agnostic teams.
+AGNOSTIC_ROSTER = NodeSchema(
+    name="Roster",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="teams",
+            peer=TEAM_KIND,
+            identifier="agnosticretire_roster__agnosticretire_team",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+    ],
+)
+
+AGNOSTIC_ROSTER_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_ROSTER])
+
+# Loaded on one branch only, so its required relationship to a team exists in that branch's schema only.
+AGNOSTIC_GUARDIAN = NodeSchema(
+    name="Guardian",
+    namespace="Agnosticretire",
+    branch=BranchSupportType.AWARE,
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="team",
+            peer=TEAM_KIND,
+            identifier="agnosticretire_guardian__agnosticretire_team",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+AGNOSTIC_GUARDIAN_SCHEMA = SchemaRoot(nodes=[AGNOSTIC_GUARDIAN])

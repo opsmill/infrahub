@@ -10,12 +10,17 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from tests.helpers.schema import load_schema
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_DELETE_SCHEMA,
+    AGNOSTIC_GUARDIAN_SCHEMA,
+    AGNOSTIC_ROSTER_SCHEMA,
     BADGE_KIND,
     CERTIFICATE_KIND,
+    GUARDIAN_KIND,
     HOLDER_KIND,
     MEMBER_KIND,
+    ROSTER_KIND,
     STICKER_KIND,
     TEAM_KIND,
 )
@@ -246,3 +251,42 @@ async def test_delete_of_a_branch_aware_node_checks_only_the_request_branch(
     owner_on_branch = await car_on_branch.owner.get_peer(db=db)  # type: ignore[attr-defined]
     assert owner_on_branch is not None
     assert owner_on_branch.id == person_jane_main.id
+
+
+async def test_delete_refused_when_a_branch_aware_cascade_reaches_a_branch_agnostic_node_another_branch_requires(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=AGNOSTIC_ROSTER_SCHEMA, branch=default_branch.name)
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    roster = await _create_node(db=db, branch=default_branch, kind=ROSTER_KIND, name="roster", teams=[team])
+    branch = await create_branch(db=db, branch_name="branch-holds-member")
+    member = await _create_node(db=db, branch=branch, kind=MEMBER_KIND, name="member-on-branch", team=team)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[roster])
+
+    assert str(exc.value) == _required_peer_message(
+        team=team, peer_kind=MEMBER_KIND, peer=member, branch_names=f"branch '{branch.name}'"
+    )
+    assert await NodeManager.get_one(db=db, id=roster.id, branch=default_branch) is not None
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+
+async def test_delete_refused_when_a_relationship_required_only_in_another_branch_schema_holds_the_node(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_delete_schema: SchemaBranch
+) -> None:
+    team = await _create_node(db=db, branch=default_branch, kind=TEAM_KIND, name="team-1")
+    branch = await create_branch(db=db, branch_name="branch-adds-guardian")
+    await load_schema(db=db, schema=AGNOSTIC_GUARDIAN_SCHEMA, branch_name=branch.name)
+    guardian = await _create_node(db=db, branch=branch, kind=GUARDIAN_KIND, name="guardian-on-branch", team=team)
+    assert not registry.schema.get_schema_branch(name=default_branch.name).has(name=GUARDIAN_KIND), (
+        "precondition: the default branch's schema does not define the requiring kind"
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert str(exc.value) == _required_peer_message(
+        team=team, peer_kind=GUARDIAN_KIND, peer=guardian, branch_names=f"branch '{branch.name}'"
+    )
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
