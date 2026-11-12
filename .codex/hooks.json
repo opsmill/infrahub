@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$(git rev-parse --show-toplevel)\"/.specify/extensions/opsmill/scripts/bash/route-codex.sh'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$(git rev-parse --show-toplevel)\"/.agents/hooks/pr-review.sh codex'"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
@@ -23,10 +23,14 @@ export async function getIpNamespaceListFromApi({
     jsonToGraphQLQuery({
       query: {
         __name: `GetObjects${IP_NAMESPACE_GENERIC}`,
+        __variables: {
+          limit: "Int",
+          offset: "Int",
+        },
         [IP_NAMESPACE_GENERIC]: {
           __args: {
-            limit,
-            offset,
+            limit: new VariableType("limit"),
+            offset: new VariableType("offset"),
             ...(filters ? addFiltersToRequest(filters) : {}),
           },
           edges: {
@@ -58,6 +62,7 @@ export async function getIpNamespaceListFromApi({
 
   return graphqlClient.query({
     query,
+    variables: { limit, offset },
     context: {
       branch: branchName,
       date: atDate,

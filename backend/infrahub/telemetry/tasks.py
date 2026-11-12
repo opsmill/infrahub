@@ -15,7 +15,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.services.component import InfrahubComponent
+from infrahub.services.component import COMPONENT_API_SERVER, COMPONENT_GIT_AGENT, InfrahubComponent, WorkerInfo
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -28,13 +28,17 @@ from .models import (
     TelemetryAccountData,
     TelemetryActivity24hData,
     TelemetryBranchData,
+    TelemetryComponentData,
+    TelemetryContainerData,
     TelemetryData,
     TelemetrySchemaData,
+    TelemetryTaskManagerDatabaseData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
+from .resources import WorkerResourceReading
 from .snapshot import TelemetrySnapshot
-from .task_manager import gather_activity_24h, gather_prefect_information
+from .task_manager import gather_activity_24h, gather_prefect_information, gather_task_manager_database
 from .utils import determine_infrahub_type, safe_metric
 
 
@@ -117,12 +121,47 @@ class DefaultActivityGatherer:
             return await gather_activity_24h(client=prefect_client)
 
 
+class DefaultTaskManagerDatabaseGatherer:
+    async def gather(self) -> TelemetryTaskManagerDatabaseData:
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            return await gather_task_manager_database(client=prefect_client)
+
+
 class DefaultActiveBranchCounter:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
     async def gather(self) -> int:
         return await count_active_branches(db=self.db)
+
+
+def _component_data(workers: list[WorkerInfo], readings: list[WorkerResourceReading]) -> TelemetryComponentData:
+    """Count one component's processes and report the CPU and memory of one of its containers.
+
+    Every copy of a component is assumed to run with the same settings, so one
+    container stands for all of them. If a process could read only some of its
+    figures, the most complete reading is used.
+    """
+    total = len(workers)
+    active = len([worker for worker in workers if worker.active])
+    if not readings:
+        return TelemetryComponentData(total=total, active=active)
+    chosen = max(readings, key=_reported_field_count)
+    return TelemetryComponentData(
+        total=total,
+        active=active,
+        processes_per_container=chosen.processes_per_container,
+        per_container=TelemetryContainerData(
+            processor_available=chosen.processor_available,
+            processor_assigned=chosen.processor_assigned,
+            memory_total=chosen.memory_total,
+            memory_available=chosen.memory_available,
+        ),
+    )
+
+
+def _reported_field_count(reading: WorkerResourceReading) -> int:
+    return sum(value is not None for value in reading.model_dump(exclude={"processes_per_container"}).values())
 
 
 class AnonymousTelemetryGatherer:
@@ -136,21 +175,32 @@ class AnonymousTelemetryGatherer:
         account_gatherer: GathererInterface[TelemetryAccountData],
         activity_gatherer: GathererInterface[TelemetryActivity24hData],
         active_branch_counter: GathererInterface[int],
+        task_manager_database_gatherer: GathererInterface[TelemetryTaskManagerDatabaseData],
     ) -> None:
         self.database = database
         self.component = component
         self.account_gatherer = account_gatherer
         self.activity_gatherer = activity_gatherer
         self.active_branch_counter = active_branch_counter
+        self.task_manager_database_gatherer = task_manager_database_gatherer
 
     async def gather(self) -> TelemetryData:
         start_time = time.time()
 
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
+        # The server and task_workers blocks break the workers count down by component.
+        task_workers = [worker for worker in workers if worker.component == COMPONENT_GIT_AGENT]
+        api_workers = [worker for worker in workers if worker.component == COMPONENT_API_SERVER]
+
+        active_worker_ids = {worker.id for worker in workers if worker.active}
+        readings_by_component = (
+            await safe_metric(self.component.read_worker_resources(worker_ids=active_worker_ids)) or {}
+        )
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
+        task_manager_database = await safe_metric(self.task_manager_database_gatherer.gather())
 
         data = TelemetryData(
             deployment_id=registry.id,
@@ -161,8 +211,10 @@ class AnonymousTelemetryGatherer:
             platform=platform.machine(),
             workers=TelemetryWorkerData(
                 total=len(workers),
-                active=len([w for w in workers if w.active]),
+                active=len([worker for worker in workers if worker.active]),
             ),
+            server=_component_data(api_workers, readings_by_component.get(COMPONENT_API_SERVER, [])),
+            task_workers=_component_data(task_workers, readings_by_component.get(COMPONENT_GIT_AGENT, [])),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),
@@ -175,6 +227,7 @@ class AnonymousTelemetryGatherer:
             prefect=await gather_prefect_information(),
         )
 
+        data.prefect.database = task_manager_database
         data.execution_time = time.time() - start_time
 
         return data
@@ -190,6 +243,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         account_gatherer=DefaultAccountGatherer(db=database),
         activity_gatherer=DefaultActivityGatherer(),
         active_branch_counter=DefaultActiveBranchCounter(db=database),
+        task_manager_database_gatherer=DefaultTaskManagerDatabaseGatherer(),
     )
 
 

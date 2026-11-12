@@ -2,14 +2,16 @@
 
 > Part of: `dev/knowledge/backend/`
 
-Overview of the backend testing infrastructure, test types, and patterns.
+Overview of the backend testing infrastructure, test types, and patterns. Choose a test's scope with
+[Choosing tests](../../guides/backend/choosing-tests.md); the
+[testing standards](../../guidelines/backend/testing.md) define which coverage to retain.
 
 ## Testing Philosophy
 
 Infrahub uses pytest with TestContainers to provide reproducible, isolated tests. The testing approach balances:
 
 - **Speed**: Module-scoped containers minimize startup overhead
-- **Realism**: Tests run against real Neo4j/Redis/NATS when needed
+- **Realism**: Tests run against real Neo4j/Redis/RabbitMQ when needed
 - **Debuggability**: Functional tests run in a single process for breakpoint debugging
 - **Isolation**: Each test module gets a fresh database state
 
@@ -22,7 +24,7 @@ Fast unittests that require no external services to run. I.e. no database or net
 **Characteristics:**
 
 - Fast feedback loop
-- Sanity checks
+- Focused assertions on decisions and observable outputs
 
 **When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
 
@@ -148,7 +150,6 @@ Controlled by environment variable `INFRAHUB_USE_TEST_CONTAINERS=true`.
 | `memgraph_container` | Alternative graph database |
 | `redis_container` | Cache |
 | `rabbitmq_container` | Message broker |
-| `nats_container` | Event streaming |
 | `prefect_container` | Workflow engine |
 
 ```python
@@ -274,6 +275,7 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+- `FixedMachine` (`backend/tests/adapters/machine.py`) - A machine with a fixed CPU count, pinned CPUs and memory, passed to the telemetry resource reader so its figures can be checked against exact numbers
 
 **Event and Workflow Adapters:**
 

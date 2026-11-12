@@ -27,7 +27,7 @@ class TestNumberAttrForbidsBool(TestInfrahubApp):
             ],
         }
 
-        schema_root = SchemaRoot(**schema)  # type: ignore
+        schema_root = SchemaRoot(**schema)
         schema_branch = registry.schema.get_schema_branch(default_branch.name)
         schema_branch.load_schema(schema=schema_root)
         with pytest.raises(ValidationError, match="TestingNode: default value True is not a valid Number"):

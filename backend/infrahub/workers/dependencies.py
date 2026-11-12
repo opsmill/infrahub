@@ -12,6 +12,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.license.service import LicenseService, LicenseServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
+from infrahub.serve.processes import processes_per_container
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
@@ -21,6 +22,7 @@ from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.services.component import InfrahubComponent
+from infrahub.telemetry.resources import ProcessResources, PsutilMachine
 from infrahub.tls.registry import TlsContextRegistry
 
 _singletons: dict[str, Any] = {}
@@ -175,6 +177,9 @@ async def build_component() -> InfrahubComponent:
             component_type=get_component_type(),
             db=await get_database(),
             message_bus=await get_message_bus(),
+            process_resources=ProcessResources(
+                machine=PsutilMachine(), processes_per_container=processes_per_container()
+            ),
         )
     return _singletons["component"]
 

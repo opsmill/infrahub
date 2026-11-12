@@ -62,7 +62,6 @@ async def invalidate_webhook_headers(
             db=db,
             schema=InfrahubKind.WEBHOOK,
             filters={"headers__ids": [keyvalue_id]},
-            branch_agnostic=True,
         )
         webhook_uuids = frozenset(w.id for w in webhooks)
 

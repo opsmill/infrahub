@@ -1,10 +1,10 @@
 import logging
 import os
 import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
-from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
@@ -40,7 +40,7 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
-from infrahub.trace import add_span_exception, configure_trace, get_traceid
+from infrahub.trace import add_span_exception, configure_trace, get_traceid, mask_recording_span_attributes
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     get_cache,
@@ -55,6 +55,8 @@ from infrahub.workers.dependencies import (
 )
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+
+REQUEST_DURATION_BUCKETS = [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1200]
 
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
@@ -79,6 +81,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
             service="infrahub-server",
             version=__version__,
             exporter_type=config.SETTINGS.trace.exporter_type,
+            sample_ratio=config.SETTINGS.trace.sample_ratio,
             exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
             insecure=config.SETTINGS.trace.insecure,
@@ -112,7 +115,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     )
     await log_forwarding.start()
     initialize_lock(service=service)
-    # We must initialize DB after initialize lock and initialize lock depends on cache initialization
+    # We must initialize DB after initialize lock
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
         # Detect a failed merge, best effort to not block startup
@@ -158,6 +161,7 @@ app = FastAPI(
 def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
+        mask_recording_span_attributes(span=span)
 
 
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
@@ -220,7 +224,7 @@ app.add_middleware(
     app_name="infrahub",
     group_paths=True,
     prefix="infrahub",
-    buckets=[0.1, 0.25, 0.5],
+    buckets=REQUEST_DURATION_BUCKETS,
     skip_paths=["/health"],
 )
 app.add_middleware(

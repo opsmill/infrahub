@@ -1,6 +1,7 @@
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
+import type { GraphQLRequestContext } from "@/shared/api/graphql/types";
 import type { BranchContextParams } from "@/shared/api/types";
 
 export interface CreateObjectFromApiParams extends BranchContextParams {
@@ -8,6 +9,7 @@ export interface CreateObjectFromApiParams extends BranchContextParams {
   data: Record<string, unknown>;
   profileIds?: Array<string>;
   file?: File;
+  processErrorMessage?: GraphQLRequestContext["processErrorMessage"];
 }
 
 export function createObjectFromApi({
@@ -16,6 +18,7 @@ export function createObjectFromApi({
   profileIds = [],
   branchName,
   file,
+  processErrorMessage,
 }: CreateObjectFromApiParams) {
   const mutation = jsonToGraphQLQuery({
     mutation: {
@@ -43,6 +46,7 @@ export function createObjectFromApi({
     variables: file ? { file } : undefined,
     context: {
       branch: branchName,
+      ...(processErrorMessage && { processErrorMessage }),
     },
   });
 }

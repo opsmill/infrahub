@@ -13,6 +13,12 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import UniquenessViolationError
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_conflict import NumberPoolConflictFinder
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_usage_nodes import NumberHolderNodeReader
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
@@ -24,6 +30,9 @@ async def test_node_validate_constraint_node_uniqueness_failure(
         branch=default_branch,
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
         ),
     )
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
@@ -84,6 +93,9 @@ async def test_node_validate_constraint_node_uniqueness_success(
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
         ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
+        ),
     )
     alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
 
@@ -109,6 +121,9 @@ async def test_hierarchical_uniqueness_constraint(
         branch=default_branch,
         message_builder=UniquenessViolationMessageBuilder(
             schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+        number_pool_conflict_finder=NumberPoolConflictFinder(
+            pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
         ),
     )
 
@@ -165,7 +180,17 @@ async def test_attribute_uniqueness_matches_canonical_ip_on_update(
     await second.save(db=db)
 
     reloaded = await NodeManager.get_one(id=second.id, db=db, branch=default_branch)
-    await reloaded.from_graphql(db=db, data={"address": {"value": first_address_short_format}})
+    await reloaded.from_graphql(
+        db=db,
+        data={"address": {"value": first_address_short_format}},
+        pool_applier=build_attribute_pool_applier(
+            profiles_applier=NodeProfilesApplier(
+                db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+            ),
+            db=db,
+            schema_branch=db.schema.get_schema_branch(name=default_branch.name),
+        ),
+    )
 
     constraint = NodeAttributeUniquenessConstraint(db=db, branch=default_branch)
     with pytest.raises(

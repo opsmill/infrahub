@@ -78,6 +78,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'learn/tutorials/overview' }, // hub
           items: [
             'learn/tutorials/build-your-first-schema',
+            'learn/tutorials/review-and-merge-a-change',
             'learn/tutorials/groups',
             'learn/tutorials/build-a-check',
             'learn/tutorials/transformations/build-a-jinja2-transformation',
@@ -145,6 +146,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
             { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
+            { type: 'doc', id: 'menu/nested-menus', label: 'Nested menus' },
           ],
         },
         {
@@ -180,6 +182,8 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-address',
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
+            'resource-manager/track-existing-numbers',
+            'resource-manager/allocate-numbers-per-scope',
             'resource-manager/weighted-allocation',
           ],
         },
@@ -215,6 +219,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'object-templates/overview' }, // hub
           items: [
             { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/import-from-netbox', label: 'Import from NetBox device types' },
             { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
@@ -256,6 +261,7 @@ const sidebars: SidebarsConfig = {
             'branches/rebase',
             'branches/delete',
             'branches/resolve-conflicts',
+            'branches/parallel-branches',
             'branches/branch-agnostic-data',
           ],
         },
@@ -423,6 +429,7 @@ const sidebars: SidebarsConfig = {
             // Telemetry (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             { type: 'doc', id: 'deploy-manage/run-observe/metrics', label: 'Metrics' },
+            { type: 'doc', id: 'deploy-manage/run-observe/own-monitoring', label: 'Your own monitoring' },
             // Log Forwarding hub + spoke (PR 8)
             {
               type: 'category',
@@ -616,6 +623,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'reference/infrahub-events/node', label: 'Node events' },
             { type: 'doc', id: 'reference/infrahub-events/proposed', label: 'Proposed change events' },
             { type: 'doc', id: 'reference/infrahub-events/schema', label: 'Schema events' },
+            { type: 'doc', id: 'reference/infrahub-events/trace', label: 'Trace events' },
             { type: 'doc', id: 'reference/infrahub-events/validator', label: 'Validator events' },
           ],
         },
@@ -705,6 +713,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/number-pool-ranges',
                 'release-notes/deprecation-guides/schema-load-write-contract',
                 'release-notes/deprecation-guides/sso-account-name-fallback',
               ],

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
@@ -35,10 +35,6 @@ describe("isHierarchicalSchema", () => {
 });
 
 describe("getRootSchemaOfHierarchicalSchema", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should return the root schema when found in direct parent hierarchy", () => {
     // GIVEN
     const rootSchema = generateNodeSchema({ kind: "Root" });

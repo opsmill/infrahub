@@ -6,7 +6,7 @@ import {
   NUMBER_POOL_KIND,
 } from "@/entities/resource-manager/domain/model/pool";
 
-/** Build a discriminated PoolSource, narrowing the raw pool `__typename` to a PoolKind. */
+/** Build a discriminated PoolSource, narrowing the raw pool `__typename` to a known pool kind. */
 export const makePoolSource = ({
   id,
   kind,

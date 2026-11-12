@@ -1,6 +1,6 @@
+from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Iterable
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType

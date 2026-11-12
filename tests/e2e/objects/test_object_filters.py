@@ -45,25 +45,25 @@ class TestObjectFiltersFilterPicker:
         await admin_page.get_by_role("option", name="Edge Router").click()
         await admin_page.get_by_test_id("attribute-filter-form").get_by_role("button", name="Apply").click()
 
-        await expect(admin_page.get_by_role("row", name="Role contains edge")).to_be_visible()
+        await expect(admin_page.get_by_role("row", name="Role contains Edge Router")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-edge1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="den1-edge1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-core1")).not_to_be_visible()
 
         # update attribute filter value
-        await admin_page.get_by_role("row", name="Role contains edge").click()
+        await admin_page.get_by_role("row", name="Role contains Edge Router").click()
         await expect(admin_page.get_by_test_id("attribute-filter-form")).to_be_visible()
 
         await admin_page.get_by_role("option", name="Core Router").click()
         await admin_page.get_by_test_id("attribute-filter-form").get_by_role("button", name="Apply").click()
 
-        await expect(admin_page.get_by_role("row", name="Role contains core")).to_be_visible()
+        await expect(admin_page.get_by_role("row", name="Role contains Core Router")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-edge1")).not_to_be_visible()
 
         # clear filters
         await admin_page.get_by_test_id("filter-reset-button").click()
-        await expect(admin_page.get_by_role("row", name="Role contains core")).not_to_be_visible()
+        await expect(admin_page.get_by_role("row", name="Role contains Core Router")).not_to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-edge1")).to_be_visible()
 
@@ -199,7 +199,7 @@ class TestObjectFiltersColumnHeader:
         await admin_page.get_by_role("option", name="Edge Router").click()
         await admin_page.get_by_role("button", name="Apply").click()
 
-        await expect(admin_page.get_by_role("row", name="Role contains edge")).to_be_visible()
+        await expect(admin_page.get_by_role("row", name="Role contains Edge Router")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-edge1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="den1-edge1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-core1")).not_to_be_visible()
@@ -212,7 +212,7 @@ class TestObjectFiltersColumnHeader:
         await admin_page.get_by_role("option", name="Core Router").click()
         await admin_page.get_by_role("button", name="Apply").click()
 
-        await expect(admin_page.get_by_role("row", name="Role contains core")).to_be_visible()
+        await expect(admin_page.get_by_role("row", name="Role contains Core Router")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="atl1-edge1")).not_to_be_visible()
 

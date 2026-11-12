@@ -1,6 +1,7 @@
 from graphene import InputObjectType
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -30,6 +31,7 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                 hfid=data["hfid"],
                 kind=node_schema.kind,
                 branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
             )
 
         for component in node_schema.human_friendly_id:
@@ -73,6 +75,7 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                 hfid=hfid,
                 kind=node_schema.kind,
                 branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
             )
 
         return None

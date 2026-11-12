@@ -17,6 +17,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from tests.helpers.planner_statistics import refresh_planner_statistics
 
 
 async def _get_pool_labels(db: InfrahubDatabase) -> dict[str, list[str]]:
@@ -80,6 +81,7 @@ async def pre_migration_schema_db(
     default_branch.update_schema_hash()
 
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db, at=Timestamp())
+    await refresh_planner_statistics(db=db)
     updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
     return updated_schema

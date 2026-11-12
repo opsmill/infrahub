@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
@@ -13,6 +14,7 @@ import ujson
 from aio_pika import Message
 
 from infrahub import config
+from infrahub import trace as infrahub_trace
 from infrahub.components import ComponentType
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
@@ -20,12 +22,13 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.trace import SampleRatioState, create_tracer_provider, get_sample_ratio_state
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_message_bus
 from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
-    from aio_pika.abc import AbstractIncomingMessage
+    from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
     from fast_depends import Provider
 
     from infrahub.config import BrokerSettings
@@ -145,6 +148,12 @@ async def rabbitmq_api(rabbitmq: None) -> RabbitMQManager:
     await manager.delete_virtual_host()
     await manager.create_virtual_host()
     return manager
+
+
+@pytest.fixture
+async def rabbitmq_api_quorum(rabbitmq_api: RabbitMQManager) -> RabbitMQManager:
+    rabbitmq_api.settings.queue_type = config.BrokerQueueType.QUORUM
+    return rabbitmq_api
 
 
 async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
@@ -331,6 +340,16 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
     )
     assert (
         Binding(
+            source="infrahub.events",
+            destination=f"worker-events-{WORKER_IDENTITY}",
+            destination_type="queue",
+            routing_key="refresh.git.*",
+            arguments={},
+        )
+        in agent_bindings
+    )
+    assert (
+        Binding(
             source="",
             destination=f"worker-events-{WORKER_IDENTITY}",
             destination_type="queue",
@@ -339,6 +358,95 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
         )
         in agent_bindings
     )
+
+
+async def test_rabbitmq_initial_setup_quorum_queues(rabbitmq_api_quorum: RabbitMQManager) -> None:
+    """Validates that the durable queues are quorum queues while the per-process queues stay classic."""
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api_quorum.settings, component_type=ComponentType.API_SERVER)
+    api_queues = await rabbitmq_api_quorum.get_queues()
+    await bus.shutdown()
+
+    assert sorted(api_queues, key=lambda queue: queue.name) == [
+        Queue(
+            name=f"api-callback-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
+        ),
+        Queue(
+            name=f"api-events-{WORKER_IDENTITY}", arguments={"x-queue-type": "classic"}, durable=False, exclusive=True
+        ),
+        Queue(
+            name="infrahub.delay.five_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 5000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(
+            name="infrahub.delay.ten_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 10000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(
+            name="infrahub.delay.twenty_seconds",
+            arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "infrahub.dlx", "x-message-ttl": 20000},
+            durable=True,
+            exclusive=False,
+        ),
+        Queue(name="infrahub.rpcs", arguments={"x-queue-type": "quorum"}, durable=True, exclusive=False),
+    ]
+
+
+async def test_rabbitmq_rpc_through_quorum_queue(
+    rabbitmq_api_quorum: RabbitMQManager, dependency_provider: Provider
+) -> None:
+    """Validates that a git agent consumes a request from the quorum queue and replies to the API server."""
+    api_bus = await RabbitMQMessageBus.new(
+        settings=rabbitmq_api_quorum.settings, component_type=ComponentType.API_SERVER
+    )
+    agent_bus = await RabbitMQMessageBus.new(
+        settings=rabbitmq_api_quorum.settings, component_type=ComponentType.GIT_AGENT
+    )
+    with override_dependency(build_message_bus, lambda: agent_bus, dependency_provider=dependency_provider):
+        response = await api_bus.rpc(
+            message=messages.SendEchoRequest(message="Through a quorum queue"),
+            response_class=SendEchoRequestResponse,
+        )
+    await agent_bus.shutdown()
+    await api_bus.shutdown()
+
+    assert response.data.response == "Reply to: Through a quorum queue"
+
+
+# The message stays in the delay queue for its time to live before it is dead-lettered back to the RPC queue,
+# so the poll covers several times that period.
+_DELAYED_MESSAGE_POLL_ATTEMPTS = 300
+_DELAYED_MESSAGE_POLL_INTERVAL = 0.1
+
+
+async def _wait_for_message(queue: AbstractQueue) -> AbstractIncomingMessage | None:
+    for _ in range(_DELAYED_MESSAGE_POLL_ATTEMPTS):
+        message = await queue.get(no_ack=True, fail=False)
+        if message is not None:
+            return message
+        await asyncio.sleep(_DELAYED_MESSAGE_POLL_INTERVAL)
+    return None
+
+
+@pytest.mark.parametrize("queue_type", [config.BrokerQueueType.CLASSIC, config.BrokerQueueType.QUORUM])
+async def test_rabbitmq_delayed_message_returns_to_rpc_queue(
+    rabbitmq_api: RabbitMQManager, queue_type: config.BrokerQueueType
+) -> None:
+    """Validates that a delayed message is dead-lettered from its delay queue back to the RPC queue."""
+    rabbitmq_api.settings.queue_type = queue_type
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+
+    await bus.send(message=messages.SendEchoRequest(message="delayed"), delay=MessageTTL.FIVE)
+    queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.rpcs")
+    delivered = await _wait_for_message(queue=queue)
+    await bus.shutdown()
+
+    assert delivered is not None
+    assert delivered.routing_key == "send.echo.request"
+    assert messages.SendEchoRequest(**ujson.loads(delivered.body)).message == "delayed"
 
 
 async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
@@ -479,3 +587,35 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
 
 async def on_callback(message: AbstractIncomingMessage, message_bus: InfrahubMessageBus) -> None:
     await execute_message(routing_key=message.routing_key or "", message_body=message.body, message_bus=message_bus)
+
+
+async def _wait_for_ratio_in_force(expected: float) -> None:
+    for _ in range(_LOG_WAIT_ATTEMPTS):
+        state = get_sample_ratio_state()
+        if state is not None and state.ratio_in_force == expected:
+            return
+        await asyncio.sleep(_LOG_WAIT_INTERVAL)
+
+
+async def test_task_worker_applies_a_trace_sample_ratio_change(
+    rabbitmq_api: RabbitMQManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A task worker receives the broadcast through its own events queue and applies the ratio."""
+    monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=0.1)
+    # The API server declares the shared queues; shutting it down removes its own events queue.
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
+    await bus.shutdown()
+    expires_at = datetime(2099, 1, 1, tzinfo=UTC)
+
+    bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.GIT_AGENT)
+    try:
+        await bus.send(message=messages.RefreshSettingsTraceSampleRatio(ratio=1.0, expires_at=expires_at))
+        await _wait_for_ratio_in_force(expected=1.0)
+    finally:
+        await bus.shutdown()
+        provider.shutdown()
+
+    assert get_sample_ratio_state() == SampleRatioState(
+        default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+    )

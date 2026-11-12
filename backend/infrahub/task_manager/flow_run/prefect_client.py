@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -7,8 +8,14 @@ from prefect.client.schemas.actions import ArtifactCreate
 from prefect.client.schemas.filters import ArtifactFilter, FlowFilter, FlowRunFilter, LogFilter
 from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log, StateType
 from prefect.client.schemas.sorting import FlowRunSort
+from prefect.events.filters import EventFilter, EventNameFilter, EventOccurredFilter, EventResourceFilter
+from prefect.types import DateTime
 
 CANCEL_REQUEST_STATE_TYPES = frozenset({StateType.CANCELLING, StateType.CANCELLED})
+FLOW_RUN_HEARTBEAT_EVENT = "prefect.flow-run.heartbeat"
+FLOW_RUN_RESOURCE_PREFIX = "prefect.flow-run."
+# The events API rejects a page size above 50.
+EVENTS_PAGE_SIZE = 50
 
 
 class FlowRunQuerying(Protocol):
@@ -63,6 +70,16 @@ class FlowRunCancellationReading(Protocol):
         ...
 
 
+class FlowRunHeartbeatReading(Protocol):
+    async def latest_heartbeats(self, flow_run_ids: Sequence[UUID], since: DateTime) -> dict[UUID, DateTime]:
+        """Return when each of `flow_run_ids` last sent a heartbeat at or after `since`, leaving out runs that sent none."""
+        ...
+
+    async def latest_event_occurred(self, since: DateTime) -> DateTime | None:
+        """Return when the newest stored event occurred, or `None` when no event stored occurred after `since`."""
+        ...
+
+
 class ReaderPrefectClient(FlowRunQuerying, FlowRunDataReading, Protocol): ...
 
 
@@ -70,6 +87,9 @@ class WriterPrefectClient(FlowRunArtifactWriting, Protocol): ...
 
 
 class RetentionPrefectClient(FlowRunQuerying, FlowRunMaintenance, Protocol): ...
+
+
+class ZombieReaperPrefectClient(FlowRunQuerying, FlowRunMaintenance, FlowRunHeartbeatReading, Protocol): ...
 
 
 class PrefectClientAdapter:
@@ -129,3 +149,28 @@ class PrefectClientAdapter:
     async def cancellation_requested(self, flow_run_id: UUID) -> bool:
         states = await self.client.read_flow_run_states(flow_run_id=flow_run_id)
         return any(state.type in CANCEL_REQUEST_STATE_TYPES for state in states)
+
+    async def latest_heartbeats(self, flow_run_ids: Sequence[UUID], since: DateTime) -> dict[UUID, DateTime]:
+        latest: dict[UUID, DateTime] = {}
+        ids = list(flow_run_ids)
+        # One event per run comes back, so a chunk of at most one page of runs never needs a next page.
+        for start in range(0, len(ids), EVENTS_PAGE_SIZE):
+            event_filter = EventFilter(
+                occurred=EventOccurredFilter(since=since),
+                event=EventNameFilter(name=[FLOW_RUN_HEARTBEAT_EVENT]),
+                resource=EventResourceFilter(
+                    id=[
+                        f"{FLOW_RUN_RESOURCE_PREFIX}{flow_run_id}"
+                        for flow_run_id in ids[start : start + EVENTS_PAGE_SIZE]
+                    ],
+                    distinct=True,
+                ),
+            )
+            page = await self.client.read_events(filter=event_filter, limit=EVENTS_PAGE_SIZE)
+            for event in page.events:
+                latest[UUID(event.resource.id.removeprefix(FLOW_RUN_RESOURCE_PREFIX))] = event.occurred
+        return latest
+
+    async def latest_event_occurred(self, since: DateTime) -> DateTime | None:
+        page = await self.client.read_events(filter=EventFilter(occurred=EventOccurredFilter(since=since)), limit=1)
+        return page.events[0].occurred if page.events else None

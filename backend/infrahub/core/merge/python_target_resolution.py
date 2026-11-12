@@ -26,6 +26,7 @@ from .recompute_coalescing import (
     ChangeSignature,
     ReaderLookup,
     group_ids_by_signature,
+    whole_kind_python_target,
 )
 
 log = get_logger()
@@ -44,12 +45,14 @@ class PythonAttributeReadSet:
     """One Python transform computed attribute and the schema elements its query reads.
 
     ``pinned`` is ``False`` when the query root is not restricted to a single object.
+    ``repository_id`` is the repository whose transform computes the attribute, None when it is not known.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
     pinned: bool = True
+    repository_id: str | None = None
 
 
 class PythonReadSetSource(Protocol):
@@ -217,15 +220,7 @@ class IndexedPythonTargetResolver:
                 target_ids.update(ref.id for ref in refs if ref.kind == accumulator.kind)
 
         if whole_kind:
-            return AffectedTarget(
-                family=PYTHON_COMPUTED_ATTRIBUTE,
-                target_kind=accumulator.kind,
-                attribute_name=accumulator.attribute_name,
-                reads_across_relationship=False,
-                reader_lookups=frozenset(),
-                precise=False,
-                whole_kind=True,
-            )
+            return whole_kind_python_target(kind=accumulator.kind, attribute_name=accumulator.attribute_name)
 
         if not target_ids:
             return None
@@ -245,6 +240,21 @@ class IndexedPythonTargetResolver:
                 }
             ),
             precise=accumulator.precise,
+        )
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        """Return the repository of the attribute, from the read sets that a resolution on the branch loaded.
+
+        It is None until such a resolution has loaded the read sets, and a None holds the target under every
+        pending repository.
+        """
+        return next(
+            (
+                read_set.repository_id
+                for read_set in self._read_sets.get(branch, [])
+                if read_set.kind == kind and read_set.attribute_name == attribute_name
+            ),
+            None,
         )
 
     async def _load_read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:

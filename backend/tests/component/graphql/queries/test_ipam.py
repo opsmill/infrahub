@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -191,6 +192,87 @@ async def test_ipaddress_nextavailable(
     assert not result.errors
     assert result.data
     assert result.data["InfrahubIPAddressGetNextAvailable"]["address"] == response
+
+
+@dataclass
+class IPFilterTestCase:
+    name: str
+    kind: str
+    filters: str
+
+
+IP_FILTER_TEST_CASES: list[IPFilterTestCase] = [
+    IPFilterTestCase(
+        name="prefix_exact_compressed",
+        kind="BuiltinIPPrefix",
+        filters='prefix__value: "2001:db8:1:57::/127"',
+    ),
+    IPFilterTestCase(
+        name="prefix_exact_leading_zeros",
+        kind="BuiltinIPPrefix",
+        filters='prefix__value: "2001:0db8:0001:57::/127"',
+    ),
+    IPFilterTestCase(
+        name="prefix_any_partial_compressed",
+        kind="BuiltinIPPrefix",
+        filters='any__value: "2001:db8:1:57::", partial_match: true',
+    ),
+    IPFilterTestCase(
+        name="prefix_any_partial_leading_zeros",
+        kind="BuiltinIPPrefix",
+        filters='any__value: "2001:0db8:0001:57::", partial_match: true',
+    ),
+    IPFilterTestCase(
+        name="address_exact_leading_zeros",
+        kind="BuiltinIPAddress",
+        filters='address__value: "2001:0db8:0001:0057::1/127"',
+    ),
+    IPFilterTestCase(
+        name="address_any_partial_leading_zeros",
+        kind="BuiltinIPAddress",
+        filters='any__value: "2001:0db8:0001:0057::1", partial_match: true',
+    ),
+    IPFilterTestCase(
+        name="address_exact_ipv4_without_prefix_length",
+        kind="BuiltinIPAddress",
+        filters='address__value: "10.0.0.1"',
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in IP_FILTER_TEST_CASES])
+async def test_ip_filter_matches_any_notation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    test_case: IPFilterTestCase,
+) -> None:
+    """A filter on an IP prefix or address matches the saved value whichever valid notation is typed."""
+    prefix = await Node.init(db=db, schema="IpamIPPrefix")
+    await prefix.new(db=db, prefix="2001:0db8:0001:57::/127", ip_namespace=default_ipnamespace)
+    await prefix.save(db=db)
+
+    address = await Node.init(db=db, schema="IpamIPAddress")
+    await address.new(db=db, address="2001:0db8:0001:57::1/127", ip_namespace=default_ipnamespace)
+    await address.save(db=db)
+
+    ipv4_address = await Node.init(db=db, schema="IpamIPAddress")
+    await ipv4_address.new(db=db, address="10.0.0.1/32", ip_namespace=default_ipnamespace)
+    await ipv4_address.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query { %s(%s) { count } }" % (test_case.kind, test_case.filters),
+        context_value=gql_params.context,
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data[test_case.kind]["count"] == 1
 
 
 @pytest.fixture(scope="class")
@@ -1078,3 +1160,41 @@ class TestIpamAvailableNodes(TestInfrahubApp):
             (node["node"]["__typename"], node["node"]["display_label"])
             for node in response.data["BuiltinIPPrefix"]["edges"]
         ]
+
+    async def test_two_next_available_fields_in_one_request_both_resolve(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        ip_dataset_ranges: dict[str, Node],
+        ip_dataset_available_prefixes: dict[str, Node],
+    ) -> None:
+        query = """
+        query($address_prefix: String!, $prefix_prefix: String!) {
+            InfrahubIPAddressGetNextAvailable(prefix_id: $address_prefix) {
+                address
+            }
+            InfrahubIPPrefixGetNextAvailable(prefix_id: $prefix_prefix, prefix_length: 27) {
+                prefix
+            }
+        }
+        """
+
+        default_branch.update_schema_hash()
+        # one session for the whole request, as the GraphQL app opens it
+        async with db.start_session() as request_db:
+            gql_params = await prepare_graphql_params(db=request_db, branch=default_branch)
+            response = await graphql(
+                schema=gql_params.schema,
+                source=query,
+                context_value=gql_params.context,
+                variable_values={
+                    "address_prefix": ip_dataset_ranges["net_free_start"].id,
+                    "prefix_prefix": ip_dataset_available_prefixes["net_free_end"].id,
+                },
+            )
+
+        assert response.errors is None
+        assert response.data == {
+            "InfrahubIPAddressGetNextAvailable": {"address": "10.0.2.1/29"},
+            "InfrahubIPPrefixGetNextAvailable": {"prefix": "10.0.1.32/27"},
+        }

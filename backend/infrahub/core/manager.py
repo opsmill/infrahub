@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 
+from infrahub import config
 from infrahub.core.constants import (
+    POOL_TRACKED_ATTRIBUTE_KINDS,
     SYSTEM_USER_ID,
     MetadataOptions,
     RelationshipCardinality,
@@ -25,6 +27,8 @@ from infrahub.core.query.node import (
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+    NodeStoredLabels,
     NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
@@ -41,8 +45,11 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.branch import Branch
     from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
@@ -383,6 +390,7 @@ class NodeManager:
         direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.LINKED_NODES,
         fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
@@ -418,7 +426,7 @@ class NodeManager:
             fields=fields,
             at=at,
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=include_metadata,
         )
 
     @overload
@@ -462,7 +470,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -473,7 +481,7 @@ class NodeManager:
                 hfid=hfid,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -484,7 +492,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
                 raise_on_error=True,
             )
 
@@ -1091,6 +1099,21 @@ class NodeManager:
 
         return node
 
+    @staticmethod
+    def _pool_tracked_attribute_names(
+        schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema], fields: dict | None
+    ) -> frozenset[str]:
+        """The attributes a number pool can track among those the read returns, across the nodes' schemas."""
+        names = {
+            attribute.name
+            for schema in schemas
+            for attribute in schema.attributes
+            if attribute.kind in POOL_TRACKED_ATTRIBUTE_KINDS
+        }
+        if fields:
+            names &= set(fields.keys())
+        return frozenset(names)
+
     @classmethod
     async def get_many(
         cls,
@@ -1134,12 +1157,18 @@ class NodeManager:
         attribute_metadata_options = (
             include_metadata.attribute_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
         )
+        tracking_pool_attribute_names: frozenset[str] | None = None
+        if attribute_metadata_options & MetadataOptions.TRACKING_POOL:
+            tracking_pool_attribute_names = cls._pool_tracked_attribute_names(
+                schemas=[node.schema for node in nodes_info_by_id.values() if node.schema is not None], fields=fields
+            )
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_metadata=attribute_metadata_options,
+            tracking_pool_attribute_names=tracking_pool_attribute_names,
             at=at,
             branch_agnostic=branch_agnostic,
         )
@@ -1200,6 +1229,25 @@ class NodeManager:
         )
 
         return nodes
+
+    @classmethod
+    async def get_stored_labels(
+        cls, db: InfrahubDatabase, ids: list[str], branch: Branch | str | None, label_names: list[str]
+    ) -> dict[str, NodeStoredLabels]:
+        """Return the labels stored on these nodes, keyed by node id, without instantiating them.
+
+        Only the requested label attributes are read, in batches of ``query_size_limit`` ids. A node
+        that is not active on the branch is absent from the result.
+        """
+        branch = await registry.get_branch(branch=branch, db=db)
+        stored_labels: dict[str, NodeStoredLabels] = {}
+        for ids_batch in chunked(ids, config.SETTINGS.database.query_size_limit):
+            query = await NodeListGetStoredLabelsQuery.init(
+                db=db, branch=branch, ids=ids_batch, label_names=label_names
+            )
+            await query.execute(db=db)
+            stored_labels.update(query.get_stored_labels())
+        return stored_labels
 
     @classmethod
     async def prefetch_relationships(
@@ -1265,6 +1313,9 @@ class NodeManager:
                     for identifier, direction in identifier_direction_map.items()
                 )
             )
+            if not any(identifiers_by_direction.values()):
+                # The requested fields name no relationship, so there is no edge to read.
+                return
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
@@ -1298,12 +1349,13 @@ class NodeManager:
                 include_metadata=include_metadata,
             )
 
+        nodes_and_peers_by_id = nodes_by_id | missing_peers
         for node in nodes_by_id.values():
             await cls._enrich_one_node_with_relationships(
                 db=db,
                 node=node,
                 grouped_peer_nodes=grouped_peer_nodes,
-                nodes_by_id=nodes_by_id | missing_peers,
+                nodes_by_id=nodes_and_peers_by_id,
                 cardinality_one_identifiers_by_kind=cardinality_one_identifiers_by_kind,
                 insert_peer_node=prefetch_relationships,
                 prefetch_relationship_names=prefetch_relationship_names,

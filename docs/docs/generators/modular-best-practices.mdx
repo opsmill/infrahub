@@ -83,10 +83,29 @@ Generators in a cascade will re-run. Upstream changes trigger downstream Generat
 | Pillar | Mechanism | What it prevents |
 |--------|-----------|-----------------|
 | **Idempotent saves** | `allow_upsert=True` on every `.save()` | Duplicate objects on re-run |
-| **Checksum guards** | `if pod.checksum.value != new_checksum` before writing | Unnecessary downstream triggers |
+| **Checksum guards** | `if pod.checksum.value != new_checksum` before writing, and `update_group_context=False` on that save | Unnecessary downstream triggers |
 | **Upstream validation** | Count checks at the top of `generate()` | Running against incomplete upstream data |
 
 These three mechanisms work together. Idempotency handles the object layer. Checksum guards handle the trigger layer. Upstream validation handles the ordering layer.
+
+### Save every object the Generator creates, on every run
+
+Each run deletes the objects that an earlier run saved and the current run did not save again (see [Objects a run deletes](./overview#objects-a-run-deletes)). Do not skip the save of an object that the Generator creates because its values have not changed: the run deletes that object. With `allow_upsert=True`, saving an object that already exists updates it, so you can save it on every run.
+
+### Save downstream targets outside the Generator group
+
+A checksum guard skips the save of a downstream target when the checksum has not changed. If that save adds the target to the Generator group, the first run that skips it deletes the target. Save downstream targets with `update_group_context=False`, so that the Generator updates their checksum without adding them to its group:
+
+```python
+for pod in pods:
+    if pod.checksum.value != checksum:
+        pod.checksum.value = checksum
+        await pod.save(allow_upsert=True, update_group_context=False)
+```
+
+If an earlier run already saved the targets without `update_group_context=False`, they are members of the Generator group, and the next run deletes them, whether it saves them with the flag or skips the save. Remove them from the Generator group before the Generator runs again.
+
+The same rule applies to any object that a Generator updates but does not create. When the object's kind is branch-agnostic, a delete on a branch also removes it from the default branch (see [Deletes on a branch](./overview#deletes-on-a-branch)).
 
 ### Deterministic output
 
@@ -100,8 +119,8 @@ For re-runs to be truly safe, the same inputs must produce the same outputs. Thi
 
 When a Generator re-runs with the same inputs:
 
-1. It creates objects with the same names → `allow_upsert=True` updates instead of duplicating
-2. It computes the same checksum → the checksum guard prevents writing → no downstream trigger fires
+1. It saves objects with the same names → `allow_upsert=True` updates instead of duplicating, and the objects stay in the Generator group
+2. It computes the same checksum → the checksum guard skips the save of the downstream targets, which are not in the Generator group → no downstream trigger fires
 3. The cascade stops naturally — no unnecessary work propagates
 
 When inputs change (for example, a new rack is added to a pod):
@@ -123,6 +142,8 @@ A cascade has no single log showing the full chain. Each Generator runs independ
 | Cascade stopped after layer N      | Check whether layer N wrote checksums to layer N+1 targets                                                                       |
 | Objects were created but are wrong | Check the query results — the query may be returning unexpected data                                                             |
 | Generator runs repeatedly          | Check trigger rules — a trigger may be firing on an attribute the Generator itself modifies                                      |
+| Objects disappeared after a re-run | Check whether the Generator skipped saving them, or saved them with `update_group_context=False` while they were still in its Generator group ([Objects a run deletes](./overview#objects-a-run-deletes)) |
+| Instance shows `error` with `Unable to delete … unused member(s) of the tracking group` | The server refused to delete objects that the run no longer saves; the error lists each object and the reason ([When a run fails](./overview#when-a-run-fails)) |
 
 ### Check Generator instances
 
@@ -294,7 +315,8 @@ Use this checklist when building a new modular Generator cascade:
 - [ ] **Naming is deterministic** — same inputs produce same names
 - [ ] **Upstream validation at the top of** `generate()` — fail fast if dependencies are missing
 - [ ] **Checksums written only to downstream targets** — never to own or upstream targets
-- [ ] **Checksum guard before writing** — skip if unchanged to prevent unnecessary triggers
+- [ ] **Every object the Generator creates is saved on every run** — the run deletes an object it does not save
+- [ ] **Checksum guard before writing** — skip if unchanged to prevent unnecessary triggers, and save the target with `update_group_context=False`
 - [ ] **Trigger rules use** `branch_scope: "other_branches"` — test in branches before production
 - [ ] **Each layer tested independently** — before running the full cascade
 - [ ] **Generator instances checked after runs** — verify `ready` status across all targets
