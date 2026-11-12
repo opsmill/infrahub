@@ -66,9 +66,9 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     config.SETTINGS.initialize_and_exit()
     _validate_feature_selection(configuration=config.SETTINGS.active_settings)
     storage_key = (
-        storage_key_from_settings(settings=config.SETTINGS.security)
+        storage_key_from_settings(storage=config.SETTINGS.storage, security=config.SETTINGS.security)
         if config.SETTINGS.storage.encryption_enabled
-        else storage_key_if_set(settings=config.SETTINGS.security)
+        else storage_key_if_set(storage=config.SETTINGS.storage, security=config.SETTINGS.security)
     )
 
     # Build the admission controller once here, at startup, and publish it (with the kill-switch)

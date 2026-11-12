@@ -64,7 +64,7 @@ If your infrastructure uses a private certificate authority, mount its bundle in
 If your security policy does not allow containers that run as root, run the Infrahub containers as the non-root `infrahub` user. See [Run Infrahub as a non-root user](./non-root.mdx).
 
 :::info
-With [storage encryption](../../../artifact-file-storage/encryption.mdx) enabled, the key that encrypts stored artifacts and files is derived from `INFRAHUB_SECURITY_SECRET_KEY`. Keep the secret in your secrets manager, and do not change it: files encrypted with the previous value become unreadable.
+With [storage encryption](../../../artifact-file-storage/encryption.mdx) enabled, the key that encrypts stored artifacts and files is derived from `INFRAHUB_STORAGE_ENCRYPTION_KEY`, or from `INFRAHUB_SECURITY_SECRET_KEY` when no dedicated key is set. Keep that value in your secrets manager, and do not change it: files encrypted with the previous value become unreadable.
 :::
 
 <ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
