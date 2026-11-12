@@ -123,7 +123,8 @@ class InfrahubObjectStorage:
             return self._active_key()
         raise StorageEncryptionError(
             f"The stored object {identifier} is encrypted but this process has no key to decrypt it; set "
-            "INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled"
+            "INFRAHUB_STORAGE_ENCRYPTION_KEY, or INFRAHUB_SECURITY_SECRET_KEY when no dedicated key was used, to the "
+            "value that was in use when encryption was enabled"
         )
 
     def store(self, identifier: str, content: BinaryIO) -> None:

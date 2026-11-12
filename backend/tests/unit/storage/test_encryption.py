@@ -92,7 +92,8 @@ def test_disabled_storage_refuses_an_encrypted_object_it_has_no_key_for(tmp_path
         StorageEncryptionError,
         match=(
             rf"^The stored object {IDENTIFIER} is encrypted but this process has no key to decrypt it; set "
-            r"INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled$"
+            r"INFRAHUB_STORAGE_ENCRYPTION_KEY, or INFRAHUB_SECURITY_SECRET_KEY when no dedicated key was used, to the "
+            r"value that was in use when encryption was enabled$"
         ),
     ):
         storage.read(identifier=IDENTIFIER)

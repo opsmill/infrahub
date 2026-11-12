@@ -381,10 +381,20 @@ class StorageSettings(BaseSettings):
     encryption_enabled: bool = Field(
         default=False,
         description=(
-            "Encrypt the artifacts and files stored from now on with a key derived from INFRAHUB_SECURITY_SECRET_KEY, "
+            "Encrypt the artifacts and files stored from now on with a key derived from "
+            "INFRAHUB_STORAGE_ENCRYPTION_KEY, or from INFRAHUB_SECURITY_SECRET_KEY when that is not set, "
             "and refuse to serve a stored file that fails its integrity check. Files stored before are served only "
             "if they match their recorded checksum; a file with no recorded checksum is served as it is. Turning "
             "it off stores new files in plaintext and keeps files encrypted earlier readable."
+        ),
+    )
+    encryption_key: Annotated[SecretStr | None, BeforeValidator(_blank_setting_as_unset)] = Field(
+        default=None,
+        description=(
+            "A dedicated key for storage encryption: a random value of at least 32 characters, the same on every "
+            "API server. When it is set, the encryption key is derived from it and INFRAHUB_SECURITY_SECRET_KEY "
+            "plays no part; when it is not set, the key is derived from INFRAHUB_SECURITY_SECRET_KEY. Changing "
+            "it makes the files encrypted with the previous value unreadable."
         ),
     )
 
@@ -1264,10 +1274,10 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid,
         description=(
-            "The secret key used to validate authentication tokens. With storage encryption enabled, it must be set "
-            "explicitly to a random value of at least 32 characters, the same on every API server and not the value "
-            "from the example deployment files. The key that encrypts stored files is derived from it: changing it "
-            "makes those files unreadable."
+            "The secret key used to validate authentication tokens. With storage encryption enabled and no "
+            "INFRAHUB_STORAGE_ENCRYPTION_KEY, it must be set explicitly to a random value of at least 32 characters, "
+            "the same on every API server and not the value from the example deployment files. The key that "
+            "encrypts stored files is then derived from it: changing it makes those files unreadable."
         ),
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")

@@ -5,6 +5,7 @@ import io
 from typing import TYPE_CHECKING
 
 import pytest
+from pydantic import SecretStr
 
 from infrahub import config
 from infrahub.core.node import Node
@@ -355,7 +356,8 @@ async def test_secret_published_in_the_example_files_does_not_decrypt_while_encr
                 {
                     "message": (
                         f"The stored object {ARTIFACT_ID} is encrypted but this process has no key to decrypt it; "
-                        "set INFRAHUB_SECURITY_SECRET_KEY to the value that was in use when encryption was enabled"
+                        "set INFRAHUB_STORAGE_ENCRYPTION_KEY, or INFRAHUB_SECURITY_SECRET_KEY when no dedicated key "
+                        "was used, to the value that was in use when encryption was enabled"
                     ),
                     "extensions": {"code": 500},
                 }
@@ -402,8 +404,84 @@ async def test_server_does_not_start_with_the_published_secret(
             StorageEncryptionError,
             match=(
                 r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment "
-                r"files; set a unique random secret before using storage encryption$"
+                r"files; set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage "
+                r"encryption$"
             ),
+        ),
+        client,
+    ):
+        pass
+
+
+DEDICATED_KEY = "dedicated-storage-key-0123456789abcdef!"
+PUBLISHED_SECRET = "327f747f-efac-42be-9e73-999f08f86b92"
+
+
+async def test_dedicated_key_encrypts_at_rest_and_the_published_secret_plays_no_part(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.storage, "encryption_enabled", True)
+    monkeypatch.setattr(config.SETTINGS.storage, "encryption_key", SecretStr(DEDICATED_KEY))
+    monkeypatch.setattr(config.SETTINGS.security, "secret_key", PUBLISHED_SECRET)
+
+    with client:
+        upload = client.post(
+            url="/api/storage/upload/content", json={"content": ARTIFACT.decode()}, headers=admin_headers
+        )
+        identifier = upload.json()["identifier"]
+        response = client.get(url=f"/api/storage/object/{identifier}", headers=admin_headers)
+
+    stored = (local_storage_dir / identifier).read_bytes()
+    assert stored[:13] == b"IHSE\x01" + bytes.fromhex(StorageKey.derive(DEDICATED_KEY).fingerprint)
+    assert b"leaf01" not in stored
+    assert (response.status_code, response.content) == (200, ARTIFACT)
+
+
+async def test_file_encrypted_with_the_secret_is_refused_once_a_dedicated_key_is_set(
+    db: InfrahubDatabase,
+    client: TestClient,
+    local_storage_dir: Path,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with client:
+        upload = client.post(
+            url="/api/storage/upload/content", json={"content": ARTIFACT.decode()}, headers=admin_headers
+        )
+        identifier = upload.json()["identifier"]
+        before = client.get(url=f"/api/storage/object/{identifier}", headers=admin_headers)
+
+    monkeypatch.setattr(config.SETTINGS.storage, "encryption_key", SecretStr(DEDICATED_KEY))
+    with client:
+        after = client.get(url=f"/api/storage/object/{identifier}", headers=admin_headers)
+
+    assert (before.status_code, before.content) == (200, ARTIFACT)
+    assert (after.status_code, after.json()) == (409, refusal(identifier))
+
+
+async def test_server_does_not_start_with_a_dedicated_key_that_is_too_short(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.storage, "encryption_key", SecretStr("too-short"))
+
+    with (
+        pytest.raises(
+            StorageEncryptionError,
+            match=r"^INFRAHUB_STORAGE_ENCRYPTION_KEY must be at least 32 characters long$",
         ),
         client,
     ):

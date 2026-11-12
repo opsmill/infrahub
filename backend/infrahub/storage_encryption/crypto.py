@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from infrahub.exceptions import StorageEncryptionError, StorageIntegrityError
 
 if TYPE_CHECKING:
-    from infrahub.config import SecuritySettings
+    from infrahub.config import SecuritySettings, StorageSettings
 
 MAGIC = b"IHSE"
 FORMAT_VERSION = 1
@@ -77,45 +77,70 @@ def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
     """Why INFRAHUB_SECURITY_SECRET_KEY cannot be used as the storage key, or None when it can."""
     if "secret_key" not in settings.model_fields_set:
         return (
-            "Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
-            "API server; without it each process generates its own random secret"
+            "Storage encryption requires INFRAHUB_STORAGE_ENCRYPTION_KEY or INFRAHUB_SECURITY_SECRET_KEY to be set, "
+            "with the same value on every API server; without either, each process generates its own random secret"
         )
     if settings.secret_key.strip().strip("'\"").lower() in PUBLISHED_SECRET_KEYS:
         return (
             "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            "set a unique random secret before using storage encryption"
+            "set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption"
         )
     if len(settings.secret_key) < MINIMUM_SECRET_LENGTH:
         return (
             f"INFRAHUB_SECURITY_SECRET_KEY must be at least {MINIMUM_SECRET_LENGTH} characters long to be used for "
-            "storage encryption"
+            "storage encryption, unless INFRAHUB_STORAGE_ENCRYPTION_KEY is set"
         )
     return None
 
 
-def storage_key_from_settings(settings: SecuritySettings) -> StorageKey:
-    """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY.
+def _unfit_dedicated_key_reason(key: str) -> str | None:
+    """Why INFRAHUB_STORAGE_ENCRYPTION_KEY cannot be used as the storage key, or None when it can."""
+    if len(key) < MINIMUM_SECRET_LENGTH:
+        return f"INFRAHUB_STORAGE_ENCRYPTION_KEY must be at least {MINIMUM_SECRET_LENGTH} characters long"
+    return None
+
+
+def _unfit_key_reason(storage: StorageSettings, security: SecuritySettings) -> str | None:
+    """Why the key that applies cannot be used for storage encryption, or None when it can.
+
+    A dedicated INFRAHUB_STORAGE_ENCRYPTION_KEY takes precedence, and an unfit one is never replaced by
+    INFRAHUB_SECURITY_SECRET_KEY, since that would encrypt with a key the operator did not choose.
+    """
+    if storage.encryption_key is not None:
+        return _unfit_dedicated_key_reason(storage.encryption_key.get_secret_value())
+    return _unfit_secret_reason(security)
+
+
+def _key_material(storage: StorageSettings, security: SecuritySettings) -> str:
+    if storage.encryption_key is not None:
+        return storage.encryption_key.get_secret_value()
+    return security.secret_key
+
+
+def storage_key_from_settings(*, storage: StorageSettings, security: SecuritySettings) -> StorageKey:
+    """Derive the storage key from INFRAHUB_STORAGE_ENCRYPTION_KEY, or from INFRAHUB_SECURITY_SECRET_KEY without it.
 
     Raises:
-        StorageEncryptionError: If the secret is not set explicitly, is a published example value, or is too short.
+        StorageEncryptionError: If the key that applies is not set explicitly, is a published example value, or is
+            too short.
 
     """
-    reason = _unfit_secret_reason(settings)
+    reason = _unfit_key_reason(storage=storage, security=security)
     if reason is not None:
         raise StorageEncryptionError(reason)
-    return StorageKey.derive(settings.secret_key)
+    return StorageKey.derive(_key_material(storage=storage, security=security))
 
 
-def storage_key_if_set(settings: SecuritySettings) -> StorageKey | None:
-    """Derive the storage key from INFRAHUB_SECURITY_SECRET_KEY when Infrahub would accept it for encryption.
+def storage_key_if_set(*, storage: StorageSettings, security: SecuritySettings) -> StorageKey | None:
+    """Derive the storage key when Infrahub would accept the key that applies for encryption.
 
-    Used to read files that were encrypted earlier after encryption was turned off. Encryption refuses a secret
-    that is generated, published or too short, so no file can have been encrypted with one, and a key derived
-    from such a secret would only let anyone who knows it forge an encrypted file. Returns None for those.
+    Used to read files that were encrypted earlier after encryption was turned off. Encryption refuses a key that
+    is generated, published or too short, so no file can have been encrypted with one, and a key derived from such
+    a secret would only let anyone who knows it forge an encrypted file. Returns None for those.
     """
-    if _unfit_secret_reason(settings) is not None:
+    if _unfit_key_reason(storage=storage, security=security) is not None:
         return None
-    return StorageKey.derive(settings.secret_key)
+    return StorageKey.derive(_key_material(storage=storage, security=security))
 
 
 def has_envelope_magic(content: bytes) -> bool:

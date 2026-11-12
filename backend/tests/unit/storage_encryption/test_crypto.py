@@ -5,9 +5,10 @@ from dataclasses import dataclass
 import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from infrahub.config import SecuritySettings
+from infrahub.config import SecuritySettings, StorageSettings
 from infrahub.exceptions import StorageEncryptionError, StorageIntegrityError
 from infrahub.storage_encryption.crypto import (
+    IntegrityFailure,
     StorageKey,
     has_envelope_magic,
     is_envelope,
@@ -124,7 +125,10 @@ def test_anything_that_starts_with_the_magic_looks_like_an_envelope() -> None:
 
 
 def test_key_comes_from_an_explicitly_set_secret() -> None:
-    assert storage_key_from_settings(settings=SecuritySettings(secret_key=SECRET)).fingerprint == SECRET_FINGERPRINT
+    assert (
+        storage_key_from_settings(storage=StorageSettings(), security=SecuritySettings(secret_key=SECRET)).fingerprint
+        == SECRET_FINGERPRINT
+    )
 
 
 def test_generated_secret_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -133,11 +137,12 @@ def test_generated_secret_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(
         StorageEncryptionError,
         match=(
-            r"^Storage encryption requires INFRAHUB_SECURITY_SECRET_KEY to be set, with the same value on every "
-            r"API server; without it each process generates its own random secret$"
+            r"^Storage encryption requires INFRAHUB_STORAGE_ENCRYPTION_KEY or INFRAHUB_SECURITY_SECRET_KEY to be "
+            r"set, with the same value on every API server; without either, each process generates its own random "
+            r"secret$"
         ),
     ):
-        storage_key_from_settings(settings=SecuritySettings())
+        storage_key_from_settings(storage=StorageSettings(), security=SecuritySettings())
 
 
 @dataclass
@@ -153,7 +158,7 @@ UNFIT_SECRET_CASES = [
         secret="327f747f-efac-42be-9e73-999f08f86b92",
         message=(
             r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            r"set a unique random secret before using storage encryption$"
+            r"set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption$"
         ),
     ),
     UnfitSecretCase(
@@ -161,7 +166,7 @@ UNFIT_SECRET_CASES = [
         secret='327f747f-efac-42be-9e73-999f08f86b92"',
         message=(
             r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            r"set a unique random secret before using storage encryption$"
+            r"set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption$"
         ),
     ),
     UnfitSecretCase(
@@ -169,7 +174,7 @@ UNFIT_SECRET_CASES = [
         secret="'327f747f-efac-42be-9e73-999f08f86b92'",
         message=(
             r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            r"set a unique random secret before using storage encryption$"
+            r"set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption$"
         ),
     ),
     UnfitSecretCase(
@@ -177,14 +182,15 @@ UNFIT_SECRET_CASES = [
         secret="327F747F-EFAC-42BE-9E73-999F08F86B92",
         message=(
             r"^INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
-            r"set a unique random secret before using storage encryption$"
+            r"set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption$"
         ),
     ),
     UnfitSecretCase(
         name="too_short",
         secret="0123456789abcdef0123456789abcde",
         message=(
-            r"^INFRAHUB_SECURITY_SECRET_KEY must be at least 32 characters long to be used for storage encryption$"
+            r"^INFRAHUB_SECURITY_SECRET_KEY must be at least 32 characters long to be used for storage encryption, "
+            r"unless INFRAHUB_STORAGE_ENCRYPTION_KEY is set$"
         ),
     ),
 ]
@@ -193,11 +199,13 @@ UNFIT_SECRET_CASES = [
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in UNFIT_SECRET_CASES])
 def test_unfit_secret_is_refused(case: UnfitSecretCase) -> None:
     with pytest.raises(StorageEncryptionError, match=case.message):
-        storage_key_from_settings(settings=SecuritySettings(secret_key=case.secret))
+        storage_key_from_settings(storage=StorageSettings(), security=SecuritySettings(secret_key=case.secret))
 
 
 def test_key_for_reading_comes_from_a_secret_that_encryption_would_accept() -> None:
-    assert storage_key_if_set(settings=SecuritySettings(secret_key=SECRET)) == StorageKey.derive(SECRET)
+    assert storage_key_if_set(
+        storage=StorageSettings(), security=SecuritySettings(secret_key=SECRET)
+    ) == StorageKey.derive(SECRET)
 
 
 @dataclass
@@ -222,7 +230,7 @@ READING_KEY_CASES = [
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in READING_KEY_CASES])
 def test_key_for_reading_comes_only_from_a_secret_that_encryption_would_accept(case: ReadingKeyCase) -> None:
-    key = storage_key_if_set(settings=SecuritySettings(secret_key=case.secret))
+    key = storage_key_if_set(storage=StorageSettings(), security=SecuritySettings(secret_key=case.secret))
 
     assert key == (StorageKey.derive(case.secret) if case.has_key else None)
 
@@ -230,4 +238,87 @@ def test_key_for_reading_comes_only_from_a_secret_that_encryption_would_accept(c
 def test_no_key_for_reading_comes_from_a_generated_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("INFRAHUB_SECURITY_SECRET_KEY", raising=False)
 
-    assert storage_key_if_set(settings=SecuritySettings()) is None
+    assert storage_key_if_set(storage=StorageSettings(), security=SecuritySettings()) is None
+
+
+DEDICATED_KEY = "dedicated-storage-key-0123456789abcdef!"
+OTHER_DEDICATED_KEY = "another-dedicated-key-9876543210zyxwvu"
+PUBLISHED_SECRET = "327f747f-efac-42be-9e73-999f08f86b92"
+
+
+def test_dedicated_key_takes_precedence_over_the_secret() -> None:
+    key = storage_key_from_settings(
+        storage=StorageSettings(encryption_key=DEDICATED_KEY), security=SecuritySettings(secret_key=SECRET)
+    )
+
+    assert key == StorageKey.derive(DEDICATED_KEY)
+    assert key != StorageKey.derive(SECRET)
+
+
+def test_dedicated_key_does_not_need_a_usable_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SECRET_KEY", raising=False)
+
+    generated = storage_key_from_settings(
+        storage=StorageSettings(encryption_key=DEDICATED_KEY), security=SecuritySettings()
+    )
+    published = storage_key_from_settings(
+        storage=StorageSettings(encryption_key=DEDICATED_KEY), security=SecuritySettings(secret_key=PUBLISHED_SECRET)
+    )
+
+    assert generated == published == StorageKey.derive(DEDICATED_KEY)
+
+
+def test_dedicated_key_that_is_too_short_is_refused_even_when_the_secret_is_usable() -> None:
+    with pytest.raises(
+        StorageEncryptionError, match=r"^INFRAHUB_STORAGE_ENCRYPTION_KEY must be at least 32 characters long$"
+    ):
+        storage_key_from_settings(
+            storage=StorageSettings(encryption_key="0123456789abcdef0123456789abcde"),
+            security=SecuritySettings(secret_key=SECRET),
+        )
+
+
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "whitespace"])
+def test_blank_dedicated_key_is_read_as_unset(blank: str) -> None:
+    storage = StorageSettings(encryption_key=blank)
+
+    assert storage.encryption_key is None
+    assert storage_key_from_settings(
+        storage=storage, security=SecuritySettings(secret_key=SECRET)
+    ) == StorageKey.derive(SECRET)
+
+
+def test_dedicated_key_is_not_shown_in_the_settings_representation() -> None:
+    assert DEDICATED_KEY not in repr(StorageSettings(encryption_key=DEDICATED_KEY))
+
+
+def test_key_for_reading_comes_from_the_dedicated_key() -> None:
+    key = storage_key_if_set(
+        storage=StorageSettings(encryption_key=DEDICATED_KEY), security=SecuritySettings(secret_key=SECRET)
+    )
+
+    assert key == StorageKey.derive(DEDICATED_KEY)
+
+
+def test_no_key_for_reading_comes_from_a_dedicated_key_that_is_too_short_even_when_the_secret_is_usable() -> None:
+    key = storage_key_if_set(
+        storage=StorageSettings(encryption_key="too-short"), security=SecuritySettings(secret_key=SECRET)
+    )
+
+    assert key is None
+
+
+def test_file_encrypted_with_the_secret_is_refused_once_a_dedicated_key_applies() -> None:
+    envelope = seal(
+        identifier=IDENTIFIER,
+        content=CONTENT,
+        key=storage_key_from_settings(storage=StorageSettings(), security=SecuritySettings(secret_key=SECRET)),
+    )
+    key = storage_key_from_settings(
+        storage=StorageSettings(encryption_key=OTHER_DEDICATED_KEY), security=SecuritySettings(secret_key=SECRET)
+    )
+
+    with pytest.raises(StorageIntegrityError) as excinfo:
+        open_envelope(identifier=IDENTIFIER, content=envelope, key=key)
+
+    assert excinfo.value.reason == IntegrityFailure.UNKNOWN_KEY
