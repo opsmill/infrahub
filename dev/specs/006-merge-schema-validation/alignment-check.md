@@ -20,7 +20,7 @@ status. No URL was given.
 | Minor | added | — | FR-012, critique P4 | Documentation of the new refusals and their recovery paths, added by the critique. It documents the source's first behavior change and adds no new behavior. |
 | None | — | Fixed issues 1–7 | Issues table rows 1–7; user stories 1–3; FR-001–FR-008 | All present. |
 | None | — | Behavior changes (rebase refusal, number pool scope check, proposed-change view) | Behavior Changes section | All present. |
-| None | — | Regex, enum, length and choices (separate pull request) | User story 5, FR-010 | Present, as a later pull request. |
+| None | — | Regex, enum, length and choices (separate pull request) | User story 5, FR-010 | Present. |
 | None | — | The two unverified gaps | User story 6, FR-011 | Present, to be confirmed by tests first. |
 | None | — | A refused proposed change stays refused until its checks run again | Edge Cases | Present, unchanged behavior. |
 | None | — | Verification status (matrix results; R9 and R10 on `release-1.12` known by reading the code only) | Success criteria SC-001–SC-005; quickstart | The matrix is kept as the acceptance gate. The spec does not require rerunning R9 and R10 on `release-1.12` before the fix; the source recorded this as a gap in what was verified, not as a requirement. |

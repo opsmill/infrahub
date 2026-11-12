@@ -14,6 +14,15 @@ regression guard must be shown to bite").
 `git show 110e36f4^3:backend/tests/component/core/constraint_validators/test_node_attribute_add.py`). Reuse its tests
 and code where this plan keeps its design; the merged schema (research R5) and the gate (research R4) differ.
 
+## Scope change on 2026-11-12
+
+[INFP-719](https://opsmill.atlassian.net/browse/INFP-719) rewrites how merge and rebase apply schema changes in the next release, so the tasks that build a schema
+combining both branches move there: T009 and T010 (the merged schema), T023 to T026 (user story 2), T030 and T031
+(user story 4), the merged-schema and gate parts of T020 and T021, and the tests that pin
+[IFC-3558](https://opsmill.atlassian.net/browse/IFC-3558) (T033) and
+[IFC-3559](https://opsmill.atlassian.net/browse/IFC-3559). On `stable`, a merge or a rebase checks only the branch's
+own schema changes, so it needs no merged schema. User story 5 (T039 to T041) is delivered on `stable`.
+
 **Organization**: Tasks are grouped by user story. Paths are relative to the repository root. Run backend tests from
 `backend/`.
 
@@ -46,8 +55,8 @@ and code where this plan keeps its design; the merged schema (research R5) and t
 
 ### Merged schema (research R5, data-model "Merged schema rules")
 
-- [X] T009 Write the unit tests for the merged schema in `backend/tests/unit/core/schema/test_schema_branch.py`, in a class that builds processed schema branches with the existing `_load_processed_branch` helper and the `car_person_schema_root` fixture: one test per row of the data-model results table (mandatory kept, kind and schema class kept, branch wins on a shared field, both additions kept, removed attribute absent, removed kind absent, rename followed, inherited attribute from a generic, profile kind updated), plus tests that a kind or attribute the default branch removed and the branch changed keeps the branch's copy, and that a generic's `used_by` lists the nodes both branches added and leaves out the nodes either branch removed. Start from the stash's `TestUpdateChanges` class and kind-class test. Confirm they fail before T010
-- [X] T010 Add the `SchemaBranch` method that applies a branch's schema diff since a base schema to this schema, taking values from the branch's schema, following the data-model rules (added/removed kinds, changed node fields, attribute and relationship additions, removals and field changes matched by id then name, kind change rebuilt with its new schema class, profile and template kinds of changed nodes, clear error on an unmatched element), in `backend/infrahub/core/schema/schema_branch.py` (depends on T009)
+- [ ] T009 (moved to INFP-719) Write the unit tests for the merged schema in `backend/tests/unit/core/schema/test_schema_branch.py`, in a class that builds processed schema branches with the existing `_load_processed_branch` helper and the `car_person_schema_root` fixture: one test per row of the data-model results table (mandatory kept, kind and schema class kept, branch wins on a shared field, both additions kept, removed attribute absent, removed kind absent, rename followed, inherited attribute from a generic, profile kind updated), plus tests that a kind or attribute the default branch removed and the branch changed keeps the branch's copy, and that a generic's `used_by` lists the nodes both branches added and leaves out the nodes either branch removed. Start from the stash's `TestUpdateChanges` class and kind-class test. Confirm they fail before T010
+- [ ] T010 (moved to INFP-719) Add the `SchemaBranch` method that applies a branch's schema diff since a base schema to this schema, taking values from the branch's schema, following the data-model rules (added/removed kinds, changed node fields, attribute and relationship additions, removals and field changes matched by id then name, kind change rebuilt with its new schema class, profile and template kinds of changed nodes, clear error on an unmatched element), in `backend/infrahub/core/schema/schema_branch.py` (depends on T009)
 
 ### Analyzer
 
@@ -152,13 +161,13 @@ only on the default branch.
 
 ---
 
-## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3, a later pull request)
+## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3)
 
 **Goal**: the four remaining queries read the requested view.
 
-- [ ] T039 [P] [US5] Add the two-view component test to `backend/tests/component/core/constraint_validators/test_attribute_regex_update.py`, `test_attribute_enum_update.py`, `test_attribute_length.py` and `test_attribute_choices_update.py`
-- [ ] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated`, and remove the exception for these four checks from the `is_isolated` descriptions in `backend/infrahub/core/validators/model.py` and `backend/infrahub/core/validators/models/validate_migration.py` (depends on T039)
-- [ ] T041 [US5] Add integration refusals to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: a regex added on the branch with a non-matching value created on the default branch after branching, and the three scenarios of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (a dropdown choice removed on the branch, merged and rebased, and an enum value removed on the branch, merged, each while a node created on the default branch after branching uses the value). Add a changelog fragment, and open the pull request, which closes [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (GitHub [#11229](https://github.com/opsmill/infrahub/issues/11229))
+- [X] T039 [P] [US5] Add the two-view component test to `backend/tests/component/core/constraint_validators/test_attribute_regex_update.py`, `test_attribute_enum_update.py`, `test_attribute_length.py` and `test_attribute_choices_update.py`
+- [X] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated` (depends on T039)
+- [ ] T041 [US5] Add integration refusals to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: a regex added on the branch with a non-matching value created on the default branch after branching, and the enum scenario of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (an enum value removed on the branch while a node created on the default branch after branching uses it), merged and rebased. The dropdown scenarios of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) need the merged schema and move to [INFP-719](https://opsmill.atlassian.net/browse/INFP-719)
 
 ---
 
@@ -205,7 +214,7 @@ working, validated by the local matrix.
 2. Phase 3: user story 1, the reported defect.
 3. Phases 4–5: user stories 2 and 3, then the matrix.
 4. Phases 6–8: the proposed-change check, the suspected gaps, docs and delivery of the first pull request.
-5. Phase 9: a later pull request.
+5. Phase 9: user story 5.
 
 ## Notes
 
