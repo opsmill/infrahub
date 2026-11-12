@@ -322,6 +322,25 @@ def test_removing_a_container_from_the_generic_refuses_its_field_on_the_next_loa
         schema_branch.process()
 
 
+def test_removing_a_generic_container_refuses_the_node_field_that_still_references_it() -> None:
+    schema_branch = _processed_branch(
+        schema=_lag_schema_with_l2_field(
+            field_list="attributes",
+            field={"name": "mtu", "kind": "Number", "optional": True, "container": "layer3"},
+        )
+    )
+    generic = copy.deepcopy(LAG_SCHEMA["generics"][0])
+    generic["containers"] = [{"name": "layer3", "label": "Layer 3", "state": HashableModelState.ABSENT.value}]
+    next(attribute for attribute in generic["attributes"] if attribute["name"] == "mtu")["container"] = ""
+    schema_branch.load_schema(schema=SchemaRoot(version="1.0", generics=[generic]))
+
+    with pytest.raises(
+        ValueError,
+        match=exact_message(f"{L2_KIND}.attributes.mtu.container: container 'layer3' is not declared on {L2_KIND}"),
+    ):
+        schema_branch.process()
+
+
 def test_containers_are_collapsible_unless_declared_otherwise() -> None:
     schema_branch = _processed_branch(
         schema=_lag_schema_with_generic_containers([{"name": "summary", "label": "Summary", "collapsible": False}])
