@@ -7,6 +7,9 @@ import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
 import { ObjectTaskTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { isRackKind } from "@/entities/rack-elevation/domain/rules/is-rack-kind";
+import { useGetRackElevationKinds } from "@/entities/rack-elevation/ui/queries/get-rack-elevation-kinds.query";
+import { RackElevationTab } from "@/entities/rack-elevation/ui/rack-elevation-tab";
 import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { getRepositoryInternalStatus } from "@/entities/repository/domain/rules/get-repository-internal-status";
 import { RepositoryCommitsTab } from "@/entities/repository/ui/repository-commits-tab";
@@ -26,6 +29,8 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const relationshipsTabs = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
   const isTaskTarget = isOfKind(TASK_TARGET, objectSchema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
+  const { data: rackElevationKinds } = useGetRackElevationKinds();
+  const isRack = rackElevationKinds ? isRackKind(objectSchema, rackElevationKinds) : false;
 
   return (
     <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
@@ -43,6 +48,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
             />
           ))}
           {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
+          {isRack && <RackElevationTab objectKind={objectKind} objectId={objectId} />}
           {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
           {isRepository && (
             <RepositoryCommitsTab

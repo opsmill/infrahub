@@ -135,3 +135,12 @@ class ScenarioBranchesHandle(_BaseHandle):
     """The seeded scenario branches, by branch name."""
 
     branches: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class RackElevationHandle(_BaseHandle):
+    """Racks, rack item types and rack items of the rack elevation dataset, by name."""
+
+    racks: dict[str, str] = field(default_factory=dict)
+    types: dict[str, str] = field(default_factory=dict)
+    items: dict[str, str] = field(default_factory=dict)

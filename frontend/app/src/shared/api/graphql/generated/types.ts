@@ -20372,6 +20372,8 @@ export type Mutation = {
   ProfileIpamNamespaceUpdate: Maybe<ProfileIpamNamespaceUpdate>;
   /** Profile for IpamNamespace */
   ProfileIpamNamespaceUpsert: Maybe<ProfileIpamNamespaceUpsert>;
+  /** Move an item into a rack at a unit and face, or keep it in the rack without a unit. */
+  RackElevationPlace: RackElevationPlaceResult;
   RelationshipAdd: Maybe<RelationshipAdd>;
   RelationshipRemove: Maybe<RelationshipRemove>;
   ResolveDiffConflict: Maybe<ResolveDiffConflict>;
@@ -22201,6 +22203,14 @@ export type MutationProfileIpamNamespaceUpdateArgs = {
 export type MutationProfileIpamNamespaceUpsertArgs = {
   context?: InputMaybe<ContextInput>;
   data: ProfileIpamNamespaceUpsertInput;
+};
+
+
+export type MutationRackElevationPlaceArgs = {
+  face?: InputMaybe<RackFace>;
+  item: Scalars['String']['input'];
+  position?: InputMaybe<Scalars['Int']['input']>;
+  rack: Scalars['String']['input'];
 };
 
 
@@ -26334,6 +26344,10 @@ export type Query = {
   ProfileBuiltinIPPrefix: PaginatedProfileBuiltinIpPrefix;
   ProfileBuiltinTag: PaginatedProfileBuiltinTag;
   ProfileIpamNamespace: PaginatedProfileIpamNamespace;
+  /** The items of a rack, their position, and the rack totals. */
+  RackElevation: RackElevation;
+  /** Kinds that take part in rack elevations, with the role each one plays. */
+  RackElevationKinds: Array<RackElevationKind>;
   Relationship: Relationships;
 };
 
@@ -39648,6 +39662,13 @@ export type QueryProfileIpamNamespaceArgs = {
 };
 
 
+export type QueryRackElevationArgs = {
+  color_by?: InputMaybe<Scalars['String']['input']>;
+  label_by?: InputMaybe<Scalars['String']['input']>;
+  rack: Scalars['String']['input'];
+};
+
+
 export type QueryRelationshipArgs = {
   excluded_namespaces?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids: Array<Scalars['String']['input']>;
@@ -39655,6 +39676,83 @@ export type QueryRelationshipArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export type RackElevation = {
+  __typename: 'RackElevation';
+  /** Ordered by position descending, then unpositioned items, then 0U items. */
+  items: Array<RackElevationItem>;
+  rack: RackElevationRack;
+};
+
+export type RackElevationItem = {
+  __typename: 'RackElevationItem';
+  /** Hex color of the color_by dropdown choice, or null. */
+  color: Maybe<Scalars['String']['output']>;
+  display_label: Scalars['String']['output'];
+  /** Null unless the item is mounted. */
+  face: Maybe<RackFace>;
+  full_depth: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  /** Value of label_by, or display_label. */
+  label: Scalars['String']['output'];
+  placement: RackItemPlacement;
+  /** Lowest unit the item uses. Null unless the item is mounted. */
+  position: Maybe<Scalars['Int']['output']>;
+  type_display_label: Maybe<Scalars['String']['output']>;
+  type_id: Maybe<Scalars['String']['output']>;
+  /** Height from the type. 0 for a 0U type. */
+  u_height: Scalars['Int']['output'];
+  /** Weight in kg, from the type. */
+  weight: Maybe<Scalars['Int']['output']>;
+};
+
+export type RackElevationKind = {
+  __typename: 'RackElevationKind';
+  kind: Scalars['String']['output'];
+  role: RackElevationRole;
+};
+
+/** Move an item into a rack at a unit and face, or keep it in the rack without a unit. */
+export type RackElevationPlaceResult = {
+  __typename: 'RackElevationPlaceResult';
+  item: RackElevationItem;
+  ok: Scalars['Boolean']['output'];
+};
+
+export type RackElevationRack = {
+  __typename: 'RackElevationRack';
+  display_label: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  /** Weight in kg of every item in the rack. Null when no item has a weight. */
+  total_weight: Maybe<Scalars['Int']['output']>;
+  u_height: Scalars['Int']['output'];
+  used_units: Scalars['Int']['output'];
+  /** Percent of the units in use, rounded down. */
+  utilization: Scalars['Int']['output'];
+};
+
+/** The part a kind plays in rack elevations. */
+export const RackElevationRole = {
+  MOUNTABLE: 'MOUNTABLE',
+  MOUNTABLE_TYPE: 'MOUNTABLE_TYPE',
+  RACK: 'RACK'
+} as const;
+
+export type RackElevationRole = typeof RackElevationRole[keyof typeof RackElevationRole];
+export const RackFace = {
+  FRONT: 'FRONT',
+  REAR: 'REAR'
+} as const;
+
+export type RackFace = typeof RackFace[keyof typeof RackFace];
+export const RackItemPlacement = {
+  MOUNTED: 'MOUNTED',
+  UNPOSITIONED: 'UNPOSITIONED',
+  ZERO_U: 'ZERO_U'
+} as const;
+
+export type RackItemPlacement = typeof RackItemPlacement[keyof typeof RackItemPlacement];
 /**
  * Raw stored preferences for a single scope (USER = the caller's own, GLOBAL = organisation-wide).
  *

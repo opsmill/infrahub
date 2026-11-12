@@ -75,6 +75,7 @@ pytest_plugins = [
     "data.sites",
     "data.topology",
     "data.scenario_branches",
+    "data.rack_elevation",
 ]
 
 if TYPE_CHECKING:

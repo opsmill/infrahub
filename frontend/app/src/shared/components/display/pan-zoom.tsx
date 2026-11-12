@@ -8,12 +8,25 @@ import { classNames } from "@/shared/utils/common";
 export interface PanZoomProps {
   children: React.ReactNode;
   className?: string;
+  isPanningDisabled?: boolean;
+  panningExcludedClassNames?: string[];
 }
 
-export function PanZoom({ children, className }: PanZoomProps) {
+export function PanZoom({
+  children,
+  className,
+  isPanningDisabled,
+  panningExcludedClassNames,
+}: PanZoomProps) {
   return (
     <div className={classNames("relative flex flex-col", className)}>
-      <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.1 }}>
+      <TransformWrapper
+        minScale={0.5}
+        maxScale={8}
+        centerOnInit
+        wheel={{ step: 0.1 }}
+        panning={{ disabled: isPanningDisabled, excluded: panningExcludedClassNames }}
+      >
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
             <div className="absolute top-1 right-1 z-10 flex gap-1">

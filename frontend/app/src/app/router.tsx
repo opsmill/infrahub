@@ -152,6 +152,10 @@ export const router = createBrowserRouter([
                             lazy: () => import("@/pages/objects/object-details/repository-commits"),
                           },
                           {
+                            path: "elevation",
+                            lazy: () => import("@/pages/objects/object-details/elevation"),
+                          },
+                          {
                             path: ":relationshipName",
                             lazy: () => import("@/pages/objects/object-details/relationship"),
                           },
