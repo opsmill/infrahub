@@ -132,7 +132,7 @@ The two settings are independent:
 
 ### Allowed values
 
-- Instance label: free text of at most 32 characters. Infrahub removes the spaces, tabs and line breaks at the start and at the end of the label before it checks it, so a label made of spaces only resets the label. A label with a line break, a tab or another control character inside it is rejected.
+- Instance label: free text of at most 32 characters. Infrahub removes the spaces, tabs and line breaks at the start and at the end of the label before it checks it, so a label made of spaces only resets the label. A label is rejected when it contains, inside it, a line break, a tab or another control character, a Unicode line or paragraph separator (U+2028, U+2029), or a bidirectional control character such as U+202E.
 - Instance color: one of **Red**, **Amber**, **Green**, **Blue**, **Indigo**, **Purple**, or **Gray** in the web interface. The GraphQL API takes the same colors as the uppercase enum values `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, and `GRAY`.
 
 Infrahub does not attach a meaning to any color. A convention that teams can adopt is red for production, amber for staging, and green for development; choose the one that fits your instances.
@@ -165,7 +165,7 @@ mutation {
 }
 ```
 
-An omitted argument leaves that value unchanged. An explicit `null` resets it. A label longer than 32 characters once the surrounding whitespace is removed, a label with a control character inside it, or a color outside the list is rejected and nothing is stored. The mutation rejects `instance_label` and `instance_color` with `scope: USER`.
+An omitted argument leaves that value unchanged. An explicit `null` resets it. A label longer than 32 characters once the surrounding whitespace is removed, a label with a control character, a Unicode line or paragraph separator, or a bidirectional control character inside it, or a color outside the list is rejected and nothing is stored. The mutation rejects `instance_label` and `instance_color` with `scope: USER`.
 
 Read the stored values with `InfrahubGlobalPreferences`, which also requires the `manage_global_preferences` permission:
 
