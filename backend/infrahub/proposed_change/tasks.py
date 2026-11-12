@@ -194,6 +194,13 @@ async def _record_schema_integrity_failure(
         await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
 
 
+async def _clear_schema_integrity_failure(database: InfrahubDatabase, proposed_change_id: str) -> None:
+    """Replace an earlier failure of the Schema Integrity validator with a passing result."""
+    async with database.start_transaction() as db:
+        recorder = _build_schema_integrity_validator_recorder(db=db)
+        await recorder.clear_failure(proposed_change_id=proposed_change_id)
+
+
 async def _merge_branch_for_proposed_change(
     db: InfrahubDatabase,
     proposed_change: InternalCoreProposedChange,
@@ -581,6 +588,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     constraints = merger.merge(candidate_schema, constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
+        await _clear_schema_integrity_failure(database=database, proposed_change_id=model.proposed_change)
         return
 
     # ----------------------------------------------------------
@@ -1320,9 +1328,12 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
+    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and not has_data_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
+        # A merge refused for this proposed change records a failure that no later check would replace.
+        await _clear_schema_integrity_failure(database=database, proposed_change_id=model.proposed_change)
+    elif model.check_type in [CheckType.ALL, CheckType.SCHEMA]:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
