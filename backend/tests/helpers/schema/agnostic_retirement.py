@@ -117,6 +117,7 @@ AGNOSTIC_MEMBER = NodeSchema(
     ],
 )
 
+# A cascade target whose relationship back to its team is optional.
 AGNOSTIC_BADGE = NodeSchema(
     name="Badge",
     namespace="Agnosticretire",
