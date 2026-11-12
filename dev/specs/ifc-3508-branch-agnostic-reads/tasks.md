@@ -242,7 +242,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
   Add `window_name: str | None = None` to `RelationshipPeersData`. The single-branch mode keeps its query unchanged.
 
-  Result: the window mode is selected by a new `window_source_ids` parameter. It reads each edge group once per row and tests the windows in memory, as T039 does. A component test checks that each window holding the link returns a row.
+  Result: the window mode is the query class `RelationshipGetByIdentifierInWindowsQuery`, with a required `source_ids`; its rows carry the window name in `RelationshipWindowPeersData`, and `RelationshipPeersData` is unchanged. It reads each edge group once per row and tests the windows in memory, as T039 does. A component test checks that each window holding the link returns a row.
 - [X] T054 [US4] In `backend/infrahub/core/node/delete_validator.py::NodeDeleteValidator`, for a branch-agnostic node:
   - run the window-mode query for each level of cascade;
   - group the rows by `window_name`;
@@ -251,7 +251,7 @@ No task blocks every story. The shared branch window module ships in US3 (PR 3),
 
   The path for a branch-aware node is unchanged.
 
-  Result: the window path runs when any node of the delete set is branch-agnostic. The nodes deleted are those the request branch's window reaches; a request on `-global-` uses the default branch's window. One error is raised per branch and peer, so 20 required peers inherited by 50 branches give 1,020 errors. The error falls back to the deleted side's relationship when the peer kind has no relationship with that identifier.
+  Result: the window path runs when any node of the delete set is branch-agnostic. The nodes deleted are those the request branch's window reaches; a request on `-global-` uses the default branch's window. After the review: in windows other than the request branch's, only the branch-agnostic nodes of the delete set count as deleted, because a cascade removes a branch-aware node on the request branch only. One error is raised per blocking link and names every branch where it blocks, so 20 required peers inherited by 50 branches give 20 errors. A cascade block has its own message and uses the deleted node's relationship. The window mode is its own query class, `RelationshipGetByIdentifierInWindowsQuery`.
 - [X] T055 [US4] Check that `backend/infrahub/core/manager.py::NodeManager.delete` needs no change beyond passing what the validator needs, and that cascading deletes still write only on the request branch (FR-016).
 - [X] T056 [US4] Run T052, `backend/tests/component/core/test_node_manager_delete.py`, and the GraphQL delete mutation tests under `backend/tests/component/graphql/mutations/` (`-k delete`). All pass. Result: T052 and `test_node_manager_delete.py` 26 passed; `graphql/mutations/ -k delete` 15 passed. `NodeManager.delete` needs no change.
 - [X] T057 [US4] Add `backend/tests/benchmark/test_delete_agnostic_node.py`. It deletes a `CoreAccountGroup` with 50 live branches and 10,000 group memberships elsewhere in the database. Record the database hits before and after in the PR description.

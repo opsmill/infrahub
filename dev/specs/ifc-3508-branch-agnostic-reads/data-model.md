@@ -87,4 +87,4 @@ A peer passes when its latest `IS_PART_OF` edge is `active`:
 
 ## Delete check result for a branch-agnostic node
 
-`RelationshipGetByIdentifierQuery` in window mode returns rows of `RelationshipPeersData` with one more field, `window_name: str | None`. The field is set only in window mode. `NodeDeleteValidator` groups the rows by `window_name` and runs its existing walk on each group.
+`RelationshipGetByIdentifierInWindowsQuery`, the window form of `RelationshipGetByIdentifierQuery`, takes the ids of the delete set and returns rows of `RelationshipWindowPeersData`: a frozen pair of a `RelationshipPeersData` and a required `window_name: str`. `RelationshipPeersData` is unchanged. `NodeDeleteValidator` groups the rows by `window_name`. It runs its existing walk on the request branch's window, and in every other window it checks only the branch-agnostic nodes that walk deletes.

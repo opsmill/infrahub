@@ -33,8 +33,14 @@ Message templates (wording to confirm in review):
 |---|---|---|
 | A required peer on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
 | A peer would be removed through cascade on another branch only | The delete succeeds | `ValidationError` (HTTP 422) |
+| A branch-aware peer removed through cascade on the request branch also exists on another live branch, and its relationship to the deleted node is required | The delete succeeds | `ValidationError` (HTTP 422), because the cascade removes the peer on the request branch only |
 
-The message extends the existing one with the branch: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<branch>'`. One error is raised per blocking branch and peer, and they are grouped as the validator groups them today.
+One error is raised per blocking link, and it names every branch where the link blocks the delete, sorted by name:
+
+- A required peer: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<branch>'`, or `on branches '<b1>', '<b2>'`. The error path is `<peer kind>.<rel>`.
+- A cascade: `Cannot delete <kind> '<id>'. Deleting it would also delete <peer kind> '<peer id>' through relationship <rel> on branch '<branch>'` (or `on branches '<b1>', '<b2>'`) `, but this delete does not remove that node there`. The error path is `<kind>.<rel>`.
+
+A GraphQL delete mutation keys the errors by path, so two blocking peers of the same kind through the same relationship are reported as one error that names the last peer. The single-branch delete already behaves this way.
 
 ## Relationship reads (PRs 5 and 6)
 

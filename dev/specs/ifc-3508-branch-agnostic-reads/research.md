@@ -119,6 +119,8 @@ The search also found callers the brief does not list:
 - The validator then runs its existing walk once per window name, starting from the same delete set, with the same index:
   - A required peer left behind in any window raises the error, with `on branch '{name}'` added to the message.
   - A peer reached through a cascade in some window but not in the request branch's window also raises it, with the same branch suffix.
+
+  Changed during the review of PR 4: only the request branch's window runs the full walk. In every other window, only the branch-agnostic nodes of that walk's delete set count as deleted, because a cascade removes a branch-aware node on the request branch only. A branch-aware cascade target that keeps a required relationship to a deleted node on another branch therefore blocks the delete. Errors are grouped per blocking link and list every branch where it blocks (see `contracts/user-visible-behavior.md`).
 - A branch-aware node keeps today's single-branch query and walk.
 - In window mode the query starts from the ids in the delete set and is run again for each level of cascade, instead of reading every link of the indexed identifiers. The PR reports the database hits of deleting a `CoreAccountGroup` with 50 live branches and 10,000 group memberships elsewhere in the database.
 
