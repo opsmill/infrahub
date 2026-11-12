@@ -1,0 +1,1 @@
+Fixed deleting a branch-agnostic node while another branch still requires it: the delete now fails when, on any other branch, a node with a mandatory relationship to it is not also deleted, or a cascading delete would remove a node that it does not remove on the branch of the request, and the error names that branch and that node.
