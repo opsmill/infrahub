@@ -81,6 +81,8 @@ When you modify the synchronization rules after a repository has been imported, 
 If a Git branch exists but was not previously imported because it didn't match the old rules, and it now matches the updated rules, Infrahub will import that branch during the next synchronization cycle.
 
 ```toml
+[git]
+
 # Before
 import_sync_branch_names = ["^infra/.*$"]
 
@@ -96,6 +98,8 @@ import_sync_branch_names = [
 If a branch was already imported into Infrahub and has the "sync with Git" flag enabled, it will continue to synchronize even if it no longer matches the updated rules. This preserves existing work and prevents unexpected data loss.
 
 ```toml
+[git]
+
 # Before
 import_sync_branch_names = [
   "^infra/.*$",
