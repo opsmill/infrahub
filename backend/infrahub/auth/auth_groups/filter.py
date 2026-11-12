@@ -8,10 +8,11 @@ capture groups are not used for name extraction.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     import re
+    from collections.abc import Iterable
 
 
 class ClaimMatch(NamedTuple):

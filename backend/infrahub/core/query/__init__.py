@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -25,8 +25,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from neo4j import Record
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase

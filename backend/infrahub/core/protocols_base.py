@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
 from infrahub.core.constants import SYSTEM_USER_ID
 

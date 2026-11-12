@@ -1,11 +1,10 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from neo4j.exceptions import DriverError, Neo4jError
 from redis.exceptions import RedisError
-from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.auth.types import AuthType

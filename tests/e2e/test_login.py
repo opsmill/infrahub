@@ -1,15 +1,16 @@
 """Port of frontend/app/tests/e2e/login.spec.ts.
 
 Covers: SSO-enabled vs disabled login screens (config mocked via routing),
-credential login, invalid-credentials error, redirect-to-initial-page after
-login, logout, redirect-home when already logged in, and access-token refresh +
-retry on 401.
+the SSO button's page navigation to the authorize endpoint, credential login,
+invalid-credentials error, redirect-to-initial-page after login, logout,
+redirect-home when already logged in, and access-token refresh + retry on 401.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 import pytest
 from constants import ADMIN_CREDENTIALS
@@ -70,6 +71,24 @@ class TestLoginNotLoggedIn:
         # go back to log in with SSO
         await page.get_by_role("button", name="Log in with SSO").click()
         await expect(page.get_by_role("link", name="Continue with Google")).to_be_visible()
+
+    async def test_sso_button_navigates_to_the_authorize_endpoint(self, page: Page) -> None:
+        await _enable_sso(page)
+
+        # The stack has no Google provider, so the authorize endpoint is answered here.
+        async def authorize_handler(route: Route) -> None:
+            await route.fulfill(status=200, content_type="text/html", body="identity provider")
+
+        await page.route("**/api/oauth2/google/authorize**", authorize_handler)
+        await page.goto("/login")
+
+        async with page.expect_request("**/api/oauth2/google/authorize**") as request_info:
+            await page.get_by_role("link", name="Continue with Google").click()
+
+        request = await request_info.value
+        assert request.is_navigation_request()
+        url = urlsplit(request.url)
+        assert (url.path, url.query) == ("/api/oauth2/google/authorize", "final_url=%2F")
 
     async def test_sso_disabled_logs_in_the_user(self, page: Page) -> None:
         await _disable_sso(page)

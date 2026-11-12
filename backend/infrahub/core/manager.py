@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 
@@ -48,6 +48,8 @@ from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFou
 from infrahub.utilities.chunks import chunked
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.branch import Branch
     from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase

@@ -6,7 +6,7 @@ import random
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -27,7 +27,6 @@ from neo4j import (
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
@@ -52,7 +51,7 @@ from .metrics import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable, Coroutine
     from types import TracebackType
 
     # neo4j only exports the concrete trust stores, not the base class the driver accepts.
