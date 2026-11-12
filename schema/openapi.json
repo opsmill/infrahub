@@ -86,6 +86,90 @@
                 }
             }
         },
+        "/api/artifact/{artifact_id}/encryption": {
+            "post": {
+                "summary": "Check Artifact Encryption",
+                "description": "Check from its header whether the stored file of an artifact is encrypted and readable with the current key.\n\nThe check does not decrypt the file, so a file modified after it was stored still reports as encrypted until it\nis read. When the result differs from the encryption value stored on the artifact, the value is updated if the\ncaller may update artifacts and the branch accepts writes; otherwise the result is returned as it is.\n\nRaises:\n    NodeNotFoundError: If the artifact does not exist on the branch.",
+                "operationId": "check_artifact_encryption_api_artifact__artifact_id__encryption_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "artifact_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Artifact Id"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArtifactEncryptionCheckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/artifact/generate/{artifact_definition_id}": {
             "post": {
                 "summary": "Generate Artifact",
@@ -2723,6 +2807,45 @@
                 "type": "object",
                 "title": "AnalyticsSettings"
             },
+            "ArtifactEncryption": {
+                "type": "string",
+                "enum": [
+                    "plaintext",
+                    "encrypted",
+                    "unreadable"
+                ],
+                "title": "ArtifactEncryption"
+            },
+            "ArtifactEncryptionCheckResponse": {
+                "properties": {
+                    "encryption": {
+                        "$ref": "#/components/schemas/ArtifactEncryption",
+                        "description": "Encryption of the stored file of the artifact, as found by this check"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UnreadableReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why the file cannot be read with the current key, when it cannot"
+                    },
+                    "updated": {
+                        "type": "boolean",
+                        "title": "Updated",
+                        "description": "Whether this check changed the encryption value stored on the artifact"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "encryption",
+                    "updated"
+                ],
+                "title": "ArtifactEncryptionCheckResponse"
+            },
             "ArtifactGeneratePayload": {
                 "properties": {
                     "nodes": {
@@ -4500,6 +4623,12 @@
                     "version": {
                         "type": "string",
                         "title": "Version"
+                    },
+                    "storage_encryption_enabled": {
+                        "type": "boolean",
+                        "title": "Storage Encryption Enabled",
+                        "description": "Whether new artifacts and files are stored encrypted",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -9854,6 +9983,17 @@
                 ],
                 "title": "TraceSampleRatioUpdateAPI"
             },
+            "UnreadableReason": {
+                "type": "string",
+                "enum": [
+                    "no_key",
+                    "unknown_key",
+                    "unsupported_format",
+                    "truncated",
+                    "missing"
+                ],
+                "title": "UnreadableReason"
+            },
             "UploadContentPayload": {
                 "properties": {
                     "content": {
@@ -9876,6 +10016,12 @@
                     "checksum": {
                         "type": "string",
                         "title": "Checksum"
+                    },
+                    "encrypted": {
+                        "type": "boolean",
+                        "title": "Encrypted",
+                        "description": "Whether the stored object was encrypted",
+                        "default": false
                     }
                 },
                 "type": "object",

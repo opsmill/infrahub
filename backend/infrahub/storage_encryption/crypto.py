@@ -157,6 +157,11 @@ def is_envelope(content: bytes) -> bool:
     )
 
 
+def is_sealed_with(content: bytes, key: StorageKey) -> bool:
+    """Whether the header of the envelope in `content` names `key`; the content is not authenticated."""
+    return content[_FINGERPRINT_OFFSET : _FINGERPRINT_OFFSET + FINGERPRINT_LENGTH] == key._fingerprint
+
+
 def seal(*, identifier: str, content: bytes, key: StorageKey) -> bytes:
     nonce = os.urandom(NONCE_LENGTH)
     header = MAGIC + bytes((FORMAT_VERSION,)) + key._fingerprint + nonce

@@ -72,7 +72,8 @@ async def test_info_endpoint(
 
     result = response.json()
 
-    assert sorted(result.keys()) == ["deployment_id", "version"]
+    assert sorted(result.keys()) == ["deployment_id", "storage_encryption_enabled", "version"]
+    assert result["storage_encryption_enabled"] is False
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

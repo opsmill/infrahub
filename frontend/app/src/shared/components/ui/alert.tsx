@@ -26,12 +26,15 @@ type AlertProps = {
   message?: ReactNode;
   details?: string;
   type?: ALERT_TYPES;
+  icon?: ReactNode;
 };
 
 export const Alert = (props: AlertProps) => {
-  const { closeToast, message, details, onDismiss, type } = props;
+  const { closeToast, message, details, onDismiss, type, icon } = props;
 
   const getIcon = () => {
+    if (icon) return icon;
+
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
         return <CircleCheckIcon className="h-4 w-4 text-green-400" aria-hidden="true" />;

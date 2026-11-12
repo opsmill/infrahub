@@ -7,11 +7,14 @@ export const ARTIFACT_DEFINITION_KIND = "CoreArtifactDefinition";
 
 export type ArtifactStatus = "Error" | "Pending" | "Processing" | "Ready";
 
+export type ArtifactEncryption = "plaintext" | "encrypted" | "unreadable";
+
 export interface ArtifactObject extends NodeCore {
   checksum: { value: string | null };
   content_type: { value: DataViewerContentType };
   storage_id: { value: string | null };
   status: { value: ArtifactStatus };
+  encryption?: { value: ArtifactEncryption | null };
   definition: { node: NodeCore };
   object: { node: NodeCore };
 }

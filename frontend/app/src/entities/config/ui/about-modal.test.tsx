@@ -26,6 +26,7 @@ describe("AboutModal", () => {
     vi.mocked(getAppInfo).mockResolvedValue({
       version: "1.8.4",
       deployment_id: "abc-123-def",
+      storage_encryption_enabled: false,
     });
   });
 

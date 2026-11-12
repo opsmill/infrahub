@@ -295,6 +295,7 @@ class CoreArtifact(CoreTaskTarget):
     content_type: Enum
     checksum: StringOptional
     storage_id: StringOptional
+    encryption: Enum
     parameters: JSONAttributeOptional
     object: RelationshipManager[CoreArtifactTarget]
     definition: RelationshipManager[CoreArtifactDefinition]
