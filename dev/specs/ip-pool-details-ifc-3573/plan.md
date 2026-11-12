@@ -19,14 +19,24 @@ Three plans were compared (minimal change, refactor-friendly, test-first). The s
 
 1. **Typed pool fetch, not `useGetObject`.** `api/get-ip-pool-from-api.ts` selects both kinds in one document. The typed node gives the defaults and the namespace's `default` flag, which the namespace link needs (the default namespace is the absence of the `namespace` query parameter).
 2. **Allocation weight comes from the weighted pool resource generic.** The utilization query's `weight` is the prefix size. The hook derives `weightedKinds` (node schemas that inherit both `BuiltinIPPrefix` and `CoreWeightedPoolResource`) from `nodeSchemasAtom`. When every resource prefix kind is weighted, the use case runs one typed `CoreWeightedPoolResource(ids)` query; otherwise it skips the query, because the backend then ignores weights. If the query throws, the list shows no weights instead of an error. `weightedKinds` is part of the query key.
-3. **One use case for utilization.** `getIpPoolUtilization` fetches utilization and weights, maps and sorts: weight descending with a missing weight as 0, which is the server's fill order, then, as the page's own choice, by prefix (IP version, address, prefix length). The page starts this query alongside the pool query; the page body and the breadcrumb read the same sorted list from the same cache key.
+3. **One use case for utilization.** `getIpPoolUtilization` fetches utilization and weights, maps and sorts: weight descending with a missing weight as 0, which is the server's fill order, then, as the page's own choice, by prefix (IP version, address, prefix length). A label that is not a prefix comes after every prefix, so the order never depends on the order the backend returns the resource prefixes in. The page starts this query alongside the pool query; the page body and the breadcrumb read the same sorted list from the same cache key.
 4. **Allocations: one infinite query, count from the first page.** `InfrahubResourcePoolAllocated` returns `count` with every page, so there is no separate count query. Page size 100, like the number pool.
 5. **Shared pieces in `entities/resource-manager/ui/pool/`.** `PoolId`, `SchemaReference`, `UtilizationTooltipMessage`, `KindLabel`, `formatUsagePercent` and `PoolItemNotFound` move verbatim from the number pool files, and `PoolLoadMoreError` is new; `PoolActionsMenu` takes the common menu with `poolKind` and the update and delete decisions, and `NumberPoolActionsMenu` keeps the schema-lock rule and renders it. The usage bar, the list card, the table and the not-found state stay per pool kind: their inputs differ.
 6. **Selection in the path.** `getIpPoolResourceUrl(poolId, resourceId?)` builds `/resource-manager/{poolId}/resources/{resourceId}`; `ListBoxItem href` navigates. Without a resource id the page selects the first resource prefix in list order without redirecting.
 7. **Member type without a value reads "Member type has no default".** The backend has no fallback at allocation time.
-8. **No Branch column.** The backend returns the viewing branch for every row.
+8. **No Branch column.** The backend returns the requested branch on every row. The old page always requested the default branch, so its column showed the default branch name on every row; with branch-aware requests the column would only repeat the branch selector.
 9. **Delete the old page files.** `resource-pool-details-body.tsx`, `resource-allocation-details.tsx`, `resource-selector.tsx`, `ResourcePoolUtilization.tsx`, `get-pool-utilization.*`, `get-resource-allocated.*`, `shared/components/form/object-edit-slide-over-trigger.tsx`, `roundNumber` in `shared/utils/number.ts` and the `utilization`/`allocated` query keys go; `knip` confirms nothing dangles.
 10. **Schema extension fields in the header.** `getIpPoolExtraFields` keeps the pool schema's attributes and single relationships that the page does not already show; the header reads them with `useGetObject` only when there is at least one.
+
+## Deferred
+
+These came up in review and stay out of this change, because the number pool page has the same behaviour or the cost is small:
+
+- The allocations query has no page limit, so Refresh and Edit re-read every page already loaded. The number pool table does the same.
+- `GET_IP_POOL` asks for both pool kinds, although the page already knows the kind.
+- The error screens show the raw error message instead of saying what failed and what to do. The number pool page does the same.
+- The empty resource prefix card says "Edit the pool to add one" also to an engineer who cannot edit the pool.
+- The tie order by prefix is the page's choice. Showing the backend's real fill order for ties would need the backend to return it.
 
 ## Constitution Check
 
