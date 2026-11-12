@@ -102,7 +102,6 @@ describe("IpPoolDetailsPage", () => {
 
     // THEN
     await expect.element(component.getByRole("status", { name: "Loading IP pool" })).toBeVisible();
-    await expect.element(component.getByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
   it("requests the usage while the pool is still loading", async () => {

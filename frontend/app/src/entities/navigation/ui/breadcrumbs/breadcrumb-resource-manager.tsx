@@ -58,7 +58,7 @@ function ResourceSelector({
     return <BreadcrumbItemLoading />;
   }
 
-  if (error) {
+  if (error && !data) {
     return <BreadcrumbItemError error={error} />;
   }
 

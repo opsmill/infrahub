@@ -36,9 +36,9 @@ You'll see an overview of available resource pools. Each pool has a specific pur
 
 The pool page shows you:
 
-- **Header**: the pool's name and description, and one line that names the pool type, its IP namespace and its defaults, such as the address kind and the prefix length a new allocation gets when the request sets none.
-- **Resource prefixes**: how full the whole pool is, then the IP prefixes this pool allocates from, each with its usage on the default branch and on the branch you are viewing. When every resource prefix is of a kind that supports an allocation weight, the list shows each weight that is set and starts with the heaviest resource prefix, which the pool fills first.
-- **Allocated addresses**: the addresses the selected resource prefix already holds, with the identifier of the pool reservation when there is one, the kind and the ID. More rows load as you scroll. The resource prefix's name above the table opens its IPAM page.
+- **Header**: The pool's name and description, and one line that names the pool type, its IP namespace, and its defaults, such as the address kind and the prefix length a new allocation gets when the request sets none.
+- **Resource prefixes**: How full the whole pool is, then the IP prefixes this pool allocates from, each with its usage on the default branch and on the branch you are viewing. When every resource prefix is of a kind that supports an allocation weight, the list shows each weight that is set and starts with the resource prefix that has the highest allocation weight, which the pool fills first.
+- **Allocated addresses**: The addresses the selected resource prefix already holds, with the identifier of the pool reservation when there is one, the kind, and the ID. More rows load as you scroll. The resource prefix's name above the table opens its IPAM page.
 
 Select a resource prefix in the list to see what it holds. This gives you visibility into resource utilization across your entire infrastructure.
 
@@ -93,7 +93,7 @@ In the device view, notice the **Primary IP Address** field now contains an IP a
 
 This step demonstrates the most powerful feature of Infrahub's Resource Manager: an allocation made in one branch is reserved across all branches, even before merging.
 
-Stay on the `add-device` branch, navigate to **Object Management** → **Resource Managers** and click on the `Loopbacks pool`.
+Stay on the `add-device` branch, navigate to **Object Management** → **Resource Managers**, and click on the `Loopbacks pool`.
 
 Select the resource prefix `10.0.0.0/16` in the list to see all allocated addresses.
 
@@ -101,13 +101,13 @@ Scroll through the Allocated addresses table until you reach the address allocat
 
 Now switch back to the **main** branch using the branch selector and open the `Loopbacks pool` again.
 
-**Important observation**: the address allocated to `atl1-leaf99` is not in this list, because the table lists the allocations of the branch you are viewing. The address is still reserved, even though:
+**Important observation**: The address allocated to `atl1-leaf99` is not in this list, because the table lists the allocations of the branch you are viewing. The address is still reserved, even though:
 
 - You're viewing from the main branch
 - The device was created in the `add-device` branch
 - The branches haven't been merged yet
 
-The pool will not hand this address out to a request made on main or on any other branch. This prevents conflicts when teams work in parallel.
+The pool will not allocate this address to a request made on main or on any other branch. This prevents conflicts when teams work in parallel.
 
 ## What you've learned
 

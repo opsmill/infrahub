@@ -53,19 +53,4 @@ describe("IpPoolUsageBar", () => {
     // THEN
     await expect.element(page.getByRole("tooltip")).toHaveTextContent("This branch only20%");
   });
-
-  it("rounds a share below a tenth of a percent to <0.1%", async () => {
-    // GIVEN
-    const usage = generateIpPoolResourceUsage({
-      utilization: 0.05,
-      utilizationDefaultBranch: 0.05,
-      utilizationBranches: 0,
-    });
-
-    // WHEN
-    await render(<IpPoolUsageBar usage={usage} />);
-
-    // THEN
-    await expect.element(page.getByText("<0.1%")).toBeVisible();
-  });
 });

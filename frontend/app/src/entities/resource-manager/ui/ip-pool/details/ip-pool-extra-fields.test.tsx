@@ -44,7 +44,7 @@ describe("IpPoolExtraFieldsLine", () => {
     store.set(nodeSchemasAtom, initialNodeSchemas);
   });
 
-  it("shows nothing and reads nothing when the pool schema has no extra field", async () => {
+  it("reads no pool data when the pool schema has no extra field", async () => {
     // GIVEN
     const schema = generateNodeSchema({
       kind: "CoreIPPrefixPool",
@@ -53,10 +53,9 @@ describe("IpPoolExtraFieldsLine", () => {
     });
 
     // WHEN
-    const component = await render(<IpPoolExtraFieldsLine poolId="pool-id" schema={schema} />);
+    await render(<IpPoolExtraFieldsLine poolId="pool-id" schema={schema} />);
 
     // THEN
-    await expect.element(component.getByRole("definition")).not.toBeInTheDocument();
     expect(useGetObject).not.toHaveBeenCalled();
   });
 

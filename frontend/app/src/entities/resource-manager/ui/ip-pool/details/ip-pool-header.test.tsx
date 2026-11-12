@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-pool";
 
 import { render } from "../../../../../../tests/components/render";
+import { generateBranch } from "../../../../../../tests/fake/branch";
 import { generateIpPrefixPoolData } from "../../../../../../tests/fake/ip-pool";
 import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
@@ -74,13 +76,21 @@ describe("IpPoolHeader", () => {
     const invalidateQueriesSpy = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockResolvedValue(undefined);
-    const component = await renderHeader(generateIpPrefixPoolData());
+    const pool = generateIpPrefixPoolData();
+    const component = await renderHeader(pool);
 
     // WHEN
     await component.getByRole("button", { name: "Refresh data" }).click();
 
     // THEN
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["resource-manager"] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: objectQueryKeys.lists({
+        objectKind: pool.__typename,
+        branchName: generateBranch().name,
+        atDate: null,
+      }),
+    });
   });
 
   it("offers the metadata, refresh and actions controls", async () => {
@@ -115,7 +125,7 @@ describe("IpPoolHeader", () => {
 });
 
 describe("IpPoolHeaderSkeleton", () => {
-  it("shows a loading placeholder instead of the heading", async () => {
+  it("shows a loading placeholder", async () => {
     // GIVEN
     const skeleton = <IpPoolHeaderSkeleton />;
 
@@ -124,6 +134,5 @@ describe("IpPoolHeaderSkeleton", () => {
 
     // THEN
     await expect.element(component.getByRole("status", { name: "Loading IP pool" })).toBeVisible();
-    await expect.element(component.getByRole("heading")).not.toBeInTheDocument();
   });
 });

@@ -48,7 +48,7 @@ describe("BreadcrumbResourceManager", () => {
     store.set(genericSchemasAtom, initialGenericSchemas);
   });
 
-  it("links the resource prefix named in the address from the cached utilization", async () => {
+  it("links the resource prefix named in the address", async () => {
     // GIVEN
     store.set(genericSchemasAtom, [generateGenericSchema({ kind: RESOURCE_GENERIC_KIND })]);
     vi.mocked(useGetIpPoolUtilization).mockReturnValue({
@@ -67,5 +67,25 @@ describe("BreadcrumbResourceManager", () => {
       .element(component.getByRole("link", { name: secondResource?.display_label }))
       .toHaveAttribute("href", `/resource-manager/pool-id/resources/${secondResource?.id}`);
     expect(useGetIpPoolUtilization).toHaveBeenCalledWith("pool-id");
+  });
+
+  it("keeps the resource prefix link when a refresh fails", async () => {
+    // GIVEN
+    store.set(genericSchemasAtom, [generateGenericSchema({ kind: RESOURCE_GENERIC_KIND })]);
+    vi.mocked(useGetIpPoolUtilization).mockReturnValue({
+      data: utilization,
+      error: new Error("refresh failed"),
+      isPending: false,
+    } as unknown as ReturnType<typeof useGetIpPoolUtilization>);
+
+    // WHEN
+    const component = await renderBreadcrumb(
+      `/resource-manager/pool-id/resources/${secondResource?.id}`
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: secondResource?.display_label }))
+      .toBeVisible();
   });
 });

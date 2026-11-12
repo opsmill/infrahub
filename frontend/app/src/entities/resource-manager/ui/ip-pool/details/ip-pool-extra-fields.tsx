@@ -86,12 +86,12 @@ function RelationshipValue({ pool, name }: RelationshipValueProps) {
   );
 }
 
-export interface IpPoolExtraFieldsProps {
+export interface IpPoolExtraFieldsLineProps {
   poolId: string;
   schema: ModelSchema;
 }
 
-export function IpPoolExtraFieldsLine({ poolId, schema }: IpPoolExtraFieldsProps) {
+export function IpPoolExtraFieldsLine({ poolId, schema }: IpPoolExtraFieldsLineProps) {
   const fields = getIpPoolExtraFields(schema);
 
   if (fields.attributes.length === 0 && fields.relationships.length === 0) return null;

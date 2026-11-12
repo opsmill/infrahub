@@ -1,7 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -20,10 +19,7 @@ export function getIpPoolUtilizationQueryOptions(params: GetIpPoolUtilizationPar
   });
 }
 
-export function useGetIpPoolUtilization(
-  poolId: string,
-  config?: QueryConfig<typeof getIpPoolUtilizationQueryOptions>
-) {
+export function useGetIpPoolUtilization(poolId: string) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
@@ -35,6 +31,5 @@ export function useGetIpPoolUtilization(
       branchName: currentBranch.name,
       atDate: timeMachineDate,
     }),
-    ...config,
   });
 }
