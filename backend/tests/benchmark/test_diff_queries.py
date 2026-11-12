@@ -9,6 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import BuiltinTag
 from infrahub.core.query.diff import DiffCountChanges, DiffFieldNodesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -36,7 +37,7 @@ async def branch_with_changes(
     await group.new(db=db, name="group", members=changed_tags)
     await group.save(db=db)
     for tag in changed_tags:
-        branch_tag = await NodeManager.get_one(db=db, id=tag.id, branch=branch, raise_on_error=True)
+        branch_tag = await NodeManager.get_one(db=db, id=tag.id, branch=branch, kind=BuiltinTag, raise_on_error=True)
         branch_tag.description.value = "changed on the branch"
         await branch_tag.save(db=db)
 
