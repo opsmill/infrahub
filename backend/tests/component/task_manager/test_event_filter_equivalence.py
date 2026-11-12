@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
-from tests.helpers.event_filters import LabelEventFilter, filter_event_ids
+from pydantic import TypeAdapter
+from tests.helpers.event_filters import LabelEventFilter, filter_event_ids, filter_events
 from tests.helpers.task_manager_seed import seed_infrahub_event
 
 from infrahub.core.changelog.models import NodeChangelog
@@ -22,7 +23,7 @@ from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.events.proposed_change_action import ProposedChangeApprovedEvent, ProposedChangeMergedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.task_manager.event.models import InfrahubEventFilter
-from infrahub.task_manager.event.query import PrefectEvent
+from infrahub.task_manager.event.query import PrefectEvent, PrefectEventData, PrefectEventResponse
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -426,6 +427,21 @@ FILTER_CASES = [
         expected={"artifact_node_created", "artifact_created", "artifact_node_updated", "artifact_updated"},
     ),
     FilterCase(
+        name="proposed_change_without_event_type",
+        primary_node__ids=[PROPOSED_CHANGE_ID],
+        expected={
+            "proposed_change_approved",
+            "proposed_change_merged",
+            "proposed_change_branch_merged",
+            "proposed_change_branch_deleted",
+        },
+    ),
+    FilterCase(
+        name="group_without_event_type",
+        primary_node__ids=[str(GROUP_ID)],
+        expected={"group_auto_created"},
+    ),
+    FilterCase(
         name="node_and_artifact_by_resource_id",
         primary_node__ids=[ARTIFACT_ID, NODE_ID],
         event_type=[
@@ -530,11 +546,45 @@ def _copy(values: list[str] | None) -> list[str] | None:
     return list(values) if values is not None else None
 
 
+class YearOfEvents(PrefectEvent):
+    """Reads a year back, because the test task manager keeps 7 days by default and some seeded events are older."""
+
+    @classmethod
+    async def query_events(
+        cls,
+        client: PrefectClient,
+        limit: int,
+        filters: InfrahubEventFilter,
+        offset: int | None = None,
+        include_total: bool = True,
+    ) -> PrefectEventResponse:
+        page = await filter_events(
+            client=client,
+            event_filter=filters,
+            limit=limit,
+            offset=offset,
+            retention=RETENTION,
+            include_total=include_total,
+        )
+        return PrefectEventResponse(
+            count=page["total"], events=TypeAdapter(list[PrefectEventData]).validate_python(page["events"])
+        )
+
+
+async def _merged_event_ids(
+    client: PrefectClient, filters: list[InfrahubEventFilter], limit: int = 50, offset: int | None = None
+) -> list[str]:
+    response = await YearOfEvents.query_merged_events(
+        client=client, limit=limit, filters=filters, offset=offset, include_total=False
+    )
+    return [str(event.id) for event in response.events]
+
+
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FILTER_CASES])
 async def test_filter_returns_the_events_of_the_label_filter(
     test_case: FilterCase, seeded: dict[str, str], prefect_client: PrefectClient
 ) -> None:
-    """Each resource-ID filter returns the events of the label filter, page by page, with two exceptions.
+    """The resource-ID filters return the events of the label filter, page by page, with two exceptions.
 
     The exceptions are reused branch names, and a primary node combined with branch, provider or protocol conditions,
     which the label filter drops.
@@ -544,15 +594,14 @@ async def test_filter_returns_the_events_of_the_label_filter(
         branch_ids = await PrefectEvent.resolve_branch_ids(
             names=test_case.branches, current_branch_ids=test_case.current_branch_ids
         )
-    id_filter = InfrahubEventFilter.from_filters(
+    id_filters = InfrahubEventFilter.from_filters(
         order=test_case.order,
         account__ids=_copy(test_case.account__ids),
         branch_ids=branch_ids,
-        primary_node__ids=_copy(test_case.primary_node__ids),
         parent__ids=_copy(test_case.parent__ids),
         event_type=_copy(test_case.event_type),
         event_type_filter=test_case.event_type_filter,
-    )
+    ).for_primary_nodes(primary_node__ids=_copy(test_case.primary_node__ids))
     label_filter = LabelEventFilter.from_label_filters(
         order=test_case.order,
         account__ids=_copy(test_case.account__ids),
@@ -563,7 +612,7 @@ async def test_filter_returns_the_events_of_the_label_filter(
         event_type_filter=test_case.event_type_filter,
     )
 
-    id_events = await filter_event_ids(client=prefect_client, event_filter=id_filter, retention=RETENTION)
+    id_events = await _merged_event_ids(client=prefect_client, filters=id_filters)
     label_events = await filter_event_ids(client=prefect_client, event_filter=label_filter, retention=RETENTION)
 
     assert set(id_events) == {seeded[key] for key in test_case.expected}
@@ -572,9 +621,7 @@ async def test_filter_returns_the_events_of_the_label_filter(
     if test_case.label_expected is None:
         assert id_events == label_events
         for offset in (0, 2):
-            id_page = await filter_event_ids(
-                client=prefect_client, event_filter=id_filter, limit=2, offset=offset, retention=RETENTION
-            )
+            id_page = await _merged_event_ids(client=prefect_client, filters=id_filters, limit=2, offset=offset)
             label_page = await filter_event_ids(
                 client=prefect_client, event_filter=label_filter, limit=2, offset=offset, retention=RETENTION
             )

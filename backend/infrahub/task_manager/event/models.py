@@ -148,33 +148,70 @@ class InfrahubEventFilter(EventFilter):
         # Other events also carry the branch name on their resource, but not in its ID.
         return EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branch_names}))
 
-    def add_primary_node_filter(self, primary_node__ids: list[str] | None) -> None:
-        """Add the node conditions to the resource conditions set beforehand, so an event must match both.
+    def for_primary_nodes(self, primary_node__ids: list[str] | None) -> list[InfrahubEventFilter]:
+        """Return the filters that together match this filter's events of the primary nodes, each event once.
 
-        The indexed resource ID is matched too when every listed event type keeps the node ID in it.
+        The event types that keep the node ID in their resource ID are matched through that indexed ID. The other
+        event types carry the node only in a label, which has no index, so a filter of its own lists them.
         """
         if not primary_node__ids:
-            return
+            return [self]
 
-        labels: dict[str, list[str] | str] = {"infrahub.node.id": primary_node__ids}
-        listed_events = set(self.event.name or []) if self.event else set()
-        if listed_events and not listed_events & PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS:
-            labels = {
-                "prefect.resource.id": [
-                    resource_id
-                    for node_id in primary_node__ids
-                    for resource_id in (
-                        f"infrahub.node.{node_id}",
-                        node_id,
-                        f"infrahub.account.{node_id}",
-                        f"infrahub.proposed_change.{node_id}",
-                    )
-                ],
-                **labels,
-            }
+        listed = self.event.name if self.event and self.event.name else None
+        excluded_prefixes = (self.event.exclude_prefix if self.event else None) or []
+        if listed is None:
+            node_in_resource_id: EventNameFilter | None = EventNameFilter(
+                prefix=[f"{EVENT_NAMESPACE}."],
+                exclude_prefix=excluded_prefixes or None,
+                exclude_name=sorted(PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS),
+            )
+            node_in_label = [
+                name
+                for name in sorted(PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS)
+                if not name.startswith(tuple(excluded_prefixes))
+            ]
+        else:
+            names = [name for name in listed if name not in PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS]
+            node_in_resource_id = EventNameFilter(name=names) if names else None
+            node_in_label = [name for name in listed if name in PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS]
+
+        filters: list[InfrahubEventFilter] = []
+        if node_in_resource_id:
+            resource_ids = [
+                resource_id
+                for node_id in primary_node__ids
+                for resource_id in (
+                    f"infrahub.node.{node_id}",
+                    node_id,
+                    f"infrahub.account.{node_id}",
+                    f"infrahub.proposed_change.{node_id}",
+                )
+            ]
+            filters.append(
+                self._with_resource_labels(
+                    event=node_in_resource_id,
+                    labels={"prefect.resource.id": resource_ids, "infrahub.node.id": primary_node__ids},
+                )
+            )
+        if node_in_label:
+            filters.append(
+                self._with_resource_labels(
+                    event=EventNameFilter(name=node_in_label), labels={"infrahub.node.id": primary_node__ids}
+                )
+            )
+        return filters
+
+    def _with_resource_labels(self, event: EventNameFilter, labels: dict[str, list[str] | str]) -> InfrahubEventFilter:
+        """Return a copy for the event types, with the labels added to its resource conditions, so an event must match both."""
         resource = self.resource or EventResourceFilter()
         current_labels = resource.labels.root if resource.labels else {}
-        self.resource = resource.model_copy(update={"labels": ResourceSpecification({**current_labels, **labels})})
+        return self.model_copy(
+            update={
+                "event": event,
+                "resource": resource.model_copy(update={"labels": ResourceSpecification({**current_labels, **labels})}),
+            },
+            deep=True,
+        )
 
     def add_parent_filter(self, parent__ids: list[str] | None) -> None:
         if parent__ids:
@@ -217,7 +254,6 @@ class InfrahubEventFilter(EventFilter):
         account__ids: list[str] | None = None,
         related_node__ids: list[str] | None = None,
         parent__ids: list[str] | None = None,
-        primary_node__ids: list[str] | None = None,
         event_type: list[str] | None = None,
         event_type_filter: dict[str, Any] | None = None,
         exclude_prefixes: list[str] | None = None,
@@ -253,7 +289,6 @@ class InfrahubEventFilter(EventFilter):
         filters.add_branch_filter(branch_ids=branch_ids)
         filters.add_account_filter(account__ids=account__ids)
         filters.add_parent_filter(parent__ids=parent__ids)
-        filters.add_primary_node_filter(primary_node__ids=primary_node__ids)
         filters.add_related_node_filter(related_node__ids=related_node__ids)
 
         return filters

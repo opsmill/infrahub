@@ -287,12 +287,20 @@ without an index, so a label filter reads every related row in the range, while 
 | Branch | Related ID `infrahub.branch.<branch_id>`, role `infrahub.branch`, after the GraphQL resolver resolves names to IDs |
 | Parent event | Related ID `<parent_id>`, role `infrahub.ancestor_event`, plus the `infrahub.event_parent.id` label, because ancestors include grandparents |
 | Merged, rebased or migrated by branch name | Resource ID `infrahub.branch.<name>` when every listed event type is a branch event; otherwise the `infrahub.branch.name` label, which other event types also have |
-| Primary node | The resource ID forms `infrahub.node.<id>`, `<id>`, `infrahub.account.<id>` and `infrahub.proposed_change.<id>` plus the `infrahub.node.id` label, but only when the request lists event types and none of them is `infrahub.branch.merged`, `infrahub.branch.deleted` or `infrahub.group.auto_created`, which have the node only in a label; otherwise the label alone. In both cases these conditions are added to the resource conditions that `event_type_filter` sets (the group auto-create labels, or the branch names of merged, rebased or migrated events), so an event must match both |
+| Primary node | Two filters (`InfrahubEventFilter.for_primary_nodes`). The first matches the resource ID forms `infrahub.node.<id>`, `<id>`, `infrahub.account.<id>` and `infrahub.proposed_change.<id>` plus the `infrahub.node.id` label, for every requested event type except `infrahub.branch.merged`, `infrahub.branch.deleted` and `infrahub.group.auto_created`, which have the node only in a label. The second lists those three event types, as far as the request asks for them, and matches the label alone. In both filters these conditions are added to the resource conditions that `event_type_filter` sets (the group auto-create labels, or the branch names of merged, rebased or migrated events), so an event must match both |
 
 - Match the primary node with the `prefect.resource.id` label of `EventResourceFilter`, which Prefect
   looks up in the related-resources table, not with `EventResourceFilter.id`, which reads the
   `resource_id` column of the events table: the only index containing that column starts with the
   event name, which PostgreSQL 14 cannot skip over.
+- The two filters of a primary node are sent as two requests (`PrefectEvent.query_merged_events`).
+  Each returns its events up to the end of the page, and the pages are merged by time and then ID,
+  the order the task manager uses, before the offset is applied; a count is the sum of both
+  counts. The filters list different event types, so no event is returned twice.
+- An event type that sets the `infrahub.node.id` label on a resource whose ID is not one of the
+  four forms must be added to `PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS`; otherwise a node filter does
+  not return its events. `backend/tests/unit/task_manager/event/test_models.py` reads every event
+  class and fails until the event type is listed.
 - `backend/tests/component/task_manager/test_event_filter_equivalence.py` compares each filter with
   the label filter it replaced, kept in `backend/tests/helpers/event_filters.py`, so a Prefect
   upgrade that changes how resource IDs are stored fails CI.

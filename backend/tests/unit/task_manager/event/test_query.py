@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
 import httpx
 import pytest
 from prefect.exceptions import PrefectHTTPStatusError
 from structlog.testing import capture_logs
 
+from infrahub.events.constants import EventSortOrder
 from infrahub.exceptions import ServiceUnavailableError
 from infrahub.task_manager.event.models import InfrahubEventFilter
 from infrahub.task_manager.event.query import PrefectEvent, PrefectEventResponse
@@ -103,3 +107,90 @@ async def test_an_event_query_answered_after_a_server_error_returns_the_page() -
             "log_level": "warning",
         }
     ]
+
+
+def _event_id(number: int) -> str:
+    return f"00000000-0000-0000-0000-{number:012d}"
+
+
+def _stored_event(number: int, second: int) -> dict[str, Any]:
+    return {
+        "id": _event_id(number),
+        "event": "infrahub.node.updated",
+        "occurred": f"2026-10-04T12:00:{second:02d}Z",
+        "resource": {"prefect.resource.id": "infrahub.node.n1"},
+    }
+
+
+def _page(events: list[dict[str, Any]], total: int | None) -> httpx.Response:
+    return httpx.Response(status_code=200, json={"events": events, "total": total})
+
+
+@dataclass
+class MergedPageCase:
+    name: str
+    order: EventSortOrder
+    pages: list[list[dict[str, Any]]]
+    expected: list[int]
+
+
+MERGED_PAGE_CASES = [
+    MergedPageCase(
+        name="newest_first",
+        order=EventSortOrder.DESC,
+        pages=[
+            [_stored_event(number=5, second=3), _stored_event(number=1, second=1)],
+            [_stored_event(number=4, second=3), _stored_event(number=3, second=2)],
+        ],
+        expected=[4, 3],
+    ),
+    MergedPageCase(
+        name="oldest_first",
+        order=EventSortOrder.ASC,
+        pages=[
+            [_stored_event(number=1, second=1), _stored_event(number=5, second=3)],
+            [_stored_event(number=3, second=2), _stored_event(number=4, second=3)],
+        ],
+        expected=[3, 4],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MERGED_PAGE_CASES])
+async def test_the_pages_of_two_filters_are_merged_by_time_then_id(test_case: MergedPageCase) -> None:
+    """Each filter is asked for its events up to the end of the page, and the offset is applied to the merged events."""
+    filters = InfrahubEventFilter.from_filters(order=test_case.order).for_primary_nodes(primary_node__ids=["n1"])
+    task_manager = ScriptedTaskManager(
+        responses=[_page(events=test_case.pages[0], total=5), _page(events=test_case.pages[1], total=2)]
+    )
+
+    async with task_manager.client() as client:
+        response = await PrefectEvent.query_merged_events(
+            client=client, limit=2, filters=filters, offset=1, include_total=True
+        )
+
+    assert [str(event.id) for event in response.events] == [_event_id(number) for number in test_case.expected]
+    assert response.count == 7
+    assert [
+        (request.path, request.body["limit"], request.body["offset"], request.body["include_total"])
+        for request in task_manager.requests
+    ] == [(EVENTS_FILTER_PATH, 3, None, True)] * 2
+    assert sorted((request.body["filter"]["event"] for request in task_manager.requests), key=str) == sorted(
+        (event_filter.to_request()["event"] for event_filter in filters), key=str
+    )
+
+
+async def test_one_filter_is_read_with_the_offset_of_the_page() -> None:
+    """A single filter is sent once, with the limit and the offset of the page, and its count is returned as it is."""
+    task_manager = ScriptedTaskManager(responses=[_page(events=[_stored_event(number=1, second=1)], total=None)])
+
+    async with task_manager.client() as client:
+        response = await PrefectEvent.query_merged_events(
+            client=client, limit=2, filters=[InfrahubEventFilter()], offset=4, include_total=False
+        )
+
+    assert ([str(event.id) for event in response.events], response.count) == ([_event_id(1)], None)
+    assert [
+        (request.path, request.body["limit"], request.body["offset"], request.body["include_total"])
+        for request in task_manager.requests
+    ] == [(EVENTS_FILTER_PATH, 2, 4, False)]

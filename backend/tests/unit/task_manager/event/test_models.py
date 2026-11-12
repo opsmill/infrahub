@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import ast
+import importlib
+import inspect
+import pkgutil
+import textwrap
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
+import infrahub.events
 from infrahub.events.constants import EventSortOrder
-from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.events.utils import get_all_events
+from infrahub.task_manager.event.models import PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS, InfrahubEventFilter
+
+if TYPE_CHECKING:
+    from infrahub.events.models import InfrahubEvent
 
 
 class TestInfrahubEventFilter:
@@ -47,6 +57,11 @@ def _resource(event_filter: InfrahubEventFilter) -> dict[str, Any]:
     return event_filter.resource.model_dump(mode="json", exclude_none=True)
 
 
+def _event(event_filter: InfrahubEventFilter) -> dict[str, Any]:
+    assert event_filter.event is not None
+    return event_filter.event.model_dump(mode="json", exclude_none=True)
+
+
 def test_account_filter_matches_the_account_resource_id() -> None:
     """An account filter matches the indexed ID of the account related item."""
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, account__ids=["a1", "a2"])
@@ -75,61 +90,277 @@ def test_parent_filter_matches_the_ancestor_id_and_the_direct_parent_label() -> 
     ]
 
 
+NODE_RESOURCE_IDS = ["infrahub.node.n1", "n1", "infrahub.account.n1", "infrahub.proposed_change.n1"]
+EVENTS_WITH_THE_NODE_IN_A_LABEL = ["infrahub.branch.deleted", "infrahub.branch.merged", "infrahub.group.auto_created"]
+EVENTS_WITH_THE_NODE_IN_THE_RESOURCE_ID = [
+    "infrahub.account.logged_in",
+    "infrahub.account.logged_out",
+    "infrahub.artifact.created",
+    "infrahub.artifact.updated",
+    "infrahub.group.member_added",
+    "infrahub.group.member_removed",
+    "infrahub.node.created",
+    "infrahub.node.deleted",
+    "infrahub.node.updated",
+    "infrahub.proposed_change.approval_revoked",
+    "infrahub.proposed_change.approvals_revoked",
+    "infrahub.proposed_change.approved",
+    "infrahub.proposed_change.merged",
+    "infrahub.proposed_change.rejected",
+    "infrahub.proposed_change.rejection_revoked",
+    "infrahub.proposed_change.review_requested",
+    "infrahub.proposed_change_thread.created",
+    "infrahub.proposed_change_thread.updated",
+    "infrahub.validator.failed",
+    "infrahub.validator.passed",
+    "infrahub.validator.started",
+]
+
+
 @dataclass
 class PrimaryNodeFilterCase:
     name: str
     event_type: list[str] | None
-    expected_resource: dict[str, Any]
+    expected: list[tuple[dict[str, Any], dict[str, Any]]]
+    exclude_prefixes: list[str] | None = None
+    event_type_filter: dict[str, Any] | None = None
 
 
 PRIMARY_NODE_FILTER_CASES = [
     PrimaryNodeFilterCase(
         name="event_types_whose_resource_id_holds_the_node_id",
         event_type=["infrahub.node.updated", "infrahub.artifact.updated"],
-        expected_resource={
-            "labels": {
-                "prefect.resource.id": [
-                    "infrahub.node.n1",
-                    "n1",
-                    "infrahub.account.n1",
-                    "infrahub.proposed_change.n1",
-                ],
-                "infrahub.node.id": ["n1"],
-            },
-            "distinct": False,
-        },
+        expected=[
+            (
+                {"name": ["infrahub.node.updated", "infrahub.artifact.updated"]},
+                {"labels": {"prefect.resource.id": NODE_RESOURCE_IDS, "infrahub.node.id": ["n1"]}, "distinct": False},
+            )
+        ],
     ),
     PrimaryNodeFilterCase(
         name="no_event_type",
         event_type=None,
-        expected_resource={"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+        expected=[
+            (
+                {"prefix": ["infrahub."], "exclude_name": EVENTS_WITH_THE_NODE_IN_A_LABEL},
+                {"labels": {"prefect.resource.id": NODE_RESOURCE_IDS, "infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+            (
+                {"name": EVENTS_WITH_THE_NODE_IN_A_LABEL},
+                {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+        ],
     ),
     PrimaryNodeFilterCase(
-        name="branch_event_carrying_a_proposed_change",
+        name="no_event_type_without_the_account_events",
+        event_type=None,
+        exclude_prefixes=["infrahub.account."],
+        expected=[
+            (
+                {
+                    "prefix": ["infrahub."],
+                    "exclude_prefix": ["infrahub.account."],
+                    "exclude_name": EVENTS_WITH_THE_NODE_IN_A_LABEL,
+                },
+                {"labels": {"prefect.resource.id": NODE_RESOURCE_IDS, "infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+            (
+                {"name": EVENTS_WITH_THE_NODE_IN_A_LABEL},
+                {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="branch_event_carrying_a_proposed_change_with_another_event_type",
         event_type=["infrahub.proposed_change.approved", "infrahub.branch.merged"],
-        expected_resource={"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+        expected=[
+            (
+                {"name": ["infrahub.proposed_change.approved"]},
+                {"labels": {"prefect.resource.id": NODE_RESOURCE_IDS, "infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+            (
+                {"name": ["infrahub.branch.merged"]},
+                {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+        ],
     ),
     PrimaryNodeFilterCase(
         name="branch_deletion_carrying_a_proposed_change",
         event_type=["infrahub.branch.deleted"],
-        expected_resource={"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+        expected=[({"name": ["infrahub.branch.deleted"]}, {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False})],
     ),
     PrimaryNodeFilterCase(
         name="group_created_for_another_account",
         event_type=["infrahub.group.auto_created"],
-        expected_resource={"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+        expected=[
+            ({"name": ["infrahub.group.auto_created"]}, {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False})
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="branch_merged_by_name",
+        event_type=None,
+        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
+        expected=[
+            (
+                {"name": ["infrahub.branch.merged"]},
+                {"id": ["infrahub.branch.feature-x"], "labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+            )
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="branch_merged_by_name_with_another_event_type",
+        event_type=["infrahub.node.updated"],
+        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
+        expected=[
+            (
+                {"name": ["infrahub.node.updated"]},
+                {
+                    "labels": {
+                        "infrahub.branch.name": ["feature-x"],
+                        "prefect.resource.id": NODE_RESOURCE_IDS,
+                        "infrahub.node.id": ["n1"],
+                    },
+                    "distinct": False,
+                },
+            ),
+            (
+                {"name": ["infrahub.branch.merged"]},
+                {"labels": {"infrahub.branch.name": ["feature-x"], "infrahub.node.id": ["n1"]}, "distinct": False},
+            ),
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="group_creation_by_provider_and_protocol",
+        event_type=None,
+        event_type_filter={"group_auto_create": {"idp": ["provider1"], "protocol": ["oidc"]}},
+        expected=[
+            (
+                {"name": ["infrahub.group.auto_create_rejected", "infrahub.group.auto_create_capped"]},
+                {
+                    "labels": {
+                        "infrahub.security.idp": ["provider1"],
+                        "infrahub.security.protocol": ["oidc"],
+                        "prefect.resource.id": NODE_RESOURCE_IDS,
+                        "infrahub.node.id": ["n1"],
+                    },
+                    "distinct": False,
+                },
+            ),
+            (
+                {"name": ["infrahub.group.auto_created"]},
+                {
+                    "labels": {
+                        "infrahub.security.idp": ["provider1"],
+                        "infrahub.security.protocol": ["oidc"],
+                        "infrahub.node.id": ["n1"],
+                    },
+                    "distinct": False,
+                },
+            ),
+        ],
     ),
 ]
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PRIMARY_NODE_FILTER_CASES])
-def test_primary_node_filter(test_case: PrimaryNodeFilterCase) -> None:
-    """A primary node filter matches the indexed resource ID forms only when every listed event type keeps the node ID in it."""
+def test_primary_nodes_are_matched_by_resource_id_except_for_the_events_that_keep_the_node_in_a_label(
+    test_case: PrimaryNodeFilterCase,
+) -> None:
+    """One filter matches the indexed resource ID forms, and a second one lists the event types matched by label.
+
+    Both keep the branch, provider and protocol conditions of the event type filter.
+    """
     event_filter = InfrahubEventFilter.from_filters(
-        order=EventSortOrder.DESC, event_type=test_case.event_type, primary_node__ids=["n1"]
+        order=EventSortOrder.DESC,
+        event_type=test_case.event_type,
+        event_type_filter=test_case.event_type_filter,
+        exclude_prefixes=test_case.exclude_prefixes,
     )
 
-    assert _resource(event_filter) == test_case.expected_resource
+    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"])
+
+    assert [(_event(node_filter), _resource(node_filter)) for node_filter in filters] == test_case.expected
+
+
+def test_a_filter_without_a_primary_node_is_read_as_it_is() -> None:
+    """Without a primary node there is one filter to read, unchanged."""
+    event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, event_type=["infrahub.node.updated"])
+
+    assert event_filter.for_primary_nodes(primary_node__ids=None) == [event_filter]
+
+
+def test_the_filters_of_a_primary_node_keep_the_time_range_and_the_other_conditions() -> None:
+    """Each filter of a primary node keeps the order, the time range and the account of the filter it comes from."""
+    until = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
+    event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.ASC, account__ids=["a1"], until=until)
+
+    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"])
+
+    assert [
+        (node_filter.order.value, node_filter.to_request()["occurred"], _related(node_filter))
+        for node_filter in filters
+    ] == [
+        (
+            "ASC",
+            {"until": "2026-10-04T12:00:00Z"},
+            [{"id": ["infrahub.account.a1"], "role": ["infrahub.account"]}],
+        )
+    ] * 2
+
+
+def _node_id_expression_and_resource_id(function: ast.FunctionDef) -> tuple[str | None, str | None]:
+    """Return the source of the values a `get_resource` gives the node ID label and the resource ID, when it sets them."""
+    values: dict[str, str] = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.Dict):
+            for key, value in zip(node.keys, node.values, strict=True):
+                if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                    values[key.value] = ast.unparse(value)
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.targets[0], ast.Subscript)
+            and isinstance(node.targets[0].slice, ast.Constant)
+            and isinstance(node.targets[0].slice.value, str)
+        ):
+            values[node.targets[0].slice.value] = ast.unparse(node.value)
+    return values.get("infrahub.node.id"), values.get("prefect.resource.id")
+
+
+def _node_id_place(event_class: type[InfrahubEvent]) -> str | None:
+    """Tell whether an event that sets a node ID label keeps that ID in its resource ID, in a form a node filter matches."""
+    for klass in event_class.__mro__:
+        if "get_resource" not in klass.__dict__:
+            continue
+        function = ast.parse(textwrap.dedent(inspect.getsource(klass.__dict__["get_resource"]))).body[0]
+        assert isinstance(function, ast.FunctionDef)
+        node_id, resource_id = _node_id_expression_and_resource_id(function)
+        if node_id is None:
+            continue
+        matched_forms = {
+            node_id,
+            f"f'infrahub.node.{{{node_id}}}'",
+            f"f'infrahub.account.{{{node_id}}}'",
+            f"f'infrahub.proposed_change.{{{node_id}}}'",
+        }
+        return "resource_id" if resource_id in matched_forms else "label"
+    return None
+
+
+def test_the_events_matched_by_label_are_the_ones_that_keep_their_node_outside_the_resource_id() -> None:
+    """A node filter matches every other event type by resource ID, so an event type missing from the set is not returned."""
+    for module in pkgutil.iter_modules(infrahub.events.__path__):
+        importlib.import_module(f"infrahub.events.{module.name}")
+
+    event_names: dict[str, set[str]] = {"resource_id": set(), "label": set()}
+    for event_class in get_all_events():
+        if place := _node_id_place(event_class):
+            event_names[place].add(event_class.event_name)
+
+    assert event_names == {
+        "resource_id": set(EVENTS_WITH_THE_NODE_IN_THE_RESOURCE_ID),
+        "label": set(EVENTS_WITH_THE_NODE_IN_A_LABEL),
+    }
+    assert event_names["label"] == PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS
 
 
 @dataclass
@@ -191,67 +422,6 @@ def test_branch_name_filter(test_case: BranchNameFilterCase) -> None:
 
     assert event_filter.event is not None
     assert event_filter.event.name == test_case.expected_event_names
-    assert _resource(event_filter) == test_case.expected_resource
-
-
-@dataclass
-class PrimaryNodeWithEventTypeFilterCase:
-    name: str
-    event_type: list[str] | None
-    event_type_filter: dict[str, Any]
-    expected_resource: dict[str, Any]
-
-
-PRIMARY_NODE_WITH_EVENT_TYPE_FILTER_CASES = [
-    PrimaryNodeWithEventTypeFilterCase(
-        name="branch_merged_by_name",
-        event_type=None,
-        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
-        expected_resource={
-            "id": ["infrahub.branch.feature-x"],
-            "labels": {"infrahub.node.id": ["n1"]},
-            "distinct": False,
-        },
-    ),
-    PrimaryNodeWithEventTypeFilterCase(
-        name="branch_merged_by_name_with_another_event_type",
-        event_type=["infrahub.node.updated"],
-        event_type_filter={"branch_merged": {"branches": ["feature-x"]}},
-        expected_resource={
-            "labels": {"infrahub.branch.name": ["feature-x"], "infrahub.node.id": ["n1"]},
-            "distinct": False,
-        },
-    ),
-    PrimaryNodeWithEventTypeFilterCase(
-        name="group_creation_by_provider_and_protocol",
-        event_type=None,
-        event_type_filter={"group_auto_create": {"idp": ["provider1"], "protocol": ["oidc"]}},
-        expected_resource={
-            "labels": {
-                "infrahub.security.idp": ["provider1"],
-                "infrahub.security.protocol": ["oidc"],
-                "infrahub.node.id": ["n1"],
-            },
-            "distinct": False,
-        },
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    "test_case", [pytest.param(tc, id=tc.name) for tc in PRIMARY_NODE_WITH_EVENT_TYPE_FILTER_CASES]
-)
-def test_primary_node_filter_keeps_the_event_type_filter_conditions(
-    test_case: PrimaryNodeWithEventTypeFilterCase,
-) -> None:
-    """A primary node filter adds its conditions to the branch or login conditions of the event type filter instead of replacing them."""
-    event_filter = InfrahubEventFilter.from_filters(
-        order=EventSortOrder.DESC,
-        event_type=test_case.event_type,
-        event_type_filter=test_case.event_type_filter,
-        primary_node__ids=["n1"],
-    )
-
     assert _resource(event_filter) == test_case.expected_resource
 
 

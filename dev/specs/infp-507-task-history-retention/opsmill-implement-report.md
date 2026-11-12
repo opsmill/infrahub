@@ -30,7 +30,7 @@ The review fixes rebased the stack after the chunks ran, and the quickstart fix 
 | 2 | Cleanup job and routes (PR 2) | T001, T008, T009, T010, T014, T015, T016 | 7 ✅ | `ceb753f80`, `bb1658bdb` | Postgres 14 and 18 probe (not committed): lock `409`, concurrency with Prefect's vacuum, and a skipped table on lock timeout. |
 | 3 | Client, CLI, upgrade (PR 2) | T011, T012, T013, T017, T018, T019, T020; rewrite modes | 7 ✅ | `d30a15539`, `024366bf2` | Rewrite modes `never` / `if_freed` / `always` (see §6). |
 | 3b-3d | Review rounds on PR 2 | review fixes | ✅ | `18ec67104` … `f966842a5` | A running job's rewrite mode is raised in the task manager; the job lifecycle lives in one place. |
-| 4 | Activities backend (PR 3) | T025 (cherry-pick of #10379), T026-T028, T030-T033 | 8 ✅ | `64ca3a132`, `fb9150270` (#10379), `3425a2efb`, `2cf6487d5` | The "Primary Node" filter keeps label matching unless the request lists event types (see §6). `include_total` keeps #10379's name. |
+| 4 | Activities backend (PR 3) | T025 (cherry-pick of #10379), T026-T028, T030-T033 | 8 ✅ | `64ca3a132`, `fb9150270` (#10379), `3425a2efb`, `2cf6487d5` | The "Primary Node" filter keeps label matching unless the request lists event types (see §6; changed on 12 Nov 2026 to the recommendation of §6 item 6). `include_total` keeps #10379's name. |
 | 5 | Activities frontend and E2E (PR 3) | T029, T034, T035, T036 | 4 ✅ | `53a9595a6`, `728ba0b4a` | No tie offset, because Prefect orders events by time only (changed later: the page continues inside one time with an offset, and the task manager orders the events of one time by ID). The proposed-change timeline pages with `since`. |
 | 6 | Event-type guard (PR 4) | T040, T044, T045 | 3 ✅ | `acc2f37f4`, `7d8538e97` | T044 needed no production code. T045's sizing guidance went to the docs (T053). |
 | 7 | Background services (PR 5) | T048, T049 | 2 ✅ | `07ab66069`, `fb02857f8`, `abb986066` | The background services now log at `INFRAHUB_LOG_LEVEL` (INFO), not Prefect's WARNING. |
@@ -192,6 +192,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 5. **A failed cleanup no longer stops the upgrade** (superseded on 11 Oct, item 13: the upgrade runs no cleanup): the error and the command to finish it are printed, and the upgrade goes on to the branch rebase. Before, it stopped while exiting 0.
 6. **"Primary Node" Activities filter**: it keeps today's label matching unless the request lists event types. ID matching would drop branch merged/deleted and group auto-created events from the timelines.
    [CLAUDE RECOMMENDED – based on the task manager owning its event query] Match the indexed resource ID, OR the label limited to those three event types. This needs the tech owner's decision, and is in PR 3's body.
+   Implemented on 12 Nov 2026 in opsmill/infrahub#11289: the Infrahub server sends one filter that matches the indexed resource ID and one that lists the three event types and matches the label, and merges the two pages by time and then ID. Whether the tech owner has reviewed it is not known.
 7. **Carrying opsmill/infrahub#10379**: PR 3 carries the two commits with `cherry-pick -x`. Nothing was posted on that PR.
 8. **Reviews**: cubic ran on PR 1 and PR 2 only, because the user asked to stop after PR 2. `/pre-ci` ran before every push. One stack-wide `speckit-review-run` ran at the end, and its fixes were applied on the branch that introduced each issue, then the stack was rebased and force-pushed with lease.
 9. **GitHub stacked PRs**: the `github/gh-stack` extension was installed. PRs were created with `gh pr create --draft` and linked with `gh stack link`, never `gh stack submit`, which may rewrite the PR bodies.
@@ -219,7 +220,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
 ## 7. Suggested next steps
 
 1. **Maintainer approval of the constitution deviation**: the cleanup route deletes data without authentication (Principle VI). It is recorded in PR 2's body.
-2. **Tech owner decision on the "Primary Node" filter** (§6 item 6).
+2. **Tech owner decision on the "Primary Node" filter** (§6 item 6): the recommended option is implemented since 12 Nov 2026.
 3. **Helm chart PR (T050), in the same release**: [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100), a draft.
    - The Enterprise presets start the separate background services pod with `infrahub tasks background-services`, and the retention variables go in `prefect-server.global.prefect.env`; the upgrade hook is unchanged.
    - Merge it only once the chart's images move to Infrahub 1.13: earlier images do not have the command, so the presets' background services pod would fail to start.

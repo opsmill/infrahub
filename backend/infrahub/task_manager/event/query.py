@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.timestamp import Timestamp
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.filters import EventNameFilter, EventResourceFilter
+from prefect.events.filters import EventOrder as PrefectEventOrder
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
@@ -449,6 +450,42 @@ class PrefectEvent:
         )
 
     @classmethod
+    async def query_merged_events(
+        cls,
+        client: PrefectClient,
+        limit: int,
+        filters: list[InfrahubEventFilter],
+        offset: int | None = None,
+        include_total: bool = True,
+    ) -> PrefectEventResponse:
+        """Return the page of the events that the filters match together, ordered by time and then ID as one filter is.
+
+        The filters must match different events and have the same order. The count is the sum of their counts.
+        """
+        if len(filters) == 1:
+            return await cls.query_events(
+                client=client, limit=limit, filters=filters[0], offset=offset, include_total=include_total
+            )
+
+        skipped = offset or 0
+        # The offset counts the events of every filter, so each filter returns its events up to the end of the page.
+        responses = await asyncio.gather(
+            *(
+                cls.query_events(
+                    client=client, limit=skipped + limit, filters=event_filter, include_total=include_total
+                )
+                for event_filter in filters
+            )
+        )
+        events = sorted(
+            (event for response in responses for event in response.events),
+            key=lambda event: (event.occurred, event.id),
+            reverse=filters[0].order == PrefectEventOrder.DESC,
+        )
+        count = sum(response.count or 0 for response in responses) if include_total else None
+        return PrefectEventResponse(count=count, events=events[skipped : skipped + limit])
+
+    @classmethod
     async def resolve_branch_ids(cls, names: list[str], current_branch_ids: Mapping[str, str]) -> list[str]:
         """Return the ID of each named branch: the current branch, else the newest deletion of that name inside the read window.
 
@@ -489,7 +526,7 @@ class PrefectEvent:
     async def query(
         cls,
         fields: dict[str, Any],
-        event_filter: InfrahubEventFilter,
+        event_filters: list[InfrahubEventFilter],
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
@@ -508,8 +545,8 @@ class PrefectEvent:
         include_total = "count" in fields
 
         async with get_client(sync_client=False) as client:
-            response = await cls.query_events(
-                client=client, filters=event_filter, limit=limit, offset=offset, include_total=include_total
+            response = await cls.query_merged_events(
+                client=client, filters=event_filters, limit=limit, offset=offset, include_total=include_total
             )
             nodes = [{"node": event.to_graphql()} for event in response.events]
 

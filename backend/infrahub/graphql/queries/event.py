@@ -101,7 +101,6 @@ class Events(ObjectType):
             event_type=event_type,
             event_type_filter=event_type_filter,
             related_node__ids=related_node__ids,
-            primary_node__ids=primary_node__ids,
             parent__ids=parent__ids,
             since=since,
             until=until,
@@ -112,7 +111,7 @@ class Events(ObjectType):
 
         return await Events.query(
             info=info,
-            event_filter=event_filter,
+            event_filters=event_filter.for_primary_nodes(primary_node__ids=primary_node__ids),
             limit=limit,
             offset=offset,
         )
@@ -121,7 +120,7 @@ class Events(ObjectType):
     async def query(
         cls,
         info: GraphQLResolveInfo,
-        event_filter: InfrahubEventFilter,
+        event_filters: list[InfrahubEventFilter],
         limit: int,
         offset: int | None = None,
     ) -> dict[str, Any]:
@@ -129,7 +128,7 @@ class Events(ObjectType):
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,
-            event_filter=event_filter,
+            event_filters=event_filters,
             limit=limit,
             offset=offset,
         )
