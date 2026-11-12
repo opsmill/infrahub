@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch.enums import BranchStatus
@@ -9,6 +9,8 @@ from infrahub.permissions.constants import BranchRelativePermissionDecision, Per
 from infrahub.permissions.types import AssignedPermissions, get_global_permission_for_kind
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.account import ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes

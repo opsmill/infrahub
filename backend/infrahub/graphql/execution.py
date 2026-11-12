@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLSchema, execute, parse, validate
 from graphql.error import GraphQLError
@@ -10,6 +10,8 @@ from graphql.execution import ExecutionResult
 from graphql.type import validate_schema
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from graphql import ExecutionContext, GraphQLFieldResolver, GraphQLTypeResolver
     from graphql.execution import Middleware
     from graphql.language import Source

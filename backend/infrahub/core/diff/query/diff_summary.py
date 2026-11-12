@@ -1,7 +1,6 @@
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Self
 
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp

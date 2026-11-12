@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mutation, String
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MutationAction

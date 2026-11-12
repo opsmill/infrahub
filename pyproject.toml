@@ -580,7 +580,6 @@ allow-dunder-method-names = [
     "TD",       # flake8-todos
     "TID252",   # Replace relative imports from parent modules with absolute imports
     "UP031",    # Use format specifiers instead of percent format
-    "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
 "**/graphql_queries/*.py" = [

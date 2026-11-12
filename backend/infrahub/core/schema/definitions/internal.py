@@ -4,10 +4,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from types import GenericAlias
-from typing import Any
+from typing import Any, NotRequired
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
