@@ -18,11 +18,9 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
-    FullRelationshipIdentifier,
     RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
     RelationshipDeleteQuery,
-    RelationshipGetByIdentifierInWindowsQuery,
     RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
     RelationshipPeerData,
@@ -35,7 +33,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.helpers.schema.agnostic_retirement import AGNOSTIC_DELETE_SCHEMA, MEMBER_KIND, TEAM_KIND
 
 
 class DummyRelationshipQuery(RelationshipQuery):
@@ -1309,50 +1306,6 @@ async def test_query_RelationshipGetByIdentifierQuery(
     )
     await query.execute(db=db)
     assert await query.count(db=db) == 4
-
-
-async def test_query_RelationshipGetByIdentifierQuery_returns_each_window_holding_the_link(
-    db: InfrahubDatabase, default_branch: Branch
-) -> None:
-    registry.schema.register_schema(schema=AGNOSTIC_DELETE_SCHEMA, branch=default_branch.name)
-    team_1 = await Node.init(db=db, schema=TEAM_KIND, branch=default_branch)
-    await team_1.new(db=db, name="team-1")
-    await team_1.save(db=db)
-    team_2 = await Node.init(db=db, schema=TEAM_KIND, branch=default_branch)
-    await team_2.new(db=db, name="team-2")
-    await team_2.save(db=db)
-    moved_member = await Node.init(db=db, schema=MEMBER_KIND, branch=default_branch)
-    await moved_member.new(db=db, name="moved-member", team=team_1)
-    await moved_member.save(db=db)
-    branch = await create_branch(db=db, branch_name="branch-holds-team-1")
-    branch_member = await Node.init(db=db, schema=MEMBER_KIND, branch=branch)
-    await branch_member.new(db=db, name="branch-member", team=team_1)
-    await branch_member.save(db=db)
-    moved_member_main = await NodeManager.get_one(db=db, id=moved_member.id, branch=default_branch, raise_on_error=True)
-    await moved_member_main.team.update(db=db, data=team_2)  # type: ignore[attr-defined]
-    await moved_member_main.save(db=db)
-
-    query = await RelationshipGetByIdentifierInWindowsQuery.init(
-        db=db,
-        branch=default_branch,
-        full_identifiers=[
-            FullRelationshipIdentifier(
-                source_kind=TEAM_KIND,
-                identifier="agnosticretire_member__agnosticretire_team",
-                destination_kind=MEMBER_KIND,
-            )
-        ],
-        source_ids=[team_1.id],
-    )
-    await query.execute(db=db)
-
-    assert {
-        (str(peer.peer_data.source_id), str(peer.peer_data.destination_id), peer.window_name)
-        for peer in query.get_peers()
-    } == {
-        (team_1.id, moved_member.id, branch.name),
-        (team_1.id, branch_member.id, branch.name),
-    }
 
 
 async def test_query_RelationshipGetPeerQuery_branch_agnostic(
