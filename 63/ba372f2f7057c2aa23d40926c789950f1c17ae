@@ -1,0 +1,19 @@
+dev/specs/005-enterprise-licensing-infp-472/spec.md
+  s_1df8eb94da3d51::t_874d833c313cae 186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63ba372f2f7057c2aa23d40926c789950f1c17ae",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
