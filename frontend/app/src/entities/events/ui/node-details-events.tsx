@@ -14,6 +14,8 @@ import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-lab
 import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 5;
+// The events API refuses a limit above 50.
+const MAX_SUB_EVENTS = 50;
 
 export const NodeEvents = ({
   parentId,
@@ -29,7 +31,7 @@ export const NodeEvents = ({
   const { isPending, data, error } = useGetEvents({
     parentIds: parentId ? [parentId] : undefined,
     relatedNodeIds: objectId ? [objectId] : undefined,
-    limit: parentId ? 0 : maxEvent,
+    limit: parentId ? MAX_SUB_EVENTS : maxEvent,
   });
 
   const {

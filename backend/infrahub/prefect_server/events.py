@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from fastapi.param_functions import Depends
 from prefect.server.database import PrefectDBInterface, provide_database_interface
+from sqlalchemy import text
 
 from .database import query_events
 from .models import InfrahubEventfilterInput, InfrahubEventPage
@@ -18,8 +19,17 @@ async def read_events(
     event_filter.filter.set_prefix()
 
     async with db.session_context() as session:
+        if session.bind is not None and session.bind.dialect.name == "postgresql":
+            # Postgres may switch a prepared statement to a generic plan after five executions,
+            # and for these event filters that plan is a quadratic join that stalls for tens of seconds.
+            await session.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
         events, total = await query_events(
-            session=session, filter=event_filter.filter, page_size=event_filter.limit, offset=event_filter.offset
+            session=session,
+            filter=event_filter.filter,
+            retention=event_filter.retention,
+            page_size=event_filter.limit,
+            offset=event_filter.offset,
+            include_total=event_filter.include_total,
         )
 
         return InfrahubEventPage(

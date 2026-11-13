@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.constants import GlobalPermissions
+from infrahub.core.query.branch import BranchGetIdsByNameQuery
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -18,10 +19,17 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
+
+
+async def _current_branch_ids(db: InfrahubDatabase, names: list[str]) -> dict[str, str]:
+    query = await BranchGetIdsByNameQuery.init(db=db, names=[name for name in names if name])
+    await query.execute(db=db)
+    return {branch.name: branch.uuid for branch in query.get_data()}
 
 
 class Events(ObjectType):
@@ -74,15 +82,25 @@ class Events(ObjectType):
             except PermissionDeniedError:
                 exclude_prefixes = [ACCOUNT_EVENT_PREFIX]
 
+        branch_ids: list[str] | None = None
+        if branches:
+            async with graphql_context.db.start_session(read_only=True) as db:
+                current_branch_ids = await _current_branch_ids(db=db, names=branches)
+            branch_ids = await PrefectEvent.resolve_branch_ids(
+                names=branches,
+                current_branch_ids=current_branch_ids,
+            )
+            if not branch_ids:
+                return {"count": 0, "edges": []}
+
         event_filter = InfrahubEventFilter.from_filters(
             ids=ids,
-            branches=branches,
+            branch_ids=branch_ids,
             account__ids=account__ids,
             has_children=has_children,
             event_type=event_type,
             event_type_filter=event_type_filter,
             related_node__ids=related_node__ids,
-            primary_node__ids=primary_node__ids,
             parent__ids=parent__ids,
             since=since,
             until=until,
@@ -93,7 +111,7 @@ class Events(ObjectType):
 
         return await Events.query(
             info=info,
-            event_filter=event_filter,
+            event_filters=event_filter.for_primary_nodes(primary_node__ids=primary_node__ids),
             limit=limit,
             offset=offset,
         )
@@ -102,7 +120,7 @@ class Events(ObjectType):
     async def query(
         cls,
         info: GraphQLResolveInfo,
-        event_filter: InfrahubEventFilter,
+        event_filters: list[InfrahubEventFilter],
         limit: int,
         offset: int | None = None,
     ) -> dict[str, Any]:
@@ -110,7 +128,7 @@ class Events(ObjectType):
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,
-            event_filter=event_filter,
+            event_filters=event_filters,
             limit=limit,
             offset=offset,
         )
@@ -137,8 +155,14 @@ Event = Field(
     parent__ids=List(
         NonNull(String), description="Search events that has any of the indicated event ids listed as parents"
     ),
-    since=DateTime(required=False, description="Search events since this timestamp, defaults to 180 days back"),
-    until=DateTime(required=False, description="Search events until this timestamp, defaults the current time"),
+    since=DateTime(
+        required=False,
+        description=(
+            "Search events since this timestamp, defaults to the activity log retention before until, "
+            "or at least 180 days before until when the task manager does not delete old events"
+        ),
+    ),
+    until=DateTime(required=False, description="Search events until this timestamp, defaults to the current time"),
     branches=List(NonNull(String), required=False, description="Filter the query to specific branches"),
     account__ids=List(NonNull(String), required=False, description="Filter the query to specific accounts"),
     ids=List(NonNull(String)),
