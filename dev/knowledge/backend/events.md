@@ -244,6 +244,9 @@ the filter's `until`, that has one of the filter's event types: one read finds i
 range that holds no such event returns an empty page without reading a window. Counting from
 that event instead of from `until` keeps the first window from being empty when the newest
 Infrahub events are old, as on a restored backup, where the whole range would otherwise be read.
+A few newer events of the filter's event types move the first window to them, and the page then
+reads the wider windows: a login stores an `infrahub.account.logged_in` event, so this happens to
+a request that lists no event type from a user who can view account events.
 Within one time, events are ordered by ID, so an `offset` skips the same events in every request.
 The range starts at the filter's `since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
 manager's event retention, or at least 180 days when the task manager does not delete old events,
