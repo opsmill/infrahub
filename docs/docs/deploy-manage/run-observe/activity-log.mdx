@@ -59,6 +59,54 @@ There are several ways to hone your view in the global activity log:
 ![Activity logs filters - primary](../../media/topics/activity-logs/activity_log_global_filters_primary.png)
 ![Activity logs filters - children](../../media/topics/activity-logs/activity_log_global_filters_children.png)
 
+## Querying the activity log over the API
+
+Use the `InfrahubEvent` GraphQL query to read the activity log from a script: collect every operation in an incident window, or line those operations up against the data as it stood at the time.
+
+```graphql title="Events in a time range"
+query IncidentEvents {
+  InfrahubEvent(
+    since: "2026-03-09T00:00:00Z"
+    until: "2026-03-10T00:00:00Z"
+    branches: ["main"]
+  ) {
+    count
+    edges {
+      node {
+        id
+        event
+        branch
+        occurred_at
+        account_id
+        primary_node { id kind }
+      }
+    }
+  }
+}
+```
+
+`since` defaults to 180 days back and `until` defaults to the current time. A query that omits `since` therefore returns only the last 180 days rather than the full history, and nothing in the response says so. Set `since` explicitly when you need events older than 180 days.
+
+The filters available in the web interface map onto these parameters, and the query accepts several that the interface does not expose:
+
+| Parameter | Selects |
+|---|---|
+| `since`, `until` | Events in a time range |
+| `branches` | Events on specific branches |
+| `account__ids` | Events initiated by specific accounts |
+| `event_type` | Events matching a type, such as `infrahub.node.updated` |
+| `event_type_filter` | Filters specific to one event type |
+| `primary_node__ids` | Events whose primary node is one of these |
+| `related_node__ids` | Events whose related nodes include one of these |
+| `parent__ids` | Events listing one of these as a parent |
+| `has_children` | Events that did or did not trigger child events |
+| `level` | Root events (`0`) or a given depth of child event |
+| `ids` | Specific events by ID |
+| `order` | Sort order, descending by default |
+| `limit`, `offset` | Page through the results |
+
+See [Infrahub Events](../../reference/infrahub-events/overview.mdx) for the event types and the fields each one carries.
+
 ## Viewing event details
 
 If you choose **View more** from the global or object-level list, a separate detail page or popover will show up. Additional details are shown in this view, such as:

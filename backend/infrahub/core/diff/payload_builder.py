@@ -3,16 +3,34 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub import config
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.database import InfrahubDatabase
 
 
 log = get_logger(__name__)
+
+
+async def get_stored_display_labels(db: InfrahubDatabase, branch_name: str, node_ids: Iterable[str]) -> dict[str, str]:
+    """Return the display labels stored on these nodes, keyed by node id, as seen from the branch.
+
+    The stored ``display_label`` attribute is read without building a node object. A node is
+    missing from the result when it is not active on the branch or when its stored display label
+    is empty or absent.
+    """
+    stored_labels = await NodeManager.get_stored_labels(
+        db=db, ids=list(node_ids), branch=branch_name, label_names=[DISPLAY_LABEL_ATTRIBUTE_NAME]
+    )
+    return {
+        node_id: labels.display_label for node_id, labels in stored_labels.items() if labels.display_label is not None
+    }
 
 
 async def get_display_labels_per_kind(

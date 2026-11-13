@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -28,7 +29,7 @@ from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
-from .conftest import QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
+from .conftest import FLOW_RUN_LOGGER, QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -60,6 +61,15 @@ query GetDeviceWithTags($ids: [ID!]!) {
                 }
             }
         }
+    }
+}
+"""
+
+# Reads the tag name inside a fragment on BuiltinTag, which maps back to the owning device like a read outside the fragment.
+QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
+query GetDeviceWithFragmentTags($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges { node { name { value } tags { edges { node { ... on BuiltinTag { name { value } } } } } } }
     }
 }
 """
@@ -181,6 +191,45 @@ GENERATOR_DISPATCH_CASES = [
 ]
 
 
+@dataclass
+class GeneratorWideningLogCase:
+    name: str
+    definition_key: str
+    diff: list[DiffEntry]
+    expected_warnings: list[str]
+    expected_keys: list[str]
+
+
+ALL_INSTANCES = ["dev1_id", "dev2_id", "dev3_id", "dev4_id"]
+
+GENERATOR_WIDENING_LOG_CASES = [
+    GeneratorWideningLogCase(
+        name="non_unique_query_names_target_uniqueness",
+        definition_key="gendef_non_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[
+            "Generator definition device-generator: the query does not guarantee unique targets. "
+            "All targets will be processed."
+        ],
+        expected_keys=ALL_INSTANCES,
+    ),
+    GeneratorWideningLogCase(
+        name="change_read_through_a_fragment_narrows_to_its_owner_and_logs_no_widening",
+        definition_key="gendef_fragment_tags",
+        diff=[DiffEntry(id_key="tag_id", kind=InfrahubKind.TAG, fields=["name"])],
+        expected_warnings=[],
+        expected_keys=["dev1_id"],
+    ),
+    GeneratorWideningLogCase(
+        name="narrowed_selection_logs_no_widening",
+        definition_key="gendef_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[],
+        expected_keys=["dev1_id"],
+    ),
+]
+
+
 class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
@@ -236,9 +285,14 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     ) -> dict[str, Any]:
         await load_schema(db=db, schema=GENERATOR_SCHEMA, update_db=True)
 
+        tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+        await tag.new(db=db, name="blue")
+        await tag.save(db=db)
+
         # --- Devices on the default branch (inherited by the source branch on fork) ---
+        # Only the first device carries the tag, so a tag change maps back to that device alone.
         dev1 = await Node.init(db=db, schema="TestNetworkDevice")
-        await dev1.new(db=db, name="dev1", color="red", description="Device 1")
+        await dev1.new(db=db, name="dev1", color="red", description="Device 1", tags=[tag])
         await dev1.save(db=db)
 
         dev2 = await Node.init(db=db, schema="TestNetworkDevice")
@@ -277,6 +331,10 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         query_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
         await query_tags.new(db=db, name="GetDeviceWithTags", query=QUERY_UNIQUE_WITH_TAGS)
         await query_tags.save(db=db)
+
+        query_fragment_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
+        await query_fragment_tags.new(db=db, name="GetDeviceWithFragmentTags", query=QUERY_UNIQUE_WITH_FRAGMENT_TAGS)
+        await query_fragment_tags.save(db=db)
 
         # --- Target group with the four devices that have instances ---
         targets_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -320,6 +378,27 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         )
         await gendef_new_node.save(db=db)
 
+        # --- Separate definition + group for the orphaned-instance scenario ---
+        orphan_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await orphan_group.new(db=db, name="generator-targets-orphan", members=[dev1])
+        await orphan_group.save(db=db)
+
+        gendef_orphan_node = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+        await gendef_orphan_node.new(
+            db=db,
+            name="device-generator-orphan",
+            query=query_unique,
+            repository=repo,
+            targets=orphan_group,
+            file_path="generators/device.py",
+            class_name="DeviceGenerator",
+            parameters={"value": {"name": "name__value"}},
+            convert_query_response=False,
+            execute_in_proposed_change=True,
+            execute_after_merge=True,
+        )
+        await gendef_orphan_node.save(db=db)
+
         # --- Source branch is created after all AWARE nodes exist on main ---
         source_branch_obj = await create_branch(branch_name=SOURCE_BRANCH, db=db)
         await load_schema(db=db, schema=GENERATOR_SCHEMA, branch_name=SOURCE_BRANCH, update_db=False)
@@ -350,6 +429,33 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             )
             await query_group.save(db=db)
 
+        # --- Instance whose target is deleted ---
+        orphan_instances = {}
+        dev_deleted = await Node.init(db=db, schema="TestNetworkDevice", branch=source_branch_obj)
+        await dev_deleted.new(db=db, name="dev-deleted", color="white", description="Deleted device")
+        await dev_deleted.save(db=db)
+        for name, device in (("live", dev1), ("orphan", dev_deleted)):
+            instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE, branch=source_branch_obj)
+            await instance.new(
+                db=db,
+                name=f"orphan-def-instance-{name}",
+                status=GeneratorInstanceStatus.READY.value,
+                object=device,
+                definition=gendef_orphan_node,
+            )
+            await instance.save(db=db)
+            orphan_instances[name] = instance
+        await dev_deleted.delete(db=db)
+        live_query_group = await Node.init(db=db, schema="CoreGraphQLQueryGroup", branch=source_branch_obj)
+        await live_query_group.new(
+            db=db,
+            name="qg-orphan-def-live",
+            query=str(query_unique.id),
+            members=[dev1],
+            subscribers=[orphan_instances["live"]],
+        )
+        await live_query_group.save(db=db)
+
         pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
         await pc.new(
             db=db,
@@ -370,15 +476,20 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             destination_commit="dest-commit-sha",
         )
 
+        definition_ids_by_group = {
+            targets_group.id: gendef_node.id,
+            new_group.id: gendef_new_node.id,
+            orphan_group.id: gendef_orphan_node.id,
+        }
+
         def build_definition(
             query_name: str, query_id: str, query_payload: str, group_id: str
         ) -> ProposedChangeGeneratorDefinition:
             return ProposedChangeGeneratorDefinition(
-                definition_id=gendef_node.id if group_id == targets_group.id else gendef_new_node.id,
+                definition_id=definition_ids_by_group[group_id],
                 definition_name="device-generator",
                 query_name=query_name,
                 query_id=query_id,
-                query_models=["TestNetworkDevice"],
                 query_payload=query_payload,
                 repository_id=repo.id,
                 class_name="DeviceGenerator",
@@ -393,6 +504,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         return {
             "source_branch": SOURCE_BRANCH,
             "proposed_change_id": pc.id,
+            "tag_id": tag.id,
             "dev1_id": dev1.id,
             "dev2_id": dev2.id,
             "dev3_id": dev3.id,
@@ -408,7 +520,14 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             "gendef_tags": build_definition(
                 "GetDeviceWithTags", query_tags.id, QUERY_UNIQUE_WITH_TAGS, targets_group.id
             ),
+            "gendef_fragment_tags": build_definition(
+                "GetDeviceWithFragmentTags", query_fragment_tags.id, QUERY_UNIQUE_WITH_FRAGMENT_TAGS, targets_group.id
+            ),
             "gendef_new": build_definition("GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, new_group.id),
+            "gendef_orphan": build_definition(
+                "GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, orphan_group.id
+            ),
+            "orphan_instance_id": orphan_instances["orphan"].id,
         }
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
@@ -503,3 +622,71 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
         )
         expected_targets = {generator_dataset[key] for key in case.expected_keys}
         assert self._dispatched_target_ids(workflow_recorder) == expected_targets
+
+    @pytest.mark.parametrize("case", GENERATOR_WIDENING_LOG_CASES, ids=lambda case: case.name)
+    async def test_widening_warning_names_the_actual_reason(
+        self,
+        case: GeneratorWideningLogCase,
+        generator_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        diff_summary = [
+            make_node_diff(
+                entry.id_key if entry.literal_id else generator_dataset[entry.id_key],
+                entry.kind,
+                SOURCE_BRANCH,
+                entry.fields,
+                element_type=entry.element_type,
+            )
+            for entry in case.diff
+        ]
+        with caplog.at_level(logging.INFO, logger=FLOW_RUN_LOGGER):
+            await self._run(
+                generator_dataset[case.definition_key],
+                generator_dataset,
+                self._make_context(admin_account, default_branch),
+                diff_summary,
+                memory_cache,
+                default_branch,
+            )
+
+        warnings = [
+            record.getMessage()
+            for record in caplog.records
+            if record.levelno == logging.WARNING and record.getMessage().startswith("Generator definition ")
+        ]
+        assert warnings == case.expected_warnings
+        assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset[key] for key in case.expected_keys}
+
+    async def test_instance_whose_target_was_deleted_is_skipped(
+        self,
+        generator_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        diff_summary = [make_node_diff(generator_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"])]
+        with caplog.at_level(logging.WARNING, logger=FLOW_RUN_LOGGER):
+            await self._run(
+                generator_dataset["gendef_orphan"],
+                generator_dataset,
+                self._make_context(admin_account, default_branch),
+                diff_summary,
+                memory_cache,
+                default_branch,
+            )
+
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert warnings == [
+            f"Skipping orphan subscriber {generator_dataset['orphan_instance_id']} for definition device-generator: "
+            "object peer unresolvable"
+        ]
+        assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset["dev1_id"]}

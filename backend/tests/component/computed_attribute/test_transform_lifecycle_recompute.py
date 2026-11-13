@@ -33,7 +33,7 @@ async def _make_transform(db: InfrahubDatabase, name: str, repository: Node) -> 
     await query.new(
         db=db,
         name=f"query_{name}",
-        query="query { TestCar { edges { node { name { value } } } } }",
+        query="query TestCarQuery($id: ID!) { TestCar(ids: [$id]) { edges { node { name { value } } } } }",
         models=["TestCar", "TestPerson"],
     )
     await query.save(db=db)
@@ -198,9 +198,10 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
 
         automation_desc = automation("computed_desc_python")
         automation_opaque = automation("computed_desc_python_opaque")
-        # Both attributes wire their transform by name, so the gather resolves an automation for
-        # each; computed_by_id (by UUID) and the orphan yield none, so the full set is just these two.
-        automations_full = {automation_desc, automation_opaque}
+        automation_by_id = automation("computed_by_id")
+        # The gather resolves a transform by name and by id, so the two name-wired attributes and
+        # the id-wired one each get an automation. Only the orphan transform yields none.
+        automations_full = {automation_desc, automation_opaque, automation_by_id}
 
         # Reconcile once so both automations exist before asserting one gets dropped.
         await process_transform_lifecycle(
@@ -251,4 +252,4 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
 
         # Only the deleted transform's automation is gone.
         automations_after = await self._python_automation_names()
-        assert automations_after == {automation_opaque}
+        assert automations_after == {automation_opaque, automation_by_id}

@@ -1,15 +1,17 @@
 # Backend Testing
 
-> Part of: `dev/knowledge/backend/` | Related: [backend/AGENTS.md](../../../backend/AGENTS.md)
+> Part of: `dev/knowledge/backend/`
 
-Overview of the backend testing infrastructure, test types, and patterns.
+Overview of the backend testing infrastructure, test types, and patterns. Choose a test's scope with
+[Choosing tests](../../guides/backend/choosing-tests.md); the
+[testing standards](../../guidelines/backend/testing.md) define which coverage to retain.
 
 ## Testing Philosophy
 
 Infrahub uses pytest with TestContainers to provide reproducible, isolated tests. The testing approach balances:
 
 - **Speed**: Module-scoped containers minimize startup overhead
-- **Realism**: Tests run against real Neo4j/Redis/NATS when needed
+- **Realism**: Tests run against real Neo4j/Redis/RabbitMQ when needed
 - **Debuggability**: Functional tests run in a single process for breakpoint debugging
 - **Isolation**: Each test module gets a fresh database state
 
@@ -22,7 +24,7 @@ Fast unittests that require no external services to run. I.e. no database or net
 **Characteristics:**
 
 - Fast feedback loop
-- Sanity checks
+- Focused assertions on decisions and observable outputs
 
 **When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
 
@@ -148,7 +150,6 @@ Controlled by environment variable `INFRAHUB_USE_TEST_CONTAINERS=true`.
 | `memgraph_container` | Alternative graph database |
 | `redis_container` | Cache |
 | `rabbitmq_container` | Message broker |
-| `nats_container` | Event streaming |
 | `prefect_container` | Workflow engine |
 
 ```python
@@ -175,7 +176,7 @@ pytest session, so the session-scoped container fixtures above execute **once pe
 workers means four Neo4j containers, each with its own graph.
 
 That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
-`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+`delete_all_nodes`, which detaches and deletes every vertex in the graph, and several
 tests assert on global counts rather than on nodes they can identify as their own. Both are only
 correct while a worker owns its database outright.
 
@@ -274,6 +275,7 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+- `FixedMachine` (`backend/tests/adapters/machine.py`) - A machine with a fixed CPU count, pinned CPUs and memory, passed to the telemetry resource reader so its figures can be checked against exact numbers
 
 **Event and Workflow Adapters:**
 
@@ -318,6 +320,7 @@ Test data and fixture files:
 | `constants.py` | Port numbers, image names |
 | `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
+| `schema_errors.py` | Flattens a 422 `detail` list into `(dotted field path, input, msg)` rows, rendering the location locally so an assertion on a schema load rejection names the offending field instead of a list of location segments. |
 
 ### Test Data (`backend/tests/test_data/`)
 
@@ -522,4 +525,3 @@ uv run pytest backend/tests/unit/path/to/test.py -v
 
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
-- [Backend AGENTS.md](../../../backend/AGENTS.md) - Commands reference

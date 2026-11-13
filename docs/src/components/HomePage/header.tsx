@@ -11,43 +11,27 @@ import EducationIcon from "@site/static/img/education.svg";
 
 export default function HomepageHeader() {
     const { siteConfig } = useDocusaurusContext();
-    const videoUrl = useBaseUrl('/medias/demo.mp4');
+    const screenshotUrl = useBaseUrl('/img/readme-screenshots/dashboard.webp');
 
     return (
         <header className={clsx('container', styles.heroBanner)}>
             <div className="col col--6">
-                <Heading as="h1" className="hero__title">{siteConfig.title}</Heading>
+                <Heading as="h1" className={clsx("hero__title", styles.heroTitle)}>
+                    {translate({
+                        id: 'home.header.title',
+                        message: 'Infrahub Docs',
+                    })}
+                </Heading>
                 <p className="hero__subtitle">
                     {translate({
                         id: 'home.header.subtitle',
-                        message: "Infrastructure Data Management Platform",
+                        message: "The data foundation for network, data center, and cloud automation.",
                     })}
                 </p>
 
                 <div className={styles.containerFlexWrap}>
                     <Link
                         className={clsx(styles.heroButton, "button button--primary button--lg")}
-                        to="overview"
-                    >
-                        {translate({
-                            id: 'home.header.docs',
-                            message: 'Learn about Infrahub',
-                        })}
-
-                        <ArrowRightIcon />
-                    </Link>
-                    <Link
-                        className={clsx(styles.heroButton, "button button--secondary button--lg")}
-                        to="overview/community-vs-enterprise"
-                    >
-                        {translate({
-                            id: 'home.header.editions',
-                            message: 'Community vs Enterprise',
-                        })}
-                        <ArrowRightIcon />
-                    </Link>
-                    <Link
-                        className={clsx(styles.heroButton, "button button--secondary button--lg")}
                         to="https://sandbox.infrahub.app/"
                     >
                         {translate({
@@ -58,7 +42,7 @@ export default function HomepageHeader() {
                     </Link>
                     <Link
                         className={clsx(styles.heroButton, "button button--secondary button--lg")}
-                        to="https://opsmill.instruqt.com/pages/labs"
+                        to="https://docs.infrahub.app/labs"
                     >
                         {translate({
                             id: 'home.header.tutorials',
@@ -69,15 +53,12 @@ export default function HomepageHeader() {
                 </div>
             </div>
 
-            <div className={clsx(styles.infrahubVideo, "col col--6")}>
-                <video
-                    style={{
-                        pointerEvents: "none",
-                        maxHeight: "540px"
-                    }}
-                    className="rounded-2xl" height="100%" loop autoPlay muted>
-                    <source src={videoUrl} type="video/mp4" />
-                </video>
+            <div className={clsx(styles.infrahubScreenshot, "col col--6")}>
+                <img
+                    src={screenshotUrl}
+                    alt="The Infrahub web interface listing devices, with the branch selector set to main"
+                    loading="eager"
+                />
             </div>
         </header>
     );

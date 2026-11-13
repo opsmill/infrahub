@@ -33,6 +33,7 @@ from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, Vali
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.graphql.types.task import TaskInfo
+from infrahub.lock import InfrahubLock
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
@@ -162,7 +163,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
         )
         state = ProposedChangeState(obj.state.value.value)
         state.validate_updatable()
@@ -311,7 +312,7 @@ class ProposedChangeReview(Mutation):
         )
         pc_id = str(data.id)
         lock_name = build_object_lock_name(pc_id)
-        async with lock.registry.get(name=lock_name):
+        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=pc_id,
                 kind=CoreProposedChange,

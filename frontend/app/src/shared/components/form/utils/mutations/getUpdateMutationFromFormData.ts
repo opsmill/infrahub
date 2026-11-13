@@ -1,16 +1,22 @@
 import { isDeepEqual } from "remeda";
 
-import type {
-  AttributeValueFromPool,
-  DynamicFieldProps,
-  FormFieldValue,
-  RelationshipValueFromPool,
-} from "@/shared/components/form/type";
-import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import {
+  buildFromPoolPayload,
+  buildNumberPoolMutationValue,
+} from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
+import { getAllocatedKind } from "@/shared/components/form/utils/updateFormFieldValue";
+
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 
 type GetUpdateMutationFromFormDataParams = {
   fields: Array<DynamicFieldProps>;
   formData: Record<string, FormFieldValue>;
+};
+
+const getStagedNumber = (value: FormFieldValue["value"]): number | null => {
+  if (value === null || typeof value !== "object" || !("from_pool" in value)) return null;
+  return "number" in value.from_pool ? (value.from_pool.number ?? null) : null;
 };
 
 export const getUpdateMutationFromFormData = ({
@@ -24,15 +30,34 @@ export const getUpdateMutationFromFormData = ({
       return acc;
     }
 
+    const defaultValue = field.defaultValue;
+    const fromPoolField = field.pool?.fromPoolRelationshipName;
     if (
       fieldData.source?.type === "pool" &&
-      (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
-        fieldData?.source?.id
+      defaultValue?.source?.type === "pool" &&
+      defaultValue.source.id === fieldData.source.id
     ) {
-      return acc;
+      if (fieldData.source.kind === NUMBER_POOL_KIND && !fromPoolField) {
+        if (getStagedNumber(fieldData.value) === getStagedNumber(defaultValue.value)) {
+          return acc;
+        }
+      } else {
+        // Allocation is idempotent on the reservation identifier, but none is sent for the kind, so
+        // a different allocated kind is a real request and must not be dropped.
+        const requestedKind =
+          fieldData.value && typeof fieldData.value === "object" && "from_pool" in fieldData.value
+            ? fieldData.value.from_pool.allocatedKind
+            : undefined;
+        if (!requestedKind || requestedKind === getAllocatedKind(defaultValue.value)) {
+          return acc;
+        }
+      }
     }
 
-    const fromPoolField = field.pool?.fromPoolRelationshipName;
+    const detachFromPool =
+      field.type === "Number" && !fromPoolField && defaultValue?.source?.type === "pool"
+        ? { from_pool: null }
+        : {};
 
     switch (fieldData.source?.type) {
       case "pool": {
@@ -41,15 +66,31 @@ export const getUpdateMutationFromFormData = ({
           typeof fieldData.value === "object" &&
           "from_pool" in fieldData.value
         ) {
-          const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
           if (fromPoolField) {
             const clearField =
               field.type === "relationship"
                 ? { [field.name]: null }
                 : { [field.name]: { value: null } };
-            return { ...acc, ...clearField, [fromPoolField]: fromPool };
+            // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
+            // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
+            return {
+              ...acc,
+              ...clearField,
+              [fromPoolField]: { id: fieldData.value.from_pool.id },
+            };
           }
-          return { ...acc, [field.name]: { from_pool: fromPool } };
+          if (fieldData.source.kind === NUMBER_POOL_KIND) {
+            return {
+              ...acc,
+              [field.name]: buildNumberPoolMutationValue(fieldData.value.from_pool),
+            };
+          }
+          return {
+            ...acc,
+            [field.name]: {
+              from_pool: buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind),
+            },
+          };
         }
         return { ...acc, [field.name]: fieldData.value };
       }
@@ -64,7 +105,7 @@ export const getUpdateMutationFromFormData = ({
           }
           return {
             ...acc,
-            [field.name]: { value: null },
+            [field.name]: { value: null, ...detachFromPool },
             ...(fromPoolField ? { [fromPoolField]: null } : {}),
           };
         }
@@ -103,13 +144,16 @@ export const getUpdateMutationFromFormData = ({
         }
         return {
           ...acc,
-          [field.name]: { value: fieldData.value === "" ? null : fieldData.value },
+          [field.name]: {
+            value: fieldData.value === "" ? null : fieldData.value,
+            ...detachFromPool,
+          },
           ...(fromPoolField ? { [fromPoolField]: null } : {}),
         };
       }
       case "profile":
       case "schema": {
-        return { ...acc, [field.name]: { is_default: true } };
+        return { ...acc, [field.name]: { is_default: true, ...detachFromPool } };
       }
       default:
         return acc;

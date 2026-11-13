@@ -100,7 +100,7 @@ The goal is to fix typing violations so that error codes can be removed from `di
 6. **Fix the violations**: For each affected file:
    - Add proper type annotations
    - Fix type mismatches
-   - Add appropriate type: ignore comments ONLY when the fix would be too complex or break functionality
+   - A scoped `# type: ignore[code]  # reason` only to grandfather a pre-existing violation unrelated to the rule being cleared — never for a violation the fix introduces, and never `cast()` (see `dev/guidelines/backend/typing.md`)
    - Use typing constructs like `TypeVar`, `overload`, etc. where appropriate
    - Maintain code functionality and readability
 
@@ -130,7 +130,7 @@ The goal is to fix typing violations so that error codes can be removed from `di
 
 ## Important Notes
 
-- Do NOT add blanket `# type: ignore` comments - be specific with error codes if required, the goal should be to completely avoid any ignores
+- Do NOT add blanket `# type: ignore` comments - be specific with error codes if required, the goal should be to completely avoid any ignores. ty also reads a bare `# type: ignore` as its own blanket ignore, so it hides every ty error on the line (see *Name the mypy error code in every `# type: ignore`* in `dev/guidelines/backend/typing.md`)
 - If a module has many violations (>20 for a single error code), fix in batches of ~10. After each batch, validate and ask: "Fixed N of M violations. Continue with the next batch?"
 - Some typing fixes may require refactoring - be cautious and test
 - Preserve code functionality - the goal is type safety, not rewriting
@@ -154,13 +154,13 @@ assert value is not None
 value.some_method()
 ```
 
-### `arg-type` - Widen parameter type or cast value
+### `arg-type` - Fix the contract or narrow the value
 
 ```python
-# Option 1: Widen the parameter type in the function signature
+# Option 1: Correct the annotation when the wider type is the real contract — never widen just to silence the checker
 def process(value: str | int) -> None: ...
 
-# Option 2: Add runtime type check
+# Option 2: Narrow with a positive runtime check — never cast()
 if isinstance(value, str):
     process(value)
 ```

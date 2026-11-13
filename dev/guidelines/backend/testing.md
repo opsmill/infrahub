@@ -6,31 +6,35 @@ Testing standards for the Python backend.
 
 ## Test Organization
 
-Tests are organized by type:
+Choose the smallest tier that can detect the failure you care about. Classify the behavior and the
+collaborators it exercises, not the source module's name or the number of classes it calls.
 
-- **Unit tests** (`tests/unit/`): No external dependencies, only file access
-- **Component tests** (`tests/component/`): Small scope but may require database access
-- **Functional tests** (`tests/functional/`): Multi-component tests running in a single thread/process. Async tasks execute inline without separate workers.
-- **Integration tests** (`tests/integration/`): Require Neo4j via testcontainers
-- **Integration Docker tests** (`tests/integration_docker/`): Integration tests that run in a full environment with containers
+| Tier | Behavior it proves |
+|------|--------------------|
+| Unit (`tests/unit/`) | In-memory decisions, parsing, validation, and transformations; no database or network access. Local files and injected recording/failing adapters are allowed. |
+| Component (`tests/component/`) | A focused component working with real infrastructure: query results, persistence, constraints, cache operations, or lock coordination. |
+| Functional (`tests/functional/`) | Several components working together in one process, with async tasks executed inline. |
+| Integration Docker (`tests/integration_docker/`) | Behavior requiring the deployed services or separate workers. |
 
-**Pick the cheapest tier the logic actually needs.** If the unit under test operates purely on in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test in `tests/unit/` without database fixtures — do not default to a component test just because nearby tests use one. Reach for the database (component) or a container (integration/integration_docker) only when the behavior genuinely depends on it.
+`tests/integration/` also contains older functional tests; see the
+[infrastructure reference](../../knowledge/backend/testing.md#integration-tests-backendtestsintegration).
 
-Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
+A database query and its result mapping belong in a component test against the real database,
+directly or through their caller. Do not fabricate `QueryResult` rows to unit-test the mapping.
+An independently complex transformation can have unit cases, with real query/result coverage retained.
+A retry policy using scripted HTTP responses can be a unit test; the server's actual deletion and
+transaction behavior require component coverage. SQLite is a real database even when embedded.
 
-### Running integration_docker tests locally
+Remove unused database fixtures from a policy test instead of moving an expensive fixture into the
+unit suite. Keep one real integration path when it verifies wiring that the adapters cannot prove.
+For a worked decision process, see [Choosing tests](../../guides/backend/choosing-tests.md).
 
-Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
+### Where a test goes
 
-These tests never need signed commits. Disable signing for the run by pointing git's config at `/dev/null`:
+A unit test mirrors the source path: `backend/infrahub/core/node/standard.py` → `backend/tests/unit/core/node/test_standard.py`. A component test goes in the topic directory of its area — a node metadata query in `backend/tests/component/graphql/metadata/`, not appended to `test_graphql_query.py` — and starts a new module there when no module fits, so the next coverage check finds it beside the tests of the same feature.
 
-```bash
-GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/tests/integration_docker/<file>
-```
-
-With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
-
-Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
+For local Docker-suite setup, see
+[Running integration_docker tests locally](../../guides/backend/choosing-tests.md#running-integration_docker-tests-locally).
 
 ## Test Documentation
 
@@ -57,7 +61,36 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
+**Skip tests that string-match a feature query's generated text.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring. Exact query-text assertions belong only where the string *is* the output contract — the query-building infrastructure itself (assembly, parameter interpolation).
+
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
+
+### Redundant coverage
+
+Treat a test as redundant when removing it loses no distinct behavior, boundary, failure mode, or
+useful focused diagnosis that the retained tests assert. Shared setup, similar names, or execution
+of the same production lines do not establish redundancy.
+
+Before adding or removing a test, trace the callers to existing assertions. A search for the class
+name alone misses coverage through a resolver or manager. Name the retained test and the regression
+it catches; if the scenario is missing, extend the existing test at the tier that owns the behavior.
+
+- Keep unit policy cases and a component wiring case when they catch different failures. Do not
+  repeat the whole policy matrix through every caller or through the full stack.
+- Parameterize unit tests when inputs exercise distinct cases with the same setup and assertions.
+  Measure component-test setup and suite time before expanding the cases; avoid parameterizing
+  functional and integration tests by default. See
+  [Account for setup cost](../../guides/backend/choosing-tests.md#account-for-setup-cost) for fixture
+  sharing and the tradeoffs of combining checks. Equivalent cases still add no useful coverage.
+- Remove a separate accessor test when a real query test already asserts that mapping. Add unit
+  cases only for independently meaningful transformation logic.
+- Keep client protocol assertions separate from CLI output/exit assertions: either can fail while
+  the other remains correct. Assert exact requests when a scripted transport cannot reject a wrong
+  method or URL by itself.
+
+Use the [redundancy review procedure](../../guides/backend/choosing-tests.md#review-overlapping-tests)
+to compare failure modes before deleting coverage. The rules for third-party behavior above and
+[independent expected values](#assert-exact-expectations) still apply.
 
 ## Async tests
 
@@ -75,37 +108,44 @@ def test_returns_config() -> None:
     assert cfg.ldap.enabled is False
 ```
 
+## One database session per concurrent path
+
+A Neo4j session carries a single connection and cannot serve two coroutines at once, and everything reached through one `InfrahubDatabase` shares its session. Racing two calls on the same one wedges the connection: one coroutine raises `read() called while another coroutine is already waiting for incoming data`, the other parks on the socket where `asyncio.wait_for` cannot cancel it. `db` is module-scoped, so the wedge takes every later test in the module with it.
+
+```python
+# Good - a session per racing call
+async with db.start_session() as db_1, db.start_session() as db_2:
+    await asyncio.gather(build_coordinator(db_1).update(), build_coordinator(db_2).update())
+
+# Bad - both calls queue on the module's one connection
+coordinator = build_coordinator(db)
+await asyncio.gather(coordinator.update(), coordinator.update())
+```
+
+Code that opens a session of its own is safe to race: flows do, pinned by [`test_flow_session_convention.py`](../../../backend/tests/unit/workflows/test_flow_session_convention.py), and so do GraphQL query resolvers (see [GraphQL Execution Paths](../../knowledge/backend/graphql-execution.md#a-query-resolver-opens-its-own-database-session)). A component a test calls directly does not.
+
 ## Test Schemas
 
-Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
+Search for an existing schema before defining one in a test, and search by the shape the test needs (an optional cardinality-one relationship to a generic, a hierarchy), not by name. Shared schemas live in two places:
 
-### Available helpers
+- [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/): node and generic constants (`CAR`, `DEVICE`, `TAG`, `PERSON`) and `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`), registered with the `load_schema` helper
+- the schema fixtures in `backend/tests/conftest.py` and `backend/tests/component/conftest.py`, such as `car_person_schema`, `generic_car_person_schema` and `hierarchical_location_schema`
 
-The module provides individual node/generic schemas (`CAR`, `DEVICE`, `TAG`, `PERSON`, etc.) as well as pre-composed `SchemaRoot` bundles (`CAR_SCHEMA`, `DEVICE_SCHEMA`, `LOCATION_SCHEMA`, `SNOW_TICKET_SCHEMA`, etc.). A `load_schema` helper function handles registering a schema in the branch registry during tests.
+```python
+# ❌ Bad - a new inline schema for an optional cardinality-one relationship to a generic
+raw_schema = {"generics": [{"name": "Vehicle", ...}], "nodes": [{"name": "Rider", ...}]}
 
-### Guidelines
+# ✅ Good - generic_car_person_schema already has one: TestPerson.car -> TestCar
+async def test_person_without_car(db: InfrahubDatabase, default_branch: Branch, generic_car_person_schema: None) -> None: ...
+```
 
-1. **Check existing helpers first.** Before defining a new schema in a test file, look at the schemas already available in `tests/helpers/schema/`. An existing schema may already cover your needs.
+When a shared schema almost fits, `deepcopy` it and change the copy (`car_with_mileage = deepcopy(CAR)`, then append the attribute). Never modify a shared schema for one test, because every test that uses it changes too. Keep a schema that only one module needs in that module, and promote it to `tests/helpers/schema/` or a `conftest.py` only when several modules use it.
 
-2. **Derive from helpers with `deepcopy`.** When you need a schema that is close to an existing helper but requires small additions or modifications, deep-copy the helper and apply your changes instead of writing a new schema from scratch:
+Give a branch a divergent schema in production order. Register an edited schema the way the API path does: `schema_branch.process()`, then `registry.schema.set_schema_branch(...)`, `branch.update_schema_hash()` and `await branch.save(db=db)`. Hashing before processing persists a hash of a schema nothing serves, and skipping the save leaves the divergence in the registry only, invisible to anything that reads the stored hash.
 
-   ```python
-   from copy import deepcopy
+## Share one schema and data load across a class
 
-   from infrahub.core.schema import AttributeSchema
-   from tests.helpers.schema import CAR
-
-   car_with_mileage = deepcopy(CAR)
-   car_with_mileage.attributes.append(
-       AttributeSchema(name="mileage", kind="Number")
-   )
-   ```
-
-   This avoids modifying the shared helper (which would risk breaking other tests) while keeping the test schema close to the canonical definition.
-
-3. **Only create new helpers for broadly useful schemas.** If a schema is only needed by a single test file, keep it local to that file. Promote a local schema to `tests/helpers/schema/` only when multiple test modules would benefit from sharing it.
-
-4. **Never modify an existing helper schema to satisfy a single test.** Changes to shared schemas affect every test that uses them. If an existing helper almost fits but not quite, use `deepcopy` as shown above.
+When several tests or parametrized cases read the same schema and data, put them in a class and build that data once in `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants, then vary the query per method or case. A function-scoped schema or data fixture runs again for every test and every parametrized case. A class-scoped fixture cannot request a function-scoped one, so a schema fixture without a `_scope_class` variant needs one added beside it. `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters` follows this pattern; the fixture chain is in [Backend Testing — Schema Fixtures](../../knowledge/backend/testing.md#schema-fixtures).
 
 ## Pin settings the test depends on
 
@@ -153,13 +193,8 @@ import pytest
 @dataclass
 class MyFunctionTestCase:
     name: str
-    """Descriptive name for the test scenario (used as test ID)."""
-
     input_value: str
-    """The input to pass to the function."""
-
     expected: bool
-    """The expected return value."""
 
 
 MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
@@ -181,7 +216,6 @@ MY_FUNCTION_TEST_CASES: list[MyFunctionTestCase] = [
     [pytest.param(tc, id=tc.name) for tc in MY_FUNCTION_TEST_CASES],
 )
 def test_my_function(test_case: MyFunctionTestCase) -> None:
-    """Test that my_function handles various inputs correctly."""
     result = my_function(value=test_case.input_value)
     assert result == test_case.expected
 ```
@@ -192,45 +226,24 @@ def test_my_function(test_case: MyFunctionTestCase) -> None:
 
 2. **Use descriptive names** that explain the scenario: `empty_dict_returns_false`, `nested_key_found_at_second_level`, `invalid_input_raises_error`.
 
-3. **Document fields with inline docstrings** (per Python standards):
+3. **Leave a field undocumented when its name says what it holds.** An inline docstring below a
+   field is for the one that needs explaining (see [Python standards](python.md#docstrings)):
 
    ```python
    @dataclass
    class QueryTestCase:
        name: str
-       """Descriptive name for the test scenario."""
-
        query: str
-       """The Cypher query to execute."""
-
        params: dict[str, Any]
-       """Parameters to pass to the query."""
-
        expected_count: int
-       """Expected number of results."""
+       """Rows visible on the branch, not rows matched before the branch filter."""
    ```
 
-4. **Define test cases as module-level constants** with uppercase names and type hints:
+4. **Define test cases as module-level constants** with uppercase names and type hints
+   (`QUERY_TEST_CASES: list[QueryTestCase] = [...]`), placed before the test function that uses them.
 
-   ```python
-   QUERY_TEST_CASES: list[QueryTestCase] = [...]
-   ```
-
-5. **Place test case lists before the test function** that uses them.
-
-6. **Use keyword arguments** when constructing test cases for clarity:
-
-   ```python
-   # Good
-   MyTestCase(
-       name="scenario_one",
-       input_value="test",
-       expected=True,
-   )
-
-   # Bad
-   MyTestCase("scenario_one", "test", True)
-   ```
+5. **Use keyword arguments** when constructing test cases —
+   `MyTestCase(name="scenario_one", input_value="test", expected=True)`, never positionally.
 
 ### Complex Test Cases
 
@@ -367,7 +380,7 @@ This keeps the unit under test a pure function of `(input, clock)`, so a state m
 behavior depends on elapsed time is tested exactly — cross an interval boundary, assert the
 transition — with no wall-clock flakiness and no patching. Duration is a parameter of the logic,
 not an ambient fact; treat it like any other injected collaborator (see
-[Backend Component Design](../../../.agents/rules/backend-component-design.md)).
+[Backend Component Design](component-design.md)).
 
 Use monotonic time for durations. Wall-clock time (`datetime.now`) is for timestamps that get
 stored or displayed, and it can jump backwards.
@@ -383,6 +396,36 @@ assertion will check — the specific log line, the exact count — not for mere
 exits as soon as anything shows up hands an unrelated first event to the assertion and the test
 fails (or passes) spuriously.
 
+The deadline applies to every wait, not only polls: wrap a bare `await event.wait()` in
+`asyncio.wait_for(..., timeout=...)`, with margin for a loaded runner. An unbounded await turns a
+regression into a whole-suite hang that only pytest-timeout ends, minutes later, with the cause
+hidden.
+
+### Never assert on elapsed time
+
+`assert elapsed_seconds < N` encodes the speed of the machine that wrote it. It passes on a fast
+runner with the regression present, flakes on a loaded one without it, and the margin narrows every
+time the fixture grows, so it is both a weak guard and a source of flakes. This covers any assertion
+whose outcome depends on how fast the host is, wall-clock gaps between events included.
+
+A deadline that only bounds a wait is not such an assertion: it is a guard that turns a hang into a
+fast failure, and nothing the test asserts depends on how long it took.
+
+Hold the shape instead of the duration:
+
+- Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
+  comparisons; a counting double fails identically on every machine.
+- Keep the measurement out of the suite. The numbers that justified the change belong in the commit
+  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
+- A `PROFILE` db-hit count is the same trap without the clock: it encodes the Neo4j planner's choice
+  for the test database's statistics, not the code's behavior, so it flips when the planner replans.
+  Counting the work means counting what the code under test does — calls, queries, submissions — not
+  what the planner spends. Keep db-hit measurements in the pull request description, or in
+  `backend/tests/query_benchmark/` when they must be tracked over time.
+
+When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
+becomes a value the test reads exactly, rather than a duration it races.
+
 ## Exception Testing
 
 When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
@@ -392,7 +435,7 @@ with pytest.raises(PoolExhaustedError, match=r"no more addresses available"):
     allocate_from_pool(pool_id=exhausted_pool.id)
 ```
 
-The `match` parameter accepts a regular expression pattern and is more concise than a manual assertion on `exc_info.value.message`. Use `r"..."` raw strings to avoid escaping issues.
+`match` takes a regular expression — use a raw string.
 
 ## GraphQL Result Assertions
 
@@ -402,11 +445,8 @@ When testing GraphQL mutations or queries that return errors, always assert on t
 # Bad - only checks that some error occurred
 assert result.errors
 
-# Bad - a substring check passes for any error that mentions the ID
-assert TEMPLATE_ID in str(result.errors[0])
-
-# Bad - slightly better but still a substring match, any error containing
-# this text passes even if the overall message changed
+# Bad - a substring check passes for any error that mentions the text,
+# even if the overall message changed
 assert f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found." in str(result.errors[0])
 
 # Good - exact match on the error message
@@ -414,21 +454,22 @@ assert result.errors
 assert str(result.errors[0].message) == f"The template requested {{'id': '{TEMPLATE_ID}'}} was not found."
 ```
 
-Use `==` rather than `in` to compare error messages. An exact match ensures the test fails when the error wording changes, keeping assertions tightly coupled to the expected behavior.
-
 ## Assert exact expectations
 
 The exact-match principle above is not limited to error messages — it applies to every assertion. A loose assertion passes for the wrong reason and hides regressions.
 
 - **Assert the exact collection, not a subset or membership.** When a function returns a set/list/dict of results (deleted ids, affected targets, computed keys), assert full equality against the expected value. `assert x in result` / `assert expected.issubset(result)` pass even when the result grows or shrinks incorrectly. If the result is deterministic, `assert result == {…}` (or exact set equality) catches both missing and extra items.
-- **Don't stop at non-emptiness when a specific result is expected.** `assert result` (or `assert len(result) > 0`) is fine for an existence-only contract, but it does not verify *which* result came back — assert the specific expected value when that is part of the behavior under test. And avoid checks that don't even establish non-emptiness: `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it passes when nothing was returned.
+- **Don't stop at non-emptiness when a specific result is expected.** `assert result` fits an existence-only contract only; otherwise assert the specific expected value. `assert result != frozenset()` is `True` for an empty `list`/`dict`, so it does not even establish non-emptiness.
+- **Compare unordered results by key, and assert the row count.** Build a dict keyed by id on both sides instead of sorting both lists, and assert `len(result)` first: a dict comprehension silently collapses duplicate rows.
 - **Assert a positive count where the number matters.** A test that only checks "no failures" can pass while measuring zero of the thing it claims to test — e.g. if a workflow/name string changes so nothing is counted. Assert that the expected count is `> 0` (or the exact number) so a silently-zero run fails.
-- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test.
+- **Make the scenario actually hold.** A "missing row" test must not create the row; a "no second object" test must prove the count is one. Verify the setup produces the state under test. The fixture must also let each clause fail on its own: a secondary sort key is only exercised by cases that tie on the primary one, and a chunked read only covers the partial final chunk when the fixture size is not an exact multiple of the chunk constant — derive the size from that constant rather than hard-coding a round number.
+- **Cover branch-scoped operations from a user branch too.** Running the operation only on the default branch cannot show cross-branch leakage. Add the user-branch case and assert the other branch is untouched — after a branch-side removal the default branch still resolves its value; after a default-branch change a pre-existing branch still sees its own.
 - **Make removal assertions branch-attributable.** A "data is gone" check must read on the branch that held the data, and assert the data resolved *before* the operation as well as after — a read on the wrong branch raises the same not-found either way, so the assertion passes whether or not the code ran.
 - **Denial tests must verify nothing changed.** When asserting an operation is rejected, also reload the target and assert its state is unchanged (or that no row was created/deleted). Asserting only that an error was returned does not prove the write was actually blocked.
 - **When a result is reachable via more than one code path, assert an intermediate signal too.** If "the lookup was never attempted" and "the lookup ran and found nothing" converge on the same final value (e.g. both produce an empty filter), asserting only that final value can't tell a working implementation from a regressed one that silently skipped the lookup. Also assert what was queried or which branch ran — a signal only the intended path produces.
 - **Assert persistence from storage, not from the layer the code wrote.** When the contract is that state reaches (or is restored in) the database, reload it from the DB (e.g. `Branch.get_by_name` and check `active_schema_hash`) instead of reading back the in-memory registry/cache the code under test updated — that assertion is self-confirming and cannot detect a failure to persist.
-- **Pin literal expected values — don't derive them with the code's own dependencies.** Computing the expectation with the same serializer/formatter the implementation calls (`ujson.dumps`, `yaml.dump`, the function under test itself) makes the assertion a tautology: it passes even when the library's output changes. Write the raw expected string into the test.
+- **Pin literal expected values — don't derive them with the code's own logic.** Computing the expectation with the same serializer, formatter, or formula the implementation uses (`ujson.dumps`, `yaml.dump`, the function under test itself, a mirrored `min(...)`/hash expression, a baseline constant computed the same way as the code) makes the assertion a tautology: it moves with the bug and passes either way. Write the raw expected value into the test, or obtain the baseline from a source independent of the path under test.
+- **A fixture copied from a live file needs a sync assertion.** When tests read expectations from a hand-maintained copy of a real config file, add one test asserting the copy equals the live file — otherwise the real file changes, the copy goes stale, and every test keeps passing.
 - **A "does not raise" test still needs an assertion.** When the contract is that an exception is swallowed, also assert a side effect that only the guarded path produces (state set before the raiser was called). With no assertion, a regression that returns early before the guard passes identically.
 
 ## Graph integrity assertions

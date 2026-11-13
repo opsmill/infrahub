@@ -8,7 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeRefusedError
 from infrahub.workers.dependencies import get_database, get_workflow
 from infrahub.workflows.catalogue import BRANCH_MERGE
 from infrahub.workflows.utils import add_tags
@@ -31,7 +31,7 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
             # A direct branch merge has no way to record conflict resolutions, so any conflict blocks it.
-            raise ValidationError(
+            raise MergeRefusedError(
                 f"Branch {obj.name} contains conflicts with the default branch."
                 " Please create a Proposed Change to resolve the conflicts or manually update them before merging."
             )

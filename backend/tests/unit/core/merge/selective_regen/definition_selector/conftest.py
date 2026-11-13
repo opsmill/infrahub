@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
@@ -8,7 +9,10 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub.core.merge.selective_regen.definition_selector.artifact_selector import ArtifactSelector
 from infrahub.core.merge.selective_regen.definition_selector.generator_selector import GeneratorSelector
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
-from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
+from tests.helpers.selective_regen import NoImpactResolver
+
+if TYPE_CHECKING:
+    from infrahub.core.merge.selective_regen.impacted import ImpactedSubscriberResolver
 
 
 @pytest.fixture
@@ -27,8 +31,8 @@ def gate(log: logging.Logger) -> DefinitionGate:
 
 
 @pytest.fixture
-def impacted_resolver(client: InfrahubClient) -> ImpactedSubscriberResolver:
-    return ImpactedSubscriberResolver(client=client)
+def impacted_resolver() -> ImpactedSubscriberResolver:
+    return NoImpactResolver()
 
 
 @pytest.fixture

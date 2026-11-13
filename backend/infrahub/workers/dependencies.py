@@ -11,6 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
+from infrahub.serve.processes import processes_per_container
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
@@ -20,6 +21,7 @@ from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.services.component import InfrahubComponent
+from infrahub.telemetry.resources import ProcessResources, PsutilMachine
 from infrahub.tls.registry import TlsContextRegistry
 
 _singletons: dict[str, Any] = {}
@@ -45,9 +47,10 @@ def get_component_type() -> ComponentType:
 def build_client() -> InfrahubClient:
     client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
     tls_regsistry = get_tls_registry()
-    tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+    # No force_verify: `http.tls_insecure` outranks the CA bundle for every component, so a bundle that
+    # stays configured next to it does not put verification back on.
     ssl_context = tls_regsistry.get(
-        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=tls_ca_bundle, force_verify=bool(tls_ca_bundle)
+        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=config.SETTINGS.http.tls_ca_bundle
     )
     client_config.set_ssl_context(context=ssl_context)
     client = InfrahubClient(config=client_config)
@@ -173,6 +176,9 @@ async def build_component() -> InfrahubComponent:
             component_type=get_component_type(),
             db=await get_database(),
             message_bus=await get_message_bus(),
+            process_resources=ProcessResources(
+                machine=PsutilMachine(), processes_per_container=processes_per_container()
+            ),
         )
     return _singletons["component"]
 

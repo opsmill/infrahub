@@ -6,7 +6,7 @@ from infrahub.core.constants import RelationshipCardinality, RelationshipDirecti
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
+from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
@@ -58,7 +58,7 @@ class TestDependentNodeResolver:
         person_john_main: Node,
         default_branch: Branch,
     ) -> None:
-        resolver = DependentNodeResolver(db=db, branch=default_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=default_branch)
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
@@ -74,7 +74,7 @@ class TestDependentNodeResolver:
     async def test_empty_peer_uuids_returns_empty(
         self, db: InfrahubDatabase, car_accord_main: Node, default_branch: Branch
     ) -> None:
-        resolver = DependentNodeResolver(db=db, branch=default_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=default_branch)
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
@@ -99,7 +99,7 @@ class TestDependentNodeResolver:
         await latecomer_car.new(db=db, name="latecomer", nbr_seats=2, is_electric=False, owner=person_john_main.id)
         await latecomer_car.save(db=db)
 
-        resolver = DependentNodeResolver(db=db, branch=feature_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=feature_branch)
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
@@ -127,7 +127,7 @@ class TestDependentNodeResolver:
         accord_on_main = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=default_branch)
         await accord_on_main.delete(db=db)
 
-        resolver = DependentNodeResolver(db=db, branch=input_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=input_branch)
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
@@ -152,7 +152,7 @@ class TestDependentNodeResolver:
         accord_on_branch = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=input_branch)
         await accord_on_branch.delete(db=db)
 
-        resolver = DependentNodeResolver(db=db, branch=input_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=input_branch)
 
         dependents = await resolver.resolve(
             node_kind="TestCar",
@@ -188,7 +188,7 @@ class TestDependentNodeResolverSelfReferential:
         self, db: InfrahubDatabase, default_branch: Branch, tree: dict[str, Node]
     ) -> None:
         """A change to `middle` implicates the node whose `parent` is `middle`, not `middle`'s parent."""
-        resolver = DependentNodeResolver(db=db, branch=default_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=default_branch)
 
         dependents = await resolver.resolve(
             node_kind=TREE_NODE_KIND,
@@ -203,7 +203,7 @@ class TestDependentNodeResolverSelfReferential:
         self, db: InfrahubDatabase, default_branch: Branch, tree: dict[str, Node]
     ) -> None:
         """The same edges seen from `children` implicate the node holding `middle` as a child."""
-        resolver = DependentNodeResolver(db=db, branch=default_branch)
+        resolver = QueryDependentNodeResolver(db=db, branch=default_branch)
 
         dependents = await resolver.resolve(
             node_kind=TREE_NODE_KIND,

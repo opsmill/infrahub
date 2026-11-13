@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
-from typing_extensions import Self
 
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import RequestArtifactDefinitionGenerate

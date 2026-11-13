@@ -16,6 +16,11 @@ the package root.
   forces Python to run the whole `__init__.py` — pulling in the dependencies of *every* submodule it
   re-exports. A dependency cycle in any one submodule then becomes a cycle for everyone who imports
   anything from the package. Importing from the owning submodule loads only that submodule's deps.
+- **Name collisions.** A re-export that shares its name with the submodule defining it
+  (`from infrahub.core.registry import registry` in `core/__init__.py`) makes
+  `from infrahub.core import registry` name two things, the module and the object. mypy binds
+  whichever it resolves first, and that order changes when an import cycle elsewhere changes, so the
+  errors surface in files nobody touched. Importing from the owning submodule names one object.
 - **Discoverability.** Logic hidden in `__init__.py` is easy to miss; a named module (`constants.py`,
   `permissions.py`, `models.py`, …) says what it is. Importing from the owning submodule also makes
   the symbol's home obvious at the call site.

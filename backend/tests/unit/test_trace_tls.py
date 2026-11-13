@@ -228,8 +228,9 @@ class TestGRPCExporterTLS:
         monkeypatch: pytest.MonkeyPatch,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
-        # Cap the export deadline so the failure path does not sit in gRPC's retry backoff.
-        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "1")
+        # opentelemetry-exporter-otlp-proto-grpc 1.44 waits at least 0.8s before a retry, so this timeout never retries.
+        monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", raising=False)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "0.5")
         exporter = make_exporter(
             exporter_type="otlp",
             exporter_protocol="grpc",
@@ -244,10 +245,18 @@ class TestGRPCExporterTLS:
 
 
 class TestHTTPExporterTLS:
+    @pytest.fixture(params=[None, "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"])
+    def http_ca_bundle(self, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, pki: LocalPKI) -> str:
+        monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+        monkeypatch.delenv("CURL_CA_BUNDLE", raising=False)
+        if request.param:
+            monkeypatch.setenv(request.param, str(pki.ca_bundle.parent / "other-ca.pem"))
+        return str(pki.ca_bundle)
+
     def test_ca_bundle_delivers_to_collector_with_private_certificate(
         self,
         http_collector: RunningCollector,
-        pki: LocalPKI,
+        http_ca_bundle: str,
         span: ReadableSpan,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
@@ -257,7 +266,7 @@ class TestHTTPExporterTLS:
             exporter_endpoint=http_collector.endpoint,
             insecure=True,
             tls_insecure=False,
-            tls_ca_bundle=str(pki.ca_bundle),
+            tls_ca_bundle=http_ca_bundle,
         )
         result = exporter.export([span])
 
@@ -286,7 +295,9 @@ class TestHTTPExporterTLS:
         monkeypatch: pytest.MonkeyPatch,
         make_exporter: Callable[..., SpanExporter],
     ) -> None:
-        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "1")
+        # opentelemetry-exporter-otlp-proto-http 1.44 waits at least 0.8s before a retry, so this timeout never retries into a negative one.
+        monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT", raising=False)
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TIMEOUT", "0.5")
         exporter = make_exporter(
             exporter_type="otlp",
             exporter_protocol="http/protobuf",

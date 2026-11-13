@@ -379,11 +379,25 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                     "parent__ids": [parent_id],
                 },
             )
-            if mutation_events["InfrahubEvent"]["count"] == 5:
+            if mutation_events["InfrahubEvent"]["count"] == 10:
                 break
             await asyncio.sleep(1)
 
-        assert mutation_events["InfrahubEvent"]["count"] == 5
+        assert mutation_events["InfrahubEvent"]["count"] == 10
+        # The branch's own changes are replayed, and the default branch's only for the kind whose schema changed
+        replayed_objects = {
+            edge["node"]["primary_node"]["id"]: edge["node"]["event"]
+            for edge in mutation_events["InfrahubEvent"]["edges"]
+            if not edge["node"]["primary_node"]["kind"].startswith("Schema")
+        }
+        assert replayed_objects == {
+            initial_dataset["john"]: "infrahub.node.updated",
+            initial_dataset["richard"]: "infrahub.node.created",
+            initial_dataset["mercedes"]: "infrahub.node.created",
+            initial_dataset["glc"]: "infrahub.node.created",
+            initial_dataset["green"]: "infrahub.node.created",
+            initial_dataset["jane"]: "infrahub.node.created",
+        }
 
         janes_events = [
             event["node"]

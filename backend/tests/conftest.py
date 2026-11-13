@@ -76,13 +76,13 @@ from tests.helpers.constants import (
     PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
-    PORT_NATS,
     PORT_PREFECT,
     PORT_REDIS,
 )
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
 from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
@@ -379,7 +379,24 @@ async def register_simplified_proposed_change_schema(default_branch: Branch) -> 
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def neo4j_heap_size() -> str:
+    """Heap size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "1.00GiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j_pagecache_size() -> str:
+    """Page cache size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "512.00MiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j(
+    request: pytest.FixtureRequest,
+    load_settings_before_session: None,
+    neo4j_heap_size: str,
+    neo4j_pagecache_size: str,
+) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -388,9 +405,9 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     container = start_neo4j_container(
         NEO4J_IMAGE,
         extra_env={
-            "NEO4J_server_memory_heap_initial__size": "1g",
-            "NEO4J_server_memory_heap_max__size": "1g",
-            "NEO4J_server_memory_pagecache_size": "512m",
+            "NEO4J_server_memory_heap_initial__size": neo4j_heap_size,
+            "NEO4J_server_memory_heap_max__size": neo4j_heap_size,
+            "NEO4J_server_memory_pagecache_size": neo4j_pagecache_size,
         },
     )
     request.addfinalizer(container.stop)
@@ -443,7 +460,7 @@ def rabbitmq(
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
 def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
         return None
 
     container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
@@ -457,7 +474,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
 
 @pytest.fixture(scope="module")
 def redis(redis_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if redis_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.Redis:
+    if redis_container and INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.cache.address = "localhost"
         config.SETTINGS.cache.port = redis_container[PORT_REDIS]
         config.SETTINGS.cache.username = ""
@@ -509,36 +526,6 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
     request.addfinalizer(container.stop)
 
     return {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
-
-
-@pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
-    if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
-        return None
-
-    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
-    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
-
-    container.start()
-    wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
-
-    return {PORT_NATS: get_exposed_port(container, PORT_NATS)}
-
-
-@pytest.fixture(scope="module")
-def nats(nats_container: dict[int, int] | None, reload_settings_before_each_module: None) -> dict[int, int] | None:
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.cache.driver == config.CacheDriver.NATS:
-        config.SETTINGS.cache.address = "localhost"
-        config.SETTINGS.cache.port = nats_container[PORT_NATS]
-
-    if nats_container and INFRAHUB_USE_TEST_CONTAINERS and config.SETTINGS.broker.driver == config.BrokerDriver.NATS:
-        config.SETTINGS.broker.address = "localhost"
-        config.SETTINGS.broker.port = nats_container[PORT_NATS]
-
-        return nats_container
-
-    return None
 
 
 @pytest.fixture(scope="session")
@@ -1301,7 +1288,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
 @pytest.fixture
 async def git_repo_01(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote."""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -1322,7 +1309,12 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
         data = ujson.loads(response.body)

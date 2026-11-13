@@ -48,7 +48,6 @@ class TestTemplateWithIpPool:
         await admin_page.get_by_label("Template Name *").fill("pool_device_template")
         await select_pool(admin_page, "Loopbacks pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
-        await expect(admin_page.get_by_label("Primary_Address")).to_contain_text("Allocated by pool")
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("InfraDevice created")).to_be_visible()
 

@@ -10,31 +10,35 @@ from .timeline import LockAction, LockTimeline
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
-    from infrahub.services.adapters.cache import InfrahubCache
-
 
 class RecordingLock(InfrahubLock):
-    """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
+    """A local lock that logs its real (non-re-entrant) waits, acquires and releases to a timeline."""
 
     def __init__(
         self,
         name: str,
         connection: redis.Redis | None = None,
-        cache: InfrahubCache | None = None,
         in_multi: bool = False,
         metrics: bool = True,
         ttl: int | None = None,
         *,
         timeline: LockTimeline,
     ) -> None:
-        super().__init__(name=name, connection=connection, cache=cache, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
         self._timeline = timeline
 
     async def acquire(self) -> None:
-        reentrant = self._recursion_var.get() is not None
-        await super().acquire()
-        if not reentrant:
-            self._timeline.record(self.name, LockAction.ACQUIRE)
+        if self._recursion_var.get() is not None:
+            await super().acquire()
+            return
+        self._timeline.record(self.name, LockAction.WAIT)
+        try:
+            await super().acquire()
+        except BaseException:
+            # A cancelled or failed wait leaves the queue, so the count of waiters must drop too.
+            self._timeline.record(self.name, LockAction.ABANDON)
+            raise
+        self._timeline.record(self.name, LockAction.ACQUIRE)
 
     async def release(self) -> None:
         will_release = self._recursion_var.get() == 1
@@ -54,7 +58,6 @@ class RecordingLockRegistry(InfrahubLockRegistry):
         return RecordingLock(
             name=name,
             connection=self.connection,
-            cache=self.cache,
             in_multi=in_multi,
             metrics=metrics,
             ttl=ttl,

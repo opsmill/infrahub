@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import time
-from typing import Callable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 log = get_logger()
 

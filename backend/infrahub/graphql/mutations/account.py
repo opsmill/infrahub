@@ -1,11 +1,10 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from neo4j.exceptions import DriverError, Neo4jError
 from redis.exceptions import RedisError
-from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.auth.types import AuthType
@@ -21,6 +20,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import (
+    AuthorizationError,
     DatabaseError,
     NodeNotFoundError,
     PermissionDeniedError,
@@ -73,7 +73,7 @@ class AccountMixin:
         graphql_context: GraphqlContext = info.context
 
         if not graphql_context.account_session:
-            raise ValueError("An account_session is mandatory to execute this mutation")
+            raise AuthorizationError("An account_session is mandatory to execute this mutation")
 
         if graphql_context.account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
@@ -134,7 +134,7 @@ class AccountMixin:
 
         results = await NodeManager.query(
             schema=InternalAccountToken,
-            filters={"account_ids": [account.id], "ids": [token_id]},
+            filters={"account__ids": [account.id], "ids": [token_id]},
             db=db,
             order=OrderModel(disable=True),
         )

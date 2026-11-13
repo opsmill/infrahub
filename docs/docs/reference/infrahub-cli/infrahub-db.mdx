@@ -22,6 +22,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
 * `reset`: Erase all Infrahub data from the databases...
+* `delete-diffs`: Delete the stored diffs that are not...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
@@ -163,6 +164,36 @@ $ infrahub db reset [OPTIONS] [CONFIG_FILE]
 
 * `--yes-graph`: Reset the graph database without asking for confirmation.
 * `--yes-task-manager`: Reset the task manager database without asking for confirmation.
+* `--help`: Show this message and exit.
+
+## `infrahub db delete-diffs`
+
+Delete the stored diffs that are not frozen, for every branch or for a single one.
+
+By default only named diffs are deleted: diffs computed under a name for a given time range,
+which Infrahub also creates on its own. With --include-branch-diffs, the diffs tracking a branch
+over its lifetime are deleted too, except those of a merged branch, which could not be calculated
+again. A deleted branch diff is calculated again from the start of its branch the next time it is
+requested, and the conflict resolutions recorded in it are lost. Frozen diffs are always kept:
+they record what a closed or merged proposed change, or a merged or deleted branch, changed. The
+diffs of a branch are deleted once any diff update of that branch in progress has finished, and
+branch diffs once any merge in progress has finished.
+
+**Usage**:
+
+```console
+$ infrahub db delete-diffs [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `-b, --branch TEXT`: Only delete the diffs of this branch, which does not need to exist anymore.
+* `--include-branch-diffs`: Also delete the diffs that track a branch over its lifetime, not only the named diffs.
+* `-y, --yes`: Skip the confirmation prompt.
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-duplicate-schema-fields`

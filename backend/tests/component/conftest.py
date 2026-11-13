@@ -2,7 +2,8 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Mapping
+from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -12,8 +13,8 @@ import pytest
 from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from neo4j._codec.hydration.bolt.v1 import HydrationHandler
+from neo4j._codec.hydration.bolt.v1.hydration_handler import _GraphHydrator
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.server.api.server import SubprocessASGIServer
 from prefect.settings import get_current_settings
@@ -33,7 +34,7 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -47,12 +48,14 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
+    create_global_branch,
     create_root_node,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.schema import (
     GenericSchema,
@@ -62,6 +65,7 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_inheritance_handler import NodeInheritanceHandler
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -71,16 +75,22 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_cache
+from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
-    PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
     PREFECT_TEST_SERVER_PORT_RANGE,
 )
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
+from tests.helpers.paused_branch_list import PausedBranchList
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
+from tests.helpers.schema import SHARED_NUMBER_TICKET, TICKET, load_schema
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.helpers.workflow_override import override_workflow
@@ -201,7 +211,6 @@ def prefect_test_fixture(tmp_path_factory: pytest.TempPathFactory) -> Generator[
         return process
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
-    os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
     with (
@@ -238,7 +247,7 @@ def reset_graphql_schema_between_tests() -> Generator:
 async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> InfrahubRepository:
     FileRepo(name="test_base", sources_directory=git_sources_dir)
 
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
@@ -1843,6 +1852,26 @@ async def criticality_schema_scope_class(
     return do_criticality_schema(branch=default_branch_scope_class, schema_root=criticality_schema_root_scope_class)
 
 
+@pytest.fixture(scope="class")
+async def loaded_ticket_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    default_branch_scope_class.update_schema_hash()
+
+
+@pytest.fixture(scope="class")
+async def loaded_shared_number_ticket_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    register_core_models_schema_scope_class: SchemaBranch,
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[SHARED_NUMBER_TICKET]))
+    default_branch_scope_class.update_schema_hash()
+
+
 def do_criticality_schema(branch: Branch, schema_root: SchemaRoot) -> NodeSchema:
     registry.schema.register_schema(schema=schema_root, branch=branch.name)
     registry.schema.process_schema_branch(name=branch.name)
@@ -2119,6 +2148,10 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema: None, data
 
 @pytest.fixture
 async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
+    return do_hierarchical_location_schema_simple_unregistered()
+
+
+def do_hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2198,6 +2231,16 @@ async def hierarchical_location_schema(
 ) -> None: ...
 
 
+@pytest.fixture(scope="class")
+async def hierarchical_location_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
+) -> None:
+    registry.schema.register_schema(
+        schema=do_hierarchical_location_schema_simple_unregistered(), branch=default_branch_scope_class.name
+    )
+    default_branch_scope_class.update_schema_hash()
+
+
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
@@ -2210,6 +2253,13 @@ async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None
 ) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db, branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def hierarchical_location_data_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, hierarchical_location_schema_scope_class: None
+) -> dict[str, Node]:
+    return await _build_hierarchical_location_data(db=db, branch=default_branch_scope_class)
 
 
 async def _build_hierarchical_location_data(db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
@@ -2567,8 +2617,17 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    return do_register_ipam_schema(branch=default_branch, ipam_schema=ipam_schema)
+
+
+@pytest.fixture(scope="class")
+async def register_ipam_schema_scope_class(default_branch_scope_class: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    return do_register_ipam_schema(branch=default_branch_scope_class, ipam_schema=ipam_schema)
+
+
+def do_register_ipam_schema(branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 
@@ -2618,6 +2677,129 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
     schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
+
+
+@pytest.fixture
+async def register_ipam_kind_override_schema(
+    default_branch: Branch, register_ipam_extended_schema: SchemaBranch
+) -> SchemaBranch:
+    """Schema exercising the from_pool target-kind override.
+
+    A second concrete kind behind each builtin IP generic.
+    """
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "IPPrefix",
+                "namespace": "Test",
+                "default_filter": "prefix__value",
+                "order_by": ["prefix__value"],
+                "display_label": "prefix__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
+            },
+            {
+                "name": "IPAddress",
+                "namespace": "Test",
+                "default_filter": "address__value",
+                "order_by": ["address__value"],
+                "display_label": "address__value",
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": [InfrahubKind.IPADDRESS],
+            },
+            {
+                "name": "GenericPrefixOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPPrefix generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "prefix",
+                        "peer": InfrahubKind.IPPREFIX,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "GenericAddressOwner",
+                "namespace": "Test",
+                "description": "A model with a relationship to the bare BuiltinIPAddress generic",
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "address",
+                        "peer": InfrahubKind.IPADDRESS,
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+        ],
+    }
+
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def kind_override_prefix_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPPrefixPool:
+    """A prefix pool whose default kind is IpamIPPrefix, with TestIPPrefix as a sibling."""
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+        resources=[ip_dataset_prefix_v4["net141"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_address_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_kind_override_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict[str, Any],
+) -> CoreIPAddressPool:
+    """An address pool whose default kind is IpamIPAddress, with TestIPAddress as a sibling."""
+    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+
+    pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
+    await pool.new(
+        db=db,
+        name="pool1",
+        default_address_type="IpamIPAddress",
+        resources=[ip_dataset_prefix_v4["net145"]],
+        ip_namespace=ip_dataset_prefix_v4["ns1"],
+    )
+    await pool.save(db=db)
+    return pool
+
+
+@pytest.fixture
+async def kind_override_pools(
+    init_nodes_registry: None,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+    kind_override_address_pool: CoreIPAddressPool,
+) -> dict[str, Node]:
+    """Both kind-override pools, keyed by "prefix_pool" and "address_pool"."""
+    return {"prefix_pool": kind_override_prefix_pool, "address_pool": kind_override_address_pool}
 
 
 @pytest.fixture
@@ -3044,7 +3226,34 @@ def workflow_recorder(dependency_provider: Provider) -> Generator[WorkflowRecord
 
 
 @pytest.fixture
+def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, None]:
+    """Serve the cache from one in-memory instance rather than from a cache another module's app left running."""
+    cache = MemoryCache()
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+        yield cache
+
+
+@pytest.fixture
+def paused_branch_list(monkeypatch: pytest.MonkeyPatch) -> PausedBranchList:
+    """Serve the registry's branch lookups from one whose first list read waits after reading the database."""
+    branch_list = PausedBranchList()
+    monkeypatch.setattr(registry, "branch_object", branch_list)
+    return branch_list
+
+
+@pytest.fixture
 async def generic_car_person_schema(default_branch: Branch, data_schema: None) -> None:
+    do_generic_car_person_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def generic_car_person_schema_scope_class(
+    default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_generic_car_person_schema(branch=default_branch_scope_class)
+
+
+def do_generic_car_person_schema(branch: Branch) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -3101,7 +3310,8 @@ async def generic_car_person_schema(default_branch: Branch, data_schema: None) -
     }
 
     schema_root = SchemaRoot(**schema)
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema_root, branch=branch.name)
+    branch.update_schema_hash()
 
 
 @pytest.fixture
@@ -3166,3 +3376,174 @@ async def branch_aware_node_with_agnostic_attrs_schema(default_branch: Branch, d
         ],
     )
     return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@dataclass(frozen=True)
+class RepositoryBranchStatusBranches:
+    """The branches saved once for the cross-branch repository status tests."""
+
+    default_branch: Branch
+    """Default branch."""
+
+    query_branch_name: str
+    """Non-default branch that carries a schema branch, so queries can execute against it."""
+
+    five: tuple[str, ...]
+    """Five syncing, non-terminal branches, for the small-scale reads."""
+
+    two_hundred: tuple[str, ...]
+    """Two hundred syncing, non-terminal branches, so the branch set is larger than one page."""
+
+    non_syncing: str
+    """Branch saved with `sync_with_git=False`."""
+
+    by_status: Mapping[BranchStatus, str]
+    """One branch name per branch status, terminal statuses included."""
+
+    @property
+    def non_terminal_status_names(self) -> tuple[str, ...]:
+        """Names of the branches whose status is neither MERGED nor DELETING."""
+        return tuple(name for status, name in self.by_status.items() if status not in TERMINAL_BRANCH_STATUSES)
+
+    @property
+    def terminal_status_names(self) -> tuple[str, ...]:
+        """Names of the MERGED and DELETING branches, which no read returns."""
+        return tuple(name for status, name in self.by_status.items() if status in TERMINAL_BRANCH_STATUSES)
+
+
+_REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS = frozenset({"branch", "_schema", "_default_ipnamespace"})
+"""Registry fields whose values describe rows in the database rather than registered types."""
+
+
+@pytest.fixture(scope="module")
+async def repository_branch_status_branches(
+    db: InfrahubDatabase,
+) -> AsyncGenerator[RepositoryBranchStatusBranches, None]:
+    """Bootstrap a database holding every branch shape the cross-branch repository status read must cover.
+
+    Creation timestamps are set explicitly and increase with the save order, so an ordering assertion
+    cannot depend on two saves landing in different microseconds.
+
+    The fixture owns the whole database for the module: it wipes it, creates the root node, the default
+    branch, the global branch and the core schema itself. A module that consumes it must therefore not
+    also request any narrower-scoped fixture that wipes the database or installs a schema, since those
+    run per test or per class and would wipe the branches this one saved. No repository node is created
+    here; a test that writes repository values creates its own so the writes cannot leak into another
+    test sharing the database.
+
+    Teardown empties the database again and restores the registered types the snapshot held, leaving
+    the fields that describe database rows cleared so the registry matches the emptied database. The
+    next module in the worker inherits neither these branches nor a registry pointing at rows that
+    no longer exist, and is expected to bootstrap its own.
+
+    Args:
+        db: Database connection instance.
+
+    Yields:
+        Every branch saved, grouped by the property that makes each interesting.
+
+    """
+    registry_state = dict(vars(registry))
+
+    registry.delete_all()
+    await delete_all_nodes(db=db)
+    await create_root_node(db=db)
+    default_branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
+
+    registry.schema = SchemaManager()
+    install_processed_internal_schema_branch(branch_name=default_branch.name)
+    install_processed_core_schema_branch(branch_name=default_branch.name)
+    default_branch.update_schema_hash()
+
+    five = tuple(f"rbs-five-{index:02d}" for index in range(1, 6))
+    two_hundred = tuple(f"rbs-scale-{index:03d}" for index in range(200))
+    non_syncing = "rbs-nosync"
+    by_status = {status: f"rbs-status-{status.value.lower().replace('_', '-')}" for status in BranchStatus}
+    # (name, status, sync_with_git); the save order fixes the created_at order.
+    specs: list[tuple[str, BranchStatus, bool]] = [
+        *[(name, BranchStatus.OPEN, True) for name in (*five, *two_hundred)],
+        (non_syncing, BranchStatus.OPEN, False),
+        *[(name, status, True) for status, name in by_status.items()],
+    ]
+
+    base = Timestamp()
+    oldest = base.subtract(seconds=len(specs) + 100).to_string()
+    default_branch.created_at = oldest
+    default_branch.branched_from = oldest
+    await default_branch.save(db=db)
+
+    for index, (name, status, sync_with_git) in enumerate(specs):
+        created_at = base.subtract(seconds=len(specs) - index).to_string()
+        branch = Branch(
+            name=name,
+            status=status,
+            description=f"branch {name}",
+            is_default=False,
+            sync_with_git=sync_with_git,
+            branched_from=created_at,
+            created_at=created_at,
+        )
+        await branch.save(db=db)
+
+    query_branch = await Branch.get_by_name(name=five[0], db=db)
+    registry.branch[query_branch.name] = query_branch
+    registry.schema.set_schema_branch(
+        name=query_branch.name,
+        schema=registry.schema.get_schema_branch(name=default_branch.name).duplicate(name=query_branch.name),
+    )
+    query_branch.update_schema_hash()
+
+    yield RepositoryBranchStatusBranches(
+        default_branch=default_branch,
+        query_branch_name=query_branch.name,
+        five=five,
+        two_hundred=two_hundred,
+        non_syncing=non_syncing,
+        by_status=by_status,
+    )
+
+    # Clearing first is what empties the fields holding objects read from the database: skipping
+    # them in the restore below would otherwise leave this module's branches and schemas in place,
+    # describing rows the wipe above just deleted.
+    await delete_all_nodes(db=db)
+    registry.delete_all()
+    for name, value in registry_state.items():
+        if name not in _REGISTRY_FIELDS_BACKED_BY_DATABASE_ROWS:
+            setattr(registry, name, value)
+
+
+async def make_repository_pair(
+    db: InfrahubDatabase, name_prefix: str = "repository-branch-status"
+) -> tuple[CoreRepository, CoreReadOnlyRepository]:
+    """Create one read-write and one read-only repository on the default branch.
+
+    Args:
+        db: Database connection instance.
+        name_prefix: Prefix for the repository names and locations, so a caller can create a pair of
+            its own without colliding with another test sharing the database.
+
+    Returns:
+        The read-write repository and the read-only repository.
+
+    """
+    repository = await Node.init(db=db, schema=CoreRepository)
+    await repository.new(
+        db=db,
+        name=f"{name_prefix}-repository",
+        location=f"git@github.com:opsmill/{name_prefix}-repository.git",
+        commit="1111111111111111111111111111111111111111",
+    )
+    await repository.save(db=db)
+
+    read_only_repository = await Node.init(db=db, schema=CoreReadOnlyRepository)
+    await read_only_repository.new(
+        db=db,
+        name=f"{name_prefix}-read-only-repository",
+        location=f"git@github.com:opsmill/{name_prefix}-read-only-repository.git",
+        commit="2222222222222222222222222222222222222222",
+        ref="main",
+    )
+    await read_only_repository.save(db=db)
+
+    return repository, read_only_repository

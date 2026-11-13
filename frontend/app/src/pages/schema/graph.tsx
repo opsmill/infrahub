@@ -1,10 +1,10 @@
-import { useResolvedTheme } from "@infrahub/ui";
 import { SchemaVisualizer, type SchemaVisualizerData } from "infrahub-schema-visualizer";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
 
+import { useTheme } from "@/entities/config/ui/theme-provider";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -18,7 +18,7 @@ function SchemaGraph() {
   const profiles = useAtomValue(profileSchemasAtom);
   const templates = useAtomValue(templateSchemasAtom);
   const [highlightNodeId, setHighlightNodeId] = useQueryState(QSP.HIGHLIGHT);
-  const theme = useResolvedTheme();
+  const { resolvedTheme: theme } = useTheme();
 
   const schemaData: SchemaVisualizerData = { nodes, generics, profiles, templates };
 

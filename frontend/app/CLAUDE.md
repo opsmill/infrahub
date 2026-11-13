@@ -1,3 +1,1 @@
-# Frontend App
-
 @AGENTS.md

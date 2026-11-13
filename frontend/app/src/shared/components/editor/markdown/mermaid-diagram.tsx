@@ -1,59 +1,26 @@
-import { Button } from "@infrahub/ui";
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-import type React from "react";
-import type { ExtraProps } from "react-markdown";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { Spinner } from "@infrahub/ui";
+import React from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
-type MermaidDiagramProps = React.ComponentProps<"svg"> & ExtraProps;
+import { MermaidDiagramError } from "@/shared/components/editor/markdown/mermaid-diagram-error";
 
-// Rendered as react-markdown's `svg` override. rehype-mermaid emits the diagram
-// as an <svg id="mermaid-…">; wrap those in a pan/zoom container with controls.
-// Any other svg is passed through untouched.
-export function MermaidDiagram({ node: _node, ...svgProps }: MermaidDiagramProps) {
-  if (!String(svgProps.id ?? "").startsWith("mermaid")) {
-    return <svg {...svgProps} />;
-  }
+const MermaidDiagramContent = React.lazy(() => import("./mermaid-diagram-content"));
 
+const LOAD_FAILED = "Could not load the diagram. Reload the page to try again.";
+
+interface MermaidDiagramProps {
+  code: string;
+}
+
+export function MermaidDiagram({ code }: MermaidDiagramProps) {
   return (
-    <div className="relative bg-background">
-      <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.1 }}>
-        {({ zoomIn, zoomOut, resetTransform }) => (
-          <>
-            <div className="absolute top-1 right-1 z-10 flex gap-1">
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => zoomIn()}
-                aria-label="Zoom in"
-              >
-                <ZoomIn />
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => zoomOut()}
-                aria-label="Zoom out"
-              >
-                <ZoomOut />
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                shape="square"
-                onPress={() => resetTransform()}
-                aria-label="Reset zoom"
-              >
-                <RotateCcw />
-              </Button>
-            </div>
-            <TransformComponent wrapperClass="!w-full" contentClass="!w-full">
-              <svg {...svgProps} />
-            </TransformComponent>
-          </>
-        )}
-      </TransformWrapper>
-    </div>
+    <ErrorBoundary
+      fallback={<MermaidDiagramError message={LOAD_FAILED} code={code} />}
+      resetKeys={[code]}
+    >
+      <React.Suspense fallback={<Spinner className="mx-auto h-40" />}>
+        <MermaidDiagramContent code={code} />
+      </React.Suspense>
+    </ErrorBoundary>
   );
 }

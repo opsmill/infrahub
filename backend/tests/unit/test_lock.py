@@ -1,27 +1,31 @@
 import operator
-import subprocess  # noqa: S404
-import sys
 import time
-from asyncio import gather, sleep
+from asyncio import Event, create_task, gather, sleep, wait, wait_for
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import pytest
-import redis.asyncio as redis
-from redis.asyncio.lock import Lock as GlobalLock
+from redis.exceptions import RedisError
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
-from infrahub.exceptions import InitializationError
+from infrahub.core.timestamp import current_timestamp
 from infrahub.lock import (
+    GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
-    LOCK_PREFIX,
+    LOCK_ACQUIRE_TIME_METRICS,
+    LOCK_RESERVE_TIME_METRICS,
+    InfrahubLock,
     InfrahubLockRegistry,
-    NATSLock,
+    InfrahubMultiLock,
+    get_lock_cache_key,
+    get_requested_at_from_lock_token,
     get_worker_id_from_lock_token,
+    initialize_lock,
 )
-from infrahub.services import InfrahubServices
-from tests.adapters.cache import MemoryCache
+from tests.helpers.log import find_logged_events
+from tests.helpers.metrics import bucket_bounds
 
 
 @dataclass
@@ -43,6 +47,53 @@ LOCK_TOKEN_CASES = [
 @pytest.mark.parametrize("case", LOCK_TOKEN_CASES, ids=[c.name for c in LOCK_TOKEN_CASES])
 def test_get_worker_id_from_lock_token(case: LockTokenCase) -> None:
     assert get_worker_id_from_lock_token(case.token) == case.expected
+
+
+@dataclass
+class LockRequestedAtCase:
+    name: str
+    token: str | None
+    expected: datetime | None
+
+
+LOCK_REQUESTED_AT_CASES = [
+    LockRequestedAtCase(
+        name="valid",
+        token="2026-01-01T10:20:30.123456Z::worker-7",
+        expected=datetime(2026, 1, 1, 10, 20, 30, 123456, tzinfo=UTC),
+    ),
+    LockRequestedAtCase(name="none", token=None, expected=None),
+    LockRequestedAtCase(name="empty", token="", expected=None),
+    LockRequestedAtCase(name="no-separator", token="2026-01-01T10:20:30.123456Z", expected=None),
+    LockRequestedAtCase(name="not-a-timestamp", token="yesterday::worker-7", expected=None),
+    LockRequestedAtCase(name="no-offset", token="2026-01-01T10:20:30.123456::worker-7", expected=None),
+    LockRequestedAtCase(name="empty-worker-id", token="2026-01-01T10:20:30.123456Z::", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", LOCK_REQUESTED_AT_CASES, ids=[c.name for c in LOCK_REQUESTED_AT_CASES])
+def test_get_requested_at_from_lock_token(case: LockRequestedAtCase) -> None:
+    assert get_requested_at_from_lock_token(case.token) == case.expected
+
+
+def test_the_request_time_of_a_token_written_by_a_lock_is_read_back() -> None:
+    before = datetime.now(tz=UTC)
+
+    requested_at = get_requested_at_from_lock_token(f"{current_timestamp()}::worker-7")
+
+    assert requested_at is not None
+    assert before <= requested_at <= datetime.now(tz=UTC)
+
+
+def test_lock_cache_key_names_the_key_a_held_lock_is_stored_under() -> None:
+    assert get_lock_cache_key(name="my-repository", namespace="repository") == "lock.repository.my-repository"
+
+
+def test_lock_cache_key_matches_the_key_of_a_registry_lock() -> None:
+    """The key is read by a process that does not hold the lock, so it must name what the lock writes."""
+    held = InfrahubLockRegistry().get(name="my-repository", namespace="repository")
+
+    assert held.remote.name == get_lock_cache_key(name="my-repository", namespace="repository")
 
 
 async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
@@ -68,6 +119,7 @@ async def do_nothing_global_graph(id: str, wait_sec: float) -> tuple[str, int, i
     return id, start_time, end_time
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_simple_infrahub_lock() -> None:
     lock.initialize_lock(local_only=True)
 
@@ -82,17 +134,204 @@ async def test_simple_infrahub_lock() -> None:
     assert results[0][2] <= results[1][1]
 
 
+@pytest.mark.usefixtures("without_registry")
 async def test_multi_global_graph_lock() -> None:
     lock.initialize_lock(local_only=True)
 
     results = await gather(
         do_nothing_global_graph(id="one", wait_sec=0.5),
         do_nothing_global_graph(id="two", wait_sec=1),
-        do_nothing(id="tree", wait_sec=1, lock_name="local.schema"),
     )
 
     assert results[0][2] <= results[1][1]
-    assert results[0][2] <= results[2][1]
+
+
+@pytest.mark.usefixtures("without_registry")
+async def test_global_lock_holder_takes_local_schema_lock_while_a_schema_update_waits() -> None:
+    lock.initialize_lock(local_only=True)
+    events: list[str] = []
+    graph_lock_held = Event()
+
+    async def update_registry_under_graph_lock() -> None:
+        async with lock.registry.global_graph_lock():
+            graph_lock_held.set()
+            # Yields once so the schema update queues on the global schema lock first.
+            await sleep(0)
+            async with lock.registry.local_schema_lock():
+                events.append("registry updated")
+
+    async def update_schema() -> None:
+        await graph_lock_held.wait()
+        async with lock.registry.global_schema_lock():
+            events.append("schema updated")
+
+    await wait_for(gather(update_registry_under_graph_lock(), update_schema()), timeout=10)
+
+    assert events == ["registry updated", "schema updated"]
+
+
+@pytest.mark.usefixtures("without_registry")
+async def test_multi_lock_releases_what_it_acquired_when_cancelled_while_acquiring() -> None:
+    lock.initialize_lock(local_only=True)
+    local_lock_held = Event()
+    release_local_lock = Event()
+
+    async def hold_local_schema_lock() -> None:
+        async with lock.registry.local_schema_lock():
+            local_lock_held.set()
+            await release_local_lock.wait()
+
+    async def update_schema() -> None:
+        async with lock.registry.global_schema_lock():
+            pass
+
+    holder = create_task(hold_local_schema_lock())
+    try:
+        await wait_for(local_lock_held.wait(), timeout=10)
+        waiter = create_task(update_schema())
+        # Yields once so the schema update takes the global schema lock and queues on the local one.
+        await sleep(0)
+        assert await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
+
+        waiter.cancel()
+        done, _ = await wait([waiter], timeout=10)
+
+        assert waiter in done
+        assert waiter.cancelled()
+        assert not await lock.registry.get(name=GLOBAL_SCHEMA_LOCK).locked()
+    finally:
+        release_local_lock.set()
+        await wait_for(holder, timeout=10)
+
+
+class ReleaseFailingLock(InfrahubLock):
+    """A local lock whose release fails the way it does when Redis does not answer."""
+
+    async def release(self) -> None:
+        raise RedisError("Redis did not answer")
+
+
+class ReleaseFailingLockRegistry(InfrahubLockRegistry):
+    """Local lock registry whose lock of the given name fails to release."""
+
+    def __init__(self, failing_lock_name: str) -> None:
+        super().__init__(local_only=True)
+        self.failing_lock_name = failing_lock_name
+
+    def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        if name == self.failing_lock_name:
+            return ReleaseFailingLock(name=name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+        return super()._create_lock(name=name, in_multi=in_multi, metrics=metrics, ttl=ttl)
+
+
+async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    lock_registry = ReleaseFailingLockRegistry(failing_lock_name="second")
+    third_lock_held = Event()
+    release_third_lock = Event()
+
+    async def hold_third_lock() -> None:
+        async with lock_registry.get(name="third"):
+            third_lock_held.set()
+            await release_third_lock.wait()
+
+    async def take_all_locks() -> None:
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["first", "second", "third"]):
+            pass
+
+    # Held here so the registry keeps handing out this lock and the checks below look at the one the multi-lock took.
+    first_lock = lock_registry.get(name="first")
+    holder = create_task(hold_third_lock())
+    try:
+        await wait_for(third_lock_held.wait(), timeout=10)
+        waiter = create_task(take_all_locks())
+        # Yields once so the multi-lock takes the first two locks and queues on the third.
+        await sleep(0)
+        assert await first_lock.locked()
+
+        with caplog.at_level("ERROR", logger="infrahub"):
+            waiter.cancel()
+            done, _ = await wait([waiter], timeout=10)
+
+        assert waiter in done
+        assert waiter.cancelled()
+        assert not await first_lock.locked()
+        failures = find_logged_events(
+            caplog, event="Could not release a lock after a multi-lock failed to acquire", lock="second"
+        )
+        assert len(failures) == 1
+        assert failures[0]["exc_info"]
+    finally:
+        release_third_lock.set()
+        await wait_for(holder, timeout=10)
+
+
+async def test_registry_keeps_no_lock_after_its_holders_released_it() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    for index in range(3):
+        async with lock_registry.get(name=f"object.single.{index}"):
+            assert lock_registry.get_existing(name=f"object.single.{index}", namespace=None) is not None
+        async with InfrahubMultiLock(
+            lock_registry=lock_registry, locks=[f"object.first.{index}", f"object.second.{index}"], metrics=False
+        ):
+            assert lock_registry.get_existing(name=f"object.first.{index}", namespace=None) is not None
+
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_excludes_a_second_holder_until_it_releases() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    events: list[str] = []
+    first_held = Event()
+    second_trying = Event()
+    release_first = Event()
+
+    async def hold_first() -> None:
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("first acquired")
+            first_held.set()
+            await release_first.wait()
+            events.append("first releasing")
+
+    async def take_second() -> None:
+        await first_held.wait()
+        # Nothing awaits between setting the event and queueing on the held lock, so the holder releases only after.
+        second_trying.set()
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("second acquired")
+
+    holder = create_task(hold_first())
+    taker = create_task(take_second())
+    await wait_for(second_trying.wait(), timeout=10)
+    release_first.set()
+    await wait_for(gather(holder, taker), timeout=10)
+
+    assert events == ["first acquired", "first releasing", "second acquired"]
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_entered_twice_releases_its_locks_on_the_outer_exit() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    multi_lock = InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"])
+    lock_a = lock_registry.get(name="object.a")
+
+    async with multi_lock:
+        async with multi_lock:
+            pass
+        assert await lock_a.locked()
+
+    assert not await lock_a.locked()
+
+
+async def test_local_schema_wait_returns_once_the_schema_lock_was_released() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    async with lock_registry.local_schema_lock():
+        pass
+
+    await wait_for(lock_registry.local_schema_wait(), timeout=10)
 
 
 def test_generate_name() -> None:
@@ -123,9 +362,6 @@ def test_init_lock_ttl_defaults_to_twenty_minutes() -> None:
 
 
 async def test_init_locks_carry_configured_ttl() -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("TTL is only enforced with the Redis cache driver")
-
     registry = InfrahubLockRegistry(local_only=False)
     expected_ttl = config.SETTINGS.cache.init_lock_ttl_mins * 60
 
@@ -137,67 +373,18 @@ async def test_init_locks_carry_configured_ttl() -> None:
 
     for init_lock in init_locks:
         assert init_lock.ttl == expected_ttl
-        assert isinstance(init_lock.remote, GlobalLock)
-        assert init_lock.remote.timeout == expected_ttl
+        assert init_lock.remote.ttl == expected_ttl
 
 
 async def test_regular_locks_have_no_ttl() -> None:
-    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
-        pytest.skip("TTL is only enforced with the Redis cache driver")
-
     registry = InfrahubLockRegistry(local_only=False)
     regular_lock = registry.get(name="repo-a", namespace="repository")
 
     assert regular_lock.ttl is None
-    assert isinstance(regular_lock.remote, GlobalLock)
-    assert regular_lock.remote.timeout is None
+    assert regular_lock.remote.ttl is None
 
 
-def test_reading_the_registry_before_initialization_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An un-initialized registry must announce itself, not read as a usable value."""
-    monkeypatch.delattr(lock, "registry", raising=False)
-
-    assert not lock.is_initialized()
-    with pytest.raises(InitializationError, match="has not been initialized"):
-        _ = lock.registry
-
-
-def test_remote_lock_rejects_a_connection_the_driver_cannot_use(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Each driver rejects being handed only the other driver's connection, at construction time."""
-    unsupported = [
-        (config.CacheDriver.NATS, redis.Redis(), None, "requires a cache adapter"),
-        (config.CacheDriver.Redis, None, MemoryCache(), "requires a Redis connection"),
-    ]
-
-    for driver, connection, cache, expected in unsupported:
-        monkeypatch.setattr(config.SETTINGS.cache, "driver", driver)
-        with pytest.raises(TypeError, match=expected):
-            lock.InfrahubLock(name="global.wrong-connection", connection=connection, cache=cache, local=False)
-
-
-async def test_nats_driver_locks_through_the_service_cache(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A registry built from a service hands its locks the service's cache adapter, and nothing more."""
-    monkeypatch.setattr(config.SETTINGS.cache, "driver", config.CacheDriver.NATS)
-    cache = MemoryCache()
-    registry = InfrahubLockRegistry(local_only=False, service=await InfrahubServices.new(cache=cache))
-
-    lock_obj = registry.get(name="repo-a", namespace="repository")
-    key = f"{LOCK_PREFIX}.repository.repo-a"
-
-    assert isinstance(lock_obj.remote, NATSLock)
-    async with lock_obj:
-        assert await cache.get(key=key) is not None
-    assert await cache.get(key=key) is None
-
-
-def test_lock_module_does_not_import_the_services_layer() -> None:
-    """``infrahub.lock`` is a primitive the services layer is built on, so importing it must not load that layer."""
-    probe = "import sys, infrahub.lock; raise SystemExit(int('infrahub.services' in sys.modules))"
-    result = subprocess.run([sys.executable, "-c", probe], check=False, capture_output=True, text=True)  # noqa: S603
-
-    assert result.returncode == 0, result.stderr or "infrahub.lock imported infrahub.services"
-
-
+@pytest.mark.usefixtures("without_registry")
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:
     lock.initialize_lock(local_only=True)
 
@@ -227,3 +414,105 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "outer released",
         "waiter acquired",
     ]
+
+
+BOUNDS_PROBE_LABELS = {"lock": "bucket_bounds_probe", "type": "local"}
+
+
+def test_lock_acquire_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_ACQUIRE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_ACQUIRE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.0005",
+        "0.25",
+        "0.5",
+        "1.0",
+        "5.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
+    ]
+
+
+def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_RESERVE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_RESERVE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.001",
+        "0.5",
+        "1.0",
+        "5.0",
+        "10.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
+    ]
+
+
+@pytest.fixture
+def without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lock, "registry", None)
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_keeps_a_redis_registry_built_from_the_same_arguments() -> None:
+    initialize_lock()
+    first = lock.registry
+
+    initialize_lock()
+
+    assert lock.registry is first
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_replaces_a_redis_registry_with_a_local_one() -> None:
+    initialize_lock()
+    redis_registry = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not redis_registry
+    assert lock.registry.connection is None
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_rebuilds_a_local_registry() -> None:
+    """Fixtures call it to start from fresh locks, which a kept registry would not give them."""
+    initialize_lock(local_only=True)
+    first = lock.registry
+
+    initialize_lock(local_only=True)
+
+    assert lock.registry is not first
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_rebuilds_a_redis_registry_when_the_cache_settings_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initialize_lock()
+    first = lock.registry
+
+    monkeypatch.setattr(config.SETTINGS.cache, "address", "other-cache")
+    initialize_lock()
+
+    assert lock.registry is not first
+    assert lock.registry.connection_url != first.connection_url
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_initialize_lock_rebuilds_a_redis_registry_when_the_pool_size_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The cache URL stays the same, so only the pool size tells that the settings changed."""
+    initialize_lock()
+    first = lock.registry
+
+    monkeypatch.setattr(config.SETTINGS.cache, "max_connections", 250)
+    initialize_lock()
+
+    assert lock.registry is not first
+    assert lock.registry.connection is not None
+    assert lock.registry.connection.connection_pool.max_connections == 250

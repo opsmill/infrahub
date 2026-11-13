@@ -6,13 +6,12 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, Self, TypedDict
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
-from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
@@ -58,6 +57,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.attribute_parameters import (
     ListAttributeParameters,
+    NumberPoolParameters,
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
@@ -67,6 +67,10 @@ from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
     HierarchicalNodesRestrictedWords,
+)
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeValidator,
+    scope_refusal_reason,
 )
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -185,6 +189,19 @@ class SchemaBranch:
     @property
     def all_names(self) -> list[str]:
         return self.node_names + self.generic_names + self.profile_names + self.template_names
+
+    def get_object_kinds_different_from(self, other: SchemaBranch) -> list[str]:
+        """Return the node, profile and template kinds whose schema is missing from or different in ``other``."""
+        return sorted(
+            kind
+            for own_hashes, other_hashes in (
+                (self.nodes, other.nodes),
+                (self.profiles, other.profiles),
+                (self.templates, other.templates),
+            )
+            for kind, schema_hash in own_hashes.items()
+            if other_hashes.get(kind) != schema_hash
+        )
 
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
@@ -719,15 +736,21 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
-    def process(self, validate_schema: bool = True) -> None:
+    def process(self, validate_schema: bool = True, default_branch_schema: SchemaBranch | None = None) -> None:
+        """Prepare the schema and validate it unless told otherwise.
+
+        A newly declared allocation scope resolves against the default branch's schema when it is given, and on this
+        schema alone otherwise.
+        """
         self.process_pre_validation()
         if validate_schema:
-            self.process_validate()
+            self.process_validate(default_branch_schema=default_branch_schema)
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
         self.process_nodes_state()
         self.process_attributes_state()
+        self.process_dropdown_choices_state()
         self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
@@ -766,7 +789,7 @@ class SchemaBranch:
         self._reconcile_legacy_attribute_parameters()
         self.process_branch_support()
 
-    def process_validate(self) -> None:
+    def process_validate(self, default_branch_schema: SchemaBranch | None = None) -> None:
         for validator in self.validators:
             validator.check(schema_branch=self)
 
@@ -775,7 +798,7 @@ class SchemaBranch:
         self.validate_kinds()
         self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
-        self.validate_attribute_parameters()
+        self.validate_attribute_parameters(default_branch_schema=default_branch_schema)
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -1370,12 +1393,132 @@ class SchemaBranch:
                                 f"{node.kind}: Relationship {rel.name!r} set 'common_relatives' with invalid relationship from '{rel.peer}'"
                             ) from None
 
-    def validate_attribute_parameters(self) -> None:
+    def validate_attribute_parameters(self, default_branch_schema: SchemaBranch | None = None) -> None:
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.kind == "NumberPool":
+                    self._validate_number_pool_scope(
+                        kind_schema=generic_schema,
+                        attribute=attribute,
+                        default_branch_schema=default_branch_schema,
+                    )
+
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 if attribute.kind == "NumberPool":
                     self._validate_number_pool_parameters(node_schema=node_schema, attribute=attribute)
+                    # The generic's declaration resolves once on the generic, while each implementing node can still
+                    # make an element optional or the tracked attribute unique on its own.
+                    self._validate_number_pool_scope(
+                        kind_schema=node_schema,
+                        attribute=attribute,
+                        default_branch_schema=default_branch_schema,
+                        on_implementing_node=attribute.inherited,
+                    )
+
+    def _validate_number_pool_scope(
+        self,
+        kind_schema: NodeSchema | GenericSchema,
+        attribute: AttributeSchema,
+        default_branch_schema: SchemaBranch | None,
+        on_implementing_node: bool = False,
+    ) -> None:
+        """Refuse a NumberPool declaration whose allocation scope cannot divide its pool on this schema.
+
+        An attribute not attached to a pool yet must also fit the scoped pool the default branch holds for the same
+        kind and attribute. A declared scope then resolves against the default branch for a new declaration, and on
+        this schema once the pool exists.
+
+        Args:
+            kind_schema: The kind that declares the attribute.
+            attribute: The NumberPool attribute to check; an attribute of another kind is ignored.
+            default_branch_schema: The schema of the default branch, or None when it is not known.
+            on_implementing_node: Whether the attribute is the copy a node inherits from a generic, whose pool belongs
+                to the generic.
+
+        Raises:
+            ValidationError: When the kind cannot use the scoped pool of the default branch, or when a scope element
+                cannot divide the pool; the message names the kind and the attribute.
+
+        """
+        if not isinstance(attribute.parameters, NumberPoolParameters):
+            return
+        if not on_implementing_node and attribute.parameters.number_pool_id is None:
+            self._validate_default_branch_pool(
+                kind_schema=kind_schema, attribute=attribute, default_branch_schema=default_branch_schema
+            )
+        if not attribute.parameters.allocation_scope:
+            return
+        pool_exists = on_implementing_node or attribute.parameters.number_pool_id is not None
+        # Only a new declaration resolves against the default branch.
+        # The candidate is the default branch's schema when the change is made on the default branch itself.
+        resolving_schema = (
+            self
+            if pool_exists or default_branch_schema is None or default_branch_schema.name == self.name
+            else default_branch_schema
+        )
+        try:
+            DeclaredScopeValidator().validate(
+                candidate=self,
+                default_branch_schema=resolving_schema,
+                kind=kind_schema.kind,
+                tracked_attribute=attribute.name,
+                entries=attribute.parameters.allocation_scope,
+                pool_exists=pool_exists,
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
+
+    def _validate_default_branch_pool(
+        self,
+        kind_schema: NodeSchema | GenericSchema,
+        attribute: AttributeSchema,
+        default_branch_schema: SchemaBranch | None,
+    ) -> None:
+        """Refuse a NumberPool attribute whose kind cannot use the scoped pool the default branch holds for it.
+
+        Nothing is checked on the default branch itself, or when the default branch does not define the kind or the
+        attribute, or holds no scoped pool for them.
+
+        Args:
+            kind_schema: The kind that declares the attribute on this branch.
+            attribute: The NumberPool attribute, not attached to a pool on this branch yet.
+            default_branch_schema: The schema of the default branch, or None when it is not known.
+
+        Raises:
+            ValidationError: When the kind on this branch lacks a field the pool of the default branch is scoped by,
+                or holds it with another id; the message names the kind and the attribute.
+
+        """
+        if default_branch_schema is None or default_branch_schema.name == self.name:
+            return
+        if not default_branch_schema.has(name=kind_schema.kind):
+            return
+        default_attribute = default_branch_schema.get(name=kind_schema.kind, duplicate=False).get_attribute_or_none(
+            name=attribute.name
+        )
+        if (
+            default_attribute is None
+            or not isinstance(default_attribute.parameters, NumberPoolParameters)
+            or default_attribute.parameters.number_pool_id is None
+            or not default_attribute.parameters.allocation_scope
+        ):
+            return
+        try:
+            DeclaredScopeValidator().validate_default_branch_pool(
+                candidate=self,
+                default_branch_schema=default_branch_schema,
+                kind=kind_schema.kind,
+                default_entries=default_attribute.parameters.allocation_scope,
+            )
+        except ValidationError as exc:
+            raise ValidationError(
+                f"{kind_schema.kind}.{attribute.name}: allocation_scope: {scope_refusal_reason(error=exc)}"
+            ) from exc
 
     def _validate_number_pool_parameters(self, node_schema: NodeSchema, attribute: AttributeSchema) -> None:
         if attribute.optional:
@@ -1761,6 +1904,8 @@ class SchemaBranch:
     def _propagate_human_friendly_id_to_constraints(self, name: str, raise_parsing_errors: bool) -> None:
         """Append the HFID-derived constraint to node.uniqueness_constraints if not already present.
 
+        Presence is the set of fields, so an existing constraint with the same fields in a
+        different order is kept as-is. A subset or superset does not count as the same constraint.
         No-op if the node has no HFID or the conversion produces an empty constraint.
         Path-parsing failures from `convert_hfid_to_uniqueness_constraint` are re-raised
         when `raise_parsing_errors=True` and silently skipped otherwise.
@@ -1781,8 +1926,9 @@ class SchemaBranch:
 
         node = self.get(name=name, duplicate=True)
         # Make sure there is no duplicate regarding generics values.
+        hfid_fields = set(hfid_uniqueness_constraint)
         if node.uniqueness_constraints:
-            if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+            if not any(set(constraint) == hfid_fields for constraint in node.uniqueness_constraints):
                 node.uniqueness_constraints.append(hfid_uniqueness_constraint)
         else:
             node.uniqueness_constraints = [hfid_uniqueness_constraint]
@@ -2055,10 +2201,16 @@ class SchemaBranch:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
+            # Infrahub ships the nodes of the restricted namespaces, so an operator has nothing to clean up there.
+            report_deprecations = node.namespace not in RESTRICTED_NAMESPACES
+
             change_required = False
             for item in node.attributes + node.relationships:
                 if item.is_deprecated:
-                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
+                    if report_deprecations:
+                        log.warning(
+                            f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up"
+                        )
                     if not item.optional:
                         change_required = True
 
@@ -2102,6 +2254,33 @@ class SchemaBranch:
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
+
+    def process_dropdown_choices_state(self) -> None:
+        """Drop the choices marked absent and reject a dropdown attribute left without any choice.
+
+        Raises:
+            ValueError: When a dropdown attribute has no choice left.
+
+        """
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            updated_node: MainSchemaTypes | None = None
+            for index, attribute in enumerate(node.attributes):
+                if attribute.kind != "Dropdown":
+                    continue
+                choices = [choice for choice in attribute.choices or [] if choice.state != HashableModelState.ABSENT]
+                if not choices:
+                    raise ValueError(f"Unable to remove the last dropdown on {node.kind} in attribute {attribute.name}")
+                if len(choices) == len(attribute.choices or []):
+                    continue
+                updated_node = updated_node or node.duplicate()
+                updated_attribute = updated_node.attributes[index]
+                updated_attribute.choices = [
+                    choice for choice in updated_attribute.choices or [] if choice.state != HashableModelState.ABSENT
+                ]
+
+            if updated_node:
+                self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:

@@ -2,7 +2,15 @@ from pathlib import Path
 
 import pytest
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
+from infrahub_sdk.protocols import (
+    CoreCustomWebhook,
+    CoreGeneratorDefinition,
+    CoreGenericRepository,
+    CoreReadOnlyRepository,
+    CoreRepository,
+    CoreStandardGroup,
+    CoreTransformPython,
+)
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo, GitRepoType
 
@@ -69,14 +77,14 @@ class TestRepositorySync(TestInfrahubDockerClient):
 
         # An object that references a Python transform defined in the same repository should be
         # correctly resolved.
-        webhook = await client.get(kind="CoreCustomWebhook", name__value="tags-webhook")
+        webhook = await client.get(kind=CoreCustomWebhook, name__value="tags-webhook")
         assert webhook.transformation.id is not None
-        transform = await client.get(kind="CoreTransformPython", id=webhook.transformation.id)
+        transform = await client.get(kind=CoreTransformPython, id=webhook.transformation.id)
         assert transform.name.value == "TagsTransform"
 
         # A generator definition whose target group is defined as an object in the same repository
         # should also be resolved correctly.
-        generator = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
+        generator = await client.get(kind=CoreGeneratorDefinition, name__value="tags_generator")
         assert generator.targets.id is not None
-        group = await client.get(kind="CoreStandardGroup", name__value="repo_defined_group")
+        group = await client.get(kind=CoreStandardGroup, name__value="repo_defined_group")
         assert generator.targets.id == group.id

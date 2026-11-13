@@ -50,6 +50,8 @@ class NodePropertyMixin:
 
     branch: Branch
     at: Timestamp
+    source_id: str | UUID | None
+    owner_id: str | UUID | None
 
     def _init_node_property_mixin(self, kwargs: dict | None = None) -> None:
         for node in self._node_properties:

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.query import QueryResult
     from infrahub.core.schema import SchemaAttributePath, SchemaAttributePathValue
 

@@ -1,0 +1,25 @@
+/* The library paints rows with fixed light colours on :root, so redefine them per diff from the theme tokens. */
+.diff {
+  --diff-selection-background-color: var(--info-surface);
+  --diff-gutter-insert-background-color: var(--diff-added-surface);
+  --diff-gutter-delete-background-color: var(--diff-removed-surface);
+  --diff-code-insert-background-color: var(--diff-added-surface);
+  --diff-code-delete-background-color: var(--diff-removed-surface);
+  --diff-code-insert-edit-background-color: color-mix(
+    in oklab,
+    var(--diff-added) 30%,
+    transparent
+  );
+  --diff-code-delete-edit-background-color: color-mix(
+    in oklab,
+    var(--diff-removed) 30%,
+    transparent
+  );
+}
+
+.diff-gutter {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

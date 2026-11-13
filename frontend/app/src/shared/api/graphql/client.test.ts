@@ -3,12 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { PRIORITY_HEADER } from "@/shared/api/priority";
+import { MAX_RETRIES } from "@/shared/api/rate-limit/policy";
+import { SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 import { queryClient } from "@/shared/api/rest/client";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
+import { shedResponse } from "../../../../tests/fake/shed-response";
 import { graphqlClient } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
@@ -173,7 +176,7 @@ describe("handleGraphQLErrors — catalogue routing", () => {
 describe("graphqlClient — token refresh integration", () => {
   let assignSpy: ReturnType<typeof vi.fn>;
   let originalAssign: typeof __navigation.assign;
-  let fetchQuerySpy: ReturnType<typeof vi.spyOn>;
+  let querySpy: ReturnType<typeof vi.spyOn>;
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   const PING = gql`
@@ -211,7 +214,7 @@ describe("graphqlClient — token refresh integration", () => {
     originalAssign = __navigation.assign;
     assignSpy = vi.fn();
     __navigation.assign = assignSpy as unknown as typeof __navigation.assign;
-    fetchQuerySpy = vi.spyOn(queryClient, "fetchQuery");
+    querySpy = vi.spyOn(queryClient, "query");
     fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
   });
@@ -287,7 +290,7 @@ describe("graphqlClient — token refresh integration", () => {
   it("bails to /login when the refresh throws", async () => {
     // GIVEN
     fetchSpy.mockImplementation(() => Promise.resolve(jsonResponse(tokenExpiredBody)));
-    fetchQuerySpy.mockRejectedValue(new Error("refresh failed"));
+    querySpy.mockRejectedValue(new Error("refresh failed"));
 
     // WHEN
     await graphqlClient.query({ query: PING }).catch(() => {});
@@ -301,7 +304,7 @@ describe("graphqlClient — token refresh integration", () => {
     fetchSpy
       .mockResolvedValueOnce(jsonResponse(tokenExpiredBody))
       .mockResolvedValueOnce(jsonResponse({ data: { __typename: "Query" } }));
-    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
+    querySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
 
     // WHEN
     const result = await graphqlClient.query({ query: PING });
@@ -309,7 +312,7 @@ describe("graphqlClient — token refresh integration", () => {
     // THEN
     expect(result.data).toEqual({ __typename: "Query" });
     expect(result.errors).toBeUndefined();
-    expect(fetchQuerySpy).toHaveBeenCalledOnce();
+    expect(querySpy).toHaveBeenCalledOnce();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(assignSpy).not.toHaveBeenCalled();
     const replay = new Headers((fetchSpy.mock.calls[1]![1] as RequestInit).headers);
@@ -319,7 +322,7 @@ describe("graphqlClient — token refresh integration", () => {
   it("bails to /login when TOKEN_EXPIRED persists after the single replay", async () => {
     // GIVEN
     fetchSpy.mockImplementation(() => Promise.resolve(jsonResponse(tokenExpiredBody)));
-    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
+    querySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
 
     // WHEN
     const querying = graphqlClient.query({ query: PING });
@@ -327,8 +330,24 @@ describe("graphqlClient — token refresh integration", () => {
     // THEN
     await expect(querying).rejects.toThrow("Token expired");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(fetchQuerySpy).toHaveBeenCalledOnce();
+    expect(querySpy).toHaveBeenCalledOnce();
     expect(assignSpy).toHaveBeenCalled();
+  });
+
+  it("rejects a shed query with the busy message once the retries are spent", async () => {
+    // GIVEN
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    fetchSpy.mockImplementation(() => Promise.resolve(shedResponse()));
+
+    // WHEN
+    const querying = graphqlClient.query({
+      query: PING,
+      context: { processErrorMessage: () => {} },
+    });
+
+    // THEN
+    await expect(querying).rejects.toThrow(SHED_USER_MESSAGE);
+    expect(fetchSpy).toHaveBeenCalledTimes(MAX_RETRIES + 1);
   });
 
   it("rejects a query on GraphQL errors even when the response carries data", async () => {

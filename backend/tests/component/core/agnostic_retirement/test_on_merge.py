@@ -7,28 +7,21 @@ over the nodes its own diff records as removed, and acts only on the result.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
-from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.dependencies.registry import get_component_registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-from tests.component.core.agnostic_retirement.support import delete_node
+from tests.component.core.agnostic_retirement.support import delete_node, merge_branch
 from tests.helpers.agnostic_edges import (
     TEST_ACTOR_ID,
     assert_attribute_retired_at,
@@ -44,24 +37,6 @@ from tests.helpers.schema.agnostic_retirement import (
     GADGET_KIND,
     RELATIONSHIP_IDENTIFIER,
 )
-
-
-async def _update_branch_diff(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> EnrichedDiffRoot:
-    """Recompute the branch's tracked diff and return the enriched branch-side diff root."""
-    component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
-    metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-    return await diff_repository.get_one(diff_branch_name=metadata.diff_branch_name, diff_id=metadata.uuid)
-
-
-async def _merge_branch(db: InfrahubDatabase, default_branch: Branch, branch: Branch, at: Timestamp) -> None:
-    """Merge the branch's graph into the default branch, the way the merge flow drives it."""
-    await _update_branch_diff(db=db, default_branch=default_branch, branch=branch)
-    component_registry = get_component_registry()
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await diff_merger.merge_graph(at=at, user_id=TEST_ACTOR_ID)
 
 
 class TestAgnosticRetirementOnMerge:
@@ -111,7 +86,7 @@ class TestAgnosticRetirementOnMerge:
         ), "the default branch still reads the object, so the branch's delete released nothing"
 
         merged_at = Timestamp()
-        await _merge_branch(db=db, default_branch=default_branch, branch=branch, at=merged_at)
+        await merge_branch(db=db, default_branch=default_branch, branch=branch, at=merged_at)
 
         assert await NodeManager.get_one(db=db, id=widget.id, branch=default_branch) is None, (
             "the merge carried the deletion to the default branch"
@@ -140,7 +115,7 @@ class TestAgnosticRetirementOnMerge:
         assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
         await delete_node(db=db, node_id=widget.id, branch=branch, at=Timestamp())
-        await _merge_branch(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
+        await merge_branch(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
 
         assert await NodeManager.get_one(db=db, id=widget.id, branch=default_branch) is None, (
             "the merge carried the deletion to the default branch"
@@ -179,7 +154,7 @@ class TestAgnosticRetirementOnMerge:
         await delete_node(db=db, node_id=unretained.id, branch=branch, at=Timestamp())
 
         merged_at = Timestamp()
-        await _merge_branch(db=db, default_branch=default_branch, branch=branch, at=merged_at)
+        await merge_branch(db=db, default_branch=default_branch, branch=branch, at=merged_at)
 
         assert await NodeManager.get_one(db=db, id=retained.id, branch=default_branch) is None, (
             "the merge carried both deletions to the default branch"

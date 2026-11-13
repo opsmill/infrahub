@@ -7,6 +7,14 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import InitializationError
 
 
+def build_internal_schema_branch() -> SchemaBranch:
+    """Return a processed schema branch holding only the internal schema."""
+    schema_branch = SchemaBranch(cache={}, name="default_branch")
+    schema_branch.load_schema(schema=SchemaRoot(**internal_schema))
+    schema_branch.process()
+    return schema_branch
+
+
 async def get_or_load_schema_branch(db: InfrahubDatabase, branch: Branch) -> SchemaBranch:
     try:
         if registry.schema.has_schema_branch(branch.name):

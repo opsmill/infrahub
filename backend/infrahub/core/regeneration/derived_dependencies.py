@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING, Protocol, assert_never
 
 from infrahub.core.schema.derived_path import (
     DerivedPathResolver,
@@ -50,16 +50,20 @@ class DerivedFieldDependencies:
     widen: bool
 
 
-class DerivedFieldDependencyResolver:
+class DerivedFieldDependencyResolver(Protocol):
     """Resolve the peer kinds a query's display_label / human_friendly_id reads depend on.
 
     A derived value can be composed from a related node's field, so a change to that peer moves the
-    value while the peer's kind is never named in the query's read surface. This walks each derived
-    field's declared paths, following relationships to the kind that owns the backing attribute, and
-    reports the relationship chain that maps a changed peer back to the reading member. A read built
-    only from the reading kind's own attributes yields no peer -- the imprecise-read rule already
-    covers a same-kind change -- and anything that cannot be resolved sets ``widen``.
+    value while the peer's kind is never named in the query's read surface. A read built only from the
+    reading kind's own attributes yields no peer -- the imprecise-read rule already covers a same-kind
+    change -- and anything that cannot be resolved sets ``widen``.
     """
+
+    def resolve(self, readable_fields_by_kind: Mapping[str, set[str]]) -> DerivedFieldDependencies: ...
+
+
+class SchemaDerivedFieldDependencyResolver(DerivedFieldDependencyResolver):
+    """Resolve derived-field peers by walking each field's declared paths through the schema branch."""
 
     def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
@@ -88,10 +92,14 @@ class DerivedFieldDependencyResolver:
 
         A field with no declared path, or on a kind absent from the schema, cannot be resolved: it
         yields no peer and widens. Otherwise every declared path is followed and their peers unioned.
+        A node is never an instance of a generic, so a read on a generic resolves through the
+        definition each implementation carries, inherited or its own.
         """
         reading_schema = self._node_schema(reading_kind)
         if reading_schema is None:
             return [], True
+        if reading_schema.is_generic_schema:
+            return self._resolve_implementations(generic=reading_schema, field_name=field_name)
         paths = reading_schema.get_derived_field_paths(field_name)
         if paths is None:
             return [], True
@@ -102,6 +110,17 @@ class DerivedFieldDependencyResolver:
             path_peers, path_widen = self._resolve_path(reading_schema=reading_schema, path=path)
             peers.extend(path_peers)
             widen = widen or path_widen
+        return peers, widen
+
+    def _resolve_implementations(
+        self, *, generic: MainSchemaTypes, field_name: str
+    ) -> tuple[list[PeerDependency], bool]:
+        peers: list[PeerDependency] = []
+        widen = False
+        for concrete_kind in generic.concrete_kinds:
+            kind_peers, kind_widen = self._resolve_field(reading_kind=concrete_kind, field_name=field_name)
+            peers.extend(kind_peers)
+            widen = widen or kind_widen
         return peers, widen
 
     def _resolve_path(self, *, reading_schema: MainSchemaTypes, path: str) -> tuple[list[PeerDependency], bool]:

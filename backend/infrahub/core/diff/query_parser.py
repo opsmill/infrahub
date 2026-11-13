@@ -43,6 +43,21 @@ class DiffNoPeerIdError(Exception): ...
 class DiffNotFoundError(Exception): ...
 
 
+def _closed_by_node_deletion(database_path: DatabasePath, status: RelationshipStatus) -> bool:
+    """Return whether a field edge is an active edge under a deleted node, closed when the node was deleted."""
+    # A merge deletes a node by closing its active field edges instead of adding deleted ones.
+    return database_path.node_status is RelationshipStatus.DELETED and status is RelationshipStatus.ACTIVE
+
+
+def _field_change(
+    database_path: DatabasePath, changed_at: Timestamp, status: RelationshipStatus
+) -> tuple[Timestamp, RelationshipStatus]:
+    """Return when and how a field edge changed, reading an active edge under a deleted node as deleted with the node."""
+    if _closed_by_node_deletion(database_path=database_path, status=status):
+        return database_path.node_changed_at, RelationshipStatus.DELETED
+    return changed_at, status
+
+
 @dataclass
 class TrackedStatusUpdates:
     timestamp_status_map: dict[Timestamp, RelationshipStatus] = field(kw_only=True, default_factory=dict)
@@ -172,9 +187,14 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
     properties_by_type: dict[DatabaseEdgeType, DiffPropertyIntermediate] = field(default_factory=dict)
 
     def track_database_path(self, database_path: DatabasePath) -> None:
-        if database_path.attribute_changed_at in self.timestamp_status_map:
+        changed_at, status = _field_change(
+            database_path=database_path,
+            changed_at=database_path.attribute_changed_at,
+            status=database_path.attribute_status,
+        )
+        if changed_at in self.timestamp_status_map:
             return
-        self.timestamp_status_map[database_path.attribute_changed_at] = database_path.attribute_status
+        self.timestamp_status_map[changed_at] = status
 
     def to_diff_attribute(self, include_unchanged: bool) -> DiffAttribute:
         properties = []
@@ -328,7 +348,7 @@ class DiffRelationshipIntermediate:
     properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
-    def add_path(self, database_path: DatabasePath, diff_from_time: Timestamp, diff_to_time: Timestamp) -> None:
+    def add_path(self, database_path: DatabasePath, diff_to_time: Timestamp) -> None:
         if database_path.property_type in [
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.HAS_OWNER,
@@ -353,7 +373,7 @@ class DiffRelationshipIntermediate:
         # if the to time was set in the time frame, then it is effectively a delete
         if (
             to_time
-            and database_path.property_from_time < diff_from_time <= to_time <= diff_to_time
+            and database_path.property_from_time < self.from_time <= to_time <= diff_to_time
             and database_path.property_status is RelationshipStatus.ACTIVE
         ):
             self.properties_by_db_id[db_id].add(
@@ -536,12 +556,28 @@ class DiffQueryParser:
     def _parse_path(self, database_path: DatabasePath) -> None:
         to_time = database_path.property_to_time
         # this path was added and removed within the timeframe, so we ignore it
-        if to_time and self.from_time <= database_path.property_from_time <= to_time <= self.to_time:
+        # an edge closed by the deletion of its node records that deletion, so it is kept
+        if (
+            to_time
+            and not _closed_by_node_deletion(database_path=database_path, status=database_path.property_status)
+            and self._get_path_from_time(database_path=database_path)
+            <= database_path.property_from_time
+            <= to_time
+            <= self.to_time
+        ):
             return
 
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
         self._update_attribute_level(database_path=database_path, diff_node=diff_node)
+
+    def _get_path_from_time(self, database_path: DatabasePath) -> Timestamp:
+        # the base branch history of a field the diff branch changes for the first time is read from the fork point
+        if database_path.deepest_branch == self.base_branch_name and self.is_new_node_field_specifier(
+            node_uuid=database_path.node_id, kind=database_path.node_kind, field_name=database_path.attribute_name
+        ):
+            return self.diff_branched_from_time
+        return self.from_time
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -601,9 +637,7 @@ class DiffQueryParser:
         diff_relationship = self._get_diff_relationship(
             diff_node=diff_node, relationship_schema=relationship_schema, database_path=database_path
         )
-        diff_relationship.add_path(
-            database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
-        )
+        diff_relationship.add_path(database_path=database_path, diff_to_time=self.to_time)
 
     def _get_diff_attribute(
         self, database_path: DatabasePath, diff_node: DiffNodeIntermediate
@@ -641,13 +675,12 @@ class DiffQueryParser:
         value = database_path.property_value
         if database_path.property_is_peer:
             value = database_path.peer_id
-        diff_property.add_value(
-            diff_value=DiffValueIntermediate(
-                changed_at=database_path.property_from_time,
-                status=database_path.property_status,
-                value=value,
-            )
+        changed_at, status = _field_change(
+            database_path=database_path,
+            changed_at=database_path.property_from_time,
+            status=database_path.property_status,
         )
+        diff_property.add_value(diff_value=DiffValueIntermediate(changed_at=changed_at, status=status, value=value))
 
     def _get_diff_relationship(
         self,

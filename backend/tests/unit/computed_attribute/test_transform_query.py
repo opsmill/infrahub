@@ -84,13 +84,51 @@ class TestComputedAttributeTransformQuery:
         )
 
     def test_parse_response_returns_none_for_empty_edges(self) -> None:
+        """An empty result means absent, which a caller is allowed to wait out."""
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")
         result = q.parse_response(response={"CoreTransformPython": {"edges": []}})
         assert result is None
 
-    def test_parse_response_returns_none_for_missing_kind(self) -> None:
+    def test_parse_response_returns_none_for_a_null_node(self) -> None:
+        """The second absent shape: an edge that carries no node."""
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")
-        assert q.parse_response(response={}) is None
+        result = q.parse_response(response={"CoreTransformPython": {"edges": [{"node": None}]}})
+        assert result is None
+
+    def test_parse_response_raises_for_a_response_of_another_shape(self) -> None:
+        """A response the query did not ask for says nothing about whether the transform exists."""
+        q = ComputedAttributeTransformQuery(transform_id="txfm-001")
+        with pytest.raises(ValueError, match=r"^Unexpected response shape for transform 'txfm-001'$"):
+            q.parse_response(response={})
+
+    def test_parse_response_raises_for_a_transform_without_a_repository(self) -> None:
+        """A transform whose repository peer is gone is present and unusable, never absent."""
+        q = ComputedAttributeTransformQuery(transform_id="txfm-001")
+        response = {
+            "CoreTransformPython": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "txfm-001",
+                            "file_path": {"value": "transforms/my_transform.py"},
+                            "class_name": {"value": "MyTransform"},
+                            "timeout": {"value": 60},
+                            "convert_query_response": {"value": False},
+                            "repository": {"node": None},
+                            "query": {"node": {"id": "query-001", "name": {"value": "my-query"}}},
+                        }
+                    }
+                ]
+            }
+        }
+        with pytest.raises(
+            ValueError,
+            match=(
+                r"^Transform 'txfm-001' is in the database without the repository, "
+                r"query or file details a run needs$"
+            ),
+        ):
+            q.parse_response(response=response)
 
     def test_parse_response_raises_for_unsupported_repository_kind(self) -> None:
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")

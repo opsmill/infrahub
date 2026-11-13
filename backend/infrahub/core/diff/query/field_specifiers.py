@@ -1,4 +1,5 @@
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase

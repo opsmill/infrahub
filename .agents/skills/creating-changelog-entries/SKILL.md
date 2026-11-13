@@ -24,6 +24,11 @@ When NOT to use: the project doesn't use Towncrier; pure internal refactors with
 shipped in any release is not user-observable: the feature's own `added` fragment already covers
 everything a user will ever see, and a `fixed` entry for something never released is noise.
 
+**Exception — a stacked PR series carries one fragment, on the top PR.** Intermediate PRs in a stack
+skip the fragment: per-PR fragments collide on the same issue-number stem and describe a surface the
+later PRs change again. State the deliberate skip in the intermediate PR's checklist instead of
+leaving the box silently unticked.
+
 **`housekeeping` is not a catch-all.** It covers internal work a user could still notice — a
 build, tooling, or CI change. A change with no user-facing effect at all (an internal
 type annotation, a behavior-preserving refactor, a lint or type-checker config cleanup that touches
@@ -38,7 +43,7 @@ uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 
 These commands use `uv run`, which runs the project's pinned Towncrier and is the convention across these Python projects. If your project doesn't use uv, drop the prefix (`towncrier create ...`) or use its runner (e.g. `poetry run towncrier ...`).
 
-- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`).
+- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`). With an issue, the stem is the bare number and nothing else: Towncrier renders the whole stem through `issue_format`, so `1234-short-slug.fixed.md` links to issue `1234-short-slug` — a 404. Only orphan (`+`) fragments take a descriptive slug. Verify with `towncrier build --draft` when unsure.
 - **TYPE** — one of the change types below.
 
 | Type | Use For |
@@ -96,6 +101,11 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
 - **Hand-writing the fragment file.** Use `towncrier create` so the name and location are correct.
 - **Placing it in a sub-package directory** (e.g. `backend/changelog/`) instead of the configured fragments directory.
 - **Describing the implementation.** "Refactored the auth-token cache layer" → instead say what the user sees: "Fixed users being unexpectedly logged out".
+- **Overstating the scope of the change.** Claim only the condition under which the code actually
+  applies the new behavior — read the code path, not the PR title. "Fixed a slow update of a Profile with many
+  objects" promises a speedup for every such update; if the fix engages only when the update omits the
+  relationship fields, say so. The same goes for guarantees ("never serves", "also deletes"): qualify
+  or drop any claim the code does not enforce.
 - **Wrong tense or multiple sentences.** One past-tense sentence.
 - **Duplicating an existing fragment.** On a feature branch spanning multiple PRs, list the fragments directory first — numbered (`NNNN.type.md`) and `+`-prefixed fragments all render into the changelog. If a fragment already describes the same user-visible change, extend or reconcile it instead of adding an overlapping one.
 

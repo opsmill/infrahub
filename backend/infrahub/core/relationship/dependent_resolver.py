@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class DependentNodeResolverInterface(Protocol):
+class DependentNodeResolver(Protocol):
     """Resolve which nodes of a kind reference a set of peer nodes through a relationship.
 
     When a peer is changed it is present in a diff, but the nodes that reach it through a relationship
@@ -28,8 +28,8 @@ class DependentNodeResolverInterface(Protocol):
     ) -> set[str]: ...
 
 
-class DependentNodeResolver:
-    """Resolve which nodes of a kind reference peer nodes through a named relationship."""
+class QueryDependentNodeResolver(DependentNodeResolver):
+    """Resolve dependent nodes by traversing the relationship with a graph query."""
 
     def __init__(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> None:
         self.db = db

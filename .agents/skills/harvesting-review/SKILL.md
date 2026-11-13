@@ -135,6 +135,7 @@ alternative elsewhere in the repo (the method/pattern) and confirm it behaves th
 on an unverified claim — or on a correction that never landed — is worse than no lesson.
 
 **b. Interpret the intent — what is the reviewer actually asking?** Separate:
+
 - a **local code-style preference for new code** ("reach for the injected accessor here") from a
   **codebase-wide lifecycle change** (deprecate / migrate everything);
 - **directional** guidance ("we'll delete this someday") from an **actionable request for this PR**;
@@ -163,10 +164,11 @@ accessor) is still a durable styleguide rule.
 **Never demote a lesson on the assumption a linter or type-checker already enforces it — and do not run
 those tools to decide.** A human reviewer having to raise it is itself evidence the tool did *not*
 catch it. Typing and annotation corrections in particular (a missing `| None`, an over-narrow or
-over-wide hint) are durable style rules: route them to `dev/guidelines/backend/python.md` (the *Type
-Hints* section), never drop them as "standard Python".
+over-wide hint) are durable style rules: route them to `dev/guidelines/backend/typing.md`, never
+drop them as "standard Python".
 
 Worked shape — the trail on the commonest case, a terse "avoid `X`, use `Y`":
+
 - *Before → after:* read the code at the comment and the commit that landed the fix; if nothing landed, flag it and stop.
 - *Verify:* open `Y`, confirm it exposes the same method/return as `X`, and grep for existing `Y` usages to prove it is an established drop-in.
 - *Intent:* a style preference for new code, or migrate everything? Directional ("we'll drop `X` someday") or actionable now?
@@ -178,8 +180,7 @@ Worked shape — the trail on the commonest case, a terse "avoid `X`, use `Y`":
 For each investigated lesson, grep the internal-doc layer for the rule:
 
 ```bash
-grep -rin "<keyword>" .agents/rules/ dev/guidelines/ dev/knowledge/ dev/guides/ \
-  AGENTS.md backend/AGENTS.md frontend/app/AGENTS.md
+git grep -in "<keyword>" -- .agents/rules/ dev/guidelines/ dev/knowledge/ dev/guides/ '*AGENTS.md'
 ```
 
 **A grep hit is not coverage until you read it.** Before you call a rule "already covered" — whether to
@@ -313,7 +314,7 @@ the ticket and PR numbers belong in this report and in the commit message, never
 sweeping exactly that residue out of an artifact is what `pruning-residues` (org skills plugin, not
 vendored here) does, so run it over the final diff when the plugin is loaded. A lesson that needs three paragraphs to state has not
 been narrowed enough — go back to §3d. Match any
-example code to `.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
+example code to `dev/guidelines/code-doc-style.md` (no ticket/issue IDs, no naming specific callers).
 **Never resolve review threads** — reply if useful, but resolution is the human reviewer's call. After
 applying, run:
 

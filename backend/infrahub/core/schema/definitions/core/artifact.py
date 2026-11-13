@@ -21,6 +21,7 @@ core_artifact_target = GenericSchema(
     namespace="Core",
     description="Extend a node to be associated with artifacts",
     label="Artifact Target",
+    documentation="/artifacts/overview/",
     relationships=[
         Rel(
             name="artifacts",
@@ -47,7 +48,7 @@ core_artifact = NodeSchema(
     branch=BranchSupportType.LOCAL,
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/artifact",
+    documentation="/artifacts/overview/",
     attributes=[
         Attr(name="name", kind="Text"),
         Attr(name="status", kind="Text", enum=ArtifactStatus.available_types()),
@@ -110,7 +111,7 @@ core_artifact_definition = NodeSchema(
     generate_profile=False,
     uniqueness_constraints=[["name__value"]],
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/artifact",
+    documentation="/artifacts/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="artifact_name", kind="Text", description="Name template for generated artifacts"),

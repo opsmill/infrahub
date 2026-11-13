@@ -259,17 +259,13 @@ Task workers can be scaled horizontally by adding more instances, allowing for i
 
 ### Message bus
 
-The message bus is the communication backbone between components in Infrahub. It enables asynchronous messaging and event-driven architecture patterns, decoupling services to allow them to evolve independently and scale individually. Infrahub primarily supports **RabbitMQ** as the message bus implementation.
+The message bus is the communication backbone between components in Infrahub. It enables asynchronous messaging and event-driven architecture patterns, decoupling services to allow them to evolve independently and scale individually. Infrahub uses **RabbitMQ** as the message bus.
 
 **Key Design Decisions:**
 
 - **Event-driven architecture**: Enables loose coupling and real-time reactivity to system events
 - **Message persistence**: Ensures reliable delivery even during component failures
 - **Multiple messaging patterns**: Supports publish-subscribe, work queues, and request-reply patterns
-
-:::note
-Infrahub also supports NATS JetStream as an alternative message bus implementation, offering different performance characteristics and deployment models.
-:::
 
 <ReferenceLink title="RabbitMQ Project" url="https://www.rabbitmq.com/" />
 
@@ -285,10 +281,6 @@ The cache system is built on **Redis** and serves multiple critical functions:
 - **In-memory data store**: Provides ultra-fast access with optional persistence
 - **Versatile data structures**: Supports complex operations beyond basic key-value storage
 - **Pub/sub capabilities**: Enables lightweight messaging for specific use cases
-
-:::note
-Infrahub also supports NATS JetStream as an alternative cache implementation.
-:::
 
 <ReferenceLink title="Redis Project" url="https://github.com/redis/redis" />
 
@@ -323,7 +315,7 @@ A highly available deployment eliminates single points of failure through redund
 
 - **Neo4j Cluster**: 3+ nodes for graph database redundancy with automatic failover
 - **Redis Sentinel**: Automatic detection of master failures and promotion of replicas
-- **RabbitMQ Cluster**: Message bus redundancy with mirrored queues
+- **RabbitMQ Cluster**: Message bus redundancy with quorum queues replicated across the cluster nodes
 - **PostgreSQL Replication**: Task manager database with primary-replica setup
 - **Multiple API/Worker Instances**: Distributed across multiple availability zones
 - **Load Balancers**: Redundant load balancers for API layer access

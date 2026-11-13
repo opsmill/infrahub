@@ -9,7 +9,7 @@ import graphene
 from graphene.types.generic import GenericScalar
 from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
-from infrahub.core.registry import registry
+from infrahub.core import registry
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -376,9 +376,9 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "IPAddress": IPvAnyAddress,  # type: ignore[dict-item]
     "Boolean": bool,
     "Checkbox": bool,  # Checkboxes represent boolean values
-    "List": list[Any],  # Lists can contain any type of items
+    "List": list[typing.Any],  # Lists can contain any type of items
     "JSON": Json,  # Pydantic's Json type handles arbitrary JSON objects
-    "Any": Any,  # Any type allowed
+    "Any": typing.Any,  # Any type allowed
 }
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())

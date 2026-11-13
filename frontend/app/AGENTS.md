@@ -1,7 +1,5 @@
 # AGENTS.md - Frontend
 
-> See [root AGENTS.md](../../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 React TypeScript frontend built with Vite, using Tailwind CSS for styling.
@@ -49,7 +47,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 
 - `dev/knowledge/frontend/react.md` - React 19, React Compiler, and effect/retry patterns — load before writing a `useEffect` that drives a fetch or redirect
 - `dev/knowledge/frontend/architecture.md` - Project organization
-- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, backend authority
+- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, variables-not-inlined-values rule, backend authority
 - `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
 - `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
 - `dev/knowledge/frontend/theming.md` - **Read before touching colours** — theme tokens, the dark class, how to change a colour in one theme only
@@ -57,6 +55,9 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
 - `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
 - `dev/knowledge/frontend/column-visibility.md` - Show/hide columns on schema-driven tables: the `hide_columns`/`show_columns` URL contract, `ColumnSurface`, and which surfaces can reveal a hidden field
+- `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
+- `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
+- `dev/knowledge/frontend/repository-commits.md` - The repository Commits tab: its api/domain/ui chain, the capped retry while no worker holds a clone, why a failed refresh keeps the loaded rows, and where `fetched_at`/`checked_at` render; load before changing the tab or its query
 
 ### Guides (How to do X)
 

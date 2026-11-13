@@ -19,6 +19,7 @@ from infrahub.graphql.metadata import build_metadata_query_options, get_metadata
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
+from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
     from infrahub.core.schema.node_schema import NodeSchema
@@ -139,12 +140,16 @@ class SingleRelationshipResolver:
 
         relationship: Relationship | None = None
         peer_node: Node | None = None
+        schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+        peer_schema = schema_branch.get(name=node_rel.peer, duplicate=False)
 
         if requires_relationship_properties or requires_relationship_metadata:
             include_metadata = build_metadata_query_options(
                 node_metadata_fields=metadata_fields.get("node_metadata"),
                 relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
                 node_fields=node_fields,
+                schema=peer_schema,
+                schema_branch=schema_branch,
             )
             # Add relationship properties metadata to relationship_level
             include_metadata |= MetadataQueryOptions(
@@ -166,6 +171,8 @@ class SingleRelationshipResolver:
             include_metadata = build_metadata_query_options(
                 node_metadata_fields=metadata_fields.get("node_metadata"),
                 node_fields=node_fields,
+                schema=peer_schema,
+                schema_branch=schema_branch,
             )
             peer_node = await self._get_entities_with_data_loader(
                 db=graphql_context.db,
@@ -221,11 +228,7 @@ class SingleRelationshipResolver:
         include_metadata: MetadataQueryOptions,
         **kwargs: Any,
     ) -> Relationship | None:
-        filters = {
-            f"{field_name}__{key}": value
-            for key, value in kwargs.items()
-            if ("__" in key and value) or key in ["id", "ids"]
-        }
+        filters = build_peer_filters(field_name=field_name, arguments=kwargs)
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,

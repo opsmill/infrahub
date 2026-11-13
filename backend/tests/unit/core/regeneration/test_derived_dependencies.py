@@ -7,8 +7,8 @@ import pytest
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.regeneration.derived_dependencies import (
-    DerivedFieldDependencyResolver,
     PeerDependency,
+    SchemaDerivedFieldDependencyResolver,
 )
 from infrahub.core.regeneration.models import ReachedPath, RelationshipHop
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
@@ -88,6 +88,16 @@ GENERIC_CONTACT = _generic(
     relationships=(_rel(name="parent", peer="TestGrandparent", identifier="contact__parent"),),
     used_by=("TestContactB", "TestContactA"),
 )
+
+# Implementations of the contact generic, which declares no display_label of its own.
+CONTACT_A_LABELLED_FROM_ITS_OWNER = _node(
+    "ContactA",
+    relationships=(_rel(name="owner", peer="TestOwner", identifier="contacta__owner"),),
+    display_label="owner__name__value",
+)
+CONTACT_A_LABELLED_FROM_ITS_NAME = _node("ContactA", display_label="name__value")
+CONTACT_B_LABELLED_FROM_ITS_NAME = _node("ContactB", display_label="name__value")
+CONTACT_B_WITHOUT_LABEL = _node("ContactB")
 
 READER_OWNER_REL = _rel(name="owner", peer="TestOwner", identifier="reader__owner")
 READER_MAKER_REL = _rel(name="maker", peer="TestGenericMaker", identifier="reader__maker")
@@ -269,6 +279,43 @@ RESOLVE_CASES = [
         expected_widen=True,
     ),
     ResolveCase(
+        name="a_read_on_a_generic_resolves_through_each_implementation",
+        reader=_node("Reader"),
+        readable_fields_by_kind={"TestGenericContact": {"display_label"}},
+        expected_peers=(
+            PeerDependency(
+                kind="TestOwner",
+                field_name="name",
+                path=ReachedPath(
+                    hops=(
+                        RelationshipHop(
+                            node_kind="TestContactA",
+                            relationship_identifier="contacta__owner",
+                            relationship_direction=RelationshipDirection.OUTBOUND,
+                        ),
+                    )
+                ),
+                reading_kind="TestContactA",
+            ),
+        ),
+        expected_widen=False,
+        extra_schemas={
+            "TestContactA": CONTACT_A_LABELLED_FROM_ITS_OWNER,
+            "TestContactB": CONTACT_B_LABELLED_FROM_ITS_NAME,
+        },
+    ),
+    ResolveCase(
+        name="a_read_on_a_generic_widens_when_an_implementation_has_no_declared_path",
+        reader=_node("Reader"),
+        readable_fields_by_kind={"TestGenericContact": {"display_label"}},
+        expected_peers=(),
+        expected_widen=True,
+        extra_schemas={
+            "TestContactA": CONTACT_A_LABELLED_FROM_ITS_NAME,
+            "TestContactB": CONTACT_B_WITHOUT_LABEL,
+        },
+    ),
+    ResolveCase(
         name="a_reading_kind_absent_from_the_schema_widens",
         reader=_node("Reader"),
         readable_fields_by_kind={"TestGhost": {"display_label"}},
@@ -281,7 +328,7 @@ RESOLVE_CASES = [
 @pytest.mark.parametrize("case", RESOLVE_CASES, ids=lambda case: case.name)
 def test_resolve(case: ResolveCase) -> None:
     schemas: dict[str, MainSchemaTypes] = {**BASE_SCHEMAS, "TestReader": case.reader, **case.extra_schemas}
-    resolver = DerivedFieldDependencyResolver(schema_branch=_schema_branch(schemas))
+    resolver = SchemaDerivedFieldDependencyResolver(schema_branch=_schema_branch(schemas))
 
     dependencies = resolver.resolve(case.readable_fields_by_kind)
 
