@@ -24,6 +24,7 @@ from tests.helpers.schema.agnostic_retirement import (
     STICKER_KIND,
     TEAM_KIND,
 )
+from tests.helpers.schema.uplink import UPLINK_CORE_KIND, UPLINK_SWITCH_KIND, UPLINK_SWITCH_SCHEMA
 
 
 @pytest.fixture
@@ -290,3 +291,37 @@ async def test_delete_refused_when_a_relationship_required_only_in_another_branc
         team=team, peer_kind=GUARDIAN_KIND, peer=guardian, branch_names=f"branch '{branch.name}'"
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+
+async def _create_switch_chain(db: InfrahubDatabase, default_branch: Branch) -> tuple[Node, Node]:
+    registry.schema.register_schema(schema=UPLINK_SWITCH_SCHEMA, branch=default_branch.name)
+    core = await _create_node(db=db, branch=default_branch, kind=UPLINK_CORE_KIND, name="core")
+    top = await _create_node(db=db, branch=default_branch, kind=UPLINK_SWITCH_KIND, name="top", upstream=core)
+    leaf = await _create_node(db=db, branch=default_branch, kind=UPLINK_SWITCH_KIND, name="leaf", upstream=top)
+    await create_branch(db=db, branch_name="branch-holds-switches")
+    return top, leaf
+
+
+async def test_delete_ignores_a_peer_holding_the_node_through_the_optional_relationship_of_a_pair(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    _, leaf = await _create_switch_chain(db=db, default_branch=default_branch)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[leaf])
+
+    assert {node.id for node in deleted} == {leaf.id}
+
+
+async def test_delete_refused_names_the_required_relationship_of_a_pair(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    top, leaf = await _create_switch_chain(db=db, default_branch=default_branch)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[top])
+
+    assert str(exc.value) == (
+        f"Cannot delete {UPLINK_SWITCH_KIND} '{top.id}'. It is linked to mandatory relationship upstream on node"
+        f" {UPLINK_SWITCH_KIND} '{leaf.id}' on branches 'branch-holds-switches', '{default_branch.name}'"
+        f" at {UPLINK_SWITCH_KIND}.upstream"
+    )

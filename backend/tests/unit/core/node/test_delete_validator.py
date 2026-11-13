@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipDirection
 from infrahub.core.node.delete_validator import DeleteRelationshipType, NodeDeleteIndex
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.definitions.core import core_models
@@ -17,8 +17,8 @@ def _cascade_closure(index: NodeDeleteIndex, root_kind: str) -> set[str]:
     resolve cascades), rather than reaching into the index's internal graph.
     """
     cascade_edges: dict[str, set[str]] = defaultdict(set)
-    for source_kind, _, destination_kind in index.get_triples(relationship_type=DeleteRelationshipType.CASCADE_DELETE):
-        cascade_edges[source_kind].add(destination_kind)
+    for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.CASCADE_DELETE):
+        cascade_edges[pattern.kind].add(pattern.peer_kind)
 
     reachable: set[str] = set()
     stack = [root_kind]
@@ -102,12 +102,17 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
     index = _index_for(InfrahubKind.ACCOUNT)
 
     assert {
-        triple
+        pattern
         for relationship_type in DeleteRelationshipType
-        for triple in index.get_triples(relationship_type=relationship_type)
-        if triple[2].startswith("Internal")
+        for pattern in index.get_link_patterns(relationship_type=relationship_type)
+        if pattern.peer_kind.startswith("Internal")
     } == {
-        (InfrahubKind.ACCOUNT, "account__external_identity", InfrahubKind.EXTERNALIDENTITY),
-        (InfrahubKind.ACCOUNT, "account__token", InfrahubKind.ACCOUNTTOKEN),
-        (InfrahubKind.ACCOUNT, "account__refreshtoken", InfrahubKind.REFRESHTOKEN),
+        (
+            InfrahubKind.ACCOUNT,
+            "account__external_identity",
+            RelationshipDirection.BIDIR,
+            InfrahubKind.EXTERNALIDENTITY,
+        ),
+        (InfrahubKind.ACCOUNT, "account__token", RelationshipDirection.BIDIR, InfrahubKind.ACCOUNTTOKEN),
+        (InfrahubKind.ACCOUNT, "account__refreshtoken", RelationshipDirection.BIDIR, InfrahubKind.REFRESHTOKEN),
     }

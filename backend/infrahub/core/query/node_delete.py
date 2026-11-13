@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch_windows import (
     build_branch_window_query,
@@ -16,8 +17,21 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
 
-RelationshipTriple = tuple[str, str, str]
-"""A node kind, a relationship identifier and the kind of the peer on the other side of the link."""
+
+class LinkPattern(NamedTuple):
+    """A kind of link, seen from the node at `kind`.
+
+    The direction is part of the pattern because one kind can declare an inbound and an outbound relationship with
+    the same identifier and peer kind.
+    """
+
+    kind: str
+    identifier: str
+    direction: RelationshipDirection
+    peer_kind: str
+
+    def to_param(self) -> list[str]:
+        return [self.kind, self.identifier, self.direction.value, self.peer_kind]
 
 
 @dataclass(frozen=True)
@@ -35,8 +49,21 @@ class RequiredPeerLink:
     deleted_kind: str
     deleted_id: str
     identifier: str
+    direction: RelationshipDirection
+    """The direction of the link seen from the node being deleted."""
     peer_kind: str
     peer_id: str
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> RequiredPeerLink:
+        return cls(
+            deleted_kind=row["deleted_kind"],
+            deleted_id=row["deleted_id"],
+            identifier=row["identifier"],
+            direction=RelationshipDirection(row["direction"]),
+            peer_kind=row["peer_kind"],
+            peer_id=row["peer_id"],
+        )
 
 
 @dataclass(frozen=True)
@@ -68,6 +95,18 @@ def _render_latest_active_edge(edge: str, left: str, right: str, edge_type: str)
         }}"""
 
 
+def _render_link_direction(node: str, node_edge: str, relationship: str, peer_edge: str) -> str:
+    """Render the direction of the link seen from `node`, or null when no relationship creates such edges."""
+    return f"""CASE
+            WHEN startNode({node_edge}) = {node} AND startNode({peer_edge}) = {relationship}
+                THEN "{RelationshipDirection.OUTBOUND.value}"
+            WHEN startNode({node_edge}) = {node} AND endNode({peer_edge}) = {relationship}
+                THEN "{RelationshipDirection.BIDIR.value}"
+            WHEN endNode({node_edge}) = {node} AND endNode({peer_edge}) = {relationship}
+                THEN "{RelationshipDirection.INBOUND.value}"
+        END"""
+
+
 def _render_node_exists(node: str) -> str:
     """Render whether `node` exists in `window`."""
     part_of = f"{node}_part_of"
@@ -94,8 +133,8 @@ class NodeDeleteCascadeQuery(Query):
         request_window_name: str,
         known_ids: Sequence[str],
         frontier_ids: Sequence[str],
-        cascade_triples: Sequence[RelationshipTriple],
-        required_triples: Sequence[RelationshipTriple],
+        cascade_patterns: Sequence[LinkPattern],
+        required_patterns: Sequence[LinkPattern],
         levels: int,
         levels_cover_cascade: bool,
         **kwargs: Any,
@@ -106,8 +145,8 @@ class NodeDeleteCascadeQuery(Query):
             request_window_name: The branch whose window decides which links and nodes exist.
             known_ids: The nodes already in the delete set, including `frontier_ids`.
             frontier_ids: The nodes the cascade continues from.
-            cascade_triples: The links a delete cascades over, from the deleted node's side.
-            required_triples: The links of a required relationship, from the deleted node's side.
+            cascade_patterns: The links a delete cascades over, from the deleted node's side.
+            required_patterns: The links of a required relationship, from the deleted node's side.
             levels: The number of cascade levels to follow.
             levels_cover_cascade: Whether `levels` reaches the end of every cascade, so the required peers are read
                 even when the last level reaches a node.
@@ -116,8 +155,8 @@ class NodeDeleteCascadeQuery(Query):
         self.request_window_name = request_window_name
         self.known_ids = list(known_ids)
         self.frontier_ids = list(frontier_ids)
-        self.cascade_triples = [list(triple) for triple in cascade_triples]
-        self.required_triples = [list(triple) for triple in required_triples]
+        self.cascade_patterns = list(cascade_patterns)
+        self.required_patterns = list(required_patterns)
         self.levels = levels
         self.levels_cover_cascade = levels_cover_cascade
         super().__init__(**kwargs)
@@ -128,10 +167,10 @@ class NodeDeleteCascadeQuery(Query):
         self.params.update(window_params)
         self.params["known_ids"] = self.known_ids
         self.params["frontier_ids"] = self.frontier_ids
-        self.params["cascade_triples"] = self.cascade_triples
-        self.params["cascade_identifiers"] = sorted({triple[1] for triple in self.cascade_triples})
-        self.params["required_triples"] = self.required_triples
-        self.params["required_identifiers"] = sorted({triple[1] for triple in self.required_triples})
+        self.params["cascade_patterns"] = [pattern.to_param() for pattern in self.cascade_patterns]
+        self.params["cascade_identifiers"] = sorted({pattern.identifier for pattern in self.cascade_patterns})
+        self.params["required_patterns"] = [pattern.to_param() for pattern in self.required_patterns]
+        self.params["required_identifiers"] = sorted({pattern.identifier for pattern in self.required_patterns})
         self.params["levels_cover_cascade"] = self.levels_cover_cascade
 
         level_query = """
@@ -139,7 +178,7 @@ class NodeDeleteCascadeQuery(Query):
             UNWIND frontier AS a
             MATCH (a)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(b:Node)
             WHERE rl.name IN $cascade_identifiers
-            AND [a.kind, rl.name, b.kind] IN $cascade_triples
+            AND [a.kind, rl.name, %(direction)s, b.kind] IN $cascade_patterns
             AND NOT b IN nodes
             AND %(r1_latest_active)s
             AND %(r2_latest_active)s
@@ -151,6 +190,7 @@ class NodeDeleteCascadeQuery(Query):
             "r1_latest_active": _render_latest_active_edge(edge="r1", left="a", right="rl", edge_type="IS_RELATED"),
             "r2_latest_active": _render_latest_active_edge(edge="r2", left="rl", right="b", edge_type="IS_RELATED"),
             "b_exists": _render_node_exists(node="b"),
+            "direction": _render_link_direction(node="a", node_edge="r1", relationship="rl", peer_edge="r2"),
         }
 
         query = """
@@ -177,7 +217,7 @@ class NodeDeleteCascadeQuery(Query):
             UNWIND CASE WHEN $levels_cover_cascade OR size(frontier) = 0 THEN nodes ELSE [] END AS n
             MATCH (n)-[d1:IS_RELATED]-(drl:Relationship)-[d2:IS_RELATED]-(peer:Node)
             WHERE drl.name IN $required_identifiers
-            AND [n.kind, drl.name, peer.kind] IN $required_triples
+            AND [n.kind, drl.name, %(direction)s, peer.kind] IN $required_patterns
             AND NOT peer.uuid IN delete_ids
             AND %(d1_latest_active)s
             AND %(d2_latest_active)s
@@ -186,6 +226,7 @@ class NodeDeleteCascadeQuery(Query):
                 deleted_kind: n.kind,
                 deleted_id: n.uuid,
                 identifier: drl.name,
+                direction: %(direction)s,
                 peer_kind: peer.kind,
                 peer_id: peer.uuid
             }) AS required_links
@@ -197,16 +238,18 @@ class NodeDeleteCascadeQuery(Query):
             "d1_latest_active": _render_latest_active_edge(edge="d1", left="n", right="drl", edge_type="IS_RELATED"),
             "d2_latest_active": _render_latest_active_edge(edge="d2", left="drl", right="peer", edge_type="IS_RELATED"),
             "peer_exists": _render_node_exists(node="peer"),
+            "direction": _render_link_direction(node="n", node_edge="d1", relationship="drl", peer_edge="d2"),
         }
         self.add_to_query(query)
         self.return_labels = ["delete_set", "frontier_ids", "required_links"]
 
     def get_data(self) -> NodeDeleteCascadeQueryResult:
         for result in self.get_results():
+            required_links: list[dict[str, Any]] = result.get_as_type("required_links", list)
             return NodeDeleteCascadeQueryResult(
                 nodes=result.get_as_list_of_type("delete_set", DeleteSetNode),
                 frontier_ids=result.get_as_list_of_type("frontier_ids", str),
-                required_links=result.get_as_list_of_type("required_links", RequiredPeerLink),
+                required_links=[RequiredPeerLink.from_row(row) for row in required_links],
             )
         return NodeDeleteCascadeQueryResult(nodes=[], frontier_ids=[], required_links=[])
 
@@ -226,7 +269,7 @@ class NodeDeleteOtherBranchesQuery(Query):
         self,
         request_window_name: str,
         agnostic_ids: Sequence[str],
-        required_triples_by_branch: dict[str, list[RelationshipTriple]],
+        required_patterns_by_branch: dict[str, list[LinkPattern]],
         **kwargs: Any,
     ) -> None:
         """Build the query.
@@ -234,16 +277,13 @@ class NodeDeleteOtherBranchesQuery(Query):
         Args:
             request_window_name: The branch whose window is left out.
             agnostic_ids: The branch-agnostic nodes being deleted.
-            required_triples_by_branch: The links of a required relationship on each branch, from the deleted node's
-                side; a branch left out has none.
+            required_patterns_by_branch: The links of a required relationship on each branch, from the deleted
+                node's side; a branch left out has none.
 
         """
         self.request_window_name = request_window_name
         self.agnostic_ids = list(agnostic_ids)
-        self.required_triples_by_branch = {
-            branch_name: [list(triple) for triple in triples]
-            for branch_name, triples in required_triples_by_branch.items()
-        }
+        self.required_patterns_by_branch = required_patterns_by_branch
         super().__init__(**kwargs)
         self.limit = 1
 
@@ -252,10 +292,16 @@ class NodeDeleteOtherBranchesQuery(Query):
         self.params.update(windows_params)
         self.params["request_window_name"] = self.request_window_name
         self.params["agnostic_ids"] = self.agnostic_ids
-        self.params["required_by_branch"] = self.required_triples_by_branch
-        self.params["all_required_triples"] = sorted(
-            {tuple(triple) for triples in self.required_triples_by_branch.values() for triple in triples}
-        )
+        self.params["required_by_branch"] = {
+            branch_name: [pattern.to_param() for pattern in patterns]
+            for branch_name, patterns in self.required_patterns_by_branch.items()
+        }
+        self.params["all_required_patterns"] = [
+            pattern.to_param()
+            for pattern in sorted(
+                {pattern for patterns in self.required_patterns_by_branch.values() for pattern in patterns}
+            )
+        ]
 
         query = """
         %(windows_query)s
@@ -264,28 +310,29 @@ class NodeDeleteOtherBranchesQuery(Query):
         WHERE src.uuid IN $agnostic_ids
         WITH windows, src, [(src)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}] AS src_part_of
         MATCH (src)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-        WHERE [src.kind, rl.name, dst.kind] IN $all_required_triples
+        WHERE [src.kind, rl.name, %(direction)s, dst.kind] IN $all_required_patterns
         AND NOT dst.uuid IN $agnostic_ids
         AND r1.status = "active" AND r1.from <= $windows_at
         AND r2.status = "active" AND r2.from <= $windows_at
-        WITH DISTINCT windows, src, src_part_of, rl, dst
+        WITH DISTINCT windows, src, src_part_of, rl, dst, %(direction)s AS direction
         // Each edge group is read once, so testing it in every window reads nothing more
-        WITH windows, src, rl, dst, [
+        WITH windows, src, rl, dst, direction, [
             src_part_of,
             [(src)-[r:IS_RELATED]-(rl) | r {%(edge_fields)s}],
             [(rl)-[r:IS_RELATED]-(dst) | r {%(edge_fields)s}],
             [(dst)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]
         ] AS edge_groups
         UNWIND windows AS window
-        WITH src, rl, dst, window, edge_groups
-        WHERE [src.kind, rl.name, dst.kind] IN $required_by_branch[window.name]
+        WITH src, rl, dst, direction, window, edge_groups
+        WHERE [src.kind, rl.name, direction, dst.kind] IN $required_by_branch[window.name]
         AND all(edges IN edge_groups WHERE any(edge IN edges WHERE edge.status = "active" AND %(edge_visible)s
             AND none(r IN edges WHERE %(competitor_visible)s AND %(outranks)s)))
-        WITH src, rl, dst, collect(window.name) AS branch_names
+        WITH src, rl, dst, direction, collect(window.name) AS branch_names
         WITH collect({
             deleted_kind: src.kind,
             deleted_id: src.uuid,
             identifier: rl.name,
+            direction: direction,
             peer_kind: dst.kind,
             peer_id: dst.uuid,
             branch_names: branch_names
@@ -296,6 +343,7 @@ class NodeDeleteOtherBranchesQuery(Query):
             "edge_visible": render_window_filter(edge="edge"),
             "competitor_visible": render_window_filter(edge="r"),
             "outranks": render_outranks(edge="edge"),
+            "direction": _render_link_direction(node="src", node_edge="r1", relationship="rl", peer_edge="r2"),
         }
         self.add_to_query(query)
         self.return_labels = ["links"]
@@ -306,14 +354,7 @@ class NodeDeleteOtherBranchesQuery(Query):
             links: list[dict[str, Any]] = result.get_as_type("links", list)
             links_on_branches.extend(
                 RequiredPeerLinkOnBranches(
-                    link=RequiredPeerLink(
-                        deleted_kind=link["deleted_kind"],
-                        deleted_id=link["deleted_id"],
-                        identifier=link["identifier"],
-                        peer_kind=link["peer_kind"],
-                        peer_id=link["peer_id"],
-                    ),
-                    branch_names=list(link["branch_names"]),
+                    link=RequiredPeerLink.from_row(link), branch_names=list(link["branch_names"])
                 )
                 for link in links
             )

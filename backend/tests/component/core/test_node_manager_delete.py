@@ -26,6 +26,7 @@ from infrahub.exceptions import ValidationError
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.schema.cascade_loop import CASCADE_LOOP_SCHEMA, LOOP_FIRST_KIND, LOOP_SECOND_KIND
+from tests.helpers.schema.uplink import UPLINK_ROUTER_KIND, UPLINK_ROUTER_SCHEMA
 from tests.helpers.test_app import TestInfrahubApp
 
 
@@ -940,3 +941,23 @@ async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_oth
 
     assert {node.id for node in deleted} == {node.id for node in chain}
     assert await NodeManager.get_many(db=db, ids=[node.id for node in chain], branch=default_branch) == {}
+
+
+async def test_delete_cascades_only_in_the_direction_of_the_cascading_relationship(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    registry.schema.register_schema(schema=UPLINK_ROUTER_SCHEMA, branch=default_branch.name)
+    routers: list[Node] = []
+    upstream: Node | None = None
+    for name in ("top", "middle", "bottom"):
+        router = await Node.init(db=db, schema=UPLINK_ROUTER_KIND, branch=default_branch)
+        await router.new(db=db, name=name, upstream=upstream)
+        await router.save(db=db)
+        routers.append(router)
+        upstream = router
+    top, middle, bottom = routers
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[middle])
+
+    assert {node.id for node in deleted} == {middle.id, bottom.id}
+    assert await NodeManager.get_one(db=db, id=top.id, branch=default_branch) is not None
