@@ -123,7 +123,7 @@ class TestIpPoolDetails:
         await expect(grid.get_by_role("columnheader", name="Prefix")).to_be_visible()
         await expect(grid.get_by_role("columnheader", name="Identifier")).to_be_visible()
         await expect(grid.get_by_role("columnheader", name="Kind")).to_be_visible()
-        await expect(grid.get_by_role("columnheader", name="ID")).to_be_visible()
+        await expect(grid.get_by_role("columnheader", name="ID", exact=True)).to_be_visible()
 
         edge_row = grid.get_by_role("row").filter(has_text=re.compile(rf"\.{EDGE_DEVICE}")).first
         await expect(edge_row.get_by_role("link", name=EXTERNAL_SLASH_29)).to_be_visible()
