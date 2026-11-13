@@ -114,6 +114,23 @@ InfrahubEventService.send(event)
 
 For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
 
+### Per-event cost in the Prefect background services
+
+Run scaled-out Prefect background services (`prefect server services start` with Redis messaging) with
+`PREFECT_SERVER_EVENTS_CAUSAL_ORDERING=infrahub.prefect_server.ordering`,
+`PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED=false` and `PREFECT_SERVER_LOGS_STREAM_OUT_ENABLED=false`.
+Every replica reads every event, so per-event Redis round trips multiply with the replica count:
+
+- The stream-out distributors forward events to websocket subscribers. Only the API server process has
+  subscribers, yet each background-service replica otherwise reads every event of the stream once.
+- Prefect's causal ordering records every event before the triggers consumer looks for an interested
+  trigger. Infrahub events follow no event and no event follows them, so the Infrahub ordering skips that
+  bookkeeping for the ones no automation matches, which are almost all of them.
+
+Together they cut the Redis commands per event by roughly half and let half the replicas keep the
+triggers consumer current. Trigger matching itself is not worth optimizing: Prefect indexes triggers by
+event name.
+
 ## Events a mutation sends
 
 Once a GraphQL mutation returns, `emit_node_mutation_events` (`graphql/mutations/main.py`) sends the

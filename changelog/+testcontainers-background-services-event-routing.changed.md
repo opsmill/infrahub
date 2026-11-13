@@ -1,0 +1,1 @@
+Changed the `infrahub-testcontainers` package to run the task manager background services with the Infrahub event ordering and without the event and log stream-out services, which only serve the API server; set `INFRAHUB_TESTING_TASKMGR_CAUSAL_ORDERING=prefect_redis.ordering` to test an Infrahub image that predates the ordering.
