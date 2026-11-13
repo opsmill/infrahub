@@ -20,6 +20,7 @@ import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 import { useColumnVisibility } from "@/entities/nodes/columns/ui/hooks/use-column-visibility";
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { isFilterableField } from "@/entities/nodes/object/domain/rules/is-filterable-field";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
@@ -70,6 +71,8 @@ export function TableColumnHeader({
   role,
   filterConditions,
 }: TableColumnHeaderProps) {
+  const supportsColumnVisibility = useSupportsColumnVisibility();
+
   if (isDisabled) {
     return (
       <TableColumnHeaderSimple columnSchema={columnSchema} className={className} role={role} />
@@ -97,6 +100,12 @@ export function TableColumnHeader({
         role={role}
         filterConditions={filterConditions}
       />
+    );
+  }
+
+  if (!isFilterableField(columnSchema) && !(schema && supportsColumnVisibility)) {
+    return (
+      <TableColumnHeaderSimple columnSchema={columnSchema} className={className} role={role} />
     );
   }
 
@@ -285,6 +294,8 @@ function ColumnHeaderMenu({
     ? getRelationshipLabel(columnSchema, peerSchema)
     : (columnSchema.label ?? columnSchema.name);
 
+  const canFilter = isFilterableField(columnSchema);
+
   const closeFilterForm = () => {
     setShowFilterForm(false);
   };
@@ -329,17 +340,21 @@ function ColumnHeaderMenu({
 
         <Popover placement="bottom start">
           <Menu aria-label={`${label} column options`} variant="picker">
-            {sortItems ? (
-              <>
-                {sortItems}
-                <MenuSeparator />
-              </>
+            {sortItems}
+            {sortItems && canFilter && <MenuSeparator />}
+            {canFilter && (
+              <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
+                <ListFilterIcon />
+                <span>Filter</span>
+              </MenuItem>
+            )}
+            {schema ? (
+              <HideColumnMenuItem
+                schema={schema}
+                field={columnSchema.name}
+                hasItemsAbove={!!sortItems || canFilter}
+              />
             ) : null}
-            <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
-              <ListFilterIcon />
-              <span>Filter</span>
-            </MenuItem>
-            {schema ? <HideColumnMenuItem schema={schema} field={columnSchema.name} /> : null}
           </Menu>
         </Popover>
       </MenuTrigger>
@@ -371,7 +386,7 @@ function ColumnHeaderMenu({
 /**
  * A separate component because `schema` is optional on the menu: the hook cannot be called
  * conditionally in `ColumnHeaderMenu`. It owns its leading separator too, so that gating the entry
- * off cannot leave a dangling separator behind in the menu.
+ * off cannot leave a dangling separator behind in the menu, and draws it only below other items.
  *
  * Renders nothing unless the table honours the column-visibility params: this header is shared with
  * tables that render their own columns (proposed changes, role management), where a hide would
@@ -382,7 +397,15 @@ function ColumnHeaderMenu({
  * only another surface has a candidate for — `ip_prefix` on an IP address table — would be erased
  * from `hide_columns` by a write made under the object surface.
  */
-function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: string }) {
+function HideColumnMenuItem({
+  schema,
+  field,
+  hasItemsAbove,
+}: {
+  schema: ModelSchema;
+  field: string;
+  hasItemsAbove: boolean;
+}) {
   const supportsColumnVisibility = useSupportsColumnVisibility();
   const columnSurface = useColumnSurface();
   const { hideColumn } = useColumnVisibility(schema, columnSurface);
@@ -391,7 +414,7 @@ function HideColumnMenuItem({ schema, field }: { schema: ModelSchema; field: str
 
   return (
     <>
-      <MenuSeparator />
+      {hasItemsAbove && <MenuSeparator />}
       <MenuItem textValue="Hide column" onAction={() => hideColumn(field)}>
         <EyeOffIcon />
         <span>Hide column</span>
