@@ -2,7 +2,9 @@
 # so every npm and uv entry needs its own security group that matches all packages.
 # /frontend/packages/plugins/template is left out on purpose and keeps the repository-level grouping.
 updates:
-- directory: /
+- cooldown:
+    default-days: 3
+  directory: /
   ignore:
   - dependency-name: "github/gh-aw-actions/**" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
   labels:
