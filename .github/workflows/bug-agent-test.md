@@ -22,6 +22,8 @@ tools:
     toolsets: [default]
     min-integrity: approved
     approval-labels: [state/ai-pipeline-ready]
+    # GitHub marks this bot's comments as CONTRIBUTOR, which min-integrity hides, but the agents must read them.
+    trusted-users: ["opsmill-bug-pipeline[bot]"]
 network: defaults
 checkout:
   fetch-depth: 0
@@ -44,8 +46,9 @@ steps:
       ISSUE_JSON=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")
       IS_PR=$(echo "$ISSUE_JSON" | jq -r 'if .pull_request then "true" else "false" end')
 
+      # Agent output is posted with underscores outside code spans escaped, so markers are matched with that escaping removed.
       if [ "$IS_PR" = "true" ]; then
-        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // ""')
+        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // "" | gsub("\\\\_"; "_")')
 
         if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
           fail "Cannot run /bug-tdd here: PR has no AGENT_TEST_COMPLETE marker."
@@ -55,8 +58,8 @@ steps:
         fi
 
         REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-            and (.body | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
+          --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
+            and (.body | gsub("\\\\_"; "_") | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
         fi
@@ -64,8 +67,8 @@ steps:
       fi
 
       ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-          and (.body | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
+        --jq '[.[] | select((.user.login == "opsmill-bug-pipeline[bot]" or .user.login == "github-actions[bot]")
+          and (.body | gsub("\\\\_"; "_") | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
       fi
@@ -307,12 +310,13 @@ Push the branch and open a **draft Pull Request**:
 
 <what the test asserts and any edge cases it covers -- NOT how to fix the bug>
 
-AGENT_TEST_COMPLETE
+`AGENT_TEST_COMPLETE`
 ````
 
-The literal text `AGENT_TEST_COMPLETE` MUST appear in the PR body. The downstream
-`/bug-fix` gate scans the PR body for this exact substring; if it is missing, the
-pipeline halts.
+The literal text `AGENT_TEST_COMPLETE` MUST appear in the PR body, inside backticks as
+shown so that its underscores are not escaped when the PR body is updated later. The
+downstream `/bug-fix` gate scans the PR body for this exact substring; if it is missing,
+the pipeline halts.
 
 Post a short comment on the issue linking to the draft PR. Do NOT include
 `AGENT_TEST_COMPLETE` in that issue comment -- it belongs only in the PR body.
