@@ -191,6 +191,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Never Do
 
+- Skip, quarantine, mark as expected failure, or deselect a test to address flakiness. Keep its assertions active; when the cause is unknown, collect diagnostics and report the unresolved failure.
 - Commit secrets, API keys, or credentials
 - Edit generated files manually
 - Skip linting in CI
