@@ -36,7 +36,9 @@ jobs:
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           submodules: true
+          persist-credentials: false
       - name: "Run Trivy filesystem scan"
+        id: "trivy"
         uses: "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" # v0.36.0
         # Findings are reported in the summary and the artifact, not by failing
         # the job.
@@ -51,6 +53,7 @@ jobs:
           output: "trivy-filesystem-results.txt"
           exit-code: "1"
           hide-progress: true
+          timeout: "12m"
       - name: "Publish report to the job summary"
         if: always()
         run: |
@@ -60,9 +63,18 @@ jobs:
               echo ""
               echo "CRITICAL and HIGH findings only, unfixed vulnerabilities ignored. This check is informational and never blocks a merge."
               echo ""
-              echo '```'
-              cat trivy-filesystem-results.txt
-              echo '```'
+              echo "<details><summary>Report</summary>"
+              echo ""
+              echo "<pre>"
+              sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' trivy-filesystem-results.txt
+              echo "</pre>"
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Trivy filesystem scan"
+              echo ""
+              echo "The scan did not produce a report (scanner outcome: ${{ steps.trivy.outcome }}). See the step log."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: "Upload report"
