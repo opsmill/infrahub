@@ -5,7 +5,7 @@ description: >-
   rules in REVIEW.md. TRIGGER when: this session has just opened a pull request, for example with
   `gh pr create`; the user asks for a review of a pull request by URL or number; or a hook reports
   that large changes were pushed to a pull request. DO NOT TRIGGER when: answering existing review
-  comments → addressing-review; watching CI → monitoring-pull-requests.
+  comments → addressing-review; watching CI → opsmill-product-monitoring-pull-requests.
 argument-hint: <pull request URL or number>
 context: fork
 agent: general-purpose

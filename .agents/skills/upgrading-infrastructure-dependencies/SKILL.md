@@ -71,7 +71,7 @@ before you push.
 
 ## 5. Open the Infrahub pull request
 
-Open it as a draft against `develop` with the `pr` skill, with the title
+Open it as a draft against `develop` with the `opsmill-product-pr` skill, with the title
 `chore(deps): upgrade <service> from <old version> to <new version>`. In the description, write
 the release it ships in, each change in the release notes that can reach Infrahub and how you
 checked it, what you did not test, the pull requests in the other repositories, and the test
