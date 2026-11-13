@@ -24,9 +24,10 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from tests.constants import TestKind
+from tests.helpers.node import create_chain
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.schema.cascade_loop import CASCADE_LOOP_SCHEMA, LOOP_FIRST_KIND, LOOP_SECOND_KIND
-from tests.helpers.schema.uplink import UPLINK_ROUTER_KIND, UPLINK_ROUTER_SCHEMA
+from tests.helpers.schema.uplink import UPLINK_ROUTER_KIND, UPLINK_SCHEMA
 from tests.helpers.test_app import TestInfrahubApp
 
 
@@ -926,18 +927,11 @@ async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_oth
 ) -> None:
     registry.schema.register_schema(schema=CASCADE_LOOP_SCHEMA, branch=default_branch.name)
     chain_length = 2 * CASCADE_LEVELS_PER_QUERY_WITH_LOOP + 3
-    chain: list[Node] = []
-    next_node: Node | None = None
-    for position in reversed(range(chain_length)):
-        node = await Node.init(
-            db=db, schema=LOOP_FIRST_KIND if position % 2 == 0 else LOOP_SECOND_KIND, branch=default_branch
-        )
-        await node.new(db=db, name=f"link-{position}", next=next_node)
-        await node.save(db=db)
-        chain.insert(0, node)
-        next_node = node
+    kinds = [LOOP_FIRST_KIND if position % 2 == 0 else LOOP_SECOND_KIND for position in range(chain_length)]
+    chain = await create_chain(db=db, branch=default_branch, kinds=kinds, relationship_name="next", name_prefix="link")
 
-    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[chain[0]])
+    # Each node's next is the node created before it, so the cascade starts from the last one.
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[chain[-1]])
 
     assert {node.id for node in deleted} == {node.id for node in chain}
     assert await NodeManager.get_many(db=db, ids=[node.id for node in chain], branch=default_branch) == {}
@@ -946,16 +940,14 @@ async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_oth
 async def test_delete_cascades_only_in_the_direction_of_the_cascading_relationship(
     db: InfrahubDatabase, default_branch: Branch
 ) -> None:
-    registry.schema.register_schema(schema=UPLINK_ROUTER_SCHEMA, branch=default_branch.name)
-    routers: list[Node] = []
-    upstream: Node | None = None
-    for name in ("top", "middle", "bottom"):
-        router = await Node.init(db=db, schema=UPLINK_ROUTER_KIND, branch=default_branch)
-        await router.new(db=db, name=name, upstream=upstream)
-        await router.save(db=db)
-        routers.append(router)
-        upstream = router
-    top, middle, bottom = routers
+    registry.schema.register_schema(schema=UPLINK_SCHEMA, branch=default_branch.name)
+    top, middle, bottom = await create_chain(
+        db=db,
+        branch=default_branch,
+        kinds=[UPLINK_ROUTER_KIND] * 3,
+        relationship_name="upstream",
+        name_prefix="router",
+    )
 
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[middle])
 
