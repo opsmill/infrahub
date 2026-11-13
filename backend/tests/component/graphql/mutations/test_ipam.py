@@ -288,14 +288,14 @@ mutation NamespaceDelete($namespace_name: String!) {
 """
 
 
-@dataclass
+@dataclass(frozen=True)
 class NamespaceDeleteCase:
     name: str
     by_hfid: bool
     on_user_branch: bool
 
 
-NAMESPACE_DELETE_CASES = [
+NAMESPACE_DELETE_CASES: list[NamespaceDeleteCase] = [
     NamespaceDeleteCase(name="by-id", by_hfid=False, on_user_branch=False),
     NamespaceDeleteCase(name="by-hfid", by_hfid=True, on_user_branch=False),
     NamespaceDeleteCase(name="by-id-user-branch", by_hfid=False, on_user_branch=True),
