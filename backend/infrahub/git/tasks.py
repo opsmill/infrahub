@@ -1087,7 +1087,7 @@ async def generate_request_artifact_definition(
 
     group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
 
-    current_members = [member.id for member in group.members.peers]
+    current_members = {member.id for member in group.members.peers}
 
     artifacts_by_member = {}
     stale_artifacts = []
