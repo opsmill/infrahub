@@ -34,8 +34,8 @@ INDEX_POPULATION_TIMEOUT_SECONDS = 3600
 class Migration084(ArbitraryMigration):
     """Index every edge type on the time it was opened and the time it was closed.
 
-    The change count that guards an incremental diff update selects edges by `from` and by `to` in a time window.
-    Without these indexes it has to read every edge of the graph to find them.
+    The diff reads that select edges by `from` and by `to` in a time window seek these indexes. Without them
+    those reads scan every edge of a type, or every node, to find the edges in the window.
     """
 
     name: str = "084_index_edge_times"
