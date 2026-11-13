@@ -122,8 +122,9 @@ from infrahub.core import registry
 from infrahub.core.registry import registry
 ```
 
-Fix the import where the checker flags it rather than sweeping existing call sites, and prefer not
-importing the registry into a new component at all — see
+Do not use `from x import Y as Y` solely to silence an unused-import warning. Keep intentional public re-exports and declare them explicitly with `__all__`; otherwise delete the import when its last internal user goes.
+
+Fix the import where the checker flags it, not across existing call sites, and avoid importing the registry into a new component — see
 [Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 ## Data Structures
@@ -240,8 +241,9 @@ Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for 
 key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
 mutable object you build up.
 
-Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
-silently treats a legitimate `0` as unset:
+Zero and empty values are values, not absence. Test an optional with `is None` / `is not None` — a
+truthiness check treats a legitimate `0`, `""` or `[]` as unset, so an empty list in stored data is
+accepted as "not provided" instead of being rejected:
 
 ```python
 # ❌ Bad - offset=0 is dropped, so the first page renders a different query text
@@ -266,8 +268,8 @@ async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes: .
 async def read_stored_object(self, storage_id: str) -> bytes: ...                   # look up the recorded checksum
 ```
 
-When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
-a test, so the next pass at the line fails fast instead of shipping the inversion.
+When zero or empty deliberately means "no bound" in the caller contract, keep that reading and pin it
+with a test.
 
 ## Configuration Settings
 
