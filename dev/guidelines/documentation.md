@@ -56,7 +56,9 @@ agents with a job to finish.
   sentence that restates the one before it
 - **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
 - **Budget**: a new rule is a few lines plus one example. If it needs more than that, it's an
-  explanation for `dev/knowledge/`, not a guideline
+  explanation for `dev/knowledge/`, not a guideline. A knowledge section written with a code change
+  states the constraint and its reason for a later reader of that area; which process calls which
+  function, and in what order, stays in the PR description
 - **Relative numbers, not absolute ones**: a measurement is only meaningful as a comparison, since the
   absolute figure depends on the environment it was taken in. Write "cuts merge wall time by roughly
   4x", not "runs in 10s". A count of code artifacts goes stale the same way — put the command that
@@ -98,7 +100,7 @@ agents with a job to finish.
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
-- Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
+- Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path from the repository root — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
 - Run every command a doc tells the reader to run, as written and from the stated starting point. The recurring failures are a missing required subcommand, a service name the compose file doesn't define, `cd`s that compound when a block is pasted as one, and an env var that expands on the host when the value only exists inside the container (wrap it in `docker compose exec <svc> sh -c '...'`)
 - Before restating a claim inherited from working notes, a spec, or a code comment, re-verify the behavior against the current code: a source recording the claim does not confirm the claim is still true
 
@@ -121,6 +123,7 @@ agents with a job to finish.
 - Reference another step by its number ("see step 4") — numbering shifts when a step is added or removed; name the action instead ("after restarting the workers")
 - Enumerate the events that cause a behavior when you can state its condition ("the window moves when new commits reach the worker's copy", not a list of the operations that fetch) — a trigger list is wrong the moment a caller is added or removed
 - State a conditional behavior as an absolute ("a created node recomputes itself and nothing else") — list the conditions in the order the code checks them, phrase each one the code checks after another as "otherwise, …", and say exactly what a fallback widens to (one attribute, not every attribute, when only that one widens)
+- Explain where code lives by a defect that exists today (an import cycle, an unfixed bug) — state the location and what depends on it; the sentence turns false when the defect is fixed
 - Bake a temporary feature switch's per-state semantics into durable docs — instead state what it gates and how to run each leg; per-state semantics leave the docs when the switch does
 - Write a shipped counterexample into a rule as a carve-out — the rule states the target; existing code that violates it is debt the rule deliberately flags, and it gets fixed in its own change rather than excused in the guideline
 - Edit the body of a dated review record (a `dev/specs/*/critiques/` file, an implement report) after the fact — it is a point-in-time record of a review that happened; append an erratum footer carrying the correction instead

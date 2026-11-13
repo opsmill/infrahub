@@ -22,6 +22,21 @@ Construct components as close to the application entry point as possible. Use a 
 
 Prefect `@flow` functions are application entry points: resolve singleton getters (`get_database()`, `get_workflow()`, …) at the top of the flow only — never inside helpers or component internals — then build the component and delegate to it. The flow body stays a thin composition root; the business logic lives in the component.
 
+A REST endpoint is an entry point too. A `Depends()` function only builds and returns the component; the endpoint calls it. A value that needs no injection is a plain call, not a dependency.
+
+```python
+# ✅ Good - the dependency builds, the endpoint calls
+def build_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> IdentityResolver:
+    return IdentityResolver(repository=PreferenceRepository(db=db), defaults=load_defaults())
+
+@router.get("/config")
+async def get_config(resolver: IdentityResolver = Depends(build_identity_resolver)) -> ConfigAPI:
+    identity = await resolver.resolve()
+
+# ❌ Bad - the dependency reads the database and applies the fallback itself
+async def get_identity(db: InfrahubDatabase = Depends(get_db)) -> Identity: ...
+```
+
 Anything that comes from outside the component's own domain — loaded settings, an external service client, a telemetry sink — is resolved at that entry point, never inside the component:
 
 - **Settings resolve in the factory, not the component.** A component takes plain values (`window_seconds: float`, `max_retries: int`), never a `Settings` object and never a module-global read. The factory is then the only place that knows a value came from configuration, which is also what makes the component directly testable with hand-picked values.

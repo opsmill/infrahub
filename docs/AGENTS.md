@@ -92,7 +92,7 @@ Capitalize these Infrahub-specific terms when referring to the feature:
 
 **Never use "transform" or "transforms" as a noun.** Always use "Transformation" or "Transformations".
 
-**Call a populated instance an "object", not a "node"**, in user-facing text (docs, error messages, UI copy). "Node" stays where it names a schema kind — the counterpart of "Generic" — which is the term the schema docs and the UI already use.
+**Call a populated instance an "object", not a "node"**, in user-facing text (docs, changelog fragments, error messages, UI copy). "Node" stays where it names a schema kind — the counterpart of "Generic" — which is the term the schema docs and the UI already use, and in text quoted verbatim from Infrahub.
 
 ## Documentation Workflow
 
@@ -129,6 +129,7 @@ The `migrate-feature-page` skill documents the full workflow.
 - Scope each behavioral claim to the path it holds for: a sentence placed above deployment tabs must be true in every tab (Helm rolls components out in a different order than Docker Compose), and behavior behind a flag is documented as what the flag does, not as what the bare command does
 - When documenting marketplace items, verify each item actually resolves in the live catalog at <https://marketplace.infrahub.app>; if an item is planned but unpublished, get an explicit decision on release timing before referencing it
 - When a page imports a file from outside `docs/` (`import x from '!!raw-loader!../../../../utilities/...'`), add a `COPY` line for that file to the `docs` stage of `development/Dockerfile`, then run `docker build --target docs -f development/Dockerfile .`. That stage copies only `docs/` and the files listed there, so `uv run invoke docs.build` passes while the container image build fails with `Module not found`
+- Put steps a user needs only because of an upgrade in that release's guide under `docs/docs/release-notes/deprecation-guides/`, and leave one linking sentence on the feature page
 - Prefer plain Markdown/MDX over custom React components in doc pages; before adding anything to `docs/src/components/`, check the existing components for reuse, and give a genuinely new component typed props (the docs package typechecks with `tsc`)
 
 ### Ask First

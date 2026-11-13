@@ -6,7 +6,7 @@ Catching, scoping, and suppressing exceptions in the Python backend.
 
 ## Catch only what you expect
 
-Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent.
+Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent. A broad catch that stays carries a comment that says why no narrower type works, whether or not ruff flags it.
 
 ```python
 # ❌ Bad - swallows everything, including programming errors
@@ -90,7 +90,7 @@ contract in the helper's docstring as "raises nothing but cancellation", not "ne
 Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
 knowable set of types (see above). Catching everything is not the target design: the lower layers
 should raise precise exceptions so callers can catch them. Until they do, the rule is suppressed only
-in the cases below, and the comment above the suppression names which case it is:
+in the cases below:
 
 - a top-level boundary (worker loop, request handler) that must not let one failure take down the process
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run

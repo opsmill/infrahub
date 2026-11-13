@@ -251,7 +251,8 @@ at all: changelog conventions, for one, moved out to the `creating-changelog-ent
 existing skill or command already owns the workflow a lesson touches (`creating-changelog-entries`,
 `pre-ci`, or `pruning-residues` from the org skills plugin — not vendored in this repo but available to
 agents running with it), route the edit into that skill and leave at most a pointer
-in `dev/` — the same rule stated in two homes drifts apart.
+in `dev/` — the same rule stated in two homes drifts apart. A `speckit-*` skill is the exception: an
+upgrade overwrites it, so report the lesson for an upstream issue instead of editing the skill.
 
 ### 5. Sweep for rot (prune before you add)
 
