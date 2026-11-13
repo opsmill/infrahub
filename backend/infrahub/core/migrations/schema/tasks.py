@@ -14,7 +14,7 @@ from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigra
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp  # noqa: TC001
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
 
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
