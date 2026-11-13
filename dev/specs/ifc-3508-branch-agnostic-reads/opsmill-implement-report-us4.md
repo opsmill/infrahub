@@ -5,9 +5,9 @@
 | Feature | Branch-agnostic reads, User Story 4 (PR 4), [IFC-3512](https://opsmill.atlassian.net/browse/IFC-3512), epic [IFC-3508](https://opsmill.atlassian.net/browse/IFC-3508) |
 | Spec directory | `dev/specs/ifc-3508-branch-agnostic-reads/` |
 | Scope of this run | Phase 6 of [tasks.md](tasks.md): T051 to T059 |
-| Code branch | `agnostic-delete-check-ifc-3508`, local only, in the worktree `.claude/worktrees/agnostic-delete-check-ifc-3508`, with no upstream |
+| Code branch | `agnostic-delete-check-ifc-3508`, in the worktree `.claude/worktrees/agnostic-delete-check-ifc-3508`. Pushed to `origin` at `ec178f999`; `ff2f87474` is not pushed |
 | Base commit of the code branch | `11928e7c4` on `origin/stable`, the merge of PR 3 ([#11433](https://github.com/opsmill/infrahub/pull/11433)). The branch was first built on PR 3's tip `956c9aa27`; see "Changes after the report" |
-| Head commit of the code branch | `ec178f999` |
+| Head commit of the code branch | `ff2f87474` |
 | Base commit of `branch-agnostic-reads` | `4e344f789` |
 | Wall-clock time | 2026-11-12T05:45Z to about 06:55Z |
 | Status | DONE for T051 to T058. T059 is partly done: the pre-push checks pass for this PR's code, and the PR is not opened. Nothing is pushed. |
@@ -71,6 +71,7 @@ The orchestrator created the worktree (T051) before the first chunk. After each 
   - FR-021 (T075): the delete writes a `deleted` edge on each user branch whose own latest edge for the link is `active`;
   - FR-018 (T069): a read of a branch-aware relationship whose peer kind is branch-agnostic returns the peer only if it exists in the read's view.
 - After a second review (`/code-review high`), at the user's request, the delete check was replaced by two queries (commits `dd5ab349b`, `d6e753fe6`, `2fe20baea`, `e3dd82f68` and `ec178f999`, by a subagent). The window path took 389 s for a cascade of 10,101 nodes, did not check a branch-agnostic node reached by a cascade from a branch-aware node, and used the request branch's schema for every branch. The design was chosen from measurements of four approaches, recorded in [delete-check-measurements.md](delete-check-measurements.md). FR-014, FR-017, scenarios 5 to 7 of User Story 4, the assumption on branch schemas, the contract, the data model, research R5, T053 and T054 were updated to match.
+- After the user's review of `ec178f999`, commit `ff2f87474` adds the relationship direction to the links both queries match. A kind can declare an inbound and an outbound relationship with the same identifier and peer kind, and the queries matched the links of both. A cascade then also deleted the peers of the relationship that does not cascade, and a delete was refused when the peer held the node only through the optional relationship. `stable` matches these links without direction too. The core schema has no kind affected: every pair sharing an identifier there is a hierarchy `parent`/`children` pair, and both are optional and do not cascade. The same commit computes another branch's required links with the index instead of a module function that repeated its logic. Three component tests were added for this commit and have not been run.
 
 ## Behavior on the head commit
 
@@ -78,6 +79,7 @@ The orchestrator created the worktree (T051) before the first chunk. After each 
 - The number of levels is the longest chain in the cascade kind graph. When that graph has a loop, which an explicit `on_delete: cascade` can create, each query follows 10 levels and the query runs again from the last level while that level finds new nodes. The required peers are read only once the cascade is complete.
 - When the delete set holds a branch-agnostic node, whether the delete names it or a cascade reaches it, `NodeDeleteOtherBranchesQuery` reads the required links to those nodes in every other live branch's window. Each branch's own schema decides which relationships are required. Branch-aware nodes of the delete set are deleted on the request branch only (FR-016), so on other branches they count as peers that remain.
 - One error is raised per blocking link. When the delete set holds a branch-agnostic node, the error names every branch where the link blocks the delete, including the request branch, sorted by name: `Cannot delete <kind> '<id>'. It is linked to mandatory relationship <rel> on node <peer kind> '<peer id>' on branch '<b>'`, or `on branches '<b1>', '<b2>'`. Otherwise the error is the same as on `stable` and names no branch.
+- Both queries follow or report a link only when its kind, relationship identifier, direction and peer kind match a relationship that cascades or is required. The direction is seen from the deleted node and is derived from the link's two edges.
 - `RelationshipGetByIdentifierInWindowsQuery`, `RelationshipWindowPeersData` and the Python walk are removed. `RelationshipGetByIdentifierQuery` is unchanged from `stable` and is still used by `graphql/queries/relationship.py`.
 
 ## Performance, measured locally
@@ -164,6 +166,7 @@ The review ran the six aspects of `speckit-review-run` (code, tests, errors, com
 
 ## Suggested next steps
 
-1. Review the redesign on `ec178f999`, in particular the error that now names the request branch when a branch-aware delete reaches a branch-agnostic node.
-2. Run `/pre-ci` in the code worktree.
-3. Push the branch and open the PR as a draft against `stable`, with the tables of [delete-check-measurements.md](delete-check-measurements.md) in the description.
+1. Run the tests for `ff2f87474`: the unit tests in `tests/unit/core/node/test_delete_validator.py` and the component tests in `tests/component/core/test_node_manager_delete.py` and `tests/component/core/test_node_manager_delete_agnostic.py`.
+2. Review the redesign, in particular the error that now names the request branch when a branch-aware delete reaches a branch-agnostic node.
+3. Run `/pre-ci` in the code worktree.
+4. Push `ff2f87474` and open the PR as a draft against `stable`, with the tables of [delete-check-measurements.md](delete-check-measurements.md) in the description.
