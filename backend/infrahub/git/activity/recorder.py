@@ -7,7 +7,13 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from infrahub.git.state.cache_keys import activity_last_run_key, activity_run_key
+from infrahub.git.state.cache_keys import (
+    STOPPED_IMPORT_REPAIRS_TTL_SECONDS,
+    activity_last_run_key,
+    activity_run_key,
+    activity_run_pattern,
+    stopped_import_repairs_key,
+)
 from infrahub.log import get_logger
 
 from .models import (
@@ -69,6 +75,37 @@ class ActivityRun:
                 update={"phase": phase, "branch_name": branch_name, "updated_at": self._now()}
             )
             await self._write_record()
+
+    async def another_run_is_active(self) -> bool:
+        """Whether a run other than this one, on any worker, works on the same repository now.
+
+        A run that stops without ending keeps its record until the record expires, so it counts as active
+        until then. When the cache cannot be read the answer is no, which at worst repeats an import.
+        """
+        try:
+            keys = await self._cache.list_keys(filter_pattern=activity_run_pattern(repository_id=self.repository_id))
+        # Best effort: the answer selects an import, so a failed read falls back to the answer that imports.
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not read the run records", repository_id=self.repository_id, error=str(exc))
+            return False
+        return any(key != self._run_key for key in keys)
+
+    async def count_repair(self, commit: str) -> int:
+        """Count one more repair of a stopped import of `commit` on this repository, and return the count so far.
+
+        When the cache cannot be read or written the count is one, which at worst repairs once more.
+        """
+        key = stopped_import_repairs_key(repository_id=self.repository_id, commit=commit)
+        try:
+            count = int(await self._cache.get(key=key) or 0) + 1
+            await self._cache.set(key=key, value=str(count), expires=STOPPED_IMPORT_REPAIRS_TTL_SECONDS)
+        # Best effort: the count only stops repairs, so a failed read or write falls back to repairing.
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "Could not count the repair of a stopped import", repository_id=self.repository_id, error=str(exc)
+            )
+            return 1
+        return count
 
     def record_branch(self, branch_name: str, outcome: RepositoryActivityBranchOutcome) -> None:
         """Record the result of the run for one branch, replacing an earlier result for the same branch."""

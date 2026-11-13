@@ -38,8 +38,8 @@ async def get_repositories_commit_per_branch(
     """Get a list of all repositories and their commit on each branch.
 
     The repository nodes come from one read on the default branch, restricted to branch-agnostic
-    fields so that no branch's own value can reach a caller through the node. `commit` and
-    `internal_status`, which are per-branch, are resolved separately in fixed-size chunks of branch
+    fields so that no branch's own value can reach a caller through the node. `commit`,
+    `internal_status` and `sync_status`, which are per-branch, are resolved separately in fixed-size chunks of branch
     names, so the read costs a small fixed number of queries for the nodes plus one per chunk rather
     than one per branch. Every query resolves at the same point in time, so a write landing mid-read
     cannot leave one branch of a repository reporting the old commit and another the new one. The
@@ -93,7 +93,7 @@ async def get_repositories_commit_per_branch(
         attributes = await reader.read(
             repository_ids=repository_ids,
             branch_names=chunk,
-            attribute_names=("commit", "internal_status", "ref"),
+            attribute_names=("commit", "internal_status", "ref", "sync_status"),
             at=at,
         )
         for repository_name, repository_data in repositories.items():
@@ -115,6 +115,11 @@ async def get_repositories_commit_per_branch(
                     branch_name=branch_name,
                     attribute_name="internal_status",
                 )
+                sync_status = attributes.get(
+                    repository_id=repository_data.repository_id,
+                    branch_name=branch_name,
+                    attribute_name="sync_status",
+                )
                 internal_status_value = internal_status.value if internal_status is not None else None
                 if internal_status_value is None:
                     internal_status_value = RepositoryInternalStatus.INACTIVE.value
@@ -122,6 +127,7 @@ async def get_repositories_commit_per_branch(
                 repository_data.branch_info[branch_name] = RepositoryBranchInfo(
                     internal_status=internal_status_value,
                     ref=tracked_ref.value if tracked_ref is not None else None,
+                    sync_status=sync_status.value if sync_status is not None else None,
                 )
 
     for repository_name, unresolved_branches in branches_without_internal_status.items():

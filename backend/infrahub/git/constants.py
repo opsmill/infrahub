@@ -35,6 +35,20 @@ mutation UpdateRepositoryStatus($repo_id: String!, $status: String!) {
 }
 """
 
+RECORD_COMMIT_FOR_IMPORT_MUTATION: Final = """
+mutation RecordRepositoryCommitForImport($repo_id: String!, $commit: String!, $status: String!) {
+    CoreRepositoryUpdate(
+        data: {
+            id: $repo_id
+            commit: { is_protected: true, source: $repo_id, value: $commit }
+            sync_status: { value: $status }
+        }
+    ) {
+        ok
+    }
+}
+"""
+
 IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
 IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
 MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"

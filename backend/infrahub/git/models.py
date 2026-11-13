@@ -367,6 +367,7 @@ class CheckRepositoryMergeConflicts(BaseModel):
 class RepositoryBranchInfo(BaseModel):
     internal_status: str
     ref: str | None = Field(default=None, description="Ref tracked on that branch, set for read-only repositories only")
+    sync_status: str | None = Field(default=None, description="Synchronization status of the repository on that branch")
 
 
 class RepositoryData(BaseModel):
