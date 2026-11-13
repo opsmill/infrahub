@@ -6,16 +6,14 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 import aio_pika
 import ujson
-from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.exceptions import WorkerTimeoutError
-from infrahub.log import clear_log_context, get_log_data, get_logger
-from infrahub.message_bus import InfrahubMessage, Meta, messages
+from infrahub.log import clear_log_context, get_logger
+from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.services.adapters.message_bus import InfrahubMessageBus, MessageListener, add_request_id
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -31,11 +29,6 @@ if TYPE_CHECKING:
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
-
-
-async def _add_request_id(message: InfrahubMessage) -> None:
-    log_data = get_log_data()
-    message.meta.request_id = log_data.get("request_id", "")
 
 
 def _durable_queue_arguments(queue_type: config.BrokerQueueType) -> dict[str, Any]:
@@ -179,7 +172,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         for routing_key in self.event_bindings:
             await self.events_queue.bind(self.exchange, routing_key=routing_key)
 
-        self.message_enrichers.append(_add_request_id)
+        self.message_enrichers.append(add_request_id)
 
     async def _initialize_git_worker(self) -> None:
         bindings = self.event_bindings + self.broadcasted_event_bindings
@@ -230,44 +223,21 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         response_class: type[ResponseClass],
         timeout: float | None = None,  # noqa: ASYNC109 part of the published bus contract
     ) -> ResponseClass:
-        correlation_id = str(UUIDT())
-        bound = timeout if timeout is not None else self.settings.rpc_timeout
-        routing_key = messages.ROUTING_KEY_MAP.get(type(message), "")
-
-        future = self.loop.create_future()
-        self.futures[correlation_id] = future
-
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
-
-        # The publish sits inside the bound because it awaits a broker confirmation, which a
-        # resource alarm on the broker withholds indefinitely.
-        published = False
-        try:
-            # Built inside the try so every failure after the future was registered reaches cleanup.
-            bounded_call = asyncio.timeout(bound)
-            async with bounded_call:
-                await self.send(message=message)
-                published = True
-                response: AbstractIncomingMessage = await future
-        except TimeoutError as exc:
-            if not bounded_call.expired():
-                # A broker error that happens to be a TimeoutError is not our bound elapsing.
-                raise
-            get_logger().warning(
-                "No worker answered within the allowed time",
-                correlation_id=correlation_id,
-                routing_key=routing_key,
-                timeout_seconds=bound,
-                stage="awaiting_reply" if published else "publishing",
-            )
-            raise WorkerTimeoutError(operation=routing_key, timeout_seconds=bound) from exc
-        finally:
-            self.futures.pop(correlation_id, None)
-
+        response: AbstractIncomingMessage = await self._publish_and_await_reply(
+            message=message, reply_to=self.callback_queue.name, timeout=timeout
+        )
         data = ujson.loads(response.body)
         return response_class(**data)
+
+    async def listen(self, topic: str, listener: MessageListener) -> None:
+        queue = await self.channel.declare_queue(exclusive=True)
+        exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.events")
+
+        async def forward(message: AbstractIncomingMessage) -> None:
+            await listener(message.routing_key or "", message.body)
+
+        await queue.consume(forward, no_ack=True)
+        await queue.bind(exchange, routing_key=topic)
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:
