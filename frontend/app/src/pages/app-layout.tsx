@@ -1,6 +1,5 @@
 import { Outlet } from "react-router";
 
-import { LicenseBanner } from "@/entities/license/ui/license-banner";
 import { AppHeader } from "@/entities/navigation/ui/app-header";
 import { AppSidebar } from "@/entities/navigation/ui/sidebar/app-sidebar";
 
@@ -11,8 +10,6 @@ function AppLayout() {
         <AppSidebar />
 
         <div className="flex h-full grow flex-col gap-0.5 overflow-hidden">
-          <LicenseBanner />
-
           <AppHeader />
 
           <Outlet />
