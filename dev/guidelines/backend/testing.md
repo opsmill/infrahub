@@ -418,11 +418,10 @@ Hold the shape instead of the duration:
 - Keep the measurement out of the suite. The numbers that justified the change belong in the commit
   message or the pull request, or in `backend/tests/query_benchmark/` when they must be tracked over
   time, not in an assertion CI re-runs forever.
-- A `PROFILE` db-hit count is the same trap without the clock: it follows the planner statistics that
-  earlier tests left in the database, so a test can pass with its module and fail alone. Count what
-  the code under test does — calls, queries, submissions. When a fix removes a label or index from
-  the query text, assert with `EXPLAIN` that no plan operator names it: no statistics can make the
-  planner choose what the query no longer offers.
+- A `PROFILE` db-hit count is the same trap without the clock: it follows the planner statistics
+  earlier tests left behind, so a test can pass with its module and fail alone. Count what the code
+  does (calls, queries, submissions). When a fix removes a label or index from the query text, assert
+  with `EXPLAIN` that no plan operator names it: the planner cannot choose what the query lacks.
 
 When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
 becomes a value the test reads exactly, rather than a duration it races.
