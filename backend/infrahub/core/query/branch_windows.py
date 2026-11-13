@@ -103,10 +103,10 @@ def build_branch_window_query(
 
     The clause opens the query and returns no row when no branch has that name.
     """
-    query = f"""
-    MATCH (branch:Branch {{name: $window_branch_name}})
-    WITH {_render_window(time_param=time_param)} AS {variable_name}
-    """
+    query = """
+    MATCH (branch:Branch {name: $window_branch_name})
+    WITH %(window)s AS %(variable_name)s
+    """ % {"window": _render_window(time_param=time_param), "variable_name": variable_name}
     return query, {
         time_param: at.to_string(),
         "global_branch_name": GLOBAL_BRANCH_NAME,

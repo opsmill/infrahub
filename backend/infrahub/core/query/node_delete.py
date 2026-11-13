@@ -88,33 +88,46 @@ class RequiredPeerLinkOnBranches:
 def _render_latest_active_edge(edge: str, left: str, right: str, edge_type: str) -> str:
     """Render whether `edge` between `left` and `right` is active and no other edge visible in `window` outranks it."""
     competitor = f"{edge}_competitor"
-    return f"""{edge}.status = "active" AND {render_window_filter(edge=edge)}
-        AND NOT EXISTS {{
-            MATCH ({left})-[{competitor}:{edge_type}]-({right})
-            WHERE {render_window_filter(edge=competitor)} AND {render_outranks(edge=edge, competitor=competitor)}
-        }}"""
+    return """%(edge)s.status = "active" AND %(edge_visible)s
+        AND NOT EXISTS {
+            MATCH (%(left)s)-[%(competitor)s:%(edge_type)s]-(%(right)s)
+            WHERE %(competitor_visible)s AND %(outranks)s
+        }""" % {
+        "edge": edge,
+        "edge_visible": render_window_filter(edge=edge),
+        "left": left,
+        "competitor": competitor,
+        "edge_type": edge_type,
+        "right": right,
+        "competitor_visible": render_window_filter(edge=competitor),
+        "outranks": render_outranks(edge=edge, competitor=competitor),
+    }
 
 
 def _render_link_direction(node: str, node_edge: str, relationship: str, peer_edge: str) -> str:
     """Render the direction of the link seen from `node`, or null when no relationship creates such edges."""
-    return f"""CASE
-            WHEN startNode({node_edge}) = {node} AND startNode({peer_edge}) = {relationship}
-                THEN "{RelationshipDirection.OUTBOUND.value}"
-            WHEN startNode({node_edge}) = {node} AND endNode({peer_edge}) = {relationship}
-                THEN "{RelationshipDirection.BIDIR.value}"
-            WHEN endNode({node_edge}) = {node} AND endNode({peer_edge}) = {relationship}
-                THEN "{RelationshipDirection.INBOUND.value}"
-        END"""
+    return """CASE
+            WHEN startNode(%(node_edge)s) = %(node)s AND startNode(%(peer_edge)s) = %(relationship)s THEN "outbound"
+            WHEN startNode(%(node_edge)s) = %(node)s AND endNode(%(peer_edge)s) = %(relationship)s THEN "bidirectional"
+            WHEN endNode(%(node_edge)s) = %(node)s AND endNode(%(peer_edge)s) = %(relationship)s THEN "inbound"
+        END""" % {"node": node, "node_edge": node_edge, "relationship": relationship, "peer_edge": peer_edge}
 
 
 def _render_node_exists(node: str) -> str:
     """Render whether `node` exists in `window`."""
     part_of = f"{node}_part_of"
     root = f"{node}_root"
-    return f"""EXISTS {{
-            MATCH ({node})-[{part_of}:IS_PART_OF]->({root}:Root)
-            WHERE {_render_latest_active_edge(edge=part_of, left=node, right=root, edge_type="IS_PART_OF")}
-        }}"""
+    return """EXISTS {
+            MATCH (%(node)s)-[%(part_of)s:IS_PART_OF]->(%(root)s:Root)
+            WHERE %(part_of_latest_active)s
+        }""" % {
+        "node": node,
+        "part_of": part_of,
+        "root": root,
+        "part_of_latest_active": _render_latest_active_edge(
+            edge=part_of, left=node, right=root, edge_type="IS_PART_OF"
+        ),
+    }
 
 
 class NodeDeleteCascadeQuery(Query):
@@ -308,7 +321,7 @@ class NodeDeleteOtherBranchesQuery(Query):
         WITH [window IN branch_windows WHERE window.name <> $request_window_name] AS windows
         MATCH (src:Node)
         WHERE src.uuid IN $agnostic_ids
-        WITH windows, src, [(src)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}] AS src_part_of
+        WITH windows, src, [(src)-[r:IS_PART_OF]->(:Root) | r {.branch, .branch_level, .from, .to, .status}] AS src_part_of
         MATCH (src)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
         WHERE [src.kind, rl.name, %(direction)s, dst.kind] IN $all_required_patterns
         AND NOT dst.uuid IN $agnostic_ids
@@ -318,9 +331,9 @@ class NodeDeleteOtherBranchesQuery(Query):
         // Each edge group is read once, so testing it in every window reads nothing more
         WITH windows, src, rl, dst, direction, [
             src_part_of,
-            [(src)-[r:IS_RELATED]-(rl) | r {%(edge_fields)s}],
-            [(rl)-[r:IS_RELATED]-(dst) | r {%(edge_fields)s}],
-            [(dst)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]
+            [(src)-[r:IS_RELATED]-(rl) | r {.branch, .branch_level, .from, .to, .status}],
+            [(rl)-[r:IS_RELATED]-(dst) | r {.branch, .branch_level, .from, .to, .status}],
+            [(dst)-[r:IS_PART_OF]->(:Root) | r {.branch, .branch_level, .from, .to, .status}]
         ] AS edge_groups
         UNWIND windows AS window
         WITH src, rl, dst, direction, window, edge_groups
@@ -339,7 +352,6 @@ class NodeDeleteOtherBranchesQuery(Query):
         }) AS links
         """ % {
             "windows_query": windows_query,
-            "edge_fields": ".branch, .branch_level, .from, .to, .status",
             "edge_visible": render_window_filter(edge="edge"),
             "competitor_visible": render_window_filter(edge="r"),
             "outranks": render_outranks(edge="edge"),
