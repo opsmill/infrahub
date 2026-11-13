@@ -18,7 +18,7 @@ from infrahub.exceptions import BranchNotFoundError
 from infrahub.workers.dependencies import get_database, get_event_service, get_workflow
 
 if TYPE_CHECKING:
-    from infrahub.core.recompute.bulk_write import AttributeValueWrite
+    from infrahub.core.recompute.bulk_write import AttributeValueWrite, WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
@@ -51,15 +51,20 @@ class BulkRecomputeDispatcher:
         branch_name: str,
         context: EventContext,
         recompute_depth: int,
-    ) -> None:
+    ) -> list[WrittenNode]:
+        """Persist ``writes`` and return the nodes whose save changed a value.
+
+        A write whose value already matches the stored one is not in the result, so the caller can
+        tell persisted values from no-ops. Nothing is written when the branch no longer exists.
+        """
         if not writes:
-            return
+            return []
 
         try:
             branch = await registry.get_branch(db=self._db, branch=branch_name)
         except BranchNotFoundError:
             # The branch can be deleted between the reader query and here; nothing to persist then.
-            return
+            return []
         written = await self._writer.write(
             branch=branch,
             writes=writes,
@@ -68,6 +73,7 @@ class BulkRecomputeDispatcher:
         )
         if self._chain is not None:
             await self._chain.submit(written=written, branch=branch_name, context=context, depth=recompute_depth)
+        return written
 
 
 async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coalesced: bool) -> BulkRecomputeDispatcher:
