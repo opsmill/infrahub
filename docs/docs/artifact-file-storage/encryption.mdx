@@ -64,6 +64,8 @@ Infrahub sets the value when it generates the artifact. The artifact page shows 
 
 Each time a signed-in user opens the artifact page, the UI sends a check request. The check reads only the first bytes of the stored file. These bytes name the key that encrypted the file, so the check finds a file that another key encrypted and a file that is incomplete. It does not decrypt the file, so it does not find a file whose content was modified: Infrahub refuses that file when it serves it. When the result differs from the stored value, Infrahub updates the stored value if the user may update artifacts. A user who is not signed in sees the stored value and no green notice.
 
+The check describes the file and the key as they are now. When a user views the artifact at a past date, the artifact page sends no check: it shows the notice for the value stored at that date, with no green notice and no reason.
+
 To check an artifact through the API, send `POST /api/artifact/{artifact_id}/encryption`. The response has these fields:
 
 - `encryption`: the value found by the check.

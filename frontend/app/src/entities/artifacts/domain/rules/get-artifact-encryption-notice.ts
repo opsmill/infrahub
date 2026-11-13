@@ -9,7 +9,7 @@ export type ArtifactEncryptionNotice =
   | { level: "warning"; message: string }
   | { level: "error"; message: string };
 
-// A missing file has its own notice. Every other reason of the API needs a text here, or this does not compile.
+// A missing file has its own notice, so it is the only reason of the API without a text here.
 const UNREADABLE_REASONS: Record<Exclude<UnreadableReason, "missing">, string> = {
   unknown_key: "It was not encrypted with the current key.",
   no_key: "No encryption key is configured.",
