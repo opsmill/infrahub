@@ -40,6 +40,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery, find_index_start
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import (
     build_subquery_filter,
@@ -2166,10 +2167,14 @@ WITH %(tracked_vars)s,
             node_labels = f"Node:{self.schema.kind}"
             node_ids_where = "n.uuid IN $node_ids"
 
+        index_start = await self._select_index_start(db=db)
+
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
-        if not self.branch.is_default:
+        if index_start:
+            self._add_index_start_query(index_start=index_start, branch_filter=branch_filter)
+        elif not self.branch.is_default:
             topquery = """
             MATCH (n:%(node_labels)s)
             %(node_ids_where)s
@@ -2251,6 +2256,79 @@ WITH %(tracked_vars)s,
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
+
+    async def _select_index_start(self, db: InfrahubDatabase) -> IndexStart | None:
+        """Return the filter to enter the query from, or None when the query reads every node of the kind."""
+        if not self.filters or "id" in self.filters or "ids" in self.filters:
+            return None
+
+        index_starts: list[IndexStart] = []
+        for far in self._get_filter_requirements(start_index=1):
+            if far.is_metadata:
+                continue
+            index_start = await find_index_start(
+                db=db,
+                field=far.field,
+                name=far.field_name,
+                filter_name=far.field_attr_name,
+                filter_value=far.field_attr_value,
+                branch=self.branch,
+                partial_match=self.partial_match,
+                subquery_idx=far.index,
+                position=len(index_starts) + 1,
+            )
+            if index_start:
+                index_starts.append(index_start)
+        if not index_starts:
+            return None
+
+        query = NodeGetListIndexStartQuery(node_kind=self.schema.kind, index_starts=index_starts)
+        await query.execute(db=db)
+        return query.get_selected_index_start()
+
+    def _add_index_start_query(self, index_start: IndexStart, branch_filter: str) -> None:
+        """Match the nodes of the kind that the index start reaches.
+
+        They are a superset of the nodes the filters keep, so the filter subqueries that follow still decide
+        the result.
+        """
+        self.params.update(index_start.params)
+
+        # Collecting the indexed vertices first makes Neo4j expand from them instead of from the kind label.
+        query = """
+        %(indexed_vertex_match)s
+        WITH collect(%(indexed_vertex)s) AS index_start_vertices
+        UNWIND index_start_vertices AS %(indexed_vertex)s
+        MATCH (n:%(node_kind)s)%(path_to_indexed_vertex)s(%(indexed_vertex)s)
+        WITH DISTINCT n
+        """ % {
+            "indexed_vertex_match": index_start.indexed_vertex_match,
+            "indexed_vertex": index_start.indexed_vertex.name,
+            "node_kind": self.schema.kind,
+            "path_to_indexed_vertex": index_start.path_to_indexed_vertex,
+        }
+        self.add_to_query(query)
+
+        if self.branch.is_default:
+            query = """
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter}
+        else:
+            query = """
+            CALL (n) {
+                MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+                WHERE %(branch_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC
+                LIMIT 1
+            }
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
 
     async def _add_node_filter_attributes(
         self,

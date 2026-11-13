@@ -1,0 +1,1 @@
+Looking up nodes by the exact value of an attribute, other than a text area, JSON or list attribute, or by the IDs of related nodes is now faster on kinds with many nodes. The lookup starts from that value or those nodes when they have few links in the database, instead of reading every node of the kind.

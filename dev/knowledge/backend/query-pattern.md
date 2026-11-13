@@ -314,6 +314,19 @@ The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label 
 
 Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
 
+#### Start a filtered read from the filter only when a count shows it reads less
+
+A read that filters a kind on an exact attribute value or on peer ids can start from every node of the kind, or from the indexed vertex of the filter (the value vertex, or the peer). Choose the start per query:
+
+- **Count, do not infer from the schema.** Starting from an indexed vertex reads every edge on it, whatever is at the other end. A value vertex is shared by the attributes of every kind that hold the value, and a peer can relate to most nodes of a kind, so a unique attribute or a cardinality-one relationship says nothing about the cost.
+- **Use counts that expand nothing.** `COUNT { ()-[:HAS_VALUE]-(av) }` reads the degree stored on the vertex, and `MATCH (n:<Kind>) RETURN count(n)` reads the count store. Run both in one query before building the main one. They include deleted nodes and every branch, so use them to compare the two starts, never as a result.
+- **Change the start only with a margin.** Start from the vertex with the fewest edges, and only when the kind holds several nodes per edge: following an edge to its node costs more than reading one node of the kind.
+- **Let the new start return a superset.** Give its `MATCH` no branch, time or status condition. The filter subqueries that already decide the result run after it, unchanged, so those rules stay in one place.
+- **Decide in Python and leave the other path byte-identical.** One statement that holds both starts in a `UNION` changes the text of every query: the planner can plan the previous start differently inside it, and the part that is not used can still scan the kind. With the choice made in Python, a query that keeps the previous start keeps its text and its plan.
+- **Prove it with the new start forced on.** Set the margin to zero so every query that qualifies takes the new start, run the existing tests, and compare the returned ids with the previous start. Profile one filter that few nodes match and one that most nodes match.
+
+`NodeGetListQuery` with `NodeGetListIndexStartQuery` (`backend/infrahub/core/query/index_start.py`) is the instance to read alongside a new one.
+
 ### Cypher Variable Shadowing (Neo4j 5+)
 
 Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
