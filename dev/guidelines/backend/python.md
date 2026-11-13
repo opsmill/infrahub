@@ -365,6 +365,38 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
 Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
 conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
 
+### Several queries of the same shape: one query, then parallel, a loop last
+
+When the same query has to run for several inputs, choose in this order:
+
+1. **One query for all inputs.** Pass the inputs as one list parameter and let Cypher iterate over it (`UNWIND $ids`, `WHERE n.uuid IN $ids`, or one `CALL` subquery per input). Every query awaited on its own is a round trip to the database. Page the list when it has no upper bound.
+2. **Parallel, when the queries cannot be merged.** Start them together and await them together. Give each one its own session, because a session has one connection and cannot serve two coroutines at once, and bound how many run at once, because every open session takes a connection from the pool.
+3. **A query awaited inside a `for` loop, as the last resort.** It is right when a query needs the result of the one before it, or when the queries belong to one transaction: a transaction has one connection, and a new session does not read what the transaction has not committed.
+
+```python
+# ✅ Best - one query for all inputs
+query = await ItemsQuery.init(db=db, item_ids=item_ids)
+await query.execute(db=db)
+
+# ✅ OK when the queries cannot be merged - parallel, a session each, bounded
+semaphore = asyncio.Semaphore(MAX_PARALLEL_READS)
+
+async def read(item_id: str) -> ItemResult:
+    async with semaphore, db.start_session(read_only=True) as session:
+        query = await ItemQuery.init(db=session, item_id=item_id)
+        await query.execute(db=session)
+        return query.get_item()
+
+results = await asyncio.gather(*(read(item_id=item_id) for item_id in item_ids))
+
+# ❌ Last resort - one round trip per input, one after the other
+for item_id in item_ids:
+    query = await ItemQuery.init(db=db, item_id=item_id)
+    await query.execute(db=db)
+```
+
+Check what an `await` in a loop does before changing it: an `async` function that only builds query text sends nothing to the database.
+
 ## Methods stay on the instance
 
 A private helper that happens to read no instance state is still an instance method. Do not demote
