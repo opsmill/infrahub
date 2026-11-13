@@ -10021,12 +10021,6 @@
                     "checksum": {
                         "type": "string",
                         "title": "Checksum"
-                    },
-                    "encrypted": {
-                        "type": "boolean",
-                        "title": "Encrypted",
-                        "description": "Whether the stored object was encrypted",
-                        "default": false
                     }
                 },
                 "type": "object",

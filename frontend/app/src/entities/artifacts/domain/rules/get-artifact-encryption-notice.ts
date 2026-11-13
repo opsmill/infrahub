@@ -1,11 +1,16 @@
+import type { components } from "@/shared/api/rest/types.generated";
+
 import type { ArtifactEncryption } from "@/entities/artifacts/domain/model/artifact";
+
+type UnreadableReason = components["schemas"]["UnreadableReason"];
 
 export type ArtifactEncryptionNotice =
   | { level: "success"; message: string }
   | { level: "warning"; message: string }
   | { level: "error"; message: string };
 
-const UNREADABLE_REASONS: Record<string, string> = {
+// A missing file has its own notice. Every other reason of the API needs a text here, or this does not compile.
+const UNREADABLE_REASONS: Record<Exclude<UnreadableReason, "missing">, string> = {
   unknown_key: "It was not encrypted with the current key.",
   no_key: "No encryption key is configured.",
   unsupported_format: "The file is in a format this version cannot read.",
@@ -14,7 +19,7 @@ const UNREADABLE_REASONS: Record<string, string> = {
 
 export interface GetArtifactEncryptionNoticeParams {
   encryption: ArtifactEncryption | null | undefined;
-  reason?: string | null;
+  reason?: UnreadableReason | null;
   isEncryptionEnabled: boolean;
   /** Whether the encryption was found by a check of the file just now, not read from the stored value. */
   isVerified: boolean;
