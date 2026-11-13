@@ -528,12 +528,28 @@ def test_reading_the_registry_before_initialization_raises() -> None:
 
 
 @pytest.mark.usefixtures("without_registry")
+def test_registry_is_missing_for_hasattr_before_initialization() -> None:
+    assert not hasattr(lock, "registry")
+    assert getattr(lock, "registry", None) is None
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_registry_can_be_monkeypatched_before_initialization(monkeypatch: pytest.MonkeyPatch) -> None:
+    replacement = InfrahubLockRegistry(local_only=True)
+
+    monkeypatch.setattr(lock, "registry", replacement, raising=False)
+
+    assert lock.registry is replacement
+
+
+@pytest.mark.usefixtures("without_registry")
 def test_registry_is_readable_once_initialized() -> None:
     initialize_lock(local_only=True)
 
     assert lock.is_initialized()
     assert isinstance(lock.registry, InfrahubLockRegistry)
+    assert lock.registry.connection is None
 
 
-def test_unknown_lock_module_attribute_is_still_missing() -> None:
+def test_unknown_lock_module_attribute_is_missing() -> None:
     assert not hasattr(lock, "no_such_attribute")

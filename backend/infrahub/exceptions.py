@@ -85,6 +85,14 @@ class InitializationError(Error):
     DESCRIPTION: str = "The application hasn't been initialized properly"
 
 
+class ModuleAttributeNotInitializedError(InitializationError, AttributeError):
+    """A module attribute was read before it was initialized.
+
+    It is also an ``AttributeError`` so that ``hasattr()`` and ``getattr()`` with a default report the attribute as
+    missing.
+    """
+
+
 class DatabaseError(Error):
     HTTP_CODE: int = 503
     DESCRIPTION = "Database unavailable"

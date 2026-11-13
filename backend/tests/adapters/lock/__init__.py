@@ -1,5 +1,5 @@
 from .mocks import FailingImporter, RecordingImporter
-from .registry import RecordingLock, RecordingLockRegistry, install_recording_lock_registry
+from .registry import RecordingLock, RecordingLockRegistry
 from .timeline import LockAction, LockEvent, LockTimeline
 
 __all__ = [
@@ -10,5 +10,4 @@ __all__ = [
     "RecordingImporter",
     "RecordingLock",
     "RecordingLockRegistry",
-    "install_recording_lock_registry",
 ]

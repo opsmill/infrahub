@@ -17,7 +17,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
-from infrahub.exceptions import InitializationError
+from infrahub.exceptions import ModuleAttributeNotInitializedError
 from infrahub.log import get_logger
 from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-# Declared without a value so that a read before initialization raises instead of returning None.
+# Declared without a value so that a read before initialization raises.
 registry: InfrahubLockRegistry
 
 
@@ -43,12 +43,14 @@ if not TYPE_CHECKING:
         """Raise for a module attribute that has no value.
 
         Raises:
-            InitializationError: When the lock registry is read before it is initialized.
+            ModuleAttributeNotInitializedError: When the lock registry is read before it is initialized.
             AttributeError: For any other missing module attribute.
 
         """
         if name == "registry":
-            raise InitializationError("The lock registry has not been initialized, call initialize_lock() first")
+            raise ModuleAttributeNotInitializedError(
+                "The lock registry has not been initialized, call initialize_lock() first"
+            )
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -309,12 +311,6 @@ class InfrahubLock:
             self.remote = self._build_remote()
 
     def _build_remote(self) -> RedisLock:
-        """Return a new Redis lock for one acquisition.
-
-        Raises:
-            RuntimeError: When the lock has no Redis connection.
-
-        """
         if self.connection is None:
             raise RuntimeError(f"Lock {self.name!r} has no Redis connection")
         return RedisLock(lock=GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=self.ttl))
@@ -323,18 +319,6 @@ class InfrahubLock:
         remote = self._build_remote()
         await remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
         self._held_remote.set(remote)
-
-    @property
-    def acquire_time(self) -> int:
-        value = self._acquire_time.get()
-        if value is not None:
-            return value
-
-        raise ValueError("The lock has not been initialized")
-
-    @acquire_time.setter
-    def acquire_time(self, value: int) -> None:
-        self._acquire_time.set(value)
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -364,7 +348,7 @@ class InfrahubLock:
         else:
             await self.local.acquire()
 
-        self.acquire_time = time.time_ns()
+        self._acquire_time.set(time.time_ns())
         self.event.clear()
         self._recursion_var.set(1)
 
