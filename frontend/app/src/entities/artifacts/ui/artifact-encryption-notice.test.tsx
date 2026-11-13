@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { render } from "../../../../tests/components/render";
 
@@ -8,6 +8,9 @@ vi.mock("@/entities/config/ui/queries/get-app-info.query", () => ({
 vi.mock("@/entities/artifacts/ui/queries/check-artifact-encryption.query", () => ({
   useCheckArtifactEncryption: vi.fn(),
 }));
+
+import { store } from "@/shared/stores";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { ArtifactEncryptionNotice } from "@/entities/artifacts/ui/artifact-encryption-notice";
@@ -28,6 +31,25 @@ const check = (data: object | undefined) =>
 describe("ArtifactEncryptionNotice", () => {
   beforeEach(() => {
     vi.mocked(useCheckArtifactEncryption).mockReturnValue(check(undefined));
+  });
+
+  afterEach(() => {
+    store.set(datetimeAtom, null);
+  });
+
+  test("shows nothing while a past date is viewed, even with a check result", async () => {
+    // GIVEN
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(check({ encryption: "encrypted" }));
+    store.set(datetimeAtom, new Date("2026-01-01T00:00:00Z"));
+
+    // WHEN
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("unreadable")} />);
+
+    // THEN
+    await expect
+      .element(component.getByTestId("artifact-encryption-notice"))
+      .not.toBeInTheDocument();
   });
 
   test("warns when the file is plaintext and encryption is enabled", async () => {

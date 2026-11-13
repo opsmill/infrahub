@@ -3895,12 +3895,6 @@ export interface components {
             identifier: string;
             /** Checksum */
             checksum: string;
-            /**
-             * Encrypted
-             * @description Whether the stored object was encrypted
-             * @default false
-             */
-            encrypted: boolean;
         };
         /** UserToken */
         UserToken: {

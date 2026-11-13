@@ -1,7 +1,9 @@
+import { useAtomValue } from "jotai";
 import { LockIcon } from "lucide-react";
 import { useState } from "react";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { getArtifactEncryptionNotice } from "@/entities/artifacts/domain/rules/get-artifact-encryption-notice";
@@ -22,6 +24,10 @@ export function ArtifactEncryptionNotice({ artifact }: ArtifactEncryptionNoticeP
   const [isDismissed, setIsDismissed] = useState(false);
   const { data: appInfo } = useGetAppInfo();
   const { data: check } = useCheckArtifactEncryption(artifact.id);
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  // The notice describes the file and the key as they are now, so it says nothing about a past date.
+  if (timeMachineDate !== null) return null;
 
   // The check reads the file now; the stored value is what the artifact held when it was fetched.
   const notice = getArtifactEncryptionNotice({

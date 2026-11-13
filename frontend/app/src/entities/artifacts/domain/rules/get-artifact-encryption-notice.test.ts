@@ -51,6 +51,34 @@ const cases: Array<Case> = [
     },
   },
   {
+    name: "reports an unreadable file in a format this version cannot read",
+    params: {
+      encryption: "unreadable",
+      reason: "unsupported_format",
+      isEncryptionEnabled: true,
+      isVerified: true,
+    },
+    expected: {
+      level: "error",
+      message:
+        "This artifact is encrypted but cannot be read with the current encryption key. The file is in a format this version cannot read.",
+    },
+  },
+  {
+    name: "reports an unreadable file that is incomplete",
+    params: {
+      encryption: "unreadable",
+      reason: "truncated",
+      isEncryptionEnabled: true,
+      isVerified: true,
+    },
+    expected: {
+      level: "error",
+      message:
+        "This artifact is encrypted but cannot be read with the current encryption key. The file is incomplete.",
+    },
+  },
+  {
     name: "reports an unreadable file without a reason before the check answers",
     params: { encryption: "unreadable", isEncryptionEnabled: true, isVerified: true },
     expected: {
