@@ -1510,7 +1510,7 @@ export interface components {
         };
         /**
          * LicenseFailureReason
-         * @description Why a supplied license could not be verified; also exposed to API clients.
+         * @description Why a supplied license could not be verified.
          * @enum {string}
          */
         LicenseFailureReason: "malformed" | "bad_signature" | "unknown_key" | "wrong_issuer" | "wrong_product" | "internal_error";
@@ -1556,7 +1556,7 @@ export interface components {
         };
         /**
          * LicenseState
-         * @description The single license state derived for a moment in time; also exposed to API clients and telemetry.
+         * @description The single license state derived for a moment in time.
          * @enum {string}
          */
         LicenseState: "not_required" | "unlicensed" | "invalid" | "not_yet_valid" | "expired" | "expiring" | "valid";
@@ -2266,7 +2266,7 @@ export interface components {
         NoticeAudience: "none" | "super_admins" | "all_users";
         /**
          * NoticeMode
-         * @description Release-wide rule for license notices: super-admins only and no header, or enforced for every user.
+         * @description Release-wide notice rule: super-admins only and no header, or license problems shown to every user.
          * @enum {string}
          */
         NoticeMode: "quiet" | "enforce";
