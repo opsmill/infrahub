@@ -1,6 +1,6 @@
 # Contract: telemetry license block
 
-The daily snapshot (`TelemetryData`) gains a `license` field. `TELEMETRY_VERSION` (the snapshot `payload_format`) is bumped.
+The daily snapshot (`TelemetryData`) gains a `license` field. The field is an addition, so `TELEMETRY_VERSION` (the snapshot `payload_format`) stays `20260628` until the receiving service confirms it accepts the field ([ADR 0021](../../../adr/0021-resource-allocation-telemetry.md)).
 
 ```jsonc
 // Today

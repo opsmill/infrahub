@@ -91,7 +91,6 @@ backend/infrahub/
 ├── api/internal.py                  # + LicenseInfoAPI, BannerAPI, InfoAPI.license
 ├── telemetry/models.py              # + TelemetryLicenseData, TelemetryData.license
 ├── telemetry/tasks.py               # + license service in AnonymousTelemetryGatherer
-├── telemetry/constants.py           # TELEMETRY_VERSION bump
 └── cli/upgrade.py                   # + license section in _upgrade_check, _upgrade_execute
 
 backend/tests/
@@ -143,8 +142,8 @@ dev/knowledge/backend/telemetry.md                      # license block
   `notice_mode` and `enforcing_release` are per-release constants that must not raise. Each surface still guards the rest of its own work, including those reads: the info endpoint and the header middleware as top-level boundaries, telemetry through its existing per-metric guard, and the upgrade section as a best-effort side effect (`dev/guidelines/backend/exceptions.md`). Each broad `except Exception` carries a one-sentence comment naming its reason and logs with `log.exception`, so no `# noqa: BLE001` is needed.
 - **Days arithmetic**: `days_remaining` rounds up and `days_since_expiry` rounds down, so a license with 11.5 days left reads "12 days" and one expired 3.9 days ago reads "3 days ago".
 - **Path eligibility for the header**: `/api`, `/api/…`, `/graphql`, `/graphql/…`; never `/api-static`.
-- **Telemetry format**: bump `TELEMETRY_VERSION`; if the resource-allocation telemetry PR (#10003) lands first, bump again on rebase.
-- **Release gate**: the format bump changes every deployment's snapshot, Community included. The feature may merge to `develop`, but the release containing it waits until the cloud telemetry processor accepts the new format. A task confirms it before the release branch is cut.
+- **Telemetry format**: `TELEMETRY_VERSION` stays `20260628`. The license block is an addition, and [ADR 0021](../../adr/0021-resource-allocation-telemetry.md) keeps the format for an addition until the receiving service confirms it accepts the new field.
+- **Release gate**: every deployment's snapshot gains the `license` field, Community included, where it is `null`. The format does not change, so the release does not wait for the telemetry receiving service. The gate keeps two items: the public telemetry pages and the product sign-off of the banner and upgrade wording ([checklists/release-gate.md](checklists/release-gate.md)).
 - **Public telemetry documentation**: the FAQ (`docs/docs/faq/faq.mdx`) and the telemetry page (`docs/docs/deploy-manage/run-observe/telemetry.mdx`) call all telemetry anonymous. Before the first licensing release, update both to say that licensed Enterprise deployments also send the license ID, type, tiers, issuer and dates, never the customer name. See [contracts/telemetry-license-block.md](contracts/telemetry-license-block.md).
 - **Eager construction**: `log_license_state(...)` runs at startup in every API server and task worker and is the first caller of `get_license_service()`, so the Enterprise service verifies its key at startup, never inside a request.
 - **Ignored key**: the "license key ignored" INFO line is logged whenever the state is `not_required` and a key is set, so it also covers Enterprise with no service registered. It never includes the value.

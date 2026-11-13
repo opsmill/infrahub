@@ -8,9 +8,7 @@ Each item needs a named person's answer and the date it was given. Record them u
 
 ## Telemetry
 
-- [ ] The owner of the cloud telemetry processor confirms it accepts snapshots with `payload_format` `20261004`, the new `TELEMETRY_VERSION`, which carry the `license` field ([telemetry contract](../contracts/telemetry-license-block.md)).
-  - Answered by:
-  - Date:
+No gate. The snapshot gains the `license` field ([telemetry contract](../contracts/telemetry-license-block.md)), but `payload_format` stays `20260628`: [ADR 0021](../../../adr/0021-resource-allocation-telemetry.md) keeps the format for an addition until the receiving service confirms it accepts the new field. Raising the format after that confirmation is a follow-up, not a condition for this release.
 
 ## Public documentation
 

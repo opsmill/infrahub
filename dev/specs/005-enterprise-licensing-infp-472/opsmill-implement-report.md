@@ -1,6 +1,6 @@
 # Implementation Report: Enterprise Licensing, Community Contract
 
-**Status**: INCOMPLETE. Two tasks are still open: T051 needs an answer from the owner of the cloud telemetry processor, and T053 still needs the banner and the About dialog checked in a browser. Every test added or changed by this run passed locally (section 4).
+**Status**: INCOMPLETE. One task is still open: T051, the release gate, needs two answers from outside this repository. Every test added or changed by this run passed locally (section 4). Sections 1 to 7 describe the run of 2026-10-04; section 8 lists what changed afterwards.
 
 | | |
 | --- | --- |
@@ -10,7 +10,7 @@
 | Head commit before this report | `8f4f5e152` on `ds-licensing-8-polish`, 33 commits above the base |
 | Wall-clock time | about 6 hours (2026-10-04, 12:05 to 18:05 UTC) |
 | Delivery | 8 draft pull requests linked as GitHub stack #10875 on `develop`: [#10861](https://github.com/opsmill/infrahub/pull/10861), [#10863](https://github.com/opsmill/infrahub/pull/10863), [#10864](https://github.com/opsmill/infrahub/pull/10864), [#10865](https://github.com/opsmill/infrahub/pull/10865), [#10867](https://github.com/opsmill/infrahub/pull/10867), [#10868](https://github.com/opsmill/infrahub/pull/10868), [#10870](https://github.com/opsmill/infrahub/pull/10870), [#10872](https://github.com/opsmill/infrahub/pull/10872) |
-| Tasks | 51 of 53 done; T051 blocked, T053 partial |
+| Tasks | 52 of 53 done; T051 blocked. T053 was completed on 2026-11-13 (section 8) |
 
 ## 1. Chunk ledger
 
@@ -148,3 +148,10 @@ The rounds caught three high-severity defects before they were committed:
 5. [CLAUDE RECOMMENDED – based on #10003 touching the same telemetry files] Merge #10003 or this stack first and rebase the other; check `TELEMETRY_VERSION` after the second one lands.
 6. [CLAUDE RECOMMENDED – based on the deferred suggestions in section 5] Consider a shared backend `License` builder for tests and adding the failure reason to the telemetry block, so OpsMill can tell an internal error from a customer's invalid license.
 7. Mark the pull requests ready for review once CI is green on the stack.
+
+## 8. Changes after this run
+
+- **Browser check (T053), 2026-11-13.** On an image built from this branch after `develop` was merged in, the Community service showed no banner, an About dialog without license rows, no `X-Infrahub-License-Status` header and no license section in `infrahub upgrade --check`. With `INFRAHUB_LICENSE_KEY` set, each server process logged the INFO line saying the key is ignored, and the key did not appear in the log. A first check on 2026-10-06 had passed on the code before the merge.
+- **Banner and About dialog with a license service, 2026-11-13.** A temporary license service, never committed, stood in for the Enterprise checker. Ten states were captured in a browser, in the first and the second licensing release mode: banner audience, dismissal, About dialog rows, `/api/info`, the response header, the startup log and the upgrade output matched the contracts. No test license key appeared in any captured output.
+- **Telemetry payload format, 2026-11-13.** `TELEMETRY_VERSION` stays `20260628`. [ADR 0021](../../adr/0021-resource-allocation-telemetry.md) merged to `develop` after this run and keeps the format for an addition until the receiving service confirms it accepts the new field. This replaces the `20261004` value in sections 1 and 3 and next step 5, and removes the telemetry item from the release gate, which keeps two items.
+- **Pull requests, 2026-11-13.** The eight pull requests of the stack were replaced by two, a backend one ([#10872](https://github.com/opsmill/infrahub/pull/10872)) and a frontend one stacked on it. #10861 to #10870 are closed, and their review comments stay there. `develop` was merged into the branch.

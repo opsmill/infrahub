@@ -41,10 +41,10 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R7. Telemetry
 
-- **Decision**: `backend/infrahub/telemetry/models.py` gains `TelemetryLicenseData` and `TelemetryData.license: TelemetryLicenseData | None = None`. `AnonymousTelemetryGatherer` receives the license service as a constructor argument (wired in `build_anonymous_telemetry_gatherer`) and fills the block through a pure `license_block(status)` function. `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` is bumped.
+- **Decision**: `backend/infrahub/telemetry/models.py` gains `TelemetryLicenseData` and `TelemetryData.license: TelemetryLicenseData | None = None`. `AnonymousTelemetryGatherer` receives the license service as a constructor argument (wired in `build_anonymous_telemetry_gatherer`) and fills the block through a pure `license_block(status)` function. `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` stays `20260628`.
 - **Rationale**: Constructor injection matches the gatherer's existing design (`account_gatherer`, `activity_gatherer`), and the snapshot is stored even when sending is turned off (`telemetry/tasks.py::send_telemetry_push`), so the export carries it.
 - **Alternatives considered**: reading the service inside `gather()` through `get_license_service()` (hides the dependency from tests).
-- **Coordination**: the resource-allocation telemetry PR (#10003) also bumps the format. Whichever lands second bumps it again; the cloud processor is told before release.
+- **Coordination**: the resource-allocation telemetry change landed first ([PR #10894](https://github.com/opsmill/infrahub/pull/10894)) and kept the format, because [ADR 0021](../../adr/0021-resource-allocation-telemetry.md) keeps it for an addition until the receiving service confirms it accepts the new fields. The license block follows the same rule.
 
 ## R8. The upgrade command
 

@@ -198,7 +198,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
   - log a failure and store `None` instead of failing the snapshot.
 
   Update every existing construction of `AnonymousTelemetryGatherer` in `backend/tests/` for the new argument.
-- [X] T041 [US5] Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` to a new date-based value; if the resource-allocation telemetry PR (#10003) has merged in the meantime, bump past its value
+- [X] T041 [US5] Keep `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` at `20260628`: the license block is an addition, and ADR 0021 keeps the format until the receiving service confirms it accepts the field. First implemented as a bump to `20261004`, reversed after the ADR merged
 - [X] T042 [US5] Extend `backend/tests/component/telemetry/test_tasks.py`:
   - the stored snapshot contains the license block with a test service and `null` with the community default;
   - the block is still stored when `telemetry_optout` is set.
@@ -246,7 +246,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
   Follow `dev/guidelines/documentation.md`. Add it to the knowledge index if one lists backend pages.
 - [X] T050 [P] Add the license block to `dev/knowledge/backend/telemetry.md` (fields, no customer name, stored even when sending is turned off)
-- [ ] T051 Release gate: confirm with the owner of the cloud telemetry processor that the new `TELEMETRY_VERSION` is accepted before the release containing this feature is cut. Record the answer and date in `dev/specs/005-enterprise-licensing-infp-472/checklists/release-gate.md`
+- [ ] T051 Release gate: get the two answers the checklist asks for (public telemetry pages, product sign-off of the banner and upgrade wording) before the release containing this feature is cut. Record each answer and its date in `dev/specs/005-enterprise-licensing-infp-472/checklists/release-gate.md`
 - [X] T052 Run the checks in quickstart.md §6:
   - `uv run invoke format lint`;
   - `uv run ruff check . --exclude python_sdk`;
@@ -254,7 +254,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
   - in `frontend/app`, `node_modules/.bin/biome check`, `node_modules/.bin/tsc --noEmit` and `node_modules/.bin/vitest run`.
 
   Fix anything they report.
-- [ ] T053 Verify quickstart.md §5 on a local Community stack:
+- [X] T053 Verify quickstart.md §5 on a local Community stack:
   - no banner and an unchanged About dialog;
   - no header;
   - no license section in `infrahub upgrade --check`;

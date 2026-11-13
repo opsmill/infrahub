@@ -81,8 +81,9 @@ distinction that matters operationally is each category's **temporal model** (be
 - It is part of the stored snapshot, so it is kept when sending is turned off and the air-gapped
   export carries it.
 
-`TELEMETRY_VERSION` in `telemetry/constants.py` is the snapshot's `payload_format`; formats from
-`20261004` carry the `license` field.
+The `license` field is an addition, so the snapshot's `payload_format` (`TELEMETRY_VERSION` in
+`telemetry/constants.py`) stays the same until the receiving service confirms it accepts the field
+([ADR 0021](../../adr/0021-resource-allocation-telemetry.md)).
 
 ## CPU and memory figures
 
