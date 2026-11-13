@@ -25,16 +25,16 @@ Prefect `@flow` functions are application entry points: resolve singleton getter
 A REST endpoint is an entry point too. When an endpoint needs a component, the `Depends()` function that provides it only builds and returns it; the endpoint calls it. A value that needs no injection is a plain call, not a dependency.
 
 ```python
-# ✅ Good - the dependency builds, the endpoint calls
+# ✅ Good - the dependency builds, the endpoint calls (placeholder names)
 async def build_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> IdentityResolver:
     return IdentityResolver(repository=PreferenceRepository(db=db), defaults=load_defaults())
 
-@router.get("/config")
-async def get_config(resolver: IdentityResolver = Depends(build_identity_resolver)) -> ConfigAPI:
-    identity = await resolver.resolve()
+@router.get("/identity")
+async def get_identity(resolver: IdentityResolver = Depends(build_identity_resolver)) -> Identity:
+    return await resolver.resolve()
 
 # ❌ Bad - the dependency reads the database and applies the fallback itself
-async def get_identity(db: InfrahubDatabase = Depends(get_db)) -> Identity: ...
+async def read_identity(db: InfrahubDatabase = Depends(get_db)) -> Identity: ...
 ```
 
 Anything that comes from outside the component's own domain — loaded settings, an external service client, a telemetry sink — is resolved at that entry point, never inside the component:

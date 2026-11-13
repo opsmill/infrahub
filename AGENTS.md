@@ -188,7 +188,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - New dependencies
 - CI/CD workflow changes
 - Authentication/authorization changes
-- Edits to `.specify/` or to a skill installed from another repository (`.agents/skills/speckit-*`, the skills in `skills-lock.json`) — the next upgrade or install overwrites them. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
+- Edits to files installed from another repository (`.agents/skills/speckit-*`, the skills in `skills-lock.json`, `.specify/extensions/`) — the next upgrade or install overwrites them. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
 
 ### Never Do
 

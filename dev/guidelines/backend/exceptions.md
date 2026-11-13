@@ -6,7 +6,7 @@ Catching, scoping, and suppressing exceptions in the Python backend.
 
 ## Catch only what you expect
 
-Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent. A broad catch that stays carries a comment that says why no narrower type works, whether or not ruff flags it.
+Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — a bare `except:` also swallows `KeyboardInterrupt`/`SystemExit`, and both hide bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch and make failures silent. A broad catch that stays carries a comment that says why no narrower type works, whether or not ruff flags it.
 
 ```python
 # ❌ Bad - swallows everything, including programming errors
