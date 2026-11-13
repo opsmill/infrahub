@@ -1,0 +1,25 @@
+.agents/rules/python-database-queries.md
+  s_fae4448d61434c::t_ab6d4d32165a70 11
+dev/guidelines/backend/checklist.md
+  s_fae4448d61434c::t_ab6d4d32165a70 42
+dev/guidelines/backend/python.md
+  s_fae4448d61434c::t_33d8fbc141f2fd 373,381-397
+dev/guidelines/documentation.md
+  s_fae4448d61434c::t_ab6d4d32165a70 103,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec9fd80e15a16a91ef3322a10c1201b313037e45",
+  "prompts": {},
+  "sessions": {
+    "s_fae4448d61434c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5a7-34ba-7790-9cf3-3a18680c87f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
