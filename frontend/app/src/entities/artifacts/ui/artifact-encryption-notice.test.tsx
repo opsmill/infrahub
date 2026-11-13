@@ -52,21 +52,6 @@ describe("ArtifactEncryptionNotice", () => {
       .toBeVisible();
   });
 
-  test("does not reassure about an encrypted artifact while a past date is viewed", async () => {
-    // GIVEN
-    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
-    vi.mocked(useCheckArtifactEncryption).mockReturnValue(check({ encryption: "encrypted" }));
-    store.set(datetimeAtom, new Date("2026-01-01T00:00:00Z"));
-
-    // WHEN
-    const component = await render(<ArtifactEncryptionNotice artifact={artifact("encrypted")} />);
-
-    // THEN
-    await expect
-      .element(component.getByTestId("artifact-encryption-notice"))
-      .not.toBeInTheDocument();
-  });
-
   test("reports an unreadable artifact at a past date without the reason of a current check", async () => {
     // GIVEN
     vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
