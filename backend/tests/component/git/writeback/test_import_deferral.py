@@ -354,7 +354,7 @@ class TestImportDeferral(TestInfrahubApp):
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
         async with activity_run() as run:
-            repo = await call_in_flow(
+            bootstrapped = await call_in_flow(
                 lambda: bootstrap_local_repository(
                     repo_name=name,
                     repository=repository,
@@ -365,7 +365,8 @@ class TestImportDeferral(TestInfrahubApp):
                     activity=run,
                 )
             )
-            assert repo is not None
+            assert bootstrapped is not None
+            repo = bootstrapped.repository
             assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
                 imported if case.pending else advanced
             )
@@ -428,7 +429,7 @@ class TestImportDeferral(TestInfrahubApp):
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
         async with activity_run() as run:
-            repo = await call_in_flow(
+            bootstrapped = await call_in_flow(
                 lambda: bootstrap_local_repository(
                     repo_name=name,
                     repository=repository,
@@ -440,7 +441,7 @@ class TestImportDeferral(TestInfrahubApp):
                 )
             )
 
-        assert repo is not None
+        assert bootstrapped is not None
         assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
             head if case.branch_accepts_commit else None
         )
@@ -472,7 +473,7 @@ class TestImportDeferral(TestInfrahubApp):
         delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
         async with activity_run() as run:
-            repo = await call_in_flow(
+            bootstrapped = await call_in_flow(
                 lambda: bootstrap_local_repository(
                     repo_name=name,
                     repository=repository,
@@ -484,7 +485,7 @@ class TestImportDeferral(TestInfrahubApp):
                 )
             )
 
-        assert repo is not None
+        assert bootstrapped is not None
         assert await self._query_names(client=client, node=node, branch_name=staging_branch) == set()
         assert await self._query_names(client=client, node=node) == {"clone_staging"}
         assert [

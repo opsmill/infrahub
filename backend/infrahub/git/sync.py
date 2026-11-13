@@ -13,6 +13,8 @@ from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivity
 from .import_errors import RepositoryImportError, log_import_failure
 from .repository import CollectedImports, FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
+log = get_run_logger()
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -241,22 +243,37 @@ class RepositoryAdder:
         self._client = client
 
     async def add(self, model: GitRepositoryAdd, activity: ActivityRun) -> AddedRepository:
-        """Clone the repository and import its default branch.
+        """Clone the repository, unless this worker holds a usable copy already, and import its default branch.
 
         A failed default-branch import is returned rather than raised, so the caller can still
-        synchronize the other branches.
+        synchronize the other branches. The import is skipped when the graph already holds the cloned
+        commit imported, or is importing it, because the periodic sync can clone and import a new
+        repository before its add flow runs.
         """
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
             await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
-            repo = await InfrahubRepository.new(
+            # A copy that another flow on this worker cloned is kept, because that flow's import may still read it.
+            repo = await InfrahubRepository.init(
                 id=model.repository_id,
                 name=model.repository_name,
                 location=model.location,
                 client=self._client,
                 infrahub_branch_name=model.infrahub_branch_name,
             )
+            # The repository is new, so its imports send their commit events, unlike those of a re-cloned copy.
+            repo.reinitialized = False
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
             repo.create_commit_worktree(commit=default_commit)
+            recorded = await repo.read_recorded_import(branch_name=model.infrahub_branch_name)
+            if recorded.covers(commit=default_commit):
+                log.info(
+                    f"Skipped the import of the default branch {repo.default_branch} of repository "
+                    f"{repo.name}: commit {default_commit} is already imported or being imported"
+                )
+                # The flow that imports the commit records the outcome of the branch.
+                activity.keep_last_run()
+                return AddedRepository(repository=repo, import_error=None)
+            await repo.record_commit_for_import(branch_name=model.infrahub_branch_name, commit=default_commit)
 
         pending_import = PendingObjectImport(
             infrahub_branch_name=model.infrahub_branch_name,
