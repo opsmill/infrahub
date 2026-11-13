@@ -26,15 +26,14 @@ export function ArtifactEncryptionNotice({ artifact }: ArtifactEncryptionNoticeP
   const { data: check } = useCheckArtifactEncryption(artifact.id);
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  // The notice describes the file and the key as they are now, so it says nothing about a past date.
-  if (timeMachineDate !== null) return null;
+  // A check describes the file and the key as they are now, so a past date only has the value stored at that date.
+  const currentCheck = timeMachineDate === null ? check : undefined;
 
-  // The check reads the file now; the stored value is what the artifact held when it was fetched.
   const notice = getArtifactEncryptionNotice({
-    encryption: check?.encryption ?? artifact.encryption?.value,
-    reason: check?.reason,
+    encryption: currentCheck?.encryption ?? artifact.encryption?.value,
+    reason: currentCheck?.reason,
     isEncryptionEnabled: appInfo?.storage_encryption_enabled ?? false,
-    isVerified: check !== undefined && check.reason !== "missing",
+    isVerified: currentCheck !== undefined && currentCheck.reason !== "missing",
   });
 
   if (!notice || isDismissed) return null;
