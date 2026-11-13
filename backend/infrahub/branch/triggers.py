@@ -31,6 +31,9 @@ TRIGGER_BRANCH_DELETED_PURGE_TASKS = BuiltinTriggerDefinition(
             workflow=BRANCH_PURGE_TASKS,
             parameters={
                 "branch_name": jinja_parameter("{{ event.payload['data']['branch_name'] }}"),
+                "deleting_flow_run_id": jinja_parameter(
+                    "{{ event.resource_in_role['flow-run'].id | replace('prefect.flow-run.', '') }}"
+                ),
             },
         ),
     ],
