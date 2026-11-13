@@ -264,7 +264,10 @@ describe("InstanceIdentityForm", () => {
     const component = await render(<InstanceIdentityForm />);
 
     // THEN
-    await expect.element(component.getByLabelText("Instance label")).toBeVisible();
+    await expect.element(component.getByLabelText("Instance label")).toHaveValue("us-east-1");
+    await expect
+      .element(component.getByRole("button", { name: "Instance color" }))
+      .toHaveTextContent("Red");
     expect(component.getByText(DEFAULT_LABEL_HELP).query()).toBeNull();
   });
 
