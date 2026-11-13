@@ -14,15 +14,6 @@ regression guard must be shown to bite").
 `git show 110e36f4^3:backend/tests/component/core/constraint_validators/test_node_attribute_add.py`). Reuse its tests
 and code where this plan keeps its design; the merged schema (research R5) and the gate (research R4) differ.
 
-## Scope change on 2026-11-12
-
-[INFP-719](https://opsmill.atlassian.net/browse/INFP-719) rewrites how merge and rebase apply schema changes in the next release, so the tasks that build a schema
-combining both branches move there: T009 and T010 (the merged schema), T023 to T026 (user story 2), T030 and T031
-(user story 4), the merged-schema and gate parts of T020 and T021, and the tests that pin
-[IFC-3558](https://opsmill.atlassian.net/browse/IFC-3558) (T033) and
-[IFC-3559](https://opsmill.atlassian.net/browse/IFC-3559). On `stable`, a merge or a rebase checks only the branch's
-own schema changes, so it needs no merged schema. User story 5 (T039 to T041) is delivered on `stable`.
-
 **Organization**: Tasks are grouped by user story. Paths are relative to the repository root. Run backend tests from
 `backend/`.
 
@@ -35,8 +26,8 @@ own schema changes, so it needs no merged schema. User story 5 (T039 to T041) is
 
 ## Phase 1: Setup
 
-- [X] T001 Prepare the worktree on branch `merge-schema-validation`: run `git submodule update --init python_sdk`, `uv sync --all-groups` and `uv pip install -e ./python_sdk` from the repository root, then run `uv run pytest tests/unit/core/schema/test_schema_branch.py -q` from `backend/` to confirm the environment
-- [X] T002 Load the guidelines that apply before writing code: `dev/guidelines/backend/python.md`, `dev/guidelines/backend/testing.md`, `dev/guidelines/code-doc-style.md`, `dev/knowledge/backend/database-schema.md` and `dev/knowledge/backend/query-pattern.md`, plus the `neo4j-cypher-guide` skill before T017
+- [ ] T001 Prepare the worktree on branch `merge-schema-validation`: run `git submodule update --init python_sdk`, `uv sync --all-groups` and `uv pip install -e ./python_sdk` from the repository root, then run `uv run pytest tests/unit/core/schema/test_schema_branch.py -q` from `backend/` to confirm the environment
+- [ ] T002 Load the guidelines that apply before writing code: `dev/guidelines/backend/python.md`, `dev/guidelines/backend/testing.md`, `dev/guidelines/code-doc-style.md`, `dev/knowledge/backend/database-schema.md` and `dev/knowledge/backend/query-pattern.md`, plus the `neo4j-cypher-guide` skill before T017
 
 ---
 
@@ -46,17 +37,17 @@ own schema changes, so it needs no merged schema. User story 5 (T039 to T041) is
 
 ### View option
 
-- [X] T003 [P] Make `is_isolated` a required field on `SchemaValidateMigrationData` (description: whether to read the default branch as it was when the branch was created; False reads its current data, which a merge or a rebase produces) and add it to `serialize_model` in `backend/infrahub/core/validators/models/validate_migration.py`
-- [X] T004 [P] Add `is_isolated: bool` with default `True` and the same description to `SchemaConstraintValidatorRequest`, including `serialize_model`, in `backend/infrahub/core/validators/model.py`
-- [X] T005 Pass `message.is_isolated` from `schema_validate_migrations` to `schema_path_validate`, make it a required parameter there, and set it on the `SchemaConstraintValidatorRequest` it builds, in `backend/infrahub/core/validators/tasks.py` (depends on T003, T004)
-- [X] T006 [P] Add `is_isolated: bool = True` to `SchemaValidatorQuery.__init__`, store it as `self.is_isolated`, and document it in the Args section, in `backend/infrahub/core/validators/shared.py`
-- [X] T007 Pass `is_isolated=True` explicitly in `_validate_migrations` and `check_schema` in `backend/infrahub/api/schema.py`, and in `update_core_schema` in `backend/infrahub/cli/db.py` (depends on T003)
-- [X] T008 [P] Update the message tests: the round trip in `backend/tests/component/core/constraint_validators/test_models.py` builds the message with `is_isolated=False`, and `backend/tests/component/core/constraint_validators/test_task_schema_validate_migrations.py` passes `is_isolated=True` (depends on T003)
+- [ ] T003 [P] Make `is_isolated` a required field on `SchemaValidateMigrationData` (description: whether to read the default branch as it was when the branch was created; False reads its current data, which a merge or a rebase produces) and add it to `serialize_model` in `backend/infrahub/core/validators/models/validate_migration.py`
+- [ ] T004 [P] Add `is_isolated: bool` with default `True` and the same description to `SchemaConstraintValidatorRequest`, including `serialize_model`, in `backend/infrahub/core/validators/model.py`
+- [ ] T005 Pass `message.is_isolated` from `schema_validate_migrations` to `schema_path_validate`, make it a required parameter there, and set it on the `SchemaConstraintValidatorRequest` it builds, in `backend/infrahub/core/validators/tasks.py` (depends on T003, T004)
+- [ ] T006 [P] Add `is_isolated: bool = True` to `SchemaValidatorQuery.__init__`, store it as `self.is_isolated`, and document it in the Args section, in `backend/infrahub/core/validators/shared.py`
+- [ ] T007 Pass `is_isolated=True` explicitly in `_validate_migrations` and `check_schema` in `backend/infrahub/api/schema.py`, and in `update_core_schema` in `backend/infrahub/cli/db.py` (depends on T003)
+- [ ] T008 [P] Update the message tests: the round trip in `backend/tests/component/core/constraint_validators/test_models.py` builds the message with `is_isolated=False`, and `backend/tests/component/core/constraint_validators/test_task_schema_validate_migrations.py` passes `is_isolated=True` (depends on T003)
 
 ### Merged schema (research R5, data-model "Merged schema rules")
 
-- [ ] T009 (moved to INFP-719) Write the unit tests for the merged schema in `backend/tests/unit/core/schema/test_schema_branch.py`, in a class that builds processed schema branches with the existing `_load_processed_branch` helper and the `car_person_schema_root` fixture: one test per row of the data-model results table (mandatory kept, kind and schema class kept, branch wins on a shared field, both additions kept, removed attribute absent, removed kind absent, rename followed, inherited attribute from a generic, profile kind updated), plus tests that a kind or attribute the default branch removed and the branch changed keeps the branch's copy, and that a generic's `used_by` lists the nodes both branches added and leaves out the nodes either branch removed. Start from the stash's `TestUpdateChanges` class and kind-class test. Confirm they fail before T010
-- [ ] T010 (moved to INFP-719) Add the `SchemaBranch` method that applies a branch's schema diff since a base schema to this schema, taking values from the branch's schema, following the data-model rules (added/removed kinds, changed node fields, attribute and relationship additions, removals and field changes matched by id then name, kind change rebuilt with its new schema class, profile and template kinds of changed nodes, clear error on an unmatched element), in `backend/infrahub/core/schema/schema_branch.py` (depends on T009)
+- [ ] T009 Write the unit tests for the merged schema in `backend/tests/unit/core/schema/test_schema_branch.py`, in a class that builds processed schema branches with the existing `_load_processed_branch` helper and the `car_person_schema_root` fixture: one test per row of the data-model results table (mandatory kept, kind and schema class kept, branch wins on a shared field, both additions kept, removed attribute absent, removed kind absent, rename followed, inherited attribute from a generic, profile kind updated), plus tests that a kind or attribute the default branch removed and the branch changed keeps the branch's copy, and that a generic's `used_by` lists the nodes both branches added and leaves out the nodes either branch removed. Start from the stash's `TestUpdateChanges` class and kind-class test. Confirm they fail before T010
+- [ ] T010 Add the `SchemaBranch` method that applies a branch's schema diff since a base schema to this schema, taking values from the branch's schema, following the data-model rules (added/removed kinds, changed node fields, attribute and relationship additions, removals and field changes matched by id then name, kind change rebuilt with its new schema class, profile and template kinds of changed nodes, clear error on an unmatched element), in `backend/infrahub/core/schema/schema_branch.py` (depends on T009)
 
 ### Analyzer
 
@@ -77,15 +68,15 @@ branches unchanged.
 
 ### Tests for User Story 1
 
-- [X] T013 [P] [US1] Add a parametrized test (dataclass cases `branch-view` and `merge-view`) to `backend/tests/component/core/constraint_validators/test_attribute_optional.py`: a node created on the default branch before the branch and given a value after, and a node created on the default branch after the branch without a value; the branch view flags the first, the merge view flags the second. Start from the stash's `test_validator_on_branch_reads_the_requested_view_of_main`
-- [X] T014 [P] [US1] Add the same two-view test to `backend/tests/component/core/constraint_validators/test_attribute_kind_update.py` with the values `not-a-network-at-branch` and `not-a-network-on-main-after-branch` against `IPNetwork`
-- [X] T015 [P] [US1] Create `backend/tests/component/core/constraint_validators/test_node_attribute_add.py` with: every node found before the attribute exists; on a branch, nodes with a value and nodes deleted on the branch skipped while a default-branch node and a branch node with a null value are flagged; the two-view test (node deleted on the default branch after branching versus node created there after branching). Start from the stash's version of this file
+- [ ] T013 [P] [US1] Add a parametrized test (dataclass cases `branch-view` and `merge-view`) to `backend/tests/component/core/constraint_validators/test_attribute_optional.py`: a node created on the default branch before the branch and given a value after, and a node created on the default branch after the branch without a value; the branch view flags the first, the merge view flags the second. Start from the stash's `test_validator_on_branch_reads_the_requested_view_of_main`
+- [ ] T014 [P] [US1] Add the same two-view test to `backend/tests/component/core/constraint_validators/test_attribute_kind_update.py` with the values `not-a-network-at-branch` and `not-a-network-on-main-after-branch` against `IPNetwork`
+- [ ] T015 [P] [US1] Create `backend/tests/component/core/constraint_validators/test_node_attribute_add.py` with: every node found before the attribute exists; on a branch, nodes with a value and nodes deleted on the branch skipped while a default-branch node and a branch node with a null value are flagged; the two-view test (node deleted on the default branch after branching versus node created there after branching). Start from the stash's version of this file
 - [ ] T016 [US1] Add integration tests to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: `BranchMerge` refused for an attribute made unique, an attribute made mandatory, and a mandatory attribute added without a default value; `BranchRebase` refused for an attribute made unique; each asserting the exact messages from `contracts/refusal-messages.md`, the branch status `OPEN`, and both branches' schema and data unchanged. Start from the stash's tests
 
 ### Implementation for User Story 1
 
-- [X] T017 [US1] In `backend/infrahub/core/validators/node/attribute.py`, add `NodeAttributeValueMissingValidatorQuery` (active nodes of the kind whose attribute is missing, inactive, null or `NULL_VALUE`, with the attribute matched in an optional subquery and the standard edge ordering, reading `self.is_isolated`), returning only `n.uuid` and the root edge's branch name, and make `NodeAttributeAddChecker` use it and pass `request.is_isolated`. The relationship check gets its own query in T032, after which `NodeNotPresentValidatorQuery` has no caller and is deleted. Run `EXPLAIN` on the query and keep the plan for the pull request (depends on T006)
-- [X] T018 [P] [US1] Make `AttributeOptionalUpdateValidatorQuery` and `AttributeKindUpdateValidatorQuery` pass `is_isolated=self.is_isolated` to `get_query_filter_path`, and their checkers pass `is_isolated=request.is_isolated`, in `backend/infrahub/core/validators/attribute/optional.py` and `backend/infrahub/core/validators/attribute/kind.py` (depends on T006)
+- [ ] T017 [US1] In `backend/infrahub/core/validators/node/attribute.py`, add `NodeAttributeValueMissingValidatorQuery` (active nodes of the kind whose attribute is missing, inactive, null or `NULL_VALUE`, with the attribute matched in an optional subquery and the standard edge ordering, reading `self.is_isolated`), returning only `n.uuid` and the root edge's branch name, and make `NodeAttributeAddChecker` use it and pass `request.is_isolated`; keep `NodeNotPresentValidatorQuery` for the relationship check. Run `EXPLAIN` on the query and keep the plan for the pull request (depends on T006)
+- [ ] T018 [P] [US1] Make `AttributeOptionalUpdateValidatorQuery` and `AttributeKindUpdateValidatorQuery` pass `is_isolated=self.is_isolated` to `get_query_filter_path`, and their checkers pass `is_isolated=request.is_isolated`, in `backend/infrahub/core/validators/attribute/optional.py` and `backend/infrahub/core/validators/attribute/kind.py` (depends on T006)
 - [ ] T019 [US1] In `MergeConstraintValidator.validate` in `backend/infrahub/core/merge/constraints.py`, send `SchemaValidateMigrationData` with `is_isolated=False` (depends on T003)
 - [ ] T020 [US1] In `GraphMerger._validate_constraints` in `backend/infrahub/core/merge/graph_merger.py`, await the async merged schema and gate the schema-diff constraints on the analyzer's gate method; replace the comment with a one-sentence reason (depends on T012)
 - [ ] T021 [US1] In the rebase flow in `backend/infrahub/core/branch/tasks.py`, await the merged schema, gate the schema-diff constraints on the analyzer's gate method instead of the branch's cached flag, and send the validation message with `is_isolated=False` (depends on T012)
@@ -146,7 +137,7 @@ only on the default branch.
 
 **Goal**: each suspected gap is confirmed or ruled out with a test.
 
-- [X] T032 [P] [US6] Add a component test in `backend/tests/component/core/constraint_validators/` for the new-relationship check at merge: a branch adds a mandatory relationship and creates nodes that set it; run the `node.relationship.add` check in the merge view and assert no violation. If it fails, add a relationship-presence query like T017's and make the check pass `request.is_isolated`, in `backend/infrahub/core/validators/node/relationship.py`
+- [ ] T032 [P] [US6] Add a component test in `backend/tests/component/core/constraint_validators/` for the new-relationship check at merge: a branch adds a mandatory relationship and creates nodes that set it; run the `node.relationship.add` check in the merge view and assert no violation. If it fails, add a relationship-presence query like T017's and make the check pass `request.is_isolated`, in `backend/infrahub/core/validators/node/relationship.py`
 - [ ] T033 [P] [US6] Add an integration test in `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: a node created on a branch, then an attribute with a default value added on the default branch, then a merge; assert the merged node holds the default value. If it fails, mark it `xfail(strict=True)` with the mechanism as reason and open an issue with the reproduction, because the fix belongs in the merge migrations
 
 ---
@@ -161,13 +152,13 @@ only on the default branch.
 
 ---
 
-## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3)
+## Phase 9: User Story 5 - Regex, enum, length and choices at merge (Priority: P3, second pull request)
 
 **Goal**: the four remaining queries read the requested view.
 
-- [X] T039 [P] [US5] Add the two-view component test to `backend/tests/component/core/constraint_validators/test_attribute_regex_update.py`, `test_attribute_enum_update.py`, `test_attribute_length.py` and `test_attribute_choices_update.py`
-- [X] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated` (depends on T039)
-- [ ] T041 [US5] Add integration refusals to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`: a regex added on the branch with a non-matching value created on the default branch after branching, and the enum scenario of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) (an enum value removed on the branch while a node created on the default branch after branching uses it), merged and rebased. The dropdown scenarios of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491) need the merged schema and move to [INFP-719](https://opsmill.atlassian.net/browse/INFP-719)
+- [ ] T039 [P] [US5] Add the two-view component test to `backend/tests/component/core/constraint_validators/test_attribute_regex_update.py`, `test_attribute_enum_update.py`, `test_attribute_length.py` and `test_attribute_choices_update.py`
+- [ ] T040 [US5] Make the queries and checkers in `backend/infrahub/core/validators/attribute/regex.py`, `enum.py`, `length.py` and `choices.py` read `self.is_isolated` and pass `request.is_isolated` (depends on T039)
+- [ ] T041 [US5] Add one integration refusal (a regex added on the branch, a non-matching value created on the default branch after branching) to `backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py`, a changelog fragment, and open the second pull request
 
 ---
 
@@ -214,7 +205,7 @@ working, validated by the local matrix.
 2. Phase 3: user story 1, the reported defect.
 3. Phases 4–5: user stories 2 and 3, then the matrix.
 4. Phases 6–8: the proposed-change check, the suspected gaps, docs and delivery of the first pull request.
-5. Phase 9: user story 5.
+5. Phase 9: the second pull request.
 
 ## Notes
 

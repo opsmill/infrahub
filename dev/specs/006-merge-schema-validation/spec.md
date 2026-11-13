@@ -28,19 +28,6 @@ branch was created, against the data the operation would produce. Without it, th
 branch's data compliant is to load every schema change directly on the default branch, and a kind change merged
 this way leaves values that can no longer be read.
 
-### Scope change on 2026-11-12
-
-[INFP-719](https://opsmill.atlassian.net/browse/INFP-719) replaces how a schema load, a merge and a rebase apply schema changes in the next release, so the work that
-it rewrites is not delivered on `stable`:
-
-- Moved to [INFP-719](https://opsmill.atlassian.net/browse/INFP-719): user stories 2 and 4, and issues 2, 3, 6, 7 and 8. They need a schema that combines the changes
-  of both branches, which [INFP-719](https://opsmill.atlassian.net/browse/INFP-719) builds by replaying the stored schema changes instead.
-- Delivered on `stable`: user stories 1, 3 and 5, and issues 1, 4, 5, 9 and 11. A merge or a rebase checks the
-  branch's own schema changes against the default branch's current data.
-- The two gaps that user story 6 confirmed, issue 12 ([IFC-3558](https://opsmill.atlassian.net/browse/IFC-3558))
-  and the merge failure of [IFC-3559](https://opsmill.atlassian.net/browse/IFC-3559), move to [INFP-719](https://opsmill.atlassian.net/browse/INFP-719) with their
-  tests.
-
 ### Issues in scope
 
 | # | Issue | Effect today |
@@ -93,7 +80,7 @@ on the default branch after branching, then merge, merge the proposed change and
 
 ---
 
-### User Story 2 - Refuse a branch whose data breaks a schema change made on the default branch (Priority: P1, moved to INFP-719)
+### User Story 2 - Refuse a branch whose data breaks a schema change made on the default branch (Priority: P1)
 
 A schema designer loads a schema change on the default branch while other branches are open. An engineer then merges
 or rebases one of those branches, which holds data that does not comply with the new schema. Infrahub refuses the
@@ -150,7 +137,7 @@ accepted and leaves the expected data on the default branch.
 
 ---
 
-### User Story 4 - See the same violations on the proposed change that the merge would raise (Priority: P2, moved to INFP-719)
+### User Story 4 - See the same violations on the proposed change that the merge would raise (Priority: P2)
 
 A reviewer opens a proposed change. Its schema check lists every node that would make the merge fail, for schema
 changes made on either side, so the reviewer does not learn about them only when the merge is refused.
@@ -175,12 +162,8 @@ schema check with the merge refusal.
 A schema designer tightens a regex, an enum, a length limit or a list of choices on a branch. Values created on the
 default branch after branching that break the new rule refuse the merge, as the unique and Number checks already do.
 
-**Why this priority**: The same gap as user story 1 for four more properties.
-
-This user story fixes the first cause of [IFC-3491](https://opsmill.atlassian.net/browse/IFC-3491): a merge or a rebase accepts the removal of a dropdown choice
-or an enum value that a node created on the default branch after branching still uses. That fixes the enum case. The
-dropdown case also needs the second cause fixed, a merged schema that keeps the dropdown choice the branch removed,
-which moves to [INFP-719](https://opsmill.atlassian.net/browse/INFP-719) with user story 2.
+**Why this priority**: The same gap as user story 1 for four more properties. It is planned as a separate pull
+request so the first change stays focused.
 
 **Independent Test**: For each of the four properties, tighten the rule on a branch, create a violating value on the
 default branch after branching, and merge.
@@ -189,8 +172,6 @@ default branch after branching, and merge.
 
 1. **Given** a branch that adds a regex and a value on the default branch created after branching that does not
    match, **When** the user merges, **Then** the merge is refused.
-2. **Given** a branch that removes an enum value, and a node created on the default branch after branching that
-   uses it, **When** the user merges or rebases, **Then** the merge or the rebase is refused.
 
 ---
 
