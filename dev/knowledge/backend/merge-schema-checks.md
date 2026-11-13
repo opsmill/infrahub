@@ -40,8 +40,10 @@ constraints into two batches, keyed by constraint name and schema path:
 
 Schema changes made on the default branch stay in the branch view, because the candidate schema cannot be trusted
 for them. `SchemaBranch.update` builds the candidate by copying the source branch's value of every scalar that
-differs, so a value that only the default branch changed is replaced by the source branch's older value. Checking
-that change against the default branch's current data would refuse nodes that the default branch's schema allows.
+differs, except where the source branch leaves the field unset, which keeps the default branch's value. So a value
+that only the default branch changed is replaced by the source branch's older value whenever the source branch sets
+that field. Checking that change against the default branch's current data would refuse nodes that the default
+branch's schema allows.
 
 ## Limits
 
