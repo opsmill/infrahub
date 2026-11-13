@@ -292,11 +292,14 @@ mutation NamespaceDelete($namespace_name: String!) {
 class NamespaceDeleteCase:
     name: str
     by_hfid: bool
+    on_user_branch: bool
 
 
 NAMESPACE_DELETE_CASES = [
-    NamespaceDeleteCase(name="by-id", by_hfid=False),
-    NamespaceDeleteCase(name="by-hfid", by_hfid=True),
+    NamespaceDeleteCase(name="by-id", by_hfid=False, on_user_branch=False),
+    NamespaceDeleteCase(name="by-hfid", by_hfid=True, on_user_branch=False),
+    NamespaceDeleteCase(name="by-id-user-branch", by_hfid=False, on_user_branch=True),
+    NamespaceDeleteCase(name="by-hfid-user-branch", by_hfid=True, on_user_branch=True),
 ]
 
 
@@ -323,10 +326,13 @@ async def _delete_ipnamespace(
 async def test_protected_default_ipnamespace(
     db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, case: NamespaceDeleteCase
 ) -> None:
-    default_branch.update_schema_hash()
+    branch = (
+        await create_branch(branch_name=f"protected-ns-{case.name}", db=db) if case.on_user_branch else default_branch
+    )
+    branch.update_schema_hash()
     result = await _delete_ipnamespace(
         db=db,
-        branch=default_branch,
+        branch=branch,
         namespace_id=registry.default_ipnamespace,
         namespace_name=DEFAULT_IP_NAMESPACE,
         by_hfid=case.by_hfid,
@@ -335,7 +341,8 @@ async def test_protected_default_ipnamespace(
     assert result.errors
     assert [error.message for error in result.errors] == ["Cannot delete default IPAM namespace"]
     assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
-    assert await NodeManager.get_one(db=db, id=registry.default_ipnamespace)
+    assert await NodeManager.get_one(db=db, id=registry.default_ipnamespace, branch=branch)
+    assert await NodeManager.get_one(db=db, id=registry.default_ipnamespace, branch=default_branch)
 
 
 @pytest.mark.parametrize("case", NAMESPACE_DELETE_CASES, ids=lambda case: case.name)
@@ -346,15 +353,18 @@ async def test_delete_regular_ipnamespace(
     await ns1.new(db=db, name="ns1")
     await ns1.save(db=db)
 
-    default_branch.update_schema_hash()
+    branch = await create_branch(branch_name=f"delete-ns-{case.name}", db=db) if case.on_user_branch else default_branch
+    branch.update_schema_hash()
     result = await _delete_ipnamespace(
-        db=db, branch=default_branch, namespace_id=ns1.id, namespace_name="ns1", by_hfid=case.by_hfid
+        db=db, branch=branch, namespace_id=ns1.id, namespace_name="ns1", by_hfid=case.by_hfid
     )
 
     assert not result.errors
     assert result.data
     assert result.data["IpamNamespaceDelete"]["ok"]
-    assert await NodeManager.get_one(db=db, id=ns1.id) is None
+    assert await NodeManager.get_one(db=db, id=ns1.id, branch=branch) is None
+    if case.on_user_branch:
+        assert await NodeManager.get_one(db=db, id=ns1.id, branch=default_branch)
 
 
 async def test_ipprefix_create(
