@@ -36,6 +36,8 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
+from infrahub.license.middleware import LicenseStatusHeaderMiddleware
+from infrahub.license.reporting import log_license_state
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
@@ -48,6 +50,7 @@ from infrahub.workers.dependencies import (
     get_database,
     get_http,
     get_installation_type,
+    get_license_service,
     get_log_forwarding_service,
     get_message_bus,
     get_workflow,
@@ -126,6 +129,8 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
     async with database.start_session() as dbs:
         await validate_graph_version(db=dbs)
+
+    log_license_state(service=get_license_service(), key_is_set=config.SETTINGS.license.key is not None)
 
     # Initialize the workflow after the registry has been setup
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
@@ -238,6 +243,7 @@ app.add_middleware(
         "/api/schema",
     ),
 )
+app.add_middleware(LicenseStatusHeaderMiddleware, license_service_provider=get_license_service)
 
 # The gate: load is shed before any downstream work runs, and only CORS is registered after (so
 # outside) it. Its controller and kill-switch are built during startup and read from app.state per

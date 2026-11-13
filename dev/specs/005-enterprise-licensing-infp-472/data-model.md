@@ -1,0 +1,146 @@
+# Data Model: Enterprise Licensing, Community Contract
+
+Nothing in this feature is stored in the database. All entities are in-memory values; internal ones are frozen dataclasses, API and telemetry ones are Pydantic models (constitution III).
+
+## Enumerations
+
+| Name | Values | Meaning |
+| --- | --- | --- |
+| `LicenseState` | `not_required`, `unlicensed`, `invalid`, `not_yet_valid`, `expired`, `expiring`, `valid` | The single state derived for a moment in time |
+| `LicenseFailureReason` | `malformed`, `bad_signature`, `unknown_key`, `wrong_issuer`, `wrong_product`, `internal_error` | Why a supplied license is invalid |
+| `LicenseType` | `evaluation`, `commercial` | Known types. Unknown values are kept as received and behave like `commercial` |
+| `NoticeMode` | `quiet`, `enforce` | `quiet`: first licensing release, banners for super-admins only, no header. `enforce`: second licensing release |
+| `NoticeAudience` | `none`, `super_admins`, `all_users` | Who sees the banner |
+
+## License (internal, frozen dataclass)
+
+The verified content of a license, produced by the Enterprise checker.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `license_id` | `str` | Stable across reissues |
+| `customer_name` | `str` | Shown in the About dialog; never sent in telemetry |
+| `license_type` | `str` | `evaluation` or `commercial`; any other value is kept and treated as `commercial` |
+| `product_tier` | `str` | Free string, shown as received |
+| `support_tier` | `str` | Free string, shown as received |
+| `starts_at` | `datetime` (UTC, aware) | First instant the license is valid |
+| `ends_at` | `datetime` (UTC, aware) | First instant the license is no longer valid; `ends_at > starts_at` |
+| `issued_at` | `datetime` (UTC, aware) | When the token was signed |
+| `issuer` | `str` | Which accepted issuer verified it |
+
+Derived: `is_evaluation` is true only when `license_type == "evaluation"`.
+
+Validation at construction:
+
+- `license_id`, `customer_name`, `license_type`, `product_tier`, `support_tier` and `issuer` must be `str`. Any other type raises `ValueError`, so a number in a text field fails in the Enterprise checker, where it becomes `invalid` / `malformed`, instead of in `GET /api/info`.
+- `starts_at`, `ends_at` and `issued_at` must be timezone-aware `datetime` values; they are normalized to UTC. Another type, such as an integer timestamp copied from the token, or a naive datetime raises `ValueError`, so a vendor translation bug fails in the Enterprise checker, where it becomes `invalid` / `malformed`, instead of in a comparison.
+
+## LicenseFailure (internal, frozen dataclass)
+
+| Field | Type |
+| --- | --- |
+| `reason` | `LicenseFailureReason` |
+
+## Verification outcome
+
+What a license service passes to `evaluate`: a `License`, a `LicenseFailure`, or `None` when no license was supplied.
+
+## LicenseStatus (internal, frozen dataclass)
+
+Returned by `evaluate(outcome, now)`, or built directly as `not_required` by the community service.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `state` | `LicenseState` | See the transitions below |
+| `reason` | `LicenseFailureReason \| None` | Set only when `state == invalid` |
+| `license` | `License \| None` | Set when verification produced a license (states `not_yet_valid`, `expired`, `expiring`, `valid`) |
+| `days_remaining` | `int \| None` | When `now < ends_at` (states `not_yet_valid`, `valid`, `expiring`): whole days until `ends_at`, rounded up. Otherwise `None` |
+| `days_since_expiry` | `int \| None` | When `now >= ends_at` (state `expired`): whole days since `ends_at`, rounded down. Otherwise `None` |
+
+Validation at construction: each state sets exactly the fields below, and constructing any other combination raises `ValueError`. `status()` must not let that error escape. If an Enterprise service lets it escape, `read_license_status` reports it as `invalid` / `internal_error`, so no surface receives a status that breaks these rules.
+
+| State | Fields set besides `state` |
+| --- | --- |
+| `not_required`, `unlicensed` | No other field |
+| `invalid` | `reason` |
+| `not_yet_valid`, `valid`, `expiring` | `license`, `days_remaining` |
+| `expired` | `license`, `days_since_expiry` |
+
+`evaluate` builds only these combinations, the Community service builds `not_required` with no other field, and the failure boundary builds `invalid` with `internal_error`.
+
+### State derivation in `evaluate` (first match wins)
+
+`not_required` never comes out of `evaluate`: only a service for an edition without licensing returns it.
+
+| # | Condition | State |
+| --- | --- | --- |
+| 1 | outcome is `None` | `unlicensed` |
+| 2 | outcome is a `LicenseFailure` | `invalid` |
+| 3 | `now < starts_at` | `not_yet_valid` |
+| 4 | `now >= ends_at` | `expired` |
+| 5 | `now >= ends_at - 30 days` | `expiring` |
+| 6 | otherwise | `valid` |
+
+The 30-day window applies to every license type (design D8). `now` is the server's current UTC time on every read (spec FR-003).
+
+## Notice (internal, frozen dataclass)
+
+Returned by `notice_for(status, mode)`.
+
+| Field | Type |
+| --- | --- |
+| `audience` | `NoticeAudience` |
+| `dismissible` | `bool` |
+| `send_header` | `bool` |
+
+| State | `quiet` | `enforce` |
+| --- | --- | --- |
+| `not_required`, `valid` | none, -, no header | none, -, no header |
+| `expiring` | super_admins, dismissible, no header | super_admins, dismissible, header |
+| `unlicensed`, `invalid`, `not_yet_valid`, `expired` | super_admins, dismissible, no header | all_users, not dismissible, header |
+| `invalid` with reason `internal_error` | super_admins, dismissible, no header | super_admins, dismissible, no header |
+
+The `internal_error` row is checked first. An internal error is a defect in Infrahub, not in the customer's license, so it never reaches every user and never sends the header, in either release.
+
+## LicenseService (internal, abstract)
+
+| Member | Type | Community default |
+| --- | --- | --- |
+| `status(now: datetime \| None = None)` | `LicenseStatus` | `not_required` |
+| `notice_mode` | `NoticeMode` | `quiet` |
+| `enforcing_release` | `str \| None` | `None` |
+
+`status()` never raises. An Enterprise implementation that hits an unexpected error returns `invalid` with `internal_error` and logs it.
+
+When building the service raises, `get_license_service()` logs it once and returns `LicenseServiceUnavailable` for the rest of the process: `status()` is `invalid` with `internal_error`, `notice_mode` is `quiet`, `enforcing_release` is `None`.
+
+## LicenseSettings (configuration)
+
+| Field | Environment variable | Type | Default |
+| --- | --- | --- | --- |
+| `key` | `INFRAHUB_LICENSE_KEY` | `str \| None` | `None` |
+
+A blank or whitespace-only value is read as `None`, because deployment templates render an unset variable as an empty string.
+
+## LicenseInfoAPI (REST, Pydantic)
+
+Field of `InfoAPI` returned by `GET /api/info`. See [contracts/api-info.md](contracts/api-info.md).
+
+`InfoAPI.license` is `null` for an anonymous caller, whatever the state. When present, the object always carries its details.
+
+Its `banner` carries the `audience` and `dismissible` of the `Notice`, plus `shown_to_all_users_when_enforced`, from `shown_to_all_users_when_enforced(status, mode)` in `status.py`: true in `quiet` mode when the `enforce` audience for the status is `all_users`, which excludes `internal_error`.
+
+## TelemetryLicenseData (telemetry, Pydantic)
+
+Field `license` of `TelemetryData`, `None` when the state is `not_required`. See [contracts/telemetry-license-block.md](contracts/telemetry-license-block.md).
+
+| Field | Type |
+| --- | --- |
+| `state` | `str` |
+| `license_id` | `str \| None` |
+| `license_type` | `str \| None` |
+| `product_tier` | `str \| None` |
+| `support_tier` | `str \| None` |
+| `starts_at` | `datetime \| None` |
+| `ends_at` | `datetime \| None` |
+| `issuer` | `str \| None` |
