@@ -1,0 +1,278 @@
+import { Button, Tooltip } from "@infrahub/ui";
+import { MessageSquareTextIcon } from "lucide-react";
+import type React from "react";
+import { Focusable } from "react-aria-components";
+import { Link } from "react-router";
+
+import { Col } from "@/shared/components/container";
+import { classNames } from "@/shared/utils/common";
+
+import type {
+  TreeMapChild,
+  TreeMapFreeBlock,
+  TreeMapParent,
+  TreeMapRect,
+  TreeMapTile,
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
+import { formatCidr } from "@/entities/ipam/ip-prefixes/domain/rules/prefix-size";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+
+const TOOLTIP_MEMBER_LIMIT = 20;
+
+const TILE_BASE_CLASS = "relative block size-full overflow-hidden rounded-sm border text-xs";
+const TILE_FOCUS_CLASS =
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring-halo";
+const AGGREGATE_TILE_CLASS = "border-border bg-content-strong text-foreground-muted";
+
+export const TREE_MAP_TILE_CLASSES = {
+  allocated: "border-accent-strong bg-accent-surface text-foreground",
+  pool: "border-pool bg-pool-surface text-foreground",
+  free: "tree-map-hatch border-border-strong border-dashed bg-content text-foreground-muted",
+  aggregate: AGGREGATE_TILE_CLASS,
+  notLoaded: "tree-map-not-loaded border-border bg-content-muted text-foreground-muted",
+} as const;
+
+export const TREE_MAP_FILL_CLASSES = {
+  allocated: "bg-accent-fill",
+  pool: "bg-pool-fill",
+} as const;
+
+export interface IpPrefixTreeMapTileProps {
+  rect: TreeMapRect;
+  parent: Pick<TreeMapParent, "id" | "kind" | "cidr">;
+  permission: Permission;
+  onCreateFromFreeBlock: (block: TreeMapFreeBlock) => void;
+}
+
+function formatUtilization(utilization: number | null): string {
+  return utilization === null ? "utilization unknown" : `${Math.round(utilization)}% utilized`;
+}
+
+function formatAllocatedTileName(child: TreeMapChild): string {
+  const name = `${child.cidr}, ${formatUtilization(child.utilization)}`;
+  return child.isPool ? `${name}, pool` : name;
+}
+
+function formatMemberCount(child: TreeMapChild): string {
+  const noun = child.memberType === "address" ? "IP address" : "child prefix";
+  return `${child.memberCount} ${child.memberCount === 1 ? noun : `${noun}es`}`;
+}
+
+function formatMemberList(cidrs: string[]): string {
+  const shown = cidrs.slice(0, TOOLTIP_MEMBER_LIMIT).join(", ");
+  const hidden = cidrs.length - TOOLTIP_MEMBER_LIMIT;
+  return hidden > 0 ? `${shown} and ${hidden} more` : shown;
+}
+
+function pluralise(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function TileLabel({ children }: { children: React.ReactNode }) {
+  return <span className="relative @min-[5rem]:block hidden truncate px-1 py-0.5">{children}</span>;
+}
+
+// The description gets its own line once the tile is wide enough; narrower tiles only mark that
+// one exists and leave the text to the tooltip.
+function AllocatedTileLabel({ child, label }: { child: TreeMapChild; label: string }) {
+  return (
+    <span className="relative @min-[5rem]:flex hidden min-w-0 flex-col px-1 py-0.5">
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate">{label}</span>
+        {child.description && (
+          <MessageSquareTextIcon
+            aria-hidden="true"
+            data-testid="ip-prefix-tree-map-tile-description-marker"
+            className="@min-[11rem]:hidden size-3 shrink-0 text-foreground-muted"
+          />
+        )}
+      </span>
+      {child.description && (
+        <span className="@min-[11rem]:block hidden truncate text-foreground-muted">
+          {child.description}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function AllocatedTooltip({ child }: { child: TreeMapChild }) {
+  return (
+    <Col className="gap-0.5">
+      <span className="font-medium">{child.cidr}</span>
+      {child.description && <span>{child.description}</span>}
+      <span>Member type: {child.memberType}</span>
+      {child.isPool && <span>Prefix pool</span>}
+      <span>{formatUtilization(child.utilization)}</span>
+      <span>{formatMemberCount(child)}</span>
+    </Col>
+  );
+}
+
+function AllocatedTile({ tile, child }: { tile: TreeMapTile; child: TreeMapChild }) {
+  const variant = child.isPool ? "pool" : "allocated";
+
+  return (
+    <Tooltip message={<AllocatedTooltip child={child} />}>
+      <Focusable>
+        <Link
+          to={getObjectDetailsUrl(child.kind, child.id, undefined, "tree-map")}
+          aria-label={formatAllocatedTileName(child)}
+          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, TREE_MAP_TILE_CLASSES[variant])}
+        >
+          {child.utilization !== null && (
+            <div
+              data-testid="ip-prefix-tree-map-tile-fill"
+              className={classNames("absolute inset-y-0 left-0", TREE_MAP_FILL_CLASSES[variant])}
+              style={{ width: `${child.utilization}%` }}
+            />
+          )}
+          <AllocatedTileLabel child={child} label={tile.label} />
+        </Link>
+      </Focusable>
+    </Tooltip>
+  );
+}
+
+function FreeTile({
+  tile,
+  block,
+  permission,
+  onCreateFromFreeBlock,
+}: { tile: TreeMapTile; block: TreeMapFreeBlock } & Pick<
+  IpPrefixTreeMapTileProps,
+  "permission" | "onCreateFromFreeBlock"
+>) {
+  const isCreationAllowed = permission.create.isAllowed;
+
+  return (
+    <Tooltip message={isCreationAllowed ? block.cidr : permission.create.message}>
+      <Button
+        variant="ghost"
+        aria-label={`${block.cidr} available`}
+        isDisabledAndFocusable={!isCreationAllowed}
+        onPress={() => onCreateFromFreeBlock(block)}
+        className={classNames(
+          TILE_BASE_CLASS,
+          "items-start justify-start p-0 font-normal shadow-none",
+          TREE_MAP_TILE_CLASSES.free
+        )}
+      >
+        <TileLabel>{tile.label}</TileLabel>
+      </Button>
+    </Tooltip>
+  );
+}
+
+function ParentChildrenLink({
+  tile,
+  parent,
+  name,
+  message,
+  className,
+}: {
+  tile: TreeMapTile;
+  parent: IpPrefixTreeMapTileProps["parent"];
+  name: string;
+  message: React.ReactNode;
+  className: string;
+}) {
+  return (
+    <Tooltip message={message}>
+      <Focusable>
+        <Link
+          to={getObjectDetailsUrl(parent.kind, parent.id, undefined, "children")}
+          aria-label={name}
+          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, className)}
+        >
+          <TileLabel>{tile.label}</TileLabel>
+        </Link>
+      </Focusable>
+    </Tooltip>
+  );
+}
+
+function AggregateFreeTile({ tile, members }: { tile: TreeMapTile; members: TreeMapFreeBlock[] }) {
+  return (
+    <Tooltip message={formatMemberList(members.map((member) => member.cidr))} nonInteractiveTrigger>
+      <div
+        role="img"
+        aria-label={tile.label}
+        className={classNames(TILE_BASE_CLASS, AGGREGATE_TILE_CLASS, "border-dashed")}
+      >
+        <TileLabel>{tile.label}</TileLabel>
+      </div>
+    </Tooltip>
+  );
+}
+
+function TileContent({
+  rect,
+  parent,
+  permission,
+  onCreateFromFreeBlock,
+}: IpPrefixTreeMapTileProps) {
+  const { tile } = rect;
+
+  switch (tile.kind) {
+    case "allocated":
+      return <AllocatedTile tile={tile} child={tile.child} />;
+    case "free":
+      return (
+        <FreeTile
+          tile={tile}
+          block={tile.block}
+          permission={permission}
+          onCreateFromFreeBlock={onCreateFromFreeBlock}
+        />
+      );
+    case "aggregate-allocated":
+      return (
+        <ParentChildrenLink
+          tile={tile}
+          parent={parent}
+          name={tile.label}
+          className={AGGREGATE_TILE_CLASS}
+          message={formatMemberList([
+            ...tile.children.map((child) => child.cidr),
+            ...tile.freeBlocks.map((block) => `${block.cidr} (free)`),
+          ])}
+        />
+      );
+    case "aggregate-free":
+      return <AggregateFreeTile tile={tile} members={tile.freeBlocks} />;
+    case "not-loaded":
+      return (
+        <ParentChildrenLink
+          tile={tile}
+          parent={parent}
+          name={`${formatCidr(tile.size)} not loaded`}
+          className={TREE_MAP_TILE_CLASSES.notLoaded}
+          message={`Not loaded: ${pluralise(tile.hiddenChildCount, "more child", "more children")} of ${parent.cidr} plus any free space from ${formatCidr(tile.size)} onwards. Open the Children tab to see them all.`}
+        />
+      );
+  }
+}
+
+export function IpPrefixTreeMapTile(props: IpPrefixTreeMapTileProps) {
+  const { rect } = props;
+  const isPool = rect.tile.kind === "allocated" && rect.tile.child.isPool;
+
+  return (
+    <div
+      data-testid="ip-prefix-tree-map-tile"
+      data-tile-kind={rect.tile.kind}
+      data-tile-pool={isPool ? "true" : undefined}
+      className="@container absolute p-px"
+      style={{
+        left: `${rect.x}%`,
+        top: `${rect.y}%`,
+        width: `${rect.width}%`,
+        height: `${rect.height}%`,
+      }}
+    >
+      <TileContent {...props} />
+    </div>
+  );
+}
