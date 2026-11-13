@@ -1,0 +1,78 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: "Trivy"
+
+# Informational vulnerability and secret scan of the repository.
+#
+# The job is deliberately non-blocking: findings are published in the job
+# summary and uploaded as an artifact, but never fail the workflow. That keeps
+# it useful as a signal without blocking a merge on the pre-existing backlog of
+# findings, which is tracked separately.
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - stable
+      - release-*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  trivy-filesystem:
+    name: "Trivy filesystem scan (informational)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Findings and scanner failures must not block a merge. The report is in
+    # the job summary and in the artifact.
+    continue-on-error: true
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          submodules: true
+      - name: "Run Trivy filesystem scan"
+        uses: "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" # v0.36.0
+        # Findings are reported in the summary and the artifact, not by failing
+        # the job.
+        continue-on-error: true
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,secret"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          format: "table"
+          output: "trivy-filesystem-results.txt"
+          exit-code: "1"
+          hide-progress: true
+      - name: "Publish report to the job summary"
+        if: always()
+        run: |
+          if [[ -s trivy-filesystem-results.txt ]]; then
+            {
+              echo "### Trivy filesystem scan"
+              echo ""
+              echo "CRITICAL and HIGH findings only, unfixed vulnerabilities ignored. This check is informational and never blocks a merge."
+              echo ""
+              echo '```'
+              cat trivy-filesystem-results.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: "Upload report"
+        if: always()
+        # The artifact is a convenience; a failing artifact service must not
+        # turn this informational check into a failing one.
+        continue-on-error: true
+        uses: "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" # v7.0.1
+        with:
+          name: "trivy-filesystem-results"
+          path: "trivy-filesystem-results.txt"
+          retention-days: 7
+          if-no-files-found: "warn"
