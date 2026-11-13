@@ -936,6 +936,8 @@ async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_oth
     assert {node.id for node in deleted} == {node.id for node in chain}
     assert await NodeManager.get_many(db=db, ids=[node.id for node in chain], branch=default_branch) == {}
 
+    await verify_graph(db=db)
+
 
 async def test_delete_cascades_only_in_the_direction_of_the_cascading_relationship(
     db: InfrahubDatabase, default_branch: Branch
@@ -953,3 +955,5 @@ async def test_delete_cascades_only_in_the_direction_of_the_cascading_relationsh
 
     assert {node.id for node in deleted} == {middle.id, bottom.id}
     assert await NodeManager.get_one(db=db, id=top.id, branch=default_branch) is not None
+
+    await verify_graph(db=db)

@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from tests.helpers.node import create_chain, create_node
 from tests.helpers.schema import load_schema
@@ -86,6 +87,8 @@ async def test_delete_refused_when_a_branch_holds_a_required_peer(
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_keeps_a_cascade_target_with_an_optional_link_back_on_another_branch(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -98,6 +101,8 @@ async def test_delete_keeps_a_cascade_target_with_an_optional_link_back_on_anoth
     assert {node.id for node in deleted} == {team.id}
     assert await NodeManager.get_one(db=db, id=team.id, branch=branch) is None
     assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
+
+    await verify_graph(db=db)
 
 
 async def test_delete_keeps_a_cascade_target_that_does_not_declare_the_relationship_on_another_branch(
@@ -115,6 +120,8 @@ async def test_delete_keeps_a_cascade_target_that_does_not_declare_the_relations
     assert await NodeManager.get_one(db=db, id=team.id, branch=branch) is None
     assert await NodeManager.get_one(db=db, id=sticker.id, branch=branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_refused_when_a_cascade_target_with_a_required_link_back_stays_on_another_branch(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -131,6 +138,8 @@ async def test_delete_refused_when_a_cascade_target_with_a_required_link_back_st
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
     assert await NodeManager.get_one(db=db, id=certificate.id, branch=default_branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_ignores_a_required_link_to_a_branch_aware_cascade_target_on_another_branch(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -145,6 +154,8 @@ async def test_delete_ignores_a_required_link_to_a_branch_aware_cascade_target_o
     assert await NodeManager.get_one(db=db, id=badge.id, branch=default_branch) is None
     assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
     assert await NodeManager.get_one(db=db, id=holder.id, branch=branch) is not None
+
+    await verify_graph(db=db)
 
 
 async def test_delete_checks_a_branch_aware_node_deleted_with_a_branch_agnostic_one_on_the_request_branch_only(
@@ -161,6 +172,8 @@ async def test_delete_checks_a_branch_aware_node_deleted_with_a_branch_agnostic_
     assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
     assert await NodeManager.get_one(db=db, id=holder.id, branch=branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_on_a_user_branch_refused_when_the_default_branch_holds_a_required_peer(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -175,6 +188,8 @@ async def test_delete_on_a_user_branch_refused_when_the_default_branch_holds_a_r
         team=team, peer_kind=MEMBER_KIND, peer=member, branch_names=f"branch '{default_branch.name}'"
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+    await verify_graph(db=db)
 
 
 async def test_delete_refused_names_every_branch_that_inherits_a_required_link_in_one_error(
@@ -197,6 +212,8 @@ async def test_delete_refused_names_every_branch_that_inherits_a_required_link_i
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_succeeds_and_cascades_only_on_the_request_branch(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -215,6 +232,8 @@ async def test_delete_succeeds_and_cascades_only_on_the_request_branch(
     assert await NodeManager.get_one(db=db, id=badge.id, branch=default_branch) is None
     assert await NodeManager.get_one(db=db, id=badge.id, branch=branch) is not None
     assert await _count_edges_on_branch(db=db, branch_name=branch.name) == 0
+
+    await verify_graph(db=db)
 
 
 async def test_delete_of_a_branch_aware_node_checks_only_the_request_branch(
@@ -240,6 +259,8 @@ async def test_delete_of_a_branch_aware_node_checks_only_the_request_branch(
     assert owner_on_branch is not None
     assert owner_on_branch.id == person_jane_main.id
 
+    await verify_graph(db=db)
+
 
 async def test_delete_refused_when_a_branch_aware_cascade_reaches_a_branch_agnostic_node_another_branch_requires(
     db: InfrahubDatabase, default_branch: Branch, team: Node
@@ -257,6 +278,8 @@ async def test_delete_refused_when_a_branch_aware_cascade_reaches_a_branch_agnos
     )
     assert await NodeManager.get_one(db=db, id=roster.id, branch=default_branch) is not None
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
+
+    await verify_graph(db=db)
 
 
 async def test_delete_refused_when_a_relationship_required_only_in_another_branch_schema_holds_the_node(
@@ -277,6 +300,8 @@ async def test_delete_refused_when_a_relationship_required_only_in_another_branc
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
 
+    await verify_graph(db=db)
+
 
 async def test_delete_ignores_a_peer_holding_the_node_through_the_optional_relationship_of_a_pair(
     db: InfrahubDatabase, default_branch: Branch, switch_chain: tuple[Node, Node]
@@ -286,6 +311,8 @@ async def test_delete_ignores_a_peer_holding_the_node_through_the_optional_relat
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[leaf])
 
     assert {node.id for node in deleted} == {leaf.id}
+
+    await verify_graph(db=db)
 
 
 async def test_delete_refused_names_the_required_relationship_of_a_pair(
@@ -301,3 +328,7 @@ async def test_delete_refused_names_the_required_relationship_of_a_pair(
         f" {UPLINK_SWITCH_KIND} '{leaf.id}' on branches 'branch-holds-switches', '{default_branch.name}'"
         f" at {UPLINK_SWITCH_KIND}.upstream"
     )
+    assert await NodeManager.get_one(db=db, id=top.id, branch=default_branch) is not None
+    assert await NodeManager.get_one(db=db, id=leaf.id, branch=default_branch) is not None
+
+    await verify_graph(db=db)

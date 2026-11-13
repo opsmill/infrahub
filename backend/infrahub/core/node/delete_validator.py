@@ -1,10 +1,10 @@
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from enum import Enum
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipDeleteBehavior
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDeleteBehavior
 from infrahub.core.node import Node
 from infrahub.core.query.node_delete import (
     DeleteSetNode,
@@ -29,6 +29,15 @@ class DeleteRelationshipType(Enum):
     DEPENDENT_NODE = "dependent"
 
 
+def _get_peer_relationship_name(peer_schema: MainSchemaTypes | None, link: RequiredPeerLink) -> str:
+    """Return the name of the peer's relationship that holds `link`, or its identifier when the schema lacks it."""
+    if peer_schema is not None:
+        for relationship in peer_schema.get_relationships_by_identifier(id=link.identifier):
+            if relationship.direction == link.direction.neighbor_direction:
+                return relationship.name
+    return link.identifier
+
+
 def _format_branch_names(branch_names: Iterable[str]) -> str:
     sorted_names = sorted(branch_names)
     quoted_names = ", ".join(f"'{branch_name}'" for branch_name in sorted_names)
@@ -38,7 +47,7 @@ def _format_branch_names(branch_names: Iterable[str]) -> str:
 
 
 class NodeDeleteIndex:
-    def __init__(self, all_schemas_map: dict[str, MainSchemaTypes]) -> None:
+    def __init__(self, all_schemas_map: Mapping[str, MainSchemaTypes]) -> None:
         self._all_schemas_map = all_schemas_map
         self._link_patterns: defaultdict[DeleteRelationshipType, set[LinkPattern]] = defaultdict(set)
 
@@ -165,6 +174,11 @@ class NodeDeleteValidator:
         self.index.index(start_schemas=start_schemas)
         at = Timestamp(at)
         start_ids = {node.get_id() for node in nodes}
+        if not any(
+            self.index.get_link_patterns(relationship_type=relationship_type)
+            for relationship_type in DeleteRelationshipType
+        ) and all(schema.branch != BranchSupportType.AGNOSTIC for schema in start_schemas):
+            return start_ids
         request_window_name = registry.default_branch if self.branch.name == GLOBAL_BRANCH_NAME else self.branch.name
 
         delete_set = await self._get_delete_set(
@@ -178,11 +192,13 @@ class NodeDeleteValidator:
         for link in request_links:
             blocking_branch_names[link].add(request_window_name)
 
+        schemas_map_by_branch_name: dict[str, Mapping[str, MainSchemaTypes]] = {}
         agnostic_nodes = [node for node in delete_set.nodes if node.is_agnostic]
         if agnostic_nodes:
-            for link_on_branches in await self._get_links_on_other_branches(
+            links_on_other_branches, schemas_map_by_branch_name = await self._get_links_on_other_branches(
                 agnostic_nodes=agnostic_nodes, request_window_name=request_window_name, at=at
-            ):
+            )
+            for link_on_branches in links_on_other_branches:
                 blocking_branch_names[link_on_branches.link].update(link_on_branches.branch_names)
 
         if blocking_branch_names:
@@ -190,7 +206,9 @@ class NodeDeleteValidator:
                 [
                     self._build_required_peer_error(
                         link=link,
-                        schema_branch_name=self.branch.name if link in request_links else min(branch_names),
+                        schemas_map=self._all_schemas_map
+                        if link in request_links
+                        else schemas_map_by_branch_name.get(min(branch_names), {}),
                         branch_names=branch_names if agnostic_nodes else None,
                     )
                     for link, branch_names in sorted(blocking_branch_names.items())
@@ -226,21 +244,24 @@ class NodeDeleteValidator:
 
     async def _get_links_on_other_branches(
         self, agnostic_nodes: list[DeleteSetNode], request_window_name: str, at: Timestamp
-    ) -> list[RequiredPeerLinkOnBranches]:
+    ) -> tuple[list[RequiredPeerLinkOnBranches], dict[str, Mapping[str, MainSchemaTypes]]]:
         """Return the required links to `agnostic_nodes` on each live branch other than the request branch.
 
-        Each branch decides from its own schema which relationships are required.
+        Each branch decides from its own schema which relationships are required. The schema each branch was checked
+        with is returned with the links, so an error names the relationship that schema declares.
         """
         agnostic_kinds = {node.kind for node in agnostic_nodes}
         patterns_by_schema_hash: dict[str, list[LinkPattern]] = {}
         required_patterns_by_branch: dict[str, list[LinkPattern]] = {}
+        schemas_map_by_branch_name: dict[str, Mapping[str, MainSchemaTypes]] = {}
         for branch_name in registry.branch:
             if branch_name in {GLOBAL_BRANCH_NAME, request_window_name}:
                 continue
             schema_branch = registry.schema.get_schema_branch(name=branch_name)
+            schemas_map_by_branch_name[branch_name] = schema_branch.get_all(duplicate=False)
             schema_hash = schema_branch.get_hash()
             if schema_hash not in patterns_by_schema_hash:
-                branch_index = NodeDeleteIndex(all_schemas_map=schema_branch.get_all(duplicate=False))
+                branch_index = NodeDeleteIndex(all_schemas_map=schemas_map_by_branch_name[branch_name])
                 branch_index.index_dependent_links(deleted_kinds=agnostic_kinds)
                 patterns_by_schema_hash[schema_hash] = branch_index.get_link_patterns(
                     relationship_type=DeleteRelationshipType.DEPENDENT_NODE
@@ -248,7 +269,7 @@ class NodeDeleteValidator:
             if patterns_by_schema_hash[schema_hash]:
                 required_patterns_by_branch[branch_name] = patterns_by_schema_hash[schema_hash]
         if not required_patterns_by_branch:
-            return []
+            return [], schemas_map_by_branch_name
 
         query = await NodeDeleteOtherBranchesQuery.init(
             db=self.db,
@@ -259,19 +280,13 @@ class NodeDeleteValidator:
             required_patterns_by_branch=required_patterns_by_branch,
         )
         await query.execute(db=self.db)
-        return query.get_data()
+        return query.get_data(), schemas_map_by_branch_name
 
+    @staticmethod
     def _build_required_peer_error(
-        self, link: RequiredPeerLink, schema_branch_name: str, branch_names: set[str] | None
+        link: RequiredPeerLink, schemas_map: Mapping[str, MainSchemaTypes], branch_names: set[str] | None
     ) -> ValidationError:
-        peer_schema = registry.schema.get_schema_branch(name=schema_branch_name).get(
-            name=link.peer_kind, duplicate=False
-        )
-        peer_rel_name = next(
-            relationship.name
-            for relationship in peer_schema.get_relationships_by_identifier(id=link.identifier)
-            if relationship.direction == link.direction.neighbor_direction
-        )
+        peer_rel_name = _get_peer_relationship_name(peer_schema=schemas_map.get(link.peer_kind), link=link)
         err_msg = f"Cannot delete {link.deleted_kind} '{link.deleted_id}'."
         err_msg += f" It is linked to mandatory relationship {peer_rel_name} on node {link.peer_kind} '{link.peer_id}'"
         if branch_names:

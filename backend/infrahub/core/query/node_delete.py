@@ -11,6 +11,7 @@ from infrahub.core.query.branch_windows import (
     render_outranks,
     render_window_filter,
 )
+from infrahub.exceptions import BranchNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -257,14 +258,20 @@ class NodeDeleteCascadeQuery(Query):
         self.return_labels = ["delete_set", "frontier_ids", "required_links"]
 
     def get_data(self) -> NodeDeleteCascadeQueryResult:
+        """Return the delete set.
+
+        Raises:
+            BranchNotFoundError: No branch has the request window's name, so the query returned no row.
+
+        """
         for result in self.get_results():
-            required_links: list[dict[str, Any]] = result.get_as_type("required_links", list)
+            required_links: list[dict[str, Any]] = result.get_as_type(label="required_links", return_type=list)
             return NodeDeleteCascadeQueryResult(
-                nodes=result.get_as_list_of_type("delete_set", DeleteSetNode),
-                frontier_ids=result.get_as_list_of_type("frontier_ids", str),
+                nodes=result.get_as_list_of_type(label="delete_set", return_type=DeleteSetNode),
+                frontier_ids=result.get_as_list_of_type(label="frontier_ids", return_type=str),
                 required_links=[RequiredPeerLink.from_row(row) for row in required_links],
             )
-        return NodeDeleteCascadeQueryResult(nodes=[], frontier_ids=[], required_links=[])
+        raise BranchNotFoundError(identifier=self.request_window_name)
 
 
 class NodeDeleteOtherBranchesQuery(Query):
@@ -309,12 +316,11 @@ class NodeDeleteOtherBranchesQuery(Query):
             branch_name: [pattern.to_param() for pattern in patterns]
             for branch_name, patterns in self.required_patterns_by_branch.items()
         }
-        self.params["all_required_patterns"] = [
-            pattern.to_param()
-            for pattern in sorted(
-                {pattern for patterns in self.required_patterns_by_branch.values() for pattern in patterns}
-            )
-        ]
+        all_required_patterns = sorted(
+            {pattern for patterns in self.required_patterns_by_branch.values() for pattern in patterns}
+        )
+        self.params["all_required_patterns"] = [pattern.to_param() for pattern in all_required_patterns]
+        self.params["all_required_identifiers"] = sorted({pattern.identifier for pattern in all_required_patterns})
 
         query = """
         %(windows_query)s
@@ -323,7 +329,8 @@ class NodeDeleteOtherBranchesQuery(Query):
         WHERE src.uuid IN $agnostic_ids
         WITH windows, src, [(src)-[r:IS_PART_OF]->(:Root) | r {.branch, .branch_level, .from, .to, .status}] AS src_part_of
         MATCH (src)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-        WHERE [src.kind, rl.name, %(direction)s, dst.kind] IN $all_required_patterns
+        WHERE rl.name IN $all_required_identifiers
+        AND [src.kind, rl.name, %(direction)s, dst.kind] IN $all_required_patterns
         AND NOT dst.uuid IN $agnostic_ids
         AND r1.status = "active" AND r1.from <= $windows_at
         AND r2.status = "active" AND r2.from <= $windows_at
@@ -363,7 +370,7 @@ class NodeDeleteOtherBranchesQuery(Query):
     def get_data(self) -> list[RequiredPeerLinkOnBranches]:
         links_on_branches: list[RequiredPeerLinkOnBranches] = []
         for result in self.get_results():
-            links: list[dict[str, Any]] = result.get_as_type("links", list)
+            links: list[dict[str, Any]] = result.get_as_type(label="links", return_type=list)
             links_on_branches.extend(
                 RequiredPeerLinkOnBranches(
                     link=RequiredPeerLink.from_row(link), branch_names=list(link["branch_names"])
