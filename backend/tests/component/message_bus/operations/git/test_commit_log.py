@@ -41,7 +41,7 @@ from tests.adapters.message_bus import BusRecorder
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from fast_depends import Provider
 
@@ -99,12 +99,11 @@ def workflow_recorder() -> WorkflowRecorder:
 
 
 @pytest.fixture
-def local_lock_registry() -> Iterator[InfrahubLockRegistry]:
+def local_lock_registry(monkeypatch: pytest.MonkeyPatch) -> InfrahubLockRegistry:
     """Install an in-process lock registry as the global one, so any lock the code under test takes is this one."""
-    original = lock.registry
-    lock.registry = InfrahubLockRegistry(local_only=True)
-    yield lock.registry
-    lock.registry = original
+    local_registry = InfrahubLockRegistry(local_only=True)
+    monkeypatch.setattr(lock, "registry", local_registry, raising=False)
+    return local_registry
 
 
 @pytest.fixture

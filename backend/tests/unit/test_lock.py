@@ -10,6 +10,7 @@ from redis.exceptions import RedisError
 from infrahub import config, lock
 from infrahub.config import CacheSettings
 from infrahub.core.timestamp import current_timestamp
+from infrahub.exceptions import InitializationError
 from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
@@ -453,7 +454,7 @@ def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
 
 @pytest.fixture
 def without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(lock, "registry", None)
+    monkeypatch.delattr(lock, "registry", raising=False)
 
 
 @pytest.mark.usefixtures("without_registry")
@@ -516,3 +517,23 @@ def test_initialize_lock_rebuilds_a_redis_registry_when_the_pool_size_changes(
     assert lock.registry is not first
     assert lock.registry.connection is not None
     assert lock.registry.connection.connection_pool.max_connections == 250
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_reading_the_registry_before_initialization_raises() -> None:
+    assert not lock.is_initialized()
+
+    with pytest.raises(InitializationError, match="lock registry has not been initialized"):
+        _ = lock.registry
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_registry_is_readable_once_initialized() -> None:
+    initialize_lock(local_only=True)
+
+    assert lock.is_initialized()
+    assert isinstance(lock.registry, InfrahubLockRegistry)
+
+
+def test_unknown_lock_module_attribute_is_still_missing() -> None:
+    assert not hasattr(lock, "no_such_attribute")

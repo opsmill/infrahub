@@ -1369,14 +1369,10 @@ def fake_log() -> FakeLogger:
 
 
 @pytest.fixture
-def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
+def recording_lock_timeline(monkeypatch: pytest.MonkeyPatch) -> LockTimeline:
     """Swap the global lock registry for a recording one, restoring the original on teardown."""
-    original = lock.registry
-    timeline = install_recording_lock_registry()
-    try:
-        yield timeline
-    finally:
-        lock.registry = original
+    monkeypatch.setattr(lock, "registry", None, raising=False)
+    return install_recording_lock_registry()
 
 
 @pytest.fixture
