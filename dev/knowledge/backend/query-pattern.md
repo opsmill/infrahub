@@ -314,6 +314,8 @@ The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label 
 
 Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
 
+When writing or modifying a query that selects vertices or edges by a property, follow [Database Indexes](database-indexes.md): check the existing indexes for each label or edge type and property, and add only missing indexes with their migrations in the same change. For selective reads across several labels, edge types, or properties, use separate hinted reads and verify their execution plans.
+
 ### Cypher Variable Shadowing (Neo4j 5+)
 
 Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
@@ -545,6 +547,7 @@ Specialized base classes for different domains:
 ## See Also
 
 - [Database Schema](database-schema.md) - Neo4j vertex/edge structure and temporal branching rules
+- [Database Indexes](database-indexes.md) - When a query needs an index, how to add one, and the read shape that uses it
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Testing](testing.md) - Query testing patterns
 - [Python Coding Standards](../../guidelines/backend/python.md) - Dataclass conventions

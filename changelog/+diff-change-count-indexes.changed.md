@@ -1,0 +1,1 @@
+Infrahub now reads only the changes made in the time window when it checks whether a branch has new changes, and when it lists the nodes with an added or removed attribute or relationship to update a branch diff. Previously, the check read every relationship in the database and the list could read every node. The upgrade creates 14 new database indexes that these reads use.
