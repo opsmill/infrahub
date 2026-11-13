@@ -265,6 +265,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_attr])
 
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -277,6 +278,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_with_person_mandatory_rel])
 
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -298,7 +300,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             node: Node = await NodeManager.get_one(db=db, id=node_id, branch=branch.name, raise_on_error=True)
             await node.delete(db=db)
 
-        success, response = await client.schema.check(schemas=[schema_with_person_mandatory_attr], branch=branch.name)
+        success, _ = await client.schema.check(schemas=[schema_with_person_mandatory_attr], branch=branch.name)
         assert success is True
 
         response = await client.schema.load(schemas=[schema_with_person_mandatory_attr], branch=branch.name)
@@ -319,7 +321,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             node: Node = await NodeManager.get_one(db=db, id=node_id, branch=branch.name, raise_on_error=True)
             await node.delete(db=db)
 
-        success, response = await client.schema.check(schemas=[schema_with_person_mandatory_rel], branch=branch.name)
+        success, _ = await client.schema.check(schemas=[schema_with_person_mandatory_rel], branch=branch.name)
         assert success is True
 
         response = await client.schema.load(schemas=[schema_with_person_mandatory_rel], branch=branch.name)

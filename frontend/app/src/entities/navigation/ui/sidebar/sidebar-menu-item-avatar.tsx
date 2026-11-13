@@ -17,7 +17,7 @@ export function SidebarMenuItemAvatar({ name }: { name: string }) {
   const firstLetter = name[0];
   if (!firstLetter) {
     return (
-      <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-content-strong" />
+      <div className="-mx-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm bg-content-strong" />
     );
   }
 
@@ -25,11 +25,11 @@ export function SidebarMenuItemAvatar({ name }: { name: string }) {
   return (
     <div
       className={classNames(
-        "flex h-6 w-6 items-center justify-center rounded-sm",
+        "-mx-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm",
         STYLES[styleIndex]
       )}
     >
-      {firstLetter.toUpperCase()}
+      <span className="font-semibold text-xs leading-none">{firstLetter.toUpperCase()}</span>
     </div>
   );
 }

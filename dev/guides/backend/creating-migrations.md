@@ -175,6 +175,21 @@ uv run pytest backend/tests/unit/core/graph/test_graph_version.py
 
 This verifies `GRAPH_VERSION` matches the last migration number and that `minimum_version` is set correctly.
 
+## Renumbering a Migration After a Rebase
+
+If the base branch gained a migration with your number, keep the base branch's migration and move
+yours to the next free number. Git often merges the clash without a conflict, because the file
+names differ and an identical `GRAPH_VERSION` bump merges cleanly, so it shows up only as
+`ImportError: Duplicate migration number` when the migrations load.
+
+1. `git mv` the migration (file or package) and its component test to the new number.
+2. Rename the class to `Migration{NNN}`, update the number in its `name`, and set
+   `minimum_version` to the new number minus one.
+3. `git grep` the old number and update every hit: a package's `__init__.py` re-exports the
+   class, and tests and docs name the migration by its number.
+4. Set `GRAPH_VERSION` to the new number and rerun
+   `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
+
 ## See Also
 
 - [Database Schema](../../knowledge/backend/database-schema.md) — Graph structure, edge properties, temporal/branch rules

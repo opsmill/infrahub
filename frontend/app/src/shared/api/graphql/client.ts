@@ -9,9 +9,11 @@ import {
   mapExchange,
 } from "@urql/core";
 import { authExchange } from "@urql/exchange-auth";
+import { initGraphQLTada } from "gql.tada";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
+import type { introspection } from "@/shared/api/graphql/generated/graphql-env";
 import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
 import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
@@ -23,8 +25,11 @@ import { getAccessToken } from "@/entities/authentication/api/token-storage";
 import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
-// biome-ignore lint/performance/noBarrelFile: Re-exported so authoring and running a query need only this module.
-export { graphql, type ResultOf, type VariablesOf } from "gql.tada";
+export type { ResultOf, VariablesOf } from "gql.tada";
+export const graphql = initGraphQLTada<{
+  introspection: introspection;
+  scalars: { BigInt: number };
+}>();
 
 // Add `__typename` to every selection set
 const addTypenameExchange = mapExchange({
@@ -48,7 +53,7 @@ const authenticationExchange = authExchange(async (authUtilities) => {
       return hasCatalogueCode(error, ERROR_CODES.TOKEN_EXPIRED);
     },
     refreshAuth: async () => {
-      await queryClient.fetchQuery(refreshAccessTokenQueryOptions()).catch((error) => {
+      await queryClient.query(refreshAccessTokenQueryOptions()).catch((error) => {
         redirectToLogin();
         throw error;
       });

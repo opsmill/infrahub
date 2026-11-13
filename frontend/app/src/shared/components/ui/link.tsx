@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type Ref, useEffect, useRef } from "react";
 import {
   type LinkProps,
   NavLink,
@@ -29,9 +29,16 @@ interface LinkTabProps extends Omit<NavLinkProps, "to" | "className"> {
   to: string;
   className?: string;
   scrollIntoViewOnActive?: boolean;
+  ref?: Ref<HTMLAnchorElement>;
 }
 
-export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: LinkTabProps) {
+export function LinkTab({
+  to,
+  className,
+  scrollIntoViewOnActive,
+  ref: forwardedRef,
+  ...props
+}: LinkTabProps) {
   const ref = useRef<HTMLAnchorElement>(null);
   const isActive = !!useMatch({ path: to, end: true });
 
@@ -43,7 +50,11 @@ export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: Lin
 
   return (
     <NavLink
-      ref={ref}
+      ref={(node) => {
+        ref.current = node;
+        if (typeof forwardedRef === "function") return forwardedRef(node);
+        if (forwardedRef) forwardedRef.current = node;
+      }}
       to={to}
       end
       className={({ isActive }) =>

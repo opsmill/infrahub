@@ -26,7 +26,6 @@ def _build_definition(
         definition_name="device-generator",
         query_name="GetNetworkDevice",
         query_id=QUERY_ID,
-        query_models=["TestNetworkDevice"],
         query_payload="query GetNetworkDevice { TestNetworkDevice { edges { node { name { value } } } } }",
         repository_id=REPOSITORY_ID,
         class_name="DeviceGenerator",

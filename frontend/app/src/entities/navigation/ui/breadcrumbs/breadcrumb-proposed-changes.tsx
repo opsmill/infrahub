@@ -17,6 +17,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbProposedChanges() {
@@ -62,7 +63,11 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
         <BreadcrumbSelectorTrigger>{getNodeLabel(data)}</BreadcrumbSelectorTrigger>
 
         <Popover>
-          <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGE_OBJECT} />
+          <ObjectAutocomplete
+            className="max-h-58"
+            objectKind={PROPOSED_CHANGE_OBJECT}
+            getItemHref={(item) => getProposedChangeDetailsUrl(item.id)}
+          />
         </Popover>
       </MenuTrigger>
     </Breadcrumb>

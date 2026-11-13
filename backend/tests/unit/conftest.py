@@ -1,3 +1,4 @@
+import os
 from collections.abc import Generator
 
 import pytest
@@ -26,6 +27,13 @@ def unreported_license_failures() -> Generator[None, None, None]:
     yield
     license_service._reported_failure_types.clear()
     license_service._reported_failure_types.update(saved)
+
+
+@pytest.fixture
+def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unset every INFRAHUB_CACHE_* variable, so the shell running the tests cannot change what is loaded."""
+    for name in [name for name in os.environ if name.startswith("INFRAHUB_CACHE_")]:
+        monkeypatch.delenv(name)
 
 
 @pytest.fixture

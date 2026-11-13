@@ -4,14 +4,19 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
-from tests.adapters.workflow import WorkflowRecorder
+from infrahub.workflows.constants import WorkflowTag
+from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.workflow import ContextRecordingWorkflow, WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
@@ -19,6 +24,7 @@ from tests.helpers.schema import load_schema
 if TYPE_CHECKING:
     from collections import Counter
 
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -45,8 +51,10 @@ async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: 
     return node
 
 
-async def _run_mutation(db: InfrahubDatabase, branch: Branch, query: str) -> WorkflowRecorder:
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
+async def _run_mutation(
+    db: InfrahubDatabase, branch: Branch, query: str, account_session: AccountSession | None = None
+) -> WorkflowRecorder:
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     workflow = WorkflowRecorder()
     gql_params.context.service = await InfrahubServices.new(workflow=workflow)
     result = await graphql(
@@ -57,23 +65,27 @@ async def _run_mutation(db: InfrahubDatabase, branch: Branch, query: str) -> Wor
 
 
 @dataclass
-class RemovalTestCase:
+class PeerChangeTestCase:
     name: str
     mutation: str
     rel_name: str
     peer_kind: str
 
 
-REMOVAL_TEST_CASES: list[RemovalTestCase] = [
-    RemovalTestCase(name="update_related_nodes", mutation="Update", rel_name="related_nodes", peer_kind="TestDevice"),
-    RemovalTestCase(name="upsert_related_nodes", mutation="Upsert", rel_name="related_nodes", peer_kind="TestDevice"),
-    RemovalTestCase(
+PEER_CHANGE_TEST_CASES: list[PeerChangeTestCase] = [
+    PeerChangeTestCase(
+        name="update_related_nodes", mutation="Update", rel_name="related_nodes", peer_kind="TestDevice"
+    ),
+    PeerChangeTestCase(
+        name="upsert_related_nodes", mutation="Upsert", rel_name="related_nodes", peer_kind="TestDevice"
+    ),
+    PeerChangeTestCase(
         name="update_related_templates",
         mutation="Update",
         rel_name="related_templates",
         peer_kind="TemplateTestDevice",
     ),
-    RemovalTestCase(
+    PeerChangeTestCase(
         name="upsert_related_templates",
         mutation="Upsert",
         rel_name="related_templates",
@@ -82,9 +94,13 @@ REMOVAL_TEST_CASES: list[RemovalTestCase] = [
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REMOVAL_TEST_CASES])
-async def test_profile_update_refreshes_the_removed_peers(
-    db: InfrahubDatabase, default_branch: Branch, device_schema: None, test_case: RemovalTestCase
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PEER_CHANGE_TEST_CASES])
+async def test_profile_update_refreshes_the_added_and_removed_peers(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    session_admin: AccountSession,
+    test_case: PeerChangeTestCase,
 ) -> None:
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
@@ -92,9 +108,9 @@ async def test_profile_update_refreshes_the_removed_peers(
     name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
     peers = [
         await _create_node(
-            db=db, branch=default_branch, kind=test_case.peer_kind, profiles=[profile], **{name_field: f"peer-{idx}"}
+            db=db, branch=default_branch, kind=test_case.peer_kind, profiles=profiles, **{name_field: f"peer-{idx}"}
         )
-        for idx in range(3)
+        for idx, profiles in enumerate([[profile], [profile], []])
     ]
 
     workflow = await _run_mutation(
@@ -105,19 +121,89 @@ async def test_profile_update_refreshes_the_removed_peers(
             ProfileTestDevice{test_case.mutation}(data: {{
                 id: "{profile.id}",
                 profile_name: {{ value: "profile-1" }},
-                {test_case.rel_name}: [{{ id: "{peers[0].id}" }}]
+                {test_case.rel_name}: [{{ id: "{peers[0].id}" }}, {{ id: "{peers[2].id}" }}]
             }}) {{ ok }}
         }}
         """,
+        account_session=session_admin,
     )
 
     profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
     relationships = await profile.get_relationship(name=test_case.rel_name).get_relationships(db=db)
-    assert [rel.peer_id for rel in relationships] == [peers[0].id]
+    assert {rel.peer_id for rel in relationships} == {peers[0].id, peers[2].id}
+    event_context = EventContext(
+        branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
+        account_id=session_admin.account_id,
+    )
     assert [
-        (call["workflow"], call["parameters"]["branch_name"], sorted(call["parameters"]["node_ids"]))
+        (
+            call["workflow"],
+            call["parameters"]["branch_name"],
+            call["parameters"]["node_ids"],
+            call["parameters"]["context"],
+            call["tags"],
+        )
         for call in workflow.submit_calls
-    ] == [(PROFILE_REFRESH_MULTIPLE, default_branch.name, sorted([peers[1].id, peers[2].id]))]
+    ] == [
+        (
+            PROFILE_REFRESH_MULTIPLE,
+            default_branch.name,
+            sorted([peers[1].id, peers[2].id]),
+            event_context,
+            [
+                WorkflowTag.BRANCH.render(identifier=default_branch.name),
+                WorkflowTag.RELATED_NODE.render(identifier=profile.id),
+            ],
+        )
+    ]
+
+
+async def test_profile_update_succeeds_when_the_refresh_submission_fails(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
+) -> None:
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
+    )
+    device = await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
+    events = MemoryInfrahubEvent()
+    workflow = ContextRecordingWorkflow()
+    workflow.failures.append(RuntimeError(f"{PROFILE_REFRESH_MULTIPLE.name} submission rejected"))
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=await InfrahubServices.new(workflow=workflow, event=events),
+    )
+
+    with capture_logs() as records:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=f"""
+            mutation {{
+                ProfileTestDeviceUpdate(data: {{ id: "{profile.id}", related_nodes: [{{ id: "{device.id}" }}] }}) {{
+                    ok
+                }}
+            }}
+            """,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert result.errors is None
+    assert result.data == {"ProfileTestDeviceUpdate": {"ok": True}}
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    relationships = await profile.get_relationship(name="related_nodes").get_relationships(db=db)
+    assert [rel.peer_id for rel in relationships] == [device.id]
+    assert [(record["log_level"], record["event"]) for record in records if record["log_level"] == "error"] == [
+        ("error", f"Failed to submit the profile refresh of the peers of {profile.id}")
+    ]
+    assert [(type(event), event.node_id) for event in events.events] == [
+        (NodeUpdatedEvent, profile.id),
+        (NodeUpdatedEvent, device.id),
+    ]
 
 
 @dataclass(frozen=True)

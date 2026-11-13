@@ -1,22 +1,31 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from prefect import Flow, flow
 from prefect.context import FlowRunContext
+from pydantic import ValidationError
+from structlog.testing import capture_logs
 
 from infrahub import config
+from infrahub import trace as infrahub_trace
 from infrahub.message_bus import Meta, RPCErrorResponse
-from infrahub.message_bus.messages import SendEchoRequest
+from infrahub.message_bus.messages import RefreshSettingsTraceSampleRatio, SendEchoRequest
 from infrahub.message_bus.operations import COMMAND_MAP, execute_message
 from infrahub.message_bus.types import MessageTTL
+from infrahub.trace import SampleRatioState, create_tracer_provider, get_sample_ratio_state
 from tests.adapters.message_bus import BusRecorder
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub.message_bus import InfrahubMessage
 
 ECHO_ROUTING_KEY = "send.echo.request"
+TRACE_SAMPLE_RATIO_ROUTING_KEY = "refresh.settings.trace_sample_ratio"
 OPERATIONS_MODULE = "infrahub.message_bus.operations"
 
 
@@ -192,3 +201,61 @@ async def test_failure_with_retries_remaining_is_requeued_with_a_delay(
     assert bus.seen_routing_keys == [ECHO_ROUTING_KEY]
     assert bus.publish_options == [(MessageTTL.FIVE, True)]
     assert delay == MessageTTL.FIVE
+
+
+@pytest.fixture
+def process_sampler(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Give this process a sampler with a default ratio of 0.1, and remove it after the test."""
+    monkeypatch.setattr(infrahub_trace, "_process_sampler", None)
+    provider = create_tracer_provider(service="infrahub-test", version="1.0", exporter_type="console", sample_ratio=0.1)
+    yield
+    provider.shutdown()
+
+
+async def test_trace_sample_ratio_message_sets_then_clears_the_temporary_ratio(process_sampler: None) -> None:
+    bus = RecordingBus()
+    expires_at = datetime(2099, 1, 1, tzinfo=UTC)
+
+    with capture_logs() as set_logs:
+        set_message = RefreshSettingsTraceSampleRatio(ratio=1.0, expires_at=expires_at)
+        await execute_message(
+            routing_key=TRACE_SAMPLE_RATIO_ROUTING_KEY, message_body=set_message.body, message_bus=bus
+        )
+
+    assert get_sample_ratio_state() == SampleRatioState(
+        default_ratio=0.1, ratio_in_force=1.0, temporary_ratio=1.0, expires_at=expires_at
+    )
+    assert [(log["event"], log.get("ratio"), log.get("expires_at")) for log in set_logs] == [
+        ("Set the temporary trace sampling ratio", 1.0, "2099-01-01T00:00:00+00:00")
+    ]
+
+    with capture_logs() as clear_logs:
+        clear_message = RefreshSettingsTraceSampleRatio(ratio=None, expires_at=None)
+        await execute_message(
+            routing_key=TRACE_SAMPLE_RATIO_ROUTING_KEY, message_body=clear_message.body, message_bus=bus
+        )
+
+    assert get_sample_ratio_state() == SampleRatioState(default_ratio=0.1, ratio_in_force=0.1)
+    assert [log["event"] for log in clear_logs] == ["Cleared the temporary trace sampling ratio"]
+    assert bus.messages == []
+
+
+@dataclass
+class IncompleteRatioMessageTestCase:
+    name: str
+    ratio: float | None
+    expires_at: datetime | None
+
+
+INCOMPLETE_RATIO_MESSAGE_TEST_CASES: list[IncompleteRatioMessageTestCase] = [
+    IncompleteRatioMessageTestCase(name="ratio_without_expiry", ratio=1.0, expires_at=None),
+    IncompleteRatioMessageTestCase(
+        name="expiry_without_ratio", ratio=None, expires_at=datetime(2099, 1, 1, tzinfo=UTC)
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in INCOMPLETE_RATIO_MESSAGE_TEST_CASES])
+def test_trace_sample_ratio_message_sets_ratio_and_expiry_together(test_case: IncompleteRatioMessageTestCase) -> None:
+    with pytest.raises(ValidationError, match=r"ratio and expires_at must be both set or both empty"):
+        RefreshSettingsTraceSampleRatio(ratio=test_case.ratio, expires_at=test_case.expires_at)

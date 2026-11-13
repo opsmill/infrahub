@@ -13,7 +13,7 @@ GRAPHQL_DURATION_METRICS = Histogram(
     f"{METRIC_PREFIX}_duration_seconds",
     "GraphQL query duration, in seconds",
     labelnames=["type", "operation", "branch", "name", "query_id"],
-    buckets=[0.01, 0.025, 0.05, 0.1, 0.5, 1, 5, 10, 60],
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.5, 1, 5, 10, 60, 120, 300, 600, 1200],
 )
 GRAPHQL_RESPONSE_SIZE_METRICS = Histogram(
     f"{METRIC_PREFIX}_response_size_bytes",

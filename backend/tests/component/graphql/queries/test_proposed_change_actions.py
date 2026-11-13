@@ -1,8 +1,11 @@
 from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositorySyncStatus
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreGenericRepository
 from infrahub.database import InfrahubDatabase
 from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
@@ -87,8 +90,7 @@ async def test_proposed_change_open(
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-1"
-    source_branch = Branch(name=branch_name)
-    await source_branch.save(db=db)
+    await create_branch(branch_name=branch_name, db=db)
 
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
@@ -144,8 +146,7 @@ async def test_proposed_change_closed(
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-3"
-    source_branch = Branch(name=branch_name)
-    await source_branch.save(db=db)
+    await create_branch(branch_name=branch_name, db=db)
 
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
@@ -205,8 +206,7 @@ async def test_proposed_change_draft(
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-4"
-    source_branch = Branch(name=branch_name)
-    await source_branch.save(db=db)
+    await create_branch(branch_name=branch_name, db=db)
 
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
@@ -293,14 +293,105 @@ async def test_proposed_change_draft(
     ]
 
 
+async def _create_repository(db: InfrahubDatabase, kind: str, name: str) -> Node:
+    repository = await Node.init(db=db, schema=kind)
+    location = f"https://git.example.com/{name}.git"
+    internal_status = RepositoryInternalStatus.ACTIVE.value
+    if kind == InfrahubKind.READONLYREPOSITORY:
+        await repository.new(db=db, name=name, location=location, ref="main", internal_status=internal_status)
+    else:
+        await repository.new(db=db, name=name, location=location, internal_status=internal_status)
+    await repository.save(db=db)
+    return repository
+
+
+async def _update_repository_on_branch(
+    db: InfrahubDatabase,
+    repository: Node,
+    branch: Branch,
+    sync_status: RepositorySyncStatus,
+    internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
+) -> None:
+    repository_on_branch = await NodeManager.get_one(
+        db=db, id=repository.id, kind=CoreGenericRepository, branch=branch, raise_on_error=True
+    )
+    repository_on_branch.sync_status.value = sync_status.value
+    repository_on_branch.internal_status.value = internal_status.value
+    await repository_on_branch.save(db=db)
+
+
+async def test_proposed_change_merge_blocked_by_repository_import(
+    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+) -> None:
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    failed = await _create_repository(db=db, kind=InfrahubKind.REPOSITORY, name="import-failed")
+    syncing = await _create_repository(db=db, kind=InfrahubKind.READONLYREPOSITORY, name="import-syncing")
+    inactive = await _create_repository(db=db, kind=InfrahubKind.REPOSITORY, name="import-inactive")
+    inherited = await _create_repository(db=db, kind=InfrahubKind.REPOSITORY, name="import-inherited")
+    await _update_repository_on_branch(
+        db=db,
+        repository=inherited,
+        branch=await registry.get_branch(db=db, branch="main"),
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
+    )
+
+    branch_name = "pc-import-status"
+    source_branch = await create_branch(branch_name=branch_name, db=db)
+    await _update_repository_on_branch(
+        db=db, repository=failed, branch=source_branch, sync_status=RepositorySyncStatus.ERROR_IMPORT
+    )
+    await _update_repository_on_branch(
+        db=db, repository=syncing, branch=source_branch, sync_status=RepositorySyncStatus.SYNCING
+    )
+    await _update_repository_on_branch(
+        db=db,
+        repository=inactive,
+        branch=source_branch,
+        sync_status=RepositorySyncStatus.ERROR_IMPORT,
+        internal_status=RepositoryInternalStatus.INACTIVE,
+    )
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name=branch_name,
+        destination_branch="main",
+        source_branch=branch_name,
+        state="open",
+    )
+    await proposed_change.save(db=db, user_id=session_admin.account_id)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    response = await graphql_query(
+        query=PROPOSED_CHANGE_ACTIONS,
+        db=db,
+        service=service,
+        variables={"proposed_change_id": proposed_change.id},
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    actions = {
+        edge["node"]["action"]: (edge["node"]["available"], edge["node"]["unavailability_reason"])
+        for edge in response.data["CoreProposedChangeAvailableActions"]["edges"]
+    }
+    assert actions["merge"] == (
+        False,
+        "Cannot merge. The last import of repository 'import-failed' failed: push a fix, reimport the current "
+        "commit, or set the repository to inactive. Repository 'import-syncing' has not finished importing: wait "
+        "for the import, or reimport the current commit if it does not finish.",
+    )
+
+
 async def test_proposed_change_query_meta_data(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ) -> None:
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "test-pc"
-    source_branch = Branch(name=branch_name)
-    await source_branch.save(db=db)
+    await create_branch(branch_name=branch_name, db=db)
 
     initial_user = "bob"
     update_user = "alice"

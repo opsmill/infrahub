@@ -202,7 +202,7 @@ class FileUploadProcessor:
         return not (
             node
             and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
-            and node.checksum.value == self.metadata.checksum  # type: ignore
+            and node.checksum.value == self.metadata.checksum  # type: ignore[attr-defined]
         )
 
     async def _store_file(self) -> FileUploadResult:

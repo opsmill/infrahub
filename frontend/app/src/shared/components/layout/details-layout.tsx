@@ -8,7 +8,9 @@ function DetailsLayout({ children, className }: { children: React.ReactNode; cla
   return (
     <div
       className={classNames(
-        "flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start",
+        // Positioned so that an absolutely positioned descendant, such as a visually hidden label,
+        // resolves against this scroller instead of the page and cannot stretch it.
+        "relative flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start",
         className
       )}
     >

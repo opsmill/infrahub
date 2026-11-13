@@ -23,7 +23,7 @@ We implement a **Prefect Events-based system** as the foundation for event-drive
 
 Events are dispatched through two channels simultaneously:
 
-1. **Message Bus (RabbitMQ/NATS)**: For internal operational tasks
+1. **Message Bus (RabbitMQ)**: For internal operational tasks
    - Point-to-point or broadcast communication
    - Handles specific operational tasks (git repository sync, registry updates)
    - Only certain events send messages via `get_messages()` method

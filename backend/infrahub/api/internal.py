@@ -19,8 +19,6 @@ from infrahub.config import (  # noqa: TC001
     MainSettings,
 )
 from infrahub.core import registry
-from infrahub.core.account import GlobalPermission
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.license.models import (
     LicenseFailureReason,
@@ -32,6 +30,7 @@ from infrahub.license.service import LicenseServiceUnavailable, read_license_sta
 from infrahub.license.status import notice_for, shown_to_all_users_when_enforced
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
+from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
 from infrahub.workers.dependencies import get_installation_type, get_license_service
 
 if TYPE_CHECKING:
@@ -193,11 +192,7 @@ async def set_response_delay(
     The new value is broadcast over the message bus so every API worker process
     across all server replicas applies it without a restart.
     """
-    permission_manager.raise_for_permission(
-        permission=GlobalPermission(
-            action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
-        )
-    )
+    permission_manager.raise_for_permission(permission=SUPER_ADMIN_PERMISSION)
 
     service: InfrahubServices = request.app.state.service
     await service.send(message=RefreshSettingsResponseDelay(response_delay=delay.response_delay))

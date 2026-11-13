@@ -11,6 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
@@ -155,6 +156,10 @@ async def test_update_display_label_update(
     # coalesced recompute, leaving dependent values stale.
     assert len(event.events) == 1
     assert event.events[0].get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
+    node_event = event.events[0]
+    assert isinstance(node_event, NodeUpdatedEvent)
+    # The node is loaded with only its display label, so its HFID comes from storage.
+    assert node_event.changelog.hfid == ["Ocean"]
 
     gql_params = await prepare_graphql_params(
         db=db, branch=default_branch, account_session=session_first_account, service=service

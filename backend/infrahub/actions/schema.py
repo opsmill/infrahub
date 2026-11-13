@@ -30,6 +30,7 @@ core_trigger_rule = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/events/event-rules/",
     attributes=[
         Attr(
             name="name",
@@ -92,6 +93,7 @@ core_action = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/events/event-actions/",
     attributes=[
         Attr(
             name="name",
@@ -132,6 +134,7 @@ core_node_trigger_match = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/events/event-rules/",
     attributes=[],
     relationships=[
         Rel(
@@ -162,6 +165,7 @@ core_generator_action = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.ACTION],
+    documentation="/events/event-actions/",
     relationships=[
         Rel(
             name="generator",
@@ -190,6 +194,7 @@ core_group_action = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.ACTION],
+    documentation="/events/event-actions/",
     attributes=[
         Attr(
             name="member_action",
@@ -231,6 +236,7 @@ core_node_trigger_rule = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.TRIGGERRULE],
+    documentation="/events/event-rules/",
     attributes=[
         Attr(
             name="node_kind",
@@ -277,6 +283,7 @@ core_node_trigger_attribute_match = NodeSchema(
     display_label="attribute_name__value",
     uniqueness_constraints=[["trigger", "attribute_name__value"]],
     human_friendly_id=["trigger__name__value", "attribute_name__value"],
+    documentation="/events/event-rules/",
     attributes=[
         Attr(
             name="attribute_name",
@@ -328,6 +335,7 @@ core_node_trigger_relationship_match = NodeSchema(
     display_label="{{ relationship_name__value }} {{ modification_type__value }}",
     uniqueness_constraints=[["trigger", "relationship_name__value"]],
     human_friendly_id=["trigger__name__value", "relationship_name__value"],
+    documentation="/events/event-rules/",
     attributes=[
         Attr(
             name="relationship_name",
@@ -374,6 +382,7 @@ core_group_trigger_rule = NodeSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.TRIGGERRULE],
+    documentation="/events/event-rules/",
     attributes=[
         Attr(
             name="member_update",

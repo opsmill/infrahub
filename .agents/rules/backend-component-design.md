@@ -15,7 +15,7 @@ Applies when creating a new backend component or making significant changes to a
 - Give each component one reason to change, and make a reused component's `initialize()`/`reset()` clear everything derived from the previous input.
 - Put new persistence behind a `Repository` that takes `db` and `Query` classes that return a `*QueryResult`; a model gets no persistence methods.
 - A lookup into another component's data is a method on the component that owns it.
-- Declare a `Protocol` or ABC when a second implementation arrives, or with one implementation to keep an out-of-domain dependency out of the logic's import chain.
+- Declare a `Protocol` or ABC when a second implementation arrives, or with one implementation to keep an out-of-domain dependency out of the logic's import chain; a component with several backends takes that interface, never a union of their clients, one parameter per backend, or a branch on the configured driver.
 - Dispatch across an open set of implementations through a `supports()` predicate and an injected list, not `isinstance` branching; a closed set takes an exhaustive `match`.
 - A component that is hard to test without a mock needs splitting or its dependencies injected, since tests use adapters (`dev/guidelines/backend/testing.md`).
 - Leave nearby code that violates this alone in an unrelated change, and raise it separately.

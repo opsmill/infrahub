@@ -76,7 +76,7 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 
 4. **Only the graph merge and schema migrations write to the default branch during the window.** Both
    run at the merge `$at`. IPAM reconciliation is deliberately submitted *after* the `MERGED`
-   transition (`core/branch/tasks.py`), so it never runs for a merge that failed before `MERGED` and
+   transition (`core/merge/post_merge.py`), so it never runs for a merge that failed before `MERGED` and
    never leaves partial IPAM state for recovery to reverse. Repository (git) merges are also deferred
    past `MERGED`.
 
@@ -127,7 +127,8 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 | `core/rollback.py` | `GraphRollbacker` — orchestrates the per-phase range revert + metadata restore |
 | `core/query/rollback.py` | per-phase rollback queries, `RollbackScope` |
 | `core/diff/query/merge.py` | `DiffMergeMetadataQuery` — co-writes `previous_*` for the merge diff |
-| `core/branch/tasks.py` | `_do_merge_branch` — sets `merge_started_at`/protection at `MERGING`, defers IPAM/repository past `MERGED` |
+| `core/merge/orchestrator.py` | `BranchMergeOrchestrator` — publishes the write protection, sets `merge_started_at` at `MERGING`, lifts the protection at `MERGED` |
+| `core/merge/post_merge.py` | `PostMergeDispatcher` — submits the repository merges and the IPAM reconciliation after `MERGED` |
 | `tasks/merge_watcher.py` | The recurring detection cron |
 | `cli/recover.py` | The `infrahub recover merge` operator command |
 

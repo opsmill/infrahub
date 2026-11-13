@@ -13,6 +13,9 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import HFIDViolatedError, ValidationError
+from infrahub.pools.number_pool_conflict import NumberPoolConflictFinder
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_usage_nodes import NumberHolderNodeReader
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.node_creation import create_and_save
 
@@ -26,6 +29,9 @@ class TestNodeGroupedUniquenessConstraint:
             branch=branch,
             message_builder=UniquenessViolationMessageBuilder(
                 schema_branch=registry.schema.get_schema_branch(branch.name)
+            ),
+            number_pool_conflict_finder=NumberPoolConflictFinder(
+                pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
             ),
         )
         await constraint.check(node=node, filters=filters)

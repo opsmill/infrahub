@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING
 
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore

@@ -5,10 +5,11 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.relationship.peer import RelationshipPeerChecker, RelationshipPeerUpdateValidatorQuery
@@ -129,7 +130,11 @@ async def test_query(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=car_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=car_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestCar"],
     )
 
     await query.execute(db=db)
@@ -177,7 +182,11 @@ async def test_query_no_relationships(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=car_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=car_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestCar"],
     )
 
     await query.execute(db=db)
@@ -196,7 +205,11 @@ async def test_query_switch_from_generic_to_node_success(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestElectricCar"],
     )
 
     await query.execute(db=db)
@@ -220,7 +233,11 @@ async def test_query_switch_from_generic_to_node_failure(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestElectricCar"],
     )
 
     await query.execute(db=db)
@@ -258,7 +275,11 @@ async def test_query_switch_from_node_to_generic_success(
         path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="electric_cars"
     )
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestCar", "TestElectricCar", "TestGazCar"],
     )
 
     await query.execute(db=db)
@@ -288,7 +309,11 @@ async def test_query_switch_from_node_to_generic_failure(
         path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="electric_cars"
     )
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestPerson"],
     )
 
     await query.execute(db=db)
@@ -340,7 +365,11 @@ async def test_query_update_on_branch_success(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestElectricCar"],
     )
 
     await query.execute(db=db)
@@ -370,7 +399,11 @@ async def test_query_update_on_branch_failure(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestElectricCar"],
     )
 
     await query.execute(db=db)
@@ -423,7 +456,11 @@ async def test_query_delete_on_branch(
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipPeerUpdateValidatorQuery.init(
-        db=db, branch=branch, node_schema=person_schema, schema_path=schema_path
+        db=db,
+        branch=branch,
+        node_schema=person_schema,
+        schema_path=schema_path,
+        allowed_peer_kinds=["TestElectricCar"],
     )
 
     await query.execute(db=db)
@@ -450,7 +487,7 @@ async def test_validator(
         constraint_name="relationship.peer.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
-        schema_branch=SchemaBranch(cache={}, name="test"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
     )
 
     constraint_checker = RelationshipPeerChecker(db=db, branch=default_branch)
@@ -481,3 +518,130 @@ async def test_validator(
         )
         in all_paths
     )
+
+
+PERSON_SCHEMA_ID = "person-schema-id"
+ANIMAL_SCHEMA_ID = "animal-schema-id"
+
+
+def _rename_kind(schema_branch: SchemaBranch, kind: str, name: str) -> str:
+    """Rename a kind in the schema branch and keep its schema id, as a schema load that renames a kind does."""
+    schema = schema_branch.get_node(name=kind)
+    schema.name = name
+    schema_branch.delete(name=kind)
+    schema_branch.set(name=schema.kind, schema=schema)
+    return schema.kind
+
+
+def _set_schema_id(schema_branch: SchemaBranch, kind: str, schema_id: str) -> None:
+    schema = schema_branch.get_node(name=kind)
+    schema.id = schema_id
+    schema_branch.set(name=kind, schema=schema)
+
+
+class TestPeerValidatorRenamedPeer:
+    """Checks against one dataset built once for the class.
+
+    Stored owners keep the label of their renamed kind until its migration runs, so a rename must not be refused.
+    Only a copy of main's schema, or the schema of a branch the test creates, is changed.
+    """
+
+    @pytest.fixture(scope="class")
+    async def car_with_owner(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, car_person_schema_scope_class: SchemaBranch
+    ) -> dict[str, str]:
+        registry.schema.register_schema(
+            schema=SchemaRoot(
+                nodes=[
+                    NodeSchema(name="Animal", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text")])
+                ]
+            ),
+            branch=default_branch_scope_class.name,
+        )
+        current_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name)
+        _set_schema_id(schema_branch=current_schema, kind="TestPerson", schema_id=PERSON_SCHEMA_ID)
+        _set_schema_id(schema_branch=current_schema, kind="TestAnimal", schema_id=ANIMAL_SCHEMA_ID)
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch_scope_class)
+        await person.new(db=db, name="John", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
+        await car.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=person.id)
+        await car.save(db=db)
+        return {"car": car.id, "person": person.id}
+
+    async def test_peer_renamed_in_candidate_schema_success(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, car_with_owner: dict[str, str]
+    ) -> None:
+        candidate_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name).duplicate()
+        renamed_kind = _rename_kind(schema_branch=candidate_schema, kind="TestPerson", name="Human")
+        car_schema = candidate_schema.get_node(name="TestCar")
+        car_schema.get_relationship(name="owner").peer = renamed_kind
+        candidate_schema.set(name="TestCar", schema=car_schema)
+
+        request = SchemaConstraintValidatorRequest(
+            branch=default_branch_scope_class,
+            constraint_name="relationship.peer.update",
+            node_schema=car_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
+            schema_branch=candidate_schema,
+        )
+
+        grouped_data_paths = await RelationshipPeerChecker(db=db, branch=default_branch_scope_class).check(request)
+
+        assert [grouped.get_all_data_paths() for grouped in grouped_data_paths] == [[]]
+
+    async def test_peer_renamed_on_branch_success(self, db: InfrahubDatabase, car_with_owner: dict[str, str]) -> None:
+        branch = await create_branch(db=db, branch_name="renamed-person")
+        branch_schema = registry.schema.get_schema_branch(name=branch.name)
+        renamed_kind = _rename_kind(schema_branch=branch_schema, kind="TestPerson", name="Human")
+        car_schema = branch_schema.get_node(name="TestCar")
+        car_schema.get_relationship(name="owner").peer = renamed_kind
+        branch_schema.set(name="TestCar", schema=car_schema)
+
+        request = SchemaConstraintValidatorRequest(
+            branch=branch,
+            constraint_name="relationship.peer.update",
+            node_schema=car_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
+            schema_branch=branch_schema,
+        )
+
+        grouped_data_paths = await RelationshipPeerChecker(db=db, branch=branch).check(request)
+
+        assert [grouped.get_all_data_paths() for grouped in grouped_data_paths] == [[]]
+
+    async def test_car_owner_changed_to_renamed_animal_kind_refuses_person_owner(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, car_with_owner: dict[str, str]
+    ) -> None:
+        """The change points TestCar.owner at the renamed animal kind while the stored car keeps a person as owner.
+
+        Only TestAnimal, the animal kind's earlier name, is added to the allowed kinds, so the car is refused.
+        """
+        candidate_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name).duplicate()
+        renamed_kind = _rename_kind(schema_branch=candidate_schema, kind="TestAnimal", name="Pet")
+        car_schema = candidate_schema.get_node(name="TestCar")
+        car_schema.get_relationship(name="owner").peer = renamed_kind
+        candidate_schema.set(name="TestCar", schema=car_schema)
+
+        request = SchemaConstraintValidatorRequest(
+            branch=default_branch_scope_class,
+            constraint_name="relationship.peer.update",
+            node_schema=car_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
+            schema_branch=candidate_schema,
+        )
+
+        grouped_data_paths = await RelationshipPeerChecker(db=db, branch=default_branch_scope_class).check(request)
+
+        assert [grouped.get_all_data_paths() for grouped in grouped_data_paths] == [
+            [
+                DataPath(
+                    branch=default_branch_scope_class.name,
+                    path_type=PathType.NODE,
+                    node_id=car_with_owner["car"],
+                    kind="TestCar",
+                    field_name="owner",
+                    peer_id=car_with_owner["person"],
+                )
+            ]
+        ]
