@@ -188,14 +188,6 @@ Replace all `<placeholders>`:
 <edge cases, risks, or constraints the test-writer and fixer should know about>
 ````
 
-## Quality gates
-
-Per `../quality-gates/gates/gate-model.md`. `analyzing-bugs` is **Tier 0** (advisory output).
-
-| Gate | Trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Grounded-analysis | before writing the analysis file | T0 | P1 + self-review | Every root-cause claim cites a concrete file:line. | revise before writing |
-
 ## Common mistakes
 
 | 🚩 Red flag | Do instead |

@@ -1,14 +1,14 @@
 ---
-name: pr
+name: opsmill-dev-pr
 description: >-
   Opens a pull request, publishing the current branch as a PR. TRIGGER when: the user wants to
   open a pull request, publish the current branch as a PR, or take the current work through to an
-  open PR. DO NOT TRIGGER when: only committing changes → commit; babysitting CI after the PR is
-  already open → monitoring-pull-requests.
-argument-hint: Optional `commit` to stage, commit, and push uncommitted changes before opening the PR
-compatibility: Requires a Git working tree and GitHub access (gh CLI authenticated, GitHub MCP server, or equivalent). Works best alongside the `commit` and `monitoring-pull-requests` skills from this plugin.
+  open PR. DO NOT TRIGGER when: only committing changes → opsmill-dev-commit; babysitting CI after the PR is
+  already open → opsmill-dev-monitoring-pull-requests.
+argument-hint: Optional `commit` to stage, commit, and push uncommitted changes before opening the PR; `ready` to open the PR ready-for-review instead of the default draft
+compatibility: Requires a Git working tree and GitHub access (gh CLI authenticated, GitHub MCP server, or equivalent). Works best alongside the `opsmill-dev-commit` and `opsmill-dev-monitoring-pull-requests` skills from this plugin.
 metadata:
-  version: 0.1.0
+  version: 0.3.1
   author: OpsMill
 ---
 
@@ -27,6 +27,7 @@ It is project-agnostic: base branch, validation commands, documentation layout, 
 **Supported arguments:**
 
 - `commit` — Stage, commit, and push uncommitted changes before proceeding. **Without this argument, no commits are made** — the skill works only with what is already committed on the branch.
+- `ready` — Open the PR ready-for-review. **Without this argument, the PR is opened as a draft** — the safe default so work isn't surfaced for review (or triggers review automation / notifications) before the author marks it ready. Also honour an equivalent in-prompt request ("not a draft", "ready for review", "mark it ready").
 
 ## Main Tasks
 
@@ -42,7 +43,7 @@ First, verify the agent is on a safe branch and understand the current git state
    - When ambiguous, ask the user.
 4. **If on an unsafe branch** — the default branch, a long-standing integration branch, a release branch, or a placeholder/scratch branch (the `commit` skill's step 2 holds the canonical rules; don't re-derive the list here):
    - **If `commit` was passed:** proceed to Phase 2; the `commit` skill will refuse the unsafe branch, propose a properly named feature branch, and ask the user for approval before creating it. Do not pre-create the branch here — let the `commit` skill own that conversation so the rules stay in one place.
-   - **If `commit` was NOT passed:** STOP. There's no feature branch to open a PR from. Tell the user they need to either invoke `/pr commit` (so the `commit` skill creates a branch and captures the changes), or switch to a feature branch first.
+   - **If `commit` was NOT passed:** STOP. There's no feature branch to open a PR from. Tell the user they need to either invoke `/opsmill-dev-pr commit` (so the `commit` skill creates a branch and captures the changes), or switch to a feature branch first.
 5. If already on a feature branch, continue to the next phase.
 
 ### 2. Commit Changes (only when `commit` argument is provided)
@@ -55,7 +56,7 @@ When `commit` IS provided, run any project-specific prep first, then delegate th
 
 2. If the project checks in generated artefacts (GraphQL schemas, OpenAPI clients, generated SDK types, protobufs) and their sources were modified, regenerate them using the project's documented commands and include the regenerated files — CI commonly fails on stale generated artefacts.
 
-3. Invoke the `commit` skill with the `push` argument: `/commit push`. The skill will:
+3. Invoke the `commit` skill with the `push` argument: `/opsmill-dev-commit push`. The skill will:
    - Refuse to commit on protected or placeholder branches and, if needed, propose a conventional feature branch name (`feat/…`, `fix/…`, etc.) for user approval before creating it.
    - Stage changes safely (explicit paths, secret-pattern warnings).
    - Draft a conventional-commit message and confirm it with the user.
@@ -64,7 +65,7 @@ When `commit` IS provided, run any project-specific prep first, then delegate th
 
    Do not duplicate any of that logic inline here. If the user has additional commit-message guidance specific to this PR (e.g., spec or issue reference, conventional-commit scope), pass it along when invoking the skill.
 
-4. After `/commit push` returns, confirm the working tree is clean and the branch is published before continuing to Phase 3.
+4. After `/opsmill-dev-commit push` returns, confirm the working tree is clean and the branch is published before continuing to Phase 3.
 
 ### 3. Analyze All Branch Changes
 
@@ -102,7 +103,7 @@ Before opening the PR, ensure that the project's documentation reflects the chan
    - Read each relevant doc and compare against the actual changes.
    - If a doc is outdated or missing coverage of new functionality, propose updates.
    - Present proposed doc changes to the user for approval.
-3. Commit any approved doc updates to the branch (with a `docs:` conventional commit, following the repo's commit style).
+3. If `commit` was passed, commit any approved doc updates to the branch (with a `docs:` conventional commit, following the repo's commit style). If `commit` was not passed, leave the approved edits uncommitted in the working tree and tell the user to run `/opsmill-dev-pr commit` to include them — without `commit`, the skill makes no commits (see Arguments).
 4. Push if new commits were added.
 
 ### 5. Draft PR Description
@@ -115,27 +116,33 @@ Focus on business value — what problem does this solve, what capability does i
 - `fix: resolve config drift during reconciliation`
 - `refactor: migrate inline queries to dedicated files`
 
-**PR Body Template** (adapt to the repository's PR template in `.github/PULL_REQUEST_TEMPLATE.md` if one exists — the repo template wins):
+**PR Body Template** (adapt to the repository's PR template if one exists; the repo template wins. Look for it in any letter case: `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`, the same names at the repository root or in `docs/`, or a file in `.github/PULL_REQUEST_TEMPLATE/`. When a calling skill hands over a body it has already built on that template, use it as it is):
 
 ```markdown
 ## Summary
+
 [1-3 sentences: what business problem this solves or what capability it adds.
 Frame as outcomes for users/operators, not as code changes.]
 
 ## Key Changes
+
 [Bulleted list of the most important changes, framed as outcomes:
+
 - "Operators can now back up and restore environments" NOT "Added backup_service.py"
 - "Queries are validated against the schema in CI" NOT "Moved queries to .graphql files"]
 
 ## Related Context
+
 [If tied to a spec, PRD, ADR, or issue: link it and highlight the key
 requirements addressed. Omit this section if none exists.]
 
 ## Documentation Updates
+
 [List any docs that were added or updated as part of this PR.
 Omit this section if no docs were changed.]
 
 ## Test Plan
+
 [How to verify — test commands to run, manual verification steps, or CI checks to watch]
 ```
 
@@ -152,14 +159,18 @@ Omit this section if no docs were changed.]
    - PR body (rendered)
    - Target base branch
    - Labels
+   - Draft status — draft by default; ready-for-review only when `ready` was passed or the user asked for it in-prompt
 2. Wait for the user's explicit approval or requested changes.
-3. After approval, create the PR using the GitHub interface available to the agent. First strip any harness-appended session-link footer from the body (see step 5). Examples:
+3. After approval, create the PR using the GitHub interface available to the agent. **Open it as a draft unless `ready` was passed (or the user explicitly asked for a ready-for-review PR)** — pass `--draft` to `gh pr create`, or set `draft: true` on the MCP `create_pull_request` call. First strip any harness-appended session-link footer from the body (see step 5). Examples:
+
+   > **Optional independent verdict:** run `/opsmill-dev-judging-changes <linked issue / PRD, else the user's stated goal>` (gate kind `pr`) before `gh pr create`. Only repos that enforce ship-gate receipts (`.claude/quality-gates/enabled`) require it; the user-approval step above stands either way.
 
    ```bash
-   gh pr create --title "[TITLE]" --body "[BODY]" --base <base> --label "[LABELS]"
+   # Default: draft PR. Drop --draft only when `ready` was passed or the user asked for a ready-for-review PR.
+   gh pr create --draft --title "[TITLE]" --body "[BODY]" --base <base> --label "[LABELS]"
    ```
 
-   Or, when using the GitHub MCP server, the equivalent `create_pull_request` call.
+   Or, when using the GitHub MCP server, the equivalent `create_pull_request` call with `draft: true` (set `draft: false` only for a ready-for-review PR).
 4. Return the PR URL to the user.
 
 ### 7. Hand Off to `monitoring-pull-requests` as a Background Agent
@@ -167,7 +178,7 @@ Omit this section if no docs were changed.]
 Don't just open the PR and walk away — but don't re-implement the CI babysitting loop here either, and don't sit blocked in the foreground waiting 30+ minutes for CI to finish. The `monitoring-pull-requests` skill owns the CI workflow (poll, classify, reproduce narrowly, fix, retry up to 5 times, revert on exhaustion), and CI watching is the textbook "long-running, independent of what the user does next" background task. Spawn it as a background agent so the parent conversation can return control to the user immediately.
 
 1. Confirm the PR was created and you have the PR number / URL / branch name.
-2. **Spawn `monitoring-pull-requests` as a background agent.** Use the runtime's agent-launching mechanism (Claude Code: the `Agent` tool with `run_in_background: true`; other runtimes: equivalent background-task primitive). The agent must run with a clean context — give it everything it needs in the prompt rather than relying on parent-conversation state.
+2. **Spawn `monitoring-pull-requests` as a background agent.** Do this **whether the PR is a draft or ready-for-review** — draft PRs still run CI and are babysat identically. Use the runtime's agent-launching mechanism (Claude Code: the `Agent` tool with `run_in_background: true`; other runtimes: equivalent background-task primitive). The agent must run with a clean context — give it everything it needs in the prompt rather than relying on parent-conversation state.
 
    Recommended invocation (Claude Code, general-purpose subagent):
 
@@ -178,7 +189,7 @@ Don't just open the PR and walk away — but don't re-implement the CI babysitti
      run_in_background: true,
      prompt: "Invoke the monitoring-pull-requests skill and run its workflow against
               PR #<N> on branch <branch>. The PR was just opened by
-              the /pr skill at commit <sha>; pass that commit as the
+              the /opsmill-dev-pr skill at commit <sha>; pass that commit as the
               expected baseline — monitoring-pull-requests re-captures and verifies
               the baseline_commit itself in its Phase 0. Follow every
               phase of the skill verbatim, including the narrow-
@@ -196,7 +207,7 @@ Don't just open the PR and walk away — but don't re-implement the CI babysitti
 
    Do not poll or re-summarize CI here. The agent's final report is the closing status; surface it to the user when it lands.
 
-If the runtime cannot spawn background agents, fall back to invoking `/monitoring-pull-requests <pr-number>` synchronously, or — as a last resort — poll `gh run list --branch <branch-name>` every 30–60 seconds and follow the same narrow-reproduction-first discipline `monitoring-pull-requests` enforces. Do not push speculative fixes when local reproduction is possible.
+If the runtime cannot spawn background agents, fall back to invoking `/opsmill-dev-monitoring-pull-requests <pr-number>` synchronously, or — as a last resort — poll `gh run list --branch <branch-name>` every 30–60 seconds and follow the same narrow-reproduction-first discipline `monitoring-pull-requests` enforces. Do not push speculative fixes when local reproduction is possible.
 
 ## Notes
 
@@ -222,6 +233,7 @@ If the runtime cannot spawn background agents, fall back to invoking `/monitorin
 A pull request that:
 
 - Lives on a properly named feature branch (never a protected or long-lived branch).
+- Is opened as a draft by default (ready-for-review only when the user asked for it via `ready` or in-prompt).
 - Has a business-value-focused description referencing specs or issues when available.
 - Includes up-to-date documentation where the project keeps any.
 - Has been reviewed and approved by the user before creation.
