@@ -1318,6 +1318,7 @@ jobs:
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2026.05.0-enterprise >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
