@@ -88,7 +88,10 @@ export function RelationshipManyInput({
         </div>
       </PopoverTrigger>
 
-      <ComboboxContent>
+      <ComboboxContent
+        // The list stays open between selections, so Escape must close it without also dismissing the drawer or dialog that holds the form.
+        onEscapeKeyDown={(event) => event.stopPropagation()}
+      >
         <RelationshipComboboxList
           peer={peer}
           onSelect={handleSelect}

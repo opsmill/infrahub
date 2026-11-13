@@ -12,6 +12,8 @@ import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { GROUP_GENERIC, GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
+import { AddGroupMembersForm } from "@/entities/groups/ui/add-group-members-form";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
@@ -116,9 +118,74 @@ export function RelationshipsButtons({
     }
   };
 
+  const closeAfterSuccess = async () => {
+    await handleRefetch();
+    setShowAddDrawer(false);
+  };
+
+  const closeDrawer = () => {
+    setShowAddDrawer(false);
+  };
+
   const { isAllowed: isAddAllowed, message: addTooltipMessage } = permission.create;
   const relationshipLabel =
     relationshipSchemaData.label ?? relationshipSchemaData.kind ?? "relationship";
+
+  const renderAddForm = () => {
+    if (
+      relationshipSchemaData.kind === "Component" &&
+      peerParentRelationship &&
+      relationshipSchemaData.peer
+    ) {
+      return (
+        <ObjectForm
+          onSuccess={closeAfterSuccess}
+          onCancel={closeDrawer}
+          kind={relationshipSchemaData.peer}
+        />
+      );
+    }
+
+    if (isOfKind(GROUP_GENERIC, parentSchema) && relationshipName === GROUP_MEMBERS_RELATIONSHIP) {
+      return (
+        <AddGroupMembersForm
+          groupId={objectId}
+          membersRelationship={relationshipSchemaData}
+          onSuccess={closeAfterSuccess}
+          onCancel={closeDrawer}
+        />
+      );
+    }
+
+    return (
+      <DynamicForm
+        fields={[
+          {
+            name: "relation",
+            label: relationshipLabel,
+            type: "relationship",
+            relationship: {
+              ...relationshipSchemaData,
+              cardinality: "one",
+              inherited: true,
+            } as RelationshipSchema,
+            options,
+            pool:
+              poolKind && peerSchema.schema?.kind
+                ? {
+                    kind: poolKind,
+                    defaultAllocatedObjectKind: peerSchema.schema.kind,
+                  }
+                : undefined,
+          },
+        ]}
+        onSubmit={async ({ relation }) => {
+          await handleSubmit({ relation: relation?.value });
+        }}
+        onCancel={closeDrawer}
+      />
+    );
+  };
 
   return (
     <>
@@ -141,49 +208,7 @@ export function RelationshipsButtons({
           subtitle={`Add a new ${relationshipLabel} to the current object`}
         />
         <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
-          {relationshipSchemaData.kind === "Component" &&
-          peerParentRelationship &&
-          relationshipSchemaData.peer ? (
-            <ObjectForm
-              onSuccess={async () => {
-                await handleRefetch();
-                setShowAddDrawer(false);
-              }}
-              onCancel={() => {
-                setShowAddDrawer(false);
-              }}
-              kind={relationshipSchemaData.peer}
-            />
-          ) : (
-            <DynamicForm
-              fields={[
-                {
-                  name: "relation",
-                  label: relationshipLabel,
-                  type: "relationship",
-                  relationship: {
-                    ...relationshipSchemaData,
-                    cardinality: "one",
-                    inherited: true,
-                  } as RelationshipSchema,
-                  options,
-                  pool:
-                    poolKind && peerSchema.schema?.kind
-                      ? {
-                          kind: poolKind,
-                          defaultAllocatedObjectKind: peerSchema.schema.kind,
-                        }
-                      : undefined,
-                },
-              ]}
-              onSubmit={async ({ relation }) => {
-                await handleSubmit({ relation: relation?.value });
-              }}
-              onCancel={() => {
-                setShowAddDrawer(false);
-              }}
-            />
-          )}
+          {renderAddForm()}
         </FormContext>
       </Sheet>
     </>
