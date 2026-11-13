@@ -183,7 +183,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)
 
     async def test_change_to_a_field_read_through_a_fragment_on_a_generic_narrows_to_the_owning_member(
         self,
@@ -212,7 +212,7 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)
 
     async def test_change_reached_through_a_fragment_narrows_to_the_owning_member(
         self,
@@ -240,4 +240,4 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)

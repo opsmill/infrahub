@@ -72,7 +72,14 @@ class _RecordingSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelec
     async def _fetch_member_ids(self, *, definition: DefinitionT, target_branch: str) -> list[str]:
         raise NotImplementedError
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self,
+        *,
+        subscriber_id: str | None,
+        regenerate_all_members: bool,
+        impacted: list[str],
+        changes_reach_member: bool,
+    ) -> bool:
         raise NotImplementedError
 
     def _build_request(self, *, definition: DefinitionT, target_branch: str, members: list[str]) -> RequestT:

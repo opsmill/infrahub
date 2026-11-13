@@ -108,6 +108,7 @@ class DiffEntry:
     fields: list[str]
     element_type: str = "ATTRIBUTE"
     literal_id: bool = False
+    action: str = "UPDATED"
 
 
 @dataclass
@@ -171,10 +172,73 @@ GENERATOR_DISPATCH_CASES = [
         files_changed=["generators/device.py"],
     ),
     GeneratorDispatchCase(
-        name="new_target_without_instance_is_always_dispatched",
+        name="target_without_instance_is_dispatched_when_its_read_field_changed",
         definition_key="gendef_new",
         diff=[DiffEntry(id_key="dev_new_id", kind="TestNetworkDevice", fields=["name"])],
         expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_a_read_field_changed_on_another_node",
+        definition_key="gendef_new",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_not_dispatched_when_only_unread_field_changed",
+        definition_key="gendef_new",
+        diff=[DiffEntry(id_key="dev_new_id", kind="TestNetworkDevice", fields=["description"])],
+        expected_keys=[],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_not_dispatched_when_changed_kind_not_queried",
+        definition_key="gendef_new",
+        diff=[
+            DiffEntry(
+                id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
+            )
+        ],
+        expected_keys=[],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_its_group_membership_changed",
+        definition_key="gendef_new",
+        diff=[
+            DiffEntry(
+                id_key="dev_new_id",
+                kind="TestNetworkDevice",
+                fields=["member_of_groups"],
+                element_type="RELATIONSHIP_MANY",
+            )
+        ],
+        expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_the_diff_created_it",
+        definition_key="gendef_new",
+        diff=[DiffEntry(id_key="dev_new_id", kind="TestNetworkDevice", fields=["description"], action="ADDED")],
+        expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_the_definition_is_added",
+        definition_key="gendef_new",
+        diff=[
+            DiffEntry(id_key="gendef_new_id", kind=InfrahubKind.GENERATORDEFINITION, fields=["name"], action="ADDED")
+        ],
+        expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_the_query_changed",
+        definition_key="gendef_new",
+        diff=[DiffEntry(id_key="query_unique_id", kind=InfrahubKind.GRAPHQLQUERY, fields=["query"])],
+        expected_keys=["dev_new_id"],
+    ),
+    GeneratorDispatchCase(
+        name="target_without_instance_is_dispatched_when_a_file_of_the_definition_changed",
+        definition_key="gendef_new",
+        diff=[DiffEntry(id_key="dev_new_id", kind="TestNetworkDevice", fields=["description"])],
+        expected_keys=["dev_new_id"],
+        source_branch_sync_with_git=True,
+        files_changed=["generators/device.py"],
     ),
     GeneratorDispatchCase(
         name="flip_on_unread_relationship_dispatches_nothing",
@@ -510,6 +574,8 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             "dev3_id": dev3.id,
             "dev4_id": dev4.id,
             "dev_new_id": dev_new.id,
+            "gendef_new_id": gendef_new_node.id,
+            "query_unique_id": query_unique.id,
             "repository": repository,
             "gendef_unique": build_definition(
                 "GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, targets_group.id
@@ -606,6 +672,7 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
                 entry.kind,
                 SOURCE_BRANCH,
                 entry.fields,
+                action=entry.action,
                 element_type=entry.element_type,
             )
             for entry in case.diff

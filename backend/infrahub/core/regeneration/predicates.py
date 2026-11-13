@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 _TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
 _FINGERPRINT_ELEMENT = "fingerprint"
+_GROUP_MEMBERSHIP_ELEMENT = "member_of_groups"
 
 
 def classify_untrusted_dependency_closure(definition: RegenerationDefinition) -> RegenerationReason | None:
@@ -110,6 +111,27 @@ def relevant_node_changes(
         if updated_fields and (imprecise_read or (updated_fields & readable_fields)):
             relevant_node_ids.append(node_diff["id"])
     return relevant_node_ids
+
+
+def nodes_with_changed_group_membership(diff_summary: list[NodeDiff], query_branch: str) -> set[str]:
+    """Return ids of nodes the diff created or whose group membership it changed.
+
+    A diff summary names the membership relationship that changed on a node but not the group, so a
+    node that joined or left any group is returned: a superset of the nodes that joined one given
+    group. A created node is returned whether or not its membership element is listed.
+    """
+    node_ids: set[str] = set()
+    for node_diff in diff_summary:
+        if node_diff["branch"] != query_branch or _is_unchanged(node_diff["action"]):
+            continue
+        created = parse_diff_action(node_diff["action"]) == DiffAction.ADDED
+        membership_changed = any(
+            element["name"] == _GROUP_MEMBERSHIP_ELEMENT and not _is_unchanged(element["action"])
+            for element in node_diff["elements"]
+        )
+        if created or membership_changed:
+            node_ids.add(node_diff["id"])
+    return node_ids
 
 
 def query_changed(

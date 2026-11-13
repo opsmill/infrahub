@@ -60,6 +60,7 @@ from infrahub.core.regeneration.members import (
 from infrahub.core.regeneration.models import DefinitionSelect
 from infrahub.core.regeneration.predicates import (
     definition_changed,
+    nodes_with_changed_group_membership,
     query_changed,
     repo_diff_or_none,
     transform_changed,
@@ -1165,6 +1166,10 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     if managed_branch:
         log.info("Query, definition or repository file change detected, all instances will be processed")
 
+    members_with_changed_membership = nodes_with_changed_group_membership(
+        diff_summary=diff_summary, query_branch=model.source_branch
+    )
+    skipped_without_instance = 0
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
@@ -1173,6 +1178,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             instance_id=generator_instance,
             regenerate_all_members=managed_branch,
             impacted_instances=impacted_instances,
+            run_without_instance=selection.change_reaches_query or member.id in members_with_changed_membership,
         ):
             requested_instances += 1
             log.info(f"Trigger execution of {model.generator_definition.definition_name} for {member.display_label}")
@@ -1192,6 +1198,14 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
                 proposed_change=model.proposed_change,
             )
             check_generator_run_models.append(check_generator_run_model)
+        elif generator_instance is None:
+            skipped_without_instance += 1
+
+    if skipped_without_instance:
+        log.info(
+            f"Generator definition {definition_name}: {skipped_without_instance} targets without a generator instance "
+            "will not be run, because no change reaches the data the query reads and their group membership is unchanged."
+        )
 
     checks_coroutines = [
         get_workflow().execute_workflow(

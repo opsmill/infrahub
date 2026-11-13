@@ -102,7 +102,10 @@ RENDER_CASES = [
 @pytest.mark.parametrize("case", RENDER_CASES, ids=lambda case: case.name)
 def test_should_render_artifact_contract(case: RenderCase, artifact_selector: ArtifactSelector) -> None:
     rendered = artifact_selector._should_render(
-        subscriber_id=case.subscriber_id, regenerate_all_members=case.regenerate_all_members, impacted=case.impacted
+        subscriber_id=case.subscriber_id,
+        regenerate_all_members=case.regenerate_all_members,
+        impacted=case.impacted,
+        changes_reach_member=False,
     )
 
     assert rendered is case.expected
