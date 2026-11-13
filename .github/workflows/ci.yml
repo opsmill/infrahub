@@ -612,6 +612,7 @@ jobs:
           - "graphql"
           - "core-diff"
           - "core-schema"
+          - "resource-manager-git"
           - "other"
     runs-on:
       group: huge-runners
@@ -1464,5 +1465,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
+          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-resource-manager-git,backend-component-other"
           parallel-finished: true

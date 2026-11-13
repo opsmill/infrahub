@@ -201,11 +201,15 @@ Workflows receive metadata tags for organization and filtering:
 
 Tags come from two moments, and the difference matters: tags present at run creation (the deployment's static tags plus any `tags=` passed to `submit_workflow`) survive for the run's lifetime, while tags added mid-run via `add_tags` are rebuilt from the tags known at flow start, so a later in-flow tag update drops anything another in-flow update added before it. A tag that filtering depends on (the branch tag for branch-filtered task queries, for example) must therefore be passed at submission, not added from inside the flow.
 
+The branch tag has two readers. The task queries filtered by branch (`InfrahubTask(branch: ...)` and `InfrahubTaskBranchStatus`) return the runs that carry it, and the purge that follows a branch deletion deletes them (see below). The node tag is read by `InfrahubTask(related_node__ids: ...)`.
+
 ### Branch-tagged runs outlive their branch
 
-Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing (the deletion flow itself, for one) keep the tag and are left in place.
+Deleting a branch does not remove the flow runs tagged with it; they persist in Prefect. Because the branch tag encodes the branch **name**, a new branch created with the same name would otherwise retrieve the deleted branch's runs in the branch-filtered task query. To prevent this, the `branch-deleted-purge-tasks-trigger` automation reacts to `BranchDeletedEvent` and runs the internal `branch-purge-tasks` flow, which deletes the settled (terminal-state) runs tagged with the branch. The purge is best-effort, and because it runs after the deletion, runs that were still in flight at delete time have usually settled and are cleaned up as well; runs still executing keep the tag and are left in place.
 
 Scoping the purge to terminal states, and running it as one reaction to the deletion event, has a limit: `BranchDeletedEvent` also triggers the schema-refresh setup flows (profile refresh, computed attributes, hfid, display labels), which tag themselves with the same branch and can complete after the purge has already run. Those runs linger and can surface on a same-named recreation. Removing the race means scoping the branch-filtered task query by the branch's stable UUID instead of its name, which touches tagging and UUID resolution at every submission site.
+
+The purge can delete a branch-tagged run as soon as it settles, before a caller that follows the run reads its final state; the caller's wait then fails or never ends. For this reason the `branch-delete` run carries no branch tag, and the branch-filtered task queries do not return it.
 
 ## Execution Flow
 
