@@ -26,5 +26,12 @@ request that started this skill, or use the pull request of the current branch.
      `${CODEX_HOME:-$HOME/.codex}/skills/.system/review-agent/SKILL.md`.", and wait for its
      result. Codex does not offer that skill by name, so the subagent reads the file. The pull
      request's branch must be checked out, as it is when this session opened the pull request.
-3. Return the findings with the rules in `REVIEW.md` applied, separating the issues this pull
-   request introduces from older ones. Change no files.
+3. If the pull request changes `docs/` or user-facing behavior, start a separate subagent without
+   this conversation. Give it the diff, the relevant docs and source paths, and the docs checks that
+   `REVIEW.md` names, and ask it to apply them to the changed docs and to the docs the change leaves
+   out of date. It returns findings only, each with file/line evidence and a suggested correction.
+   Wait for its result.
+4. Combine and deduplicate the findings with the rules in `REVIEW.md` applied, separating the
+   issues this pull request introduces from older ones. Give each docs finding its suggested
+   correction, and give a missing docs update the path of the page to change. Return the findings
+   to this session: post nothing on the pull request and change no files.
