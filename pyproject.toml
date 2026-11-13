@@ -587,14 +587,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/core/branch/models.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP007",  # Use X | Y for type annotations
-    "UP045",  # Use X | Y for type annotations
-]
-
 "backend/infrahub/core/preferences/models.py" = [
     ##################################################################################################
     # StandardNode persisted nullable fields must use `Optional[X]` (see StandardNode.guess_field_type)
