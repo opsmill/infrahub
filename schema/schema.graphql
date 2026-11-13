@@ -1030,6 +1030,10 @@ type CoreArtifact implements CoreNode & CoreTaskTarget {
   content_type: TextAttribute
   definition: NestedEdgedCoreArtifactDefinition!
   display_label: String
+  """
+  Whether the stored file of the artifact is encrypted, and whether it can be read with the current key
+  """
+  encryption: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -1233,7 +1237,7 @@ Defines how artifacts are generated from a transformation for a group of targets
 type CoreArtifactDefinition implements CoreNode & CoreTaskTarget {
   """Name template for generated artifacts (required)"""
   artifact_name: TextAttribute
-  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
+  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], encryption__is_protected: Boolean, encryption__owner__id: ID, encryption__source__id: ID, encryption__value: String, encryption__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
   """MIME type of the generated artifacts (required)"""
   content_type: TextAttribute
   """None"""
@@ -1358,7 +1362,7 @@ type CoreArtifactDelete {
 
 """Extend a node to be associated with artifacts"""
 interface CoreArtifactTarget {
-  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
+  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], encryption__is_protected: Boolean, encryption__owner__id: ID, encryption__source__id: ID, encryption__value: String, encryption__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -14840,6 +14844,12 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    encryption__is_protected: Boolean
+    encryption__isnull: Boolean
+    encryption__owner__id: ID
+    encryption__source__id: ID
+    encryption__value: String
+    encryption__values: [String]
     ids: [ID]
     limit: Int
     member_of_groups__description__value: String
@@ -15112,6 +15122,11 @@ type Query {
     artifacts__display_label__isnull: Boolean
     artifacts__display_label__value: String
     artifacts__display_label__values: [String]
+    artifacts__encryption__is_protected: Boolean
+    artifacts__encryption__owner__id: ID
+    artifacts__encryption__source__id: ID
+    artifacts__encryption__value: String
+    artifacts__encryption__values: [String]
     artifacts__ids: [ID]
     artifacts__isnull: Boolean
     artifacts__name__is_protected: Boolean
@@ -15334,6 +15349,11 @@ type Query {
     artifacts__display_label__isnull: Boolean
     artifacts__display_label__value: String
     artifacts__display_label__values: [String]
+    artifacts__encryption__is_protected: Boolean
+    artifacts__encryption__owner__id: ID
+    artifacts__encryption__source__id: ID
+    artifacts__encryption__value: String
+    artifacts__encryption__values: [String]
     artifacts__ids: [ID]
     artifacts__isnull: Boolean
     artifacts__name__is_protected: Boolean

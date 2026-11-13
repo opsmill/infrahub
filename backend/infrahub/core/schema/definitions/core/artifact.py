@@ -1,4 +1,5 @@
 from infrahub.core.constants import (
+    ArtifactEncryption,
     ArtifactStatus,
     BranchSupportType,
     ContentType,
@@ -69,6 +70,17 @@ core_artifact = NodeSchema(
             kind="Text",
             optional=True,
             description="ID of the file in the object store",
+        ),
+        Attr(
+            name="encryption",
+            kind="Text",
+            description=(
+                "Whether the stored file of the artifact is encrypted, and whether it can be read with the current key"
+            ),
+            enum=ArtifactEncryption.available_types(),
+            default_value=ArtifactEncryption.PLAINTEXT.value,
+            read_only=True,
+            optional=True,
         ),
         Attr(
             name="parameters",

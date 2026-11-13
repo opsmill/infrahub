@@ -177,6 +177,12 @@ class ArtifactStatus(InfrahubStringEnum):
     READY = "Ready"
 
 
+class ArtifactEncryption(InfrahubStringEnum):
+    PLAINTEXT = "plaintext"
+    ENCRYPTED = "encrypted"
+    UNREADABLE = "unreadable"
+
+
 class BranchSupportType(InfrahubStringEnum):
     AWARE = "aware"
     AGNOSTIC = "agnostic"

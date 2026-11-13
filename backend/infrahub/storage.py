@@ -13,12 +13,16 @@ from typing_extensions import Self
 from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError, StorageIntegrityError
 from infrahub.log import get_logger
 from infrahub.storage_encryption.crypto import has_envelope_magic, is_envelope, open_envelope, seal
+from infrahub.storage_encryption.status import HEADER_PEEK_LENGTH, check_header
 
 if TYPE_CHECKING:
     from infrahub.config import StorageSettings
     from infrahub.storage_encryption.crypto import StorageKey
+    from infrahub.storage_encryption.status import EncryptionCheck
 
 log = get_logger()
+
+S3_MISSING_OBJECT_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
 
 
 @dataclass(frozen=True)
@@ -78,6 +82,20 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         f.seek(0)
         return f  # type: ignore
 
+    def read_head(self, name: str, length: int) -> bytes:
+        """Read the first `length` bytes of an object without downloading the rest.
+
+        Raises:
+            botocore.exceptions.ClientError: If the object cannot be read, for example because it does not exist.
+
+        """
+        try:
+            return self._bucket.Object(name).get(Range=f"bytes=0-{length - 1}")["Body"].read()
+        except botocore.exceptions.ClientError as err:
+            if err.response.get("Error", {}).get("Code") == "InvalidRange":
+                return b""
+            raise
+
     def delete(self, name: str) -> None:
         self._bucket.Object(name).delete()
 
@@ -134,6 +152,33 @@ class InfrahubObjectStorage:
         key = self._active_key()
         content.seek(0)
         self._storage.write(io.BytesIO(seal(identifier=identifier, content=content.read(), key=key)), identifier)
+
+    def read_header(self, identifier: str) -> bytes | None:
+        """Return the first bytes of a stored object, or None when no object is stored under `identifier`.
+
+        Raises:
+            botocore.exceptions.ClientError: If the storage fails for a reason other than a missing object.
+
+        """
+        try:
+            if isinstance(self._storage, InfrahubS3ObjectStorage):
+                return self._storage.read_head(identifier, HEADER_PEEK_LENGTH)
+            with self._storage.open(identifier) as f:
+                return f.read(HEADER_PEEK_LENGTH)
+        except FileNotFoundError:
+            return None
+        except botocore.exceptions.ClientError as err:
+            if err.response.get("Error", {}).get("Code") in S3_MISSING_OBJECT_CODES:
+                return None
+            raise
+
+    def inspect_encryption(self, identifier: str) -> EncryptionCheck:
+        """Tell from its header whether a stored object is encrypted and readable with the current key."""
+        return check_header(
+            header=self.read_header(identifier=identifier),
+            key=self._key,
+            encryption_enabled=self._settings.encryption_enabled,
+        )
 
     def retrieve(self, identifier: str) -> str:
         return self.retrieve_binary(identifier=identifier).decode()

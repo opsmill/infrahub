@@ -4,12 +4,15 @@ import io
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import botocore.exceptions
 import pytest
 
 from infrahub.config import FileSystemStorageSettings, StorageSettings
+from infrahub.core.constants import ArtifactEncryption
 from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError, StorageIntegrityError
-from infrahub.storage import InfrahubObjectStorage, StoredContent
+from infrahub.storage import InfrahubObjectStorage, InfrahubS3ObjectStorage, StoredContent
 from infrahub.storage_encryption.crypto import StorageKey, seal
+from infrahub.storage_encryption.status import HEADER_PEEK_LENGTH, EncryptionCheck, UnreadableReason
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -186,3 +189,85 @@ def test_encrypted_storage_without_a_key_refuses_to_write_or_open_an_envelope(tm
     with pytest.raises(StorageEncryptionError, match=message):
         storage.read(identifier=IDENTIFIER)
     assert sorted(entry.name for entry in tmp_path.iterdir()) == [IDENTIFIER]
+
+
+def test_header_of_a_stored_object_is_its_first_bytes(tmp_path: Path) -> None:
+    storage = build_storage(tmp_path, encryption_enabled=True, key=KEY)
+    storage.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
+
+    header = storage.read_header(identifier=IDENTIFIER)
+
+    assert header == (tmp_path / IDENTIFIER).read_bytes()[:HEADER_PEEK_LENGTH]
+
+
+def test_header_of_a_missing_object_is_none(tmp_path: Path) -> None:
+    assert build_storage(tmp_path, encryption_enabled=True, key=KEY).read_header(identifier=IDENTIFIER) is None
+
+
+def test_inspection_follows_the_key_of_the_storage(tmp_path: Path) -> None:
+    sealed_with_key = build_storage(tmp_path, encryption_enabled=True, key=KEY)
+    sealed_with_key.store(identifier=IDENTIFIER, content=io.BytesIO(CONTENT))
+
+    with_key = sealed_with_key.inspect_encryption(identifier=IDENTIFIER)
+    other_key = build_storage(tmp_path, encryption_enabled=True, key=OTHER_KEY).inspect_encryption(
+        identifier=IDENTIFIER
+    )
+
+    assert (with_key, other_key) == (
+        EncryptionCheck(encryption=ArtifactEncryption.ENCRYPTED, reason=None),
+        EncryptionCheck(encryption=ArtifactEncryption.UNREADABLE, reason=UnreadableReason.UNKNOWN_KEY),
+    )
+
+
+def client_error(code: str) -> botocore.exceptions.ClientError:
+    return botocore.exceptions.ClientError(error_response={"Error": {"Code": code}}, operation_name="GetObject")
+
+
+class FailingObject:
+    def __init__(self, error: botocore.exceptions.ClientError) -> None:
+        self.error = error
+
+    def get(self, Range: str) -> dict:  # noqa: N803
+        raise self.error
+
+
+class FailingBucket:
+    def __init__(self, error: botocore.exceptions.ClientError) -> None:
+        self.error = error
+
+    def Object(self, name: str) -> FailingObject:  # noqa: N802
+        return FailingObject(self.error)
+
+
+class FailingS3Storage(InfrahubS3ObjectStorage):
+    """An S3 object storage whose reads fail with a given client error."""
+
+    def __init__(self, error: botocore.exceptions.ClientError) -> None:
+        self._bucket = FailingBucket(error)  # type: ignore[assignment]
+
+
+def build_s3_storage_failing_with(path: Path, code: str) -> InfrahubObjectStorage:
+    storage = build_storage(path, encryption_enabled=True, key=KEY)
+    storage._storage = FailingS3Storage(error=client_error(code))
+    return storage
+
+
+@pytest.mark.parametrize("code", ["NoSuchKey", "404", "NotFound"])
+def test_header_of_an_s3_object_that_does_not_exist_is_none(tmp_path: Path, code: str) -> None:
+    storage = build_s3_storage_failing_with(tmp_path, code)
+
+    assert storage.read_header(identifier=IDENTIFIER) is None
+
+
+@pytest.mark.parametrize("code", ["AccessDenied", "NoSuchBucket", "SlowDown"])
+def test_header_of_an_s3_object_is_not_read_when_the_storage_fails(tmp_path: Path, code: str) -> None:
+    storage = build_s3_storage_failing_with(tmp_path, code)
+
+    with pytest.raises(botocore.exceptions.ClientError, match=rf"\({code}\) when calling the GetObject"):
+        storage.read_header(identifier=IDENTIFIER)
+
+
+def test_header_of_an_empty_s3_object_is_empty(tmp_path: Path) -> None:
+    storage = build_s3_storage_failing_with(tmp_path, "InvalidRange")
+
+    assert storage.read_header(identifier=IDENTIFIER) == b""

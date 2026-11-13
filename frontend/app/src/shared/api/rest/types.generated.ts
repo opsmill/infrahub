@@ -21,6 +21,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/artifact/{artifact_id}/encryption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Artifact Encryption
+         * @description Check from its header whether the stored file of an artifact is encrypted and readable with the current key.
+         *
+         *     The check does not decrypt the file, so a file modified after it was stored still reports as encrypted until it
+         *     is read. When the result differs from the encryption value stored on the artifact, the value is updated if the
+         *     caller may update artifacts and the branch accepts writes; otherwise the result is returned as it is.
+         *
+         *     Raises:
+         *         NodeNotFoundError: If the artifact does not exist on the branch.
+         */
+        post: operations["check_artifact_encryption_api_artifact__artifact_id__encryption_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/artifact/generate/{artifact_definition_id}": {
         parameters: {
             query?: never;
@@ -656,6 +683,23 @@ export interface components {
             address?: string | null;
             /** Api Key */
             api_key?: string | null;
+        };
+        /**
+         * ArtifactEncryption
+         * @enum {string}
+         */
+        ArtifactEncryption: "plaintext" | "encrypted" | "unreadable";
+        /** ArtifactEncryptionCheckResponse */
+        ArtifactEncryptionCheckResponse: {
+            /** @description Encryption of the stored file of the artifact, as found by this check */
+            encryption: components["schemas"]["ArtifactEncryption"];
+            /** @description Why the file cannot be read with the current key, when it cannot */
+            reason?: components["schemas"]["UnreadableReason"] | null;
+            /**
+             * Updated
+             * @description Whether this check changed the encryption value stored on the artifact
+             */
+            updated: boolean;
         };
         /** ArtifactGeneratePayload */
         ArtifactGeneratePayload: {
@@ -1391,6 +1435,12 @@ export interface components {
             deployment_id: string;
             /** Version */
             version: string;
+            /**
+             * Storage Encryption Enabled
+             * @description Whether new artifacts and files are stored encrypted
+             * @default false
+             */
+            storage_encryption_enabled: boolean;
         };
         /** JSONSchema */
         JSONSchema: {
@@ -3829,6 +3879,11 @@ export interface components {
              */
             duration_seconds: number;
         };
+        /**
+         * UnreadableReason
+         * @enum {string}
+         */
+        UnreadableReason: "no_key" | "unknown_key" | "unsupported_format" | "truncated" | "missing";
         /** UploadContentPayload */
         UploadContentPayload: {
             /** Content */
@@ -3917,6 +3972,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_artifact_encryption_api_artifact__artifact_id__encryption_post: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactEncryptionCheckResponse"];
                 };
             };
             /** @description Validation Error */

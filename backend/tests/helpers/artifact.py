@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import ContentType, InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreArtifact
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -50,3 +52,10 @@ async def create_stored_artifact(
     )
     await artifact.save(db=db)
     return artifact
+
+
+async def stored_artifact_encryption(db: InfrahubDatabase, artifact_id: str) -> str:
+    """Return the encryption value stored on an artifact."""
+    artifact = await NodeManager.get_one(db=db, id=artifact_id, kind=CoreArtifact)
+    assert artifact is not None
+    return str(artifact.encryption.value.value)
