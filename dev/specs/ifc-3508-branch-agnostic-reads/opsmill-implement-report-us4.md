@@ -5,9 +5,9 @@
 | Feature | Branch-agnostic reads, User Story 4 (PR 4), [IFC-3512](https://opsmill.atlassian.net/browse/IFC-3512), epic [IFC-3508](https://opsmill.atlassian.net/browse/IFC-3508) |
 | Spec directory | `dev/specs/ifc-3508-branch-agnostic-reads/` |
 | Scope of this run | Phase 6 of [tasks.md](tasks.md): T051 to T059 |
-| Code branch | `agnostic-delete-check-ifc-3508`, in the worktree `.claude/worktrees/agnostic-delete-check-ifc-3508`. Pushed to `origin` at `ec178f999`; `ff2f87474` is not pushed |
+| Code branch | `agnostic-delete-check-ifc-3508`, in the worktree `.claude/worktrees/agnostic-delete-check-ifc-3508`. Pushed to `origin` at `ec178f999`; the commits after it are not pushed |
 | Base commit of the code branch | `11928e7c4` on `origin/stable`, the merge of PR 3 ([#11433](https://github.com/opsmill/infrahub/pull/11433)). The branch was first built on PR 3's tip `956c9aa27`; see "Changes after the report" |
-| Head commit of the code branch | `ff2f87474` |
+| Head commit of the code branch | `6ffbef9ff` |
 | Base commit of `branch-agnostic-reads` | `4e344f789` |
 | Wall-clock time | 2026-11-12T05:45Z to about 06:55Z |
 | Status | DONE for T051 to T058. T059 is partly done: the pre-push checks pass for this PR's code, and the PR is not opened. Nothing is pushed. |
@@ -72,6 +72,8 @@ The orchestrator created the worktree (T051) before the first chunk. After each 
   - FR-018 (T069): a read of a branch-aware relationship whose peer kind is branch-agnostic returns the peer only if it exists in the read's view.
 - After a second review (`/code-review high`), at the user's request, the delete check was replaced by two queries (commits `dd5ab349b`, `d6e753fe6`, `2fe20baea`, `e3dd82f68` and `ec178f999`, by a subagent). The window path took 389 s for a cascade of 10,101 nodes, did not check a branch-agnostic node reached by a cascade from a branch-aware node, and used the request branch's schema for every branch. The design was chosen from measurements of four approaches, recorded in [delete-check-measurements.md](delete-check-measurements.md). FR-014, FR-017, scenarios 5 to 7 of User Story 4, the assumption on branch schemas, the contract, the data model, research R5, T053 and T054 were updated to match.
 - After the user's review of `ec178f999`, commit `ff2f87474` adds the relationship direction to the links both queries match. A kind can declare an inbound and an outbound relationship with the same identifier and peer kind, and the queries matched the links of both. A cascade then also deleted the peers of the relationship that does not cascade, and a delete was refused when the peer held the node only through the optional relationship. `stable` matches these links without direction too. The core schema has no kind affected: every pair sharing an identifier there is a hierarchy `parent`/`children` pair, and both are optional and do not cascade. The same commit computes another branch's required links with the index instead of a module function that repeated its logic. Three component tests were added for this commit and have not been run.
+- Commit `b6a8337ee` writes the Cypher fragments of both delete queries with %-interpolation instead of f-strings that escape braces, and writes the constant edge fields and direction names into the query text.
+- Commit `6ffbef9ff` makes the delete tests share their setup: `tests/helpers/node.py` creates nodes and chains, and the branch-agnostic tests take the team and the switch chain from fixtures. `test_delete_refused_when_a_branch_inherits_the_required_link_from_before_it_was_created` is folded into `test_delete_refused_names_every_branch_that_inherits_a_required_link_in_one_error`, which replaces `test_delete_refused_names_every_blocking_branch_in_one_error`. Both changelog fragments are shortened to one sentence. The evidence rows below for those two tests are for the earlier code. The changed tests have not been run.
 
 ## Behavior on the head commit
 
@@ -166,7 +168,7 @@ The review ran the six aspects of `speckit-review-run` (code, tests, errors, com
 
 ## Suggested next steps
 
-1. Run the tests for `ff2f87474`: the unit tests in `tests/unit/core/node/test_delete_validator.py` and the component tests in `tests/component/core/test_node_manager_delete.py` and `tests/component/core/test_node_manager_delete_agnostic.py`.
+1. Run the tests changed by `ff2f87474` and `6ffbef9ff`: the unit tests in `tests/unit/core/node/test_delete_validator.py` and the component tests in `tests/component/core/test_node_manager_delete.py` and `tests/component/core/test_node_manager_delete_agnostic.py`.
 2. Review the redesign, in particular the error that now names the request branch when a branch-aware delete reaches a branch-agnostic node.
 3. Run `/pre-ci` in the code worktree.
-4. Push `ff2f87474` and open the PR as a draft against `stable`, with the tables of [delete-check-measurements.md](delete-check-measurements.md) in the description.
+4. Push the commits after `ec178f999` and open the PR as a draft against `stable`, with the tables of [delete-check-measurements.md](delete-check-measurements.md) in the description.
