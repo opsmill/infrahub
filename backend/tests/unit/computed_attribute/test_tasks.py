@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator, Generator
 
 import pytest
+from infrahub_sdk.batch import InfrahubBatch
 
 from infrahub.computed_attribute import tasks
 from infrahub.computed_attribute.graphql_queries.queries import ComputedAttributeNodeIDQuery
@@ -15,7 +16,7 @@ from infrahub.computed_attribute.tasks import (
     trigger_update_python_computed_attributes,
 )
 from infrahub.core.constants import ComputedAttributeKind
-from infrahub.core.recompute.bulk_write import AttributeValueWrite
+from infrahub.core.recompute.bulk_write import AttributeValueWrite, WrittenNode
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -469,3 +470,102 @@ async def test_a_batch_raises_for_a_transform_it_cannot_run(
     """A broken record must never be read as an absent one, on any path."""
     with pytest.raises(ValueError, match=UNUSABLE_TRANSFORM_ERROR):
         await _batch(coalesced=True, widened=widened)
+
+
+class _BatchingClient(_RecordingClient):
+    """A client stand-in that also runs a batch, so a test can drive a batch to its completion line."""
+
+    async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
+        return InfrahubBatch(return_exceptions=return_exceptions)
+
+
+class _RecordingDispatcher:
+    """Records the values it is handed and reports a chosen subset of their nodes as written."""
+
+    def __init__(self, written_ids: set[str]) -> None:
+        self._written_ids = written_ids
+        self.dispatched: list[AttributeValueWrite] = []
+
+    async def dispatch(
+        self, *, writes: list[AttributeValueWrite], branch_name: str, context: EventContext, recompute_depth: int
+    ) -> list[WrittenNode]:
+        self.dispatched.extend(writes)
+        return [
+            WrittenNode(node_id=write.node_id, kind=CAR_KIND, fields=(write.field,))
+            for write in writes
+            if write.node_id in self._written_ids
+        ]
+
+
+@dataclass
+class _TagRecorder:
+    calls: list[dict[str, object]]
+
+    async def __call__(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
+
+
+@pytest.fixture
+def recorded_tags(monkeypatch: pytest.MonkeyPatch) -> _TagRecorder:
+    recorder = _TagRecorder(calls=[])
+    monkeypatch.setattr(tasks, "add_tags", recorder)
+    return recorder
+
+
+async def test_a_batch_reports_written_unchanged_and_skipped_values_separately(
+    schema_branch_with_python_attributes: None,
+    recorded_tags: _TagRecorder,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A value already stored is handed to the writer but not saved, so it must not count as written."""
+    computed = {"c1": "new value", "c2": "value already stored"}
+
+    async def _transform(*, object_id: str, attribute_name: str, **_kwargs: object) -> AttributeValueWrite:
+        if object_id not in computed:
+            raise RuntimeError("transform failed")
+        return AttributeValueWrite(node_id=object_id, field=attribute_name, value=computed[object_id])
+
+    async def _repository(**_kwargs: object) -> None:
+        return None
+
+    dispatcher = _RecordingDispatcher(written_ids={"c1"})
+
+    async def _build_dispatcher(**_kwargs: object) -> _RecordingDispatcher:
+        return dispatcher
+
+    monkeypatch.setattr(tasks, "get_client", lambda: _BatchingClient(USABLE_TRANSFORM))
+    monkeypatch.setattr(tasks, "get_initialized_repo", _repository)
+    monkeypatch.setattr(tasks, "_transform_value_for_node", _transform)
+    monkeypatch.setattr(tasks, "build_bulk_recompute_dispatcher", _build_dispatcher)
+
+    with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        await process_transform.fn(
+            branch_name=BRANCH,
+            node_kind=CAR_KIND,
+            computed_attribute_name=ATTRIBUTE_NAME,
+            computed_attribute_kind=CAR_KIND,
+            context=_context(),
+            object_ids=["c1", "c2", "c3"],
+        )
+
+    assert sorted(write.node_id for write in dispatcher.dispatched) == ["c1", "c2"]
+    assert len(recorded_tags.calls) == 1
+    infos = [
+        record.message for record in caplog.records if record.levelno == logging.INFO and record.name == LOGGER_NAME
+    ]
+    assert infos == [
+        f"Recompute of '{ATTRIBUTE_NAME}' complete: submitted=3 written=1 unchanged=1 skipped=1",
+    ]
+
+
+async def test_an_empty_batch_returns_without_tagging_the_run(recorded_tags: _TagRecorder) -> None:
+    await process_transform.fn(
+        branch_name=BRANCH,
+        node_kind=CAR_KIND,
+        computed_attribute_name=ATTRIBUTE_NAME,
+        computed_attribute_kind=CAR_KIND,
+        context=_context(),
+    )
+
+    assert recorded_tags.calls == []

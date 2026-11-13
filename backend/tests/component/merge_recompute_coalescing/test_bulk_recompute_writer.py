@@ -335,18 +335,23 @@ async def test_dispatch_returns_without_writing_when_branch_is_gone(
         db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
     )
 
+    returned: list[WrittenNode] = []
+
     @flow(name="test-dispatch-branch-gone")
     async def _run() -> None:
-        await dispatcher.dispatch(
-            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="ignored")],
-            branch_name="branch-that-was-deleted",
-            context=_event_context(),
-            recompute_depth=0,
+        returned.extend(
+            await dispatcher.dispatch(
+                writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="ignored")],
+                branch_name="branch-that-was-deleted",
+                context=_event_context(),
+                recompute_depth=0,
+            )
         )
 
     await _run()
 
     # The grace path is reached after tagging but before any write, so nothing is persisted.
+    assert returned == []
     assert event_recorder.events == []
     assert workflow_recorder.submit_calls == []
 
@@ -380,16 +385,27 @@ async def test_dispatch_live_path_stamps_live_and_does_not_chain(
         coalesced=False,
     )
 
+    returned: list[WrittenNode] = []
+
     @flow(name="test-dispatch-live")
     async def _run() -> None:
-        await dispatcher.dispatch(
-            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="live label")],
-            branch_name=default_branch.name,
-            context=_event_context(),
-            recompute_depth=0,
+        writes = [AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_ATTRIBUTE_NAME, value="live label")]
+        returned.extend(
+            await dispatcher.dispatch(
+                writes=writes, branch_name=default_branch.name, context=_event_context(), recompute_depth=0
+            )
+        )
+        # The same value again is a no-op save, so the dispatcher reports nothing written.
+        returned.extend(
+            await dispatcher.dispatch(
+                writes=writes, branch_name=default_branch.name, context=_event_context(), recompute_depth=0
+            )
         )
 
     await _run()
+
+    # The dispatcher hands back what the writer saved: the first pass only.
+    assert [(item.node_id, item.kind) for item in returned] == [(node.id, PROFILE_NODE_KIND)]
 
     # The value is persisted.
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
