@@ -1,5 +1,8 @@
 from enum import StrEnum
 
+MIN_SUPPORTED_INTEGER = -9223372036854775807
+MAX_SUPPORTED_INTEGER = 9223372036854775807
+
 
 class DatabaseType(StrEnum):
     NEO4J = "neo4j"

@@ -24,7 +24,12 @@ from infrahub.events.account_action import AccountLoggedInEvent
 from infrahub.license.models import License, LicenseState, LicenseStatus
 from infrahub.license.service import LicenseService
 from infrahub.telemetry.constants import TELEMETRY_KIND, TELEMETRY_VERSION, RemoteSendStatus
-from infrahub.telemetry.models import TelemetryAccountData, TelemetryActivity24hData, TelemetryData
+from infrahub.telemetry.models import (
+    TelemetryAccountData,
+    TelemetryActivity24hData,
+    TelemetryData,
+    TelemetryTaskManagerDatabaseData,
+)
 from infrahub.telemetry.repository import TelemetrySnapshotRepository
 from infrahub.telemetry.snapshot import TelemetrySnapshot
 from infrahub.telemetry.task_manager import (
@@ -37,6 +42,7 @@ from infrahub.telemetry.tasks import (
     DefaultAccountGatherer,
     DefaultActiveBranchCounter,
     DefaultActivityGatherer,
+    DefaultTaskManagerDatabaseGatherer,
     GathererInterface,
     build_anonymous_telemetry_gatherer,
     count_active_branches,
@@ -173,6 +179,7 @@ async def _build_gatherer(
     account_gatherer: GathererInterface[TelemetryAccountData] | None = None,
     activity_gatherer: GathererInterface[TelemetryActivity24hData] | None = None,
     active_branch_counter: GathererInterface[int] | None = None,
+    task_manager_database_gatherer: GathererInterface[TelemetryTaskManagerDatabaseData] | None = None,
     license_service: LicenseService | None = None,
 ) -> AnonymousTelemetryGatherer:
     """Build the gatherer with real collaborators, overriding any one with an injected double."""
@@ -184,6 +191,7 @@ async def _build_gatherer(
         account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
         activity_gatherer=activity_gatherer or DefaultActivityGatherer(),
         active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
+        task_manager_database_gatherer=task_manager_database_gatherer or DefaultTaskManagerDatabaseGatherer(),
         license_service=license_service or get_license_service(),
     )
 
@@ -199,6 +207,8 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
     assert data.accounts.groups is not None
 
     assert data.branches.active is not None
+
+    assert data.prefect.database is not None
 
     assert "corenode" in data.database.node_count
     assert data.database.node_count["corenode"] is not None
@@ -277,6 +287,11 @@ class BoomActiveBranchCounter:
         raise RuntimeError("branch source unavailable")
 
 
+class BoomTaskManagerDatabaseGatherer:
+    async def gather(self) -> TelemetryTaskManagerDatabaseData:
+        raise RuntimeError("task manager database source unavailable")
+
+
 async def test_gather_one_source_fails_others_populated_and_stored(
     telemetry_environment: InfrahubDatabase,
 ) -> None:
@@ -328,6 +343,18 @@ async def test_gather_branch_source_fails_only_branch_active_null(
     assert data.branches.active is None
     # branches.total is computed directly from the registry and is never nullable.
     assert isinstance(data.branches.total, int)
+    assert data.accounts.active is not None
+
+
+async def test_gather_task_manager_database_source_fails_only_its_field_null(
+    telemetry_environment: InfrahubDatabase,
+) -> None:
+    """A failing task manager database source nulls only prefect.database; the rest of the Prefect block is intact."""
+    gatherer = await _build_gatherer(task_manager_database_gatherer=BoomTaskManagerDatabaseGatherer())
+    data = await gatherer.gather()
+
+    assert data.prefect.database is None
+    assert data.prefect.events
     assert data.accounts.active is not None
 
 

@@ -28,11 +28,13 @@ class UniquenessViolationMessageBuilder:
     def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
 
-    def build(self, node_schema: MainSchemaTypes, fields: list[str]) -> str:
+    def build(self, node_schema: MainSchemaTypes, fields: list[str], advice: str | None = None) -> str:
         message = f"Violates uniqueness constraint '{'-'.join(fields)}'"
         inputs = self._collect_computed_inputs(node_schema=node_schema, fields=fields)
         if inputs:
             message += f" (computed from: {', '.join(inputs)})"
+        if advice is not None:
+            message += advice
         return message
 
     def _collect_computed_inputs(self, node_schema: MainSchemaTypes, fields: list[str]) -> list[str]:

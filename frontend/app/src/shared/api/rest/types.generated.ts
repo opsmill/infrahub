@@ -583,6 +583,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/troubleshooting/trace-sample-ratio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the trace sampling ratio
+         * @description Return the share of new traces that the API server process handling the request records: the default ratio set by INFRAHUB_TRACE_SAMPLE_RATIO, and the temporary ratio with its end time when one is in force. Use it during an incident to check the ratio before and after a change. Requires the super_admin permission.
+         */
+        get: operations["get_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_get"];
+        /**
+         * Set a temporary trace sampling ratio
+         * @description Record a different share of new traces on every API server process and task worker until the duration ends, without a restart, because a restart can remove the slow behaviour under investigation. A new change replaces the active one. Each process applies the change within seconds and logs "Set the temporary trace sampling ratio". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.
+         */
+        put: operations["set_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_put"];
+        post?: never;
+        /**
+         * Clear the temporary trace sampling ratio
+         * @description Go back to the default trace sampling ratio on every API server process and task worker. Each process applies the change within seconds and logs "Cleared the temporary trace sampling ratio". Requires the super_admin permission and INFRAHUB_TRACE_ENABLE.
+         */
+        delete: operations["clear_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/schema.graphql": {
         parameters: {
             query?: never;
@@ -841,6 +869,11 @@ export interface components {
              * @description Human friendly representation of the choice.
              */
             label?: string | null;
+            /**
+             * @description Expected state of the choice after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
         };
         /** EnterpriseRequiredResponse */
         EnterpriseRequiredResponse: {
@@ -861,12 +894,6 @@ export interface components {
              * @default false
              */
             graphql_enums: boolean;
-            /**
-             * Dark Theme
-             * @description Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.
-             * @default false
-             */
-            dark_theme: boolean;
             /**
              * Value Db Index
              * @deprecated
@@ -2759,41 +2786,88 @@ export interface components {
         NumberPoolParametersRead: {
             /**
              * End Range
-             * @description End range for numbers for the associated NumberPool
-             * @default 9223372036854776000
+             * @description Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set
              */
-            end_range: number;
+            end_range?: number | null;
             /**
              * Start Range
-             * @description Start range for numbers for the associated NumberPool
-             * @default 1
+             * @description Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set
              */
-            start_range: number;
+            start_range?: number | null;
+            /**
+             * Ranges
+             * @description Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range
+             */
+            ranges?: components["schemas"]["NumberPoolRangeRead"][] | null;
             /**
              * Number Pool Id
              * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
              */
             number_pool_id?: string | null;
+            /**
+             * Allocation Scope
+             * @description Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+             */
+            allocation_scope?: string[] | null;
         };
         /** NumberPoolParametersWrite */
         NumberPoolParametersWrite: {
             /**
              * End Range
-             * @description End range for numbers for the associated NumberPool
-             * @default 9223372036854776000
+             * @description Deprecated, use ranges instead. End of the single range, defaults to the largest supported number when only start_range is set
              */
-            end_range: number;
+            end_range?: number | null;
             /**
              * Start Range
-             * @description Start range for numbers for the associated NumberPool
-             * @default 1
+             * @description Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set
              */
-            start_range: number;
+            start_range?: number | null;
             /**
-             * Number Pool Id
-             * @description The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.
+             * Ranges
+             * @description Ranges the NumberPool allocates from, without overlap. Unset means one range with no start or end; an empty list means no range
              */
-            number_pool_id?: string | null;
+            ranges?: components["schemas"]["NumberPoolRangeWrite"][] | null;
+            /**
+             * Allocation Scope
+             * @description Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+             */
+            allocation_scope?: string[] | null;
+        };
+        /** NumberPoolRangeRead */
+        NumberPoolRangeRead: {
+            /**
+             * Start
+             * @description First number of the range, 1 when unset
+             */
+            start?: number | null;
+            /**
+             * End
+             * @description Last number of the range, the largest supported number when unset
+             */
+            end?: number | null;
+            /**
+             * Weight
+             * @description Ranges with a higher weight are allocated from first
+             */
+            weight?: number | null;
+        };
+        /** NumberPoolRangeWrite */
+        NumberPoolRangeWrite: {
+            /**
+             * Start
+             * @description First number of the range, 1 when unset
+             */
+            start?: number | null;
+            /**
+             * End
+             * @description Last number of the range, the largest supported number when unset
+             */
+            end?: number | null;
+            /**
+             * Weight
+             * @description Ranges with a higher weight are allocated from first
+             */
+            weight?: number | null;
         };
         /** PasswordCredential */
         PasswordCredential: {
@@ -3794,6 +3868,47 @@ export interface components {
             display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersWrite"] | null;
+        };
+        /** TraceSampleRatioAPI */
+        TraceSampleRatioAPI: {
+            /**
+             * Enabled
+             * @description Indicates if tracing is enabled on this instance
+             */
+            enabled: boolean;
+            /**
+             * Default Ratio
+             * @description Ratio set by INFRAHUB_TRACE_SAMPLE_RATIO
+             */
+            default_ratio?: number | null;
+            /**
+             * Temporary Ratio
+             * @description Ratio that replaces the default until expires_at
+             */
+            temporary_ratio?: number | null;
+            /**
+             * Expires At
+             * @description UTC time when the temporary ratio stops applying
+             */
+            expires_at?: string | null;
+            /**
+             * Ratio In Force
+             * @description Share of new root traces recorded now
+             */
+            ratio_in_force?: number | null;
+        };
+        /** TraceSampleRatioUpdateAPI */
+        TraceSampleRatioUpdateAPI: {
+            /**
+             * Ratio
+             * @description Share of new root traces to record
+             */
+            ratio: number;
+            /**
+             * Duration Seconds
+             * @description Number of seconds the ratio applies
+             */
+            duration_seconds: number;
         };
         /** UploadContentPayload */
         UploadContentPayload: {
@@ -5009,6 +5124,112 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_get: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_put: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraceSampleRatioUpdateAPI"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_trace_sample_ratio_api_troubleshooting_trace_sample_ratio_delete: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceSampleRatioAPI"];
                 };
             };
             /** @description Validation Error */

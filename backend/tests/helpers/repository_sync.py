@@ -6,7 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.uuidt import UUIDT
-from prefect.client.schemas.objects import State
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName, FlowRunFilter, FlowRunFilterParentFlowRunId
+from prefect.client.schemas.objects import State, StateType
 from prefect.flow_engine import run_flow_async
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
@@ -15,6 +16,7 @@ from infrahub.core.registry import registry
 from infrahub.git.models import GitRepositoryAdd
 from infrahub.git.tasks import add_git_repository, sync_git_repo_with_origin_and_tag_on_failure
 from infrahub.workflows.constants import WorkflowTag
+from tests.helpers.repository_activity import activity_run
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -25,9 +27,27 @@ if TYPE_CHECKING:
     from prefect.client.orchestration import PrefectClient
 
     from infrahub.database import InfrahubDatabase
+    from infrahub.services.adapters.cache import InfrahubCache
 
 FLOW_RUN_LOGGER = "prefect.flow_runs"
 SKIPPED_BRANCH_WARNING_PREFIX = "Skipped remote branch"
+INVALID_YAML_CONFIG = "schemas: [unclosed\n"
+BRANCH_IMPORT_FLOW_NAME = "import-branch-objects"
+
+
+def invalid_yaml_config_message(repository_name: str) -> str:
+    """Return the import failure for a `.infrahub.yml` holding `INVALID_YAML_CONFIG`."""
+    return (
+        f"Repository '{repository_name}' has an invalid configuration file '.infrahub.yml'. "
+        "The file could not be parsed as valid YAML: while parsing a flow sequence\n"
+        '  in "<unicode string>", line 1, column 10:\n'
+        "    schemas: [unclosed\n"
+        "             ^\n"
+        "expected ',' or ']', but got '<stream end>'\n"
+        '  in "<unicode string>", line 2, column 1:\n'
+        "    \n"
+        "    ^"
+    )
 
 
 def skipped_branch_warning(*, branch_name: str, repository_name: str, default_branch: str) -> str:
@@ -71,18 +91,22 @@ async def run_sync_flow(
     name: str,
     location: str,
     operational_status: str = RepositoryOperationalStatus.ONLINE.value,
+    activity_cache: InfrahubCache | None = None,
 ) -> State:
-    return await run_flow_for_state(
-        sync_git_repo_with_origin_and_tag_on_failure,
-        parameters={
-            "client": client,
-            "repository_id": repository_id,
-            "repository_name": name,
-            "repository_location": location,
-            "operational_status": operational_status,
-            "infrahub_branch": registry.default_branch,
-        },
-    )
+    """Run the synchronization flow inside an activity run, which records to `activity_cache` when one is given."""
+    async with activity_run(repository_id=repository_id, cache=activity_cache) as run:
+        return await run_flow_for_state(
+            sync_git_repo_with_origin_and_tag_on_failure,
+            parameters={
+                "client": client,
+                "repository_id": repository_id,
+                "repository_name": name,
+                "repository_location": location,
+                "operational_status": operational_status,
+                "infrahub_branch": registry.default_branch,
+                "activity_run_id": run.run_id,
+            },
+        )
 
 
 async def run_flow_for_state(flow: Flow[..., Any], parameters: dict[str, Any]) -> State:
@@ -135,3 +159,14 @@ async def flow_run_tags(prefect_client: PrefectClient, state: State) -> set[str]
 
 async def is_linked_to_node(prefect_client: PrefectClient, state: State, node_id: str) -> bool:
     return WorkflowTag.RELATED_NODE.render(identifier=node_id) in await flow_run_tags(prefect_client, state)
+
+
+async def branch_import_runs(
+    prefect_client: PrefectClient, state: State
+) -> dict[str, tuple[StateType | None, set[str]]]:
+    """Return the branch import runs the flow run started, by branch, with the final state type and tags of each."""
+    flow_runs = await prefect_client.read_flow_runs(
+        flow_filter=FlowFilter(name=FlowFilterName(any_=[BRANCH_IMPORT_FLOW_NAME])),
+        flow_run_filter=FlowRunFilter(parent_flow_run_id=FlowRunFilterParentFlowRunId(any_=[flow_run_id_of(state)])),
+    )
+    return {flow_run.parameters["branch_name"]: (flow_run.state_type, set(flow_run.tags)) for flow_run in flow_runs}

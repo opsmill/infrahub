@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub_sdk.graphql import Query
 from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
@@ -91,10 +90,10 @@ class PythonTransformComputedAttribute(BaseModel):
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
     branch_name: str
-    branch_commit: dict[str, str] = field(default_factory=dict)
+    branch_commit: dict[str, str | None] = field(default_factory=dict)
 
     @computed_field
-    def repository_commit(self) -> str:
+    def repository_commit(self) -> str | None:
         return self.branch_commit[self.branch_name]
 
     def populate_branch_commit(self, repository_data: RepositoryData | None = None) -> None:

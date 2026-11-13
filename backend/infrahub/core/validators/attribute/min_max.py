@@ -22,7 +22,7 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_number_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         if not isinstance(self.attribute_schema.parameters, NumberAttributeParameters):
@@ -64,7 +64,7 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("value_relationship").get("branch")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
@@ -78,6 +78,8 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 class AttributeNumberChecker(ConstraintCheckerInterface):
     query_classes = [AttributeNumberUpdateValidatorQuery]
+    # Writing a node already checks its value against the limits, so only a change to the limits can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db

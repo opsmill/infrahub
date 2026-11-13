@@ -1,8 +1,11 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.ipam.constants import PrefixMemberType
+from infrahub.core.ipam.size import get_prefix_space
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -205,3 +208,34 @@ async def test_get_children_deduplicates_repeated_prefixes(
 
     assert len(single) > 0
     assert len(duplicated) == len(single)
+
+
+async def test_resource_weight_counts_usable_addresses_of_partially_loaded_pool_prefix(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(registry.node, InfrahubKind.IPPREFIX, BuiltinIPPrefix)
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    pool_prefix = await Node.init(db=db, schema=prefix_schema)
+    await pool_prefix.new(
+        db=db, prefix="192.0.2.0/29", member_type="address", is_pool=True, ip_namespace=ip_dataset_01["ns1"]
+    )
+    await pool_prefix.save(db=db)
+
+    partially_loaded = await NodeManager.get_one(
+        db=db, branch=default_branch, id=pool_prefix.id, fields={"prefix": None}
+    )
+    assert isinstance(partially_loaded, BuiltinIPPrefix)
+    assert partially_loaded.get_attribute(name="is_pool").value is False
+
+    assert await partially_loaded.get_resource_weight(db=db) == 8
+
+
+async def test_prefix_space_counts_every_address_of_an_ipv6_prefix(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    ipv6_prefix = await Node.init(db=db, schema=prefix_schema)
+    await ipv6_prefix.new(db=db, prefix="3fff::/20", member_type="address", ip_namespace=ip_dataset_01["ns1"])
+    await ipv6_prefix.save(db=db)
+
+    assert get_prefix_space(ip_prefix=ipv6_prefix) == 2**108

@@ -12,7 +12,7 @@
 #
 # When `plan_path` is omitted, the script derives it from `.specify/feature.json`
 # (written by /speckit-specify). Falls back to the most recently modified
-# `specs/*/plan.md` only when feature.json is absent or its plan does not exist yet.
+# `specs/**/plan.md` only when feature.json is absent or its plan does not exist yet.
 
 set -euo pipefail
 
@@ -59,7 +59,14 @@ case "$(uname -s 2>/dev/null || true)" in
 esac
 
 # Parse extension config once; emit context files as JSON, followed by marker strings.
-if ! _raw_opts="$("$_python" - "$EXT_CONFIG" "$_case_insensitive_context_files" <<'PY'
+#
+# NOTE (bash 3.2 / macOS portability): the embedded Python heredocs below run
+# inside $(...) command substitution. bash 3.2 (the system /bin/bash on macOS)
+# mis-parses a single-quote/apostrophe in a heredoc body nested in $(...),
+# failing with "unexpected EOF while looking for matching `''". Keep these
+# $(...)-nested heredoc bodies free of apostrophes (use double quotes in Python
+# string literals and avoid contractions in comments).
+if ! _raw_opts="$("$_python" - "$EXT_CONFIG" "$_case_insensitive_context_files" "$PROJECT_ROOT" <<'PY'
 import json
 import sys
 try:
@@ -95,24 +102,67 @@ def get_str(obj, *keys):
 context_files = []
 seen_context_files = set()
 case_insensitive = sys.argv[2] == "1" or sys.platform.startswith(("win32", "cygwin"))
+def add_context_file(value):
+    if not isinstance(value, str):
+        return
+    candidate = value.strip()
+    if not candidate:
+        return
+    key = candidate.casefold() if case_insensitive else candidate
+    if key in seen_context_files:
+        return
+    context_files.append(candidate)
+    seen_context_files.add(key)
 raw_files = data.get("context_files")
 if isinstance(raw_files, list):
     for value in raw_files:
-        if not isinstance(value, str):
-            continue
-        candidate = value.strip()
-        if not candidate:
-            continue
-        key = candidate.casefold() if case_insensitive else candidate
-        if key in seen_context_files:
-            continue
-        context_files.append(candidate)
-        seen_context_files.add(key)
+        add_context_file(value)
 if not context_files:
-    raw_file = get_str(data, "context_file")
-    candidate = raw_file.strip()
-    if candidate:
-        context_files.append(candidate)
+    add_context_file(get_str(data, "context_file"))
+if not context_files:
+    # Self-seed: the agent-context extension manages its own lifecycle, so when
+    # its config declares no target, it derives one from the active integration
+    # recorded in init-options.json, mapped through the bundled
+    # agent-context-defaults.json file. This is independent of the Specify CLI
+    # by design; nothing here imports specify_cli.
+    project_root = sys.argv[3] if len(sys.argv) > 3 else "."
+    integration_key = ""
+    try:
+        with open(
+            f"{project_root}/.specify/init-options.json", "r", encoding="utf-8"
+        ) as fh:
+            opts = json.load(fh)
+        if isinstance(opts, dict):
+            value = opts.get("integration") or opts.get("ai") or ""
+            integration_key = value if isinstance(value, str) else ""
+    except Exception:
+        integration_key = ""
+    if integration_key:
+        defaults_path = (
+            f"{project_root}/.specify/extensions/agent-context/"
+            "agent-context-defaults.json"
+        )
+        mapping = {}
+        try:
+            with open(defaults_path, "r", encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            agents = loaded.get("agents", {}) if isinstance(loaded, dict) else {}
+            mapping = agents if isinstance(agents, dict) else {}
+        except Exception:
+            print(
+                "agent-context: unable to read %s; cannot self-seed the context "
+                "file. Set context_file in the extension config." % defaults_path,
+                file=sys.stderr,
+            )
+            mapping = {}
+        add_context_file(mapping.get(integration_key, "") or "")
+        if not context_files:
+            print(
+                "agent-context: no default context file is known for integration "
+                "%s. Set context_file in the extension config to choose one."
+                % integration_key,
+                file=sys.stderr,
+            )
 print(json.dumps(context_files))
 print(get_str(data, "context_markers", "start"))
 print(get_str(data, "context_markers", "end"))
@@ -126,13 +176,18 @@ _opts_lines=()
 while IFS= read -r _line || [[ -n "$_line" ]]; do
   _opts_lines+=("$_line")
 done < <(printf '%s\n' "$_raw_opts")
-if (( ${#_opts_lines[@]} < 3 )); then
-  echo "agent-context: malformed config parser output; expected 3 lines (context_files, marker_start, marker_end), got ${#_opts_lines[@]}; skipping update." >&2
+if (( ${#_opts_lines[@]} < 1 )); then
+  echo "agent-context: malformed config parser output; expected at least the context_files line, got ${#_opts_lines[@]}; skipping update." >&2
   exit 0
 fi
+# The marker lines may be absent: the $(...) capture above strips trailing
+# newlines, so blank markers (the config omitting context_markers and relying on
+# defaults) collapse the 3-line output to fewer lines. Default them to empty here
+# and let the DEFAULT_START/END substitution below fill them in, matching the
+# Python and PowerShell ports.
 CONTEXT_FILES_JSON="${_opts_lines[0]}"
-MARKER_START="${_opts_lines[1]}"
-MARKER_END="${_opts_lines[2]}"
+MARKER_START="${_opts_lines[1]:-}"
+MARKER_END="${_opts_lines[2]:-}"
 
 if ! _context_files_raw="$("$_python" - "$CONTEXT_FILES_JSON" <<'PY'
 import json
@@ -257,16 +312,28 @@ import sys
 from pathlib import Path
 root = Path(sys.argv[1]).resolve()
 specs = root / "specs"
-plans = sorted(
-    specs.glob("*/plan.md"),
-    key=lambda p: p.stat().st_mtime,
-    reverse=True,
-)
-if plans:
+
+def _resolved_rel(p):
+    # Resolve symlinks before checking containment: relative_to() is lexical
+    # and would otherwise accept a plan reached through a specs/ symlink that
+    # points outside the project, emitting an in-project-looking path for an
+    # out-of-project file (or picking it as "most recent").
     try:
-        print(plans[0].relative_to(root).as_posix())
-    except ValueError:
-        print("")
+        return p.resolve().relative_to(root)
+    except (OSError, ValueError):
+        return None
+
+# Recurse (rather than the old one-level specs/*/plan.md glob) so scoped layouts
+# created via SPECIFY_FEATURE_DIRECTORY, e.g. specs/<scope>/<feature>/plan.md,
+# are still discovered when feature.json is absent (#3024).
+candidates = []
+for p in specs.rglob("plan.md"):
+    rel = _resolved_rel(p)
+    if rel:
+        candidates.append((p, rel))
+candidates.sort(key=lambda pr: pr[0].stat().st_mtime, reverse=True)
+if candidates:
+    print(candidates[0][1].as_posix())
 else:
     print("")
 PY
@@ -295,10 +362,57 @@ for CONTEXT_FILE in "${CONTEXT_FILES[@]}"; do
   mkdir -p "$(dirname "$CTX_PATH")"
 
   "$_python" - "$CTX_PATH" "$MARKER_START" "$MARKER_END" "$TMP_SECTION" <<'PY'
-import sys, os
+import os
+import re
+import sys
+
 ctx_path, start, end, section_path = sys.argv[1:5]
 with open(section_path, "r", encoding="utf-8") as fh:
     section = fh.read().rstrip("\n") + "\n"
+
+
+def ensure_mdc_frontmatter(content):
+    """Ensure ``.mdc`` content has YAML frontmatter with ``alwaysApply: true``.
+
+    Cursor only auto-loads ``.mdc`` rule files that carry frontmatter with
+    ``alwaysApply: true``. Prepend it when missing, or repair the value while
+    preserving any existing frontmatter comments/formatting.
+    """
+    leading_ws = len(content) - len(content.lstrip())
+    leading = content[:leading_ws]
+    stripped = content[leading_ws:]
+
+    if not stripped.startswith("---"):
+        return "---\nalwaysApply: true\n---\n\n" + content
+
+    match = re.match(
+        r"^(---[ \t]*\r?\n)(.*?)(\r?\n---[ \t]*)(\r?\n|$)(.*)",
+        stripped,
+        re.DOTALL,
+    )
+    if not match:
+        return "---\nalwaysApply: true\n---\n\n" + content
+
+    opening, fm_text, closing, sep, rest = match.groups()
+    newline = "\r\n" if "\r\n" in opening else "\n"
+
+    if re.search(r"(?m)^[ \t]*alwaysApply[ \t]*:[ \t]*true[ \t]*(?:#.*)?$", fm_text):
+        return content
+
+    if re.search(r"(?m)^[ \t]*alwaysApply[ \t]*:", fm_text):
+        fm_text = re.sub(
+            r"(?m)^([ \t]*)alwaysApply[ \t]*:.*?([ \t]*(?:#.*)?)$",
+            r"\1alwaysApply: true\2",
+            fm_text,
+            count=1,
+        )
+    elif fm_text.strip():
+        fm_text = fm_text + newline + "alwaysApply: true"
+    else:
+        fm_text = "alwaysApply: true"
+
+    return f"{leading}{opening}{fm_text}{closing}{sep}{rest}"
+
 
 if os.path.exists(ctx_path):
     with open(ctx_path, "r", encoding="utf-8-sig") as fh:
@@ -329,6 +443,8 @@ else:
     new_content = section
 
 new_content = new_content.replace("\r\n", "\n").replace("\r", "\n")
+if ctx_path.casefold().endswith(".mdc"):
+    new_content = ensure_mdc_frontmatter(new_content)
 with open(ctx_path, "wb") as fh:
     fh.write(new_content.encode("utf-8"))
 PY

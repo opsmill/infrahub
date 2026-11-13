@@ -1,3 +1,4 @@
+import asyncio
 import re
 from dataclasses import dataclass
 from uuid import uuid4
@@ -25,11 +26,13 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MigrationError, ValidationError
+from infrahub.tasks.registry import refresh_branches
 from infrahub.workers.dependencies import build_database
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION
 from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.paused_branch_list import PausedBranchList
 from tests.helpers.schema import load_schema
 
 
@@ -170,6 +173,11 @@ async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, 
     )
     with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
         await rebase_branch(branch=branch.name, context=context)
+
+
+async def _cached_branch_replaced(name: str, cached_branch: Branch) -> None:
+    while registry.branch[name] is cached_branch:  # noqa: ASYNC110
+        await asyncio.sleep(0.05)
 
 
 @dataclass
@@ -320,6 +328,37 @@ async def test_branch_rebase_applies_a_conflict_resolved_for_the_branch(
     assert car_branch.name.value == "camry-branch"
     car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
     assert car_main.name.value == "camry-main"
+
+
+async def test_rebase_keeps_the_rebased_branch_cached_through_a_registry_refresh_that_read_it_earlier(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    dependency_provider: Provider,
+    memory_cache: MemoryCache,
+    workflow_recorder: WorkflowRecorder,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    paused_branch_list: PausedBranchList,
+) -> None:
+    branch = await create_branch(db=db, branch_name="rebased-during-refresh")
+    cached_branch = registry.branch[branch.name]
+
+    async with db.start_session() as refresh_db:
+        refresh = asyncio.create_task(refresh_branches(db=refresh_db))
+        await asyncio.wait_for(paused_branch_list.read.wait(), timeout=30)
+        rebase = asyncio.create_task(
+            _rebase(db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider)
+        )
+        try:
+            # A rebase that migrates the branch's schema waits for the refresh to finish once it has cached the branch.
+            await asyncio.wait_for(_cached_branch_replaced(name=branch.name, cached_branch=cached_branch), timeout=60)
+        finally:
+            paused_branch_list.resume.set()
+        await asyncio.wait_for(asyncio.gather(refresh, rebase), timeout=60)
+
+    rebased_branch = await Branch.get_by_name(db=db, name=branch.name)
+    assert rebased_branch.branched_from != branch.branched_from
+    assert registry.branch[branch.name].branched_from == rebased_branch.branched_from
 
 
 async def test_rebase_preserves_metadata(

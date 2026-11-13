@@ -1,4 +1,4 @@
-import type { CombinedError } from "@urql/core";
+import { CombinedError } from "@urql/core";
 import React from "react";
 import { toast } from "react-toastify";
 
@@ -18,6 +18,29 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   return (
     error?.graphQLErrors?.some((e) => parseCatalogueError(e.extensions).code === code) ?? false
   );
+}
+
+const hasGraphQLErrors = (error: unknown): error is Pick<CombinedError, "graphQLErrors"> =>
+  error instanceof Error && "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
+
+// The client throws a plain `Error` with the GraphQL errors on its `cause`, and a mixed failure
+// must not pass for the code.
+export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
+  const cause = error instanceof Error ? error.cause : undefined;
+  const graphQLErrors = hasGraphQLErrors(cause) ? cause.graphQLErrors : [];
+  return (
+    graphQLErrors.length > 0 &&
+    graphQLErrors.every(({ extensions }) => parseCatalogueError(extensions).code === code)
+  );
+}
+
+// The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, so anything
+// caught outside this module has to be unwrapped before its catalogue code can be read.
+export function hasThrownCatalogueCode(error: unknown, code: string): boolean {
+  if (error instanceof CombinedError) return hasCatalogueCode(error, code);
+
+  const cause = error instanceof Error ? error.cause : null;
+  return cause instanceof CombinedError && hasCatalogueCode(cause, code);
 }
 
 // Its own id so a page-load's worth of shed queries collapses into one toast

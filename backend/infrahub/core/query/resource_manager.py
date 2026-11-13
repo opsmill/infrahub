@@ -1,15 +1,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator, Unpack
+from typing import TYPE_CHECKING, Any, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipStatus
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    NULL_VALUE,
+    InfrahubKind,
+    PoolRecordProvenance,
+    RelationshipStatus,
+)
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
     from infrahub.core.protocols import CoreNumberPool
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.scope import Division, DivisionElementPath
+
+
+@dataclass(frozen=True)
+class TrackingPool:
+    """The number pool whose live record covers an attribute, and what that record says about one value."""
+
+    pool_id: str
+    provenance: PoolRecordProvenance
 
 
 @dataclass(frozen=True)
@@ -55,6 +75,9 @@ class NumberPoolAllocatedResult:
     identifier: str
     """Identifier used for the reservation."""
 
+    provenance: PoolRecordProvenance
+    """Whether the pool allocated the value the branch holds or a user provided it."""
+
 
 @dataclass(frozen=True)
 class NumberPoolFreeData:
@@ -91,7 +114,7 @@ class IPAddressPoolGetIdentifiers(Query):
         self.params["addresses"] = self.addresses
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPAddress)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPAddress)
         WHERE allocated.uuid in $addresses
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
@@ -127,7 +150,7 @@ class IPAddressPoolGetReserved(Query):
         self.params["identifier"] = self.identifier
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(address:BuiltinIPAddress)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[rel:IS_RESERVED]->(address:BuiltinIPAddress)
         WHERE rel.identifier = $identifier
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
         self.add_to_query(query)
@@ -166,7 +189,7 @@ class IPAddressPoolSetReserved(Query):
         }
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })
         MATCH (address:Node { uuid: $address_id })
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(address)
         """ % {"ipaddress_pool": InfrahubKind.IPADDRESSPOOL}
@@ -176,65 +199,98 @@ class IPAddressPoolSetReserved(Query):
 
 
 class NumberPoolGetAllocated(Query):
+    """Report each number the pool has allocated together with the branch that holds it.
+
+    Reports every value a live branch holds for the given NumberPool along with its parent object ID,
+    the holding branch, and reservation identifier, ordered by value, then branch, then the holding object's id. `branch_name`
+    keeps the values held on that branch and `provenance` the values of that provenance. With a division, which may
+    give a value for only some of the scope elements, only the values whose holding object is in the division on the
+    branch holding the value are reported.
+
+    A value is reported on each live branch that holds it, including a branch that inherits the default branch's
+    value without an edge of its own. With `include_inherited_branches=False`, such a value is reported on the default
+    branch only, which is enough for a caller that only tells the default branch from the other branches.
+    """
+
     name = "numberpool_get_allocated"
     type = QueryType.READ
 
     def __init__(
         self,
         pool: CoreNumberPool,
+        ranges: list[list[int]],
+        branch_name: str | None = None,
+        provenance: PoolRecordProvenance | None = None,
+        division: Division | None = None,
+        include_inherited_branches: bool = True,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
+        self.ranges = ranges
+        self.branch_name = branch_name
+        self.provenance = provenance
+        self.division = division
+        self.include_inherited_branches = include_inherited_branches
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["node_attribute"] = self.pool.node_attribute.value
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
-        self.params["pool_id"] = self.pool.get_id()
+        self.params["ranges"] = self.ranges
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        division_filter = ""
+        if self.division is not None:
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division, node_kind=self.pool.node.value),
+            include_inherited_open_values=self.include_inherited_branches,
         )
-        self.params.update(branch_params)
+        self.params.update(reserved_values_params)
 
         query = """
-        MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
-        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
-        CALL (a, pool) {
-            MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
-            WHERE hs_int.status = "active"
-                AND hs_int.to IS NULL
-                AND NOT EXISTS {
-                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
-                    WHERE hs_deleted.from > hs_int.from
-                }
-            RETURN true AS hs_active
+        %(reserved_values)s
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
+        // -------------
+        // The rows are grouped by Attribute so the Node and the IS_RESERVED edge's properties are read once per
+        // Attribute, not once per branch
+        // -------------
+        WITH attr, res, collect({branch: branch, value: value}) AS held
+        WITH attr, res.identifier AS identifier, res.allocated_values AS allocated_values, held
+        CALL (attr) {
+            MATCH (node:%(node)s)-[:HAS_ATTRIBUTE]->(attr)
+            RETURN node.uuid AS id
             LIMIT 1
         }
-        WITH n, ha, a, hv, av, hs, pool, ir, hs_active
-        WHERE
-            hs_active = TRUE
-            AND pool.uuid = $pool_id
-            AND av.value >= $start_range and av.value <= $end_range
-            AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
-            AND ha.status = "active"
-            AND hv.status = "active"
-        """ % {
-            "node": self.pool.node.value,
-            "number_pool_kind": InfrahubKind.NUMBERPOOL,
-            "branch_filter": branch_filter,
-        }
+        UNWIND held AS row
+        """ % {"reserved_values": reserved_values, "node": self.pool.node.value}
         self.add_to_query(query)
 
-        self.return_labels = [
-            "DISTINCT n.uuid as id",
-            "hv.branch as branch",
-            "av.value as value",
-            "ir.identifier as identifier",
-        ]
-        self.order_by = ["av.value"]
+        # The rows are made distinct before the filters so that the count query counts the rows returned.
+        # A record without a list predates the list and reads as allocated for every value it accounts for.
+        self.add_to_query(
+            """
+        WITH DISTINCT id, row.branch AS branch, row.value AS value, identifier,
+            allocated_values IS NOT NULL AND NOT toInteger(row.value) IN allocated_values AS is_provided
+        """
+        )
+
+        filters: list[str] = []
+        if self.branch_name is not None:
+            self.params["branch_name"] = self.branch_name
+            filters.append("branch = $branch_name")
+        if self.provenance is not None:
+            self.params["is_provided"] = self.provenance == PoolRecordProvenance.PROVIDED
+            filters.append("is_provided = $is_provided")
+        if filters:
+            self.add_to_query("WHERE " + " AND ".join(filters))
+
+        self.return_labels = ["id", "branch", "value", "identifier", "is_provided"]
+        self.order_by = ["value", "branch", "id"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:
         """Return results as typed dataclass instances.
@@ -249,12 +305,112 @@ class NumberPoolGetAllocated(Query):
                 branch=result.get_as_type("branch", str),
                 value=result.get_as_type("value", int),
                 identifier=result.get_as_type("identifier", str),
+                provenance=PoolRecordProvenance.PROVIDED
+                if result.get_as_type("is_provided", bool)
+                else PoolRecordProvenance.ALLOCATED,
             )
             for result in self.get_results()
         ]
 
 
+@dataclass(frozen=True, kw_only=True)
+class HeldNumber:
+    """A number a pool tracks, the object holding it and the live branches holding that number."""
+
+    attribute_id: str
+    node_id: str | None
+    value: int
+    branches: tuple[str, ...]
+
+
+class NumberPoolGetHeldOutsideRanges(Query):
+    """Report the numbers live branches hold for the pool outside every given range.
+
+    A number is reported once per holding attribute and value, with every live branch holding it, including a branch
+    that inherits the default branch's value without an edge of its own. Only the first `listed` numbers are returned,
+    lowest first, each row also carrying the total. The holding object is matched on the pool's kind and is left out
+    when no such object holds the attribute.
+    """
+
+    name = "numberpool_get_held_outside_ranges"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool_id: str,
+        attribute_name: str,
+        node_kind: str,
+        ranges: list[list[int]],
+        listed: int,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool_id = pool_id
+        self.attribute_name = attribute_name
+        self.node_kind = node_kind
+        self.ranges = ranges
+        self.listed = listed
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ranges"] = self.ranges
+        self.params["listed"] = self.listed
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool_id,
+            attribute_name=self.attribute_name,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            include_inherited_open_values=True,
+        )
+        self.params.update(reserved_values_params)
+
+        # The page is taken before the holder lookup, so the lookup runs only for the numbers listed.
+        query = """
+        %(reserved_values)s
+        WITH attr, branch, toInteger(value) AS value
+        WHERE value IS NOT NULL AND none(r IN $ranges WHERE value >= r[0] AND value <= r[1])
+        WITH attr, value, collect(DISTINCT branch) AS branches
+        ORDER BY value, attr.uuid
+        WITH collect({attr: attr, value: value, branches: branches}) AS held
+        UNWIND held[..$listed] AS held_number
+        WITH size(held) AS total, held_number.attr AS attr, held_number.value AS value, held_number.branches AS branches
+        CALL (attr) {
+            OPTIONAL MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr)
+            RETURN node.uuid AS node_id
+            ORDER BY node_id
+            LIMIT 1
+        }
+        WITH total, attr.uuid AS attribute_id, node_id, value, branches
+        """ % {"reserved_values": reserved_values, "node_kind": self.node_kind}
+        self.add_to_query(query)
+
+        self.return_labels = ["total", "attribute_id", "node_id", "value", "branches"]
+        self.order_by = ["value", "attribute_id"]
+
+    def get_data(self) -> tuple[int, list[HeldNumber]]:
+        """Return how many numbers are outside the ranges, and the listed ones."""
+        results = list(self.get_results())
+        if not results:
+            return 0, []
+        return results[0].get_as_type("total", int), [
+            HeldNumber(
+                attribute_id=result.get_as_type("attribute_id", str),
+                node_id=result.get_as_optional_type("node_id", str),
+                value=result.get_as_type("value", int),
+                branches=tuple(result.get_as_list_of_type("branches", str)),
+            )
+            for result in results
+        ]
+
+
 class NumberPoolGetReserved(Query):
+    """Resolve a pool's reservation(s) to the value(s) on this branch.
+
+    Returns the values and identifiers for a given NumberPool's reservations on a given branch. Can
+    optionally be filtered by identifier. With a division, only the reservations whose Attribute's Node is in
+    the division on this branch are returned.
+    """
+
     name = "numberpool_get_reserved"
     type = QueryType.READ
 
@@ -262,53 +418,89 @@ class NumberPoolGetReserved(Query):
         self,
         pool_id: str,
         identifier: str | None = None,
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
+        self.division = division
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
+        self.params["at"] = self.at.to_string()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
         )
-
         self.params.update(branch_params)
 
-        # If identifier is not provided, we return all reservations for the pool
-        identifier_filter = ""
-        if self.identifier:
-            identifier_filter = "r.identifier = $identifier AND "
-            self.params["identifier"] = self.identifier
+        live_branches = ""
+        branch_variables = ""
+        division_filter = ""
+        if self.division is not None:
+            live_branches = LIVE_BRANCHES_QUERY
+            branch_variables = ", deleting_branches, branch_windows"
+            division_filter, division_params = division_on_branch_query(
+                division=self.division, branch_name=self.branch.name
+            )
+            self.params.update(division_params)
+            self.params["default_branch_name"] = registry.default_branch
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[r:IS_RESERVED]->(reservation:AttributeValue)
-        WHERE
-            %(identifier_filter)s
-            %(branch_filter)s
+        %(live_branches)s
+        MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[r_edge:IS_RESERVED]->(attr:Attribute)
+        WHERE ($identifier IS NULL OR r_edge.identifier = $identifier)
+        WITH DISTINCT pool, attr%(branch_variables)s
+        %(division)s
+        WITH pool, attr
+        CALL (pool, attr) {
+            // --------
+            // assumes IS_RESERVED is on the global branch
+            // --------
+            MATCH (pool)-[r:IS_RESERVED]->(attr)
+            WHERE ($identifier IS NULL OR r.identifier = $identifier)
+            AND r.from <= $at AND (r.to IS NULL OR r.to > $at)
+            ORDER BY r.from DESC, r.status ASC
+            RETURN r.status = "active" AS is_active, r.identifier AS identifier
+            LIMIT 1
+        }
+        WITH pool, attr, identifier
+        WHERE is_active = TRUE
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            RETURN av.value AS value, r.status = "active" AS is_active
+            LIMIT 1
+        }
+        WITH value, identifier, is_active
+        WHERE is_active = TRUE
         """ % {
             "branch_filter": branch_filter,
             "number_pool": InfrahubKind.NUMBERPOOL,
-            "identifier_filter": identifier_filter,
+            "division": division_filter,
+            "live_branches": live_branches,
+            "branch_variables": branch_variables,
         }
         self.add_to_query(query)
-        self.return_labels = ["reservation.value AS value", "r.identifier AS identifier"]
+        self.return_labels = ["value", "identifier"]
 
     def get_reservation(self) -> int | None:
-        """Return the reserved value for a single identifier.
+        """Return the value a single IS_RESERVED edge resolves to.
 
         Returns:
-            The reserved integer value, or None if no reservation exists.
+            The reserved integer value, or None if no live IS_RESERVED edge resolves to one.
 
         """
         result = self.get_result()
-        if result:
-            return result.get_as_optional_type("value", return_type=int)
-        return None
+        if result is None:
+            return None
+        if result.get("value") in (None, NULL_VALUE):
+            return None
+        return result.get_as_type("value", return_type=int)
 
     def get_data(self) -> list[NumberPoolIdentifierData]:
         """Return all reservations as typed dataclass instances.
@@ -325,23 +517,62 @@ class NumberPoolGetReserved(Query):
             for result in self.get_results()
         ]
 
-    def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
-        """Yield reservations as typed dataclass instances.
 
-        Yields:
-            NumberPoolIdentifierData for each reservation.
+class NumberPoolGetTrackingPool(Query):
+    """Find the number pool whose live IS_RESERVED edge points at an Attribute vertex."""
 
-        """
-        yield from self.get_data()
+    name = "numberpool_get_tracking_pool"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        attribute_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.attribute_id = attribute_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_id"] = self.attribute_id
+        self.params["at"] = self.at.to_string()
+
+        query = """
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH attr
+        LIMIT 1
+        CALL (attr) {
+            // --------
+            // assumes IS_RESERVED is on the global branch
+            // --------
+            MATCH (pool:Node:%(number_pool)s)-[r:IS_RESERVED]->(attr)
+            WHERE r.from <= $at AND (r.to IS NULL OR r.to > $at)
+            ORDER BY r.from DESC, r.status ASC
+            RETURN pool.uuid AS pool_id, r.status = "active" AS is_active
+            LIMIT 1
+        }
+        WITH pool_id
+        WHERE is_active = TRUE
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        self.add_to_query(query)
+        self.return_labels = ["pool_id"]
+
+    def get_pool_id(self) -> str | None:
+        """Return the id of the tracking pool, or None if no live IS_RESERVED edge points at the attribute."""
+        result = self.get_result()
+        if result:
+            return result.get_as_type("pool_id", return_type=str)
+        return None
 
 
-class PoolChangeReserved(Query):
-    """Change the identifier on all pools.
+class IPPoolChangeReserved(Query):
+    """Point an IP pool's IS_RESERVED edges at a new identifier.
 
-    This is useful when a node is being converted to a different type and its ID has changed.
+    Used when a node is converted to a different type and its id changes. An IP pool reserves the
+    allocated `:Node` itself, so the IS_RESERVED edge keeps its target and only the identifier moves.
     """
 
-    name = "pool_change_reserved"
+    name = "ip_pool_change_reserved"
     type = QueryType.WRITE
 
     def __init__(
@@ -376,77 +607,852 @@ class PoolChangeReserved(Query):
         }
 
         query = """
-        MATCH (pool:Node)-[r:IS_RESERVED]->(resource)
+        MATCH (pool:%(ipaddress_pool)s|%(prefix_pool)s)-[r:IS_RESERVED]->(resource:Node)
         WHERE
             r.identifier = $existing_identifier
             AND
             %(branch_filter)s
         SET r.to = $at
         CREATE (pool)-[new_rel:IS_RESERVED $rel_prop]->(resource)
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+            "ipaddress_pool": InfrahubKind.IPADDRESSPOOL,
+            "prefix_pool": InfrahubKind.IPPREFIXPOOL,
+        }
         self.add_to_query(query)
         self.return_labels = ["pool.uuid AS pool_id", "r", "new_rel"]
 
 
+class NumberPoolChangeReserved(Query):
+    """Move a number pool's reservations from a converted object onto the object that replaced it.
+
+    The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
+    `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
+    The IS_RESERVED edge on the old attribute is left as it is: it stays open while any branch can
+    still reach the old attribute and is closed once none can.
+    """
+
+    name = "number_pool_change_reserved"
+    type = QueryType.WRITE
+
+    def __init__(
+        self,
+        existing_node_id: str,
+        new_node_id: str,
+        existing_identifier: str,
+        new_identifier: str,
+        not_closed_before: Timestamp,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.existing_node_id = existing_node_id
+        self.new_node_id = new_node_id
+        self.existing_identifier = existing_identifier
+        self.new_identifier = new_identifier
+        self.not_closed_before = not_closed_before
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["existing_node_id"] = self.existing_node_id
+        self.params["new_node_id"] = self.new_node_id
+        self.params["new_identifier"] = self.new_identifier
+        self.params["existing_identifier"] = self.existing_identifier
+        self.params["not_closed_before"] = self.not_closed_before.to_string()
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+
+        # What a pool tracks is itself branch-aware data: a pool can be repointed at another kind or
+        # attribute, so both subqueries read it as of this branch and time.
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="hv")
+        self.params.update(branch_params)
+
+        global_branch = registry.get_global_branch()
+        self.params["rel_prop"] = {
+            "branch": global_branch.name,
+            "branch_level": global_branch.hierarchy_level,
+            "status": RelationshipStatus.ACTIVE.value,
+            "from": self.at.to_string(),
+            "from_user_id": self.user_id,
+            "identifier": self.new_identifier,
+        }
+
+        query = """
+        // --------------
+        // Anchored on the replaced object
+        // --------------
+        MATCH (:Node { uuid: $existing_node_id })-[:HAS_ATTRIBUTE]->(old_attr:Attribute)
+        WITH DISTINCT old_attr
+        MATCH (pool:%(number_pool)s)-[old_rel:IS_RESERVED]->(old_attr)
+        // --------------
+        // assumes the IS_RESERVED edge is on the global branch
+        // --------------
+        WHERE old_rel.identifier = $existing_identifier
+          AND old_rel.status = "active"
+          AND (old_rel.to IS NULL OR old_rel.to >= $not_closed_before)
+        // --------------
+        // Not closed here: object-delete and branch-delete retirement close it once no branch reaches it
+        // --------------
+        WITH DISTINCT pool, properties(old_rel) AS old_props
+        // --------------
+        // Each pool names the attribute it tracks, so read it rather than assuming one attribute.
+        // --------------
+        CALL (pool) {
+            MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node_attribute" })-[hv:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            WITH av, hv
+            ORDER BY hv.branch_level DESC, hv.from DESC
+            LIMIT 1
+            RETURN av.value AS tracked_attribute_name, hv.status = "active" AS is_active
+        }
+        WITH pool, old_props, tracked_attribute_name
+        WHERE is_active = TRUE
+        // --------------
+        // And the kind it tracks, so a pool cannot follow the IS_RESERVED edge onto a kind it knows nothing about.
+        // --------------
+        CALL (pool) {
+            MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node" })-[hv:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            WITH av, hv
+            ORDER BY hv.branch_level DESC, hv.from DESC
+            LIMIT 1
+            RETURN av.value AS tracked_node_kind, hv.status = "active" AS is_active
+        }
+        WITH pool, old_props, tracked_attribute_name, tracked_node_kind
+        WHERE is_active = TRUE
+        MATCH (new_node:Node { uuid: $new_node_id })-[:HAS_ATTRIBUTE]->(new_attr:Attribute)
+        WHERE new_attr.name = tracked_attribute_name
+          AND tracked_node_kind IN labels(new_node)
+        WITH DISTINCT pool, new_attr, old_props
+        WHERE NOT EXISTS {
+            MATCH (pool)-[mine:IS_RESERVED]->(new_attr)
+            WHERE mine.status = "active" AND mine.to IS NULL
+        }
+        // ----------
+        // Only one active IS_RESERVED edge for any attribute exists at a time
+        // ----------
+        OPTIONAL MATCH (holding_pool)-[live:IS_RESERVED]->(new_attr)
+        WHERE live.status = "active" AND live.to IS NULL
+        SET live.to = $at, live.to_user_id = $user_id
+        %(stamp_holding_pool)s
+        WITH DISTINCT pool, new_attr, old_props
+        CREATE (pool)-[new_rel:IS_RESERVED]->(new_attr)
+        SET new_rel = old_props
+        SET new_rel += $rel_prop
+        // --------------
+        // unset the properties for closed edges
+        // --------------
+        REMOVE new_rel.to, new_rel.to_user_id
+        %(stamp_pool)s
+        """ % {
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "branch_filter": branch_filter,
+            "stamp_holding_pool": stamp_vertex_metadata("holding_pool"),
+            "stamp_pool": stamp_vertex_metadata("pool"),
+        }
+        self.add_to_query(query)
+        self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
+
+
+LIVE_BRANCHES_QUERY = """
+    // --------------
+    // Read the branches once: the ones being deleted, and the fork window of every other user branch
+    // --------------
+    MATCH (branch:Branch)
+    WITH collect(branch) AS branches
+    WITH
+        [b IN branches WHERE b.status = "DELETING" | b.name] AS deleting_branches,
+        [b IN branches
+            WHERE b.status <> "DELETING" AND NOT b.is_default AND NOT b.is_global
+            | {name: b.name, origin_name: b.origin_branch, fork_at: b.branched_from}] AS branch_windows"""
+
+
+# Reads `edge` and `deleting_branches`: an edge some live branch can see, open now, or closed on the default branch.
+EDGE_IS_LIVE = """edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            // closed on the default branch could still be active on other branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)"""
+
+# Reads `edge`, `hidden`, and `branch_windows`, keeps every other variable, and adds `edge_branches`: the branches where
+# this edge is visible, ``null`` meaning global branch, so every branch. An edge on the default branch is visible from
+# each user branch that forked while it was open and is not in `hidden`. Rows with an edge no branch sees are dropped.
+# The edge's properties are read once into variables because a property read in the window comprehension is repeated
+# for each window.
+EDGE_BRANCHES = """WITH *, edge.branch AS edge_branch, edge.from AS edge_from, edge.to AS edge_to
+            WITH *, CASE
+                WHEN edge_branch = $global_branch_name THEN null
+                WHEN edge_branch <> $default_branch_name THEN [edge_branch]
+                ELSE CASE WHEN edge_to IS NULL OR edge_to > $at THEN [$default_branch_name] ELSE [] END
+                    + [window IN branch_windows WHERE edge_from <= window.fork_at
+                        AND (edge_to IS NULL OR edge_to > window.fork_at)
+                        AND NOT window.name IN hidden | window.name]
+            END AS edge_branches
+            WHERE edge_branches IS NULL OR size(edge_branches) > 0"""
+
+# Reads `node`, `element`, `node_branches`, `deleting_branches` and `branch_windows`: every value or peer the Node has
+# for the element, once each, with the branches that see it, null meaning every branch. An element with a `value`
+# keeps only that value or peer.
+ATTRIBUTE_ELEMENT_VALUES = """COLLECT {
+            MATCH (node)-[:HAS_ATTRIBUTE]->(element_attr:Attribute { name: element.name })
+            WITH DISTINCT element_attr
+            WITH element_attr, COLLECT {
+                MATCH (element_attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch
+            } AS hidden
+            MATCH (element_attr)-[edge:HAS_VALUE]->(av)
+            WHERE (element.value IS NULL OR av.value = element.value OR (element.value = "" AND av.value = $null_value))
+            AND edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
+            AND (node_branches IS NULL OR edge.branch IN node_branches
+                OR edge.branch IN [$default_branch_name, $global_branch_name])
+            %(edge_branches)s
+            WITH CASE WHEN av.value = $null_value THEN "" ELSE av.value END AS element_value,
+                collect({branches: edge_branches}) AS branch_lists
+            RETURN {
+                value: element_value,
+                branches: CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+                    ELSE reduce(union = [], b IN branch_lists | union + b.branches) END
+            }
+        }""" % {"edge_branches": EDGE_BRANCHES}
+
+RELATIONSHIP_ELEMENT_VALUES = """COLLECT {
+            MATCH (node)-[:IS_RELATED]-(rel:Relationship { name: element.name })
+            WITH DISTINCT rel
+            WITH rel, COLLECT {
+                MATCH (node)-[hiding:IS_RELATED]-(rel)
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch
+            } AS hidden
+            MATCH (node)-[edge:IS_RELATED]-(rel)-[r2:IS_RELATED]-(peer:Node)
+            WHERE (element.value IS NULL OR peer.uuid = element.value)
+            AND (
+                (element.direction = "outbound" AND startNode(edge) = node AND startNode(r2) = rel)
+                OR (element.direction = "inbound" AND endNode(edge) = node AND endNode(r2) = rel)
+                OR (element.direction = "bidirectional" AND endNode(edge) = rel AND endNode(r2) = rel)
+            )
+            AND peer.uuid <> node.uuid
+            AND r2.status = "active"
+            AND edge.status = "active"
+            AND edge.from <= $at
+            AND NOT edge.branch IN deleting_branches
+            AND (edge.to IS NULL OR edge.to > $at OR edge.branch = $default_branch_name)
+            AND (node_branches IS NULL OR edge.branch IN node_branches
+                OR edge.branch IN [$default_branch_name, $global_branch_name])
+            %(edge_branches)s
+            WITH peer.uuid AS element_value, collect({branches: edge_branches}) AS branch_lists
+            RETURN {
+                value: element_value,
+                branches: CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+                    ELSE reduce(union = [], b IN branch_lists | union + b.branches) END
+            }
+        }""" % {"edge_branches": EDGE_BRANCHES}
+
+# Reads `attr`, `value`, `branch`, `division_branches` and `branch_windows`: one row per branch that holds the value and
+# on which the Node is in the division, as `held_branch`. A value on the default branch is held on that branch when it
+# puts the Node in the division, and otherwise on each user branch that still reads the value and does.
+HELD_BRANCH = """UNWIND CASE
+            WHEN division_branches IS NULL OR branch = $global_branch_name OR branch IN division_branches THEN [branch]
+            WHEN branch = $default_branch_name THEN division_branches
+            ELSE []
+        END AS held_branch
+        WITH *
+        WHERE held_branch = branch OR EXISTS {
+            MATCH (attr)-[value_edge:HAS_VALUE { branch: $default_branch_name }]->(value_vertex)
+            WHERE value_vertex.value = value
+            AND value_edge.status = "active"
+            AND value_edge.from <= $at AND (value_edge.to IS NULL OR value_edge.to > $at)
+            AND any(window IN branch_windows WHERE window.name = held_branch AND value_edge.from <= window.fork_at)
+            AND NOT EXISTS {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.branch = held_branch
+                AND hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            }
+        }"""
+
+# A schema migration can leave several Node vertices linked to one Attribute, each live on different branches.
+DIVISION_FILTER_QUERY = """
+    // --------------
+    // Find the branches on which a Node of the reserved Attribute is in the division, as `division_branches`.
+    // Drop the Attribute when there are none. A null list means every branch.
+    // --------------
+    CALL (attr, deleting_branches, branch_windows) {
+        MATCH (node:Node)-[edge:HAS_ATTRIBUTE]->(attr)
+        WHERE %(edge_is_live)s
+        WITH node, edge, deleting_branches, branch_windows, COLLECT {
+            MATCH (node)-[hiding:HAS_ATTRIBUTE]->(attr)
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch
+        } AS hidden
+        %(edge_branches)s
+        WITH node, deleting_branches, branch_windows, edge_branches AS node_branches
+        // --------------
+        // One stage per element: keep the branches that also see one of the element's edges with the division's
+        // value, and drop the Node as soon as no branch is left
+        // --------------
+%(element_stages)s
+        WITH collect({branches: node_branches}) AS branch_lists
+        WHERE size(branch_lists) > 0
+        RETURN CASE WHEN any(b IN branch_lists WHERE b.branches IS NULL) THEN null
+            ELSE reduce(union = [], b IN branch_lists | union + b.branches) END AS division_branches
+    }
 """
-Important!: The relationship IS_RESERVED for Number is not being cleaned up when the node or the branch is deleted
-I think this is something we should address in the future.
-It works for now because the query has been updated to match the identifier in IS_RESERVED with the UUID of the related node
-But in the future, if we need to use an identifier that is not the UUID, we will need to clean up the relationships
-This will be especially important as we want to support upsert with NumberPool
+
+DIVISION_ELEMENT_STAGE = """
+        WITH node, deleting_branches, branch_windows, node_branches, $division_elements[%(idx)s] AS element
+        WITH node, deleting_branches, branch_windows, node_branches, %(element_values)s AS edges
+        WHERE size(edges) > 0
+        WITH node, deleting_branches, branch_windows, CASE
+            WHEN any(e IN edges WHERE e.branches IS NULL) THEN node_branches
+            WHEN node_branches IS NULL THEN reduce(union = [], e IN edges | union + e.branches)
+            ELSE [name IN node_branches WHERE any(e IN edges WHERE name IN e.branches)]
+        END AS node_branches
+        WHERE node_branches IS NULL OR size(node_branches) > 0"""
+
+DIVISION_VALUE_FILTER_QUERY = """
+    // --------------
+    // Keep the values held on a branch on which their Node is in the division, reported on that branch
+    // --------------
+    %(held_branch)s
+    WITH res, attr, value, held_branch AS branch, deleting_branches, branch_windows
+""" % {"held_branch": HELD_BRANCH}
+
+
+def _element_values(element: DivisionElementPath) -> str:
+    return RELATIONSHIP_ELEMENT_VALUES if element.is_relationship else ATTRIBUTE_ELEMENT_VALUES
+
+
+def _division_params(division: Division) -> dict[str, Any]:
+    return {
+        "division_elements": [
+            {
+                "name": element.name,
+                "direction": element.relationship_direction.value
+                if element.relationship_direction is not None
+                else None,
+                "value": value,
+            }
+            for element, value in zip(division.elements, division.values, strict=True)
+        ],
+        "null_value": NULL_VALUE,
+        "global_branch_name": GLOBAL_BRANCH_NAME,
+    }
+
+
+def division_filter_query(division: Division, with_candidate_set: bool = True) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on some live branch, with its parameters.
+
+    The fragment adds `division_branches`, the branches on which the Node is in the division, which the value filter
+    reads. It reads the `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name` that the enclosing
+    query provides.
+    """
+    query = _division_candidate_filter(
+        division=division, with_candidate_set=with_candidate_set
+    ) + DIVISION_FILTER_QUERY % {
+        "edge_is_live": EDGE_IS_LIVE,
+        "edge_branches": EDGE_BRANCHES,
+        "element_stages": "".join(
+            DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": _element_values(element=element)}
+            for idx, element in enumerate(division.elements)
+        ),
+    }
+    return query, _division_params(division=division)
+
+
+# Ignores time, branch and direction, so it only drops an `attr` whose Node never held the division's value, which the
+# per-branch stages would drop too; a list built from `attr` keeps the planner from starting at the indexed value.
+DIVISION_CANDIDATE_RELATIONSHIP = """$division_elements[%(idx)s].value IN [
+        (attr)<-[:HAS_ATTRIBUTE]-(:Node)-[:IS_RELATED]-(:Relationship { name: $division_elements[%(idx)s].name })
+            -[:IS_RELATED]-(peer:Node) | peer.uuid
+    ]"""
+
+DIVISION_CANDIDATE_ATTRIBUTE = """$division_elements[%(idx)s].value IN [
+        (attr)<-[:HAS_ATTRIBUTE]-(:Node)-[:HAS_ATTRIBUTE]->(:Attribute { name: $division_elements[%(idx)s].name })
+            -[:HAS_VALUE]->(candidate_value:AttributeValue) | candidate_value.value
+    ]"""
+
+
+def _candidate_set_index(division: Division) -> int | None:
+    """Return the index of the element whose holders are read once, or None when no element qualifies.
+
+    That is the first relationship with a value, else the first indexed attribute with a value.
+    """
+    valued = [
+        (idx, element)
+        for idx, (element, value) in enumerate(zip(division.elements, division.values, strict=True))
+        if value not in {None, ""}
+    ]
+    for idx, element in valued:
+        if element.is_relationship:
+            return idx
+    for idx, element in valued:
+        if element.value_indexed:
+            return idx
+    return None
+
+
+DIVISION_CANDIDATES_FROM_PEER = """
+    CALL () {
+        MATCH (:Node { uuid: $division_elements[%(idx)s].value })-[:IS_RELATED]-(:Relationship { name: $division_elements[%(idx)s].name })
+            -[:IS_RELATED]-(candidate:Node)
+        RETURN collect(DISTINCT elementId(candidate)) AS division_candidates
+    }
 """
+
+# Value vertices are shared by every attribute holding the same value, so the Node's kind bounds the match to the pool.
+DIVISION_CANDIDATES_FROM_VALUE = """
+    CALL () {
+        MATCH (:AttributeValueIndexed { value: $division_elements[%(idx)s].value })
+            <-[:HAS_VALUE]-(:Attribute { name: $division_elements[%(idx)s].name })
+            <-[:HAS_ATTRIBUTE]-(candidate:%(node_kind)s)
+        RETURN collect(DISTINCT elementId(candidate)) AS division_candidates
+    }
+"""
+
+
+def division_candidates_query(division: Division | None, node_kind: str) -> str:
+    """Return the Cypher that reads, once, every Node that ever held one element's value.
+
+    A Node reached from an attribute value is of `node_kind`. It gives `division_candidates`, which the division
+    filter reads, and is empty when no relationship or indexed attribute element of the division has a value.
+    """
+    if division is None:
+        return ""
+    idx = _candidate_set_index(division=division)
+    if idx is None:
+        return ""
+    if division.elements[idx].is_relationship:
+        return DIVISION_CANDIDATES_FROM_PEER % {"idx": idx}
+    return DIVISION_CANDIDATES_FROM_VALUE % {"idx": idx, "node_kind": node_kind}
+
+
+def _division_candidate_filter(division: Division, with_candidate_set: bool) -> str:
+    candidate_set_index = _candidate_set_index(division=division) if with_candidate_set else None
+    conditions = [
+        "any(holder IN [(attr)<-[:HAS_ATTRIBUTE]-(holder:Node) | elementId(holder)] WHERE holder IN division_candidates)"
+        if idx == candidate_set_index
+        else (DIVISION_CANDIDATE_RELATIONSHIP if element.is_relationship else DIVISION_CANDIDATE_ATTRIBUTE)
+        % {"idx": idx}
+        for idx, (element, value) in enumerate(zip(division.elements, division.values, strict=True))
+        if value not in {None, ""}
+    ]
+    if not conditions:
+        return ""
+    return "    WITH *\n    WHERE " + "\n    AND ".join(conditions) + "\n"
+
+
+def division_on_branch_query(division: Division, branch_name: str) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that keeps the reserved `attr` whose Node is in `division` on the branch `branch_name`."""
+    query, params = division_filter_query(division=division, with_candidate_set=False)
+    query += """
+    WITH *
+    WHERE division_branches IS NULL OR $division_branch_name IN division_branches
+"""
+    return query, {**params, "division_branch_name": branch_name}
+
+
+# A schema migration can link another vertex of the same Node to the Relationship vertex, which is not a peer.
+LIVE_DIVISIONS_QUERY = """
+    // --------------
+    // Every division a Node of the reserved Attribute occupies, with the branches on which it does, read once per
+    // Attribute
+    // --------------
+    CALL (attr, deleting_branches, branch_windows) {
+        MATCH (node:Node)-[edge:HAS_ATTRIBUTE]->(attr)
+        WHERE %(edge_is_live)s
+        WITH node, edge, deleting_branches, branch_windows, COLLECT {
+            MATCH (node)-[hiding:HAS_ATTRIBUTE]->(attr)
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch
+        } AS hidden
+        %(edge_branches)s
+        WITH node, deleting_branches, branch_windows, edge_branches AS node_branches
+        WITH node, deleting_branches, branch_windows, node_branches, [{values: [], branches: node_branches}] AS divisions
+        // --------------
+        // One stage per element, in scope order: extend each division with every value or peer the Node has for the
+        // element, keeping the branches that see both, and drop the Node as soon as no division is left
+        // --------------
+%(element_stages)s
+        UNWIND divisions AS division
+        RETURN division.values AS division_values, division.branches AS division_branches
+    }
+    // --------------
+    // Count each value in the divisions its Node occupies on a branch holding the value
+    // --------------
+    UNWIND held_values AS held
+    WITH attr, branch_windows, division_values, division_branches, held.value AS value, held.branch AS branch
+    %(held_branch)s"""
+
+# Reads `node`, `node_branches`, `divisions`, `deleting_branches` and `branch_windows`, one stage per scope element in
+# scope order: each division built so far is extended with every value or peer the Node has for the element, keeping
+# the branches that see both. A division no branch sees is dropped, and so is the Node when no division is left.
+LIVE_DIVISION_ELEMENT_STAGE = """
+        WITH node, deleting_branches, branch_windows, node_branches, divisions, $division_elements[%(idx)s] AS element
+        WITH node, deleting_branches, branch_windows, node_branches, divisions, %(element_values)s AS element_values
+        WITH node, deleting_branches, branch_windows, node_branches, [
+            extended IN reduce(acc = [], division IN divisions | acc + [entry IN element_values | {
+                values: division.values + [entry.value],
+                branches: CASE WHEN entry.branches IS NULL THEN division.branches
+                    WHEN division.branches IS NULL THEN entry.branches
+                    ELSE [name IN division.branches WHERE name IN entry.branches] END
+            }])
+            WHERE extended.branches IS NULL OR size(extended.branches) > 0
+        ] AS divisions
+        WHERE size(divisions) > 0"""
+
+
+def live_divisions_query(elements: Sequence[DivisionElementPath]) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that gives each reserved value one row per division its Node occupies on a live branch holding it.
+
+    A Node with no live value for an element of the scope occupies no division. The fragment reads the `attr`,
+    `held_values` (the `value` and `branch` of each value the Attribute holds), `deleting_branches`, `branch_windows`,
+    `$at` and `$default_branch_name` that the enclosing query provides, and gives `division_values`, `value` and
+    `held_branch`.
+    """
+    query = LIVE_DIVISIONS_QUERY % {
+        "edge_is_live": EDGE_IS_LIVE,
+        "edge_branches": EDGE_BRANCHES,
+        "element_stages": "".join(
+            LIVE_DIVISION_ELEMENT_STAGE % {"idx": idx, "element_values": _element_values(element=element)}
+            for idx, element in enumerate(elements)
+        ),
+        "held_branch": HELD_BRANCH,
+    }
+    return query, {
+        "division_elements": [
+            {
+                "name": element.name,
+                "direction": element.relationship_direction.value
+                if element.relationship_direction is not None
+                else None,
+            }
+            for element in elements
+        ],
+        "null_value": NULL_VALUE,
+        "global_branch_name": GLOBAL_BRANCH_NAME,
+    }
+
+
+@dataclass(frozen=True)
+class NumberPoolDivisionResult:
+    """How many numbers one division of a scoped pool holds."""
+
+    values: tuple[str | int | float | bool, ...]
+    """The division's value for each scope element, in scope order."""
+
+    used: int
+    """Numbers in use on any branch; a number used on several branches counts once."""
+
+    used_default_branch: int
+    """Numbers in use on the default branch."""
+
+    @property
+    def used_branches(self) -> int:
+        """Numbers in use only on other branches than the default branch."""
+        return self.used - self.used_default_branch
+
+
+class NumberPoolGetDivisions(Query):
+    """Count the numbers each division of a scoped pool holds, for every division that holds at least one.
+
+    A number counts while any branch holds it, as for the pool's figures, and in every division its holding object
+    occupies on a live branch holding the number. `elements` says where a Node keeps each scope element, in scope
+    order.
+    """
+
+    name = "numberpool_get_divisions"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool: CoreNumberPool,
+        ranges: list[list[int]],
+        elements: Sequence[DivisionElementPath],
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool = pool
+        self.ranges = ranges
+        self.elements = elements
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ranges"] = self.ranges
+
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
+        divisions_query, divisions_params = live_divisions_query(elements=self.elements)
+        self.params.update(divisions_params)
+
+        query = """
+        %(reserved_values)s
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
+        WITH DISTINCT attr, value, branch, deleting_branches, branch_windows
+        WITH attr, deleting_branches, branch_windows, collect({value: value, branch: branch}) AS held_values
+        %(divisions)s
+        WITH division_values, value, collect(DISTINCT held_branch) AS branches
+        WITH division_values, value, $default_branch_name IN branches AS on_default_branch
+        """ % {
+            "reserved_values": reserved_values,
+            "divisions": divisions_query,
+        }
+        self.add_to_query(query)
+
+        self.return_labels = [
+            "division_values",
+            "count(value) AS used",
+            "sum(CASE WHEN on_default_branch THEN 1 ELSE 0 END) AS used_default_branch",
+        ]
+        # The rows are read in pages when no limit is given, so each page needs one stable order.
+        self.order_by = ["division_values"]
+
+    def get_data(self) -> list[NumberPoolDivisionResult]:
+        return [
+            NumberPoolDivisionResult(
+                values=tuple(result.get_as_type("division_values", list)),
+                used=result.get_as_type("used", int),
+                used_default_branch=result.get_as_type("used_default_branch", int),
+            )
+            for result in self.get_results()
+        ]
+
+
+# Reads `attr`, `deleting_branches`, `branch_windows`, `$at` and `$default_branch_name`; each branch of the UNION
+# returns `value` and `branch`.
+LIVE_ATTRIBUTE_VALUES_QUERY = """
+        // --------------
+        // Every value edge open now, on any branch that is not being deleted
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE]->(av)
+        WHERE hv.status = "active"
+          AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+          AND NOT hv.branch IN deleting_branches
+        RETURN av.value AS value, hv.branch AS branch
+        UNION
+        // --------------
+        // For any edges closed on the default branch, check if they are still reachable
+        // on other branches.
+        // Start with closed edges on the default branch that user branches might still see as active.
+        // --------------
+        MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+        WHERE hv.status = "active"
+        AND hv.to <= $at
+        AND any(
+            window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+        )
+        WITH hv, av, branch_windows, COLLECT {
+            // --------------
+            // Find any branches with edges that override the default branch HAS_VALUE edge.
+            // Any value edge the branch wrote that is open now hides the origin's value: an active one
+            // (the branch changed the value) or a deleted one (it removed the object or the attribute).
+            // --------------
+            MATCH (attr)-[hiding:HAS_VALUE]->()
+            WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+            RETURN hiding.branch AS branch_name
+        } AS hiding_branches
+        // --------------
+        // The value is held by each branch this HAS_VALUE edge is visible on that has not overridden it
+        // --------------
+        UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+            AND hv.from <= window.fork_at AND window.fork_at < hv.to
+            AND NOT window.name IN hiding_branches | window.name] AS branch
+        RETURN av.value AS value, branch
+"""
+
+
+# Reads `attr`, `branch_windows`, `$at` and `$default_branch_name`, and returns `value` and `branch`; joined to
+# LIVE_ATTRIBUTE_VALUES_QUERY by a UNION, it adds the branches inheriting an open default-branch value.
+INHERITED_OPEN_VALUES_QUERY = """
+            // --------------
+            // A branch that forked while the default branch's edge was open, and has written no edge of its own
+            // since, inherits the value without an edge carrying its name
+            // --------------
+            MATCH (attr)-[hv:HAS_VALUE {branch: $default_branch_name}]->(av)
+            WHERE hv.status = "active"
+            AND hv.from <= $at AND (hv.to IS NULL OR hv.to > $at)
+            WITH hv, av, branch_windows, COLLECT {
+                MATCH (attr)-[hiding:HAS_VALUE]->()
+                WHERE hiding.from <= $at AND (hiding.to IS NULL OR hiding.to > $at)
+                RETURN hiding.branch AS branch_name
+            } AS hiding_branches
+            UNWIND [window IN branch_windows WHERE window.origin_name = hv.branch
+                AND hv.from <= window.fork_at
+                AND NOT window.name IN hiding_branches | window.name] AS branch
+            RETURN av.value AS value, branch
+"""
+
+
+def reserved_values_query(
+    pool_id: str,
+    attribute_name: str,
+    at: str,
+    default_branch_name: str,
+    division_filter: str = "",
+    include_inherited_open_values: bool = False,
+    division_candidates: str = "",
+) -> tuple[str, dict[str, Any]]:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
+
+    Finds every value some non-deleting branch holds on each reserved Attribute, with the branch that holds it. A
+    value counts on the edge's branch when its HAS_VALUE edge is open now, and on each branch that forked from the
+    edge's branch while the edge was open and has written no edge of its own that hides the default-branch version.
+
+    `division_filter` is inserted after the reserved Attributes are matched, to keep only those of a division, and
+    then only the values held on a branch on which the Attribute's Node is in the division.
+    `include_inherited_open_values` also reports a value on each branch inheriting a default-branch value that is
+    still open, which otherwise counts on the default branch only.
+
+    Final values are res (IS_RESERVED edge), attr (the reserved Attribute), value (an active Attribute value),
+    branch (a branch holding the value), deleting_branches and branch_windows.
+    """
+    params: dict[str, Any] = {
+        "pool_id": pool_id,
+        "attribute_name": attribute_name,
+        "at": at,
+        "default_branch_name": default_branch_name,
+    }
+    query = """
+%(live_branches)s
+%(division_candidates)s
+    // --------------
+    // Start with all the Attributes currently reserved for this pool
+    // --------------
+    MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(attr:Attribute { name: $attribute_name })
+    WHERE res.status = "active" AND res.from <= $at AND (res.to IS NULL OR res.to > $at)
+%(division)s    CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s%(inherited_values)s    }
+%(division_values)s    WITH DISTINCT res, attr, value, branch, deleting_branches, branch_windows
+    """ % {
+        "number_pool": InfrahubKind.NUMBERPOOL,
+        "division": division_filter,
+        "division_candidates": division_candidates,
+        "division_values": DIVISION_VALUE_FILTER_QUERY if division_filter else "",
+        "live_branches": LIVE_BRANCHES_QUERY,
+        "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+        "inherited_values": f"            UNION\n{INHERITED_OPEN_VALUES_QUERY}"
+        if include_inherited_open_values
+        else "",
+    }
+    return query, params
+
+
+@dataclass(frozen=True)
+class NumberPoolAttributeBranchValuesQueryResult:
+    """The number one live branch holds for one attribute."""
+
+    attribute_id: str
+    branch: str
+    value: int
+
+
+class NumberPoolAttributeBranchValuesQuery(Query):
+    """Report the number each live branch holds for each attribute, one row per attribute and branch.
+
+    A branch holds the value of its own open edge, or else the value of the default branch it inherits, whether that
+    value is still open or was closed on the default branch after the branch forked. A branch being deleted holds
+    nothing, and neither does a branch whose attribute holds no number.
+    """
+
+    name = "number_pool_attribute_branch_values"
+    type = QueryType.READ
+
+    def __init__(self, attribute_ids: list[str], **kwargs: Unpack[QueryInitKwargs]) -> None:
+        self.attribute_ids = attribute_ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_ids"] = self.attribute_ids
+        self.params["at"] = self.at.to_string()
+        self.params["default_branch_name"] = registry.default_branch
+        self.params["null_value"] = NULL_VALUE
+
+        query = """
+        %(live_branches)s
+        UNWIND $attribute_ids AS attribute_id
+        MATCH (attr:Attribute { uuid: attribute_id })
+        CALL (attr, deleting_branches, branch_windows) {
+%(live_values)s
+            UNION
+%(inherited_values)s        }
+        WITH DISTINCT attr.uuid AS attribute_id, branch, value
+        WHERE value <> $null_value
+        """ % {
+            "live_branches": LIVE_BRANCHES_QUERY,
+            "live_values": LIVE_ATTRIBUTE_VALUES_QUERY,
+            "inherited_values": INHERITED_OPEN_VALUES_QUERY,
+        }
+        self.add_to_query(query)
+        self.return_labels = ["attribute_id", "branch", "value"]
+        self.order_by = ["attribute_id", "branch", "value"]
+
+    def get_data(self) -> list[NumberPoolAttributeBranchValuesQueryResult]:
+        return [
+            NumberPoolAttributeBranchValuesQueryResult(
+                attribute_id=result.get_as_type("attribute_id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+            )
+            for result in self.get_results()
+        ]
 
 
 class NumberPoolGetUsed(Query):
+    """A pool is branch-agnostic, and so is the set of numbers it accounts for.
+
+    The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
+    branch holds it. For a division, a value counts when its Node is in the division on a branch holding the value.
+    """
+
     name = "number_pool_get_used"
     type = QueryType.READ
 
     def __init__(
         self,
         pool: CoreNumberPool,
+        ranges: list[list[int]],
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
+        self.ranges = ranges
+        self.division = division
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
+        self.params["ranges"] = self.ranges
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        division_filter = ""
+        if self.division is not None:
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division, node_kind=self.pool.node.value),
         )
-
-        self.params.update(branch_params)
-        self.params["attribute_name"] = self.pool.node_attribute.value
+        self.params.update(reserved_values_params)
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
-        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-        CALL (pool, res, av) {
-            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
-            WHERE
-                n.uuid = res.identifier AND
-                attr.name = $attribute_name AND
-                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
-                res.from DESC, hv.from DESC, ha.from DESC,
-                res.status ASC, hv.status ASC, ha.status ASC
-            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
-            LIMIT 1
-        }
-        WITH av, res, is_active
-        WHERE is_active = True
+        %(reserved_values)s
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
         """ % {
-            "branch_filter": branch_filter,
-            "number_pool": InfrahubKind.NUMBERPOOL,
-            "node": self.pool.node.value,
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
-        self.return_labels = ["DISTINCT(av.value) as value", "res.identifier as identifier"]
+        self.return_labels = ["DISTINCT(value) as value", "res.identifier as identifier"]
         self.order_by = ["value"]
 
     def iter_results(self) -> Generator[NumberPoolIdentifierData]:
@@ -464,54 +1470,53 @@ class NumberPoolGetUsed(Query):
 
 
 class NumberPoolGetFree(Query):
+    """A pool is branch-agnostic, and so is the set of numbers it accounts for.
+
+    The read of the IS_RESERVED edges carries no branch filter: the edge is global, and a value counts while any
+    branch holds it. For a division, a value counts when its Node is in the division on a branch holding the value.
+    """
+
     name = "number_pool_get_free"
     type = QueryType.READ
 
     def __init__(
         self,
         pool: CoreNumberPool,
-        min_value: int | None = None,
-        max_value: int | None = None,
+        min_value: int,
+        max_value: int,
+        division: Division | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
         self.min_value = min_value
         self.max_value = max_value
+        self.division = division
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
-        # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
-        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
-        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
+        self.params["start_range"] = self.min_value
+        self.params["end_range"] = self.max_value
         self.limit = 1  # Query only works at returning a single, free entry
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        division_filter = ""
+        if self.division is not None:
+            division_filter, division_params = division_filter_query(division=self.division)
+            self.params.update(division_params)
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+            division_filter=division_filter,
+            division_candidates=division_candidates_query(division=self.division, node_kind=self.pool.node.value),
         )
-
-        self.params.update(branch_params)
-        self.params["attribute_name"] = self.pool.node_attribute.value
+        self.params.update(reserved_values_params)
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
-        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
-        CALL (pool, res, av) {
-            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
-            WHERE
-                n.uuid = res.identifier AND
-                attr.name = $attribute_name AND
-                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
-            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC,
-                res.from DESC, hv.from DESC, ha.from DESC,
-                res.status ASC, hv.status ASC, ha.status ASC
-            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
-            LIMIT 1
-        }
-        WITH av, res, is_active
-        WHERE is_active = True
-        WITH DISTINCT toInteger(av.value) AS used_value
+        %(reserved_values)s
+        WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
+        WITH DISTINCT toInteger(value) AS used_value
         ORDER BY used_value ASC
         WITH [$start_range - 1] + collect(used_value) AS nums
         UNWIND range(0, size(nums) - 1) AS idx
@@ -523,9 +1528,7 @@ class NumberPoolGetFree(Query):
         WHERE is_free = true OR is_last = true
         WITH number AS free_number, is_free, is_last
         """ % {
-            "branch_filter": branch_filter,
-            "number_pool": InfrahubKind.NUMBERPOOL,
-            "node": self.pool.node.value,
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
@@ -560,92 +1563,50 @@ class NumberPoolGetFree(Query):
         return None
 
 
-class NumberPoolGetTaken(Query):
-    """Values held on the target kind for the pool's attribute, whatever set them.
+class NumberPoolSetReserved(Query):
+    """Record that a number pool accounts for an attribute.
 
-    Sees values created outside the pool, which allocation must skip or it stalls on a value the
-    uniqueness constraint rejects.
+    Takes a write lock on the Attribute vertex and then on the pool's vertex, then keeps this pool's live
+    IS_RESERVED edge unless the write allocates a number the record does not list yet. When no edge is kept, it
+    ends every live IS_RESERVED edge on the attribute and creates this pool's record, whose `allocated_values`
+    carries every number the pool allocated to the attribute so far plus the one allocated now, if any.
+
+    The list is never changed in place: extending it closes the record and creates a new one, which keeps the
+    history and stamps the pool like any other record change. The list is only ever tested for membership, so
+    its order carries no meaning.
+
+    The row returned says whether `held_value`, the number the attribute holds after the write, is one the
+    live record lists as allocated; `held_value` defaults to the number allocated now.
     """
 
-    name = "number_pool_get_taken"
-    type = QueryType.READ
-
-    def __init__(
-        self,
-        pool: CoreNumberPool,
-        min_value: int | None = None,
-        max_value: int | None = None,
-        **kwargs: Unpack[QueryInitKwargs],
-    ) -> None:
-        self.pool = pool
-        self.min_value = min_value
-        self.max_value = max_value
-
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
-        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
-
-        # is_isolated=False mirrors the uniqueness validator: a value added to the origin branch after
-        # this branch point still collides here.
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
-        )
-
-        self.params.update(branch_params)
-        self.params["attribute_name"] = self.pool.node_attribute.value
-
-        query = """
-        MATCH (n:%(node)s)-[:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[:HAS_VALUE]->(av:AttributeValueIndexed)
-        WHERE av.value >= $start_range and av.value <= $end_range
-        WITH DISTINCT n, attr
-        CALL (n, attr) {
-            MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
-            WHERE all(r in [ha, hv] WHERE (%(branch_filter)s))
-            ORDER BY ha.branch_level DESC, hv.branch_level DESC,
-                ha.from DESC, hv.from DESC,
-                ha.status ASC, hv.status ASC
-            RETURN av.value AS value, (ha.status = "active" AND hv.status = "active") AS is_active
-            LIMIT 1
-        }
-        WITH value, is_active
-        WHERE is_active = True AND value >= $start_range AND value <= $end_range
-        WITH DISTINCT value
-        """ % {
-            "branch_filter": branch_filter,
-            "node": self.pool.node.value,
-        }
-
-        self.add_to_query(query)
-        self.return_labels = ["value"]
-        self.order_by = ["value"]
-
-    def get_taken_values(self) -> set[int]:
-        return {result.get_as_type("value", return_type=int) for result in self.get_results()}
-
-
-class NumberPoolSetReserved(Query):
     name = "numberpool_set_reserved"
     type = QueryType.WRITE
 
     def __init__(
         self,
         pool_id: str,
-        reserved: int,
         identifier: str,
+        attribute_id: str,
+        allocated_value: int | None,
+        held_value: int | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
-        self.reserved = reserved
         self.identifier = identifier
+        self.attribute_id = attribute_id
+        self.allocated_value = allocated_value
+        self.held_value = held_value
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
-        self.params["reserved"] = self.reserved
         self.params["identifier"] = self.identifier
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+        self.params["allocated_value"] = self.allocated_value
+        self.params["held_value"] = self.held_value if self.held_value is not None else self.allocated_value
+        self.params["attribute_id"] = self.attribute_id
 
         global_branch = registry.get_global_branch()
         self.params["rel_prop"] = {
@@ -653,19 +1614,177 @@ class NumberPoolSetReserved(Query):
             "branch_level": global_branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
             "identifier": self.identifier,
         }
 
         query = """
-        MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        MERGE (value:AttributeValue:AttributeValueIndexed { value: $reserved, is_default: false })
-        WITH value, pool
+        // ----------
+        // Get the NumberPool and Attribute we are interested in
+        // ----------
+        MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH pool, attr
         LIMIT 1
-        CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        // ----------
+        // Lock the Attribute vertex, so a concurrent write waits to read the new IS_RESERVED edge
+        // ----------
+        SET attr._number_pool_lock = TRUE
+        REMOVE attr._number_pool_lock
+        // ----------
+        // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+        // ----------
+        SET pool._number_pool_lock = TRUE
+        REMOVE pool._number_pool_lock
+        WITH pool, attr
+        // ----------
+        // Keep this pool's live IS_RESERVED edge unless the write allocates a number it does not list yet
+        // ----------
+        OPTIONAL MATCH (pool)-[own:IS_RESERVED]->(attr)
+        WHERE own.status = "active"
+          AND own.to IS NULL
+        WITH pool, attr, own
+        ORDER BY own.from DESC
+        LIMIT 1
+        WITH pool, attr, own,
+            CASE
+                WHEN own IS NULL THEN []
+                WHEN $allocated_value IS NULL OR $allocated_value IN coalesce(own.allocated_values, []) THEN [own]
+                ELSE []
+            END AS kept_edges,
+            CASE
+                WHEN $allocated_value IS NULL THEN coalesce(own.allocated_values, [])
+                ELSE coalesce(own.allocated_values, []) + [$allocated_value]
+            END AS allocated_values
+        // ----------
+        // End every other live IS_RESERVED edge on the attribute, and stamp the pool that loses it
+        // ----------
+        CALL (attr, kept_edges) {
+            MATCH (other_pool:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
+            WHERE live.status = "active"
+              AND live.to IS NULL
+              AND NOT live IN kept_edges
+            SET live.to = $at, live.to_user_id = $user_id
+            %(stamp_other_pool)s
+        }
+        // ----------
+        // Create the expected IS_RESERVED edge unless one was kept, which is the only case the pool changes
+        // ----------
+        WITH pool, attr, own, kept_edges, allocated_values
+        CALL (pool, attr, kept_edges, allocated_values) {
+            WITH *
+            WHERE size(kept_edges) = 0
+            CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
+            SET rel.allocated_values = allocated_values
+            %(stamp_pool)s
+        }
+        // ----------
+        // Report whether the number the attribute holds is one the live record lists as allocated
+        // ----------
+        WITH CASE WHEN size(kept_edges) = 0 THEN allocated_values ELSE own.allocated_values END AS live_allocated_values
+        WITH live_allocated_values IS NOT NULL
+            AND NOT coalesce($held_value IN live_allocated_values, FALSE) AS is_provided
+        """ % {
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "stamp_other_pool": stamp_vertex_metadata("other_pool"),
+            "stamp_pool": stamp_vertex_metadata("pool"),
+        }
 
         self.add_to_query(query)
-        self.return_labels = ["value"]
+        self.return_labels = ["is_provided"]
+
+    def get_provenance(self) -> PoolRecordProvenance:
+        """What the live record says about the number the attribute holds after the write.
+
+        Raises:
+            InitializationError: When the write matched no pool and attribute, so no record was written.
+
+        """
+        result = self.get_result()
+        if result is None:
+            raise InitializationError(
+                f"No record was written for attribute {self.attribute_id} and pool {self.pool_id}"
+            )
+        if result.get_as_type("is_provided", return_type=bool):
+            return PoolRecordProvenance.PROVIDED
+        return PoolRecordProvenance.ALLOCATED
+
+
+class NumberPoolReleaseReserved(Query):
+    """End every live IS_RESERVED edge on an Attribute vertex, whichever number pool it comes from, leaving the value.
+
+    The edge is closed in time because an IS_RESERVED edge lives on the global branch, where a removal on the
+    same branch sets `to`.
+    """
+
+    name = "numberpool_release_reserved"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        attribute_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.attribute_id = attribute_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_id"] = self.attribute_id
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+
+        query = """
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH attr
+        LIMIT 1
+        // ----------
+        // Lock the Attribute vertex until the transaction ends, so writes to its IS_RESERVED edges run one at a time
+        // ----------
+        SET attr._number_pool_lock = TRUE
+        REMOVE attr._number_pool_lock
+        WITH attr
+        MATCH (pool:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
+        WHERE live.status = "active"
+          AND live.to IS NULL
+        SET live.to = $at, live.to_user_id = $user_id
+        %(stamp_pool)s
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+
+        self.add_to_query(query)
+
+
+class NumberPoolReleaseAllReserved(Query):
+    """End every live IS_RESERVED edge a number pool holds, leaving each attribute's value in place."""
+
+    name = "numberpool_release_all_reserved"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        pool_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool_id = pool_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["pool_id"] = self.pool_id
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+
+        query = """
+        MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[live:IS_RESERVED]->(:Attribute)
+        WHERE live.status = "active"
+          AND live.to IS NULL
+        SET live.to = $at, live.to_user_id = $user_id
+        %(stamp_pool)s
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+
+        self.add_to_query(query)
 
 
 class PrefixPoolGetIdentifiers(Query):
@@ -688,7 +1807,7 @@ class PrefixPoolGetIdentifiers(Query):
         self.params["prefixes"] = self.prefixes
 
         query = """
-        MATCH (pool:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
+        MATCH (pool:Node:%(ipaddress_pool)s { uuid: $pool_id })-[reservation:IS_RESERVED]->(allocated:BuiltinIPPrefix)
         WHERE allocated.uuid in $prefixes
         """ % {"ipaddress_pool": InfrahubKind.IPPREFIXPOOL}
         self.add_to_query(query)

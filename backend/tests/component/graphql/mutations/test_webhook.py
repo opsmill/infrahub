@@ -6,6 +6,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreStandardWebhook
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.error_formatter import catalogue_error_formatter
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -182,6 +183,36 @@ async def test_update_to_invalid_states(
     assert "Defining a node_kind is not valid for infrahub.branch.merged events" in str(result.errors)
 
 
+async def test_update_name_to_existing_webhook_name(
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    for name in ("webhook-a", "webhook-b"):
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_WEBHOOK,
+            context_value=gql_params.context,
+            variable_values={"name": name},
+        )
+        assert not result.errors
+        assert result.data
+    webhook_b_id = result.data["CoreStandardWebhookCreate"]["object"]["id"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=RENAME_WEBHOOK,
+        context_value=gql_params.context,
+        variable_values={"id": webhook_b_id, "name": "webhook-a"},
+    )
+
+    assert result.errors
+    assert [error.message for error in result.errors] == ["Violates uniqueness constraint 'name'"]
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
+    webhook_b = await NodeManager.get_one_by_id_or_default_filter(db=db, id=webhook_b_id, kind=CoreStandardWebhook)
+    assert webhook_b.name.value == "webhook-b"
+
+
 async def test_update_to_valid_states(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
@@ -339,6 +370,14 @@ mutation UpdateWebhook(
     object {
       id
     }
+  }
+}
+"""
+
+RENAME_WEBHOOK = """
+mutation RenameWebhook($id: String!, $name: String!) {
+  CoreStandardWebhookUpdate(data: {id: $id, name: {value: $name}}) {
+    ok
   }
 }
 """

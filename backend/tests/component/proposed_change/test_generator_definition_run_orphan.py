@@ -193,7 +193,6 @@ class TestGeneratorDefinitionRunToleratesOrphanInstance(TestInfrahubAppWithoutLo
                 file_path="generators/device.py",
                 query_name="GetGenDevice",
                 query_id=dataset["query_id"],
-                query_models=["TestNetworkDevice"],
                 query_payload=DEVICE_QUERY,
                 repository_id=dataset["repository_id"],
                 parameters={"name": "name__value"},

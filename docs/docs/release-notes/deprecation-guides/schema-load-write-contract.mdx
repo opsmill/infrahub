@@ -55,6 +55,26 @@ that a schema dumped from Infrahub's own models carries on nested blocks, and a 
 belonging to another variant of the same block — for example `transform` on a computed
 attribute whose `kind` is `Jinja2`.
 
+To remove a single choice from a Dropdown attribute, set `state: absent` on that choice.
+Unlike the `id` and `state` fields on other nested blocks, `state` on a choice is settable,
+so it is not reported as a warning.
+
+```yaml
+attributes:
+  - name: status
+    kind: Dropdown
+    choices:
+      - name: passive
+        state: absent
+```
+
+Infrahub rejects the load while objects still use the removed value, and when removing the
+choice would leave the attribute with no choices.
+
+On an attribute that a node inherits from a generic, set `state: absent` on the choice in the
+generic. Changes to an inherited attribute in the node section of a schema file have no effect,
+because the node takes the attribute from the generic.
+
 `infrahubctl schema load` and `infrahubctl schema check` print these warnings after loading;
 `infrahubctl validate schema` prints them without contacting a server.
 

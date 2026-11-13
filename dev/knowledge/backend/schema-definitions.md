@@ -54,7 +54,7 @@ core_standard_webhook = NodeSchema(
 | `on_delete` | `RelationshipDeleteBehavior \| None` | `None` | `None` (no-action) or `cascade` |
 | `allow_override` | `AllowOverrideType` | `ANY` | Whether inheriting nodes can override this relationship |
 | `read_only` | `bool` | `False` | Prevents user modification |
-| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too) |
+| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too). A deprecated field is always made optional; the server logs a warning each time it processes the schema, except for kinds in the restricted namespaces |
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 
@@ -156,9 +156,11 @@ each write class:
 
 - a name **in** the table is dropped and reported as a **warning** — a `READ`-level field, the
   `id`/`state` bookkeeping every internal schema model carries on the nested value models
-  (parameters, choices, computed attribute, extensions), or a field belonging to a sibling
-  variant of a discriminated union. These are all names a schema read back from Infrahub can
-  carry, so accepting them is what keeps the read → edit → load round trip working.
+  (parameters, computed attribute, extensions; on a dropdown choice only `id`), or a field
+  belonging to a sibling variant of a discriminated union. These are all names a schema read
+  back from Infrahub can carry, so accepting them is what keeps the read → edit → load round
+  trip working. `state` on a choice is settable, because `state: absent` is how a schema file
+  removes a single choice; only the write variant declares it, so the read shape leaves it out.
 - a name **not** in the table is an **error**, since the only ways to produce one are a typo and
   a field that no longer exists.
 

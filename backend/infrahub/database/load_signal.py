@@ -3,9 +3,12 @@ from __future__ import annotations
 import bisect
 import time
 from collections import deque
-from typing import Callable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 log = get_logger()
 

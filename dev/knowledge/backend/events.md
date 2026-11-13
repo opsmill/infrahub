@@ -33,6 +33,18 @@ when the model is constructed. Assigning `value`/`value_previous` on an existing
 the mask (`validate_assignment` is not enabled) and leaks the secret into the event payload. Build
 changelog entries with their final values; never patch them after construction.
 
+### Secondary changelogs and the parent marker
+
+A mutation's affected peers each get a secondary changelog. Its parent is held apart from the
+`relationships` dict, and `root_node_id` falls back to the changelog's own node when the parent is
+unset — so a path that builds or merges a secondary without carrying the parent over emits an event
+missing `infrahub.node.parent` and rooted on the wrong node. Every such path must propagate it.
+
+"Parent" here means a relationship of schema kind `Parent` only. The `parent`/`children`
+relationships generated for a `hierarchical` generic carry kind `Hierarchy` and are not treated as
+parents on any path; changing that for one path would make secondary events disagree with primary
+ones.
+
 ### Related resources cap
 
 The Prefect API rejects any event whose `related` list exceeds
@@ -91,7 +103,7 @@ Application Code
        ▼
 InfrahubEventService.send(event)
        │
-       ├──► _send_bus() ──► Message Bus (RabbitMQ/NATS)
+       ├──► _send_bus() ──► Message Bus (RabbitMQ)
        │         │
        │         └──► event.get_messages() → Internal handlers
        │
@@ -101,6 +113,26 @@ InfrahubEventService.send(event)
 ```
 
 For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
+
+## Events a mutation sends
+
+Once a GraphQL mutation returns, `emit_node_mutation_events` (`graphql/mutations/main.py`) sends the
+node events that `generate_node_mutation_events` (`events/generator.py`) builds:
+
+| Event | For | Parent |
+|-------|-----|--------|
+| Created, updated or deleted, from the mutation's action | The main node, when its changelog has changes | None |
+| Updated, derived from the main node's changelog | Each peer the main node added or removed, on a relationship the peer declares back | Main node's event |
+| Deleted | Each node the delete removed besides the main node | Main node's event |
+| Created, updated or deleted, from the recorded action | Each node recorded on the main node's mutation context | Main node's event, or none when the main node did not change |
+| Group member added or removed | Each group among those events whose `members` changed | The group's event |
+
+- Record every node a mutation writes outside the main node's save, or that node gets no event. See
+  [Mutations](mutations.md#nodes-a-mutation-writes-besides-its-main-node).
+- A recorded node keeps its derived update unless its own changelog already lists the same change:
+  same relationship, same peer, added or removed. A node handed out by a resource pool is saved
+  before the main node links to it, so its created event does not carry that link.
+- The mutation sends nothing when neither the main node nor any recorded node changed.
 
 ## Trigger action parameters
 
@@ -195,6 +227,7 @@ Events can be queried through:
 |-----------|----------|
 | Base models | `backend/infrahub/events/models.py` |
 | Event definitions | `backend/infrahub/events/*.py` |
+| Mutation event generator | `backend/infrahub/events/generator.py` |
 | Service adapter | `backend/infrahub/services/adapters/event/__init__.py` |
 | Trigger models | `backend/infrahub/trigger/models.py` |
 | GraphQL queries | `backend/infrahub/graphql/queries/event.py` |
@@ -205,5 +238,7 @@ Events can be queried through:
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
+- [Mutations](mutations.md) - How mutations record the nodes they write besides their main node
+- [Changelog Enrichment](changelog-enrichment.md) - how node event changelogs get their display labels and HFIDs
 - [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure

@@ -21,7 +21,7 @@ This command closes the loop from "the agent struggled with X" to "X is captured
 - Stay read-only until the user approves the report and any disposition buckets. Do not edit files, commit, push, or create GitHub issues before approval.
 - Present the full retrospective before taking action. Ask for explicit approval per disposition bucket: `fix-now`, `open-pr`, `github-issue`, and `local-only`.
 - For `fix-now`, present a diff preview or precise patch plan before writing files. Apply only the approved changes.
-- For `github-issue`, defer to the existing `creating-issues` skill when available; if it is unavailable, use `gh issue create` only after the user approves the exact issue content.
+- For `github-issue`, defer to the existing `opsmill-dev-creating-issues` skill when available; if it is unavailable, use `gh issue create` only after the user approves the exact issue content.
 - Respect `AGENTS.md` guardrails. Ask First topics, including database migrations, GraphQL schema changes, new dependencies, CI/CD workflow changes, and authentication or authorization changes, are never auto-applied. Route them to `open-pr` or `github-issue`.
 - Never edit generated files. If a finding points at generated output, identify the source template or generator instead.
 - Do not treat personal preferences as repo policy. Use `local-only` for non-project-specific workflow preferences.
@@ -71,7 +71,7 @@ For each finding, propose one disposition:
 |-------------|----------|-----------------------|
 | `fix-now` | Small, low-risk repo context updates that belong on the current branch and do not touch Ask First topics. | Show diff preview, then edit files only after approval. |
 | `open-pr` | Context or harness changes that should be reviewed separately from the current feature branch, or anything touching Ask First topics. | Draft a branch/PR plan. Do not branch, commit, push, or open a PR unless explicitly approved. |
-| `github-issue` | Larger work, ambiguous ownership, product/architecture debt, ADR candidates needing human authorship, or work outside current scope. | Use the `creating-issues` skill to draft each issue; create only after approval. |
+| `github-issue` | Larger work, ambiguous ownership, product/architecture debt, ADR candidates needing human authorship, or work outside current scope. | Use the `opsmill-dev-creating-issues` skill to draft each issue; create only after approval. |
 | `local-only` | Personal workflow preferences or notes that should not become repo policy. | Record only in approved local memory/report locations supported by the runtime. |
 
 Disposition rules:
@@ -156,7 +156,7 @@ Process only the buckets the user approved.
 
 ### github-issue
 
-1. For each approved finding, invoke the `creating-issues` skill with the finding as source material.
+1. For each approved finding, invoke the `opsmill-dev-creating-issues` skill with the finding as source material.
 2. Present the exact issue title/body/labels for approval.
 3. Create issues only after approval.
 

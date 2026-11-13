@@ -16,6 +16,7 @@ from infrahub.core.relationship.constraints.profiles_removal import Relationship
 from infrahub.core.schema import ProfileSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -91,7 +92,9 @@ async def test_constraint_blocks_removing_profile_with_inherited_required_relati
     await thing.new(db=db, name="thing-1", color="blue", profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "owner" in updated_fields
     await thing.save(db=db)
@@ -134,7 +137,9 @@ async def test_constraint_allows_removing_profile_without_required_relationship_
     await thing.new(db=db, name="thing-1", color="blue", owner=child, profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "owner" not in updated_fields
     await thing.save(db=db)
@@ -174,7 +179,9 @@ async def test_constraint_allows_removing_profile_when_user_set_required_relatio
     await thing.new(db=db, name="thing-1", color="blue", profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "owner" in updated_fields
     await thing.save(db=db)
@@ -236,7 +243,9 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
     await thing.new(db=db, name="thing-1", color="blue", profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "owner" in updated_fields
     await thing.save(db=db)
@@ -279,7 +288,9 @@ async def test_constraint_allows_removing_node_from_profile_related_nodes_withou
     await profile.new(db=db, profile_name="thing-profile", profile_priority=1000, related_nodes=[thing])
     await profile.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "owner" not in updated_fields
     await thing.save(db=db)
@@ -317,7 +328,9 @@ async def test_constraint_blocks_removing_profile_with_inherited_required_attrib
     await thing.new(db=db, name="thing-1", owner=child, profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "color" in updated_fields
     await thing.save(db=db)
@@ -362,7 +375,9 @@ async def test_constraint_allows_removing_profile_without_required_attribute_inh
     await thing.new(db=db, name="thing-1", color="blue", owner=child, profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "color" not in updated_fields
     await thing.save(db=db)
@@ -399,7 +414,9 @@ async def test_constraint_allows_removing_profile_when_user_set_required_attribu
     await thing.new(db=db, name="thing-1", owner=child, profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "color" in updated_fields
     await thing.save(db=db)
@@ -445,7 +462,9 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
     await thing.new(db=db, name="thing-1", owner=child, profiles=[profile])
     await thing.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "color" in updated_fields
     await thing.save(db=db)
@@ -490,7 +509,9 @@ async def test_constraint_allows_removing_node_from_profile_related_nodes_withou
     await profile.new(db=db, profile_name="thing-profile", profile_priority=1000, related_nodes=[thing])
     await profile.save(db=db)
 
-    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    node_applier = NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    )
     updated_fields = await node_applier.apply_profiles(node=thing)
     assert "color" not in updated_fields
     await thing.save(db=db)
@@ -537,7 +558,9 @@ async def _create_thing_from_profiles(
     thing = await Node.init(db=db, branch=branch, schema=TestKind.THING)
     await thing.new(db=db, name=name, profiles=profiles, **data)
     await thing.save(db=db)
-    await NodeProfilesApplier(db=db, branch=branch).apply_profiles(node=thing)
+    await NodeProfilesApplier(
+        db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+    ).apply_profiles(node=thing)
     await thing.save(db=db)
     return thing
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
@@ -18,10 +18,6 @@ describe("ObjectTableToolbar Component", () => {
   ] as NodeObject[];
 
   const mockOnClose = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   test("renders correctly with selected rows", async () => {
     // GIVEN
