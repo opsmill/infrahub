@@ -122,8 +122,7 @@ from infrahub.core import registry
 from infrahub.core.registry import registry
 ```
 
-Never write `from x import Y as Y` to keep an import that nothing uses: the redundant alias is the
-re-export marker that stops the linter reporting it as dead. Delete the import when its last user goes.
+Do not use `from x import Y as Y` solely to silence an unused-import warning. Keep intentional public re-exports and declare them explicitly with `__all__`; otherwise delete the import when its last internal user goes.
 
 Fix the import where the checker flags it, not across existing call sites, and avoid importing the registry into a new component — see
 [Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
