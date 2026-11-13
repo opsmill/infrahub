@@ -22,11 +22,11 @@ Construct components as close to the application entry point as possible. Use a 
 
 Prefect `@flow` functions are application entry points: resolve singleton getters (`get_database()`, `get_workflow()`, …) at the top of the flow only — never inside helpers or component internals — then build the component and delegate to it. The flow body stays a thin composition root; the business logic lives in the component.
 
-A REST endpoint is an entry point too. A `Depends()` function only builds and returns the component; the endpoint calls it. A value that needs no injection is a plain call, not a dependency.
+A REST endpoint is an entry point too. When an endpoint needs a component, the `Depends()` function that provides it only builds and returns it; the endpoint calls it. A value that needs no injection is a plain call, not a dependency.
 
 ```python
 # ✅ Good - the dependency builds, the endpoint calls
-def build_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> IdentityResolver:
+async def build_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> IdentityResolver:
     return IdentityResolver(repository=PreferenceRepository(db=db), defaults=load_defaults())
 
 @router.get("/config")

@@ -81,8 +81,7 @@ except Exception as exc:
 The mirror case is cleanup running while another exception propagates — a reset or release in an
 `except`/`finally` recovery path. Anything the cleanup raises replaces the failure being recovered
 from with a less useful one, so catch what the cleanup can raise and log it with `log.exception`.
-Catch `Exception` only when that set is not knowable, and name the case on the suppression (see
-below). Cancellation still propagates: `asyncio.CancelledError` is a `BaseException`, so state the
+Catch `Exception` only when that set is not knowable, and say why in the comment. Cancellation still propagates: `asyncio.CancelledError` is a `BaseException`, so state the
 contract in the helper's docstring as "raises nothing but cancellation", not "never raises".
 
 ## `# noqa: BLE001`

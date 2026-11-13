@@ -157,7 +157,6 @@ checkout.
 - `schema/openapi.json` - OpenAPI schema for the REST API
 - `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
 - `docker-compose.yml` – The root compose file's env block is rendered from the backend settings
-- `.agents/skills/speckit-*`, `.specify/extensions/` – Installed from Spec Kit and `opsmill/opsmill-speckit`, and overwritten by each upgrade. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
@@ -189,6 +188,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - New dependencies
 - CI/CD workflow changes
 - Authentication/authorization changes
+- Edits to `.specify/` or to a skill installed from another repository (`.agents/skills/speckit-*`, the skills in `skills-lock.json`) — the next upgrade or install overwrites them. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
 
 ### Never Do
 

@@ -57,8 +57,8 @@ agents with a job to finish.
 - **Say it once**: if the rule is already written elsewhere, link to it instead of restating it
 - **Budget**: a new rule is a few lines plus one example. If it needs more than that, it's an
   explanation for `dev/knowledge/`, not a guideline. A knowledge section written with a code change
-  states the constraint and its reason for a later reader of that area; which process calls which
-  function, and in what order, stays in the PR description
+  states the constraint and its reason for a later reader of that area; the account of the change
+  itself (what was wired where) stays in the PR description
 - **Relative numbers, not absolute ones**: a measurement is only meaningful as a comparison, since the
   absolute figure depends on the environment it was taken in. Write "cuts merge wall time by roughly
   4x", not "runs in 10s". A count of code artifacts goes stale the same way — put the command that
