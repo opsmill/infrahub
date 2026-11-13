@@ -39,7 +39,7 @@ Design the feature to ensure:
 
 Plan for query efficiency and data volume by considering:
 
-- **Database round-trips** - design to use batch queries when operating on multiple nodes; when queries cannot be merged, follow the [order of preference](python.md#several-queries-of-the-same-shape-one-query-then-parallel-a-loop-last): one query, then parallel, a loop last
+- **Database round-trips** - design to use batch queries when operating on multiple nodes; when queries cannot be merged, follow the [order of preference](python.md#several-queries-of-the-same-shape-one-query-then-parallel-a-loop-last); keep dependent queries and queries in a caller’s transaction sequential
 - **N+1 query patterns** - operate set-based in both directions: load related data in bulk, and update/delete by condition in one query instead of mutating each fetched node individually
 - **Data volume per query** - avoid overquerying by fetching only necessary fields and relationships
 - **Reuse loaded data** - read attributes off a node already loaded for the request instead of querying again
