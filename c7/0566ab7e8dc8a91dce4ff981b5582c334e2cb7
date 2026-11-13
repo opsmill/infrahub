@@ -1,0 +1,57 @@
+frontend/app/src/entities/config/ui/about-modal.test.tsx
+  s_1df8eb94da3d51::t_5f25ef07bfaf11 5,10-13,20-34,36-40,50,86-120
+frontend/app/src/entities/config/ui/about-modal.tsx
+  s_1df8eb94da3d51::t_8aef22c8ab991d 6,11,46
+frontend/app/src/entities/config/ui/queries/get-app-info.query.test.tsx
+  s_1df8eb94da3d51::t_c97d1f2d052f43 1-64
+frontend/app/src/entities/config/ui/queries/get-app-info.query.ts
+  s_1df8eb94da3d51::t_c7c1990b9ee4c5 7-9,15-16
+frontend/app/src/entities/license/domain/model/license.ts
+  s_1df8eb94da3d51::t_56a19f11205f06 1-9
+frontend/app/src/entities/license/domain/rules/license-banner.test.ts
+  s_1df8eb94da3d51::t_ad3482780f3945 1-263
+frontend/app/src/entities/license/domain/rules/license-banner.ts
+  s_1df8eb94da3d51::t_e6923154398f2b 1-84
+frontend/app/src/entities/license/domain/rules/license-dates.test.ts
+  s_1df8eb94da3d51::t_91f1dff3877976 1-15
+frontend/app/src/entities/license/domain/rules/license-dates.ts
+  s_1df8eb94da3d51::t_f94f217df5098e 1-7
+frontend/app/src/entities/license/ui/hooks/use-format-license-day.ts
+  s_1df8eb94da3d51::t_deedee4d2e2057 1-15
+frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.test.ts
+  s_1df8eb94da3d51::t_fad54dfe4ae6f0 1-154
+frontend/app/src/entities/license/ui/hooks/use-license-banner-dismissal.ts
+  s_1df8eb94da3d51::t_aa63c18fa407ad 1-41
+frontend/app/src/entities/license/ui/license-about-rows.test.tsx
+  s_1df8eb94da3d51::t_6ac1f76e414f07 1-270
+frontend/app/src/entities/license/ui/license-about-rows.tsx
+  s_1df8eb94da3d51::t_c916a8c12456e0 1-85
+frontend/app/src/entities/license/ui/license-banner.test.tsx
+  s_1df8eb94da3d51::t_e7653825518de9 1-359
+frontend/app/src/entities/license/ui/license-banner.tsx
+  s_1df8eb94da3d51::t_cf3b477b546d59 1-96
+frontend/app/src/entities/user-profile/ui/account-menu.test.tsx
+  s_1df8eb94da3d51::t_c630d96a90eb43 12,40
+frontend/app/src/pages/app-layout.tsx
+  s_1df8eb94da3d51::t_45edb9f03d7dba 3,14-15
+frontend/app/src/shared/components/display/info-row.tsx
+  s_1df8eb94da3d51::t_ff2d2e25ffda22 1-29
+frontend/app/tests/fake/license.ts
+  s_1df8eb94da3d51::t_7c00ec0e0cc71d 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c70566ab7e8dc8a91dce4ff981b5582c334e2cb7",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
