@@ -2,17 +2,11 @@
 services:
   database:
     profiles: [demo, dev, debug]
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2026.05.0-community}"
     environment:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
-      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
-      - "NEO4J_server_backup_enabled=true"
-      - "NEO4J_server_backup_listen__address=0.0.0.0:6362"
-      - "NEO4J_metrics_prometheus_enabled=true"
-      - "NEO4J_metrics_enabled=true"
-      - "NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004"
     volumes:
       - "./plugins:/plugins"
       - "database_data:/data"
@@ -27,8 +21,6 @@ services:
       infrahub_role: "database"
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
-    ports:
-      - "${INFRAHUB_DB_BACKUP_PORT:-6362}:6362"
 
 volumes:
   database_data:

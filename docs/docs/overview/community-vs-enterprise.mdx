@@ -272,23 +272,25 @@ Enterprise Edition is the better choice for organizations with these characteris
 
 ## Migration path
 
-Many organizations begin with Community Edition and upgrade to Enterprise Edition as their needs grow. Infrahub is designed to make this transition smooth and non-disruptive.
+Organizations can begin with Community Edition and migrate to Enterprise Edition as their needs grow. Plan a maintenance window to back up the deployment, replace services, and verify the existing data and integrations.
+
+Follow [Migrate from Community to Enterprise](../deploy-manage/maintain-upgrade/upgrade/community-to-enterprise.mdx) for Docker Compose and Helm deployments. For bare metal, plan the migration with OpsMill.
 
 ### From community to enterprise
 
-The migration process from Community to Enterprise is engineered to be seamless with no loss of data or functionality:
+An edition migration reuses the existing databases and file storage when the deployment configuration preserves their locations. If you also change versions or deployment environments, account for the required upgrade or data transfer procedures.
 
 #### Data continuity
 
-- **Complete preservation**: All data and configurations transfer directly with no conversion needed
-- **Schema compatibility**: No schema or workflow changes required during migration
-- **Integration stability**: Existing integrations and automation continue functioning unchanged
+- **Data preservation**: Back up the databases and file storage, preserve their deployment mappings, and verify the data after restarting
+- **Version compatibility**: Check the upgrade requirements if changing Infrahub or database versions during migration
+- **Integration continuity**: Preserve endpoints, credentials, and configuration, then test integrations before resuming automation
 
 #### Feature enablement
 
-- **Non-disruptive activation**: Enterprise features activate without requiring data migration
+- **Deployment change**: Replace Community services with Enterprise services during a maintenance window; configure optional Enterprise features after verifying the deployment
 - **Incremental adoption**: Gradual adoption of enhanced capabilities at your own pace
-- **Operational continuity**: Minimal disruption to existing operations during transition
+- **Operational continuity**: Resume normal operations after checking service health, data, and integrations
 
 #### Support transition
 
@@ -302,7 +304,7 @@ The migration process from Community to Enterprise is engineered to be seamless 
 
 - Community edition provides complete evaluation capabilities
 - Enterprise features can be assessed through trials
-- Migration can occur at any point without data loss
+- Schedule migration after verifying backups and the target deployment configuration
 
 #### Cost-benefit analysis
 

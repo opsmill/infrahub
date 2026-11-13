@@ -18,6 +18,32 @@ Infrahub Enterprise is based on the Community version, with several enhancements
 
 Infrahub Enterprise can be deployed using the same methods as Infrahub Community.
 
+## Before you start
+
+Infrahub Enterprise is under a commercial license from OpsMill, so request access and review the license terms before you deploy it.
+
+- **Request access from OpsMill.** Contact OpsMill on [Discord](https://discord.gg/opsmill), by email at [contact@opsmill.com](mailto:contact@opsmill.com), or [schedule a meeting](https://cal.com/team/opsmill/meet).
+- **Review the OpsMill agreements.** OpsMill publishes its End User License Agreement on the [legal page](https://opsmill.com/legal/).
+- **Review the Neo4j license terms.** Infrahub Enterprise runs on Neo4j Enterprise Edition, which has its own license agreement. Read the terms in the [Neo4j Docker documentation](https://neo4j.com/docs/operations-manual/current/docker/introduction/) first.
+- **Check the hardware requirements.** Size the host or cluster against the [hardware requirements](../hardware-requirements.mdx) for your sizing plan.
+
+:::info Accept the license agreements
+
+Infrahub Enterprise requires you to accept the Infrahub license agreement, and Neo4j Enterprise Edition starts only when you accept its license agreement. Accepting them is your decision, so review the terms in the list above first. The settings depend on the install method:
+
+- **Docker Compose:** set these environment variables to `yes`, for example in a `.env` file:
+  - `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to accept the Infrahub license agreement.
+  - `NEO4J_ACCEPT_LICENSE_AGREEMENT` to accept the Neo4j license agreement.
+- **Helm:** set these values to `"yes"` in `values.yml`:
+  - The `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` environment variable of the Infrahub API server and the task workers, to accept the Infrahub license agreement. See [Accept the Infrahub license agreement](#accept-the-infrahub-license-agreement).
+  - `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`, to accept the Neo4j license agreement. See [Accept the Neo4j license agreement](#accept-the-neo4j-license-agreement).
+- **Bare metal:** the settings depend on your environment, so agree on them with OpsMill.
+
+To move an existing Community deployment to Enterprise, follow [Migrate from Community to Enterprise](../../maintain-upgrade/upgrade/community-to-enterprise.mdx) instead of installing a new instance.
+
+If your organization already runs a licensed Neo4j Enterprise instance and you want Infrahub to store its data there, follow [Install Infrahub Enterprise with your own Neo4j](./enterprise-own-neo4j.mdx) instead.
+:::
+
 <Tabs groupId="install-method" queryString>
 <TabItem value="Docker compose via curl" default>
 
@@ -50,11 +76,15 @@ You can also specify a sizing preset in the URL. This will automatically configu
 
 ### Start an Infrahub Enterprise environment
 
+The two `echo` lines set `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` and `NEO4J_ACCEPT_LICENSE_AGREEMENT` to `yes` in the `.env` file. Run them only after you review the terms in [Before you start](#before-you-start). If your `.env` file already sets either variable, change its value to `yes` instead of adding a second line.
+
 <Tabs groupId="os" queryString>
 <TabItem value="macOS" default>
 
 ```bash
 curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+echo "INFRAHUB_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
+echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 docker compose -p infrahub up -d
 ```
 
@@ -63,6 +93,8 @@ docker compose -p infrahub up -d
 
 ```bash
 curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+echo "INFRAHUB_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
+echo "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes" >> .env
 sudo docker compose -p infrahub up -d
 ```
 
@@ -127,6 +159,8 @@ We do not recommend using the included dependencies (Neo4j, PostgreSQL, RabbitMQ
 They are present to ease deployment on non-production environments.
 
 :::
+
+To connect Infrahub to a licensed Neo4j Enterprise instance that you already run, instead of the Neo4j that the chart installs, see [Install Infrahub Enterprise with your own Neo4j](./enterprise-own-neo4j.mdx).
 
 ### Prerequisites
 
@@ -212,6 +246,7 @@ infrahub:
         INFRAHUB_DB_TYPE: neo4j
         INFRAHUB_LOG_LEVEL: INFO
         INFRAHUB_PRODUCTION: "true"
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
         INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
         INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
         INFRAHUB_STORAGE_DRIVER: s3
@@ -232,8 +267,14 @@ infrahub:
                 values:
                 - infrahub-task-worker
             topologyKey: topology.kubernetes.io/zone
+    infrahubTaskWorker:
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
 
   neo4j:
+    neo4j:
+      edition: "enterprise"
+      acceptLicenseAgreement: "yes"
     services:
       admin:
         enabled: true
@@ -258,15 +299,48 @@ infrahub:
 Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
 :::
 
+#### Accept the Infrahub license agreement
+
+Set the `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` environment variable to `"yes"` for the Infrahub API server and the task workers, after you review the terms in [Before you start](#before-you-start):
+
+```yaml
+infrahub:
+  infrahubServer:
+    infrahubServer:
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+
+  infrahubTaskWorker:
+    infrahubTaskWorker:
+      env:
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+```
+
+Write the value as a quoted string (`"yes"`), because Helm reads an unquoted `yes` as a boolean.
+
+#### Accept the Neo4j license agreement
+
+With Helm, you accept the Neo4j license agreement in the values file, not with the `NEO4J_ACCEPT_LICENSE_AGREEMENT` environment variable. Set `acceptLicenseAgreement` to `"yes"` under `infrahub.neo4j.neo4j`, after you review the terms in [Before you start](#before-you-start):
+
+```yaml
+infrahub:
+  neo4j:
+    neo4j:
+      edition: "enterprise"
+      acceptLicenseAgreement: "yes"
+```
+
+Write the value as a quoted string (`"yes"`), because YAML reads an unquoted `yes` as a boolean. The Infrahub Community chart sets `acceptLicenseAgreement` to `"no"`, and the Infrahub Enterprise chart sets `edition` to `"enterprise"` in its default values. Set both keys in your `values.yml` so that the license acceptance is explicit and recorded in your own configuration.
+
 Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
 
 | Flavor      | Chart version example | Required memory |
 |-------------|-----------------------|-----------------|
-| small       | 4.0.0-small           | 16 GB           |
-| medium      | 4.0.0-medium          | 32 GB           |
-| medium-data | 4.0.0-medium-data     | 32 GB           |
-| large       | 4.0.0-large           | 64 GB           |
-| large-data  | 4.0.0-large-data      | 64 GB           |
+| small       | 4.26.0-small          | 16 GB           |
+| medium      | 4.26.0-medium         | 32 GB           |
+| medium-data | 4.26.0-medium-data    | 32 GB           |
+| large       | 4.26.0-large          | 64 GB           |
+| large-data  | 4.26.0-large-data     | 64 GB           |
 
 You can review the configuration values for each sizing preset here:
 
@@ -289,7 +363,7 @@ infrahub:
           host: "infrahub-cache-master"
 ```
 
-The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.0.0`) does not require it.
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.26.0`) does not require it.
 
 :::
 
@@ -315,13 +389,13 @@ infrahub:
 Install using a flavored chart from the OpsMill registry (recommended for production):
 
 ```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0-medium
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.26.0-medium
 ```
 
 Or install the base chart and provide your own sizing configuration:
 
 ```bash
-helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.26.0
 ```
 
 Install using a local chart:
