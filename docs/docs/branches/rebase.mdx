@@ -108,7 +108,7 @@ Each refusal has its own fix. The message of a refused rebase names the conflict
 | Relationship conflict | A rebase cannot keep the branch's side of a relationship conflict | Update the data so that both branches agree |
 | Delete versus modify | One branch deleted an object that the other changed. Choosing a side does not clear it | Update the data so that both branches agree, for example by deleting the object on the branch as well |
 | Duplicate unique value | During the rebase, Infrahub checks uniqueness and the other constraints against the data the branch would hold after it | Change the value on one of the branches |
-| Schema change on the branch that nodes on the default branch break | Infrahub checks each schema change made on the branch since it was created or last rebased against the data the branch would hold after the rebase, including nodes created or changed on the default branch since then | Change or delete those nodes on the default branch, or change the schema on the branch |
+| Schema change on the branch that objects on the default branch break | Infrahub checks each schema change made on the branch since it was created or last rebased against the data the branch would hold after the rebase, including objects created or changed on the default branch since then | Change or delete those objects on the default branch, or change the schema on the branch |
 
 For each conflict type in more detail, see [Resolve conflicts](./resolve-conflicts.mdx).
 
