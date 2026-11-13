@@ -216,3 +216,4 @@ CI validates that all generated files are committed — the `validate-generated-
 - Documentation: `docs/AGENTS.md`
 - Grafana dashboards: `development/grafana/AGENTS.md`
 - Python SDK: `python_sdk/AGENTS.md`
+- GitHub workflows, including the bug pipeline: `.github/AGENTS.md`
