@@ -829,7 +829,6 @@ allow-dunder-method-names = [
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "RUF067",  # `__init__` module should only contain docstrings and re-exports
     "S311",     # Standard pseudo-random generators are not suitable for crypto
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
     "UP035",    # `typing.List` is deprecated, use `list` instead

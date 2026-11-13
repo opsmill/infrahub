@@ -40,7 +40,7 @@ class QueryMeasurement:
 class GraphProfileGenerator:
     def build_df_from_measuremenst(self, measurements: list[QueryMeasurement]) -> pd.DataFrame:
         data = {}
-        for item in QueryMeasurement.__dataclass_fields__.keys():
+        for item in QueryMeasurement.__dataclass_fields__:
             data[item] = [getattr(m, item) for m in measurements]
 
         return pd.DataFrame(data)
