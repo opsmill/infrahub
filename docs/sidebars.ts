@@ -405,6 +405,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/private-ca', label: 'Private CA' },
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/non-root', label: 'Non-root user' },
               ],
             },
             // Configure Infrahub (PR 4)

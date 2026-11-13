@@ -1,0 +1,188 @@
+---
+title: Run Infrahub as a non-root user
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+This guide explains how to run the Infrahub server, the task workers and the task manager as a non-root user. The Infrahub Docker image runs as root by default. It also contains an `infrahub` user (user ID `1000`, group ID `0`, home directory `/home/infrahub`), which owns every directory Infrahub writes to at runtime, and group `0` has the same permissions on them. You can therefore run the containers as:
+
+- user ID `1000`, with any group ID
+- any other user ID with group ID `0`, for example on platforms that assign a random user ID, such as OpenShift
+
+Any other combination, such as a random user ID with a group ID other than `0`, cannot write to these directories.
+
+## What you'll accomplish
+
+By following this guide, you'll learn how to:
+
+- Make the data in existing volumes writable for the non-root user
+- Run the Infrahub containers as a non-root user with Docker Compose or Helm
+- Verify that the containers run as the non-root user
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- A running Infrahub instance deployed with Docker Compose or Helm, or a new deployment
+- Command-line access to the host or cluster running Infrahub
+- For production deployments, a maintenance window, as the containers restart
+
+## Step 1: Make existing volumes writable
+
+New volumes need no preparation. On an existing deployment, the files in the storage and workflow volumes belong to root. Give them to the `infrahub` user and give group `0` the same permissions as the owner before you switch users.
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+Run a one-off container as root that mounts the same volumes as the server:
+
+```shell
+docker compose run --rm --no-deps --user 0 infrahub-server \
+  sh -c 'chown -R 1000:0 /opt/infrahub/storage /opt/infrahub/workflow && chmod -R g=u /opt/infrahub/storage /opt/infrahub/workflow'
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+Set the pod security context group to `0` in the next step. For volume types that support it, Kubernetes then makes the volume writable for group `0` when the pod starts.
+
+Some volume types, such as NFS, ignore the pod security context group. On such a volume, change the permissions of the existing files once, from a pod that runs as root and mounts the volume:
+
+```shell
+chown -R 1000:0 /opt/infrahub/storage && chmod -R g=u /opt/infrahub/storage
+```
+
+</TabItem>
+</Tabs>
+
+## Step 2: Run the containers as the non-root user
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+Create a `docker-compose.override.yml` file next to `docker-compose.yml`:
+
+```yaml
+services:
+  infrahub-server:
+    user: "1000:0"
+  task-worker:
+    user: "1000:0"
+  task-manager:
+    user: "1000:0"
+```
+
+Restart Infrahub:
+
+```shell
+docker compose up -d
+```
+
+</TabItem>
+<TabItem value="podman" label="Podman">
+
+With named volumes, use the same `docker-compose.override.yml` as for Docker Compose.
+
+With directories of the host bind-mounted into the containers, map your host user to user ID `1000` instead, so that the containers can write to the files you own. Create a `docker-compose.override.yml` file next to `docker-compose.yml`:
+
+```yaml
+x-podman:
+  in_pod: false
+services:
+  infrahub-server:
+    userns_mode: "keep-id:uid=1000"
+  task-worker:
+    userns_mode: "keep-id:uid=1000"
+  task-manager:
+    userns_mode: "keep-id:uid=1000"
+```
+
+`podman-compose` runs the services in a pod by default, and Podman 4.9 refuses a separate user namespace for a container in a pod (`--userns and --pod cannot be set together`). `in_pod: false` turns the pod off, so the same file works on Podman 4.9 as well as on Podman 6.1, which accepts either setting. Without `podman-compose`, pass `--userns=keep-id:uid=1000` to `podman run`. Plain `--userns=keep-id` runs the containers as your host user ID, which cannot write to the runtime directories unless it is `1000`.
+
+Restart Infrahub:
+
+```shell
+podman-compose up -d
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+Add a security context for the server and the task workers to your values file:
+
+```yaml
+infrahubServer:
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 0
+    fsGroup: 0
+    runAsNonRoot: true
+  infrahubServer:
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+infrahubTaskWorker:
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 0
+    fsGroup: 0
+    runAsNonRoot: true
+  infrahubTaskWorker:
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+```
+
+The task manager is deployed by the Prefect chart, which runs it as a non-root user by default.
+
+Upgrade the release:
+
+```shell
+helm upgrade infrahub opsmill/infrahub -f values.yaml
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Verify
+
+Check the user of each container. The command prints `1000`:
+
+<Tabs groupId="installation-method" queryString>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+```shell
+docker compose exec infrahub-server id -u
+docker compose exec task-worker id -u
+docker compose exec task-manager id -u
+```
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```shell
+kubectl exec deploy/infrahub-infrahub-server -- id -u
+kubectl exec deploy/infrahub-infrahub-task-worker -- id -u
+```
+
+</TabItem>
+</Tabs>
+
+Then check the logs of the task workers for permission errors. At startup, each task worker writes its git configuration and logs `Set git config file to /opt/infrahub/.gitconfig`. A message that starts with `Failed to set git` means that the user cannot write to `/opt/infrahub`.
+
+Finally, create a branch to confirm that the task workers run tasks:
+
+```shell
+infrahubctl branch create non-root-check
+infrahubctl branch delete non-root-check
+```
+
+## Related resources
+
+- [Production deployment](./overview.mdx) - Hardened configuration checklist
+- [Trust a private CA](./private-ca.mdx) - Mount a CA bundle into the Infrahub containers
+- [How to configure Infrahub](../configure-infrahub.mdx) - Setting environment variables per deployment method

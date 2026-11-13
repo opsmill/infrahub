@@ -78,7 +78,14 @@ jobs:
 
       # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
-        run: uv run invoke demo.pull
+        # The runner's Docker daemon intermittently fails a pull with "unable to lease content", and a new pull succeeds.
+        run: |
+          for attempt in 1 2 3; do
+            uv run invoke demo.pull && exit 0
+            echo "::warning::Pulling the external images failed (attempt ${attempt} of 3)"
+            if [ "${attempt}" -lt 3 ]; then sleep 10; fi
+          done
+          exit 1
         env:
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}

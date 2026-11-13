@@ -586,7 +586,8 @@ async def _do_merge_branch(
 async def delete_branch(
     branch: str, context: InfrahubContext, delete_from_git: bool = False, proposed_change_id: str | None = None
 ) -> None:
-    await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
+    # No branch tag: deleting the branch purges its settled runs, and a caller can still be waiting on this one.
+    await add_tags(nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
     workflow = get_workflow()
     event_service = await get_event_service()

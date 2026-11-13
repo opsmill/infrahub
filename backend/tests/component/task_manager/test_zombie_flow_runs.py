@@ -90,7 +90,7 @@ async def test_crashes_the_running_run_that_stopped_sending_heartbeats(prefect_c
     # Prefect stores events up to a flush interval after they occur, which can exceed the test window.
     check = await reaper.crash_zombies(now=alive_beat)
 
-    assert set(check.crashed) & {silent.id, alive.id, finished.id} == {silent.id}
+    assert (check.events_stored, set(check.crashed) & {silent.id, alive.id, finished.id}) == (True, {silent.id})
     silent_state = (await prefect_client.read_flow_run(silent.id)).state
     alive_state = (await prefect_client.read_flow_run(alive.id)).state
     finished_state = (await prefect_client.read_flow_run(finished.id)).state
