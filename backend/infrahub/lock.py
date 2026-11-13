@@ -8,7 +8,7 @@ from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
@@ -17,6 +17,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
+from infrahub.exceptions import ModuleAttributeNotInitializedError
 from infrahub.log import get_logger
 from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
@@ -31,7 +32,31 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-registry: InfrahubLockRegistry = None
+# Declared without a value so that a read before initialization raises.
+registry: InfrahubLockRegistry
+
+
+# Type checkers would accept any attribute of this module if they could read this function.
+if not TYPE_CHECKING:
+
+    def __getattr__(name: str) -> Any:
+        """Raise for a module attribute that has no value.
+
+        Raises:
+            ModuleAttributeNotInitializedError: When the lock registry is read before it is initialized.
+            AttributeError: For any other missing module attribute.
+
+        """
+        if name == "registry":
+            raise ModuleAttributeNotInitializedError(
+                "The lock registry has not been initialized, call initialize_lock() first"
+            )
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def is_initialized() -> bool:
+    """Return whether the lock registry has been initialized."""
+    return "registry" in globals()
 
 
 METRIC_PREFIX = "infrahub_lock"
@@ -261,8 +286,9 @@ class InfrahubLock:
         ttl: int | None = None,
     ) -> None:
         self.use_local: bool | None = local
-        self.local: LocalLock = None
-        self.remote: RedisLock = None
+        # Only the attribute for the kind of lock in use gets a value.
+        self.local: LocalLock
+        self.remote: RedisLock
         self.name: str = name
         self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
@@ -285,24 +311,14 @@ class InfrahubLock:
             self.remote = self._build_remote()
 
     def _build_remote(self) -> RedisLock:
+        if self.connection is None:
+            raise RuntimeError(f"Lock {self.name!r} has no Redis connection")
         return RedisLock(lock=GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=self.ttl))
 
     async def _acquire_remote(self) -> None:
         remote = self._build_remote()
         await remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
         self._held_remote.set(remote)
-
-    @property
-    def acquire_time(self) -> int:
-        value = self._acquire_time.get()
-        if value is not None:
-            return value
-
-        raise ValueError("The lock has not been initialized")
-
-    @acquire_time.setter
-    def acquire_time(self, value: int) -> None:
-        self._acquire_time.set(value)
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -332,7 +348,7 @@ class InfrahubLock:
         else:
             await self.local.acquire()
 
-        self.acquire_time = time.time_ns()
+        self._acquire_time.set(time.time_ns())
         self.event.clear()
         self._recursion_var.set(1)
 
@@ -345,11 +361,12 @@ class InfrahubLock:
             self._recursion_var.set(depth - 1)
             return
 
-        if self.acquire_time is not None:
-            duration_ns = time.time_ns() - self.acquire_time
+        acquired_at = self._acquire_time.get()
+        if acquired_at is not None:
+            duration_ns = time.time_ns() - acquired_at
             if self.metrics:
                 LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
-            self.acquire_time = None
+            self._acquire_time.set(None)
 
         if not self.use_local:
             remote = self._held_remote.get()
@@ -429,12 +446,11 @@ class InfrahubLockRegistry:
         self.service = service
         self.connection_url: str | None = None
         self.max_connections: int | None = None
+        self.connection: redis.Redis | None = None
         if not local_only:
             self.connection_url = build_cache_connection_string(config.SETTINGS.cache)
             self.max_connections = config.SETTINGS.cache.max_connections
             self.connection = build_redis_connection(config.SETTINGS.cache)
-        else:
-            self.connection = None
 
         self.token = token or str(uuid.uuid4())
         self.locks: weakref.WeakValueDictionary[str, InfrahubLock] = weakref.WeakValueDictionary()
@@ -521,7 +537,7 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
     # Rebuilding from unchanged arguments and cache settings would open a second client and leave this one open.
     if (
         not local_only
-        and registry is not None
+        and is_initialized()
         and registry.service is service
         and registry.connection_url is not None
         and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)
