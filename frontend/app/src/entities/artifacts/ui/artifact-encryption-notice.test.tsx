@@ -37,18 +37,51 @@ describe("ArtifactEncryptionNotice", () => {
     store.set(datetimeAtom, null);
   });
 
-  test("shows nothing while a past date is viewed, even with a check result", async () => {
+  test("shows the value stored at a past date, not a check result of the current file", async () => {
     // GIVEN
     vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
     vi.mocked(useCheckArtifactEncryption).mockReturnValue(check({ encryption: "encrypted" }));
     store.set(datetimeAtom, new Date("2026-01-01T00:00:00Z"));
 
     // WHEN
-    const component = await render(<ArtifactEncryptionNotice artifact={artifact("unreadable")} />);
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("plaintext")} />);
+
+    // THEN
+    await expect
+      .element(component.getByText(/This artifact is stored without encryption/))
+      .toBeVisible();
+  });
+
+  test("does not reassure about an encrypted artifact while a past date is viewed", async () => {
+    // GIVEN
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(check({ encryption: "encrypted" }));
+    store.set(datetimeAtom, new Date("2026-01-01T00:00:00Z"));
+
+    // WHEN
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("encrypted")} />);
 
     // THEN
     await expect
       .element(component.getByTestId("artifact-encryption-notice"))
+      .not.toBeInTheDocument();
+  });
+
+  test("reports an unreadable artifact at a past date without the reason of a current check", async () => {
+    // GIVEN
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(
+      check({ encryption: "unreadable", reason: "unknown_key" })
+    );
+    store.set(datetimeAtom, new Date("2026-01-01T00:00:00Z"));
+
+    // WHEN
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("unreadable")} />);
+
+    // THEN
+    await expect.element(component.getByText(/cannot be read/)).toBeVisible();
+    await expect
+      .element(component.getByText(/It was not encrypted with the current key/))
       .not.toBeInTheDocument();
   });
 
