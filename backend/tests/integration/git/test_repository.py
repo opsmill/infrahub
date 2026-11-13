@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import shlex
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
-from git import GitCommandError
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.manager import NodeManager
@@ -13,6 +12,7 @@ from infrahub.exceptions import CommitNotFoundError, RepositoryError
 from infrahub.git.repository import get_initialized_repo
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo, MultipleStagesFileRepo
+from tests.helpers.git import install_remote_helper
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.utils import check_repo_correctly_created
@@ -99,6 +99,8 @@ class TestCreateRepository(TestInfrahubApp):
         stderr: str,
         expected_operational_status: RepositoryOperationalStatus,
         service: InfrahubServices,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Validate that we can create a repository, that it gets updated with the commit id and that objects are created."""
         client_repository = await client.get(kind=InfrahubKind.REPOSITORY, name__value="car-dealership")
@@ -116,11 +118,16 @@ class TestCreateRepository(TestInfrahubApp):
             infrahub_branch_name="main",
         )
 
-        with (
-            patch("git.remote.Remote.fetch", side_effect=GitCommandError("fetch", stderr=stderr)),
-            pytest.raises(RepositoryError) as exc,
-        ):
-            await infrahub_repo.fetch()
+        git_repo = infrahub_repo.get_git_repo_main()
+        location = git_repo.remotes.origin.url
+        failing_remote = install_remote_helper(tmp_path, monkeypatch, script=f"echo {shlex.quote(stderr)} >&2\nexit 1")
+        git_repo.git.remote("set-url", "origin", failing_remote)
+        try:
+            with pytest.raises(RepositoryError) as exc:
+                await infrahub_repo.fetch()
+        finally:
+            # The other tests of the class share this clone.
+            git_repo.git.remote("set-url", "origin", location)
 
         assert "conflict" not in exc.value.message.lower()
         r: CoreRepository = await NodeManager.get_one(
