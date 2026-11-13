@@ -416,12 +416,12 @@ Hold the shape instead of the duration:
 - Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
   comparisons; a counting double fails identically on every machine.
 - Keep the measurement out of the suite. The numbers that justified the change belong in the commit
-  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
-- A `PROFILE` db-hit count is the same trap without the clock: it encodes the Neo4j planner's choice
-  for the test database's statistics, not the code's behavior, so it flips when the planner replans.
-  Counting the work means counting what the code under test does — calls, queries, submissions — not
-  what the planner spends. Keep db-hit measurements in the pull request description, or in
-  `backend/tests/query_benchmark/` when they must be tracked over time.
+  message or the pull request, or in `backend/tests/query_benchmark/` when they must be tracked over
+  time, not in an assertion CI re-runs forever.
+- A `PROFILE` db-hit count is the same trap without the clock: it follows the planner statistics
+  earlier tests left behind, so a test can pass with its module and fail alone. Count what the code
+  does (calls, queries, submissions). When a fix removes a label from the query text, assert with
+  `EXPLAIN` that no plan operator names that label: the planner cannot choose what the query lacks.
 
 When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
 becomes a value the test reads exactly, rather than a duration it races.

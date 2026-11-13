@@ -179,7 +179,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
 - Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
-- Before writing a changelog fragment, PR description, ADR, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
+- Before writing a changelog fragment, PR description, ADR, setting description, `dev/knowledge` statement, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
 
@@ -188,6 +188,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - New dependencies
 - CI/CD workflow changes
 - Authentication/authorization changes
+- Edits to files installed from another repository (`.agents/skills/speckit-*`, the skills in `skills-lock.json`, `.specify/extensions/`) — the next upgrade or install overwrites them. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
 
 ### Never Do
 
