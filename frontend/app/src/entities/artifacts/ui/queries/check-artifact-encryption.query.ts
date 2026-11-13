@@ -33,6 +33,5 @@ export const useCheckArtifactEncryption = (artifactId: string) => {
     enabled: timeMachineDate === null,
     staleTime: 0,
     refetchOnWindowFocus: false,
-    retry: false,
   });
 };
