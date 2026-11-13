@@ -12,7 +12,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
-from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
+from infrahub.graphql.api.dependencies import get_graphql_query_permission_checker
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.metrics import (
@@ -151,7 +151,7 @@ async def graphql_query_post(
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     account_session: AccountSession = Depends(get_current_user),
-    permission_checker: GraphQLQueryPermissionChecker = Depends(build_graphql_query_permission_checker),
+    permission_checker: GraphQLQueryPermissionChecker = Depends(get_graphql_query_permission_checker),
 ) -> dict:
     return await execute_query(
         db=db,
@@ -180,7 +180,7 @@ async def graphql_query_get(
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     account_session: AccountSession = Depends(get_current_user),
-    permission_checker: GraphQLQueryPermissionChecker = Depends(build_graphql_query_permission_checker),
+    permission_checker: GraphQLQueryPermissionChecker = Depends(get_graphql_query_permission_checker),
 ) -> dict:
     params = {
         key: value
