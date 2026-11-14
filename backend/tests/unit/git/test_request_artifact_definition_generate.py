@@ -112,7 +112,7 @@ SELECT_CASES = [
 @pytest.mark.parametrize("case", SELECT_CASES, ids=lambda case: case.name)
 def test_selects_member(case: SelectCase) -> None:
     request = _request(members=case.members, limit=case.limit)
-    assert request.selects_member(member_id=case.member_id, artifact_id=case.artifact_id) is case.expected
+    assert request.member_selector()(case.member_id, case.artifact_id) is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -148,8 +148,18 @@ def test_members_filter_processes_a_new_member_the_limit_filter_would_drop() -> 
     # new member. members=[both] processes both; the limit filter alone would silently drop the new
     # member because it keys on the (absent) artifact id.
     both = _request(members=[EXISTING_MEMBER, NEW_MEMBER])
-    assert both.selects_member(member_id=EXISTING_MEMBER, artifact_id=EXISTING_ARTIFACT) is True
-    assert both.selects_member(member_id=NEW_MEMBER, artifact_id=None) is True
+    assert both.member_selector()(EXISTING_MEMBER, EXISTING_ARTIFACT) is True
+    assert both.member_selector()(NEW_MEMBER, None) is True
 
     limit_only = _request(limit=[EXISTING_ARTIFACT])
-    assert limit_only.selects_member(member_id=NEW_MEMBER, artifact_id=None) is False
+    assert limit_only.member_selector()(NEW_MEMBER, None) is False
+
+
+def test_member_selector_of_a_copy_uses_the_filters_of_the_copy() -> None:
+    request = _request(members=[EXISTING_MEMBER])
+    assert request.member_selector()(EXISTING_MEMBER, None) is True
+
+    narrowed = request.model_copy(update={"members": [NEW_MEMBER]})
+    selects_member = narrowed.member_selector()
+    assert selects_member(NEW_MEMBER, None) is True
+    assert selects_member(EXISTING_MEMBER, None) is False

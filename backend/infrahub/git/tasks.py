@@ -1119,10 +1119,11 @@ async def generate_request_artifact_definition(
         convert_query_response = transform.convert_query_response.value
 
     batch = await client.create_batch()
+    selects_member = model.member_selector()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
-        if not model.selects_member(member_id=member.id, artifact_id=artifact_id):
+        if not selects_member(member.id, artifact_id):
             continue
 
         request_artifact_generate_model = RequestArtifactGenerate(
