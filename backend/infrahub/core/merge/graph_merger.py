@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.merge.constraints import MergeConstraintValidator
     from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+    from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.log import InfrahubLogger
@@ -118,13 +119,15 @@ class GraphMerger:
         candidate_schema = self.schema_analyzer.get_candidate_schema()
         # Gate on the freshly-recomputed diff (same check the migration calculation uses) rather than
         # the branch's cached schema-hash flag, so a schema change is never missed at merge time.
-        schema_diff_constraints = (
-            await self.schema_analyzer.calculate_validations(target_schema=candidate_schema)
-            if await self.schema_analyzer.has_schema_changes()
-            else []
-        )
+        schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
+        source_constraints: list[SchemaUpdateConstraintInfo] = []
+        if await self.schema_analyzer.has_schema_changes():
+            schema_diff_constraints = await self.schema_analyzer.calculate_validations(target_schema=candidate_schema)
+            source_constraints = await self.schema_analyzer.calculate_source_validations(target_schema=candidate_schema)
         result = await self.constraint_validator.validate(
-            candidate_schema=candidate_schema, schema_diff_constraints=schema_diff_constraints
+            candidate_schema=candidate_schema,
+            schema_diff_constraints=schema_diff_constraints,
+            source_constraints=source_constraints,
         )
         if result.violations:
             raise MergeConstraintsViolatedError(violations=result.violations, schema_conflicts=result.schema_conflicts)

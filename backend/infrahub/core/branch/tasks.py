@@ -41,6 +41,7 @@ from infrahub.core.merge.builder import (
     build_default_branch_barrier,
     build_post_merge_regeneration_dispatcher,
 )
+from infrahub.core.merge.constraints import without_constraints
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.python_target_sources import (
     UnavailablePythonTargetResolver,
@@ -108,6 +109,7 @@ if TYPE_CHECKING:
     from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.validators.models.validate_migration import SchemaValidatorPathResponseData
     from infrahub.database import InfrahubDatabase
 
 RETIREMENT_BATCH_SIZE = 500
@@ -218,6 +220,37 @@ async def _collect_rebase_changelogs(
     return branch_changelogs, default_branch_changelogs
 
 
+async def _validate_rebase_constraints(
+    branch: Branch,
+    candidate_schema: SchemaBranch,
+    constraints: list[SchemaUpdateConstraintInfo],
+    current_data_constraints: list[SchemaUpdateConstraintInfo],
+) -> None:
+    """Check the constraints, reading the default branch's current data for ``current_data_constraints``.
+
+    Raises:
+        ValidationError: When a node violates one of the constraints.
+
+    """
+    responses: list[SchemaValidatorPathResponseData] = []
+    for batch, is_isolated in ((constraints, True), (current_data_constraints, False)):
+        if batch:
+            responses.extend(
+                await schema_validate_migrations(
+                    message=SchemaValidateMigrationData(
+                        branch=branch, schema_branch=candidate_schema, constraints=batch, is_isolated=is_isolated
+                    )
+                )
+            )
+    error_messages = [
+        f"{violation.message} for constraint {response.constraint_name} {response.schema_path.field_name} {response.schema_path.property_name} and node {violation.node_id} {violation.node_kind}"  # noqa: E501
+        for response in responses
+        for violation in response.violations
+    ]
+    if error_messages:
+        raise ValidationError(",\n".join(error_messages))
+
+
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
     workflow = get_workflow()
@@ -304,24 +337,22 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         #  - Run all the validations to ensure everything is correct before rebasing the branch
         #  - Run all the migrations after the rebase
         schema_diff_constraints: list[SchemaUpdateConstraintInfo] = []
+        source_constraints: list[SchemaUpdateConstraintInfo] = []
         if user_branch.schema_differs_from_default_branch:
             schema_diff_constraints = await schema_analyzer.calculate_validations(target_schema=candidate_schema)
+            source_constraints = await schema_analyzer.calculate_source_validations(target_schema=candidate_schema)
         merger = build_constraint_info_merger()
-        constraints = merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints)
-        if constraints:
-            responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(
-                    branch=user_branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
-                )
-            )
-            error_messages = [
-                f"{violation.message} for constraint {response.constraint_name} {response.schema_path.field_name} {response.schema_path.property_name} and node {violation.node_id} {violation.node_kind}"  # noqa: E501
-                for response in responses
-                for violation in response.violations
-            ]
-
-            if error_messages:
-                raise ValidationError(",\n".join(error_messages))
+        current_data_constraints = merger.merge(candidate_schema, source_constraints)
+        constraints = without_constraints(
+            constraints=merger.merge(candidate_schema, data_diff_constraints, schema_diff_constraints),
+            excluded=current_data_constraints,
+        )
+        await _validate_rebase_constraints(
+            branch=user_branch,
+            candidate_schema=candidate_schema,
+            constraints=constraints,
+            current_data_constraints=current_data_constraints,
+        )
 
         migrations = []
         async with lock.registry.global_graph_lock():
