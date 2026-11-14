@@ -1,0 +1,1 @@
+Fixed a Proposed Change staying refused after the data that failed its Schema Integrity check was fixed, when the fix left the branch with no changes of its own, such as deleting the only object that the branch created. Running the checks now replaces the earlier failure of the Schema Integrity check with a passing result.
