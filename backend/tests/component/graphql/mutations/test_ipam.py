@@ -8,7 +8,7 @@ from graphql import ExecutionResult
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import DEFAULT_IP_NAMESPACE, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -271,7 +271,7 @@ query GetAddress($address: String!) {
 }
 """
 
-DELETE_IPNAMESPACE = """
+DELETE_IPNAMESPACE_BY_ID = """
 mutation NamespaceDelete($namespace_id: String!) {
     IpamNamespaceDelete(data: {id: $namespace_id}) {
         ok
@@ -279,43 +279,92 @@ mutation NamespaceDelete($namespace_id: String!) {
 }
 """
 
+DELETE_IPNAMESPACE_BY_HFID = """
+mutation NamespaceDelete($namespace_name: String!) {
+    IpamNamespaceDelete(data: {hfid: [$namespace_name]}) {
+        ok
+    }
+}
+"""
 
-async def test_protected_default_ipnamespace(
-    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node
-) -> None:
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    result = await graphql(
+
+@dataclass(frozen=True)
+class NamespaceDeleteCase:
+    name: str
+    by_hfid: bool
+    on_user_branch: bool
+
+
+NAMESPACE_DELETE_CASES: list[NamespaceDeleteCase] = [
+    NamespaceDeleteCase(name="by-id", by_hfid=False, on_user_branch=False),
+    NamespaceDeleteCase(name="by-hfid", by_hfid=True, on_user_branch=False),
+    NamespaceDeleteCase(name="by-id-user-branch", by_hfid=False, on_user_branch=True),
+    NamespaceDeleteCase(name="by-hfid-user-branch", by_hfid=True, on_user_branch=True),
+]
+
+
+async def _delete_ipnamespace(
+    db: InfrahubDatabase, branch: Branch, namespace_id: str, namespace_name: str, by_hfid: bool
+) -> ExecutionResult:
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    if by_hfid:
+        return await graphql(
+            schema=gql_params.schema,
+            source=DELETE_IPNAMESPACE_BY_HFID,
+            context_value=gql_params.context,
+            variable_values={"namespace_name": namespace_name},
+        )
+    return await graphql(
         schema=gql_params.schema,
-        source=DELETE_IPNAMESPACE,
+        source=DELETE_IPNAMESPACE_BY_ID,
         context_value=gql_params.context,
-        variable_values={"namespace_id": registry.default_ipnamespace},
+        variable_values={"namespace_id": namespace_id},
+    )
+
+
+@pytest.mark.parametrize("case", NAMESPACE_DELETE_CASES, ids=lambda case: case.name)
+async def test_protected_default_ipnamespace(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, case: NamespaceDeleteCase
+) -> None:
+    branch = (
+        await create_branch(branch_name=f"protected-ns-{case.name}", db=db) if case.on_user_branch else default_branch
+    )
+    branch.update_schema_hash()
+    result = await _delete_ipnamespace(
+        db=db,
+        branch=branch,
+        namespace_id=registry.default_ipnamespace,
+        namespace_name=DEFAULT_IP_NAMESPACE,
+        by_hfid=case.by_hfid,
     )
 
     assert result.errors
-    assert result.errors[0].message == "Cannot delete default IPAM namespace"
+    assert [error.message for error in result.errors] == ["Cannot delete default IPAM namespace"]
     assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
+    assert await NodeManager.get_one(db=db, id=registry.default_ipnamespace, branch=branch)
+    assert await NodeManager.get_one(db=db, id=registry.default_ipnamespace, branch=default_branch)
 
 
+@pytest.mark.parametrize("case", NAMESPACE_DELETE_CASES, ids=lambda case: case.name)
 async def test_delete_regular_ipnamespace(
-    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, case: NamespaceDeleteCase
 ) -> None:
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
     await ns1.save(db=db)
 
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=DELETE_IPNAMESPACE,
-        context_value=gql_params.context,
-        variable_values={"namespace_id": ns1.id},
+    branch = await create_branch(branch_name=f"delete-ns-{case.name}", db=db) if case.on_user_branch else default_branch
+    branch.update_schema_hash()
+    result = await _delete_ipnamespace(
+        db=db, branch=branch, namespace_id=ns1.id, namespace_name="ns1", by_hfid=case.by_hfid
     )
 
     assert not result.errors
     assert result.data
     assert result.data["IpamNamespaceDelete"]["ok"]
+    assert await NodeManager.get_one(db=db, id=ns1.id, branch=branch) is None
+    if case.on_user_branch:
+        assert await NodeManager.get_one(db=db, id=ns1.id, branch=default_branch)
 
 
 async def test_ipprefix_create(
