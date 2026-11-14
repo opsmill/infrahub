@@ -12,6 +12,7 @@ from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest, SchemaViolation
+from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_tags
@@ -69,36 +70,42 @@ async def schema_path_validate(
     database: InfrahubDatabase,
     node_uuids: list[str] | None = None,
 ) -> SchemaValidatorPathResponseData:
-    async with database.start_session(read_only=True) as db:
-        constraint_request = SchemaConstraintValidatorRequest(
-            branch=branch,
-            constraint_name=constraint_name,
-            node_schema=node_schema,
-            schema_path=schema_path,
-            schema_branch=schema_branch,
-            node_uuids=node_uuids,
+    constraint_request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name=constraint_name,
+        node_schema=node_schema,
+        schema_path=schema_path,
+        schema_branch=schema_branch,
+        node_uuids=node_uuids,
+    )
+    try:
+        violations = await _check_constraint(database=database, branch=branch, constraint_request=constraint_request)
+    # Degrade any checker failure into a reported violation so schema validation fails visibly
+    # instead of crashing the task. NOTE: this also converts infra errors into permanent violations,
+    # bypassing the configured task retries, once the database retry gives up — narrowing the
+    # exception set is a separate follow-up.
+    except Exception as exc:  # noqa: BLE001
+        violation = SchemaViolation(
+            node_id="unknown",
+            node_kind=node_schema.kind,
+            display_label=f"Error validating {constraint_name} on {node_schema.kind}",
+            full_display_label=f"Error validating {constraint_name} on {node_schema.kind}",
+            message=str(exc),
         )
+        violations = [violation]
 
-        component_registry = get_component_registry()
-        aggregated_constraint_checker = await component_registry.get_component(
+    return SchemaValidatorPathResponseData(
+        violations=violations, constraint_name=constraint_name, schema_path=schema_path
+    )
+
+
+@retry_db_transaction(name="schema_path_validate")
+async def _check_constraint(
+    database: InfrahubDatabase, branch: Branch, constraint_request: SchemaConstraintValidatorRequest
+) -> list[SchemaViolation]:
+    """Run every checker that supports the request, on a read-only session that each attempt opens anew."""
+    async with database.start_session(read_only=True) as db:
+        aggregated_constraint_checker = await get_component_registry().get_component(
             AggregatedConstraintChecker, db=db, branch=branch
         )
-        try:
-            violations = await aggregated_constraint_checker.run_constraints(constraint_request)
-        # Degrade any checker failure into a reported violation so schema validation fails visibly
-        # instead of crashing the task. NOTE: this also converts transient/infra errors into permanent
-        # violations on the first attempt, bypassing the configured task retries — narrowing the
-        # exception set is a separate follow-up.
-        except Exception as exc:  # noqa: BLE001
-            violation = SchemaViolation(
-                node_id="unknown",
-                node_kind=node_schema.kind,
-                display_label=f"Error validating {constraint_name} on {node_schema.kind}",
-                full_display_label=f"Error validating {constraint_name} on {node_schema.kind}",
-                message=str(exc),
-            )
-            violations = [violation]
-
-        return SchemaValidatorPathResponseData(
-            violations=violations, constraint_name=constraint_name, schema_path=schema_path
-        )
+        return await aggregated_constraint_checker.run_constraints(constraint_request)

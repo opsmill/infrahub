@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, assert_never
 from infrahub.core import registry
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
+from infrahub.database import retry_db_transaction
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 
@@ -48,6 +49,7 @@ class FieldLevelImpactResolver:
             document=cached_parse(query_payload),
         ).query_report
 
+    @retry_db_transaction(name="field_level_impact_resolve")
     async def resolve(
         self,
         *,
