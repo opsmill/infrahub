@@ -4,12 +4,7 @@ from enum import Enum
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import (
-    GLOBAL_BRANCH_NAME,
-    BranchSupportType,
-    RelationshipDeleteBehavior,
-    RelationshipDirection,
-)
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDeleteBehavior
 from infrahub.core.node import Node
 from infrahub.core.query.node_delete import (
     DeleteSetNode,
@@ -99,45 +94,53 @@ class NodeDeleteIndex:
                         kinds_to_check.add(peer_kind)
         return visited
 
-    def index_dependent_links(self, deleted_kinds: set[str], skip_cascading: bool = False) -> None:
+    def index_dependent_links(self, deleted_kinds: set[str], *, skip_cascading: bool = False) -> None:
         """Index the links of a required relationship to one of `deleted_kinds`, from the deleted node's side.
 
-        With `skip_cascading`, a link is left out when the deleted kind cascades on that relationship. The match
-        ignores the peer kind, because a required relationship can be declared on a generic of the cascade's peers.
+        With `skip_cascading`, a link is left out when the deleted kind cascades on that relationship to the peer's
+        kind, so another kind that reuses the relationship identifier still blocks.
         """
         deleted_kinds_and_generics = set(deleted_kinds)
         for kind in deleted_kinds:
             schema = self._all_schemas_map.get(kind)
             if isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema)):
                 deleted_kinds_and_generics.update(schema.inherit_from)
-        cascading_relationships = self._get_cascading_relationships(kinds=deleted_kinds) if skip_cascading else set()
+        cascading_links = self._get_cascading_links(kinds=deleted_kinds) if skip_cascading else set()
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional is True or relationship_schema.peer not in deleted_kinds_and_generics:
                     continue
-                identifier = relationship_schema.get_identifier()
-                direction = relationship_schema.direction.neighbor_direction
-                self._link_patterns[DeleteRelationshipType.DEPENDENT_NODE].update(
-                    LinkPattern(
-                        kind=deleted_kind, identifier=identifier, direction=direction, peer_kind=node_schema.kind
+                for deleted_kind in self._get_schema_kinds(schema_kind=relationship_schema.peer) & deleted_kinds:
+                    link_pattern = LinkPattern(
+                        kind=deleted_kind,
+                        identifier=relationship_schema.get_identifier(),
+                        direction=relationship_schema.direction.neighbor_direction,
+                        peer_kind=node_schema.kind,
                     )
-                    for deleted_kind in self._get_schema_kinds(schema_kind=relationship_schema.peer) & deleted_kinds
-                    if (deleted_kind, identifier, direction) not in cascading_relationships
-                )
+                    if link_pattern not in cascading_links:
+                        self._link_patterns[DeleteRelationshipType.DEPENDENT_NODE].add(link_pattern)
 
-    def _get_cascading_relationships(self, kinds: Iterable[str]) -> set[tuple[str, str, RelationshipDirection]]:
-        """Return the kind, identifier and direction of each relationship on which one of `kinds` cascades."""
-        cascading_relationships: set[tuple[str, str, RelationshipDirection]] = set()
+    def _get_cascading_links(self, kinds: Iterable[str]) -> set[LinkPattern]:
+        """Return the links on which one of `kinds` cascades, with a generic peer listed with each kind using it."""
+        cascading_links: set[LinkPattern] = set()
         for kind in kinds:
             schema = self._all_schemas_map.get(kind)
             if schema is None:
                 continue
-            cascading_relationships.update(
-                (kind, relationship_schema.get_identifier(), relationship_schema.direction)
-                for relationship_schema in schema.relationships
-                if relationship_schema.on_delete == RelationshipDeleteBehavior.CASCADE
-            )
-        return cascading_relationships
+            for relationship_schema in schema.relationships:
+                if relationship_schema.on_delete != RelationshipDeleteBehavior.CASCADE:
+                    continue
+                peer_kinds = {relationship_schema.peer} | self._get_schema_kinds(schema_kind=relationship_schema.peer)
+                cascading_links.update(
+                    LinkPattern(
+                        kind=kind,
+                        identifier=relationship_schema.get_identifier(),
+                        direction=relationship_schema.direction,
+                        peer_kind=peer_kind,
+                    )
+                    for peer_kind in peer_kinds
+                )
+        return cascading_links
 
     def get_link_patterns(self, relationship_type: DeleteRelationshipType) -> list[LinkPattern]:
         """Return the indexed links of `relationship_type`, from the deleted node's side."""

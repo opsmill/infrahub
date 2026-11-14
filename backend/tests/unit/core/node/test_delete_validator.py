@@ -3,9 +3,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind, RelationshipDirection
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDeleteBehavior,
+    RelationshipDirection,
+)
 from infrahub.core.node.delete_validator import DeleteRelationshipType, NodeDeleteIndex
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core import core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -152,3 +158,59 @@ def test_repository_imported_nodes_require_their_repository() -> None:
 
 def test_dependent_links_skip_the_relationships_a_repository_cascades_on() -> None:
     assert _dependent_patterns_of_repositories(skip_cascading=True) == set()
+
+
+def test_dependent_links_keep_another_kind_that_reuses_the_identifier_of_a_cascade() -> None:
+    identifier = "testreuse_link"
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Team",
+                    namespace="Testreuse",
+                    branch=BranchSupportType.AGNOSTIC,
+                    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="certificates",
+                            peer="TestreuseCertificate",
+                            identifier=identifier,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                            on_delete=RelationshipDeleteBehavior.CASCADE,
+                        )
+                    ],
+                ),
+                *(
+                    NodeSchema(
+                        name=name,
+                        namespace="Testreuse",
+                        branch=BranchSupportType.AWARE,
+                        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                        relationships=[
+                            RelationshipSchema(
+                                name="team",
+                                peer="TestreuseTeam",
+                                identifier=identifier,
+                                cardinality=RelationshipCardinality.ONE,
+                                optional=False,
+                            )
+                        ],
+                    )
+                    for name in ("Certificate", "Badge")
+                ),
+            ]
+        )
+    )
+    schema_branch.process()
+    index = NodeDeleteIndex(all_schemas_map=schema_branch.get_all(duplicate=False))
+
+    index.index_dependent_links(deleted_kinds={"TestreuseTeam"}, skip_cascading=True)
+
+    assert {
+        pattern.peer_kind
+        for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.DEPENDENT_NODE)
+        if pattern.identifier == identifier
+    } == {"TestreuseBadge"}
