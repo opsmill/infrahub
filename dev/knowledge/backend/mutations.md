@@ -22,7 +22,9 @@ GraphQL mutations for creating, updating, upserting, and deleting nodes. All mut
 ```
 mutate_create()
   -> create_node()                    # create.py
-       -> preview node (process_pools=False) for lock calculation
+       -> preview node (process_pools=False) for lock calculation, with the id of the node to create
+       -> read_template_components()   # template only: the subtemplates, read a level at a time
+       -> get_template_pool_lock_names()  # template only: the pool locks of the object and its components
        -> acquire InfrahubMultiLock
        -> _do_create_node()
             -> NodeMutationContext     # records the other nodes the mutation writes, for events
@@ -36,7 +38,7 @@ mutate_create()
                       -> add_human_friendly_id()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # template instantiation, read a level at a time
+            -> create_components()  # template instantiation, created depth first
        -> apply profiles if applicable
   -> emit NodeCreatedEvent
 ```
@@ -224,8 +226,10 @@ A peer that must keep its relationship, such as a component under a mandatory pa
 
 ## Locking Strategy
 
-1. A preview node is created with `process_pools=False` (no side effects)
-2. Lock names are computed from uniqueness constraints and resource pool fields
+1. A preview node is created with `process_pools=False` (no side effects); a create gives it the id of
+   the node it creates
+2. Lock names are computed from uniqueness constraints and resource pool fields; for a create from a
+   template they also include the pool locks of its components
 3. `InfrahubMultiLock` acquired before the transaction
 4. Actual mutation runs inside the lock
 
@@ -272,16 +276,16 @@ the new pool before its transaction commits, so no write can hold it.
 - **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
   to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
   other writes once it is committed. This also covers allocations that run inside a transaction outside
-  the mutation lock, such as template components and migrations.
+  the mutation lock, such as migrations.
 - **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
   queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
   it releases the mutex and the range change fails with a retry message. The lock error, which names
   the setting, is logged as a warning, so that the API message does not name a server setting.
 - **The division's lock comes before the pool's shared hold.** A write that holds the pool until its
   commit and then waits for a division's lock can wait on an allocation that is itself queued behind a
-  range change, so allocations take `picking` first. Template components are the exception: they
-  allocate inside the template's transaction without taking the division's lock first, so the cycle can
-  still form until the waiting range change reaches its wait limit and fails.
+  range change, so allocations take `picking` first. A create from a template takes it before its
+  transaction, with the exceptions listed in
+  [Pool locks of a create from a template](#pool-locks-of-a-create-from-a-template).
 - **A task that holds the pool exclusively skips `picking`.** Every other allocation picks inside its
   shared hold, so none can pick while the pool is held exclusively, and skipping the division's lock keeps
   the exclusive holder from waiting on an allocation that is itself queued behind it.
@@ -304,13 +308,65 @@ the new pool before its transaction commits, so no write can hold it.
 - **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,
   so a number drawn by the IP node they create is released before its write.
 
+### Pool locks of a create from a template
+
+A create from a template draws from pools inside its transaction: the pools the template names for the
+object, and the pools its components draw from. The query that creates a node with a number that a
+number pool tracks locks that pool's vertex in Neo4j until the commit, for every division. A write that
+waits for a division's lock inside its transaction, after it wrote such a number, can therefore wait on
+an allocation that holds that lock and itself waits for the vertex. Neither wait has a time limit, and
+Neo4j does not detect the cycle. So `create_node()` adds the division locks and the IP pool locks of the
+create to the mutation's lock names, which it takes before it opens its transaction; the allocations
+inside the transaction take them again without waiting. The pool's shared hold is still taken inside the
+transaction. The exceptions are listed below.
+
+`get_template_pool_lock_names()` in `core/node/create.py` returns the names the preview of the object
+does not already hold:
+
+| Draws from | Object created from the template | Component created from a subtemplate |
+|------------|----------------------------------|--------------------------------------|
+| Number pool the template names, with a scope | preview of the object | `resource_pool.<pool id>.<division key>` |
+| Number pool the template names, without a scope | `resource_pool.<pool id>.all` | `resource_pool.<pool id>.all` |
+| `NumberPool` attribute of the schema | preview of the object | `resource_pool.<pool id>.<division key>`, or `.all` without a scope |
+| IP address or IP prefix pool the template names | `resource_pool.<pool id>` | `resource_pool.<pool id>` |
+
+- **Each pooled component is built twice.** `create_node()` builds an unsaved preview of each component
+  that draws from a pool, and of each component above one, to read its division. A component draws from a
+  pool when its subtemplate names one or its kind has a `NumberPool` attribute. A preview of a component in
+  a scoped number pool reads the pool once more, and the peers or the profiles that hold a scope element
+  when the preview does not hold them. A template whose components draw from no pool builds no preview.
+- **The preview and the object created share one id.** `create_node()` generates the id of the object
+  before it builds the preview, unless the payload sets one, and each `TemplateComponent` holds the id of
+  the component it describes. So a lock name that holds the id of a new object, such as the division of a
+  component whose scope names its new parent, or `relationship_count.<identifier>.<node id>`, names the
+  object created. An id that `create_node()` generated is not checked against the database; an id the
+  payload sets is.
+- **The subtemplates are read before the locks, as the template is.** A subtemplate that another write
+  changes or deletes while the create waits for a lock is applied as it was read.
+- **A validation error of a component that draws from a pool, or holds one that does, is raised before the
+  object's own checks**, because its preview is built before the locks. Other components are validated
+  after them.
+- **Not covered: a scope element that a pool fills.** When a pool fills a field that another pool's scope
+  names, on the object or on a component, the preview reads that element as empty. The create takes the
+  lock of that empty division (`.all` when the scope has one element), and takes the lock of the real
+  division inside the transaction.
+- **Not covered: an IP pool whose address or prefix kind has a `NumberPool` attribute.** The IP node is
+  created inside the transaction, where it takes the lock of that number pool. A create that names the IP
+  pool with `from_pool` on a relationship does the same.
+- **Not covered: a caller that passes a database with a transaction already open.** `create_node()` then
+  takes the locks inside that transaction.
+
+`backend/tests/component/core/node/test_template_pool_lock_order.py` covers every cell of the table, a
+nested component, a payload that sets the `id`, and a division that holds the object created.
+
 ## Key Files
 
 | File | What |
 |------|------|
 | `graphql/mutations/main.py` | Mutation dispatcher, create/update/upsert/delete |
 | `core/node/__init__.py` | `Node.new()`, `load()`, `from_graphql()`, `_create()`, `_update()`, `save()` |
-| `core/node/create.py` | `create_node()`, `_do_create_node()`, template relationship handling |
+| `core/node/create.py` | `create_node()`, `_do_create_node()`, `read_template_components()`, `get_template_pool_lock_names()`, `create_components()` |
+| `core/node/lock_utils.py` | `get_lock_names_on_object_mutation()`, `get_pool_lock_names()`, `ip_pool_lock_name()` |
 | `core/relationship/model.py` | `RelationshipManager.update()`, `resolve()`, `save()` |
 | `core/constraint/node/runner.py` | `NodeConstraintRunner` for uniqueness/constraint checks |
 | `core/query/node.py` | `NodeCreateAllQuery` and other DB queries |
