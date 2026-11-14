@@ -343,8 +343,9 @@ does not already hold:
   payload sets is.
 - **The subtemplates are read before the locks, as the template is.** A subtemplate that another write
   changes or deletes while the create waits for a lock is applied as it was read.
-- **A component's validation error is raised before the object's own checks**, because the previews are
-  built before the locks.
+- **A validation error of a component that draws from a pool, or holds one that does, is raised before the
+  object's own checks**, because its preview is built before the locks. Other components are validated
+  after them.
 - **Not covered: a scope element that a pool fills.** When a pool fills a field that another pool's scope
   names, on the object or on a component, the preview reads that element as empty. The create takes the
   lock of that empty division (`.all` when the scope has one element), and takes the lock of the real
