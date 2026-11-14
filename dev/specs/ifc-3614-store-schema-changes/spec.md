@@ -43,6 +43,7 @@ commands for the history are separate work.
 - **Migration**: one data operation on the nodes of one kind, or of the kinds that inherit from a
   generic, during an application. Example: `node.attribute.add` on `DcimCloudDevice.serial`.
 - **Schema change history**: the applied schema changes of a branch, in order of version.
+- **Revision of a branch**: the version of its last applied schema change.
 - **Processing**: the step that calculates the parts of a schema the user did not write, such as
   the attributes a kind inherits from a generic, generated relationships, and profile and template
   kinds.
@@ -375,7 +376,8 @@ branch. Count the records of that branch and of main before and after.
 - **FR-052**: The migration records of an application MUST exist, with the status `waiting`,
   before its migrations run, and MUST be updated as each migration ends, so that a client can read
   the state of a running load.
-- **FR-053**: A migration that finds no nodes MUST be recorded as `applied`.
+- **FR-053**: A migration that finds no nodes MUST be recorded as `applied`, with a count of 0 in
+  its result.
 - **FR-054**: Migration records MUST be created each time a schema change is applied, because the
   list of migrations depends on the schema that the schema change is applied to.
 
