@@ -1,8 +1,11 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
@@ -245,4 +248,57 @@ async def test_validator(
             field_name="name",
         )
         in data_paths
+    )
+
+
+@dataclass(frozen=True)
+class ViewCase:
+    name: str
+    is_isolated: bool
+    reports_the_node_created_on_main_after_branching: bool
+
+
+VIEW_CASES = [
+    ViewCase(name="branch-view", is_isolated=True, reports_the_node_created_on_main_after_branching=False),
+    ViewCase(name="merge-view", is_isolated=False, reports_the_node_created_on_main_after_branching=True),
+]
+
+
+@pytest.mark.parametrize("case", VIEW_CASES, ids=lambda case: case.name)
+async def test_validator_on_branch_reads_the_requested_view_of_main(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, case: ViewCase
+) -> None:
+    valid = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await valid.new(db=db, name="Alfred")
+    await valid.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch-adds-min-length")
+    created_after_branching = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await created_after_branching.new(db=db, name="Bob")
+    await created_after_branching.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch).duplicate()
+    person_schema.get_attribute(name="name").parameters.min_length = 5
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        is_isolated=case.is_isolated,
+    )
+
+    grouped_data_paths = await AttributeLengthChecker(db=db, branch=branch).check(request)
+
+    expected = [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=created_after_branching.id,
+            kind="TestPerson",
+            field_name="name",
+        )
+    ]
+    assert len(grouped_data_paths) == 1
+    assert grouped_data_paths[0].get_all_data_paths() == (
+        expected if case.reports_the_node_created_on_main_after_branching else []
     )
