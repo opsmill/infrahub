@@ -1,6 +1,7 @@
 import { Button, Tooltip } from "@infrahub/ui";
 import React from "react";
-import { useWatch } from "react-hook-form";
+import { useFormState, useWatch } from "react-hook-form";
+import { toast } from "react-toastify";
 
 import { Row } from "@/shared/components/container";
 import { DetailRow } from "@/shared/components/display/detail-row";
@@ -8,7 +9,8 @@ import { Icon } from "@/shared/components/display/icon";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Combobox, type ComboboxItem } from "@/shared/components/inputs/combobox";
-import { FormField } from "@/shared/components/ui/form";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { FormField, FormSubmit } from "@/shared/components/ui/form";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 import { supportedTimezone } from "@/shared/utils/date";
 
@@ -31,6 +33,41 @@ const TIMEZONE_ITEMS: Array<ComboboxItem> = (
 export function toFieldValue(value: string | null): FormAttributeValue {
   if (value === null) return DEFAULT_FORM_FIELD_VALUE;
   return { source: { type: "user" }, value };
+}
+
+export function SaveButton({
+  isPending,
+  children,
+}: {
+  isPending?: boolean;
+  children: React.ReactNode;
+}) {
+  const { isDirty } = useFormState();
+
+  return (
+    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
+      {children}
+    </FormSubmit>
+  );
+}
+
+/** Rethrows a failed save so the form keeps its values and stays dirty. */
+export async function saveWithToasts(
+  save: () => Promise<unknown>,
+  messages: { success: string; failure: string }
+): Promise<void> {
+  try {
+    await save();
+  } catch (saveError) {
+    toast(
+      <Alert
+        type={ALERT_TYPES.ERROR}
+        message={saveError instanceof Error ? saveError.message : messages.failure}
+      />
+    );
+    throw saveError;
+  }
+  toast(<Alert type={ALERT_TYPES.SUCCESS} message={messages.success} />);
 }
 
 /** Explains where a field's pending value comes from — what saving the form as it stands would produce. */

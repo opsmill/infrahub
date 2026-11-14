@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.instance_identity import InstanceColor
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -16,14 +21,52 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SET_PREFERENCES = """
-mutation ($scope: PreferenceWriteScope!, $date_format: DateFormat, $timezone: String) {
-  InfrahubSetPreferences(scope: $scope, date_format: $date_format, timezone: $timezone) {
+mutation (
+  $scope: PreferenceWriteScope!
+  $date_format: DateFormat
+  $timezone: String
+  $instance_label: String
+  $instance_color: InstanceColor
+) {
+  InfrahubSetPreferences(
+    scope: $scope
+    date_format: $date_format
+    timezone: $timezone
+    instance_label: $instance_label
+    instance_color: $instance_color
+  ) {
     ok
     date_format
     timezone
+    instance_label
+    instance_color
   }
 }
 """
+
+
+@dataclass
+class UserScopeInstanceFieldCase:
+    name: str
+    variables: dict[str, Any]
+
+
+@dataclass
+class LabelOnlyCase:
+    name: str
+    label: str | None
+
+
+LABEL_ONLY_CASES: list[LabelOnlyCase] = [
+    LabelOnlyCase(name="new_label", label="Staging"),
+    LabelOnlyCase(name="null_resets_label", label=None),
+]
+
+
+USER_SCOPE_INSTANCE_FIELD_CASES: list[UserScopeInstanceFieldCase] = [
+    UserScopeInstanceFieldCase(name="label_alone", variables={"instance_label": "QA"}),
+    UserScopeInstanceFieldCase(name="color_with_timezone", variables={"timezone": "UTC", "instance_color": "RED"}),
+]
 
 
 async def run_mutation(
@@ -43,6 +86,12 @@ async def run_mutation(
         root_value=None,
         variable_values=variables,
     )
+
+
+async def _stored_global(db: InfrahubDatabase) -> Preference:
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
+    assert global_pref is not None
+    return global_pref
 
 
 # --------------------------------------------------------------------------------------------
@@ -237,6 +286,31 @@ async def test_global_denied_for_normal_account(
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 
+async def test_global_instance_identity_denied_for_normal_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, instance_label="QA", instance_color=InstanceColor.BLUE)
+    )
+
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "GLOBAL", "instance_label": "PROD", "instance_color": "RED"},
+    )
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == ["You are not allowed to manage global preferences"]
+
+    global_pref = await _stored_global(db)
+    assert (global_pref.instance_label, global_pref.instance_color) == ("QA", InstanceColor.BLUE)
+
+
 async def test_global_allowed_for_manager(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -313,3 +387,138 @@ async def test_global_preserves_other_field(
     assert global_pref is not None
     assert global_pref.date_format == "ISO_DATETIME"  # preserved across the second update
     assert global_pref.timezone == "UTC"
+
+
+async def test_global_sets_instance_label_and_color(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    session_global_prefs_manager: AccountSession,
+) -> None:
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_global_prefs_manager,
+        variables={"scope": "GLOBAL", "instance_label": "us-east-1 PROD", "instance_color": "RED"},
+    )
+    assert result.errors is None
+    assert result.data is not None
+    assert result.data["InfrahubSetPreferences"] == {
+        "ok": True,
+        "date_format": None,
+        "timezone": None,
+        "instance_label": "us-east-1 PROD",
+        "instance_color": "RED",
+    }
+
+    global_pref = await _stored_global(db)
+    assert global_pref.instance_label == "us-east-1 PROD"
+    assert global_pref.instance_color == InstanceColor.RED
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in LABEL_ONLY_CASES],
+)
+async def test_global_changes_instance_label_only(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    session_global_prefs_manager: AccountSession,
+    case: LabelOnlyCase,
+) -> None:
+    await PreferenceRepository(db=db).save(
+        Preference(
+            owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME", instance_label="QA", instance_color=InstanceColor.BLUE
+        )
+    )
+
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_global_prefs_manager,
+        variables={"scope": "GLOBAL", "instance_label": case.label},
+    )
+    assert result.errors is None
+    assert result.data is not None
+    assert result.data["InfrahubSetPreferences"] == {
+        "ok": True,
+        "date_format": "ISO_DATETIME",
+        "timezone": None,
+        "instance_label": case.label,
+        "instance_color": "BLUE",
+    }
+
+    global_pref = await _stored_global(db)
+    assert global_pref.instance_label == case.label
+    assert global_pref.instance_color == InstanceColor.BLUE
+    assert global_pref.date_format == "ISO_DATETIME"
+
+
+async def test_global_trims_instance_label(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    session_global_prefs_manager: AccountSession,
+) -> None:
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_global_prefs_manager,
+        variables={"scope": "GLOBAL", "instance_label": "  QA  "},
+    )
+    assert result.errors is None
+    assert result.data is not None
+    assert result.data["InfrahubSetPreferences"]["instance_label"] == "QA"
+
+    global_pref = await _stored_global(db)
+    assert global_pref.instance_label == "QA"
+
+
+async def test_global_rejects_unknown_instance_color(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    session_global_prefs_manager: AccountSession,
+) -> None:
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_global_prefs_manager,
+        variables={"scope": "GLOBAL", "instance_color": "pink"},
+    )
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    assert result.errors[0].message == (
+        "Variable '$instance_color' got invalid value 'pink'; Value 'pink' does not exist in 'InstanceColor' enum."
+    )
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in USER_SCOPE_INSTANCE_FIELD_CASES],
+)
+async def test_user_scope_rejects_instance_fields(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+    case: UserScopeInstanceFieldCase,
+) -> None:
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "USER", **case.variables},
+    )
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        "instance_label and instance_color can only be set with scope GLOBAL"
+    ]
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None

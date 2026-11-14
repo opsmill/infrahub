@@ -28,6 +28,8 @@ async def test_save_then_get_for_owner_round_trip(db: InfrahubDatabase, default_
     assert fetched.owner_id == "owner-a"
     assert fetched.date_format == "EU_DATETIME"
     assert fetched.timezone == "Europe/Paris"
+    assert fetched.instance_label is None
+    assert fetched.instance_color is None
 
 
 async def test_save_updates_in_place_without_creating_a_second_row(

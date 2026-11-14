@@ -5,6 +5,8 @@ const GET_GLOBAL_PREFERENCES = graphql(`
     InfrahubGlobalPreferences {
       date_format
       timezone
+      instance_label
+      instance_color
     }
   }
 `);

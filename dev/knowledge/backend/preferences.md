@@ -2,11 +2,12 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [permissions.md](permissions.md), [mutations.md](mutations.md), [query-pattern.md](query-pattern.md), [package-init-files.md](package-init-files.md)
 
-Preferences store per-user and organisation-wide client settings (currently `date_format` and
-`timezone`). They are internal `StandardNode` objects, not schema nodes: they are not versioned by
-branch, not exposed through the generic node API, and carry no schema relationships. All access goes
-through a small backend module (`backend/infrahub/core/preferences/`) and a dedicated GraphQL
-surface.
+Preferences store per-user and organisation-wide client settings: `date_format` and `timezone` on
+both layers, `instance_label` and `instance_color` on the global layer only. They are internal
+`StandardNode` objects, not schema nodes: they are not versioned by branch, not exposed through the
+generic node API, and carry no schema relationships. All access goes through a small backend module
+(`backend/infrahub/core/preferences/`), a dedicated GraphQL surface, and, for the instance label
+and color only, the public `GET /api/config` endpoint.
 
 ## Data model
 
@@ -28,6 +29,8 @@ Fields:
 | `owner_id` | `str` | plain string, not a graph relationship |
 | `date_format` | `DateFormat` enum, nullable | a semantic key (e.g. `ISO_DATETIME`), not a render pattern; each client maps the key to its own formatter |
 | `timezone` | `str` (IANA name), nullable | validated at write, not on the model (see below) |
+| `instance_label` | `str`, nullable | global row only; trimmed, at most `INSTANCE_LABEL_MAX_LENGTH` (32) characters, no control character; validated on the write path and when the deployment settings load, never on a read |
+| `instance_color` | `InstanceColor` enum, nullable | global row only; one of `RED`, `AMBER`, `GREEN`, `BLUE`, `INDIGO`, `PURPLE`, `GRAY` |
 
 `date_format` is enum-typed, so an unknown key is rejected at construction, including when a row is
 loaded from the database. It round-trips as a plain string because the enum subclasses `str`.
@@ -39,6 +42,24 @@ The set mutation validates a provided timezone by resolving it against the runti
 (construction, not an enumerated allowlist — so backward-compatibility aliases a client offers are
 accepted) and normalizes an empty value to unset so the write reply agrees with later reads. Reads
 stay lenient, so any value stored before this validation existed is still returned as-is.
+
+`instance_label` follows the same rule: `validate_instance_label` runs on the write path and when the
+deployment settings load, never on a read. It strips surrounding whitespace, turns an empty result
+into unset, and rejects a control character
+(Unicode category `Cc`, which covers line breaks, tabs and NUL; the Unicode line and paragraph
+separators U+2028 and U+2029; and the bidirectional controls U+061C, U+200E, U+200F, U+202A–U+202E
+and U+2066–U+2069) or more than 32 characters with a `ValidationError` that names the
+rule. A stored value never breaks a read.
+
+`instance_color` needs no validator of its own on the write path: the GraphQL enum rejects an unknown
+member with the graphql-core message `Value '<x>' does not exist in 'InstanceColor' enum.`, which
+does not list the allowed members (the schema does) and adds a "Did you mean" hint only for a
+close member. The deployment setting validates the color in
+`InstanceSettings` with its own message that lists the allowed values. Each member's name
+equals its value (`RED = "RED"`) on purpose: graphene puts member *names* on the GraphQL wire while
+Pydantic serialises *values* on REST, so the equality keeps `schema.graphql`, `openapi.json` and the
+two generated TypeScript types in agreement. Renaming a member later needs a data migration, because
+the value is what is stored.
 
 ## Reads never create a row
 
@@ -81,6 +102,11 @@ Writes go through the `InfrahubSetPreferences` mutation, which targets one scope
 Two argument states are distinguished: an omitted field is left unchanged (an internal `_UNSET`
 sentinel), while an explicit `null` resets the field.
 
+`instance_label` and `instance_color` are accepted with `scope: GLOBAL` only. When either argument is
+provided with `scope: USER`, the mutation raises a `ValidationError` before any read or lock, so no
+user row is created or touched. A per-user row therefore never holds either field, even though the
+model declares them.
+
 The read-modify-write runs inside a per-owner distributed lock keyed on `owner_id`
 (`PREFERENCE_LOCK_NAMESPACE`). Without it, concurrent first-writes for the same owner could each
 observe "no row" and create a duplicate, and concurrent updates could lose writes. The read runs
@@ -112,11 +138,44 @@ touch the calling account's own row.
 |-----------|-------|
 | `InfrahubEffectivePreferences` | merged values, each as `{ value, source }` |
 | `InfrahubUserPreferences` | the caller's own raw values, null where unset |
-| `InfrahubGlobalPreferences` | organisation-wide raw values, null where unset |
+| `InfrahubGlobalPreferences` | organisation-wide raw values, null where unset, plus `instance_label` and `instance_color` |
 | `InfrahubSetPreferences` | upsert one scope; returns the written values |
 
 The effective view carries a `source` per field; the raw views do not, because the scope is the
 source.
+
+`InfrahubGlobalPreferences` returns `GlobalPreferencesType`, a subclass of the raw type that adds the
+two instance fields. The user and effective queries keep the base types, so selecting
+`instance_label` on them fails at query validation ("Cannot query field"). This is what keeps the
+fields off the per-user surface; `EffectivePreferences` is unchanged.
+
+## Public read through `/api/config`
+
+Every client, the login page included, loads `GET /api/config` before it renders, and that response
+is the only way an anonymous visitor reads the instance label and color. The response carries two
+`InstanceIdentityAPI(label, color)` values:
+
+- `instance_defaults`: the deployment defaults from `InstanceSettings` (`INFRAHUB_INSTANCE_LABEL`,
+  `INFRAHUB_INSTANCE_COLOR`, or the `[instance]` section of `infrahub.toml`).
+- `instance`: the effective identity, built by `InstanceIdentityResolver.resolve`. Each field is resolved on its
+  own: the value of the global row from `PreferenceRepository.get_for_owner(GLOBAL_OWNER_ID)` if set,
+  else the deployment default, else `null`.
+
+The read goes through the repository, so it never creates the global row. Any exception on that
+read is logged and `instance` is served with a null label and color, because the config response
+bootstraps every page and the login page must not fail with the identity. The defaults are not
+served in that case: a default can name another stage than the saved value it would stand in for. Only these fields are exposed;
+`date_format` and `timezone` stay behind the authenticated GraphQL queries.
+
+The deployment defaults never reach the GraphQL surface: `InfrahubGlobalPreferences` returns the
+saved values only, so the form can tell a saved value from a default. Resetting a saved value (an
+explicit `null` in the set mutation) makes the default apply again.
+
+The settings validate both values when they load: the label goes through `validate_instance_label`,
+and an empty color counts as unset because a deployment tool can pass an unset variable as an empty
+string. The color is also uppercased, so `red` is accepted. An invalid value stops the process at
+startup with a message that names the environment variable. The enum, the length limit and the label
+validator live in `infrahub/instance_identity.py`, which the settings import.
 
 ## Caveats
 

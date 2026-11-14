@@ -25,8 +25,9 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return <InfrahubLoading>Loading config...</InfrahubLoading>;
   }
 
-  if (error) {
-    return <ErrorScreen message={error.message} />;
+  // A failed refetch keeps the config already loaded, so only a failed first load replaces the app.
+  if (!data) {
+    return <ErrorScreen message={error?.message} />;
   }
 
   return <ConfigContext value={data}>{children}</ConfigContext>;

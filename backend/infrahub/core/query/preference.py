@@ -8,6 +8,7 @@ from infrahub.core.preferences.constants import DateFormat
 from infrahub.core.preferences.models import Preference
 from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.query.standard_node import StandardNodeQuery
+from infrahub.instance_identity import InstanceColor
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -27,6 +28,8 @@ _RETURN_LABELS = [
     "n.owner_id AS owner_id",
     "n.date_format AS date_format",
     "n.timezone AS timezone",
+    "n.instance_label AS instance_label",
+    "n.instance_color AS instance_color",
     "n.created_at AS created_at",
     "n.created_by AS created_by",
     "n.updated_at AS updated_at",
@@ -51,6 +54,7 @@ class PreferenceReadQuery(StandardNodeQuery):
         preferences: list[Preference] = []
         for result in self.get_results():
             date_format = _nullable_str(result, "date_format")
+            instance_color = _nullable_str(result, "instance_color")
             preferences.append(
                 Preference(
                     id=result.get_as_type("id", str),
@@ -58,6 +62,8 @@ class PreferenceReadQuery(StandardNodeQuery):
                     owner_id=result.get_as_type("owner_id", str),
                     date_format=DateFormat(date_format) if date_format is not None else None,
                     timezone=_nullable_str(result, "timezone"),
+                    instance_label=_nullable_str(result, "instance_label"),
+                    instance_color=InstanceColor(instance_color) if instance_color is not None else None,
                     created_at=_nullable_str(result, "created_at"),
                     created_by=result.get_as_type("created_by", str),
                     updated_at=_nullable_str(result, "updated_at"),

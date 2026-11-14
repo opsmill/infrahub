@@ -8756,6 +8756,16 @@ String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
 
+"""
+The organisation-wide raw preferences, plus the instance identity that exists at that scope only.
+"""
+type GlobalPreferencesType {
+  date_format: DateFormat
+  instance_color: InstanceColor
+  instance_label: String
+  timezone: String
+}
+
 type GraphQLQueryReport {
   """
   True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
@@ -9300,6 +9310,8 @@ Preference row.
 """
 type InfrahubSetPreferences {
   date_format: DateFormat
+  instance_color: InstanceColor
+  instance_label: String
   ok: Boolean
   timezone: String
 }
@@ -9318,6 +9330,19 @@ Retry a settled delivery by replaying its frozen payload as a new, independent d
 type InfrahubTaskRetry {
   ok: Boolean
   task: TaskInfo
+}
+
+"""
+Preset colors for the instance badge, bar and tab icon. The stored instance_color is one of these keys; each client maps the key to its own theme.
+"""
+enum InstanceColor {
+  AMBER
+  BLUE
+  GRAY
+  GREEN
+  INDIGO
+  PURPLE
+  RED
 }
 
 """Token for User Account"""
@@ -10269,7 +10294,7 @@ type Mutation {
   is lazily created on first write under a per-owner lock — the only path that ever creates a
   Preference row.
   """
-  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
+  InfrahubSetPreferences(date_format: DateFormat, instance_color: InstanceColor, instance_label: String, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   """
   Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request.
   """
@@ -26791,7 +26816,7 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
-  InfrahubGlobalPreferences: RawPreferencesType!
+  InfrahubGlobalPreferences: GlobalPreferencesType!
   """
   Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
   """
