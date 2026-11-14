@@ -97,6 +97,7 @@ User-facing keys live under `security.*` in `config.py`:
 | `auto_create_groups_filter` | Regex or list of regexes. Empty disables auto-creation. |
 | `auto_create_groups_max_per_login` | Per-login cap on new creations. Reuse is uncapped. Default: 50. |
 | `sso_user_default_group` | Fallback group when no claim matches. |
+| `auth_cache_ttl_seconds` | How long each API server process reuses the account an API token resolved to, and the permissions loaded for an account on a branch, before reading them again (`auth/token_cache.py`, `permissions/cache.py`). A revoked token, a deactivated account or a permission change takes effect within this window. Default: 5. 0 disables. |
 
 The regex(es) are compiled once at config-load time and recompiled when settings are updated.
 

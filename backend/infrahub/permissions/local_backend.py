@@ -8,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountRole
 
 from .backend import PermissionBackend
+from .cache_registry import get_account_permission_cache
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -35,4 +36,11 @@ class LocalPermissionBackend(PermissionBackend):
 
             return anonymous_permissions
 
-        return await fetch_permissions(db=db, account_id=account_session.account_id, branch=branch)
+        permission_cache = get_account_permission_cache()
+        permissions = permission_cache.get(account_id=account_session.account_id, branch_name=branch.name)
+        if permissions is None:
+            permissions = await fetch_permissions(db=db, account_id=account_session.account_id, branch=branch)
+            permission_cache.set(
+                account_id=account_session.account_id, branch_name=branch.name, permissions=permissions
+            )
+        return permissions
