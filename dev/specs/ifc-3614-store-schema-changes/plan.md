@@ -75,7 +75,7 @@ change, no CLI change, no new setting.
 | **III. Type Safety & Explicit Contracts** | Pass. Operations are a Pydantic model with an enumerated type. Statuses are enumerations. Every query returns a typed result. The GraphQL contract and the internal contracts are written in [contracts/](contracts/) before implementation. |
 | **IV. Test Discipline** | Pass. The equivalence suite is written first. Each tier is used for what it can prove ([research.md](research.md), R14). No Playwright test: the feature has no user interface, and front-end work is out of scope in the source design. |
 | **V. Query Performance & Efficiency** | Pass. All Cypher is parameterized. Operations and migration records are created in bulk. The history query is paginated, fetches nested data for a whole page with two queries through data loaders, and fetches only the fields the request selects. The branch deletion runs in batches. No index is added; R3 says why and when to ask for one. |
-| **VI. Security & Input Boundaries** | Pass with one risk recorded. The query adds no write path. Reading the history needs the access that reading the schema needs (spec, decision 3). The stored error strings are the ones the load already returns to its caller, now readable by every reader of the schema ([research.md](research.md), R12). |
+| **VI. Security & Input Boundaries** | Pass. The query adds no write path. It needs a logged-in account (spec, decision 3), because the stored error strings can hold the text of an internal exception and anonymous read access is on by default ([research.md](research.md), R12). |
 | **VII. Simplicity & Maintainability** | Pass with three justified items, in "Complexity Tracking". |
 
 **After Phase 1 design**: no new violation. The design adds no dependency, no setting, no index and
@@ -197,14 +197,14 @@ stores nothing.
 1. Validate the input and change the attribute in memory, as today.
 2. Build one `element_property` operation on `choices` or `enum`, with the list before the change.
 3. Apply it with the applier to get the candidate schema.
-4. Inside the transaction that saves the schema, store the schema change, its operation and its
-   application with the status `applied`.
+4. Take one timestamp. Inside the transaction that saves the schema at that timestamp, store the
+   schema change, its operation and its application with the status `applied`.
 
 ### How the history is read
 
-`InfrahubSchemaChange` reads the schema changes of the branch of the request in pages. Two data
-loaders read the operations and the applications with their migration records for every schema
-change of the page.
+`InfrahubSchemaChange` reads the schema changes of the branch of the request in pages, for a
+logged-in account. Two data loaders read the operations and the applications with their migration
+records for every schema change of the page.
 
 ### How the records of a branch are deleted
 
@@ -221,7 +221,9 @@ operations, applications and migration records, in batches.
 | The write that ends a load fails, and a schema change keeps the status `running` | The operations are stored, so a recovery task can finish it. Recovery is out of scope in the source design |
 | Two processing passes slow a load on a large schema | A task measures it. The design document measured about 0.16 s for one pass on the internal and core schema |
 | A new edge type is picked up by a query that matches edges without a type | The edges have no `branch` property. A functional test runs a rebase, a merge and a failed load and asserts that the records are unchanged |
-| Error strings stored in the records are shown to every reader of the schema | Recorded for review ([research.md](research.md), R12) |
+| Error strings stored in the records hold the text of an internal exception | The query needs a logged-in account ([research.md](research.md), R12) |
+| A case outside the equivalence list differs in production | The candidate builder logs a warning that names the kinds whose hash differs between the laid-over file and the applier's result |
+| A branch created while a load on main is running gets the wrong base version | `applied_at` is the timestamp of the load's writes, and a component test covers the timing ([research.md](research.md), R10) |
 
 ## Complexity Tracking
 

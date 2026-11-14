@@ -157,6 +157,18 @@ file's model.
 - A file that changes nothing gives an empty processed diff, so no operation and no schema change
   (FR-003).
 
+**Order of the operations** in one schema change:
+
+1. removals of kinds, then additions of kinds, generics before nodes, each group by kind name;
+2. then each changed kind, by kind name. Inside a kind: removals of attributes and relationships,
+   additions, property changes other than a rename, renames of attributes and relationships, and
+   last the rename of the kind itself.
+
+Every operation that comes before a rename names the element by the name it had before the load.
+The order is fixed so that the applier resolves each name against one schema, the summary of a
+schema change does not depend on the order of the file, and a later task can follow a rename
+through the operations after it.
+
 **Alternative rejected**: the diff between the branch schema and the schema of step 1, without
 processing. It would record a change that processing reverts, for example `unique: false` on an
 attribute that a uniqueness constraint keeps unique, so loading the same file twice would store a
@@ -210,6 +222,12 @@ to get the operations as well. `graphql/mutations/schema.py::update_registry` bu
 `element_property` operation on `choices` or `enum` and applies it with the same applier. The
 mutation keeps its own checks and its own save.
 
+**A difference is logged**: the builder holds two processed schemas, the one of the laid-over
+file and the applier's result. When their hashes differ for a kind, it logs a warning that names
+the kinds. It does not refuse the load: the applier's result is the one that is saved, and a
+known-bug case can differ on purpose. The equivalence suite covers the listed cases; the warning
+reports any other case in production.
+
 **Cost**: a load and a check now process the schema twice, once to find the operations and once in
 the applier. The design document measured about 0.16 s to build the internal and core schema in
 memory, and says the time on a schema of customer size is not measured. A task measures both
@@ -245,7 +263,8 @@ from its operations, creates an application and a record for each migration it r
 their status". The staging task and the replay task call it later.
 
 **Known limit**: the write of the last step is not in the same transaction as the load. If it
-fails, or if the worker stops, the schema change keeps the status `running`. Its operations are
+fails, if the worker stops, or if the request is cancelled, the schema change keeps the status
+`running`. Its operations are
 stored, so a later recovery task can finish or fail it. Recovery after a worker stops during a
 load is out of scope in the design document.
 
@@ -257,6 +276,9 @@ application ID. `schema_apply_migrations` builds a migration recorder at its top
 
 - With an application ID, the recorder creates the records, and updates one record each time a
   migration returns, from its `SchemaMigrationPathResponseData`.
+- A record is identified by the position of its migration in the list of the message. The flow
+  passes that position with each result, because two migrations of one application can have the
+  same name and the same schema path.
 - Without one, a recorder that does nothing is used. A merge, a rebase and the core schema update
   have no application until their own tasks add one.
 
@@ -285,7 +307,11 @@ change only after the whole flow ends.
 - The version is assigned when the schema change becomes `applied`: the highest version of the
   applied schema changes of the branch, plus 1.
 - For the first schema change of a branch that is not main, the base is the highest version among
-  main's schema changes applied at or before the branch's `branched_from`, or 0.
+  main's schema changes whose `applied_at` is at or before the branch's `branched_from`, or 0.
+- `applied_at` is the timestamp of the graph writes of the application, not the time the load
+  ended. A load writes the schema at one timestamp taken when it starts. A branch created after
+  that timestamp reads main's schema with the change in it, even while the load is still running
+  its migrations, so the change is part of what the branch started from.
 - The parent is the schema change that gave the base version. Main's first schema change, and a
   branch's first schema change when main has none, have no parent.
 - The summary is stored. It comes from the first operation: the kind in lower case, the attribute,
@@ -314,6 +340,8 @@ with the status `applied`, inside the database transaction that saves the schema
   follow migrations.
 - Either the schema and its records are saved, or neither is. A retry of the mutation after a
   database error (`retry_db_transaction`) leaves no failed record.
+- The mutation takes one timestamp and passes it to `update_schema_branch` and to the recorder.
+  Today the save takes no timestamp and uses the current time.
 
 This differs from the design document, which says that a mutation also creates its schema change
 with the status `running`. The spec records it as decision 7.
@@ -334,8 +362,10 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
   each with its `migrations`.
 - Nested fields are loaded with data loaders (`graphql/loaders/`), one query for the operations of
   every schema change on the page and one for their applications and migrations.
-- Access: the query is not added to `QUERIES_REQUIRING_AUTHENTICATION`, so it has the same access
-  as other read queries, including anonymous access when it is allowed.
+- Access: the query is added to `graphql/schema.py::QUERIES_REQUIRING_AUTHENTICATION`, as the
+  `Preference` queries are. It needs a logged-in account and no other permission.
+- A `limit` below 1 or above the maximum, or an `offset` below 0, is refused with a validation
+  error.
 
 **Page sizes**, as named constants:
 
@@ -349,10 +379,11 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
 The sources give no page size. The maximum bounds the work of the nested loaders. `InfrahubEvent`
 caps its page at 50 in the same way.
 
-**Risk**: the application error and the migration errors are the strings that the load returns to
-its caller today. The history query shows them to every reader of the schema. They can hold the
-text of a database exception. The design document gives readers of the schema access to the
-migrations and their status; it does not mention the error text.
+**Why a logged-in account**: the application error and the migration errors are the strings that
+the load returns to its caller today. They can hold the text of a database exception. Anonymous
+read access is on by default, and the constitution does not allow internal error detail in what a
+user receives. With this rule, every logged-in user can read that text, where today only the
+account that ran the load receives it.
 
 ## R13. Deleting a branch
 
@@ -382,6 +413,13 @@ another flow, and a failure there would leave the records with no branch.
 
 - The equivalence suite is a unit test. It works on `SchemaBranch` objects in memory, as
   `backend/tests/unit/core/schema/test_schema_branch.py` does.
+- The suite builds its reference result with `SchemaBranch` calls only: `duplicate`,
+  `load_schema`, `process`, `diff` and `validate_update`. It does not call
+  `SchemaCandidateBuilder` for the reference, so the reference and the result under test do not
+  come from the same code.
+- A component test covers the timing of R10: main loads a schema, a branch is created with a
+  `branched_from` after the timestamp of that load's writes, and the branch's first schema change
+  gets main's version plus 1 and main's schema change as its parent.
 - A failed migration is produced as
   `backend/tests/integration/schema_lifecycle/test_schema_load_rollback.py` does it, with a
   migration class that always returns an error.

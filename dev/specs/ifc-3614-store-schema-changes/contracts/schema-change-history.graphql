@@ -7,7 +7,10 @@
 # the schema changes without a version by the time they were created, oldest
 # first.
 #
-# Access: the same as other read queries. No extra permission.
+# Access: a logged-in account. No other permission.
+#
+# A limit below 1 or above the maximum, or an offset below 0, is refused with
+# a validation error.
 
 enum SchemaChangeStatus {
   STAGED
@@ -47,8 +50,6 @@ type Query {
     limit: Int
     # Number of schema changes to skip. Minimum 0.
     offset: Int
-    # Return only the schema changes with these IDs.
-    ids: [ID!]
     # Return only the schema changes with one of these statuses.
     status: [SchemaChangeStatus!]
   ): InfrahubSchemaChanges!
@@ -75,7 +76,10 @@ type InfrahubSchemaChangeNode {
   branch: String!
   format_version: Int!
   created_at: DateTime!
-  # Null unless the status is APPLIED.
+  # Time of the last change of the record.
+  updated_at: DateTime!
+  # Timestamp at which the schema was written to the branch. Null unless the
+  # status is APPLIED.
   applied_at: DateTime
   # Null for the first schema change of main, for a branch's first schema
   # change when main has none, and for a schema change without a version.

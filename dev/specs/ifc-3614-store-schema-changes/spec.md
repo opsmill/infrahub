@@ -29,6 +29,9 @@ every schema check. Later tasks of the same epic use the stored records and the 
 the progress of a load, to stage a schema change, and to apply schema changes in order at rebase
 and merge.
 
+The schema owner reads the history through a GraphQL query. A page in the UI, SDK methods and CLI
+commands for the history are separate work.
+
 ## Terms
 
 - **Schema change operation**: one change to the schema: add, remove or change a node, an
@@ -220,9 +223,10 @@ branch. Count the records of that branch and of main before and after.
   version, not by name, so the order stays correct.
 - **A branch created before this feature is deployed**, or main with no stored schema change:
   main's version is 0, so the branch's first schema change has the version 1.
-- **A worker that stops during a load**: the schema change and its application keep the status
-  `running`. They have no version and are not part of the history that later tasks apply. Recovery
-  after a worker stops during a schema load is out of scope, as in the source design.
+- **A worker that stops during a load, or a load request that is cancelled**: the schema change
+  and its application keep the status `running`. They have no version and are not part of the
+  history that later tasks apply. Recovery after a worker stops during a schema load is out of
+  scope, as in the source design.
 - **A migration that is waiting when another migration fails**: its record keeps the status
   `waiting`. The status `failed` of the application tells the reader that it did not run.
 - **A load that Infrahub refuses before it writes anything**, for example an invalid file or a
@@ -250,7 +254,8 @@ branch. Count the records of that branch and of main before and after.
   - its name and its version (FR-030 to FR-035);
   - its parent, its branch and its status;
   - the version of the format its operations are stored in;
-  - the time it was created, and the time it was applied.
+  - the time it was created, and the time it was applied. The time it was applied is the
+    timestamp at which its schema was written to the branch, not the time the load ended.
 - **FR-006**: The status of a schema change MUST be one of `staged`, `running`, `applied` and
   `failed`. A schema load creates its schema change with the status `running` before its migrations
   run, and sets it to `applied` or `failed` when the application ends. A dropdown or enum mutation
@@ -396,9 +401,9 @@ branch. Count the records of that branch and of main before and after.
 - **FR-071**: The query MUST return applied schema changes in order of version, and failed schema
   changes, which have no version, in order of the time they were created.
 - **FR-072**: The query MUST return the total number of schema changes that match, and a page MUST
-  hold at most the number of schema changes the client asked for.
-- **FR-073**: Anyone who can read the schema of a branch MUST be able to query its schema change
-  history. See decision 3.
+  hold at most the number of schema changes the client asked for. A request for more than the
+  maximum page size MUST be refused with an error.
+- **FR-073**: The query MUST require a logged-in account, and no other permission. See decision 3.
 
 #### Storage and deletion
 
@@ -433,7 +438,8 @@ branch. Count the records of that branch and of main before and after.
   equals the schema of a direct load, and the lists of migrations are the same. The four known-bug
   cases are compared with the fixed behaviour.
 - **SC-002**: The existing tests of the schema load, the schema check and the dropdown and enum
-  mutations pass with the same expected results as before this feature.
+  mutations pass with the same expected results as before this feature. The one exception is a
+  test that asserts one of the four known bugs in FR-025, when the applier fixes that bug.
 - **SC-003**: After N schema loads that each change the schema of a branch, the history of the
   branch lists N applied schema changes with N consecutive versions. Loading one of the files a
   second time adds none.
@@ -512,8 +518,11 @@ review.
    fixed yet. Each such case states the fixed behaviour and is marked as an expected failure that
    names its bug, so the suite reports it when the fix lands. A case that the applier fixes is a
    normal passing case.
-3. **Reading the history needs the same access as reading the schema.** The sources say this for a
-   staged schema change in the staging task. They do not say it for the history query.
+3. **Reading the history needs a logged-in account, and no other permission.** The sources say
+   that anyone who can read the schema can view a staged schema change, in the staging task. They
+   do not say who can read the history. The history holds the error text of failed loads, which is
+   the text of an internal exception, and anonymous read access is on by default. The task names
+   the `Preference` query as the model, and that query needs a logged-in account.
 4. **The parent of the first schema change of a branch is main's last schema change applied at or
    before the branch's `branched_from`.** When main has none, the schema change has no parent. The
    sources say that a schema change has a parent and that a branch numbers its schema changes after

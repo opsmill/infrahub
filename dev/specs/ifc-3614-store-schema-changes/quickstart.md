@@ -50,7 +50,7 @@ What they must show:
 - The first schema change of a branch gets main's version at `branched_from` plus 1, and has
   main's schema change at that version as its parent.
 - The history query returns applied schema changes by version and the others by creation time,
-  and the count of all pages.
+  and the count of all pages. It refuses a request without a logged-in account.
 - A schema load stores one schema change, a second load of the same file stores none, and a
   schema check stores none.
 - A dropdown or enum mutation stores one schema change with one operation. A refused mutation
@@ -100,7 +100,7 @@ uv run invoke dev.start
 uv run invoke dev.load-infra-schema
 ```
 
-Then, in the GraphQL sandbox of the instance, on the branch `main`:
+Then, in the GraphQL sandbox of the instance, logged in, on the branch `main`:
 
 ```graphql
 query {

@@ -25,7 +25,7 @@ One schema load, or one dropdown or enum mutation, that changed the schema of a 
 | `version` | `int \| None` | Set when the status becomes `applied`. Unique among the applied schema changes of one branch |
 | `summary` | `str` | From the first operation, with a count when there are more ([research.md](research.md), R10) |
 | `format_version` | `int` | Version of the operation format. `1` in this feature |
-| `applied_at` | `str \| None` | Timestamp, set when the status becomes `applied` |
+| `applied_at` | `str \| None` | Timestamp of the graph writes of the application that applied it. Set when the status becomes `applied` |
 
 Derived, not stored:
 
@@ -33,6 +33,11 @@ Derived, not stored:
 
 Rules:
 
+- `applied_at` is not the time the load ended. It is the timestamp at which the schema was written
+  to the branch, so a branch whose `branched_from` is at or after it started from a schema that
+  holds this schema change.
+- Timestamps are stored as text in the format of `Timestamp.to_string()`, which is the format of
+  `Branch.branched_from`, so the two can be compared in a query.
 - A schema change always has at least one operation (FR-003).
 - `version` is `None` unless `status` is `applied` (FR-032).
 - A schema change has at most one parent, and only when its status is `applied`. The parent is an
@@ -73,6 +78,9 @@ Rules:
   `parameters.number_pool_id` (FR-012, FR-014).
 - `value` and `previous_value` are JSON so that a list, a mapping, a boolean and `null` keep their
   type. `null` as a value is different from a field that is not set.
+- Both fields are always JSON-encoded text when set. `StandardNode` stores `None` as the text
+  `NULL` and reads that text back as `None`, so the JSON value `null` is stored as `null`, a text
+  value as text inside quotes, and a field that is not set as `None`.
 
 The in-memory form is `SchemaOperation`, a Pydantic model in
 `backend/infrahub/core/schema_change/operations.py`. The builder creates it, the applier reads it,
@@ -119,6 +127,8 @@ One migration that an application ran.
 - The path is stored as its parts, without `schema_id`, which is a vertex ID. The query also
   returns the text form that `core/path.py::SchemaPath.get_path` builds.
 - The time of the record is `updated_at`, the time of its last status change.
+- A record is identified inside its application by `position`, because two migrations of one
+  application can have the same name and the same path.
 
 Status transitions in this feature:
 

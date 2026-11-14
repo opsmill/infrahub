@@ -82,6 +82,8 @@ class SchemaCandidateBuilder:
   `validation.migrations` and `validation.constraints` are calculated from that diff, after
   processing.
 - Runs `validate_node_deletions` on the applier's result.
+- `from_schema_root` logs a warning that names the kinds whose hash differs between the processed
+  schema of the laid-over file and the applier's result. It does not refuse the load.
 - `api/schema.py::evaluate_candidate_schemas` calls `from_schema_root` and keeps its return type.
 
 ## `SchemaChangeRecorder`
@@ -123,6 +125,8 @@ class SchemaChangeRecorder:
   version and write the next one without a second lock.
 - `record_applied` is for a change that runs no migration and is saved in one transaction. The
   caller builds the repository with the database handle of that transaction.
+- `at` is the timestamp of the graph writes. `complete` and `record_applied` store it as the
+  schema change's `applied_at`.
 
 ## `SchemaChangeApplicationRunner`
 
@@ -165,13 +169,15 @@ class MigrationRecorder(ABC):
     async def batch_started(self, *, migrations: Sequence[SchemaUpdateMigrationInfo]) -> None: ...
 
     @abstractmethod
-    async def migration_ended(self, *, result: SchemaMigrationPathResponseData) -> None: ...
+    async def migration_ended(self, *, position: int, result: SchemaMigrationPathResponseData) -> None: ...
 ```
 
 - `ApplicationMigrationRecorder(repository, application_id)`: `register` creates one record for
   each migration with the status `waiting`. `batch_started` sets the records of the batch to
   `running`. `migration_ended` sets one record to `applied` when the result has no error, or to
   `failed` with the errors, and stores `nbr_migrations_executed`.
+- `position` is the index of the migration in the list of the flow message. The flow keeps the
+  position of each migration it submits and passes it with the result.
 - `NoRecordMigrationRecorder`: does nothing. Used when the message has no application ID.
 - A failure to write a record does not stop a migration. It is logged, and the record keeps its
   earlier status.
