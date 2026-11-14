@@ -32,8 +32,8 @@ Message templates (wording to confirm in review):
 | Case | Before | After |
 |---|---|---|
 | A required peer on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
-| A peer would be removed through cascade on another branch only, and its relationship to the deleted node is optional or not declared | The delete succeeds | The delete succeeds, and the peer stays on that branch |
-| A branch-aware peer removed through cascade on the request branch also exists on another live branch, and its relationship to the deleted node is required | The delete succeeds | `ValidationError` (HTTP 422), because the cascade removes the peer on the request branch only |
+| On another live branch, a peer is linked to the deleted node through a relationship on which the deleted node has `on_delete: cascade` in that branch's schema, whether the peer's relationship is optional or required | The delete succeeds | The delete succeeds, and the peer stays on that branch with its link to the deleted node |
+| The request branch's schema cascades on the relationship, but another live branch's schema does not and makes the peer's relationship required | The delete succeeds | `ValidationError` (HTTP 422) naming that branch |
 | A branch-aware node is deleted, its cascade reaches a branch-agnostic node, and a required peer of that branch-agnostic node on another live branch is not being deleted | The delete succeeds | `ValidationError` (HTTP 422) |
 | A relationship to the deleted node is required in one branch's schema only | The delete succeeds | `ValidationError` (HTTP 422) naming that branch only |
 

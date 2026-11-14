@@ -138,6 +138,10 @@ The decision is now:
 
 The measurements are in [delete-check-measurements.md](delete-check-measurements.md).
 
+**Changed on 2026-11-13, decision 1 of [delete-check-open-decisions.md](delete-check-open-decisions.md).** A peer that remains on another branch blocked the delete when its relationship back to the deleted node was required, even when the deleted node cascades on that relationship. A repository cascades to the nodes its import creates, and those nodes have a required `repository` relationship, so a repository could not be deleted while another branch held one of them. The decision is now:
+- On each other live branch, query 2 skips the relationships on which the deleted node has `on_delete: cascade` in that branch's schema, whatever the relationship kind and whether or not the peer is in the delete set. The peer stays on that branch with its link to the deleted node, as on `stable`.
+- Rejected: keeping the refusal (option A), because it refuses a repository delete that works on `stable`; skipping only the ids of the delete set (option B), because query 1 builds the delete set in the request branch's window, so a node that git sync imported on one branch only still blocks; deleting the cascade targets on every branch (option C), because it contradicts FR-016 and writes into other users' branches. Option C is a deferred follow-up in `spec.md`.
+
 ## R6. Peer existence check (PR 5)
 
 **Finding.**

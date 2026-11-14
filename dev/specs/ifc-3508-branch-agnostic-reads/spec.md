@@ -55,6 +55,14 @@ PRs 1 and 3 fix the effects users are most likely to hit and do not wait for PR 
 - Q: Should this feature add an `active_on_branches` data point, and where? → A: Yes. Add `active_on_branches: [String!]` to `InfrahubNodeMetadata`, filled for peers returned through a branch-agnostic relationship and for nodes from other branch-agnostic reads, and `null` elsewhere. It is computed only when requested, and ships as its own PR after PR 6 (FR-041, FR-042).
 - Q: What does this feature add for attributes? → A: Nothing. The branch a peer's values come from follows from `active_on_branches` and the order of FR-029. A list of branches per attribute is out of scope.
 
+### Session 2026-11-13
+
+Input: [delete-check-open-decisions.md](delete-check-open-decisions.md), decision 1.
+
+- Q: Does a branch-aware node that the cascade of a deleted branch-agnostic node reaches, and that has a required relationship back to it, block the delete when it exists on another live branch? → A: No. On each other live branch, a link does not block the delete when it is the peer side of a relationship on which the deleted node has `on_delete: cascade`, whatever the relationship kind and whether or not the peer is in the delete set. The peer stays on that branch with its link to the deleted node, as on `stable`. Otherwise a repository cannot be deleted while another branch holds the nodes its import created, and the delete works on `stable` (FR-014).
+- Q: Which schema decides whether a relationship cascades? → A: Each live branch's own schema, as it already decides whether a relationship is required (FR-017).
+- Q: Does this PR delete the cascade targets on other branches, check what a merge does with a node left without its required peer, or stop merged branches from blocking a delete? → A: No. Each is deferred to its own Jira issue (see "Deferred follow-ups").
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Global permissions follow the default branch (Priority: P1)
@@ -134,11 +142,14 @@ An administrator deletes a branch-agnostic node, for example an account group. T
 
 1. **Given** a peer on branch B has a required relationship to the node, and the peer is not also being deleted, **When** the node is deleted on the default branch, **Then** the delete is refused and the error names B and the peer.
 2. **Given** P reaches the node on branch B only through the default branch's edge from before B was created, and B wrote nothing, **When** the node is deleted on the default branch, **Then** the delete is refused.
-3. **Given** a peer would be removed through `on_delete=cascade` on branch B but not on the request branch, and the peer's relationship to the node is optional or not declared, **When** the node is deleted, **Then** the delete succeeds and the peer stays on B.
+3. **Given** a peer on branch B is linked to the node through a relationship on which the node has `on_delete: cascade` in B's schema, whether the peer's relationship to the node is optional or required, **When** the node is deleted, **Then** the delete succeeds and the peer stays on B.
 4. **Given** no live branch would break a constraint, **When** the node is deleted, **Then** the delete succeeds and cascading deletes write only on the request branch.
 5. **Given** a branch-aware node whose delete reaches no branch-agnostic node, **When** it is deleted, **Then** the delete is refused or allowed as it is today, with the same error, and no other branch is checked.
 6. **Given** a branch-aware node whose cascading delete reaches a branch-agnostic node, and a peer on branch B has a required relationship to that branch-agnostic node, **When** the branch-aware node is deleted, **Then** the delete is refused and the error names B and the peer.
 7. **Given** a relationship to the node is required in branch B's schema only, **When** the node is deleted, **Then** the delete is refused because of B only.
+8. **Given** repository R was imported on the default branch and branch B was created after the import, **When** R is deleted on the default branch, **Then** the delete succeeds, the nodes the import created are deleted on the default branch, and they stay on B.
+9. **Given** a check definition imported from repository R exists only on branch B, because git sync imported it there, **When** R is deleted on the default branch, **Then** the delete succeeds.
+10. **Given** the request branch's schema has `on_delete: cascade` on the node's relationship to a peer kind, but branch B's schema does not and makes the peer's relationship to the node required, **When** the node is deleted, **Then** the delete is refused and the error names B and the peer.
 
 ---
 
@@ -215,6 +226,7 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - A pool namespace that cannot be read on the allocating branch for any reason fails the allocation with the named error; the allocation never treats the whole range as free.
 - A branch-agnostic node always exists on every live branch, because its `IS_PART_OF` edge is on `-global-`, so it always takes its values from the request branch.
 - A rebase of branch B moves B's fork point past the default branch's `deleted` edge, so a link closed on the default branch also closes on B. A merge of B carries nothing for a link B only inherited.
+- A branch-aware node that the cascade of a deleted branch-agnostic node reaches is deleted on the request branch only. On every other live branch it stays, with its link to the deleted node, even when that relationship is required. The delete does not report it.
 - The number of edges written when a branch-agnostic node is deleted depends on how many branches changed a link to the node, not on how many branches are open.
 - Reads that are not branch-agnostic, between branch-aware kinds, keep their current query and cost.
 
@@ -246,10 +258,10 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 
 **Deleting a branch-agnostic node, the check (User Story 4)**
 
-- **FR-014**: Before deleting a branch-agnostic node, whether the delete names it or a cascading delete reaches it, Infrahub MUST check every live branch and refuse the delete when, on any branch, a peer with a required relationship to the node is not also being deleted. Only a required relationship blocks the delete: a peer that `on_delete=cascade` would remove on another branch but not on the request branch blocks it only when its relationship to the node is required.
+- **FR-014**: Before deleting a branch-agnostic node, whether the delete names it or a cascading delete reaches it, Infrahub MUST check every live branch and refuse the delete when, on any branch, a peer with a required relationship to the node is not also being deleted. Only a required relationship blocks the delete. On each live branch other than the request branch, a link MUST NOT block the delete when it is the peer side of a relationship on which the deleted node has `on_delete: cascade`, whatever the relationship kind and whether or not the peer is in the delete set. Such a peer stays on that branch with its link to the deleted node, as it does on `stable`.
 - **FR-015**: The error MUST name each branch and each peer that blocks the delete.
 - **FR-016**: The check MUST write nothing, and cascading deletes MUST write only on the request branch.
-- **FR-017**: When the nodes to delete include no branch-agnostic node, the check MUST refuse and allow the same deletes as before, with the same error, and MUST NOT read other branches. Each live branch MUST be checked against its own schema.
+- **FR-017**: When the nodes to delete include no branch-agnostic node, the check MUST refuse and allow the same deletes as before, with the same error, and MUST NOT read other branches. Each live branch MUST be checked against its own schema, which decides both whether a relationship is required and whether the deleted node cascades on it.
 
 **Peer existence and edges between the same two vertices (User Story 5)**
 
@@ -306,6 +318,9 @@ Adding a link on a branch-agnostic relationship is refused only when the peer is
 - **SC-004**: Reads of relationships between branch-aware kinds that are not branch-agnostic show the same number of database hits before and after, on the same data set.
 - **SC-005**: After the migration, zero mixed pairs of the two known shapes remain, and reads at several timestamps return identical results before and after.
 - **SC-006**: Each PR description reports the database hits of the affected read paths before and after: reads of relationships to branch-agnostic kinds, reads of group members, branch-agnostic reads with many live branches, deleting a branch-agnostic node with many live branches, and IP pool allocation with many live branches and past allocations.
+- **SC-007**: An administrator can delete a repository in one request while any number of other live branches hold the nodes its import created. No refusal is caused by those nodes.
+- **SC-008**: Deleting a branch-agnostic node writes on the request branch only. On every other branch, the nodes and links before and after the delete are the same.
+- **SC-009**: Every delete that the check refuses for a reason other than a relationship on which the deleted node cascades is still refused, with the same error: scenarios 1, 2 and 4 to 7 of User Story 4 and the existing delete check tests pass unchanged, except the test that asserted the refusal FR-014 now removes.
 
 ## Assumptions
 
@@ -338,3 +353,11 @@ These come from the brief and stay open. Each one blocks only the tasks that dep
 - Filters and lookups by value on a branch ([IFC-3488](https://opsmill.atlassian.net/browse/IFC-3488)), which PR #11220 fixes.
 - `active_on_branches` for nodes read on one branch through a relationship that is not branch-agnostic.
 - A list, per attribute, of the live branches on which the attribute holds the returned value.
+
+## Deferred follow-ups
+
+Decided on 2026-11-13 from [delete-check-open-decisions.md](delete-check-open-decisions.md). None of them blocks PR 4.
+
+- **Delete the cascade targets of a deleted branch-agnostic node on every live branch** (option C of decision 1, JIRA-C). It contradicts FR-016, writes deletes that the branch's user did not make into that branch's diff, events and changelog, cannot write on a merged branch, and needs a decision on write permission for each branch.
+- **Find out what a merge does with a node whose required peer was deleted** (JIRA-M). FR-014 leaves such nodes on other branches, as `stable` does. Merging a branch that holds one writes it to the default branch with a link to the deleted node. Nobody has checked what merge validation does then. The work starts with a test that shows the current behavior.
+- **Decide whether a merged branch still counts in the delete check** (decision 2, JIRA-D). A stale link on a merged branch blocks a delete until someone deletes the branch, because a merged branch is read-only. Whether `MERGE_FAILED` counts is part of the same decision.

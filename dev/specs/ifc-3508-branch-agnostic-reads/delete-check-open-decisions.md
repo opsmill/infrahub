@@ -5,7 +5,12 @@ Deleting a branch-agnostic node removes it from every branch at once. The delete
 - Users cannot delete a repository while any other branch holds the nodes that the repository's import created.
 - A stale link on a merged branch blocks a delete until someone deletes that branch, because a merged branch is read-only.
 
-Not decided yet: which option to take for each. This brief is the input for that discussion.
+Decided on 2026-11-13:
+
+- Decision 1: option B2, as a general rule taken from the schema. On each other live branch, a link does not block the delete when it is the peer side of a relationship on which the deleted node has `on_delete: cascade`. Each branch's own schema decides whether the relationship cascades. See FR-014, FR-017 and the Clarifications session of 2026-11-13 in [spec.md](spec.md).
+- Decision 2: deferred to its own Jira issue. Option C of decision 1, and what a merge does with a node left without its required peer, are deferred too. See "Deferred follow-ups" in [spec.md](spec.md).
+
+The rest of this brief is the input to that discussion, kept as it was.
 
 ## How the delete check works now
 

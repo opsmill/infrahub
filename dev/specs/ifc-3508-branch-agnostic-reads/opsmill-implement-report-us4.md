@@ -163,7 +163,7 @@ The review ran the six aspects of `speckit-review-run` (code, tests, errors, com
 - Phase 6 was split into three chunks: tests, implementation with measurement, then changelog with checks.
 - The review agents were run in parallel, two aspects per agent for errors with comments and for types with simplify.
 - High findings were fixed by one subagent. The tests subagent's two "High" gaps were fixed in the same pass. The GraphQL error flattening was deferred because it predates this change.
-- Behavior change from the review fix: a branch-agnostic node cannot be deleted while another live branch holds one of its branch-aware cascade targets whose relationship back to it is required. The cascade removes that target on the request branch only, so the target would keep an empty required relationship on the other branch.
+- Behavior change from the review fix: a branch-agnostic node cannot be deleted while another live branch holds one of its branch-aware cascade targets whose relationship back to it is required. The cascade removes that target on the request branch only, so the target would keep an empty required relationship on the other branch. Reversed on 2026-11-13 (decision 1 of [delete-check-open-decisions.md](delete-check-open-decisions.md)): a relationship on which the deleted node cascades no longer blocks on other branches, and the target stays there as on `stable`.
 - The error contract changed from one error per branch and peer to one error per link naming all its branches. `contracts/user-visible-behavior.md` was updated to match.
 
 ## Suggested next steps
