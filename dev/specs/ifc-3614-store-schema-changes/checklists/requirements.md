@@ -39,6 +39,6 @@ equivalence list in FR-024 cannot be tested without naming the schema properties
 
 The spec does not name modules, classes or functions. Those are in `plan.md`.
 
-Six points that the sources do not answer were decided during specification instead of being
+Seven points that the sources do not answer were decided during specification instead of being
 carried as `[NEEDS CLARIFICATION]` markers. They are listed in the spec under "Decisions Taken
 During Specification", each with what the sources say and what they do not say.

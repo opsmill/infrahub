@@ -1,0 +1,161 @@
+# Data model: stored schema changes
+
+The four records are `StandardNode` subclasses in `backend/infrahub/core/schema_change/models.py`.
+The class name is the Neo4j label. Each record has the `StandardNode` fields `uuid`, `created_at`,
+`created_by`, `updated_at` and `updated_by`, and an `IS_PART_OF` edge to `Root`.
+
+The records are not versioned by branch. Their edges have no `branch` property
+([research.md](research.md), R2).
+
+```text
+(SchemaChange)-[:SCHEMA_CHANGE_HAS_OPERATION]->(SchemaChangeOperation)
+(SchemaChange)-[:SCHEMA_CHANGE_HAS_APPLICATION]->(SchemaChangeApplication)
+(SchemaChange)-[:SCHEMA_CHANGE_HAS_PARENT]->(SchemaChange)
+(SchemaChangeApplication)-[:SCHEMA_APPLICATION_HAS_MIGRATION]->(SchemaChangeMigration)
+```
+
+## SchemaChange
+
+One schema load, or one dropdown or enum mutation, that changed the schema of a branch.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `branch` | `str` | Name of the branch the schema change belongs to |
+| `status` | `SchemaChangeStatus` | `staged`, `running`, `applied`, `failed` |
+| `version` | `int \| None` | Set when the status becomes `applied`. Unique among the applied schema changes of one branch |
+| `summary` | `str` | From the first operation, with a count when there are more ([research.md](research.md), R10) |
+| `format_version` | `int` | Version of the operation format. `1` in this feature |
+| `applied_at` | `str \| None` | Timestamp, set when the status becomes `applied` |
+
+Derived, not stored:
+
+- `name`: `<version, five digits>_<summary>`, or `summary` when `version` is `None`.
+
+Rules:
+
+- A schema change always has at least one operation (FR-003).
+- `version` is `None` unless `status` is `applied` (FR-032).
+- A schema change has at most one parent, and only when its status is `applied`. The parent is an
+  applied schema change of the same branch, or of main for the first schema change of a branch
+  (FR-034).
+- `branch` never changes.
+
+Status transitions in this feature:
+
+```text
+schema load:             (created) running ──► applied
+                                          └──► failed
+dropdown/enum mutation:  (created) applied
+```
+
+`staged` is created by the staging task of the same epic. A `failed` schema change is never
+applied again.
+
+## SchemaChangeOperation
+
+One change to the schema. The operations of a schema change apply in the order of `position`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `position` | `int` | Starts at 0. Unique within one schema change |
+| `operation_type` | `SchemaOperationType` | `node_add`, `node_remove`, `node_property`, `element_add`, `element_remove`, `element_property` |
+| `kind` | `str` | Kind of the node or generic. For a renamed kind, the kind before the operation |
+| `node_type` | `str \| None` | `node` or `generic`. Set for `node_add` |
+| `section` | `str \| None` | `attributes` or `relationships`. Set for the three element types |
+| `element_name` | `str \| None` | Name of the attribute or relationship before the operation. Set for the three element types |
+| `property_name` | `str \| None` | Name of the property, dotted when nested. Set for the two property types |
+| `value` | JSON, stored as a string | New value for a property type; full definition for an add type |
+| `previous_value` | JSON, stored as a string | Value before the change. Set for the two property types |
+
+Rules:
+
+- No field holds a vertex ID. `value` for an add type has no `id` and no
+  `parameters.number_pool_id` (FR-012, FR-014).
+- `value` and `previous_value` are JSON so that a list, a mapping, a boolean and `null` keep their
+  type. `null` as a value is different from a field that is not set.
+
+The in-memory form is `SchemaOperation`, a Pydantic model in
+`backend/infrahub/core/schema_change/operations.py`. The builder creates it, the applier reads it,
+and the repository converts it to and from `SchemaChangeOperation`.
+
+## SchemaChangeApplication
+
+One time a schema change was applied to a branch.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `branch` | `str` | Name of the branch the schema change was applied to. Equal to the schema change's branch in this feature |
+| `status` | `SchemaChangeApplicationStatus` | `running`, `applied`, `failed`, `rolled_back`, `skipped` |
+| `at` | `str` | Timestamp of every graph write of this application |
+| `error` | `str \| None` | Set when the status is `failed` |
+
+Status transitions in this feature:
+
+```text
+schema load:             (created) running ──► applied
+                                          └──► failed
+dropdown/enum mutation:  (created) applied
+```
+
+`rolled_back` and `skipped` are set by the task that applies schema changes in order at rebase and
+merge. The source design writes the first one `rolled back`; the stored value has an underscore.
+
+## SchemaChangeMigration
+
+One migration that an application ran.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `position` | `int` | Order in the list of migrations of the application |
+| `migration_name` | `str` | For example `node.attribute.add` |
+| `path_type` | `str` | `node`, `attribute` or `relationship` |
+| `schema_kind` | `str` | Kind in the schema path |
+| `field_name` | `str \| None` | Attribute or relationship in the schema path |
+| `property_name` | `str \| None` | Property in the schema path |
+| `status` | `SchemaChangeMigrationStatus` | `waiting`, `running`, `applied`, `failed`, `rolled_back` |
+| `nbr_migrations_executed` | `int \| None` | Result that the migration returned |
+| `errors` | `list[str]` | Errors that the migration returned |
+
+- The path is stored as its parts, without `schema_id`, which is a vertex ID. The query also
+  returns the text form that `core/path.py::SchemaPath.get_path` builds.
+- The time of the record is `updated_at`, the time of its last status change.
+
+Status transitions in this feature:
+
+```text
+(created) waiting ──► running ──► applied ──► rolled_back   (the load failed later)
+                             └──► failed
+```
+
+A record that is `waiting` or `running` when the load fails keeps its status.
+
+## What the repository offers
+
+`SchemaChangeRepository(db)` in `backend/infrahub/core/schema_change/repository.py`:
+
+| Method | Purpose |
+| --- | --- |
+| Create a schema change with its operations and one application | The start of a load, and a mutation |
+| Create the migration records of an application | The migration flow, in one query |
+| Set the status of migration records by element ID | The migration flow, when a batch starts and when a migration returns |
+| Mark a schema change and its application applied, with version, parent and time | The end of a load |
+| Mark a schema change and its application failed, with the error, and its applied migration records rolled back | The end of a failed load |
+| Get the base version and the parent for a branch | Version assignment ([research.md](research.md), R10) |
+| List the schema changes of a branch in pages, and count them | The history query |
+| List operations in pages for a set of schema changes, with their counts | The history query |
+| List applications with their migration records for a set of schema changes | The history query |
+| Delete the records of a branch, in batches | The branch deletion |
+
+Each read returns a typed result built by its `Query` class. No method returns a raw database
+record.
+
+## Constants
+
+In `backend/infrahub/core/schema_change/constants.py`:
+
+- `SchemaChangeStatus`, `SchemaChangeApplicationStatus`, `SchemaChangeMigrationStatus`,
+  `SchemaOperationType`;
+- the operation format version, `1`;
+- the number of digits of the version in a name, `5`;
+- the four edge type names;
+- the page sizes of the history query ([research.md](research.md), R12).

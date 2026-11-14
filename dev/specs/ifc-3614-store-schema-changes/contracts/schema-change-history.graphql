@@ -1,0 +1,186 @@
+# Contract of the schema change history query.
+#
+# The query returns the schema changes stored for the branch of the request
+# (the branch in the GraphQL endpoint path).
+#
+# Order of the edges: applied schema changes by version, lowest first, then
+# the schema changes without a version by the time they were created, oldest
+# first.
+#
+# Access: the same as other read queries. No extra permission.
+
+enum SchemaChangeStatus {
+  STAGED
+  RUNNING
+  APPLIED
+  FAILED
+}
+
+enum SchemaChangeApplicationStatus {
+  RUNNING
+  APPLIED
+  FAILED
+  ROLLED_BACK
+  SKIPPED
+}
+
+enum SchemaChangeMigrationStatus {
+  WAITING
+  RUNNING
+  APPLIED
+  FAILED
+  ROLLED_BACK
+}
+
+enum SchemaOperationType {
+  NODE_ADD
+  NODE_REMOVE
+  NODE_PROPERTY
+  ELEMENT_ADD
+  ELEMENT_REMOVE
+  ELEMENT_PROPERTY
+}
+
+type Query {
+  InfrahubSchemaChange(
+    # Number of schema changes to return. Default 10, maximum 50, minimum 1.
+    limit: Int
+    # Number of schema changes to skip. Minimum 0.
+    offset: Int
+    # Return only the schema changes with these IDs.
+    ids: [ID!]
+    # Return only the schema changes with one of these statuses.
+    status: [SchemaChangeStatus!]
+  ): InfrahubSchemaChanges!
+}
+
+type InfrahubSchemaChanges {
+  # Number of schema changes that match, on all pages.
+  count: Int!
+  edges: [InfrahubSchemaChangeEdge!]!
+}
+
+type InfrahubSchemaChangeEdge {
+  node: InfrahubSchemaChangeNode!
+}
+
+type InfrahubSchemaChangeNode {
+  id: ID!
+  # "<version, five digits>_<summary>", or the summary when there is no version.
+  name: String!
+  summary: String!
+  # Null unless the status is APPLIED.
+  version: Int
+  status: SchemaChangeStatus!
+  branch: String!
+  format_version: Int!
+  created_at: DateTime!
+  # Null unless the status is APPLIED.
+  applied_at: DateTime
+  # Null for the first schema change of main, for a branch's first schema
+  # change when main has none, and for a schema change without a version.
+  parent: InfrahubSchemaChangeParent
+  operations(
+    # Number of operations to return. Default 50, maximum 500, minimum 1.
+    limit: Int
+    # Number of operations to skip. Minimum 0.
+    offset: Int
+  ): InfrahubSchemaChangeOperations!
+  applications: [InfrahubSchemaChangeApplication!]!
+}
+
+type InfrahubSchemaChangeParent {
+  id: ID!
+  name: String!
+  version: Int!
+  branch: String!
+}
+
+type InfrahubSchemaChangeOperations {
+  # Number of operations of the schema change.
+  count: Int!
+  edges: [InfrahubSchemaChangeOperationEdge!]!
+}
+
+type InfrahubSchemaChangeOperationEdge {
+  node: InfrahubSchemaChangeOperation!
+}
+
+type InfrahubSchemaChangeOperation {
+  # Order in which the operation applies, from 0.
+  position: Int!
+  operation_type: SchemaOperationType!
+  kind: String!
+  # "node" or "generic". Set for NODE_ADD.
+  node_type: String
+  # "attributes" or "relationships". Set for the three ELEMENT types.
+  section: String
+  # Name of the attribute or relationship before the operation.
+  element_name: String
+  # Name of the property, dotted when nested. Set for the two PROPERTY types.
+  property_name: String
+  # New value for a PROPERTY type, full definition for an ADD type.
+  value: GenericScalar
+  # Value before the change. Set for the two PROPERTY types.
+  previous_value: GenericScalar
+}
+
+type InfrahubSchemaChangeApplication {
+  id: ID!
+  status: SchemaChangeApplicationStatus!
+  # Branch the schema change was applied to.
+  branch: String!
+  # Timestamp of the graph writes of this application.
+  at: DateTime!
+  # Set when the status is FAILED.
+  error: String
+  created_at: DateTime!
+  updated_at: DateTime!
+  migrations: [InfrahubSchemaChangeMigration!]!
+}
+
+type InfrahubSchemaChangeMigration {
+  id: ID!
+  # Order in the list of migrations of the application, from 0.
+  position: Int!
+  # For example "node.attribute.add".
+  migration_name: String!
+  # Text form of the schema path, for example "schema/DcimCloudDevice/serial".
+  path: String!
+  # "node", "attribute" or "relationship".
+  path_type: String!
+  schema_kind: String!
+  field_name: String
+  property_name: String
+  status: SchemaChangeMigrationStatus!
+  # Result that the migration returned. Null until the migration ends.
+  nbr_migrations_executed: Int
+  errors: [String!]!
+  # Time of the last status change.
+  updated_at: DateTime!
+}
+
+# Example
+#
+# query {
+#   InfrahubSchemaChange(limit: 10, offset: 0) {
+#     count
+#     edges {
+#       node {
+#         name
+#         version
+#         status
+#         created_at
+#         operations(limit: 50) {
+#           count
+#           edges { node { operation_type kind element_name property_name value } }
+#         }
+#         applications {
+#           status
+#           error
+#           migrations { migration_name path status nbr_migrations_executed errors }
+#         }
+#       }
+#     }
+#   }
+# }

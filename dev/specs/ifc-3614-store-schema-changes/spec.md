@@ -171,8 +171,8 @@ of the branch. One schema change holds one operation that changes the choices of
 **Acceptance Scenarios**:
 
 1. **Given** a dropdown attribute, **When** the schema owner adds a choice through the mutation,
-   **Then** the branch's history holds one new schema change, with an operation that changes the
-   attribute's choices and holds the choices before the change.
+   **Then** the branch's history holds one new schema change with the status `applied`, with an
+   operation that changes the attribute's choices and holds the choices before the change.
 2. **Given** an enum attribute, **When** the schema owner removes a value through the mutation,
    **Then** the branch's history holds one new schema change for it.
 3. **Given** a mutation that Infrahub refuses, for example a choice that already exists, **When**
@@ -252,9 +252,10 @@ branch. Count the records of that branch and of main before and after.
   - the version of the format its operations are stored in;
   - the time it was created, and the time it was applied.
 - **FR-006**: The status of a schema change MUST be one of `staged`, `running`, `applied` and
-  `failed`. A schema load or a mutation creates its schema change with the status `running` before
-  its migrations run, and sets it to `applied` or `failed` when the application ends. No workflow
-  in this feature sets `staged`; the staging task of the same epic does.
+  `failed`. A schema load creates its schema change with the status `running` before its migrations
+  run, and sets it to `applied` or `failed` when the application ends. A dropdown or enum mutation
+  runs no migration, and its schema change is stored as `applied` together with the schema
+  (decision 7). No workflow in this feature sets `staged`; the staging task of the same epic does.
 - **FR-007**: Infrahub MUST NOT store the schema file or the mutation input, only the operations.
 - **FR-008**: The following writes MUST create no schema change in this feature:
   - the number pool sync that sets `number_pool_id` after a NumberPool attribute is added;
@@ -375,10 +376,10 @@ branch. Count the records of that branch and of main before and after.
 
 #### Records after a failure
 
-- **FR-060**: When a schema load or a mutation fails after its application started, Infrahub MUST
-  set the schema change and its application to `failed`, and the application MUST hold the error
-  and keep its migration records. A migration record that was `applied` becomes `rolled back`
-  (decision 6).
+- **FR-060**: When a schema load fails after its application started, Infrahub MUST set the schema
+  change and its application to `failed`, and the application MUST hold the error and keep its
+  migration records. A migration record that was `applied` becomes `rolled back` (decision 6). A
+  dropdown or enum mutation whose save fails stores nothing (decision 7).
 - **FR-061**: The records MUST state the result of the load even though the load rolled back. The
   rollback of the graph does not revert these records, so the code that handles the failure MUST
   update them.
@@ -525,6 +526,14 @@ review.
    list `rolled back` as a status of a migration record and say that a failed load rolls back
    completely. They do not say which status the migrations of a failed load get. The record then
    states that the data change was reverted.
+
+7. **A dropdown or enum mutation stores its schema change as `applied`, in the same transaction as
+   the schema.** The sources say that a mutation, like a load, creates its schema change with the
+   status `running` before its migrations run, so that the progress of the migrations can be
+   reported. These mutations run no migration today, and they save the schema in one database
+   transaction. Storing the records in that transaction means that the schema and its records are
+   saved together or not at all, and that a mutation retried after a database error leaves no
+   failed schema change in the history.
 
 ## Sources
 
