@@ -116,3 +116,39 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
         (InfrahubKind.ACCOUNT, "account__token", RelationshipDirection.BIDIR, InfrahubKind.ACCOUNTTOKEN),
         (InfrahubKind.ACCOUNT, "account__refreshtoken", RelationshipDirection.BIDIR, InfrahubKind.REFRESHTOKEN),
     }
+
+
+REPOSITORY_IMPORT_IDENTIFIERS = {
+    "check_definition__repository",
+    "generator_definition__repository",
+    "repository__transformation",
+}
+
+
+def _dependent_patterns_of_repositories(skip_cascading: bool) -> set[tuple[str, str]]:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.process()
+    index = NodeDeleteIndex(all_schemas_map=schema_branch.get_all(duplicate=False))
+
+    index.index_dependent_links(
+        deleted_kinds={InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}, skip_cascading=skip_cascading
+    )
+
+    return {
+        (pattern.kind, pattern.identifier)
+        for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.DEPENDENT_NODE)
+        if pattern.identifier in REPOSITORY_IMPORT_IDENTIFIERS
+    }
+
+
+def test_repository_imported_nodes_require_their_repository() -> None:
+    assert _dependent_patterns_of_repositories(skip_cascading=False) == {
+        (kind, identifier)
+        for kind in (InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY)
+        for identifier in REPOSITORY_IMPORT_IDENTIFIERS
+    }
+
+
+def test_dependent_links_skip_the_relationships_a_repository_cascades_on() -> None:
+    assert _dependent_patterns_of_repositories(skip_cascading=True) == set()

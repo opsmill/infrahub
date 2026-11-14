@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind, RelationshipDeleteBehavior
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -15,6 +16,7 @@ from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_DELETE_SCHEMA,
     AGNOSTIC_GUARDIAN_SCHEMA,
     AGNOSTIC_ROSTER_SCHEMA,
+    AGNOSTIC_TEAM_WITHOUT_CERTIFICATE_CASCADE_SCHEMA,
     BADGE_KIND,
     CERTIFICATE_KIND,
     GUARDIAN_KIND,
@@ -123,11 +125,58 @@ async def test_delete_keeps_a_cascade_target_that_does_not_declare_the_relations
     await verify_graph(db=db)
 
 
-async def test_delete_refused_when_a_cascade_target_with_a_required_link_back_stays_on_another_branch(
+async def test_delete_keeps_a_cascade_target_with_a_required_link_back_on_another_branch(
     db: InfrahubDatabase, default_branch: Branch, team: Node
 ) -> None:
     certificate = await create_node(db=db, branch=default_branch, kind=CERTIFICATE_KIND, name="cert", team=team)
     branch = await create_branch(db=db, branch_name="branch-keeps-certificate")
+    nbr_edges_before = await _count_edges_on_branch(db=db, branch_name=branch.name)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert {node.id for node in deleted} == {team.id, certificate.id}
+    assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is None
+    assert await NodeManager.get_one(db=db, id=certificate.id, branch=default_branch) is None
+    assert await NodeManager.get_one(db=db, id=certificate.id, branch=branch) is not None
+    assert await _count_edges_on_branch(db=db, branch_name=branch.name) == nbr_edges_before
+
+    await verify_graph(db=db)
+
+
+async def test_delete_keeps_a_peer_created_on_another_branch_through_a_relationship_the_node_cascades_on(
+    db: InfrahubDatabase, default_branch: Branch, team: Node
+) -> None:
+    branch = await create_branch(db=db, branch_name="branch-holds-certificate")
+    certificate = await create_node(
+        db=db, branch=branch, kind=CERTIFICATE_KIND, name="certificate-on-branch", team=team
+    )
+    nbr_edges_before = await _count_edges_on_branch(db=db, branch_name=branch.name)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
+
+    assert {node.id for node in deleted} == {team.id}
+    assert await NodeManager.get_one(db=db, id=team.id, branch=branch) is None
+    assert await NodeManager.get_one(db=db, id=certificate.id, branch=branch) is not None
+    assert await _count_edges_on_branch(db=db, branch_name=branch.name) == nbr_edges_before
+
+    await verify_graph(db=db)
+
+
+async def test_delete_refused_when_another_branch_schema_does_not_cascade_on_a_required_relationship(
+    db: InfrahubDatabase, default_branch: Branch, team: Node
+) -> None:
+    branch = await create_branch(db=db, branch_name="branch-stops-cascade")
+    await load_schema(db=db, schema=AGNOSTIC_TEAM_WITHOUT_CERTIFICATE_CASCADE_SCHEMA, branch_name=branch.name)
+    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    assert branch_schema.get(name=TEAM_KIND).get_relationship(name="certificates").on_delete != (
+        RelationshipDeleteBehavior.CASCADE
+    ), "precondition: the branch's schema does not cascade from a team to its certificates"
+    assert branch_schema.get(name=CERTIFICATE_KIND).get_relationship(name="team").optional is False, (
+        "precondition: the branch's schema keeps the certificate's team required"
+    )
+    certificate = await create_node(
+        db=db, branch=branch, kind=CERTIFICATE_KIND, name="certificate-on-branch", team=team
+    )
 
     with pytest.raises(ValidationError) as exc:
         await NodeManager.delete(db=db, branch=default_branch, nodes=[team])
@@ -136,7 +185,70 @@ async def test_delete_refused_when_a_cascade_target_with_a_required_link_back_st
         team=team, peer_kind=CERTIFICATE_KIND, peer=certificate, branch_names=f"branch '{branch.name}'"
     )
     assert await NodeManager.get_one(db=db, id=team.id, branch=default_branch) is not None
-    assert await NodeManager.get_one(db=db, id=certificate.id, branch=default_branch) is not None
+
+    await verify_graph(db=db)
+
+
+async def test_delete_of_a_repository_keeps_its_imported_nodes_on_another_branch(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    query = await create_node(
+        db=db,
+        branch=default_branch,
+        kind=InfrahubKind.GRAPHQLQUERY,
+        name="query",
+        query="query { BuiltinTag { count } }",
+    )
+    repository = await create_node(
+        db=db,
+        branch=default_branch,
+        kind=InfrahubKind.REPOSITORY,
+        name="repository",
+        location="git@github.com:user/repository.git",
+        commit="aaaaaaaaaaa",
+        queries=[query],
+    )
+    check_definition = await create_node(
+        db=db,
+        branch=default_branch,
+        kind=InfrahubKind.CHECKDEFINITION,
+        name="check",
+        file_path="checks/check.py",
+        class_name="Check",
+        repository=repository,
+    )
+    transform = await create_node(
+        db=db,
+        branch=default_branch,
+        kind=InfrahubKind.TRANSFORMPYTHON,
+        name="transform",
+        file_path="transforms/transform.py",
+        class_name="Transform",
+        query=query,
+        repository=repository,
+    )
+    branch = await create_branch(db=db, branch_name="branch-imports-check")
+    check_definition_on_branch = await create_node(
+        db=db,
+        branch=branch,
+        kind=InfrahubKind.CHECKDEFINITION,
+        name="check-on-branch",
+        file_path="checks/check_on_branch.py",
+        class_name="CheckOnBranch",
+        repository=repository,
+    )
+    nbr_edges_before = await _count_edges_on_branch(db=db, branch_name=branch.name)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[repository])
+
+    imported_ids = {query.id, check_definition.id, transform.id}
+    assert {node.id for node in deleted} == {repository.id} | imported_ids
+    assert await NodeManager.get_one(db=db, id=repository.id, branch=branch) is None
+    for node_id in imported_ids:
+        assert await NodeManager.get_one(db=db, id=node_id, branch=default_branch) is None
+    for node_id in imported_ids | {check_definition_on_branch.id}:
+        assert await NodeManager.get_one(db=db, id=node_id, branch=branch) is not None
+    assert await _count_edges_on_branch(db=db, branch_name=branch.name) == nbr_edges_before
 
     await verify_graph(db=db)
 

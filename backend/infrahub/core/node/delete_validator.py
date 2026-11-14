@@ -4,7 +4,12 @@ from enum import Enum
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDeleteBehavior
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    RelationshipDeleteBehavior,
+    RelationshipDirection,
+)
 from infrahub.core.node import Node
 from infrahub.core.query.node_delete import (
     DeleteSetNode,
@@ -94,26 +99,45 @@ class NodeDeleteIndex:
                         kinds_to_check.add(peer_kind)
         return visited
 
-    def index_dependent_links(self, deleted_kinds: set[str]) -> None:
-        """Index the links of a required relationship to one of `deleted_kinds`, from the deleted node's side."""
+    def index_dependent_links(self, deleted_kinds: set[str], skip_cascading: bool = False) -> None:
+        """Index the links of a required relationship to one of `deleted_kinds`, from the deleted node's side.
+
+        With `skip_cascading`, a link is left out when the deleted kind cascades on that relationship. The match
+        ignores the peer kind, because a required relationship can be declared on a generic of the cascade's peers.
+        """
         deleted_kinds_and_generics = set(deleted_kinds)
         for kind in deleted_kinds:
             schema = self._all_schemas_map.get(kind)
             if isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema)):
                 deleted_kinds_and_generics.update(schema.inherit_from)
+        cascading_relationships = self._get_cascading_relationships(kinds=deleted_kinds) if skip_cascading else set()
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional is True or relationship_schema.peer not in deleted_kinds_and_generics:
                     continue
+                identifier = relationship_schema.get_identifier()
+                direction = relationship_schema.direction.neighbor_direction
                 self._link_patterns[DeleteRelationshipType.DEPENDENT_NODE].update(
                     LinkPattern(
-                        kind=deleted_kind,
-                        identifier=relationship_schema.get_identifier(),
-                        direction=relationship_schema.direction.neighbor_direction,
-                        peer_kind=node_schema.kind,
+                        kind=deleted_kind, identifier=identifier, direction=direction, peer_kind=node_schema.kind
                     )
                     for deleted_kind in self._get_schema_kinds(schema_kind=relationship_schema.peer) & deleted_kinds
+                    if (deleted_kind, identifier, direction) not in cascading_relationships
                 )
+
+    def _get_cascading_relationships(self, kinds: Iterable[str]) -> set[tuple[str, str, RelationshipDirection]]:
+        """Return the kind, identifier and direction of each relationship on which one of `kinds` cascades."""
+        cascading_relationships: set[tuple[str, str, RelationshipDirection]] = set()
+        for kind in kinds:
+            schema = self._all_schemas_map.get(kind)
+            if schema is None:
+                continue
+            cascading_relationships.update(
+                (kind, relationship_schema.get_identifier(), relationship_schema.direction)
+                for relationship_schema in schema.relationships
+                if relationship_schema.on_delete == RelationshipDeleteBehavior.CASCADE
+            )
+        return cascading_relationships
 
     def get_link_patterns(self, relationship_type: DeleteRelationshipType) -> list[LinkPattern]:
         """Return the indexed links of `relationship_type`, from the deleted node's side."""
@@ -247,8 +271,10 @@ class NodeDeleteValidator:
     ) -> tuple[list[RequiredPeerLinkOnBranches], dict[str, Mapping[str, MainSchemaTypes]]]:
         """Return the required links to `agnostic_nodes` on each live branch other than the request branch.
 
-        Each branch decides from its own schema which relationships are required. The schema each branch was checked
-        with is returned with the links, so an error names the relationship that schema declares.
+        Each branch decides from its own schema which relationships are required, and leaves out a relationship on
+        which the deleted node's kind cascades in that schema, because the cascade deletes on the request branch only
+        and the peer stays on the other branch. The schema each branch was checked with is returned with the links,
+        so an error names the relationship that schema declares.
         """
         agnostic_kinds = {node.kind for node in agnostic_nodes}
         patterns_by_schema_hash: dict[str, list[LinkPattern]] = {}
@@ -262,7 +288,7 @@ class NodeDeleteValidator:
             schema_hash = schema_branch.get_hash()
             if schema_hash not in patterns_by_schema_hash:
                 branch_index = NodeDeleteIndex(all_schemas_map=schemas_map_by_branch_name[branch_name])
-                branch_index.index_dependent_links(deleted_kinds=agnostic_kinds)
+                branch_index.index_dependent_links(deleted_kinds=agnostic_kinds, skip_cascading=True)
                 patterns_by_schema_hash[schema_hash] = branch_index.get_link_patterns(
                     relationship_type=DeleteRelationshipType.DEPENDENT_NODE
                 )

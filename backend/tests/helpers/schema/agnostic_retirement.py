@@ -180,6 +180,23 @@ AGNOSTIC_DELETE_SCHEMA = SchemaRoot(
     nodes=[AGNOSTIC_TEAM, AGNOSTIC_MEMBER, AGNOSTIC_BADGE, AGNOSTIC_CERTIFICATE, AGNOSTIC_STICKER, AGNOSTIC_HOLDER]
 )
 
+# Loaded on one branch only, so in that branch's schema a team does not cascade to its certificates.
+AGNOSTIC_TEAM_WITHOUT_CERTIFICATE_CASCADE_SCHEMA = SchemaRoot(
+    nodes=[
+        AGNOSTIC_TEAM.model_copy(
+            update={
+                "relationships": [
+                    relationship.model_copy(update={"on_delete": RelationshipDeleteBehavior.NO_ACTION})
+                    if relationship.name == "certificates"
+                    else relationship.model_copy()
+                    for relationship in AGNOSTIC_TEAM.relationships
+                ]
+            },
+            deep=True,
+        )
+    ]
+)
+
 ROSTER_KIND = "AgnosticretireRoster"
 GUARDIAN_KIND = "AgnosticretireGuardian"
 
