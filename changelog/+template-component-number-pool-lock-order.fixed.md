@@ -1,0 +1,1 @@
+Creating an object from a template now takes the locks of the resource pools that the template, its component templates and the `NumberPool` attributes of its components draw from before it starts writing. Before, the create could block when another request took a number from the same number pool at the same time, and both requests waited for each other until the client gave up.

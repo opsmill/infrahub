@@ -13,7 +13,7 @@ Object Templates are user-defined "shape" objects: a template node holds default
 | `backend/infrahub/core/schema/definitions/core/template.py` | `core_object_template` and `core_object_component_template` generics — the core base kinds every template inherits from. |
 | `backend/infrahub/core/schema/schema_branch.py` | Generation of per-kind template schemas from `generate_template`-enabled nodes (`manage_object_template_schemas`, `add_relationships_to_template`, etc.). |
 | `backend/infrahub/core/relationship/constraints/template_resource_pool_exclusive.py` | Constraint preventing both a fixed value and a pool reference being set on the same template field. |
-| `backend/infrahub/core/node/create.py` | `handle_template_relationships()` reads the template's component peers a level at a time, then materializes them as real instances depth first. |
+| `backend/infrahub/core/node/create.py` | `create_node()` reads the template's component peers a level at a time with `read_template_components()`, before it takes the mutation's locks. `create_components()` then materializes them as real instances depth first. |
 | `backend/infrahub/core/node/__init__.py` | `Node.handle_object_template()` is the call site that constructs and invokes `NodeTemplateApplier` during node field processing. |
 
 ## Core Kinds
@@ -62,7 +62,7 @@ When a user creates an object with `object_template={id: ...}`, `Node.handle_obj
 4. Merges only previously-absent keys back into `fields`, preserving user input.
 5. Returns the set of `pool_pending_fields` — fields whose pool allocation was deferred (e.g., because the chosen allocator is the no-op variant).
 
-After save, `handle_template_relationships()` (`core/node/create.py`) walks the new node's `COMPONENT` relationships and materializes any subtemplate peers as their own real objects, then walks their components in turn. It reads the subtemplates a level at a time and creates the objects depth first — see [What applying a template reads](#what-applying-a-template-reads) for why those are two different walks.
+After save, `create_components()` (`core/node/create.py`) materializes the subtemplates that the template holds on the kind's `COMPONENT` relationships, except the relationships the payload sets, as their own real objects, then their components in turn. `create_node()` reads the subtemplates before it takes the mutation's locks, because the lock names include the locks of the pools the components draw from (see [Pool locks of a create from a template](mutations.md#pool-locks-of-a-create-from-a-template)); the objects are created depth first — see [What applying a template reads](#what-applying-a-template-reads) for why those are two different walks.
 
 ### What applying a template reads
 
@@ -80,7 +80,7 @@ The peers of the template's component relationships come back with that read, so
 of the first level are already in memory; each component is then created from the ids and kinds
 those relationships carry.
 
-`handle_template_relationships()` reads the subtemplates a level at a time rather than a parent at
+`read_template_components()` reads the subtemplates a level at a time rather than a parent at
 a time. The subtemplates a level names are all known before any of them is read, so the whole level
 is read at once — one relationship read covering every subtemplate of the level, which brings back
 the peers naming the level below. A level therefore costs the same read whether it hangs from one
@@ -100,7 +100,9 @@ in hand. A create pays one of those reads for the template and one for each leve
 under it. The rest of its cost is the 2 queries reading the template node itself, the node's own
 uniqueness check and write, and 2 queries per component — its uniqueness check and its write — plus
 a count constraint for any mandatory parent that component declares. None of it grows with the
-number of objects created from the template before.
+number of objects created from the template before. A component that draws from a pool, or holds one
+that does, is also built once as an unsaved preview before the locks; see
+[Pool locks of a create from a template](mutations.md#pool-locks-of-a-create-from-a-template).
 
 On the test schema's device -> interface -> SFP, a device created from a template carrying ten
 interfaces costs 30 queries, and one carrying five interfaces each holding an SFP costs 38.
@@ -134,6 +136,7 @@ Templates can reference resource pools instead of fixed values. The integration 
 - When iterating template relationships, names ending in `RESOURCE_POOL_REL_SUFFIX` are routed to `_handle_pool_relationship`.
 - The applier asks the `PoolAllocator` to allocate either an attribute value (number) or a relationship peer (IP), then writes the result under the original (non-suffixed) name. For a number it writes only the value and records the pool in `TemplatePoolFields.allocated`; the pool's `IS_RESERVED` edge is what the attribute reports as its GraphQL `source`, and the stored source is never set to the pool. For an IP peer it sets the relationship's `source` to the pool's id.
 - If allocation cannot proceed (e.g., `NoOpPoolAllocator` is in use), the field is added to `pool_pending_fields` so the caller can decide.
+- Components draw from the pools their subtemplates name in `allocate_from_resource_pools()` (`core/node/create.py`). `create_node()` takes the locks of these pools before its transaction; see [Pool locks of a create from a template](mutations.md#pool-locks-of-a-create-from-a-template).
 
 **Constraint** (`TemplateResourcePoolExclusiveConstraint`):
 
@@ -156,6 +159,7 @@ Templates can reference resource pools instead of fixed values. The integration 
 |------|----------|
 | `backend/tests/component/templates/test_template_applier.py` | End-to-end behaviour of `NodeTemplateApplier` (attributes, relationships, resource pools, `*_for_instances` group propagation). |
 | `backend/tests/component/core/node/test_template_pool_allocation.py` | Resource pools on templates, including the order a pool shared by two component levels is drawn from. |
+| `backend/tests/component/core/node/test_template_pool_lock_order.py` | The pool locks a create from a template takes before its transaction, for the object and its components. |
 | `backend/tests/component/core/schema_manager/test_template_resource_pool_relationships.py` | Schema-level emission of `_from_resource_pool` rels for IP and Number cases. |
 | `backend/tests/component/core/schema_manager/test_template_group_relationships.py` | Schema-level emission of `member_of_groups_for_instances` / `subscriber_of_groups_for_instances` on templates. |
 | `backend/tests/integration/templates/` | Lifecycle tests (template attribute updates, resource pool wiring). |

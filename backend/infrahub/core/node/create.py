@@ -18,7 +18,7 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.node import Node
-from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
+from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation, get_pool_lock_names, ip_pool_lock_name
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
@@ -26,6 +26,7 @@ from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_locker import picking_lock_name
 from infrahub.pools.scope import AllocationScope
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
@@ -33,7 +34,7 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Collection, Iterable, Mapping
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import SchemaProtocol
@@ -399,42 +400,180 @@ async def create_components(
         )
 
 
-async def handle_template_relationships(
+def _has_number_pool_attribute(schema: MainSchemaTypes) -> bool:
+    return any(attribute.kind == "NumberPool" for attribute in schema.attributes)
+
+
+async def _template_pools(
+    db: InfrahubDatabase, template: CoreObjectTemplate, skipped_fields: Collection[str]
+) -> dict[str, Node]:
+    """Return the pool the template names for each field of the object, except for the fields in `skipped_fields`.
+
+    The template was read with these relationships and their peers, so naming the pools costs no query.
+    """
+    pools: dict[str, Node] = {}
+    for rel_name in template.get_schema().relationship_names:
+        field_name = rel_name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
+        if not rel_name.endswith(RESOURCE_POOL_REL_SUFFIX) or field_name in skipped_fields:
+            continue
+        pool = await template.get_relationship(name=rel_name).get_peer(db=db)
+        if pool is not None:
+            pools[field_name] = pool
+    return pools
+
+
+async def _template_pool_lock_names(
+    node: Node, pools: Mapping[str, Node], pool_applier: AttributePoolApplierInterface, user_id: str
+) -> set[str]:
+    """Return the locks the unsaved `node` takes to draw from `pools`, the pool its template names for each field.
+
+    Raises:
+        ValidationError: When the schema of the branch does not define an element of a pool's scope.
+        NodeNotFoundError: When a relationship element of a pool's scope names a peer that does not exist.
+
+    """
+    schema = node.get_schema()
+    lock_names: set[str] = set()
+    for field_name, pool in pools.items():
+        if field_name in schema.relationship_names:
+            lock_names.add(ip_pool_lock_name(pool_id=pool.get_id()))
+            continue
+        if field_name not in schema.attribute_names:
+            continue
+        attribute = node.get_attribute(name=field_name)
+        if attribute.from_pool:
+            # An object names a scoped pool on the attribute itself, so its own lock names hold this one.
+            continue
+        if AllocationScope.from_stored(value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()).is_empty:
+            lock_names.add(picking_lock_name(pool_id=pool.get_id(), division_key=None))
+            continue
+        attribute.from_pool = {"id": pool.get_id()}
+        attribute.from_pool_presence = PayloadPresence.SET
+        await pool_applier.apply(node=node, attribute=attribute, allocate=False, user_id=user_id)
+        lock_names.add(picking_lock_name(pool_id=pool.get_id(), division_key=attribute.from_pool.get("division")))
+    return lock_names
+
+
+@dataclass
+class _ComponentPreview:
+    """An unsaved object built from a subtemplate as the component will be, and the pools the subtemplate names."""
+
+    node: Node
+    pools: dict[str, Node]
+
+
+async def _component_previews(
+    db: InfrahubDatabase,
+    branch: Branch,
+    parent_obj: Node,
+    parent_template: CoreObjectTemplate,
+    components: list[TemplateComponent],
+    pooled_subtemplate_ids: set[str],
+) -> list[_ComponentPreview]:
+    """Return a preview of each component that draws from a pool, and of each component holding one that does.
+
+    A preview draws nothing: it holds the fields its division of a scoped number pool is read from, and it stands
+    for the parent of the components below it.
+    """
+    previews: list[_ComponentPreview] = []
+    for component in components:
+        if component.subtemplate.get_id() not in pooled_subtemplate_ids:
+            continue
+        obj_peer_data = await extract_peer_data(
+            db=db,
+            template_peer=component.subtemplate,
+            obj_peer_schema=component.schema,
+            parent_obj=parent_obj,
+            current_template=parent_template,
+        )
+        node = await Node.init(schema=component.schema, db=db, branch=branch)
+        await node.new(db=db, process_pools=False, **obj_peer_data)
+        previews.append(
+            _ComponentPreview(
+                node=node,
+                pools=await _template_pools(db=db, template=component.subtemplate, skipped_fields=()),
+            )
+        )
+        previews.extend(
+            await _component_previews(
+                db=db,
+                branch=branch,
+                parent_obj=node,
+                parent_template=component.subtemplate,
+                components=component.components,
+                pooled_subtemplate_ids=pooled_subtemplate_ids,
+            )
+        )
+    return previews
+
+
+async def _pooled_subtemplate_ids(db: InfrahubDatabase, components: list[TemplateComponent]) -> set[str]:
+    """Return the id of each subtemplate whose component draws from a pool, or holds a component that does."""
+    pooled: set[str] = set()
+    for component in components:
+        below = await _pooled_subtemplate_ids(db=db, components=component.components)
+        if (
+            below
+            or _has_number_pool_attribute(schema=component.schema)
+            or await _template_pools(db=db, template=component.subtemplate, skipped_fields=())
+        ):
+            pooled.add(component.subtemplate.get_id())
+        pooled |= below
+    return pooled
+
+
+def _division_holds(lock_name: str, node_ids: set[str]) -> bool:
+    return bool(node_ids.intersection(lock_name.split(".")))
+
+
+async def get_template_pool_lock_names(
     db: InfrahubDatabase,
     branch: Branch,
     obj: Node,
     template: CoreObjectTemplate,
-    fields: list,
+    components: list[TemplateComponent],
+    user_fields: Collection[str],
+    has_generated_id: bool,
     pool_applier: AttributePoolApplierInterface,
-    at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
-) -> None:
-    """Create the objects the components of a template describe.
+) -> set[str]:
+    """Return the pool locks a create from a template asks for beyond those of the object's own fields.
 
-    The template is read a level at a time and the objects are created depth first. Those are two
-    different walks on purpose: reading a whole level at once costs one read per level rather than
-    one per parent, while creating a component together with the components it holds keeps the
-    order in which a resource pool shared by several levels is drawn from.
+    `obj` is the unsaved preview of the object created from `template`, and `user_fields` names the fields the
+    payload sets, which the template leaves alone. The locks are those of the pools the template names for the
+    object without a scope, and of every pool its components draw from.
+
+    A division that holds a component, or the object when `has_generated_id` is set, is left out: the object
+    created gets another id, and no other write can name an object that is not committed.
+
+    Raises:
+        ValidationError: When the schema of the branch does not define an element of a pool's scope.
+        NodeNotFoundError: When a relationship element of a pool's scope names a peer that does not exist.
+
     """
-    components = await read_template_components(
-        db=db, branch=branch, schema=obj.get_schema(), template=template, fields=fields
+    lock_names = await _template_pool_lock_names(
+        node=obj,
+        pools=await _template_pools(db=db, template=template, skipped_fields=user_fields),
+        pool_applier=pool_applier,
+        user_id=user_id,
     )
-    if not components:
-        return
-
-    component_registry = get_component_registry()
-    constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-    await create_components(
+    previews = await _component_previews(
         db=db,
         branch=branch,
-        constraint_runner=constraint_runner,
         parent_obj=obj,
         parent_template=template,
         components=components,
-        pool_applier=pool_applier,
-        at=at,
-        user_id=user_id,
+        pooled_subtemplate_ids=await _pooled_subtemplate_ids(db=db, components=components),
     )
+    for preview in previews:
+        lock_names |= await _template_pool_lock_names(
+            node=preview.node, pools=preview.pools, pool_applier=pool_applier, user_id=user_id
+        )
+        lock_names |= get_pool_lock_names(node=preview.node)
+    generated_ids = {preview.node.get_id() for preview in previews}
+    if has_generated_id:
+        generated_ids.add(obj.get_id())
+    return {name for name in lock_names if not _division_holds(lock_name=name, node_ids=generated_ids)}
 
 
 async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
@@ -510,9 +649,10 @@ async def _do_create_node(
     branch: Branch,
     fields_to_validate: list[str],
     data: dict[str, Any],
+    object_template: CoreObjectTemplate | None,
+    template_components: list[TemplateComponent],
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
-    object_template: CoreObjectTemplate | None = None,
 ) -> Node:
     with mutation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
@@ -530,12 +670,13 @@ async def _do_create_node(
         await obj.save(db=db, at=at, user_id=user_id)
 
         if object_template:
-            await handle_template_relationships(
+            await create_components(
                 db=db,
                 branch=branch,
-                template=object_template,
-                obj=obj,
-                fields=fields_to_validate,
+                constraint_runner=node_constraint_runner,
+                parent_obj=obj,
+                parent_template=object_template,
+                components=template_components,
                 pool_applier=pool_applier,
                 at=at,
                 user_id=user_id,
@@ -615,6 +756,25 @@ async def create_node(
     # The preview read the object template to work out the lock names; the node created under the
     # lock is built from that same template rather than reading it again.
     object_template = preview_obj._object_template
+    template_components: list[TemplateComponent] = []
+    if object_template is not None:
+        template_components = await read_template_components(
+            db=db, branch=branch, schema=schema, template=object_template, fields=fields_to_validate
+        )
+        # Waiting for a pool's lock inside the transaction can leave this write and another allocation from the
+        # pool waiting on each other.
+        component_lock_names = await get_template_pool_lock_names(
+            db=db,
+            branch=branch,
+            obj=preview_obj,
+            template=object_template,
+            components=template_components,
+            user_fields=fields_to_validate,
+            has_generated_id=not data.get("id"),
+            pool_applier=components.pool_applier,
+            user_id=user_id,
+        )
+        lock_names = sorted({*lock_names, *component_lock_names})
 
     obj: Node
     mutation_context = NodeMutationContext()
@@ -636,6 +796,7 @@ async def create_node(
                 at=at,
                 user_id=user_id,
                 object_template=object_template,
+                template_components=template_components,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -660,6 +821,7 @@ async def create_node(
                     at=at,
                     user_id=user_id,
                     object_template=object_template,
+                    template_components=template_components,
                 )
 
     # The node was written from its in-memory state, so the profiles it is linked to are the ones

@@ -16,6 +16,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.pools.number_pool_locker import picking_lock_name
 from infrahub.pools.scope import Division, DivisionElementPath
 from tests.helpers.constants import LOCK_WAIT_TIMEOUT_SECONDS
+from tests.helpers.lock import wait_until_waiting
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_DEVICE,
@@ -181,14 +182,6 @@ async def _device_numbers(db: InfrahubDatabase, branch: Branch) -> list[int]:
     return [vlan_id(device) for device in devices]
 
 
-async def _wait_until_waiting(timeline: LockTimeline, name: str) -> None:
-    async def _poll() -> None:
-        while timeline.waiting(name) != 1:  # noqa: ASYNC110
-            await asyncio.sleep(0.01)
-
-    await asyncio.wait_for(_poll(), timeout=LOCK_WAIT_TIMEOUT_SECONDS)
-
-
 async def _race(
     registry: RecordingLockRegistry,
     first: Coroutine[Any, Any, ExecutionResult],
@@ -201,7 +194,7 @@ async def _race(
     first_task = asyncio.create_task(first)
     await gate.wait_reached()
     second_task = asyncio.create_task(second)
-    await _wait_until_waiting(timeline=registry.timeline, name=waits_at)
+    await wait_until_waiting(timeline=registry.timeline, name=waits_at)
 
     gate.release()
     first_result = await asyncio.wait_for(first_task, timeout=LOCK_WAIT_TIMEOUT_SECONDS)
@@ -371,7 +364,7 @@ async def test_a_range_deletion_runs_while_an_allocation_waits_for_its_division(
     holder = asyncio.create_task(hold_picking())
     await asyncio.wait_for(picking_held.wait(), timeout=LOCK_WAIT_TIMEOUT_SECONDS)
     allocation = asyncio.create_task(allocate())
-    await _wait_until_waiting(timeline=recording_lock_registry.timeline, name=picking_lock)
+    await wait_until_waiting(timeline=recording_lock_registry.timeline, name=picking_lock)
 
     result = await asyncio.wait_for(
         execute_in_own_session(
