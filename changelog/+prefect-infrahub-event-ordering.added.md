@@ -1,0 +1,1 @@
+Added an event ordering for scaled-out task manager background services, enabled with `PREFECT_SERVER_EVENTS_CAUSAL_ORDERING=infrahub.prefect_server.ordering`, that spends one Redis round trip instead of three on each Infrahub event no automation matches.
