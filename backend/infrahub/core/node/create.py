@@ -312,6 +312,34 @@ async def allocate_from_resource_pools(
             )
 
 
+async def _new_component_node(
+    db: InfrahubDatabase,
+    branch: Branch,
+    component: TemplateComponent,
+    fields: Mapping[str, Any],
+    process_pools: bool,
+    at: Timestamp | None = None,
+) -> Node:
+    """Build the unsaved object a subtemplate describes, with the uuid its component holds.
+
+    Raises:
+        ValidationError: When the fields are not valid for the kind of the component.
+
+    """
+    node = await Node.init(schema=component.schema, db=db, branch=branch, at=at)
+    write_components = _build_node_write_components(
+        db=db, branch=branch, schema_branch=db.schema.get_schema_branch(name=branch.name)
+    )
+    return await node.new_from_fields(
+        db=db,
+        fields=dict(fields),
+        pool_applier=write_components.pool_applier,
+        profiles_mandatory_field_getter=write_components.profiles_mandatory_field_getter,
+        process_pools=process_pools,
+        generated_id=component.object_id,
+    )
+
+
 async def create_component(
     db: InfrahubDatabase,
     branch: Branch,
@@ -332,8 +360,9 @@ async def create_component(
         current_template=parent_template,
     )
 
-    obj_peer = await Node.init(schema=component.schema, db=db, branch=branch, at=at)
-    await obj_peer.new(db=db, generated_id=component.object_id, **obj_peer_data)
+    obj_peer = await _new_component_node(
+        db=db, branch=branch, component=component, fields=obj_peer_data, process_pools=True, at=at
+    )
     await constraint_runner.check(
         node=obj_peer, field_filters=_with_pooled_attributes(node=obj_peer, fields=list(obj_peer_data))
     )
@@ -490,8 +519,9 @@ async def _component_previews(
             parent_obj=parent_obj,
             current_template=parent_template,
         )
-        node = await Node.init(schema=component.schema, db=db, branch=branch)
-        await node.new(db=db, process_pools=False, generated_id=component.object_id, **obj_peer_data)
+        node = await _new_component_node(
+            db=db, branch=branch, component=component, fields=obj_peer_data, process_pools=False
+        )
         previews.append(
             _ComponentPreview(
                 node=node,
