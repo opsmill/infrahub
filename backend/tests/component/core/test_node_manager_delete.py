@@ -15,6 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.delete_validator import CASCADE_LEVELS_PER_QUERY_WITH_LOOP
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -23,7 +24,10 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 from tests.constants import TestKind
+from tests.helpers.node import create_chain
 from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema.cascade_loop import CASCADE_LOOP_SCHEMA, LOOP_FIRST_KIND, LOOP_SECOND_KIND
+from tests.helpers.schema.uplink import UPLINK_ROUTER_KIND, UPLINK_SCHEMA
 from tests.helpers.test_app import TestInfrahubApp
 
 
@@ -914,5 +918,42 @@ async def test_delete_repository_repository_group_cascade(
     assert deleted_ids == {r1.id, repo_group.id}
     node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_group.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
+
+
+async def test_delete_cascades_through_a_chain_of_kinds_that_cascade_to_each_other(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    registry.schema.register_schema(schema=CASCADE_LOOP_SCHEMA, branch=default_branch.name)
+    chain_length = 2 * CASCADE_LEVELS_PER_QUERY_WITH_LOOP + 3
+    kinds = [LOOP_FIRST_KIND if position % 2 == 0 else LOOP_SECOND_KIND for position in range(chain_length)]
+    chain = await create_chain(db=db, branch=default_branch, kinds=kinds, relationship_name="next", name_prefix="link")
+
+    # Each node's next is the node created before it, so the cascade starts from the last one.
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[chain[-1]])
+
+    assert {node.id for node in deleted} == {node.id for node in chain}
+    assert await NodeManager.get_many(db=db, ids=[node.id for node in chain], branch=default_branch) == {}
+
+    await verify_graph(db=db)
+
+
+async def test_delete_cascades_only_in_the_direction_of_the_cascading_relationship(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    registry.schema.register_schema(schema=UPLINK_SCHEMA, branch=default_branch.name)
+    top, middle, bottom = await create_chain(
+        db=db,
+        branch=default_branch,
+        kinds=[UPLINK_ROUTER_KIND] * 3,
+        relationship_name="upstream",
+        name_prefix="router",
+    )
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[middle])
+
+    assert {node.id for node in deleted} == {middle.id, bottom.id}
+    assert await NodeManager.get_one(db=db, id=top.id, branch=default_branch) is not None
 
     await verify_graph(db=db)

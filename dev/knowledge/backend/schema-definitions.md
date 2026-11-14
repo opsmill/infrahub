@@ -64,6 +64,8 @@ A relationship marked `on_delete=cascade` deletes its peers when the owner is de
 
 When wiring a new cascade, inspect every schema for a mandatory relationship that *targets* each reachable node: any such inbound referrer must either be pulled into the cascade or be reconsidered. Assert the exact cascade closure in a test so a missing (or unexpected) edge is caught.
 
+Deleting a branch-agnostic node removes it on every branch, so the check also runs on every other live branch, against that branch's own schema. There, a required link blocks the delete unless the deleted node's kind cascades on that relationship to the peer's kind: the cascade deletes on the request branch only, so that peer stays on the other branch with its link to the deleted node.
+
 ### Relationship Kinds
 
 | Kind | Purpose |
