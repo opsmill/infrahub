@@ -22,7 +22,7 @@ GraphQL mutations for creating, updating, upserting, and deleting nodes. All mut
 ```
 mutate_create()
   -> create_node()                    # create.py
-       -> preview node (process_pools=False) for lock calculation
+       -> preview node (process_pools=False) for lock calculation, with the id of the node to create
        -> read_template_components()   # template only: the subtemplates, read a level at a time
        -> get_template_pool_lock_names()  # template only: the pool locks of the object and its components
        -> acquire InfrahubMultiLock
@@ -226,7 +226,8 @@ A peer that must keep its relationship, such as a component under a mandatory pa
 
 ## Locking Strategy
 
-1. A preview node is created with `process_pools=False` (no side effects)
+1. A preview node is created with `process_pools=False` (no side effects); a create gives it the id of
+   the node it creates
 2. Lock names are computed from uniqueness constraints and resource pool fields; for a create from a
    template they also include the pool locks of its components
 3. `InfrahubMultiLock` acquired before the transaction
@@ -334,10 +335,12 @@ does not already hold:
   pool when its subtemplate names one or its kind has a `NumberPool` attribute. A preview of a component in
   a scoped number pool reads the pool once more, and the peers or the profiles that hold a scope element
   when the preview does not hold them. A template whose components draw from no pool builds no preview.
-- **A division that holds an object the create gives an id to is left out.** The preview and the object
-  created have different ids, and no other write can name an object that is not committed. Such a division
-  is the one of a component whose scope names its new parent. When the payload sets the `id` of the object,
-  the preview has that id and the division is locked.
+- **The preview and the object created share one id.** `create_node()` generates the id of the object
+  before it builds the preview, unless the payload sets one, and each `TemplateComponent` holds the id of
+  the component it describes. So a lock name that holds the id of a new object, such as the division of a
+  component whose scope names its new parent, or `relationship_count.<identifier>.<node id>`, names the
+  object created. An id that `create_node()` generated is not checked against the database; an id the
+  payload sets is.
 - **The subtemplates are read before the locks, as the template is.** A subtemplate that another write
   changes or deletes while the create waits for a lock is applied as it was read.
 - **A component's validation error is raised before the object's own checks**, because the previews are
@@ -353,7 +356,7 @@ does not already hold:
   takes the locks inside that transaction.
 
 `backend/tests/component/core/node/test_template_pool_lock_order.py` covers every cell of the table, a
-nested component, and a payload that sets the `id`.
+nested component, a payload that sets the `id`, and a division that holds the object created.
 
 ## Key Files
 

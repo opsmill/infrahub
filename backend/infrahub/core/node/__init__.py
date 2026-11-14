@@ -1079,7 +1079,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
             self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
+    async def new(
+        self,
+        db: InfrahubDatabase,
+        id: str | None = None,
+        process_pools: bool = True,
+        generated_id: str | None = None,
+        **kwargs: Any,
+    ) -> Self:
         # Callers that create nodes outside the mutation entry points rely on the components being built here.
         profile_data_reader = ProfileDataReader(db=db, branch=self.get_branch())
         return await self.new_from_fields(
@@ -1096,6 +1103,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 db=db, branch=self.get_branch(), profile_data_reader=profile_data_reader
             ),
             process_pools=process_pools,
+            generated_id=generated_id,
         )
 
     async def new_from_fields(
@@ -1106,10 +1114,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
         process_pools: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        generated_id: str | None = None,
     ) -> Self:
         """Initialize the node from field values keyed by name, where an `id` key, when set, is the node's uuid.
 
         Keeping the field values in a dict lets a schema name a field like any parameter of this method.
+        Without an `id` key the node takes `generated_id`, a uuid the caller generated for it, which is not
+        checked against the database; without either, the node generates its uuid.
 
         Raises:
             ValidationError: When the `id` is not a valid UUID or is already in use.
@@ -1124,7 +1135,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if await query.count(db=db):
                 raise ValidationError({"id": f"{node_id} is already in use"})
 
-        self.id = node_id or str(UUIDT())
+        self.id = node_id or generated_id or str(UUIDT())
 
         await self._process_fields(
             db=db,

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast, overload
 
+from infrahub_sdk.uuidt import UUIDT
+
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.attribute import PayloadPresence
@@ -51,12 +53,14 @@ if TYPE_CHECKING:
 class TemplateComponent:
     """A subtemplate to materialize, the schema of the object it describes, and what it holds.
 
-    `components` is filled in once the level below this subtemplate has been read.
+    `components` is filled in once the level below this subtemplate has been read. `object_id` is the uuid of the
+    object to create, set before the object exists so that the locks of the create can name it.
     """
 
     subtemplate: CoreObjectTemplate
     schema: NonGenericSchemaTypes
     components: list[TemplateComponent] = field(default_factory=list)
+    object_id: str = field(default_factory=lambda: str(UUIDT()))
 
 
 @dataclass
@@ -329,7 +333,7 @@ async def create_component(
     )
 
     obj_peer = await Node.init(schema=component.schema, db=db, branch=branch, at=at)
-    await obj_peer.new(db=db, **obj_peer_data)
+    await obj_peer.new(db=db, generated_id=component.object_id, **obj_peer_data)
     await constraint_runner.check(
         node=obj_peer, field_filters=_with_pooled_attributes(node=obj_peer, fields=list(obj_peer_data))
     )
@@ -487,7 +491,7 @@ async def _component_previews(
             current_template=parent_template,
         )
         node = await Node.init(schema=component.schema, db=db, branch=branch)
-        await node.new(db=db, process_pools=False, **obj_peer_data)
+        await node.new(db=db, process_pools=False, generated_id=component.object_id, **obj_peer_data)
         previews.append(
             _ComponentPreview(
                 node=node,
@@ -522,10 +526,6 @@ async def _pooled_subtemplate_ids(db: InfrahubDatabase, components: list[Templat
     return pooled
 
 
-def _division_holds(lock_name: str, node_ids: set[str]) -> bool:
-    return bool(node_ids.intersection(lock_name.split(".")))
-
-
 async def get_template_pool_lock_names(
     db: InfrahubDatabase,
     branch: Branch,
@@ -533,7 +533,6 @@ async def get_template_pool_lock_names(
     template: CoreObjectTemplate,
     components: list[TemplateComponent],
     user_fields: Collection[str],
-    has_generated_id: bool,
     pool_applier: AttributePoolApplierInterface,
     user_id: str = SYSTEM_USER_ID,
 ) -> set[str]:
@@ -542,9 +541,6 @@ async def get_template_pool_lock_names(
     `obj` is the unsaved preview of the object created from `template`, and `user_fields` names the fields the
     payload sets, which the template leaves alone. The locks are those of the pools the template names for the
     object without a scope, and of every pool its components draw from.
-
-    A division that holds a component, or the object when `has_generated_id` is set, is left out: the object
-    created gets another id, and no other write can name an object that is not committed.
 
     Raises:
         ValidationError: When the schema of the branch does not define an element of a pool's scope.
@@ -570,10 +566,7 @@ async def get_template_pool_lock_names(
             node=preview.node, pools=preview.pools, pool_applier=pool_applier, user_id=user_id
         )
         lock_names |= get_pool_lock_names(node=preview.node)
-    generated_ids = {preview.node.get_id() for preview in previews}
-    if has_generated_id:
-        generated_ids.add(obj.get_id())
-    return {name for name in lock_names if not _division_holds(lock_name=name, node_ids=generated_ids)}
+    return lock_names
 
 
 async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
@@ -651,6 +644,7 @@ async def _do_create_node(
     data: dict[str, Any],
     object_template: CoreObjectTemplate | None,
     template_components: list[TemplateComponent],
+    generated_id: str | None,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
@@ -663,6 +657,7 @@ async def _do_create_node(
             pool_applier=pool_applier,
             profiles_mandatory_field_getter=profiles_mandatory_field_getter,
             user_id=user_id,
+            generated_id=generated_id,
         )
         await node_constraint_runner.check(
             node=obj, field_filters=_with_pooled_attributes(node=obj, fields=fields_to_validate)
@@ -744,6 +739,8 @@ async def create_node(
     # gets components of its own.
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     components = _build_node_write_components(db=db, branch=branch, schema_branch=schema_branch)
+    # The preview and the node created under the lock share one uuid, so the lock names hold the uuid of the node.
+    generated_id = None if data.get("id") else str(UUIDT())
     preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
     await preview_obj.new_from_fields(
         db=db,
@@ -751,6 +748,7 @@ async def create_node(
         pool_applier=components.pool_applier,
         profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
         process_pools=False,
+        generated_id=generated_id,
     )
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
     # The preview read the object template to work out the lock names; the node created under the
@@ -770,7 +768,6 @@ async def create_node(
             template=object_template,
             components=template_components,
             user_fields=fields_to_validate,
-            has_generated_id=not data.get("id"),
             pool_applier=components.pool_applier,
             user_id=user_id,
         )
@@ -797,6 +794,7 @@ async def create_node(
                 user_id=user_id,
                 object_template=object_template,
                 template_components=template_components,
+                generated_id=generated_id,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -822,6 +820,7 @@ async def create_node(
                     user_id=user_id,
                     object_template=object_template,
                     template_components=template_components,
+                    generated_id=generated_id,
                 )
 
     # The node was written from its in-memory state, so the profiles it is linked to are the ones

@@ -18,10 +18,13 @@ from infrahub.core.node.create import create_node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.query.node import NodeCheckIDQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.constants import LOCK_WAIT_TIMEOUT_SECONDS
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.db_transaction_tracker import TransactionTrackingInfrahubDatabase
 from tests.helpers.ip_pool import create_namespace, create_prefix
 from tests.helpers.lock import wait_until_waiting
@@ -30,6 +33,7 @@ from tests.helpers.number_pool import (
     SCOPED_CHASSIS,
     SCOPED_SITE,
     add_pool_range,
+    pool_lock_events,
     provision_schema_number_pools,
     save_schema_kinds,
     scoped_site,
@@ -452,3 +456,60 @@ class TestPoolLocksOfACreateFromATemplate:
             await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=card.id, attribute_name="vlan_id")
             == IsReservedEdge.OPEN
         )
+
+    async def test_a_division_holding_the_object_created_is_locked_once_for_all_its_components(
+        self, db: InfrahubDatabase, dataset: PoolLockDataset, recording_lock_registry: RecordingLockRegistry
+    ) -> None:
+        """Two cards draw in the division of their new chassis, whose lock the create takes once and keeps."""
+        pool = dataset.pools[CHASSIS_SCOPED_POOL]
+        template = await Node.init(db=db, schema=f"Template{SCOPED_CHASSIS.kind}", branch=dataset.branch)
+        await template.new(db=db, template_name="chassis-with-two-cards", site=dataset.site)
+        await template.save(db=db)
+        for index in (1, 2):
+            subtemplate = await Node.init(db=db, schema=f"Template{SCOPED_CARD.kind}", branch=dataset.branch)
+            await subtemplate.new(
+                db=db,
+                template_name=f"card-{index}-of-chassis-with-two-cards",
+                name=f"card-{index}",
+                chassis=template.id,
+                site=dataset.site,
+                vlan_id_from_resource_pool={"id": pool.id},
+            )
+            await subtemplate.save(db=db)
+        timeline = recording_lock_registry.timeline
+        start = timeline.checkpoint("write")
+
+        chassis = await create_node(
+            data={"name": {"value": "chassis-with-two-cards"}, "object_template": {"id": template.id}},
+            db=db,
+            branch=dataset.branch,
+            schema=db.schema.get(name=SCOPED_CHASSIS.kind, branch=dataset.branch, duplicate=False),
+        )
+
+        lock_name = f"resource_pool.{pool.id}.{chassis.id}"
+        assert pool_lock_events(timeline=timeline, pool=pool, after=start) == [
+            (lock_name, LockAction.ACQUIRE),
+            (lock_name, LockAction.RELEASE),
+        ]
+
+    async def test_the_locks_of_a_create_name_the_object_created_without_checking_its_id(
+        self, db: InfrahubDatabase, dataset: PoolLockDataset, recording_lock_registry: RecordingLockRegistry
+    ) -> None:
+        template = await Node.init(db=db, schema=f"Template{SCOPED_CHASSIS.kind}", branch=dataset.branch)
+        await template.new(db=db, template_name="chassis-without-an-id", site=dataset.site)
+        await template.save(db=db)
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        async with counting_db.start_session() as session_db:
+            chassis = await create_node(
+                data={"name": {"value": "chassis-without-an-id"}, "object_template": {"id": template.id}},
+                db=session_db,
+                branch=dataset.branch,
+                schema=session_db.schema.get(name=SCOPED_CHASSIS.kind, branch=dataset.branch, duplicate=False),
+            )
+
+        site_lock_prefix = "relationship_count.scope_chassis__site."
+        assert recording_lock_registry.timeline.acquire_sequence(prefix=site_lock_prefix) == [
+            f"{site_lock_prefix}{chassis.id}"
+        ]
+        assert counting_db.count_for(NodeCheckIDQuery.name) == 0
