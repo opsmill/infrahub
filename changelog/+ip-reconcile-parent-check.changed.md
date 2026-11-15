@@ -1,1 +1,1 @@
-Creating or updating an IP address or IP prefix is now faster when its parent prefixes contain many prefixes: finding the parent no longer reads every child prefix of each candidate parent.
+Creating or updating an IP address or IP prefix is now faster in large IP namespaces: finding its parent no longer reads every prefix and address of the namespace, or every child prefix of each candidate parent.
