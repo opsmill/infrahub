@@ -1,7 +1,7 @@
 from typing import Any
 
-from infrahub.constants.database import ATTRIBUTE_VALUE_KEY_LENGTH
 from infrahub.core.branch import Branch
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -12,6 +12,9 @@ MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})
 RETURN elementId(av) AS value_id, av.value_key AS value_key, "AttributeValueIndexed" IN labels(av) AS is_indexed
 ORDER BY r.from DESC
 """
+
+# Larger than the 8167 bytes a RANGE index entry can hold.
+VALUE_TOO_LARGE_TO_INDEX = "a" * 10_000
 
 
 async def _value_vertices(db: InfrahubDatabase, node_id: str, attr_name: str) -> list[dict[str, Any]]:
@@ -32,37 +35,39 @@ async def _create(db: InfrahubDatabase, schema: NodeSchema, **values: Any) -> No
 async def test_equal_large_values_share_one_keyed_vertex(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
-    long_text = "a" * (ATTRIBUTE_VALUE_KEY_LENGTH + 10)
     first = await _create(
-        db=db, schema=all_attribute_types_schema, mytextarea=long_text, myjson={"value": {"id": "one"}}
+        db=db,
+        schema=all_attribute_types_schema,
+        mytextarea=VALUE_TOO_LARGE_TO_INDEX,
+        myjson={"value": {"id": "one"}},
+        mystring="indexed",
     )
     second = await _create(
-        db=db, schema=all_attribute_types_schema, mytextarea=long_text, myjson={"value": {"id": "one"}}
+        db=db,
+        schema=all_attribute_types_schema,
+        mytextarea=VALUE_TOO_LARGE_TO_INDEX,
+        myjson={"value": {"id": "one"}},
+        mystring="indexed",
     )
 
-    for attr_name, expected_key in (("mytextarea", long_text[:ATTRIBUTE_VALUE_KEY_LENGTH]), ("myjson", '{"id":"one"}')):
+    for attr_name, serialized in (("mytextarea", VALUE_TOO_LARGE_TO_INDEX), ("myjson", '{"id":"one"}')):
         first_values = await _value_vertices(db=db, node_id=first.id, attr_name=attr_name)
         second_values = await _value_vertices(db=db, node_id=second.id, attr_name=attr_name)
         assert first_values == second_values
         assert first_values == [
-            {"value_id": first_values[0]["value_id"], "value_key": expected_key, "is_indexed": False}
+            {
+                "value_id": first_values[0]["value_id"],
+                "value_key": get_attribute_value_key(serialized),
+                "is_indexed": False,
+            }
         ]
 
-
-async def test_values_sharing_a_key_keep_their_own_vertex(
-    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-) -> None:
-    shared_start = "b" * ATTRIBUTE_VALUE_KEY_LENGTH
-    first = await _create(db=db, schema=all_attribute_types_schema, mytextarea=shared_start + "first")
-    second = await _create(db=db, schema=all_attribute_types_schema, mytextarea=shared_start + "second")
-
-    first_values = await _value_vertices(db=db, node_id=first.id, attr_name="mytextarea")
-    second_values = await _value_vertices(db=db, node_id=second.id, attr_name="mytextarea")
-    assert first_values[0]["value_key"] == second_values[0]["value_key"] == shared_start
-    assert first_values[0]["value_id"] != second_values[0]["value_id"]
+    indexed_values = await _value_vertices(db=db, node_id=first.id, attr_name="mystring")
+    assert indexed_values[0]["is_indexed"] is True
+    assert indexed_values[0]["value_key"] is None
 
     fetched = await NodeManager.get_one(db=db, id=second.id, raise_on_error=True)
-    assert fetched.get_attribute(name="mytextarea").value == shared_start + "second"
+    assert fetched.get_attribute(name="mytextarea").value == VALUE_TOO_LARGE_TO_INDEX
 
 
 async def test_update_reuses_the_keyed_vertex_of_an_equal_value(
@@ -77,7 +82,7 @@ async def test_update_reuses_the_keyed_vertex_of_an_equal_value(
     first_values = await _value_vertices(db=db, node_id=first.id, attr_name="myjson")
     second_values = await _value_vertices(db=db, node_id=second.id, attr_name="myjson")
     assert second_values[0] == first_values[0]
-    assert second_values[0]["value_key"] == '{"id":"shared"}'
+    assert second_values[0]["value_key"] == get_attribute_value_key('{"id":"shared"}')
 
 
 async def test_saving_an_unchanged_value_stored_without_key_keeps_it(

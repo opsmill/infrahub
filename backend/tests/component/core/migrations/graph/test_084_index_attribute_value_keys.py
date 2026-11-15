@@ -1,6 +1,7 @@
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.migrations.graph.m084_index_attribute_value_keys import VALUE_KEY_INDEX, Migration084
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -23,7 +24,7 @@ async def _node_value_keys(db: InfrahubDatabase, node_id: str) -> dict[str, str 
 async def test_migration_084(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
-    """Non-indexed string values without a key get one, and the key index appears."""
+    """Values of large kinds without a key get the hash of their value, and the key index appears."""
     if db.db_type != DatabaseType.NEO4J:
         pytest.skip("The migration only manages Neo4j indexes")
 
@@ -50,9 +51,13 @@ async def test_migration_084(
 
     validation_result = await migration.validate_migration(db=db)
     assert not validation_result.errors
-    assert await _node_value_keys(db=db, node_id=node.id) == {"mytextarea": "text value", "myjson": '{"id":"value"}'}
+    expected = {
+        "mytextarea": get_attribute_value_key("text value"),
+        "myjson": get_attribute_value_key('{"id":"value"}'),
+    }
+    assert await _node_value_keys(db=db, node_id=node.id) == expected
 
     # Running it again is a no-op.
     second_run = await migration.execute(migration_input=MigrationInput(db=db))
     assert not second_run.errors
-    assert await _node_value_keys(db=db, node_id=node.id) == {"mytextarea": "text value", "myjson": '{"id":"value"}'}
+    assert await _node_value_keys(db=db, node_id=node.id) == expected

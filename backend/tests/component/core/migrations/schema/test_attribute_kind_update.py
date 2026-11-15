@@ -5,6 +5,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.attribute_kind_update import (
     AttributeKindUpdateMigration,
@@ -129,6 +130,12 @@ async def test_query_indexed_to_not_indexed(db: InfrahubDatabase, default_branch
     num_indexed, num_non_indexed = await check_attribute_value_vertices(db=db, value=description)
     assert num_indexed == 1
     assert num_non_indexed == 1
+
+    results = await db.execute_query(
+        query="MATCH (av:AttributeValue {value: $value}) WHERE NOT av:AttributeValueIndexed RETURN av.value_key AS key",
+        params={"value": description},
+    )
+    assert [result["key"] for result in results] == [get_attribute_value_key(description)]
 
 
 async def test_migration_no_change_when_same_index_status(db: InfrahubDatabase, default_branch: Branch) -> None:
