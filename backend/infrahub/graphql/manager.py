@@ -168,9 +168,11 @@ class GraphQLSchemaManager:
     def _get_schema_hash(self, schema: MainSchemaTypes) -> str:
         """Return the hash of a schema, computed once per schema object."""
         # Each entry holds its schema, so that no other schema can take the same id.
-        if id(schema) not in self._schema_hashes:
-            self._schema_hashes[id(schema)] = (schema, schema.get_hash())
-        return self._schema_hashes[id(schema)][1]
+        cached = self._schema_hashes.get(id(schema))
+        if cached is None:
+            cached = (schema, schema.get_hash())
+            self._schema_hashes[id(schema)] = cached
+        return cached[1]
 
     def get_graphql_types(self) -> dict[str, GraphQLTypes]:
         return self._graphql_types
