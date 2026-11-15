@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
+from infrahub.constants.database import ATTRIBUTE_VALUE_KEY_LENGTH
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -32,8 +33,14 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         new_attr_value_labels = "AttributeValue"
+        distinct_value_props = "is_default: av_is_default, value: av_value"
+        current_value_props = "is_default: av.is_default, value: av.value"
         if needs_index:
             new_attr_value_labels += ":AttributeValueIndexed"
+        else:
+            self.params["value_key_length"] = ATTRIBUTE_VALUE_KEY_LENGTH
+            distinct_value_props += ", value_key: left(toString(av_value), $value_key_length)"
+            current_value_props += ", value_key: left(toString(av.value), $value_key_length)"
         # ruff: noqa: S608
         query = """
 // ------------
@@ -63,11 +70,11 @@ CALL (n, attr) {
 // ------------
 WITH DISTINCT av.is_default AS av_is_default, av.value AS av_value
 CALL (av_is_default, av_value) {
-    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
+    OPTIONAL MATCH (existing_av:AttributeValue {%(distinct_value_props)s})
     WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
     WITH existing_av WHERE existing_av IS NULL
     LIMIT 1
-    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value})
+    CREATE (:%(new_attr_value_labels)s {%(distinct_value_props)s})
 }
 
 // ------------
@@ -100,7 +107,7 @@ CALL (attr, has_value_e, av) {
     // ------------
     // get the correct AttributeValue vertex b/c it definitely exists now
     // ------------
-    MATCH (new_av:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
+    MATCH (new_av:%(new_attr_value_labels)s {%(current_value_props)s})
     WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
     LIMIT 1
 
@@ -161,6 +168,8 @@ CALL (attr, n) {
             ),
             "branch_filter": branch_filter,
             "new_attr_value_labels": new_attr_value_labels,
+            "distinct_value_props": distinct_value_props,
+            "current_value_props": current_value_props,
         }
         self.add_to_query(query)
 

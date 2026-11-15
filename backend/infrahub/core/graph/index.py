@@ -15,6 +15,7 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="attr_value_indexed", label="AttributeValueIndexed", properties=["value"], type=IndexType.RANGE),
     # TEXT index for efficient CONTAINS/STARTS WITH/ENDS WITH searches on attribute values
     IndexItem(name="attr_value_indexed_text", label="AttributeValueIndexed", properties=["value"], type=IndexType.TEXT),
+    IndexItem(name="attr_value_key", label="AttributeValue", properties=["value_key"], type=IndexType.RANGE),
     IndexItem(name="branch_name", label="Branch", properties=["name"], type=IndexType.RANGE),
     # diff indices
     IndexItem(name="diff_uuid", label="DiffRoot", properties=["uuid"], type=IndexType.RANGE),

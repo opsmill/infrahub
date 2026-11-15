@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
+import ujson
 from pydantic import BaseModel, Field
 
+from infrahub.constants.database import ATTRIBUTE_VALUE_KEY_LENGTH
 from infrahub.utils import InfrahubStringEnum
 
 if TYPE_CHECKING:
@@ -144,8 +146,21 @@ class GraphAttributeNode(GraphVertex):
 # -----------------------------------------------------
 # AttributeValue
 # -----------------------------------------------------
+def get_attribute_value_key(value: Any) -> str:
+    """Return the indexed key of a value stored without the AttributeValueIndexed label.
+
+    The key is the start of the serialized value, short enough for a RANGE index, so a lookup seeks the key and
+    then compares the whole value.
+    """
+    serialized = value if isinstance(value, str) else ujson.dumps(value)
+    return serialized[:ATTRIBUTE_VALUE_KEY_LENGTH]
+
+
 class GraphAttributeValueProperties(BaseModel):
     value: Any = Field(..., description="value of the attribute")
+    value_key: str | None = Field(
+        None, description="Start of the value, indexed for a value that is not AttributeValueIndexed"
+    )
 
 
 class GraphAttributeIPNetworkProperties(BaseModel):

@@ -361,8 +361,10 @@ class NodeCreateAllQuery(NodeQuery):
         UNWIND $attrs AS attr
         // Try to find a matching vertex
         CALL (attr) {
-            OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-            WHERE NOT existing_av:AttributeValueIndexed
+            OPTIONAL MATCH (existing_av:AttributeValue {value_key: attr.content.value_key})
+            WHERE existing_av.value = attr.content.value
+                AND existing_av.is_default = attr.content.is_default
+                AND NOT existing_av:AttributeValueIndexed
             RETURN existing_av
             LIMIT 1
         }
@@ -370,11 +372,15 @@ class NodeCreateAllQuery(NodeQuery):
             // If none found, create a new one
             WITH existing_av
             WHERE existing_av IS NULL
-            CREATE (:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            CREATE (:AttributeValue {
+                value: attr.content.value, is_default: attr.content.is_default, value_key: attr.content.value_key
+            })
         }
         CALL (attr) {
-            MATCH (av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-            WHERE NOT av:AttributeValueIndexed
+            MATCH (av:AttributeValue {value_key: attr.content.value_key})
+            WHERE av.value = attr.content.value
+                AND av.is_default = attr.content.is_default
+                AND NOT av:AttributeValueIndexed
             RETURN av
             LIMIT 1
         }

@@ -26,6 +26,7 @@ from infrahub.core.constants import (
     MetadataOptions,
     PoolRecordProvenance,
 )
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
@@ -385,6 +386,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 validate_string_length(serialized_value)
             data["value"] = serialized_value
 
+        if AttributeDBNodeType.INDEXED not in self.get_db_node_type():
+            data["value_key"] = get_attribute_value_key(data["value"])
+
         return data
 
     def load_from_db(self, data: AttributeFromDB) -> None:
@@ -538,7 +542,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
-        if current_attr_data.content != self.to_db():
+        # The key derives from the value, and a value stored before the key was introduced has none.
+        stored_content = {key: value for key, value in current_attr_data.content.items() if key != "value_key"}
+        new_content = {key: value for key, value in self.to_db().items() if key != "value_key"}
+        if stored_content != new_content:
             # Create the new AttributeValue and update the existing relationship
             query = await AttributeUpdateValueQuery.init(db=db, branch=branch, attr=self, user_id=user_id, at=update_at)
             await query.execute(db=db)
