@@ -1458,9 +1458,11 @@ class IPPrefixReconcileQuery(Query):
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             // ------------------
             // now get all the possible IPPrefix nodes for these AttributeValues
+            // the namespace relationship is bidirectional, so both of its edges point to the Relationship vertex,
+            // and following only the prefix's outgoing edges skips the incoming edges of its child prefixes
             // ------------------
-            OPTIONAL MATCH parent_path = (ip_namespace)-[:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})
-            -[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            OPTIONAL MATCH parent_path = (ip_namespace)-[:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})
+            <-[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
             -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
             -[:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
@@ -1470,7 +1472,7 @@ class IPPrefixReconcileQuery(Query):
             // ------------------
             // filter to only active maybe_new_parent Nodes in the correct namespace
             // ------------------
-            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})-[r2:IS_RELATED]-(maybe_new_parent)
+            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH maybe_new_parent, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY elementId(maybe_new_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
