@@ -156,6 +156,7 @@ class GraphQLSchemaManager:
 
         self._full_graphql_schema: GraphQLSchema | None = None
         self._graphql_types: dict[str, GraphQLTypes] = {}
+        self._schema_hashes: dict[int, tuple[MainSchemaTypes, str]] = {}
 
         self._load_attribute_types()
         self._load_event_types()
@@ -163,6 +164,13 @@ class GraphQLSchemaManager:
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
+
+    def _get_schema_hash(self, schema: MainSchemaTypes) -> str:
+        """Return the hash of a schema, computed once per schema object."""
+        # Each entry holds its schema, so that no other schema can take the same id.
+        if id(schema) not in self._schema_hashes:
+            self._schema_hashes[id(schema)] = (schema, schema.get_hash())
+        return self._schema_hashes[id(schema)][1]
 
     def get_graphql_types(self) -> dict[str, GraphQLTypes]:
         return self._graphql_types
@@ -657,7 +665,7 @@ class GraphQLSchemaManager:
         """Generate a GraphQL object Type from a Infrahub NodeSchema."""
         interfaces: set[type[InfrahubObject]] = set()
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{schema.kind}{schema.get_hash()}".encode())
+        md5hash.update(f"{schema.kind}{self._get_schema_hash(schema=schema)}".encode())
 
         if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema) and schema.inherit_from:
             for generic_name in sorted(schema.inherit_from):
@@ -713,7 +721,7 @@ class GraphQLSchemaManager:
         }
 
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"interface-{schema.kind}{schema.get_hash()}".encode())
+        md5hash.update(f"interface-{schema.kind}{self._get_schema_hash(schema=schema)}".encode())
         interface_hash = md5hash.hexdigest()
 
         main_attrs = {
@@ -877,7 +885,7 @@ class GraphQLSchemaManager:
 
         input_name = f"{schema.kind}CreateInput"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        md5hash.update(f"{input_name}{self._get_schema_hash(schema=schema)}".encode())
         input_hash = md5hash.hexdigest()
         mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
         if not mutation_input_type:
@@ -934,7 +942,7 @@ class GraphQLSchemaManager:
 
         input_name = f"{schema.kind}UpdateInput"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        md5hash.update(f"{input_name}{self._get_schema_hash(schema=schema)}".encode())
         input_hash = md5hash.hexdigest()
         mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
         if not mutation_input_type:
@@ -994,7 +1002,7 @@ class GraphQLSchemaManager:
 
         input_name = f"{schema.kind}UpsertInput"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{input_name}{schema.get_hash()}".encode())
+        md5hash.update(f"{input_name}{self._get_schema_hash(schema=schema)}".encode())
         input_hash = md5hash.hexdigest()
         mutation_input_type = registry.get_input_type(reference_hash=input_hash, schema_hash=self.schema_hash)
         if not mutation_input_type:
@@ -1016,7 +1024,7 @@ class GraphQLSchemaManager:
         name = f"{schema.kind}{mutation_type}"
 
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        md5hash.update(f"{name}{self._get_schema_hash(schema=schema)}".encode())
         mutation_hash = md5hash.hexdigest()
 
         mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
@@ -1050,7 +1058,7 @@ class GraphQLSchemaManager:
         name = f"{schema.kind}Update"
 
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        md5hash.update(f"{name}{self._get_schema_hash(schema=schema)}".encode())
         mutation_hash = md5hash.hexdigest()
 
         mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
@@ -1081,7 +1089,7 @@ class GraphQLSchemaManager:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{name}{schema.get_hash()}".encode())
+        md5hash.update(f"{name}{self._get_schema_hash(schema=schema)}".encode())
         mutation_hash = md5hash.hexdigest()
         mutation_object = registry.get_mutation_type(reference_hash=mutation_hash, schema_hash=self.schema_hash)
         if not mutation_object:
@@ -1233,7 +1241,7 @@ class GraphQLSchemaManager:
             object_name = f"NestedEdged{schema.kind}"
 
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{object_name}{schema.get_hash()}{node.reference_hash}".encode())
+        md5hash.update(f"{object_name}{self._get_schema_hash(schema=schema)}{node.reference_hash}".encode())
         edge_hash = md5hash.hexdigest()
 
         meta_attrs: dict[str, Any] = {
@@ -1274,7 +1282,7 @@ class GraphQLSchemaManager:
             object_name = f"NestedPaginated{schema.kind}"
 
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{object_name}{schema.get_hash()}{edge.reference_hash}".encode())
+        md5hash.update(f"{object_name}{self._get_schema_hash(schema=schema)}{edge.reference_hash}".encode())
         paginated_hash = md5hash.hexdigest()
 
         meta_attrs: dict[str, Any] = {
@@ -1335,7 +1343,7 @@ class GraphQLSchemaManager:
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{object_name}{schema.get_hash()}".encode())
+        md5hash.update(f"{object_name}{self._get_schema_hash(schema=schema)}".encode())
         paginated_hash = md5hash.hexdigest()
         nested_interface_object = registry.get_paginated_type(
             reference_hash=paginated_hash, schema_hash=self.schema_hash
@@ -1356,7 +1364,7 @@ class GraphQLSchemaManager:
     ) -> type[InfrahubObject]:
         object_name = f"NestedPaginated{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)
-        md5hash.update(f"{object_name}{schema.get_hash()}".encode())
+        md5hash.update(f"{object_name}{self._get_schema_hash(schema=schema)}".encode())
         paginated_hash = md5hash.hexdigest()
 
         nested_interface_object = registry.get_paginated_type(
