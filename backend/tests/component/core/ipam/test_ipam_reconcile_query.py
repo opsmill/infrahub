@@ -1,4 +1,5 @@
 import ipaddress
+from typing import Any
 from uuid import uuid4
 
 from infrahub.core import registry
@@ -803,3 +804,46 @@ async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merge
     assert data.current_children_uuids == ()
     assert data.calculated_parent_uuid == new_prefix.id
     assert data.calculated_children_uuids == ()
+
+
+def _plan_operators(plan: dict[str, Any]) -> list[str]:
+    operator = f"{plan.get('operatorType', '')}: {plan.get('args', {}).get('Details', '')}"
+    return [operator] + [
+        child_operator for child in plan.get("children", []) for child_operator in _plan_operators(child)
+    ]
+
+
+async def test_ipprefix_reconcile_query_finds_the_node_by_uuid_through_the_index(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    """The lookup by UUID seeks the Node(uuid) index instead of reading every node of the IP kind."""
+    ns1_id = ip_dataset_01["ns1"].id
+    address = ip_dataset_01["address10"]
+    prefix = ip_dataset_01["net140"]
+
+    address_value = address.get_attribute(name="address").value
+    prefix_value = prefix.get_attribute(name="prefix").value
+    assert isinstance(address_value, str)
+    assert isinstance(prefix_value, str)
+
+    for node, ip_value in (
+        (address, ipaddress.ip_interface(address_value)),
+        (prefix, ipaddress.ip_network(prefix_value)),
+    ):
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, ip_value=ip_value, node_uuid=node.id, namespace=ns1_id
+        )
+        await query.execute(db=db)
+        data = query.get_data()
+        assert data is not None
+        assert data.ip_node_uuid == node.id
+
+        rendered = query.render()
+        _, metadata = await db.execute_query_with_metadata(
+            query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_ip_prefix_reconcile"
+        )
+        operators = _plan_operators(metadata["plan"])
+        assert [operator for operator in operators if "ip_node:Node(uuid)" in operator]
+        assert [
+            operator for operator in operators if operator.startswith("NodeByLabelScan") and "ip_node" in operator
+        ] == []

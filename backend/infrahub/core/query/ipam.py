@@ -1308,9 +1308,9 @@ class IPPrefixReconcileQuery(Query):
 
         namespace_query = """
         // ------------------
-        // Get IP Namespace
+        // Get IP Namespace, through the index on Node(uuid)
         // ------------------
-        MATCH (ip_namespace:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
+        MATCH (ip_namespace:Node:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
         WHERE %(branch_filter)s
         ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
         LIMIT 1
@@ -1323,9 +1323,9 @@ class IPPrefixReconcileQuery(Query):
             self.params["node_uuid"] = self.ip_uuid
             get_node_by_id_query = """
             // ------------------
-            // Get IP Prefix node by UUID
+            // Get IP Prefix node by UUID, through the index on Node(uuid) as the kind label has none
             // ------------------
-            OPTIONAL MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
+            OPTIONAL MATCH (ip_node:Node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
