@@ -92,8 +92,11 @@ Stores attribute values. Labels always include `AttributeValue`. Labels include 
 |----------|------|-------------|
 | `value` | any | The attribute value (`"NULL"` for null) |
 | `is_default` | boolean | Whether this is a default value |
+| `value_key` | string? | Only on values without `AttributeValueIndexed`: the first `ATTRIBUTE_VALUE_KEY_LENGTH` characters of the serialized value |
 
 **Sharing via `MERGE`**: `AttributeValue` nodes are de-duplicated on `value` + `is_default`. Any two attributes with identical serialized values reference the same node. Migrations that modify values must create new nodes and transfer `HAS_VALUE` edges rather than updating in place, or they risk corrupting unrelated attributes.
+
+**Finding an existing value**: an indexed value is found through the RANGE index on `AttributeValueIndexed(value)`. Values of large kinds (TextArea, JSON, List) can exceed the size of an index entry, so they are found through the RANGE index on `AttributeValue(value_key)`, and the match then compares `value` and `is_default`. A lookup on `value` alone, or one that excludes `AttributeValueIndexed` without the key, reads every `AttributeValue` vertex. Values sharing a long start share a key, so a lookup reads each of them.
 
 ### Boolean
 
