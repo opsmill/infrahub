@@ -3,9 +3,6 @@ from enum import StrEnum
 MIN_SUPPORTED_INTEGER = -9223372036854775807
 MAX_SUPPORTED_INTEGER = 9223372036854775807
 
-# A RANGE index entry holds at most 8167 bytes, and a character takes at most 4 bytes in UTF-8.
-ATTRIBUTE_VALUE_KEY_LENGTH = 1000
-
 
 class DatabaseType(StrEnum):
     NEO4J = "neo4j"

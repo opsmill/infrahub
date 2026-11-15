@@ -89,16 +89,7 @@ class AttributeAddQuery(Query):
             # cannot be indexed
             self.params["attr_value_key"] = get_attribute_value_key(self.params["attr_value"])
             match_query = """
-            OPTIONAL MATCH (existing_av:%(attr_value_label)s { value_key: $attr_value_key })
-            WHERE existing_av.value = $attr_value AND existing_av.is_default = true
-                AND NOT existing_av:AttributeValueIndexed
-            CALL (existing_av) {
-                WITH existing_av
-                WHERE existing_av IS NULL
-                CREATE (:%(attr_value_label)s { value: $attr_value, is_default: true, value_key: $attr_value_key })
-            }
-            MATCH (av:%(attr_value_label)s { value_key: $attr_value_key })
-            WHERE av.value = $attr_value AND av.is_default = true AND NOT av:AttributeValueIndexed
+            MERGE (av:%(attr_value_label)s { value_key: $attr_value_key, value: $attr_value, is_default: true })
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 
