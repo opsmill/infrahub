@@ -19,8 +19,6 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     HFID_ATTRIBUTE_NAME,
     NULL_VALUE,
-    PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
-    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     InfrahubKind,
     MetadataOptions,
@@ -951,8 +949,6 @@ CALL (a) {
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
-        self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
         self.params["field_names"] = list(self.fields.keys()) if self.fields else []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -962,13 +958,9 @@ CALL (a) {
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        WITH n, (
-            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_node_relationship_name})) OR
-            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_template_relationship_name}))
-        ) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         WHERE (a.name IN $field_names OR size($field_names) = 0)
-        WITH DISTINCT n, a, might_use_profile
+        WITH DISTINCT n, a
         """
         self.add_to_query(query)
 
@@ -980,12 +972,13 @@ CALL (n, a) {
     ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
 }
-WITH n, r1, a, might_use_profile
+WITH n, r1, a
 WHERE r1.status = "active"
-WITH n, r1, a, might_use_profile
-CALL (a, might_use_profile) {
+WITH n, r1, a
+// The profile source is read per attribute, so the cost does not grow with the relationships of the node
+CALL (a) {
     OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-    WHERE might_use_profile = TRUE AND %(branch_filter)s
+    WHERE %(branch_filter)s
     RETURN r.status = "active" AS has_active_profile
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
