@@ -1448,7 +1448,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Identify the correct parent, if any, for the prefix node
         // ------------------
-        CALL (ip_namespace) {
+        CALL () {
             // ------------------
             // start with just the AttributeValue vertices b/c we have an index on them
             // ------------------
@@ -1458,11 +1458,9 @@ class IPPrefixReconcileQuery(Query):
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             // ------------------
             // now get all the possible IPPrefix nodes for these AttributeValues
-            // the namespace relationship is bidirectional, so both of its edges point to the Relationship vertex,
-            // and following only the prefix's outgoing edges skips the incoming edges of its child prefixes
+            // the namespace is checked next from each candidate, as a path through it here can start from the namespace
             // ------------------
-            OPTIONAL MATCH parent_path = (ip_namespace)-[:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})
-            <-[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            OPTIONAL MATCH parent_path = (maybe_new_parent:%(ip_prefix_kind)s)
             -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
             -[:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
@@ -1471,6 +1469,8 @@ class IPPrefixReconcileQuery(Query):
         CALL (ip_namespace, maybe_new_parent) {
             // ------------------
             // filter to only active maybe_new_parent Nodes in the correct namespace
+            // the namespace relationship is bidirectional, so both of its edges point to the Relationship vertex,
+            // and following only the prefix's outgoing edges skips the incoming edges of its child prefixes
             // ------------------
             OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
             WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))

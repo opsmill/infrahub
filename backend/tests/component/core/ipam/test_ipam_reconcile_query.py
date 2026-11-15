@@ -817,12 +817,19 @@ def _plan_operators(plan: dict[str, Any]) -> list[str]:
 UNDIRECTED_PARENT_EXPAND = re.compile(
     r"\(maybe_new_parent\)-\[[^\]]*:IS_RELATED\]-\(|\)-\[[^\]]*:IS_RELATED\]-\(maybe_new_parent"
 )
+# The children steps name their namespace Relationship vertex ns_rel; only the parent steps are checked here.
+NAMESPACE_EXPAND_FOR_PARENT = re.compile(
+    r"^Expand\(All\)[^:]*: \(ip_namespace\)<?-\[[^\]]*:IS_RELATED\]->?\((?!ns_rel\))"
+)
 
 
 async def test_ipprefix_reconcile_query_reads_only_the_outgoing_edges_of_a_candidate_parent(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
 ) -> None:
-    """A candidate parent is matched to its namespace without reading the incoming edges of its child prefixes."""
+    """Candidate parents are found from their value and matched to the namespace from their own outgoing edges.
+
+    Neither the incoming edges of a candidate's child prefixes nor the edges of the namespace are read.
+    """
     ns1_id = ip_dataset_01["ns1"].id
     address = ip_dataset_01["address10"]
     prefix = ip_dataset_01["net140"]
@@ -847,3 +854,4 @@ async def test_ipprefix_reconcile_query_reads_only_the_outgoing_edges_of_a_candi
         )
         operators = _plan_operators(metadata["plan"])
         assert [operator for operator in operators if UNDIRECTED_PARENT_EXPAND.search(operator)] == []
+        assert [operator for operator in operators if NAMESPACE_EXPAND_FOR_PARENT.search(operator)] == []
