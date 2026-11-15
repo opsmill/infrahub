@@ -8,7 +8,7 @@ from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
@@ -17,7 +17,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
-from infrahub.exceptions import ModuleAttributeNotInitializedError
+from infrahub.exceptions import InitializationError
 from infrahub.log import get_logger
 from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
@@ -31,33 +31,6 @@ if TYPE_CHECKING:
 
 
 log = get_logger()
-
-# Declared without a value so that a read before initialization raises.
-registry: InfrahubLockRegistry
-
-
-# Type checkers would accept any attribute of this module if they could read this function.
-if not TYPE_CHECKING:
-
-    def __getattr__(name: str) -> Any:
-        """Raise for a module attribute that has no value.
-
-        Raises:
-            ModuleAttributeNotInitializedError: When the lock registry is read before it is initialized.
-            AttributeError: For any other missing module attribute.
-
-        """
-        if name == "registry":
-            raise ModuleAttributeNotInitializedError(
-                "The lock registry has not been initialized, call initialize_lock() first"
-            )
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def is_initialized() -> bool:
-    """Return whether the lock registry has been initialized."""
-    return "registry" in globals()
-
 
 METRIC_PREFIX = "infrahub_lock"
 LOCK_PREFIX = "lock"
@@ -528,6 +501,32 @@ class InfrahubLockRegistry:
         return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
+class UninitializedLockRegistry(InfrahubLockRegistry):
+    """Registry in place before initialization, which hands out no lock."""
+
+    def __init__(self) -> None:
+        super().__init__(local_only=True)
+
+    def _find(self, lock_name: str) -> InfrahubLock | None:
+        """Refuse to look up a lock.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise InitializationError(
+            f"The lock registry has not been initialized, call initialize_lock() before using lock {lock_name!r}"
+        )
+
+
+registry: InfrahubLockRegistry = UninitializedLockRegistry()
+
+
+def is_initialized() -> bool:
+    """Return whether the lock registry has been initialized."""
+    return not isinstance(registry, UninitializedLockRegistry)
+
+
 def _init_lock_ttl_seconds() -> int:
     return config.SETTINGS.cache.init_lock_ttl_mins * 60
 
@@ -537,7 +536,6 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
     # Rebuilding from unchanged arguments and cache settings would open a second client and leave this one open.
     if (
         not local_only
-        and is_initialized()
         and registry.service is service
         and registry.connection_url is not None
         and registry.connection_url == build_cache_connection_string(config.SETTINGS.cache)

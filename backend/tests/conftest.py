@@ -65,7 +65,7 @@ from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
-from tests.adapters.lock import LockTimeline, RecordingLockRegistry
+from tests.adapters.lock import LockTimeline, install_recording_lock_registry
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -1369,11 +1369,14 @@ def fake_log() -> FakeLogger:
 
 
 @pytest.fixture
-def recording_lock_timeline(monkeypatch: pytest.MonkeyPatch) -> LockTimeline:
+def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
     """Swap the global lock registry for a recording one, restoring the original on teardown."""
-    timeline = LockTimeline()
-    monkeypatch.setattr(lock, "registry", RecordingLockRegistry(timeline=timeline), raising=False)
-    return timeline
+    original = lock.registry
+    timeline = install_recording_lock_registry()
+    try:
+        yield timeline
+    finally:
+        lock.registry = original
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import lock
 from infrahub.lock import InfrahubLock, InfrahubLockRegistry
 
 from .timeline import LockAction, LockTimeline
@@ -62,3 +63,10 @@ class RecordingLockRegistry(InfrahubLockRegistry):
             ttl=ttl,
             timeline=self.timeline,
         )
+
+
+def install_recording_lock_registry(timeline: LockTimeline | None = None) -> LockTimeline:
+    """Replace the global lock registry with a recording one and return its timeline."""
+    timeline = timeline or LockTimeline()
+    lock.registry = RecordingLockRegistry(timeline=timeline)
+    return timeline
