@@ -22,7 +22,7 @@ from infrahub.events.models import EventBranchContext, EventContext, EventMeta, 
 from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.events.proposed_change_action import ProposedChangeApprovedEvent, ProposedChangeMergedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
-from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import MERGED_PAGE_MAX_EVENTS, InfrahubEventFilter
 from infrahub.task_manager.event.query import PrefectEvent, PrefectEventData, PrefectEventResponse
 
 if TYPE_CHECKING:
@@ -587,21 +587,27 @@ async def test_filter_returns_the_events_of_the_label_filter(
     """The resource-ID filters return the events of the label filter, page by page, with two exceptions.
 
     The exceptions are reused branch names, and a primary node combined with branch, provider or protocol conditions,
-    which the label filter drops.
+    which the label filter drops. A page that ends past the merged events returns the same events.
     """
     branch_ids = None
     if test_case.branches:
         branch_ids = await PrefectEvent.resolve_branch_ids(
             names=test_case.branches, current_branch_ids=test_case.current_branch_ids
         )
-    id_filters = InfrahubEventFilter.from_filters(
+    event_filter = InfrahubEventFilter.from_filters(
         order=test_case.order,
         account__ids=_copy(test_case.account__ids),
         branch_ids=branch_ids,
         parent__ids=_copy(test_case.parent__ids),
         event_type=_copy(test_case.event_type),
         event_type_filter=test_case.event_type_filter,
-    ).for_primary_nodes(primary_node__ids=_copy(test_case.primary_node__ids))
+    )
+    id_filters = event_filter.for_primary_nodes(
+        primary_node__ids=_copy(test_case.primary_node__ids), page_end=MERGED_PAGE_MAX_EVENTS
+    )
+    past_merged_page_filters = event_filter.for_primary_nodes(
+        primary_node__ids=_copy(test_case.primary_node__ids), page_end=MERGED_PAGE_MAX_EVENTS + 1
+    )
     label_filter = LabelEventFilter.from_label_filters(
         order=test_case.order,
         account__ids=_copy(test_case.account__ids),
@@ -616,6 +622,12 @@ async def test_filter_returns_the_events_of_the_label_filter(
     label_events = await filter_event_ids(client=prefect_client, event_filter=label_filter, retention=RETENTION)
 
     assert set(id_events) == {seeded[key] for key in test_case.expected}
+    assert await _merged_event_ids(client=prefect_client, filters=past_merged_page_filters) == id_events
+    for offset in (0, 2):
+        past_merged_page = await _merged_event_ids(
+            client=prefect_client, filters=past_merged_page_filters, limit=2, offset=offset
+        )
+        assert past_merged_page == id_events[offset : offset + 2]
     label_expected = test_case.label_expected if test_case.label_expected is not None else test_case.expected
     assert set(label_events) == {seeded[key] for key in label_expected}
     if test_case.label_expected is None:

@@ -111,7 +111,9 @@ class Events(ObjectType):
 
         return await Events.query(
             info=info,
-            event_filters=event_filter.for_primary_nodes(primary_node__ids=primary_node__ids),
+            event_filters=event_filter.for_primary_nodes(
+                primary_node__ids=primary_node__ids, page_end=(offset or 0) + limit
+            ),
             limit=limit,
             offset=offset,
         )

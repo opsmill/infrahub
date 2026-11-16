@@ -48,6 +48,9 @@ PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS = frozenset(
 )
 """Events whose primary node, a proposed change or a group, is not part of their resource ID."""
 
+MERGED_PAGE_MAX_EVENTS = 1_000
+"""The furthest end of a page read through the two filters of a primary node, each of which returns every event up to it."""
+
 
 class InfrahubEventFilter(EventFilter):
     def to_request(self) -> dict[str, Any]:
@@ -148,11 +151,18 @@ class InfrahubEventFilter(EventFilter):
         # Other events also carry the branch name on their resource, but not in its ID.
         return EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branch_names}))
 
-    def for_primary_nodes(self, primary_node__ids: list[str] | None) -> list[InfrahubEventFilter]:
+    def for_primary_nodes(self, primary_node__ids: list[str] | None, page_end: int) -> list[InfrahubEventFilter]:
         """Return the filters that together match this filter's events of the primary nodes, each event once.
 
         The event types that keep the node ID in their resource ID are matched through that indexed ID. The other
-        event types carry the node only in a label, which has no index, so a filter of its own lists them.
+        event types carry the node only in a label, which has no index, so a filter of its own lists them. The events
+        of two filters are merged in memory up to the end of the page, so a page that ends past `MERGED_PAGE_MAX_EVENTS`
+        is read through one filter that matches the label for every event type, which the task manager pages.
+
+        Args:
+            primary_node__ids: The IDs of the primary nodes, or None to read this filter as it is.
+            page_end: The offset of the page plus its limit.
+
         """
         if not primary_node__ids:
             return [self]
@@ -199,9 +209,13 @@ class InfrahubEventFilter(EventFilter):
                     event=EventNameFilter(name=node_in_label), labels={"infrahub.node.id": primary_node__ids}
                 )
             )
+        if len(filters) > 1 and page_end > MERGED_PAGE_MAX_EVENTS:
+            return [self._with_resource_labels(event=self.event, labels={"infrahub.node.id": primary_node__ids})]
         return filters
 
-    def _with_resource_labels(self, event: EventNameFilter, labels: dict[str, list[str] | str]) -> InfrahubEventFilter:
+    def _with_resource_labels(
+        self, event: EventNameFilter | None, labels: dict[str, list[str] | str]
+    ) -> InfrahubEventFilter:
         """Return a copy for the event types, with the labels added to its resource conditions, so an event must match both."""
         resource = self.resource or EventResourceFilter()
         current_labels = resource.labels.root if resource.labels else {}

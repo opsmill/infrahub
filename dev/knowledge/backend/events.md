@@ -302,7 +302,10 @@ without an index, so a label filter reads every related row in the range, while 
 - The two filters of a primary node are sent as two requests (`PrefectEvent.query_merged_events`).
   Each returns its events up to the end of the page, and the pages are merged by time and then ID,
   the order the task manager uses, before the offset is applied; a count is the sum of both
-  counts. The filters list different event types, so no event is returned twice.
+  counts. The filters list different event types, so no event is returned twice. A page that ends
+  past `MERGED_PAGE_MAX_EVENTS` (1,000) is read through one filter on the `infrahub.node.id` label
+  instead, which the task manager pages, so a deep offset does not load every earlier event into the
+  task manager and the API server twice.
 - An event type that sets the `infrahub.node.id` label on a resource whose ID is not one of the
   four forms must be added to `PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS`; otherwise a node filter does
   not return its events. `backend/tests/unit/task_manager/event/test_models.py` reads every event

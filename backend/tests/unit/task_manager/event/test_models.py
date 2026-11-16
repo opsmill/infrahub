@@ -14,7 +14,11 @@ import pytest
 import infrahub.events
 from infrahub.events.constants import EventSortOrder
 from infrahub.events.utils import get_all_events
-from infrahub.task_manager.event.models import PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS, InfrahubEventFilter
+from infrahub.task_manager.event.models import (
+    MERGED_PAGE_MAX_EVENTS,
+    PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS,
+    InfrahubEventFilter,
+)
 
 if TYPE_CHECKING:
     from infrahub.events.models import InfrahubEvent
@@ -277,7 +281,7 @@ def test_primary_nodes_are_matched_by_resource_id_except_for_the_events_that_kee
         exclude_prefixes=test_case.exclude_prefixes,
     )
 
-    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"])
+    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"], page_end=MERGED_PAGE_MAX_EVENTS)
 
     assert [(_event(node_filter), _resource(node_filter)) for node_filter in filters] == test_case.expected
 
@@ -286,7 +290,7 @@ def test_a_filter_without_a_primary_node_is_read_as_it_is() -> None:
     """Without a primary node there is one filter to read, unchanged."""
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, event_type=["infrahub.node.updated"])
 
-    assert event_filter.for_primary_nodes(primary_node__ids=None) == [event_filter]
+    assert event_filter.for_primary_nodes(primary_node__ids=None, page_end=MERGED_PAGE_MAX_EVENTS + 1) == [event_filter]
 
 
 def test_the_filters_of_a_primary_node_keep_the_time_range_and_the_other_conditions() -> None:
@@ -294,7 +298,7 @@ def test_the_filters_of_a_primary_node_keep_the_time_range_and_the_other_conditi
     until = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.ASC, account__ids=["a1"], until=until)
 
-    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"])
+    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"], page_end=MERGED_PAGE_MAX_EVENTS)
 
     assert [
         (node_filter.order.value, node_filter.to_request()["occurred"], _related(node_filter))
@@ -306,6 +310,64 @@ def test_the_filters_of_a_primary_node_keep_the_time_range_and_the_other_conditi
             [{"id": ["infrahub.account.a1"], "role": ["infrahub.account"]}],
         )
     ] * 2
+
+
+PAST_THE_MERGED_PAGE_CASES = [
+    PrimaryNodeFilterCase(
+        name="no_event_type_without_the_account_events",
+        event_type=None,
+        exclude_prefixes=["infrahub.account."],
+        expected=[
+            (
+                {"prefix": ["infrahub."], "exclude_prefix": ["infrahub.account."]},
+                {"labels": {"infrahub.node.id": ["n1"]}, "distinct": False},
+            )
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="both_kinds_of_event_types_with_the_provider_condition",
+        event_type=["infrahub.node.updated", "infrahub.group.auto_created"],
+        event_type_filter={"group_auto_create": {"idp": ["provider1"]}},
+        expected=[
+            (
+                {"name": ["infrahub.node.updated", "infrahub.group.auto_created"]},
+                {
+                    "labels": {"infrahub.security.idp": ["provider1"], "infrahub.node.id": ["n1"]},
+                    "distinct": False,
+                },
+            )
+        ],
+    ),
+    PrimaryNodeFilterCase(
+        name="event_types_whose_resource_id_holds_the_node_id",
+        event_type=["infrahub.node.updated"],
+        expected=[
+            (
+                {"name": ["infrahub.node.updated"]},
+                {"labels": {"prefect.resource.id": NODE_RESOURCE_IDS, "infrahub.node.id": ["n1"]}, "distinct": False},
+            )
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PAST_THE_MERGED_PAGE_CASES])
+def test_a_page_ending_past_the_merged_events_is_read_through_one_filter(test_case: PrimaryNodeFilterCase) -> None:
+    """Where a primary node needs two filters, a page ending past the merged events matches the label in one filter.
+
+    That filter keeps the event types and the other resource conditions, and a request whose event types keep the
+    node in their resource ID still matches that ID.
+    """
+    event_filter = InfrahubEventFilter.from_filters(
+        order=EventSortOrder.DESC,
+        event_type=test_case.event_type,
+        event_type_filter=test_case.event_type_filter,
+        exclude_prefixes=test_case.exclude_prefixes,
+    )
+
+    filters = event_filter.for_primary_nodes(primary_node__ids=["n1"], page_end=MERGED_PAGE_MAX_EVENTS + 1)
+
+    assert [(_event(node_filter), _resource(node_filter)) for node_filter in filters] == test_case.expected
 
 
 def _node_id_expression_and_resource_id(function: ast.FunctionDef) -> tuple[str | None, str | None]:

@@ -159,7 +159,9 @@ MERGED_PAGE_CASES = [
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MERGED_PAGE_CASES])
 async def test_the_pages_of_two_filters_are_merged_by_time_then_id(test_case: MergedPageCase) -> None:
     """Each filter is asked for its events up to the end of the page, and the offset is applied to the merged events."""
-    filters = InfrahubEventFilter.from_filters(order=test_case.order).for_primary_nodes(primary_node__ids=["n1"])
+    filters = InfrahubEventFilter.from_filters(order=test_case.order).for_primary_nodes(
+        primary_node__ids=["n1"], page_end=3
+    )
     task_manager = ScriptedTaskManager(
         responses=[_page(events=test_case.pages[0], total=5), _page(events=test_case.pages[1], total=2)]
     )
