@@ -60,7 +60,7 @@ class DependentNodesQuery(Query):
 // --------------------
 // start with all possible active Relationship paths on a branch we care about
 // --------------------
-MATCH (node:%(node_kind)s)%(lstart)s[r1:IS_RELATED]%(lend)s(rel:Relationship {name: $rel_identifier})%(rstart)s[r2:IS_RELATED]%(rend)s(peer:Node)
+MATCH (node:%(node_kind)s)%(lstart)s[r1:IS_RELATED]%(lend)s(rel:Relationship {name: $rel_identifier})%(rstart)s[r2:IS_RELATED]%(rend)s(peer)
 WHERE peer.uuid IN $peer_uuids
 AND peer <> node
 AND r1.branch IN [$branch, $default_branch, $global_branch]
