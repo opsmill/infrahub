@@ -365,6 +365,7 @@ class NodeCreateAllQuery(NodeQuery):
                 value_key: attr.content.value_key, value: attr.content.value, is_default: attr.content.is_default
             })
             RETURN av
+            LIMIT 1
         }
         CALL (n, attr, av) {
             CREATE (a:Attribute %(attr_vertex)s)
