@@ -38,6 +38,20 @@ describe("useTitle", () => {
     expect(result.current).toBeNull();
   });
 
+  test("keeps the later registration's title when an earlier one changes its title", async () => {
+    // GIVEN
+    const parent = await renderHook((title: string = "Loading") => useTitle(title), {
+      initialProps: "Loading",
+    });
+    const child = await renderHook(() => useTitleWithRegistered("Tokens"));
+
+    // WHEN
+    await parent.rerender("admin");
+
+    // THEN
+    expect(child.result.current).toBe("Tokens");
+  });
+
   test("falls back to the earlier registration when the latest one unmounts", async () => {
     // GIVEN
     const parent = await renderHook(() => useTitleWithRegistered("Profile"));
