@@ -161,6 +161,10 @@ class GraphAttributeValueProperties(BaseModel):
     value_key: str | None = Field(None, description="Hash of the value, indexed for a value of a large attribute kind")
 
 
+class GraphAttributeValueIndexedProperties(BaseModel):
+    value: Any = Field(..., description="value of the attribute")
+
+
 class GraphAttributeIPNetworkProperties(BaseModel):
     value: str = Field(..., description="value of the attribute")
     is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
@@ -191,7 +195,7 @@ class GraphAttributeValueNode(GraphVertex):
 
 class GraphAttributeValueIndexedNode(GraphVertex):
     default_label: str = "AttributeValueIndexed"
-    properties: GraphAttributeValueProperties
+    properties: GraphAttributeValueIndexedProperties
     relationships: GraphAttributeValueRelationships
 
 
