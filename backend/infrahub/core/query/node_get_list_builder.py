@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery
+from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery, get_index_starts
 from infrahub.core.query.node import NodeGetListQuery
 
 if TYPE_CHECKING:
@@ -34,7 +34,12 @@ class NodeGetListQueryBuilder:
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
     ) -> NodeGetListQuery:
-        query = NodeGetListQuery(
+        index_start = await self._select_index_start(
+            node_kind=schema.kind,
+            index_starts=get_index_starts(schema=schema, filters=filters, partial_match=partial_match),
+        )
+        return await NodeGetListQuery.init(
+            db=self.db,
             schema=schema,
             branch=branch,
             filters=filters,
@@ -44,10 +49,8 @@ class NodeGetListQueryBuilder:
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
             order=order,
+            index_start=index_start,
         )
-        index_start = await self._select_index_start(node_kind=schema.kind, index_starts=query.get_index_starts())
-        await query.query_init(db=self.db, index_start=index_start)
-        return query
 
     async def _select_index_start(self, node_kind: str, index_starts: list[IndexStart]) -> IndexStart | None:
         if not index_starts:

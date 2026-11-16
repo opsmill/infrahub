@@ -24,15 +24,17 @@ class NodeGetListQueryBuilder:
         self.db = db
 
     async def build(self, schema: MainSchemaTypes, branch: Branch, filters: dict[str, Any]) -> NodeGetListQuery:
-        query = NodeGetListQuery(schema=schema, branch=branch, filters=filters)
-        index_start = await self._select_index_start(node_kind=schema.kind, index_starts=query.get_index_starts())
-        await query.query_init(db=self.db, index_start=index_start)
-        return query
+        index_starts = get_index_starts(schema=schema, filters=filters, partial_match=False)
+        index_start = await self._select_index_start(node_kind=schema.kind, index_starts=index_starts)
+        return await NodeGetListQuery.init(
+            db=self.db, schema=schema, branch=branch, filters=filters, index_start=index_start
+        )
 
 # ❌ The query runs another query while it builds its own text
 class NodeGetListQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        count_query = NodeGetListIndexStartQuery(node_kind=self.schema.kind, index_starts=self.get_index_starts())
+        index_starts = get_index_starts(schema=self.schema, filters=self.filters, partial_match=self.partial_match)
+        count_query = NodeGetListIndexStartQuery(node_kind=self.schema.kind, index_starts=index_starts)
         await count_query.execute(db=db)
 ```
 
@@ -42,10 +44,12 @@ What this keeps true:
 - The cost of the decision shows at the call site, where it can be skipped or made once for several queries.
 - A test can pass each possible decision to the query and compare the results, without arranging data that makes the lookup choose it.
 
+The class that decides must not ask the query for its input. When both need the same parsing of the arguments, such as turning filters into requirements, put that parsing in functions that both call. The dependency then runs one way: the deciding class creates the query, and the query does not know the deciding class.
+
 Where the codebase already does this:
 
 - Path traversal: the resolver in `backend/infrahub/graphql/queries/path.py` calls `SchemaPlanner.plan()` and passes the plan to `PathTraversalExecutor` (`backend/infrahub/graph_traversal/executor.py`), which hands it to the queries in `backend/infrahub/graph_traversal/path.py`. None of them calls the planner.
-- Filtered list reads: `NodeGetListQueryBuilder` (`backend/infrahub/core/query/node_get_list_builder.py`) runs `NodeGetListIndexStartQuery` and passes the selected start to `NodeGetListQuery`.
+- Filtered list reads: `NodeGetListQueryBuilder` (`backend/infrahub/core/query/node_get_list_builder.py`) runs `NodeGetListIndexStartQuery` and passes the selected start to the constructor of `NodeGetListQuery`. Both read the filters through `get_filter_requirements` (`backend/infrahub/core/query/node_get_list_filters.py`).
 
 ## Write Cypher patterns in the query modules
 
@@ -62,4 +66,4 @@ A read that filters a kind on an exact attribute value or on peer ids can start 
 - **Leave the other path byte-identical.** One statement that holds both starts in a `UNION` changes the text of every query: the planner can plan the previous start differently inside it, and the part that is not used can still scan the kind. With the choice made before the query is built, a query that keeps the previous start keeps its text and its plan.
 - **Prove it with each start passed in.** In a test, build the query once per start it can take and compare the returned ids with the expected ones, so the result does not depend on what the count selects. Profile one filter that few nodes match and one that most nodes match.
 
-`build_index_start` and `NodeGetListIndexStartQuery` (`backend/infrahub/core/query/index_start.py`) are the instance to read alongside a new one.
+`get_index_starts` and `NodeGetListIndexStartQuery` (`backend/infrahub/core/query/index_start.py`) are the instance to read alongside a new one.

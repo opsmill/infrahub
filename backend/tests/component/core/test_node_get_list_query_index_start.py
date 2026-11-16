@@ -9,7 +9,7 @@ import pytest
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.index_start import build_index_start
+from infrahub.core.query.index_start import build_index_start, get_index_starts
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.query.node_get_list_builder import NodeGetListQueryBuilder
 from infrahub.core.schema import AttributeSchema
@@ -525,12 +525,13 @@ class TestNodeGetListQueryIndexStart:
             "partial_match": test_case.partial_match,
             "at": index_start_data.before_changes if test_case.at_before_changes else None,
         }
-        index_starts = NodeGetListQuery(**details).get_index_starts()
+        index_starts = get_index_starts(
+            schema=details["schema"], filters=details["filters"], partial_match=test_case.partial_match
+        )
         assert len(index_starts) == test_case.index_starts
 
         for index_start in index_starts:
-            query = NodeGetListQuery(**details)
-            await query.query_init(db=db, index_start=index_start)
+            query = await NodeGetListQuery.init(db=db, index_start=index_start, **details)
             await query.execute(db=db)
 
             assert index_start_data.car_names(node_ids=query.get_node_ids()) == sorted(test_case.expected)
@@ -631,25 +632,22 @@ class TestNodeGetListQueryIndexStart:
             "schema": db.schema.get_node_schema(name="TestCar", branch=index_start_data.main),
             "filters": {"name__value": "car-0"},
         }
-        index_starts = NodeGetListQuery(**details).get_index_starts()
+        index_starts = get_index_starts(schema=details["schema"], filters=details["filters"], partial_match=False)
         assert len(index_starts) == 1
 
         await NodeGetListQuery.init(db=counting_db, **details)
-        query = NodeGetListQuery(**details)
-        await query.query_init(db=counting_db, index_start=index_starts[0])
+        await NodeGetListQuery.init(db=counting_db, index_start=index_starts[0], **details)
 
         assert counting_db.query_counts == Counter()
 
     async def test_index_start_with_node_ids(self, db: InfrahubDatabase, index_start_data: IndexStartData) -> None:
         schema = db.schema.get_node_schema(name="TestCar", branch=index_start_data.main)
-        index_starts = NodeGetListQuery(
-            branch=index_start_data.main, schema=schema, filters={"name__value": "car-0"}
-        ).get_index_starts()
-        query = NodeGetListQuery(
-            branch=index_start_data.main,
-            schema=schema,
-            filters={"ids": [index_start_data.car_ids["car-0"]], "name__value": "car-0"},
-        )
+        index_starts = get_index_starts(schema=schema, filters={"name__value": "car-0"}, partial_match=False)
 
         with pytest.raises(ValueError, match=r"^A list query filtered on node ids cannot start from an index$"):
-            await query.query_init(db=db, index_start=index_starts[0])
+            NodeGetListQuery(
+                branch=index_start_data.main,
+                schema=schema,
+                filters={"ids": [index_start_data.car_ids["car-0"]], "name__value": "car-0"},
+                index_start=index_starts[0],
+            )

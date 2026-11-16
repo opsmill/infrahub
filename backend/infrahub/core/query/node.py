@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import contextlib
-import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import ujson
@@ -40,7 +37,12 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.index_start import IndexStart, build_index_start
+from infrahub.core.query.node_get_list_filters import (
+    NODE_METADATA_PREFIX,
+    FieldAttributeRequirement,
+    FieldAttributeRequirementType,
+    get_filter_requirements,
+)
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import (
     build_subquery_filter,
@@ -66,17 +68,17 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable, Generator, Iterable
+    from collections.abc import AsyncIterator, Generator, Iterable
 
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.query.index_start import IndexStart
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
-    from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.core.schema.template_schema import TemplateSchema
     from infrahub.database import InfrahubDatabase
 
@@ -84,21 +86,6 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
-NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
-
-IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
-
-
-def _compress_ipv6(text: str) -> str:
-    """Return a complete IPv6 address or interface in its compressed form.
-
-    Raises:
-        ValueError: When the text is not a complete IPv6 address or interface.
-
-    """
-    if "/" in text:
-        return ipaddress.IPv6Interface(text).with_prefixlen
-    return str(ipaddress.IPv6Address(text))
 
 
 @dataclass
@@ -1885,67 +1872,6 @@ class NodeGetByHFIDQuery(Query):
         return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
 
 
-class FieldAttributeRequirementType(Enum):
-    FILTER = "filter"
-    ORDER = "order"
-
-
-@dataclass
-class FieldAttributeRequirement:
-    field_name: str
-    field: AttributeSchema | RelationshipSchema | None
-    field_attr_name: str
-    field_attr_value: Any
-    index: int
-    types: list[FieldAttributeRequirementType] = dataclass_field(default_factory=list)
-    order_direction: OrderDirection | None = None
-    # created_at, updated_at, created_by, updated_by
-    is_metadata: bool = False
-    schema_order_position: int | None = None
-
-    @property
-    def is_attribute_value(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
-
-    @property
-    def is_filter(self) -> bool:
-        return FieldAttributeRequirementType.FILTER in self.types
-
-    @property
-    def is_order(self) -> bool:
-        return FieldAttributeRequirementType.ORDER in self.types
-
-    @property
-    def is_metadata_order(self) -> bool:
-        return self.is_metadata and FieldAttributeRequirementType.ORDER in self.types
-
-    @property
-    def is_metadata_filter(self) -> bool:
-        return self.is_metadata and FieldAttributeRequirementType.FILTER in self.types
-
-    @property
-    def node_value_query_variable(self) -> str:
-        return f"attr{self.index}_node_value"
-
-    @property
-    def comparison_operator(self) -> str:
-        if self.field_attr_name == "isnull":
-            return "=" if self.field_attr_value is True else "<>"
-        if self.field_attr_name in ("values", "ids"):
-            return "IN"
-        if self.field_attr_name == "before":
-            return "<"
-        if self.field_attr_name == "after":
-            return ">"
-        return "="
-
-    @property
-    def field_attr_comparison_value(self) -> Any:
-        if self.field_attr_name == "isnull":
-            return "NULL"
-        return self.field_attr_value
-
-
 class NodeGetListQuery(Query):
     name = "node_get_list"
     type = QueryType.READ
@@ -1956,12 +1882,29 @@ class NodeGetListQuery(Query):
         filters: dict | None = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
+        index_start: IndexStart | None = None,
         **kwargs: Any,
     ) -> None:
+        """Prepare the list query of a kind.
+
+        Args:
+            schema: The kind to list.
+            filters: The filters of the read.
+            partial_match: Match attribute values as substrings.
+            order: The order of the result.
+            index_start: The filter to enter the query from. Without one the query reads every node of the kind.
+            **kwargs: Passed to the base query.
+
+        Raises:
+            ValueError: When an index start comes with a filter on node ids.
+
+        """
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
-        self.index_start: IndexStart | None = None
+        if index_start and filters and ("id" in filters or "ids" in filters):
+            raise ValueError("A list query filtered on node ids cannot start from an index")
+        self.index_start = index_start
         self._variables_to_track = ["n", "rb"]
         self._validate_filters()
 
@@ -2149,20 +2092,9 @@ WITH %(tracked_vars)s,
                         self.add_to_query(f"AND {field} {far.comparison_operator} ${param_name}")
                     self.params[param_name] = far.field_attr_value
 
-    async def query_init(self, db: InfrahubDatabase, index_start: IndexStart | None = None, **kwargs: Any) -> None:  # noqa: ARG002
-        """Build the text of the query.
-
-        Args:
-            db: Gives the schema and the name of the id function; no query is sent.
-            index_start: One of the index starts of this query, to enter the query from. Without one the query
-                reads every node of the kind.
-
-        Raises:
-            ValueError: When an index start comes with a filter on node ids.
-
-        """
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
-        self.index_start = index_start
+        index_start = self.index_start
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
 
@@ -2179,9 +2111,6 @@ WITH %(tracked_vars)s,
             # first MATCH for Neo4j to use that index instead of reading every node of the kind.
             node_labels = f"Node:{self.schema.kind}"
             node_ids_where = "n.uuid IN $node_ids"
-
-        if index_start and node_ids_where:
-            raise ValueError("A list query filtered on node ids cannot start from an index")
 
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
@@ -2270,26 +2199,6 @@ WITH %(tracked_vars)s,
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
-
-    def get_index_starts(self) -> list[IndexStart]:
-        """Return the index start of each filter that has one, none when the query filters on node ids."""
-        if not self.filters or "id" in self.filters or "ids" in self.filters:
-            return []
-
-        index_starts: list[IndexStart] = []
-        for far in self._get_filter_requirements(start_index=1):
-            if far.is_metadata:
-                continue
-            index_start = build_index_start(
-                field=far.field,
-                filter_name=far.field_attr_name,
-                filter_value=far.field_attr_value,
-                partial_match=self.partial_match,
-                position=len(index_starts) + 1,
-            )
-            if index_start:
-                index_starts.append(index_start)
-        return index_starts
 
     def _add_index_start_query(self, index_start: IndexStart, branch_filter: str) -> None:
         """Match the nodes of the kind that the index start reaches.
@@ -2465,160 +2374,6 @@ WITH %(tracked_vars)s,
 
         return f"WHERE {far.node_value_query_variable} {far.comparison_operator} ${var_name}"
 
-    def _get_metadata_field_details(self, filter_key: str) -> tuple[str, str] | None:
-        """Parse a metadata filter key into field name and operator.
-
-        Args:
-            filter_key: Filter key like "node_metadata__created_at__before"
-
-        Returns:
-            Tuple of (field_name, operator) like ("created_at", "before"), or None if not a metadata filter.
-
-        """
-        if not filter_key.startswith(NODE_METADATA_PREFIX):
-            return None
-        parts = filter_key.split("__")
-        metadata_field_name = parts[1]  # created_at, updated_at, created_by, updated_by
-        metadata_operator = parts[2] if len(parts) > 2 else "value"  # value, before, after, ids
-        return metadata_field_name, metadata_operator
-
-    def _build_metadata_filter_requirement(
-        self,
-        field_name: str,
-        operator: str,
-        value: Any,
-        index: int,
-    ) -> FieldAttributeRequirement:
-        """Build a FieldAttributeRequirement for a metadata filter."""
-        if isinstance(value, datetime):
-            value = Timestamp(value.isoformat()).to_string()
-        return FieldAttributeRequirement(
-            field_name=field_name,
-            field=None,
-            field_attr_name=operator,
-            field_attr_value=value,
-            index=index,
-            types=[FieldAttributeRequirementType.FILTER],
-            is_metadata=True,
-        )
-
-    def _build_attribute_filter_requirement(
-        self,
-        field_name: str,
-        field: AttributeSchema | RelationshipSchema | None,
-        attr_name: str,
-        attr_value: Any,
-        index: int,
-    ) -> FieldAttributeRequirement:
-        """Build a FieldAttributeRequirement for an attribute/relationship filter."""
-        if isinstance(attr_value, Enum):
-            attr_value = attr_value.value
-        return FieldAttributeRequirement(
-            field_name=field_name,
-            field=field,
-            field_attr_name=attr_name,
-            field_attr_value=self._normalize_ip_filter_value(
-                field_name=field_name, field=field, attr_name=attr_name, attr_value=attr_value
-            ),
-            index=index,
-            types=[FieldAttributeRequirementType.FILTER],
-        )
-
-    def _normalize_ip_filter_value(
-        self,
-        field_name: str,
-        field: AttributeSchema | RelationshipSchema | None,
-        attr_name: str,
-        attr_value: Any,
-    ) -> Any:
-        """Return an IP filter value in the form IP values are saved in, so any valid notation of it matches.
-
-        A value that does not parse as an IP is returned unchanged.
-        """
-        if attr_name not in ("value", "values"):
-            return attr_value
-
-        normalize: Callable[[str], str]
-        if field is None and field_name in ("any", "attribute"):
-            normalize = _compress_ipv6
-        elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
-            # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.
-            normalize = _compress_ipv6 if self.partial_match else field.get_class()._normalize_value
-        else:
-            return attr_value
-
-        def _normalize(value: Any) -> Any:
-            if not isinstance(value, str):
-                return value
-            try:
-                return normalize(value)
-            except ValueError:
-                return value
-
-        if isinstance(attr_value, list):
-            return [_normalize(value) for value in attr_value]
-        return _normalize(attr_value)
-
-    def _get_filter_requirements(self, start_index: int) -> list[FieldAttributeRequirement]:
-        """Build filter requirements from self.filters.
-
-        Processes both metadata and attribute/relationship filters in a single pass.
-        Returns list of FieldAttributeRequirement objects.
-        """
-        if not self.filters:
-            return []
-
-        requirements: list[FieldAttributeRequirement] = []
-        internal_filters = ["any", "attribute", "relationship"]
-        processed_fields: set[str] = set()
-        index = start_index
-
-        for filter_key in self.filters:
-            # Check if this is a metadata filter
-            metadata_details = self._get_metadata_field_details(filter_key)
-            if metadata_details:
-                field_name, operator = metadata_details
-                requirements.append(
-                    self._build_metadata_filter_requirement(
-                        field_name=field_name,
-                        operator=operator,
-                        value=self.filters[filter_key],
-                        index=index,
-                    )
-                )
-                index += 1
-                continue
-
-            # Handle attribute/relationship filter
-            # "height__value" -> "height"
-            field_name = filter_key.split("__", maxsplit=1)[0]
-            if field_name not in self.schema.valid_input_names + internal_filters:
-                continue
-
-            # Skip if we've already processed this field (extract_field_filters handles all attrs for a field)
-            if field_name in processed_fields:
-                continue
-            processed_fields.add(field_name)
-
-            attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
-            if not attr_filters:
-                continue
-
-            field = self.schema.get_field(field_name, raise_on_error=False)
-            for attr_name, attr_value in attr_filters.items():
-                requirements.append(
-                    self._build_attribute_filter_requirement(
-                        field_name=field_name,
-                        field=field,
-                        attr_name=attr_name,
-                        attr_value=attr_value,
-                        index=index,
-                    )
-                )
-                index += 1
-
-        return requirements
-
     def _upsert_metadata_order_requirement(
         self,
         filter_requirements: list[FieldAttributeRequirement],
@@ -2736,7 +2491,9 @@ WITH %(tracked_vars)s,
 
     def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
         """Build unified list of field requirements for filtering and ordering."""
-        filter_requirements = self._get_filter_requirements(start_index=1)
+        filter_requirements = get_filter_requirements(
+            schema=self.schema, filters=self.filters, partial_match=self.partial_match
+        )
         if disable_order:
             return filter_requirements
         return filter_requirements + self._get_order_requirements(filter_requirements)

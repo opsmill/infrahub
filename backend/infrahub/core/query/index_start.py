@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode
 from infrahub.core.query import Query, QueryElement, QueryNode, QueryRel, QueryRelDirection, QueryType
+from infrahub.core.query.node_get_list_filters import get_filter_requirements
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import is_large_attribute_type
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
 
 # A start from an index reads every edge of the indexed vertices, whatever kind is on the other side; in query
 # profiles that reads more than a read of every node of the kind at one node per edge, and less at two.
@@ -136,6 +140,27 @@ def build_index_start(
     if isinstance(field, RelationshipSchema):
         return _build_peer_start(field=field, filter_name=filter_name, filter_value=filter_value, position=position)
     return None
+
+
+def get_index_starts(schema: MainSchemaTypes, filters: dict[str, Any] | None, partial_match: bool) -> list[IndexStart]:
+    """Return the index start of each filter of a list read that has one, none when the read filters on node ids."""
+    if not filters or "id" in filters or "ids" in filters:
+        return []
+
+    index_starts: list[IndexStart] = []
+    for requirement in get_filter_requirements(schema=schema, filters=filters, partial_match=partial_match):
+        if requirement.is_metadata:
+            continue
+        index_start = build_index_start(
+            field=requirement.field,
+            filter_name=requirement.field_attr_name,
+            filter_value=requirement.field_attr_value,
+            partial_match=partial_match,
+            position=len(index_starts) + 1,
+        )
+        if index_start:
+            index_starts.append(index_start)
+    return index_starts
 
 
 class NodeGetListIndexStartQuery(Query):
