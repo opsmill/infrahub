@@ -54,6 +54,14 @@ def test_item_node_memgraph() -> None:
     assert item.get_query_exist_drop() == "DROP CONSTRAINT ON (n:CoreNode) ASSERT EXISTS (n.uuid)"
 
 
+def test_item_node_memgraph_optional_property_has_no_constraint() -> None:
+    item = ConstraintNodeMemgraph(
+        item_name="attributevalue", item_label="AttributeValue", property="value_key", type="STRING", mandatory=False
+    )
+    assert item.get_add_queries() == []
+    assert item.get_drop_queries() == []
+
+
 @pytest.mark.skipif(
     os.getenv("INFRAHUB_DB_TYPE") != "neo4j",
     reason="Must use Neo4j to run this test",
@@ -119,6 +127,13 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase) -> Non
             property="uuid",
             type=GraphPropertyType.STRING,
             mandatory=True,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="attributevalue",
+            item_label="AttributeValue",
+            property="value_key",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
         ),
         ConstraintNodeNeo4j(
             item_name="attributeipnetwork",
@@ -500,6 +515,13 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase) -> 
             mandatory=True,
         ),
         ConstraintNodeMemgraph(
+            item_name="attributevalue",
+            item_label="AttributeValue",
+            property="value_key",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeMemgraph(
             item_name="attributeipnetwork",
             item_label="AttributeIPNetwork",
             property="value",
@@ -637,6 +659,9 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ),
         ConstraintInfo(
             item_name="node_attributeipnetwork_version_type", item_label="AttributeIPNetwork", property="version"
+        ),
+        ConstraintInfo(
+            item_name="node_attributevalue_value_key_type", item_label="AttributeValue", property="value_key"
         ),
         ConstraintInfo(item_name="node_boolean_value_exist", item_label="Boolean", property="value"),
         ConstraintInfo(item_name="node_boolean_value_type", item_label="Boolean", property="value"),
