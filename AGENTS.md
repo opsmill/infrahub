@@ -173,6 +173,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
+- Investigate test timeouts for avoidable work and optimize the measured bottleneck while preserving assertions and isolation; follow [Investigating test timeouts](dev/guides/backend/investigating-test-timeouts.md) before increasing a deadline.
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
@@ -192,6 +193,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Never Do
 
+- Skip, quarantine, mark as expected failure, or deselect a test to address flakiness. Keep its assertions active; when the cause is unknown, collect diagnostics and report the unresolved failure.
 - Commit secrets, API keys, or credentials
 - Edit generated files manually
 - Skip linting in CI
