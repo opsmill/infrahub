@@ -111,7 +111,9 @@ database, and can then rewrite the tables to return the disk space.
   day of end times at a time, from the oldest, with at most 1,000 runs per transaction
   (`_RUNS_PER_TRANSACTION`), the earliest ended first, and moves to the next day once a transaction
   deletes fewer, which leaves only runs that other sessions hold locked. It deletes the runs first,
-  so task runs and states follow by cascade, then the logs and artifacts of the deleted IDs. Keep
+  so task runs and states follow by cascade, then the logs and artifacts of the deleted IDs, in the
+  same transaction, so no log or artifact outlives its run. The bound is on runs only: a transaction
+  deletes every task run, state, log and artifact of its 1,000 runs, however many there are. Keep
   that order and `FOR UPDATE SKIP LOCKED`: they match Prefect's vacuum, so the two can run at the
   same time without deadlocking. Passes repeat until one deletes nothing, which catches subflows
   that became top-level when their parent was deleted.

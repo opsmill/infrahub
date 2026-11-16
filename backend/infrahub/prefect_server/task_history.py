@@ -45,7 +45,7 @@ _TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_stat
 _ACTIVITY_LOG_TABLES = ("events", "event_resources")
 # Above this many pages a table's live size is estimated from a sample of its pages, so a mostly live table is not read whole.
 _EXACT_MEASURE_PAGES = 10_000
-# Bounds how long one delete holds its runs locked and how much a failure rolls back, while each statement still removes many rows.
+# Bounds the runs one delete locks and rolls back, not their logs and artifacts, which share its transaction so none outlives its run.
 _RUNS_PER_TRANSACTION = 1_000
 # A lock held this long belongs to a stuck or long-running session, which would otherwise hold the cleanup until the maintenance timeout.
 _DELETE_LOCK_TIMEOUT = timedelta(minutes=1)
