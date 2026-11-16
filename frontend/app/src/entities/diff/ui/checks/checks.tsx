@@ -29,7 +29,7 @@ export const Checks = () => {
 
   if (!validators.length) {
     return (
-      <div className="grow bg-stone-100 text-sm">
+      <div className="grow bg-background text-sm">
         <ChecksSummary isLoading={isPending} validators={validators} />
         <NoDataFound message="No checks for this proposed change." />
       </div>
@@ -37,7 +37,7 @@ export const Checks = () => {
   }
 
   return (
-    <div className="grow bg-stone-100 text-sm">
+    <div className="grow bg-background text-sm">
       <ChecksSummary isLoading={isPending} validators={validators} />
       <div className="space-y-2 p-4 pt-0">
         {validators.map((item) => (

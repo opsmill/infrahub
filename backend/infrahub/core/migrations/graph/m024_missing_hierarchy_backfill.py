@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
@@ -21,7 +22,7 @@ class BackfillMissingHierarchyQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)

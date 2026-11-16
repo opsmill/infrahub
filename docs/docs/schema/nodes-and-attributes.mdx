@@ -158,6 +158,8 @@ nodes:
 
 Setting `unique: true` on an attribute adds a single-field constraint, `["<attributename>__value"]`, to the node's `uniqueness_constraints`. Infrahub checks it separately from any composite constraint that includes the same attribute. The reverse also applies: a single-field constraint such as `["name__value"]` marks `name` as unique.
 
+Number pools that allocate numbers for the same unique attribute cannot have overlapping ranges, and Infrahub refuses a schema change that sets `unique: true` on an attribute while the ranges of two of its pools overlap. See [Pools for the same unique attribute](../resource-manager/allocate-number.mdx#pools-on-a-unique-attribute).
+
 To make a name unique only within its cluster, list the attribute in a composite constraint and leave `unique` unset. If the node has a `human_friendly_id`, it must be composite as well, for example `["cluster__name__value", "name__value"]`. A `human_friendly_id` of `["name__value"]` adds the constraint `["name__value"]`, which marks `name` as unique. See the [human-friendly identifier](#human-friendly-identifier-hfid) section.
 
 ```yaml {4-5} showLineNumbers

@@ -2,23 +2,30 @@ import operator
 import time
 from asyncio import Event, create_task, gather, sleep, wait, wait_for
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import pytest
 from redis.exceptions import RedisError
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
+from infrahub.core.timestamp import current_timestamp
 from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    LOCK_ACQUIRE_TIME_METRICS,
+    LOCK_RESERVE_TIME_METRICS,
     InfrahubLock,
     InfrahubLockRegistry,
     InfrahubMultiLock,
+    get_lock_cache_key,
+    get_requested_at_from_lock_token,
     get_worker_id_from_lock_token,
     initialize_lock,
 )
 from tests.helpers.log import find_logged_events
+from tests.helpers.metrics import bucket_bounds
 
 
 @dataclass
@@ -40,6 +47,53 @@ LOCK_TOKEN_CASES = [
 @pytest.mark.parametrize("case", LOCK_TOKEN_CASES, ids=[c.name for c in LOCK_TOKEN_CASES])
 def test_get_worker_id_from_lock_token(case: LockTokenCase) -> None:
     assert get_worker_id_from_lock_token(case.token) == case.expected
+
+
+@dataclass
+class LockRequestedAtCase:
+    name: str
+    token: str | None
+    expected: datetime | None
+
+
+LOCK_REQUESTED_AT_CASES = [
+    LockRequestedAtCase(
+        name="valid",
+        token="2026-01-01T10:20:30.123456Z::worker-7",
+        expected=datetime(2026, 1, 1, 10, 20, 30, 123456, tzinfo=UTC),
+    ),
+    LockRequestedAtCase(name="none", token=None, expected=None),
+    LockRequestedAtCase(name="empty", token="", expected=None),
+    LockRequestedAtCase(name="no-separator", token="2026-01-01T10:20:30.123456Z", expected=None),
+    LockRequestedAtCase(name="not-a-timestamp", token="yesterday::worker-7", expected=None),
+    LockRequestedAtCase(name="no-offset", token="2026-01-01T10:20:30.123456::worker-7", expected=None),
+    LockRequestedAtCase(name="empty-worker-id", token="2026-01-01T10:20:30.123456Z::", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", LOCK_REQUESTED_AT_CASES, ids=[c.name for c in LOCK_REQUESTED_AT_CASES])
+def test_get_requested_at_from_lock_token(case: LockRequestedAtCase) -> None:
+    assert get_requested_at_from_lock_token(case.token) == case.expected
+
+
+def test_the_request_time_of_a_token_written_by_a_lock_is_read_back() -> None:
+    before = datetime.now(tz=UTC)
+
+    requested_at = get_requested_at_from_lock_token(f"{current_timestamp()}::worker-7")
+
+    assert requested_at is not None
+    assert before <= requested_at <= datetime.now(tz=UTC)
+
+
+def test_lock_cache_key_names_the_key_a_held_lock_is_stored_under() -> None:
+    assert get_lock_cache_key(name="my-repository", namespace="repository") == "lock.repository.my-repository"
+
+
+def test_lock_cache_key_matches_the_key_of_a_registry_lock() -> None:
+    """The key is read by a process that does not hold the lock, so it must name what the lock writes."""
+    held = InfrahubLockRegistry().get(name="my-repository", namespace="repository")
+
+    assert held.remote.name == get_lock_cache_key(name="my-repository", namespace="repository")
 
 
 async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
@@ -359,6 +413,41 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "inner released",
         "outer released",
         "waiter acquired",
+    ]
+
+
+BOUNDS_PROBE_LABELS = {"lock": "bucket_bounds_probe", "type": "local"}
+
+
+def test_lock_acquire_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_ACQUIRE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_ACQUIRE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.0005",
+        "0.25",
+        "0.5",
+        "1.0",
+        "5.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
+    ]
+
+
+def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_RESERVE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_RESERVE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.001",
+        "0.5",
+        "1.0",
+        "5.0",
+        "10.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
     ]
 
 

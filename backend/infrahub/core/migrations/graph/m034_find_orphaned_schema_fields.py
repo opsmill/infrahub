@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
@@ -22,7 +23,7 @@ class FindOrphanedSchemaFieldsQuery(Query):
     name = "find_orphaned_schema_fields"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // ------------
 // Find orphaned SchemaRelationship and SchemaAttribute vertices

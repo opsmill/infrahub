@@ -36,7 +36,7 @@ export function RelationshipTab({
       {getRelationshipLabel(relationshipSchema, peerSchema)}
       {isPending && <Spinner />}
       {!isPending && (
-        <Badge className="rounded-full font-medium text-gray-80">{relationshipCount}</Badge>
+        <Badge className="rounded-full font-medium text-subtle">{relationshipCount}</Badge>
       )}
     </LinkTab>
   );
@@ -59,7 +59,7 @@ export function ObjectTaskTab({ objectKind, objectId }: TabWithCountProps) {
       {isPending ? (
         <Spinner />
       ) : (
-        <Badge className="rounded-full font-medium text-gray-80">{taskCount}</Badge>
+        <Badge className="rounded-full font-medium text-subtle">{taskCount}</Badge>
       )}
     </LinkTab>
   );

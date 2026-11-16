@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { NODE_PATH_EXCLUDELIST } from "@/entities/nodes/object/domain/model/object-kinds";

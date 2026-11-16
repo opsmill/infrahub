@@ -33,7 +33,7 @@ class DefaultBranchNodeCount(Query):
         self.kinds_to_skip = kinds_to_skip or []
         self.kinds_to_include = kinds_to_include
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "branch_names": [registry.default_branch, GLOBAL_BRANCH_NAME],
             "kinds_to_skip": self.kinds_to_skip,
@@ -144,7 +144,7 @@ class GetPathDetailsBranchQuery(GetResultMapQuery):
                 elif schema_path.relationship_schema.direction is RelationshipDirection.INBOUND:
                     self.inbound_rel_attr_map[key].append(value)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_filter_params)
         self.params.update(
@@ -320,7 +320,7 @@ class GetPathDetailsDefaultBranch(GetResultMapQuery):
                 elif schema_path.relationship_schema.direction is RelationshipDirection.INBOUND:
                     self.inbound_rel_attr_map[key].append(value)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "branch_names": self.branch_names,
             "attribute_names": self.attribute_names,

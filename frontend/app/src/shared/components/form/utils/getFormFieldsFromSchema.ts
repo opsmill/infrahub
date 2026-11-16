@@ -43,7 +43,7 @@ export const getFormFieldsFromSchema = ({
   auth,
   isDefaultBranch,
   isFilterForm,
-  pools = [],
+  pools,
   isUpdate,
   isBulkUpdate,
   parentSchema,

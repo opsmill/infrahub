@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from tests.constants import TestKind
 from tests.helpers.diff_summary import node_diff
@@ -151,22 +151,23 @@ class TestFieldLevelImpact(TestInfrahubApp):
     async def _resolve(
         self,
         *,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
         diff_summary: list[NodeDiff],
     ) -> TargetSelection:
-        return await get_field_level_impacted_subscribers(
+        return await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_CAR_WITH_OWNER, default_branch),
             diff_summary=diff_summary,
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
 
     async def test_root_node_change_selects_subscriber(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -177,6 +178,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         routing regenerates the definitions it was asked about and nothing else.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -193,6 +195,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -203,7 +206,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         exact-name match would drop it and leave the artifact stale. The label is built from the
         car's own attributes, so the routing narrows to the car's subscriber rather than widening.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_CAR_DISPLAY_LABEL, default_branch),
             diff_summary=[
                 node_diff(
@@ -216,12 +219,12 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_related_node_change_narrows_to_the_owning_member(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -233,6 +236,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         selected -- not every member of the definition.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -249,6 +253,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_unread_related_field_change_selects_nothing(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -259,6 +264,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         actually reads off the owner can implicate the cars that read it.
         """
         resolved = await self._resolve(
+            db=db,
             dataset=dataset,
             default_branch=default_branch,
             client=client,
@@ -275,6 +281,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_change_to_a_filtered_relationship_selects_every_target(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -285,7 +292,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         another owner changes which cars answer the query for both owners, so every target has to run
         even though no field the query reads back changed.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_CARS_BY_OWNER_NAME, default_branch),
             diff_summary=[
                 node_diff(
@@ -299,7 +306,6 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
@@ -308,6 +314,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
 
     async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         client: InfrahubClient,
@@ -317,7 +324,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         The query reads only the car's ``name``, but its filter matches on every attribute, so a
         change to ``color`` can move which cars answer the query.
         """
-        resolved = await get_field_level_impacted_subscribers(
+        resolved = await FieldLevelImpactResolver(db=db, client=client).resolve(
             query_report=query_report(QUERY_CARS_BY_ANY_VALUE, default_branch),
             diff_summary=[
                 node_diff(
@@ -330,7 +337,6 @@ class TestFieldLevelImpact(TestInfrahubApp):
             query_branch=default_branch.name,
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
-            client=client,
         )
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],

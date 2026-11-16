@@ -149,6 +149,10 @@ The API server and each task worker expose Prometheus metrics on `/metrics`. Tas
 
 In production, the most commonly monitored signals are API request latency, late flow runs in the task manager, database connection pool usage, and disk utilisation. See [Metrics](../deploy-manage/run-observe/metrics.mdx) for where each one is exposed.
 
+### Does the web interface have a dark theme?
+
+Yes, as an alpha feature, so some pages may still show incorrect colors. The **Theme** option in the account menu, at the bottom of the sidebar, offers System, Light, and Dark. System is the default and follows your operating system's appearance.
+
 ### How does Infrahub handle authentication and access control?
 
 Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../deploy-manage/user-management/sso/overview) and token-based API authentication (see [managing API tokens](../deploy-manage/user-management/managing-api-tokens)).
@@ -227,7 +231,11 @@ The following information is included in telemetry:
 - Infrahub version, deployment type, and platform (Python / OS / architecture)
 - Anonymous counters about the graph, schema, and features in use
 - Adoption counts: active accounts, account groups, and open branches
-- Database, worker, and infrastructure statistics
+- Database, worker, and infrastructure statistics, including the type and version of the task manager database
+- CPU cores and memory that the database, API server, and workers can use, plus:
+  - For the API server and workers, the CPU limit set on their container, once one is set
+  - For the database, the number of cores it can use for parallel queries, once that number is configured
+  - For the database, the heap and page cache sizes it is configured with, once they are set
 - Daily activity over the previous day: logins, validation checks, artifact generation, branch operations, and webhook deliveries
 
 This information is used as aggregated analysis to better understand what and how to improve the project. All information collected is anonymous and the implementation is open source on GitHub.

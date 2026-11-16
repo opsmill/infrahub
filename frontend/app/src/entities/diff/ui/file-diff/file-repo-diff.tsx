@@ -11,7 +11,7 @@ export function FileRepoDiff({ diff }: FileRepoDiffProps) {
   const { files = [] } = diff;
 
   return (
-    <div className="rounded-lg bg-white p-2 text-sm shadow-sm">
+    <div className="rounded-lg bg-content p-2 text-sm shadow-sm">
       <Accordion title={diff.display_name}>
         {files.map((file) => (
           <FileContentDiff

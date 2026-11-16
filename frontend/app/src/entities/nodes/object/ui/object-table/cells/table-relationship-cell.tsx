@@ -1,5 +1,5 @@
-import { Icon } from "@iconify-icon/react";
-import { LinkButton } from "@infrahub/ui";
+import { Icon } from "@/shared/components/display/icon";
+import { LinkPill } from "@/shared/components/ui/link-pill";
 
 import type {
   NodeCore,
@@ -45,14 +45,9 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
   if (!schema) return `Schema for ${node.__typename} not found`;
 
   return (
-    <LinkButton
-      variant="outline"
-      size="sm"
-      href={getObjectDetailsUrl(node.__typename, node.id)}
-      className="min-w-0 shrink rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
-    >
-      <Icon icon={getSchemaIcon(schema)} className="text-custom-blue-800" />
+    <LinkPill href={getObjectDetailsUrl(node.__typename, node.id)} className="min-w-0 shrink">
+      <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-accent" />
       <span className="truncate">{getNodeLabel(node)}</span>
-    </LinkButton>
+    </LinkPill>
   );
 }

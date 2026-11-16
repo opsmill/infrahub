@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from graphene import InputObjectType, Mutation
-from typing_extensions import Self
 
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -160,19 +159,17 @@ def _validate_node_kind_field(data: InputObjectType, node_schema: NodeSchema) ->
     input_data = cast("dict[str, dict[str, Any]]", data)
     if attribute_name := input_data.get("attribute_name"):
         value = attribute_name.get("value")
-        if isinstance(value, str):
-            if value not in node_schema.attribute_names:
-                raise ValidationError(
-                    input_value={
-                        "attribute_name": f"The attribute {value} doesn't exist on related node trigger using {node_schema.kind}"
-                    }
-                )
+        if isinstance(value, str) and value not in node_schema.attribute_names:
+            raise ValidationError(
+                input_value={
+                    "attribute_name": f"The attribute {value} doesn't exist on related node trigger using {node_schema.kind}"
+                }
+            )
     if relationship_name := input_data.get("relationship_name"):
         value = relationship_name.get("value")
-        if isinstance(value, str):
-            if value not in node_schema.relationship_names:
-                raise ValidationError(
-                    input_value={
-                        "relationship_name": f"The relationship {value} doesn't exist on related node trigger using {node_schema.kind}"
-                    }
-                )
+        if isinstance(value, str) and value not in node_schema.relationship_names:
+            raise ValidationError(
+                input_value={
+                    "relationship_name": f"The relationship {value} doesn't exist on related node trigger using {node_schema.kind}"
+                }
+            )

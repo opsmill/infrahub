@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.auth.session import AccountSession
+from infrahub.auth.session import AccountSession, AnonymousSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
@@ -109,6 +109,16 @@ async def test_delete_names_the_requesting_account_to_the_data_deleter(context: 
 
     assert data_deleter.actors == [context.account.account_id]
     assert data_deleter.actors != [SYSTEM_USER_ID]
+
+
+async def test_delete_names_the_system_actor_when_the_request_has_no_account() -> None:
+    """An anonymous context carries no account id, and an empty actor is not a name."""
+    orchestrator, data_deleter, _, _, _, _ = _build(branch_deleted=True)
+    anonymous = InfrahubContext(account=AnonymousSession(), branch=BranchContext(name="main", id="placeholder"))
+
+    await orchestrator.delete(branch=_branch(), context=anonymous)
+
+    assert data_deleter.actors == [SYSTEM_USER_ID]
 
 
 async def test_delete_skips_post_delete_work_when_another_attempt_won(context: InfrahubContext) -> None:

@@ -1,5 +1,4 @@
 import type React from "react";
-
 import { cn } from "tailwind-variants";
 
 export interface SpinnerProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "className"> {
@@ -8,11 +7,11 @@ export interface SpinnerProps extends Omit<React.HTMLAttributes<HTMLDivElement>,
 
 export function Spinner({ className, ...props }: SpinnerProps) {
   return (
-    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role This is a generic loading indicator, not an output value.
+    // role="status" rather than <output>: this is a generic loading indicator, not an output value.
     <div role="status" {...props}>
       <svg
         aria-hidden="true"
-        className={cn("size-4 animate-spin fill-cyan-600 text-neutral-200", className)}
+        className={cn("size-4 animate-spin fill-accent text-subtle-muted", className)}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

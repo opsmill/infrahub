@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { Checkbox, Tooltip } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import { Focusable } from "react-aria-components";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import type {
   FormAttributeValue,
@@ -21,9 +21,10 @@ import type { LabelProps } from "@/shared/components/ui/label";
 import { classNames } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 
 export const InputUniqueTips = ({ className }: { className?: string }) => (
-  <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>
+  <span className={classNames("text-foreground-muted text-xs italic leading-3", className)}>
     must be unique
   </span>
 );
@@ -48,6 +49,7 @@ export const LabelFormField = ({
 }: LabelFormFieldProps) => {
   return (
     <div className={classNames("flex flex-col gap-0.5", className)}>
+      {/* Badges are capped to the default label's line box so gaining or losing a source cannot shift this row's height. */}
       <div className="flex min-h-4 flex-wrap items-center gap-1">
         <FormLabel {...props}>
           {label} {required && "*"}
@@ -82,7 +84,7 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="green" className="ml-auto" data-testid="source-profile-badge">
+        <Badge variant="green" className="ml-auto h-5 py-0" data-testid="source-profile-badge">
           <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {source?.label}
         </Badge>
       </Focusable>
@@ -95,7 +97,11 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
     <Tooltip
       message={
         <div className="max-w-60">
-          <p>This value is allocated from the pool:</p>
+          <p>
+            {source.kind === NUMBER_POOL_KIND
+              ? "This number is recorded in the pool:"
+              : "This value is allocated from the pool:"}
+          </p>
           <Link
             to={getObjectDetailsUrl(source.kind, source.id)}
             className="inline-flex items-center gap-1 underline"
@@ -107,7 +113,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="purple" className="ml-auto" data-testid="source-pool-badge">
+        <Badge variant="purple" className="ml-auto h-5 py-0" data-testid="source-pool-badge">
           <Icon icon="mdi:view-grid-outline" className="mr-1" /> {source?.label}
         </Badge>
       </Focusable>
@@ -132,7 +138,7 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
       }
     >
       <Focusable>
-        <Badge variant="blue" className="ml-auto" data-testid="source-template-badge">
+        <Badge variant="blue" className="ml-auto h-5 py-0" data-testid="source-template-badge">
           <FileBoxIcon className="mr-1 size-3" /> {source?.label}
         </Badge>
       </Focusable>
@@ -156,7 +162,7 @@ export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
           }
           return field.onChange(defaultValue);
         }}
-        className="font-normal text-gray-600 text-xs"
+        className="font-normal text-foreground-muted text-xs"
       >
         Set empty
       </Checkbox>

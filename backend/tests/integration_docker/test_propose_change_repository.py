@@ -36,6 +36,9 @@ from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+# Two minutes in total: on a loaded runner the import outlasts the SDK's default 30-second wait.
+REPOSITORY_SYNC_INTERVAL_SECONDS = 5
+REPOSITORY_SYNC_RETRIES = 24
 
 pytestmark = pytest.mark.shard_b
 
@@ -152,7 +155,9 @@ class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(
+            client=client, interval=REPOSITORY_SYNC_INTERVAL_SECONDS, retries=REPOSITORY_SYNC_RETRIES
+        )
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)

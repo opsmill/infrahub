@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.lock import initialize_lock
@@ -23,7 +24,7 @@ class DedupCardinalityOneRelsQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         """Nodes having cardinality one relationship might end up with more than one relationship due to some concurrency.
 
         issue. In that case, this query keeps only the most recent relationship.

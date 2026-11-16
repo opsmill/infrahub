@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import React from "react";
 
@@ -22,14 +21,16 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
+    <div className="font-medium text-subtle-muted text-xxs uppercase tracking-wider">
+      {children}
+    </div>
   );
 }
 
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
 function MenuSurface({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-56 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md">
+    <div className="w-56 rounded-xl border border-border-strong bg-popover shadow-md backdrop-blur-lg">
       {children}
     </div>
   );
@@ -84,6 +85,19 @@ const disabledItems = () => [
   </MenuItem>,
 ];
 
+// Selection needs ids, so these items carry an `id` rather than relying on the React key.
+const selectableItems = () => [
+  <MenuItem key="compact" id="compact">
+    Compact
+  </MenuItem>,
+  <MenuItem key="comfortable" id="comfortable">
+    Comfortable
+  </MenuItem>,
+  <MenuItem key="spacious" id="spacious">
+    Spacious
+  </MenuItem>,
+];
+
 export const AllVariants: Story = {
   render: () => (
     <div className="grid grid-cols-[8rem_max-content_max-content] items-start gap-x-6 gap-y-6">
@@ -122,11 +136,33 @@ export const AllVariants: Story = {
             {disabledItems()}
           </Menu>
         </MenuSurface>
-        <p className="text-xxs text-neutral-400">Hover the disabled item to see the tooltip.</p>
+        <p className="text-subtle-muted text-xxs">Hover the disabled item to see the tooltip.</p>
       </div>
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
           {disabledItems()}
+        </Menu>
+      </MenuSurface>
+
+      <ColumnLabel>Selection</ColumnLabel>
+      <MenuSurface>
+        <Menu
+          aria-label="Action menu with selection"
+          variant="action"
+          selectionMode="multiple"
+          defaultSelectedKeys={["comfortable"]}
+        >
+          {selectableItems()}
+        </Menu>
+      </MenuSurface>
+      <MenuSurface>
+        <Menu
+          aria-label="Picker menu with selection"
+          variant="picker"
+          selectionMode="multiple"
+          defaultSelectedKeys={["comfortable"]}
+        >
+          {selectableItems()}
         </Menu>
       </MenuSurface>
     </div>
@@ -183,7 +219,7 @@ function PickerWithSubmenuRender() {
           </Autocomplete>
         </Popover>
       </MenuTrigger>
-      <p className="text-xs text-neutral-500">Picked: {picked ?? "—"}</p>
+      <p className="text-subtle-muted text-xs">Picked: {picked ?? "—"}</p>
     </div>
   );
 }

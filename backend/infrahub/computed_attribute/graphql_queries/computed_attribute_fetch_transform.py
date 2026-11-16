@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -44,54 +44,21 @@ class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryRes
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository(BaseModel):
-    node: (
-        Annotated[
-            ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository
-            | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepository
-            | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepository,
-            Field(discriminator="typename__"),
-        ]
-        | None
-    )
+    node: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository(BaseModel):
-    typename__: Literal["CoreGenericRepository"] = Field(alias="__typename")
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode(BaseModel):
+    typename__: Literal["CoreGenericRepository", "CoreReadOnlyRepository", "CoreRepository"] = Field(alias="__typename")
     id: str | None
-    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepositoryName | None
+    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName | None
+    commit: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCommit | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepositoryName(BaseModel):
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName(BaseModel):
     value: str | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepository(BaseModel):
-    typename__: Literal["CoreReadOnlyRepository"] = Field(alias="__typename")
-    id: str
-    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepositoryName | None
-    commit: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepositoryCommit | None
-
-
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepositoryName(BaseModel):
-    value: str | None
-
-
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepositoryCommit(BaseModel):
-    value: str | None
-
-
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepository(BaseModel):
-    typename__: Literal["CoreRepository"] = Field(alias="__typename")
-    id: str
-    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepositoryName | None
-    commit: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepositoryCommit | None
-
-
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepositoryName(BaseModel):
-    value: str | None
-
-
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepositoryCommit(BaseModel):
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCommit(BaseModel):
     value: str | None
 
 
@@ -113,8 +80,6 @@ ComputedAttributeFetchTransformCoreTransformPython.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdges.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNode.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository.model_rebuild()
-ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository.model_rebuild()
-ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepository.model_rebuild()
-ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepository.model_rebuild()
+ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode.model_rebuild()

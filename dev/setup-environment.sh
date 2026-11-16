@@ -165,15 +165,17 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# Set Environment Variables (if ENV_FILE is provided)
+# Set Environment Variables (if CLAUDE_ENV_FILE is provided)
 # ------------------------------------------------------------------------------
-if [ -n "$ENV_FILE" ]; then
+if [ -n "$CLAUDE_ENV_FILE" ]; then
     echo ""
     echo "Setting environment variables..."
+    # The file is sourced as shell code, so the path is single-quoted to keep spaces, quotes and $ literal.
+    quoted_project_dir="'$(printf '%s' "$PROJECT_DIR" | sed "s/'/'\\\\''/g")'"
     {
-        echo "export INFRAHUB_PROJECT_DIR=\"$PROJECT_DIR\""
-        echo "export PATH=\"$PROJECT_DIR/.venv/bin:\$PATH\""
-    } >> "$ENV_FILE"
+        echo "export INFRAHUB_PROJECT_DIR=$quoted_project_dir"
+        echo "export PATH=$quoted_project_dir/.venv/bin:\"\$PATH\""
+    } >> "$CLAUDE_ENV_FILE"
     echo "Environment variables configured"
 fi
 
@@ -190,7 +192,7 @@ echo "  uv run invoke backend.test-unit    - Run backend unit tests"
 echo "  uv run invoke format               - Format Python code"
 echo "  uv run invoke lint                 - Lint Python code"
 echo "  cd frontend/app && pnpm test       - Run frontend tests"
-echo "  cd frontend/app && pnpm biome:fix  - Format/lint frontend"
+echo "  cd frontend && pnpm biome:fix      - Format/lint frontend"
 echo ""
 
 exit 0

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { type EdgeStyle, GraphControls, type LayoutDirection } from "./graph-controls";
@@ -19,6 +19,10 @@ const onEdgeStyleChangeMock = () => vi.fn<(style: EdgeStyle) => void>();
 const onLayoutMock = () => vi.fn<(direction: LayoutDirection) => void>();
 
 describe("GraphControls", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   test("renders the zoom/fit/layout controls by accessible name", async () => {
     // GIVEN / WHEN
     const component = await render(
@@ -26,7 +30,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // THEN
@@ -46,7 +50,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChange}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // WHEN
@@ -64,7 +68,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayout}
-      />,
+      />
     );
 
     // WHEN
@@ -74,24 +78,34 @@ describe("GraphControls", () => {
     expect(onLayout).toHaveBeenCalledExactlyOnceWith("TB");
   });
 
-  test("zoom in / out and fit to screen call the ReactFlow controls", async () => {
+  test.each([
+    { name: "Zoom in", expectedCalls: { zoomIn: [[]], zoomOut: [], fitView: [] } },
+    { name: "Zoom out", expectedCalls: { zoomIn: [], zoomOut: [[]], fitView: [] } },
+    {
+      name: "Fit to screen",
+      expectedCalls: { zoomIn: [], zoomOut: [], fitView: [[{ padding: 0.2 }]] },
+    },
+  ] satisfies Array<{
+    name: string;
+    expectedCalls: Record<keyof typeof reactFlow, unknown[][]>;
+  }>)("$name calls the matching ReactFlow control", async ({ name, expectedCalls }) => {
     // GIVEN
     const component = await render(
       <GraphControls
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
-    // WHEN / THEN
-    await component.getByRole("button", { name: "Zoom in" }).click();
-    expect(reactFlow.zoomIn).toHaveBeenCalledOnce();
+    // WHEN
+    await component.getByRole("button", { name }).click();
 
-    await component.getByRole("button", { name: "Zoom out" }).click();
-    expect(reactFlow.zoomOut).toHaveBeenCalledOnce();
-
-    await component.getByRole("button", { name: "Fit to screen" }).click();
-    expect(reactFlow.fitView).toHaveBeenCalledExactlyOnceWith({ padding: 0.2 });
+    // THEN
+    expect({
+      zoomIn: reactFlow.zoomIn.mock.calls,
+      zoomOut: reactFlow.zoomOut.mock.calls,
+      fitView: reactFlow.fitView.mock.calls,
+    }).toEqual(expectedCalls);
   });
 });

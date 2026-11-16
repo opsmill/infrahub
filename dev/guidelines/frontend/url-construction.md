@@ -33,6 +33,22 @@ const url = constructPath(`/proposed-changes/${id}`);
 
 **Location:** `frontend/app/src/entities/nodes/object/ui/routing/object-urls.ts`
 
+## Build Links to the Server from `INFRAHUB_API_SERVER_URL`
+
+Write a link to an address the server answers (`/api/...`, `/docs/...`) as an absolute URL. The
+client-side router receives every path-only link that has no `target`, and it has no route for
+these addresses, so the click requests nothing from the server.
+
+```tsx
+// ✅ Good - an absolute URL is loaded as a full page
+<LinkButton href={`${INFRAHUB_API_SERVER_URL}${provider.authorize_path}`}>
+
+// ❌ Bad - the client-side router receives the path and finds no route
+<LinkButton href={provider.authorize_path}>
+```
+
+A link that opens in a new tab (`target="_blank"`) is loaded by the browser in both forms.
+
 ## Tab Navigation Uses Path Segments
 
 Tabs on detail pages are nested child routes, not query string parameters. Build tab URLs as path segments:

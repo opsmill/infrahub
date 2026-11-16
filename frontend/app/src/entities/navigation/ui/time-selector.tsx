@@ -1,5 +1,4 @@
 import { Transition } from "@headlessui/react";
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { isPast } from "date-fns";
 import { useAtom } from "jotai";
@@ -7,12 +6,14 @@ import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
+import { Icon } from "@/shared/components/display/icon";
 import { QSP } from "@/shared/config/qsp";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 
 import "react-datepicker/dist/react-datepicker.css";
+import "@/shared/components/inputs/datepicker-overrides.css";
 
 export const TimeFrameSelector = () => {
   const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
@@ -37,7 +38,7 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-neutral-200",
+        "inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border",
         date && "bg-neutral-800"
       )}
     >
@@ -64,9 +65,9 @@ export const TimeFrameSelector = () => {
         show={!!date}
         enter="linear duration-300"
         enterFrom="w-0 opacity-0"
-        enterTo="w-[158px] opacity-100"
+        enterTo="w-39.5 opacity-100"
         leave="linear duration-300"
-        leaveFrom="w-[158px] bg-red-200 h-full w-full opacity-100"
+        leaveFrom="w-39.5 h-full w-full opacity-100"
         leaveTo="w-0 opacity-0"
         className="inline-flex items-center text-white text-xxs"
       >

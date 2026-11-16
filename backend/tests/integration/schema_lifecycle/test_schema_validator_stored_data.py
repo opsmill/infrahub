@@ -18,9 +18,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
-from infrahub.log import get_logger
-from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
-from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.helpers.number_pool import provision_schema_number_pools
 from tests.helpers.test_app import TestInfrahubApp
 
 from ..shared import load_schema
@@ -31,7 +29,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-log = get_logger()
 
 WIDGET_KIND = "TestingWidget"
 TICKET_KIND = "TestingTicket"
@@ -82,14 +79,6 @@ def _pool_parameters(attribute: AttributeSchema) -> NumberPoolParameters:
 
 def _registry_attribute(kind: str, attribute: str, branch: str) -> AttributeSchema:
     return registry.schema.get_node_schema(name=kind, branch=branch, duplicate=False).get_attribute(attribute)
-
-
-def _with_pool_id(schema: SchemaRoot, branch: str) -> SchemaRoot:
-    """Copy the schema with the id of the provisioned pool, since a schema load cannot change it."""
-    pool_id = _pool_parameters(_registry_attribute(TICKET_KIND, "ticket_number", branch)).number_pool_id
-    schema = copy.deepcopy(schema)
-    _pool_parameters(_nodes_by_name(schema)["Ticket"].get_attribute("ticket_number")).number_pool_id = pool_id
-    return schema
 
 
 class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
@@ -152,8 +141,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         self, db: InfrahubDatabase, initialize_registry: None, schema_initial: SchemaRoot
     ) -> dict[str, str]:
         await load_schema(db=db, schema=schema_initial)
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        await SchemaNumberPoolSynchronizer(db=db, log=log, schema_manager=registry.schema, upserter=upserter).run()
+        await provision_schema_number_pools(db=db)
 
         person = await Node.init(schema="TestingPerson", db=db)
         await person.new(db=db, name="person-1")
@@ -196,7 +184,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         ticket = await registry.manager.get_one(db=db, id=initial_dataset["ticket_3"], branch=default_branch)
         assert ticket.get_attribute("ticket_number").value == 3
 
-        schema = _with_pool_id(schema_initial, default_branch.name)
+        schema = copy.deepcopy(schema_initial)
         nodes = _nodes_by_name(schema)
         widget = nodes["Widget"]
         _number_parameters(widget.get_attribute("low_max")).max_value = 5
@@ -266,7 +254,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
         """The value is created on main after the branch, so the branch cannot view it when it lowers the limit."""
         branch = await create_branch(db=db, branch_name="lower-gadget-max")
 
-        branch_schema = _with_pool_id(schema_initial, branch.name)
+        branch_schema = copy.deepcopy(schema_initial)
         _number_parameters(_nodes_by_name(branch_schema)["Gadget"].get_attribute("count")).max_value = 5
         response = await client.schema.load(schemas=[branch_schema.model_dump(mode="json")], branch=branch.name)
         assert not response.errors
@@ -297,7 +285,7 @@ class TestSchemaChangeRefusedByStoredData(TestInfrahubApp):
     ) -> None:
         """Renaming hierarchical kinds with stored nodes is accepted."""
         country_id = registry.schema.get_node_schema(name=COUNTRY_KIND, branch=default_branch.name).id
-        schema = _with_pool_id(schema_initial, default_branch.name)
+        schema = copy.deepcopy(schema_initial)
         nodes = _nodes_by_name(schema)
         nodes["Country"].id = country_id
         nodes["Country"].name = "Nation"

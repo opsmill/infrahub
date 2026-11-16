@@ -46,7 +46,7 @@ class TestMigration031(TestInfrahubApp):
         await node.save()
 
         # Run the migration without strict mode, nothing should happen
-        migration = Migration031(db=db)
+        migration = Migration031()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
@@ -73,7 +73,7 @@ class TestMigration031(TestInfrahubApp):
 
         # Run the migration with strict mode to make sure it doesn't raise an error now that the node has been fixed
         config.SETTINGS.main.schema_strict_mode = True
-        migration = Migration031(db=db)
+        migration = Migration031()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors
 

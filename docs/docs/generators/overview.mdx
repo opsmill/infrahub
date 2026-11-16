@@ -21,7 +21,7 @@ Generators are defined as a **Generator definition** within an [.infrahub.yml](.
 
 ![Generator overview diagram](../media/topics/generator/generator_overview.excalidraw.svg)
 
-Running a Generator definition will create new objects as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
+Running a Generator definition creates or updates the objects that the Generator saves. Through the [SDK tracking feature]($(base_url)python-sdk/topics/tracking), each run also deletes the objects that an earlier run saved and the current run did not save again. See [Objects a run deletes](#objects-a-run-deletes).
 
 The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator instances record the run for each target object, and Generator groups (`CoreGeneratorGroup` or `CoreGeneratorAwareGroup`) track the objects that a run created.
 
@@ -37,6 +37,8 @@ Generators can be executed in several ways, depending on your workflow and where
 2. Manually from the UI
 
    From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the Generator on demand.
+
+   To run a Generator for one target only, open that target's detail page, open the Actions menu, and select the Generator in the Generators section. The section lists the Generator definitions whose target group contains objects of the same kind. An entry is disabled when the object is not a member of that target group.
 3. Automatically via Proposed Changes
 
    When you open a Proposed Change that affects the Generator's targets, the Generator runs as part of Infrahub's CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per Generator in the repository configuration file.
@@ -207,7 +209,7 @@ You add objects to a target group through the `member_of_groups` relationship, w
 Adding or removing group members changes what gets targeted on the next Generator run:
 
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
-- **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up — see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
+- **Remove an object from the group**: it is no longer targeted. When the definition's `parameters` give each target different values, each target has its own Generator group, and the objects that earlier runs created for the removed object are not deleted, because no run uses that Generator group any more. When the definition has no `parameters`, all targets share one Generator group, and the next run for another target deletes those objects unless it saves them again (see [Objects a run deletes](#objects-a-run-deletes) and [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
 - **Delete an object that is a target**: its Generator instance remains, and the proposed change Generator checks skip it. See [What Infrahub deletes when a target or definition is removed](#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 ### Standard groups vs. Generator groups
@@ -223,6 +225,49 @@ These group types serve different purposes and are often confused:
 The target group (`CoreStandardGroup`) is an input to the Generator — "run against these objects." The Generator group (`CoreGeneratorGroup` or `CoreGeneratorAwareGroup`) is an output — "these objects were created by this Generator."
 
 The SDK names each Generator group `<generator definition name>-<parameters hash>`, where the hash is the MD5 hash of the query parameters of the run. Runs with different parameters, such as one run per target device, therefore write to different Generator groups. When a run has no parameters, the name is the definition name alone.
+
+## Objects a run deletes
+
+A Generator run keeps the objects it saves and deletes the objects it no longer saves. When `generate()` finishes, the SDK compares the members of the run's Generator group, which are the objects that earlier runs with the same parameters saved, with the objects the current run saved. It deletes every earlier member that the current run did not save, then writes the group with the objects the current run saved. This happens on every run, whether Infrahub starts it or you start it with `infrahubctl generator`. It also happens on a run that saves no objects: that run deletes every object that earlier runs with the same parameters saved.
+
+When the definition has no `parameters`, the runs for all its targets use the same Generator group, as described in [Standard groups vs. Generator groups](#standard-groups-vs-generator-groups). A run for one target then deletes the objects that a run for another target saved and the current run did not save.
+
+:::info Changed in Infrahub 1.12
+
+Before Infrahub 1.12, a run that saved no objects deleted nothing, and the cleanup stopped at the first object that the server refused to delete. Before you upgrade, check for Generators that skip saving objects when their inputs have not changed: the next run deletes those objects.
+
+:::
+
+### Save every object you want to keep, on every run
+
+A run deletes an object that an earlier run saved when the current run skips the save, for example because the object's values have not changed. Save every object that the Generator creates on every run. Use `allow_upsert=True`, so that saving an existing object updates it instead of creating a duplicate (see [Best practices for modular Generators](./modular-best-practices#2-use-allow_upserttrue-for-idempotent-generation)).
+
+### Save objects the Generator does not own with `update_group_context=False`
+
+Each `save()` call in `generate()` adds the object to the Generator group. Reading an object with `client.get()` or `client.filters()` does not add it. When a Generator updates an object that it did not create and must not delete, such as a downstream target to which it writes only a checksum, save that object with `update_group_context=False`:
+
+```python
+for pod in pods:
+    if pod.checksum.value != checksum:
+        pod.checksum.value = checksum
+        await pod.save(allow_upsert=True, update_group_context=False)
+```
+
+The SDK does not add the object to the Generator group, so the cleanup does not delete it when a later run skips the save.
+
+An object that an earlier run already added to the Generator group stays in the group until a run does not save it into the group. That run deletes the object, whether it saves the object with `update_group_context=False` or skips the save: the run compares the group's members with the objects it saved into the group, and that object is not among them. Remove the object from the Generator group before the Generator runs again.
+
+### When a run fails
+
+- **`generate()` raises an exception.** The SDK does not run the cleanup and does not update the Generator group, so the run deletes nothing.
+- **The server refuses to delete an object**, for example because an object outside the run still points to it through a mandatory relationship. The object stays in the Generator group, and the SDK continues with the other deletes. After it writes the group, the run fails with `Unable to delete <count> unused member(s) of the tracking group`, followed by the ID of each object and the server's reason. Infrahub sets the [Generator instance](#generator-instances) to `error`, and `infrahubctl generator` prints a table of the objects and reasons. Each later run tries to delete the object again, and fails until you remove what blocks the delete.
+- **Any other failure stops the cleanup**, such as a lost connection, an expired token, or a branch that no longer exists, needs a rebase, or is being merged. The objects that the SDK did not reach stay in the Generator group, and the run fails with that error.
+
+### Deletes on a branch
+
+The cleanup deletes objects on the branch that the Generator runs on. When a Generator runs in a [Proposed Change](../proposed-changes/overview), it deletes objects of a branch-aware kind only on the Proposed Change's branch, and merging the branch applies those deletes to the default branch.
+
+An object of a [branch-agnostic](../branches/overview#branch-aware-vs-branch-agnostic) kind exists once for all branches. A run on a branch that deletes such an object removes it from every branch, including the default branch, at the time of the run rather than when the branch is merged. If a Generator updates branch-agnostic objects that it does not own, save them with `update_group_context=False`.
 
 ## What Infrahub deletes when a target or definition is removed
 
@@ -313,6 +358,7 @@ Set `execute_in_proposed_change: false` on the Generator, so that it does not al
 ## Known limitations
 
 - [3289](https://github.com/opsmill/infrahub/issues/3289) deleting a Generator target object should delete the created objects of that target
+- [11374](https://github.com/opsmill/infrahub/issues/11374) deleting an object of a branch-agnostic kind on a branch leaves it in its groups, and reading the members of those groups then fails with HTTP 500.
 
 ## Learn by doing
 

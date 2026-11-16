@@ -1,6 +1,7 @@
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
+import type { GraphQLRequestContext } from "@/shared/api/graphql/types";
 import type { BranchContextParams } from "@/shared/api/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
@@ -14,6 +15,7 @@ export interface UpdateObjectFromApiParams extends BranchContextParams {
   data: Record<string, unknown>;
   profileIds?: Array<string>;
   file?: File;
+  processErrorMessage?: GraphQLRequestContext["processErrorMessage"];
 }
 
 export function updateObjectFromApi({
@@ -22,6 +24,7 @@ export function updateObjectFromApi({
   profileIds,
   branchName,
   file,
+  processErrorMessage,
 }: UpdateObjectFromApiParams) {
   const objectData: Record<string, unknown> = Object.entries(data).reduce((acc, [key, value]) => {
     const valueWithProp = value as { value?: unknown };
@@ -126,6 +129,7 @@ export function updateObjectFromApi({
     variables: file ? { file } : undefined,
     context: {
       branch: branchName,
+      ...(processErrorMessage && { processErrorMessage }),
     },
   });
 }

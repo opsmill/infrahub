@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
@@ -12,7 +13,7 @@ export const FilterResetButton = () => {
 
   return (
     <Button
-      variant="outline"
+      variant="input"
       size="xs"
       className="sticky right-0 z-10 h-auto rounded-full py-0.5"
       onPress={handleResetFilters}

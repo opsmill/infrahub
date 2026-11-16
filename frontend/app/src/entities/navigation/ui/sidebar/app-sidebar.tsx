@@ -1,7 +1,5 @@
 import { Link } from "react-router";
 
-import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Sidebar,
@@ -11,6 +9,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/shared/components/layout/sidebar";
+import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -21,7 +20,7 @@ import { AccountMenu } from "@/entities/user-profile/ui/account-menu";
 export function AppSidebar() {
   return (
     <SidebarProvider>
-      <Sidebar data-testid="sidebar" className="divide-y divide-neutral-200">
+      <Sidebar data-testid="sidebar" className="divide-y">
         <SidebarHeader>
           <AppSidebarHeader />
           <SearchAnywhere />
@@ -41,20 +40,22 @@ export function AppSidebar() {
 
 function AppSidebarHeader() {
   return (
+    // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: a transition property list is not a design value; the timing (duration-200 ease-linear) is already tokenised
     <div className="relative h-8 transition-[height] duration-200 ease-linear group-data-[state=collapsed]:h-17.5">
       <Link
         to={constructPath("/")}
         aria-label="Infrahub home"
         className={classNames(
           focusVisibleStyle,
-          "absolute bottom-0 left-0 max-w-40 overflow-hidden rounded-md",
-          "transition-[left,max-width] duration-200 ease-linear",
-          "group-data-[state=collapsed]:left-1.75 group-data-[state=collapsed]:max-w-8"
+          "absolute bottom-0 left-1.75 -m-1 max-w-40 overflow-hidden rounded-md border border-transparent p-0.75",
+          "transition-all duration-200 ease-linear",
+          "group-data-[state=collapsed]:max-w-8.25"
         )}
       >
-        <img src={InfrahubWithTextLogo} alt="Infrahub" className="h-8 max-w-none" />
+        <InfrahubLogo aria-hidden className="h-8 max-w-none" />
       </Link>
 
+      {/* biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: a transition property list is not a design value; the timing is already tokenised */}
       <SidebarTrigger className="absolute top-0 right-0 transition-[right] duration-200 ease-linear group-data-[state=collapsed]:right-0.75" />
     </div>
   );

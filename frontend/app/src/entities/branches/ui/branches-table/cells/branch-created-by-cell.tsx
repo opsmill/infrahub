@@ -13,7 +13,7 @@ export function BranchCreatedByCell({ createdBy }: BranchCreatedByCellProps) {
       {createdBy ? (
         <span className="truncate">{getNodeLabel(createdBy)}</span>
       ) : (
-        <span className="text-gray-400">-</span>
+        <span className="text-subtle-muted">-</span>
       )}
     </TableCell>
   );

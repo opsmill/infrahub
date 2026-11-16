@@ -38,7 +38,7 @@ export const SearchDocs = () => {
           className="flex-col items-start gap-0"
         >
           <div className="font-medium text-sm">{doc.title}</div>
-          <div className="truncate text-neutral-500 text-xs">
+          <div className="truncate text-foreground-muted text-xs">
             {doc.breadcrumb.slice(1).join(" > ")}
           </div>
         </SearchAnywhereItem>

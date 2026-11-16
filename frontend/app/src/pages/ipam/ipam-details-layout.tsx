@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { IdCardIcon } from "lucide-react";
 import { Outlet, useParams } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -29,7 +29,7 @@ function IpamDetailsTabs({ objectSchema, objectData }: IpamDetailsTabsProps) {
   const relationshipVisible = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
 
   return (
-    <Row className="border-gray-200 border-b">
+    <Row className="border-b">
       <LinkTab to={constructPathForIpam("details")}>
         <IdCardIcon className="size-4" />
         Details

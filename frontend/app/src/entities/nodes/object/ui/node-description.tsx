@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { InputHTMLAttributes } from "react";
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
@@ -21,7 +21,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
   return (
     <div className={classNames("flex flex-col text-sm", className)} {...props}>
       <div className="flex items-center gap-1">
-        <Icon icon={getSchemaIcon(schema)} className="text-gray-400 text-xs" />
+        <Icon icon={getSchemaIcon(schema)} className="text-subtle-muted text-xs" />
         {schemaLabel}
       </div>
 

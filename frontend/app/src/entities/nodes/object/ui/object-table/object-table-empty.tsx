@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -13,7 +14,7 @@ export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
   };
 
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+    <div className="col-span-full flex flex-col items-center justify-center py-12 text-foreground-muted">
       <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
       {filters.length === 0 ? (
         <>

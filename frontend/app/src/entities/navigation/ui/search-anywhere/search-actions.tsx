@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
 import { useId, useMemo } from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 
 import type { MenuItem } from "@/entities/navigation/domain/model/menu";

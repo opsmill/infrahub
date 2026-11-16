@@ -23,8 +23,9 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.tasks.registry import refresh_branches
-from infrahub.workers.dependencies import build_event_service
+from infrahub.workers.dependencies import build_component, build_event_service
 from tests.adapters.event import MemoryInfrahubEvent
+from tests.helpers.component import build_worker_component
 from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from fast_depends import Provider
 
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.cache import MemoryCache
     from tests.helpers.paused_branch_list import PausedBranchList
 
 
@@ -76,25 +78,32 @@ async def _branch_with_a_change(db: InfrahubDatabase, default_branch: Branch, na
     return branch
 
 
-async def _merge(db: InfrahubDatabase, source_branch: Branch, dependency_provider: Provider) -> None:
+async def _merge(
+    db: InfrahubDatabase, source_branch: Branch, dependency_provider: Provider, cache: MemoryCache
+) -> None:
     destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
     context = InfrahubContext.init(
         branch=destination_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
     )
     event_service = MemoryInfrahubEvent()
-    with override_dependency(build_event_service, lambda: event_service, dependency_provider=dependency_provider):
+    component = await build_worker_component(db=db, cache=cache)
+    with (
+        override_dependency(build_event_service, lambda: event_service, dependency_provider=dependency_provider),
+        override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
+    ):
         orchestrator = await build_branch_merge_orchestrator(
             db=db, source_branch=source_branch, destination_branch=destination_branch
         )
         await orchestrator.merge(context=context)
 
 
-@pytest.mark.usefixtures("memory_cache", "workflow_recorder", "register_core_models_schema", "car_person_schema")
+@pytest.mark.usefixtures("workflow_recorder", "register_core_models_schema", "car_person_schema")
 async def test_merge_keeps_the_merged_branch_cached_through_a_registry_refresh_that_read_it_merging(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
+    memory_cache: MemoryCache,
     paused_branch_list: PausedBranchList,
 ) -> None:
     branch = await _branch_with_a_change(db=db, default_branch=default_branch, name="merged-during-refresh")
@@ -111,7 +120,8 @@ async def test_merge_keeps_the_merged_branch_cached_through_a_registry_refresh_t
         )
         try:
             await asyncio.wait_for(
-                _merge(db=db, source_branch=source_branch, dependency_provider=dependency_provider), timeout=120
+                _merge(db=db, source_branch=source_branch, dependency_provider=dependency_provider, cache=memory_cache),
+                timeout=120,
             )
         finally:
             paused_branch_list.resume.set()
@@ -121,11 +131,12 @@ async def test_merge_keeps_the_merged_branch_cached_through_a_registry_refresh_t
     assert registry.branch[branch.name].status is BranchStatus.MERGED
 
 
-@pytest.mark.usefixtures("memory_cache", "workflow_recorder", "register_core_models_schema", "car_person_schema")
+@pytest.mark.usefixtures("workflow_recorder", "register_core_models_schema", "car_person_schema")
 async def test_merge_that_fails_to_save_the_merged_status_leaves_the_cached_branch_merging(
     db: InfrahubDatabase,
     default_branch: Branch,
     dependency_provider: Provider,
+    memory_cache: MemoryCache,
 ) -> None:
     branch = await _branch_with_a_change(db=db, default_branch=default_branch, name="merged-status-not-saved")
     source_branch = BranchSavingMergedAfterAHook.from_branch(
@@ -133,7 +144,7 @@ async def test_merge_that_fails_to_save_the_merged_status_leaves_the_cached_bran
     )
 
     with pytest.raises(RuntimeError, match=r"^saving the merged status failed$"):
-        await _merge(db=db, source_branch=source_branch, dependency_provider=dependency_provider)
+        await _merge(db=db, source_branch=source_branch, dependency_provider=dependency_provider, cache=memory_cache)
 
     saved_branch = await Branch.get_by_name(db=db, name=branch.name)
     assert saved_branch.status is BranchStatus.MERGING

@@ -1,6 +1,6 @@
 # Styling Guidelines
 
-> Part of: `dev/guidelines/frontend/`
+> Part of: `dev/guidelines/frontend/` | Related: [Theming](../../knowledge/frontend/theming.md)
 
 ## Layout Components
 
@@ -55,8 +55,8 @@ Use when component has 2+ predefined visual variants.
 const buttonVariants = cva("inline-flex items-center rounded-md", {
   variants: {
     variant: {
-      primary: "bg-custom-blue-700 text-white",
-      secondary: "bg-gray-100 text-gray-900",
+      subtle: "bg-accent-surface text-accent",
+      secondary: "bg-surface text-foreground",
     },
     size: { sm: "h-8 px-3", md: "h-10 px-4" },
   },
@@ -93,7 +93,66 @@ to a token:
   always-dark code viewer) needs values readable on that surface; a token that flips with the theme
   is unreadable in one mode.
 - **Identical sibling controls take identical tokens**, and a token added to `theme.css` needs a
-  consumer in the same PR.
+  consumer in the same PR. A **complete family** may be seeded ahead of the migration that will
+  consume it — that is what turns the migration into mechanical work rather than a design exercise.
+  Seed one only when all three hold: the family is complete, its values come from the call sites it
+  will replace, and the consuming ticket exists. A lone unconsumed token is dead code.
+
+## Arbitrary values
+
+`lint/nursery/noTailwindArbitraryValue` runs at **`error`** in `frontend/app`. It reports arbitrary
+*values* (`w-[400px]`) and arbitrary *properties* (`[color:red]`). It does **not** report arbitrary
+variants — `data-[state=open]:`, `has-[:checked]:`, `[&>svg]:`, `supports-[…]` are a different
+grammar node and are structurally exempt, so there is no need to work around false positives.
+
+Two things about the config are worth knowing before you change it:
+
+- The rule reads `class`/`className` plus the attributes listed in `biome.jsonc`. This codebase has
+  **24 class-carrying props** (`loadingClassName`, `textareaClassName`, `scrollBarClassName`, …), and
+  a class arriving through one that is not listed is invisible to the rule. Add new ones to
+  `options.attributes` when you introduce them.
+- `options.functions` **is** needed, and defaults to empty. Without it, a helper call is only
+  checked when it sits directly inside a listed attribute (`className={classNames("w-[400px]")}`);
+  the same call assigned to a variable first is invisible to the rule. `classNames` is this
+  codebase's dominant helper at ~270 call sites, so it is listed along with the other helpers
+  actually in use here — plus `tv`, because `packages/ui` is built on `tailwind-variants` and it
+  is the one name likely to arrive later. Add a helper when you introduce it, rather than carrying
+  names the tree does not use.
+
+Prefer, in order: an on-scale utility (`min-w-33`) → an existing token (`text-xxs`, `bg-accent`) →
+a new token in `theme.css` → a suppression. Reach for a suppression last, and only for one of these:
+
+| Prefix | When it applies |
+|---|---|
+| `calc:` | The value is derived from the viewport or the parent, so no constant expresses it |
+| `no-utility:` | Tailwind has no utility or theme namespace for the property (`mask-image`, `content-visibility`, a `transition-[…]` property list, the `inherit` keyword) |
+| `third-party:` | A CSS variable someone else's library injects at runtime, which we cannot declare |
+| `pixel-nudge:` | Sub-grid alignment with no design meaning (a half-pixel hairline, centring a dot on a corner) |
+| `structure:` | An intrinsic grid track list (`min-content`, `auto`, `minmax`) — structure, not a design value |
+| `one-off:` | Genuinely single-site in the product, where a token would imply reuse that does not exist |
+
+Never suppress a **colour** — colour is exactly what breaks in the other theme. Never suppress a
+value that is on a scale which already has tokens, and never suppress a value used more than once:
+two occurrences make it a decision, and a decision deserves a token.
+
+Write the reason as `<prefix>: <why>`, which keeps the exceptions auditable:
+
+```bash
+grep -rn "noTailwindArbitraryValue:" src | sed 's/.*noTailwindArbitraryValue: //' | cut -d: -f1 | sort | uniq -c
+```
+
+### Suppression syntax depends on where the class sits
+
+Neither of these failure modes is loud, so follow them exactly:
+
+- **The `biome-ignore` must be the comment immediately before the node.** Wrapping a long reason
+  onto a second comment line silently voids the suppression — the diagnostic stays and nothing
+  tells you why. Keep the reason on one line.
+- **In JSX *children* position, use `{/* biome-ignore … */}`.** A `//` comment there is not a
+  comment at all: it renders as literal text on the page. `lint/suspicious/noCommentText` catches
+  it, but only if you are reading the full lint output. Everywhere else — above a `return (` root
+  element, inside a `classNames(...)` argument list, in an object literal — use `//`, because a JSX
+  comment in those positions is a parse error.
 
 ## Forbidden
 
@@ -101,6 +160,21 @@ to a token:
 |-------|-----|
 | Inline `style={{}}` | Tailwind classes |
 | CSS modules | Tailwind utilities |
-| `bg-[#1e40af]` | `bg-custom-blue-700` (use theme) |
+| `bg-[#1e40af]`, `bg-[var(--accent)]` | `bg-accent` — a token in `@theme` already generates the utility |
+| `w-[132px]`, `max-w-[200px]` | `w-33`, `max-w-50` — the 0.25rem spacing scale is the token scale |
+| `text-[10px]` | `text-xxs` |
+| `bg-white`, `bg-gray-50`, `bg-gray-100` | `bg-content`, `bg-content-muted`, `bg-content-strong` |
+| `bg-white dark:bg-stone-900` | `bg-content` — one token already carries both themes |
+| `text-indigo-500`, `text-indigo-700` for an open or active state | `text-active`, `bg-active/10` |
 | `<div className="flex items-center gap-2">` | `<Row>` from `@/shared/components/container` |
 | `<div className="flex flex-col gap-2">` | `<Col>` from `@/shared/components/container` |
+
+### Why a fixed palette is forbidden, not just discouraged
+
+A class like `bg-white` is not theme-neutral — it paints light in *both* themes, so the surface stays bright when the rest of the page goes dark. This is easy to miss in review because the defect is the **absence** of a variant rather than the presence of a wrong one: searching for `dark:` finds the files that already work and none of the files that are broken.
+
+Pairing a literal with a `dark:` override (`bg-white dark:bg-stone-900`) renders correctly but duplicates in every call site what a token defines once, so the next palette change has to be repeated by hand in each of them.
+
+A `dark:` variant is legitimate only where no token can express the difference — swapping between two different assets, for example, or a dark-only effect such as a backdrop blur.
+
+Contrast is the other reason. A mid-ramp shade that reads well on one background rarely clears WCAG AA on its opposite: `text-indigo-500` measured 3.7:1 on the light sidebar and 4.3:1 on the dark one, failing the 4.5:1 threshold in both. Each theme needs its own end of the ramp, which is exactly what a token holds and a literal cannot.

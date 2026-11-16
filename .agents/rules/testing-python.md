@@ -71,7 +71,7 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows. Nor by a unit test that asserts on Cypher text, whether a query, a shared clause helper or the query-building code renders it: that pins the wording, not the rows. See `dev/guidelines/backend/testing.md` §"What not to test".
 
 ## Check existing coverage before adding a test
 
@@ -95,7 +95,7 @@ Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.ta
 
 ## A regression guard must be shown to bite
 
-Before trusting a test that pins a fix or an optimization, run it against the code without the change (revert it, or reintroduce the old call) and watch it fail — a guard that passes on both sides asserts nothing, and several have. State the check in the PR ("fails with X when the fix is reverted"). A `strict=True` xfail swallows every assertion in its body, so it holds only the expected failure; invariants that must hold today go in a passing test.
+Before trusting a test that pins a fix or an optimization, run it against the code without the change (revert it, or reintroduce the old call) and watch it fail — a guard that passes on both sides asserts nothing, and several have. State the check in the PR ("fails with X when the fix is reverted"). A `strict=True` xfail swallows every assertion in its body, so it holds only the expected failure; invariants that must hold today go in a passing test. The converse: a known gap is pinned by asserting the *intended* behavior under `@pytest.mark.xfail(strict=True, reason=<the mechanism>)` — never by a passing test that asserts the broken behavior, which reads as a contract and gives no signal when the gap closes.
 
 ## Never assert on elapsed time
 

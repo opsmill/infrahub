@@ -1,0 +1,27 @@
+---
+title: Trace events
+---
+
+## Trace Sample Ratio Updated Event
+
+**Type**: infrahub.trace.sample_ratio_updated
+**Description**: Event generated when an administrator sets or clears the temporary trace sampling ratio.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
+| **previous_ratio** | Ratio in force on the process that handled the request, before the change |
+| **new_ratio** | Ratio in force after the change; the default ratio when the temporary ratio is cleared |
+| **expires_at** | UTC time when the temporary ratio stops applying; empty when it is cleared |
+| **cleared** | Indicates if the administrator cleared the temporary ratio |

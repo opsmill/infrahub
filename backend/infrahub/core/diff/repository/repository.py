@@ -1,6 +1,6 @@
 import asyncio
+from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
 from itertools import batched
-from typing import AsyncGenerator, Generator, Iterable, Sequence
 
 from neo4j.exceptions import TransientError
 

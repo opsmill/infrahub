@@ -9,6 +9,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import ValidationError
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, THING, load_schema
@@ -55,7 +56,9 @@ class TestNodeCreateWithMandatoryAttributeFromProfile:
 
         assert node.id
 
-        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        applier = NodeProfilesApplier(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         await applier.apply_profiles(node)
 
         assert node.name.value == "from_profile"
@@ -75,7 +78,9 @@ class TestNodeCreateWithMandatoryAttributeFromProfile:
         await node.new(db=db, profiles=[profile], name="user_provided")
         await node.save(db=db)
 
-        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        applier = NodeProfilesApplier(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         await applier.apply_profiles(node)
 
         assert node.id
@@ -120,7 +125,9 @@ class TestNodeCreateWithMandatoryRelationshipFromProfile:
         assert node.id
         assert node.name.value == "test_thing"
 
-        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        applier = NodeProfilesApplier(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         await applier.apply_profiles(node)
 
         node = await NodeManager.get_one(db=db, id=node.id)
@@ -157,7 +164,9 @@ class TestNodeCreateWithMultipleProfiles:
 
         assert node.id
 
-        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        applier = NodeProfilesApplier(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         await applier.apply_profiles(node)
 
         assert node.color.value == "green"
@@ -182,7 +191,9 @@ class TestNodeCreateWithMultipleProfiles:
 
         assert node.id
 
-        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        applier = NodeProfilesApplier(
+            db=db, branch=default_branch, profile_data_reader=ProfileDataReader(db=db, branch=default_branch)
+        )
         await applier.apply_profiles(node)
 
         assert node.name.value == "from_profile"

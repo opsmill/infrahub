@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { ScrollArea } from "@infrahub/ui";
 import { ListBox } from "react-aria-components";
 import * as R from "remeda";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 

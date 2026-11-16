@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 from uuid import uuid4
 
 from opentelemetry import trace
@@ -31,6 +31,7 @@ from .model.path import (
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Iterable, Sequence
 
     from structlog.stdlib import BoundLogger
 
@@ -530,7 +531,7 @@ class DiffCoordinator:
         tracking_id: TrackingId,
         force_branch_refresh: bool = False,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
-        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]
+        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_time,

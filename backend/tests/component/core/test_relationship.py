@@ -473,6 +473,28 @@ async def test_relationship_validate_many_less_than_min_raise(
         del result[0]
 
 
+async def test_relationship_validate_remove_peers(person_jack_main: Node, branch: Branch) -> None:
+    rel_schema = registry.schema.get(name="TestPerson").get_relationship("tags")
+    rels = []
+    for peer_id in ("peer-a", "peer-b", "peer-c"):
+        rel = Relationship(
+            schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+        )
+        rel.set_peer(value=peer_id)
+        rels.append(rel)
+
+    result = RelationshipValidatorList(*rels, name="name", min_count=2, max_count=None)
+    with pytest.raises(infra_execs.ValidationError, match=r"Too few relationships, min 2"):
+        result.remove_peers(peer_ids={"peer-a", "peer-c"})
+    assert [rel.peer_id for rel in result] == ["peer-a", "peer-b", "peer-c"]
+
+    held = result.as_list()
+    result.remove_peers(peer_ids={"peer-a"})
+    assert [rel.peer_id for rel in result] == ["peer-b", "peer-c"]
+    assert [rel.peer_id for rel in held] == ["peer-b", "peer-c"]
+    assert len(result) == 2
+
+
 async def test_relationship_assign_from_pool(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -503,6 +525,25 @@ async def test_relationship_assign_from_pool(
     await obj.save(db=db)
 
     assert await obj.prefix.get_peer(db=db)
+
+
+async def test_relationship_from_pool_rejects_sibling_kind_for_concrete_peer(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    init_nodes_registry: None,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+) -> None:
+    """A concrete relationship peer rejects a sibling kind of that peer."""
+    mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+
+    obj = await Node.init(schema=mandatory_prefix_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "site3"},
+        prefix={"from_pool": {"id": kind_override_prefix_pool.id, "prefix_type": "TestIPPrefix"}},
+    )
+    with pytest.raises(infra_execs.ValidationError, match="'TestIPPrefix' is not a valid kind"):
+        await obj.save(db=db)
 
 
 async def test_relationship_timestamp_changes(

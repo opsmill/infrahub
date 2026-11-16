@@ -47,6 +47,12 @@ Each of the eight `import_*` methods above owns a compare/create/update lifecycl
 
 `base.py:183-188` — `@property sdk` lazily mutates `self.client` (a Pydantic-model field) inside the read accessor. `base.py:190-192` — `@property default_branch` falls back to `registry.default_branch` (module-global singleton) when `self.default_branch_name` is `None`.
 
+> **The `default_branch` half of that observation is being fixed elsewhere.** IFC-3105
+> (`dev/specs/ifc-3105-honour-default-branch/`) deletes both the optional field and the fallback
+> property, replacing them with a required field on the read-write kind and no trunk at all on the
+> read-only kind. Treat it as already gone when planning Story 6. The `sdk` property finding stands
+> and is untouched by that work.
+
 ### Public re-exports (FR-013)
 
 `backend/infrahub/git/__init__.py:1-11` exports `InfrahubReadOnlyRepository`, `InfrahubRepository`, `initialize_repositories_directory`. `repository.py` defines no `__all__`; the symbols imported elsewhere in the backend are the two classes plus `get_initialized_repo` (the `@task`-decorated public function at repository.py:320).
@@ -105,7 +111,7 @@ The `_impl` method stays on the class (not a free function) so it sees `self`. T
 
 Two `typing.Protocol` types, defined `runtime_checkable=False`:
 
-- `ReadOnlyRepositoryProtocol`: the methods read-only consumers need — `get_commit_value`, `get_worktree`, `find_files`, `get_file_content`, `get_repository_config`, plus the identification fields (`name`, `id`, `default_branch`).
+- `ReadOnlyRepositoryProtocol`: the methods read-only consumers need — `get_commit_value`, `get_worktree`, `find_files`, `get_file_content`, `get_repository_config`, plus the identification fields (`name`, `id`, ~~`default_branch`~~). **`default_branch` is struck**: IFC-3105 removes it from the read-only kind entirely (FR-004), so a protocol requiring it would be unsatisfiable by `InfrahubReadOnlyRepository`. See `contracts/protocols.md`.
 - `RepositoryProtocol(ReadOnlyRepositoryProtocol)`: adds the write surface — `pull`, `push`, `merge`, `rebase`, `sync`, `create_branch`, `delete_branch`, `update_commit_value`.
 
 Exact method set is pinned by a discovery sweep before the protocol-introduction PR lands (FR-020 audit). Both concrete classes (`InfrahubRepository`, `InfrahubReadOnlyRepository`) satisfy `RepositoryProtocol` structurally — the protocols are derived from existing behavior, not new.

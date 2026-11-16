@@ -25,7 +25,7 @@ mutate_create()
        -> preview node (process_pools=False) for lock calculation
        -> acquire InfrahubMultiLock
        -> _do_create_node()
-            -> NodeCreationContext     # tracks side-effect nodes for events
+            -> NodeMutationContext     # records the other nodes the mutation writes, for events
             -> Node.new()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs
@@ -81,6 +81,29 @@ mutate_upsert()
             -> _call_mutate_update(skip_uniqueness_check=True)
             -> handle file idempotency (checksum comparison)
 ```
+
+## Nodes a mutation writes besides its main node
+
+Record each node the mutation writes outside the main node's save on the node the mutation returns,
+with the action applied, so it gets its own event (see [Events](events.md#events-a-mutation-sends)):
+
+- `create_node()` records template components and resource pool allocations itself.
+- Any other write calls `Node.record_mutation_write(node, action)`, as the number pool and range
+  mutations do for the ranges and the pool they write.
+
+The records live on the returned node, so a retried attempt discards the records of a failed one
+along with its node.
+
+## Number pool values for existing nodes
+
+A schema change that adds a NumberPool attribute, and the repair of missing number pool rows, give
+existing nodes their numbers through `pools/existing_node_numbers.py`. It reads each node's division
+with `NodeNumberPoolDivisionReader`, the reader the create path uses, so an existing node gets the
+number a create would give it. It loads the nodes with only their id, the numbered attribute and the
+fields that hold the pool's scope elements, so the peers of a relationship element are read once for
+the whole set of nodes rather than once per node. The pre-load check that refuses a pool smaller than the kind's node
+count skips scoped pools, because their limit applies to each division; the allocation raises when
+one division runs out.
 
 ## Transaction Retry
 
@@ -183,6 +206,22 @@ the mutation then works from it rather than reading it back:
 Passing a node keeps the rest of the payload for that relationship (its source, its owner) only if
 the node replaces the `id` inside it rather than the payload itself.
 
+## RelationshipAdd and RelationshipRemove
+
+These mutations change one relationship of an existing node, so they refuse a change that would break the schema on either side of it:
+
+| Refused when | Mutation |
+|--------------|----------|
+| the relationship is `read_only` | both |
+| a peer is not of the relationship's peer kind | both |
+| a peer is already linked to another node on a cardinality-one side of its own | both |
+| the relationship is cardinality one and would receive more than one peer | `RelationshipAdd` |
+| the peers do not share the parent named by `common_parent` | `RelationshipAdd` |
+| the relationship is mandatory and would be left with no peer | `RelationshipRemove` |
+| a removed peer's own side of the relationship (same identifier, mirrored direction) is mandatory with cardinality one, so the peer would be left without its peer | `RelationshipRemove` |
+
+A peer that must keep its relationship, such as a component under a mandatory parent or a number pool range under its pool, therefore changes through a mutation on the peer itself: update its relationship to another node, or delete it.
+
 ## Locking Strategy
 
 1. A preview node is created with `process_pools=False` (no side effects)
@@ -206,6 +245,64 @@ object locks, because the IPAM reconciliation that follows rewrites parent relat
   stored ones. Reconciling an address writes only that address's own parent relationship, so
   mutations of different addresses do not wait for each other. On other branches an IP address
   mutation takes no IPAM lock, because reconciliation runs again at merge.
+
+### Number pool locks
+
+A change to a number pool's ranges and a write that checks a number against those ranges must not
+overlap: otherwise the write can commit a number from a range the change just removed. Every such path
+goes through the `NumberPoolLocker` protocol, which `NumberPoolLock` in `pools/number_pool_locker.py`
+implements with two locks:
+
+| Lock | Taken by | Mode |
+|------|----------|------|
+| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools, the schema migration that adds a NumberPool attribute | exclusive (`changing`) |
+| `resource_pool.<pool id>` | allocation that picks a new number, attaching a supplied number, editing a tracked number | shared (`holding`) |
+| `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
+
+Pool create and update, and range create and update, also take `number_pool_target.<kind>.<attribute>`
+before the pool's exclusive lock, so two pools on the same unique attribute cannot gain overlapping ranges
+at the same time. Allocations never take it. Pool create takes only this lock: no other request can read
+the new pool before its transaction commits, so no write can hold it.
+
+- **Shared holders run in parallel.** Each one records an entry that expires, at
+  `lock.shared.<lock name>.<holder id>`, adds its id to the set `lock.shared.<lock name>`, and renews
+  the entry while it holds the lock, so allocations in different divisions never wait for each other.
+  Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
+  expired.
+- **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
+  to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
+  other writes once it is committed. This also covers allocations that run inside a transaction outside
+  the mutation lock, such as template components and migrations.
+- **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
+  queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
+  it releases the mutex and the range change fails with a retry message. The lock error, which names
+  the setting, is logged as a warning, so that the API message does not name a server setting.
+- **The division's lock comes before the pool's shared hold.** A write that holds the pool until its
+  commit and then waits for a division's lock can wait on an allocation that is itself queued behind a
+  range change, so allocations take `picking` first. Template components are the exception: they
+  allocate inside the template's transaction without taking the division's lock first, so the cycle can
+  still form until the waiting range change reaches its wait limit and fails.
+- **A task that holds the pool exclusively skips `picking`.** Every other allocation picks inside its
+  shared hold, so none can pick while the pool is held exclusively, and skipping the division's lock keeps
+  the exclusive holder from waiting on an allocation that is itself queued behind it.
+- **The schema migration that adds a NumberPool attribute holds the pool exclusively until its commit.**
+  It allocates a number to every existing node in one transaction, and holds `changing` from before its
+  first allocation until the commit, so that no other allocation picks a number the migration drew but
+  has not committed yet, and no range changes under it. When writes still hold the pool after
+  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails. The Prefect task that runs it retries it
+  up to 3 times, and the schema update is rolled back only when the last attempt also fails. A kind with
+  no nodes allocates nothing and takes no pool lock.
+- **A dead worker makes range changes fail until its entry expires**, after
+  `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
+- **An allocation that returns its identifier's reservation does not hold the pool.** The reserved
+  number is already tracked, so the range check already counts it.
+- **The schema-pool synchronizer locks only the pools it changes.** It runs on every schema load and
+  every merge, so it first reads a pool's ranges and shorthand without the lock, and skips the pool when
+  both match the declaration.
+- **The schema-pool synchronizer reports a range change it could not apply** and moves on to the other
+  pools; the flow raises the refusals once every pool was processed.
+- **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,
+  so a number drawn by the IP node they create is released before its write.
 
 ## Key Files
 

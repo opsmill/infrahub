@@ -1,38 +1,24 @@
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 
-import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
-
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
+import { getGridTemplateColumns } from "@/entities/branches/ui/branches-table/get-grid-template-columns";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 
 export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElement> {
-  columns: ColumnDef<BranchListItem>[];
-  data: Array<BranchListItem>;
+  columns: ColumnDef<BranchTableRow>[];
+  data: Array<BranchTableRow>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  gridTemplateColumns?: (columnCount: number) => string;
 }
-
-// Same capping rule as the shared DataTable: `fit-content` so short columns shrink
-// to fit, with a ceiling so one long value cannot stretch the column off-screen.
-const defaultGridTemplateColumns = (columnCount: number) =>
-  [
-    `fit-content(${WIDE_COLUMN_MAX_WIDTH})`,
-    `fit-content(${COLUMN_MAX_WIDTH})`,
-    "minmax(150px, 200px)",
-    `repeat(${columnCount - 4}, fit-content(${COLUMN_MAX_WIDTH}))`,
-    "2.5rem",
-  ].join(" ");
 
 export function BranchesDataTable({
   columns,
   data,
   isLoading,
   renderEmpty,
-  gridTemplateColumns = defaultGridTemplateColumns,
   ...props
 }: BranchesDataTableProps) {
   const { isAuthenticated } = useAuth();
@@ -54,12 +40,9 @@ export function BranchesDataTable({
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
-  const style = React.useMemo<React.CSSProperties>(
-    () => ({
-      gridTemplateColumns: gridTemplateColumns(allHeaders.length),
-    }),
-    [allHeaders.length, gridTemplateColumns]
-  );
+  const style: React.CSSProperties = {
+    gridTemplateColumns: getGridTemplateColumns(allHeaders.map(({ column }) => column.columnDef)),
+  };
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 

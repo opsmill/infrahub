@@ -218,6 +218,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03_remove_generic])
         assert success is False
+        assert response is not None
         assert len(response["errors"]) == 1
         error = response["errors"][0]
         assert "Node-level 'inherit_from' constraint violation on schema 'SchemaNode'" in error["message"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.log import get_logger
@@ -25,7 +26,7 @@ class DeduplicateRelationshipVerticesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (root:Root)
 WITH root.default_branch AS default_branch_name

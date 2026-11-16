@@ -36,6 +36,7 @@ import subprocess  # noqa: S404
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 # The raw job log keeps every terminal escape sequence, not only colour (SGR) codes. Strip general
 # CSI sequences (colour, cursor moves, erase-line/screen) and OSC sequences (window title) so none
@@ -80,6 +81,23 @@ BUCKETS: list[tuple[str, str]] = [
     (
         "pytest-green-exit-1",
         r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
+    ),
+    # The shard ran out of its pytest-xdist session budget, so the job fails with every test it reached green.
+    ("pytest-session-timeout", r"xdist\.dsession\.Interrupted: session-timeout: [\d.]+ sec exceeded"),
+    # Raised in asyncio's stream reader during the benchmarks' Neo4j handshake, so every benchmark errors at setup.
+    ("asyncio-stream-buffer-error", r"BufferError: Existing exports of data: object cannot be re-sized"),
+    # Only a pull that ends the step counts, because a pull retried successfully leaves the same message in the log.
+    (
+        "docker-pull-lease",
+        r"unable to lease content: lease does not exist[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*##\[error\]Process completed with exit code 1\.",
+    ),
+    # Matched only in the server's output (Compose-prefixed, or inside the server-log step up to the next
+    # step), because a unit test raises the same message on purpose.
+    (
+        "redis-read-timeout",
+        r"infrahub-server-\d+\s+\|\s+redis\.exceptions\.TimeoutError: Timeout reading from"
+        r'|##\[group\]Run docker logs "\$\{INFRAHUB_BUILD_NAME\}-server-1"[^\n]*\n'
+        r"(?:(?!\S+ ##\[group\]Run )[^\n]*\n)*?[^\n]*redis\.exceptions\.TimeoutError: Timeout reading from",
     ),
 ]
 
@@ -305,12 +323,22 @@ def append_ledger(ledger_path: Path, jobs_out: list[dict], repo: str, today: dt.
     return added
 
 
-def ranked_tests(jobs_out: list[dict]) -> list[dict]:
+class RankedTest(TypedDict):
+    test: str
+    distinct_runs: int
+    distinct_prs: int
+    attempts: int
+    recovered_on_retry: int
+    buckets: list[str]
+    prs: list[int]
+
+
+def ranked_tests(jobs_out: list[dict]) -> list[RankedTest]:
     freq: dict[str, list[dict]] = defaultdict(list)
     for e in jobs_out:
         for t in e["tests"]:
             freq[t].append(e)
-    table = [
+    table: list[RankedTest] = [
         {
             "test": test,
             "distinct_runs": len({e["run"] for e in entries}),

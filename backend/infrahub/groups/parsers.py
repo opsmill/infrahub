@@ -35,22 +35,22 @@ class GroupNodeMutationParser:
     def _get_applicable_events(self, events: list[NodeMutatedEvent]) -> list[ApplicableEvent]:
         applicable: list[ApplicableEvent] = []
         for event in events:
-            if event_kind := self._get_schema(kind=event.kind):
-                if (
-                    InfrahubKind.GENERICGROUP in event_kind.inherit_from
-                    and "members" in event.changelog.relationships
-                    and isinstance(
-                        event.changelog.relationships["members"],
-                        RelationshipCardinalityManyChangelog,
+            if (
+                (event_kind := self._get_schema(kind=event.kind))
+                and InfrahubKind.GENERICGROUP in event_kind.inherit_from
+                and "members" in event.changelog.relationships
+                and isinstance(
+                    event.changelog.relationships["members"],
+                    RelationshipCardinalityManyChangelog,
+                )
+            ):
+                applicable.append(
+                    ApplicableEvent(
+                        event=event,
+                        node_schema=event_kind,
+                        relationship=event.changelog.relationships["members"],
                     )
-                ):
-                    applicable.append(
-                        ApplicableEvent(
-                            event=event,
-                            node_schema=event_kind,
-                            relationship=event.changelog.relationships["members"],
-                        )
-                    )
+                )
         return applicable
 
     async def group_events_from_node_actions(self, events: list[NodeMutatedEvent]) -> list[InfrahubEvent]:

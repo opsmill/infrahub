@@ -37,7 +37,7 @@ def get_attribute_schema_class_for_kind(kind: str) -> type[AttributeSchema]:
 
 class AttributeSchema(GeneratedAttributeSchema):
     _sort_by: list[str] = ["name"]
-    _enum_class: type[enum.Enum] | None = None
+    _enum_class: type[Enum] | None = None
     # Stores the source generic's attribute ID for inherited attributes
     # Used for rename detection in diffs while keeping id=None for inherited attrs
     _source_attribute_id: str | None = PrivateAttr(default=None)
@@ -159,14 +159,14 @@ class AttributeSchema(GeneratedAttributeSchema):
             raise ValueError("branch hasn't been defined yet")
         return self.branch
 
-    def get_enum_class(self) -> type[enum.Enum]:
+    def get_enum_class(self) -> type[Enum]:
         if not self.enum:
             raise ValueError(f"{self.name} is not an Enum")
         if not self._enum_class:
             self._enum_class = generate_python_enum(name=f"{self.name.title()}Enum", options=self.enum)
         return self._enum_class
 
-    def convert_value_to_enum(self, value: Any) -> enum.Enum | None:
+    def convert_value_to_enum(self, value: Any) -> Enum | None:
         if isinstance(value, enum.Enum) or value is None:
             return value
         enum_class = self.get_enum_class()

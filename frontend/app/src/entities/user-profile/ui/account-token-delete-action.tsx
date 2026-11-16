@@ -31,7 +31,7 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
         aria-label={`Delete token ${token.name}`}
         {...props}
       >
-        <Trash2Icon className="text-red-600" />
+        <Trash2Icon className="text-danger" />
       </Button>
 
       {tokenToDelete && (

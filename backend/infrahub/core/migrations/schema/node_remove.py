@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 
@@ -72,7 +73,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     name = "migration_node_remove_in"
     insert_return: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self._build_params())
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -217,7 +218,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     name = "migration_node_remove_out"
     insert_return: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self._build_params())
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)

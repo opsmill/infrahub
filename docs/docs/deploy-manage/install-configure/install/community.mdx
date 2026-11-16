@@ -186,6 +186,8 @@ It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is
 <ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub" openInNewTab />
 <ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub/infrahub" openInNewTab />
 
+To run the Infrahub MCP server in the same release as Infrahub, set `infrahub-mcp.enabled: true` in your values file and put the MCP server settings under the `infrahub-mcp:` key. With the default settings, every MCP client reads and writes data in Infrahub through one shared API token. To require each client to send its own API token, and for the other settings, see [Deploy on Kubernetes with Helm](https://docs.infrahub.app/mcp/guides/kubernetes) in the Infrahub MCP server documentation.
+
 ### Prerequisites
 
 - A Kubernetes cluster

@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { useEffect, useRef } from "react";
 
 import type { components } from "@/shared/api/rest/types.generated";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 

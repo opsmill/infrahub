@@ -30,9 +30,7 @@ export function RepositoryObjectsTab({ objectKind, objectId }: RepositoryObjects
     >
       Objects
       {isPending && <Spinner />}
-      {!isPending && (
-        <Badge className="rounded-full font-medium text-gray-80">{objectsCount}</Badge>
-      )}
+      {!isPending && <Badge className="rounded-full font-medium text-subtle">{objectsCount}</Badge>}
     </LinkTab>
   );
 }

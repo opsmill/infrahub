@@ -129,6 +129,7 @@ error_catalogue_all:
 
 observability_standalone_all:
   - "development/docker-compose-observability.yml"
+  - "development/docker-compose-observability-tracing.yml"
   - "development/convert_compose_standalone.py"
   - "development/alloy/**"
   - "development/grafana/**"

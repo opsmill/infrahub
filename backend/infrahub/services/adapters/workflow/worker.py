@@ -3,11 +3,14 @@ from __future__ import annotations
 import weakref
 from typing import TYPE_CHECKING, Any, overload
 
+import httpx
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
+from prefect.exceptions import ObjectNotFound
 
 from infrahub import config, lock
+from infrahub.exceptions import WorkflowOrchestrationError
 from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
@@ -102,27 +105,34 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         client_context = AsyncClientContext.get()
-        if client_context is None:
-            response: FlowRun = await run_deployment(
-                name=workflow.full_name,
-                poll_interval=RUN_STATE_POLL_INTERVAL,
-                parameters=parameters or {},
-                tags=tags,
-                work_queue_name=work_queue_name,
-            )  # type: ignore[misc]
-        else:
-            client = client_context.client
-            async with self._creation_slots.slot(client=client):
-                flow_run: FlowRun = await run_deployment(
+        try:
+            if client_context is None:
+                response: FlowRun = await run_deployment(
                     name=workflow.full_name,
-                    timeout=0,
+                    poll_interval=RUN_STATE_POLL_INTERVAL,
                     parameters=parameters or {},
                     tags=tags,
                     work_queue_name=work_queue_name,
                 )  # type: ignore[misc]
-            response = await self._follower(client=client).wait(flow_run_id=flow_run.id)
+            else:
+                client = client_context.client
+                async with self._creation_slots.slot(client=client):
+                    flow_run: FlowRun = await run_deployment(
+                        name=workflow.full_name,
+                        timeout=0,
+                        parameters=parameters or {},
+                        tags=tags,
+                        work_queue_name=work_queue_name,
+                    )  # type: ignore[misc]
+                response = await self._follower(client=client).wait(flow_run_id=flow_run.id)
+        except (httpx.HTTPError, ObjectNotFound, OSError) as exc:
+            raise WorkflowOrchestrationError(
+                f"The task manager could not start the run of workflow {workflow.name} or follow it to a final state."
+            ) from exc
         if not response.state:
-            raise RuntimeError("Unable to read state from the response")
+            raise WorkflowOrchestrationError(
+                f"The task manager returned no state for the run of workflow {workflow.name}."
+            )
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)

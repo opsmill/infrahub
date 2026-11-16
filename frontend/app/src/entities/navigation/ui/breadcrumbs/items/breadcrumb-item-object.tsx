@@ -1,6 +1,6 @@
 import { Breadcrumb, Button, MenuTrigger, Popover } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
 
@@ -8,7 +8,10 @@ import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import {
+  getObjectDetailsTabSegment,
+  getObjectDetailsUrl,
+} from "@/entities/nodes/object/ui/routing/object-urls";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -27,6 +30,17 @@ export function BreadcrumbItemObject({
   filterQuery?: GetRelationshipsParams["filterQuery"];
 }) {
   const { schema } = useSchema(node.__typename);
+  const { objectId } = useParams();
+  const { pathname } = useLocation();
+  const tabSegment =
+    objectId === node.id ? getObjectDetailsTabSegment(pathname, objectId) : undefined;
+  const getItemHref = (item: NodeCore) =>
+    getObjectDetailsUrl(
+      item.__typename,
+      item.id,
+      undefined,
+      item.__typename === node.__typename ? tabSegment : undefined
+    );
 
   const { schema: parentSchema } = useSchema(parentRelationshipSchema?.peer);
   const parentToChildRelationshipSchema = parentRelationshipSchema
@@ -55,7 +69,7 @@ export function BreadcrumbItemObject({
         <Col className="gap-0 py-0.5">
           <Link
             to={getObjectDetailsUrl(node.__typename)}
-            className="truncate text-neutral-600 text-xs leading-3.5 hover:underline"
+            className="truncate text-foreground-muted text-xs leading-3.5 hover:underline"
           >
             {schema?.label}
           </Link>
@@ -89,10 +103,12 @@ export function BreadcrumbItemObject({
                 parentId={parentId}
                 relationshipName={parentToChildRelationshipSchema.name}
                 relationshipSchema={parentToChildSchema}
+                getItemHref={getItemHref}
               />
             ) : (
               <ObjectAutocomplete
                 className="max-h-58"
+                getItemHref={getItemHref}
                 {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
                   ? {
                       objectKind: parentToChildRelationshipSchema.peer,

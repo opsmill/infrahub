@@ -65,11 +65,12 @@ from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
-from tests.adapters.lock import LockTimeline, install_recording_lock_registry
+from tests.adapters.lock import LockTimeline, RecordingLockRegistry, install_recording_lock_registry
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
     INFRAHUB_USE_TEST_CONTAINERS,
+    LOCK_WAIT_TIMEOUT_SECONDS,
     NEO4J_IMAGE,
     PORT_BOLT_NEO4J,
     PORT_CLIENT_RABBITMQ,
@@ -82,6 +83,7 @@ from tests.helpers.constants import (
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
 from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
@@ -270,6 +272,17 @@ def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
 
 @pytest.fixture
 async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node | None:
+    return await do_default_ipnamespace(db=db)
+
+
+@pytest.fixture(scope="class")
+async def default_ipnamespace_scope_class(
+    db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch
+) -> Node | None:
+    return await do_default_ipnamespace(db=db)
+
+
+async def do_default_ipnamespace(db: InfrahubDatabase) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
@@ -378,7 +391,24 @@ async def register_simplified_proposed_change_schema(default_branch: Branch) -> 
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def neo4j_heap_size() -> str:
+    """Heap size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "1.00GiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j_pagecache_size() -> str:
+    """Page cache size the test Neo4j container is started with, written the way Neo4j reports it back."""
+    return "512.00MiB"
+
+
+@pytest.fixture(scope="session")
+def neo4j(
+    request: pytest.FixtureRequest,
+    load_settings_before_session: None,
+    neo4j_heap_size: str,
+    neo4j_pagecache_size: str,
+) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -387,9 +417,9 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session: None) ->
     container = start_neo4j_container(
         NEO4J_IMAGE,
         extra_env={
-            "NEO4J_server_memory_heap_initial__size": "1g",
-            "NEO4J_server_memory_heap_max__size": "1g",
-            "NEO4J_server_memory_pagecache_size": "512m",
+            "NEO4J_server_memory_heap_initial__size": neo4j_heap_size,
+            "NEO4J_server_memory_heap_max__size": neo4j_heap_size,
+            "NEO4J_server_memory_pagecache_size": neo4j_pagecache_size,
         },
     )
     request.addfinalizer(container.stop)
@@ -1270,7 +1300,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
 @pytest.fixture
 async def git_repo_01(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote."""
-    return await InfrahubRepository.new(
+    return await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -1291,7 +1321,12 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(
+        self,
+        message: InfrahubMessage,
+        response_class: type[ResponseClass],
+        timeout: float | None = None,  # noqa: ASYNC109
+    ) -> ResponseClass:
         self.messages.append(message)
         response = self.response.pop()
         data = ujson.loads(response.body)
@@ -1354,6 +1389,26 @@ def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
         yield timeline
     finally:
         lock.registry = original
+
+
+@pytest.fixture
+def recording_lock_registry(recording_lock_timeline: LockTimeline) -> RecordingLockRegistry:
+    """The recording lock registry the timeline belongs to, to hold a task at a lock with a gate."""
+    assert isinstance(lock.registry, RecordingLockRegistry)
+    assert lock.registry.timeline is recording_lock_timeline
+    return lock.registry
+
+
+@pytest.fixture
+def exclusive_lock_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give an exclusive lock request the full test timeout to wait for shared holders, whatever the environment sets."""
+    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", LOCK_WAIT_TIMEOUT_SECONDS)
+
+
+@pytest.fixture
+def short_exclusive_lock_wait(exclusive_lock_wait: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Refuse an exclusive lock request after one second of waiting for shared holders."""
+    monkeypatch.setattr(config.SETTINGS.cache, "exclusive_lock_wait_secs", 1)
 
 
 @pytest.fixture

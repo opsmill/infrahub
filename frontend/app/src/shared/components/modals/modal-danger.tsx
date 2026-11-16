@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Modal } from "@infrahub/ui";
 import type { ReactNode } from "react";
 import { Heading } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
+import { Icon } from "@/shared/components/display/icon";
 
 interface ModalDangerProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ interface ModalDangerProps {
   isLoading?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
+  className?: string;
 }
 
 export function ModalDanger({
@@ -25,6 +26,7 @@ export function ModalDanger({
   isLoading,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  className,
 }: ModalDangerProps) {
   return (
     <Modal
@@ -32,19 +34,20 @@ export function ModalDanger({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       data-testid="modal-delete"
+      className={className}
     >
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-            <Icon icon="mdi:warning-outline" className="text-red-600" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-danger-surface">
+            <Icon icon="mdi:warning-outline" className="text-danger" />
           </div>
           {title}
         </Heading>
 
-        {description && <div className="px-8 text-gray-500 text-sm">{description}</div>}
+        {description && <div className="px-8 text-foreground-muted text-sm">{description}</div>}
       </Col>
 
-      <Row className="justify-end bg-gray-50 p-3">
+      <Row className="justify-end bg-content-muted p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
           {cancelLabel}
         </Button>

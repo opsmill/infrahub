@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
@@ -11,7 +12,7 @@ export function BranchesEmpty() {
   };
 
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+    <div className="col-span-full flex flex-col items-center justify-center py-12 text-foreground-muted">
       <Icon icon="mdi:source-branch" className="mb-2 text-3xl" />
       {filters.length === 0 ? (
         <>

@@ -10,7 +10,7 @@ from csv import DictReader, DictWriter
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import typer
@@ -91,6 +91,8 @@ def get_timestamp_string() -> str:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from prefect.server.database.interface import PrefectDBInterface
 
     from infrahub.cli.context import CliContext

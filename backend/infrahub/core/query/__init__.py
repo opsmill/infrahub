@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -23,8 +23,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from neo4j import Record
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -390,6 +391,18 @@ class QueryStat:
     def from_metadata(cls, data: dict[str, Any]) -> Self:
         data = {key.replace("-", "_"): value for key, value in data.items()}
         return cls(**data)
+
+
+class QueryInitKwargs(TypedDict, total=False):
+    """Keyword arguments every query constructor accepts and forwards to its base."""
+
+    branch: Branch | None
+    at: Timestamp | str | None
+    limit: int | None
+    offset: int | None
+    order_by: list[str] | None
+    branch_agnostic: bool
+    user_id: str
 
 
 PAGINATION_LIMIT_PARAM = "query_limit"

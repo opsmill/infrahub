@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import {
   Button,
   LinkButton,
@@ -24,6 +23,7 @@ import { useLocation } from "react-router";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
+import { Icon } from "@/shared/components/display/icon";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import {
   INFRAHUB_DISCORD_URL,
@@ -36,6 +36,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { ThemeMenuItem } from "@/entities/config/ui/theme-menu-item";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
@@ -56,42 +57,48 @@ export const AccountMenu = () => {
   );
 };
 
-const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
-  <>
-    <MenuItem onAction={onAboutClick}>
-      <InfoIcon /> About Infrahub
-    </MenuItem>
+const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => {
+  return (
+    <>
+      <ThemeMenuItem />
 
-    <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
-      <FileTextIcon /> Infrahub documentation
-    </MenuItem>
+      <MenuSeparator />
 
-    <MenuItem href={constructPath("/graphql")}>
-      <Icon icon="mdi:graphql" className="text-base" />
-      GraphQL Sandbox
-    </MenuItem>
+      <MenuItem onAction={onAboutClick}>
+        <InfoIcon /> About Infrahub
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:code-json" className="text-base" />
-      Swagger documentation
-    </MenuItem>
+      <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
+        <FileTextIcon /> Infrahub documentation
+      </MenuItem>
 
-    <MenuSeparator />
+      <MenuItem href={constructPath("/graphql")}>
+        <Icon icon="mdi:graphql" className="text-base" />
+        GraphQL Sandbox
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:github" className="text-base" />
-      GitHub Repository
-    </MenuItem>
+      <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:code-json" className="text-base" />
+        Swagger documentation
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:discord" className="text-base" />
-      Join our Discord server
-    </MenuItem>
-  </>
-);
+      <MenuSeparator />
+
+      <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:github" className="text-base" />
+        GitHub Repository
+      </MenuItem>
+
+      <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:discord" className="text-base" />
+        Join our Discord server
+      </MenuItem>
+    </>
+  );
+};
 
 const AppInfoFooter = () => (
-  <div className="border-stone-300 border-t px-2.5 py-1">
+  <div className="border-border-strong border-t px-2.5 py-1">
     <AppInfo />
   </div>
 );
@@ -108,13 +115,13 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
-        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
-          <Icon icon="mdi:user" className="relative top-1 text-3xl text-stone-600" />
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-border">
+          <Icon icon="mdi:user" className="relative top-1 text-3xl text-subtle-muted" />
         </div>
 
         <div className="overflow-hidden group-data-[state=collapsed]:hidden">
           <div className="truncate font-medium leading-4">Log in</div>
-          <div className="truncate text-stone-500 text-xs">anonymous</div>
+          <div className="truncate text-subtle-muted text-xs">anonymous</div>
         </div>
       </LinkButton>
 
@@ -199,8 +206,6 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
               <SlidersHorizontalIcon /> Global preferences
             </MenuItem>
           )}
-
-          <MenuSeparator />
 
           <CommonMenuItems onAboutClick={onAboutClick} />
 

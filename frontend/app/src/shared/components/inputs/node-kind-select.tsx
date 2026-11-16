@@ -45,7 +45,7 @@ export const NodeKindSelect = ({
             {current.label ?? current.kind} <Badge>{current.namespace}</Badge>
           </div>
         ) : (
-          <span className="text-gray-400">{placeholder}</span>
+          <span className="text-subtle-muted">{placeholder}</span>
         )}
       </ComboboxTrigger>
 

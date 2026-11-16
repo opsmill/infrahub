@@ -6,17 +6,20 @@ from typing import TYPE_CHECKING, Any
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.ipam.constants import ANY_BRANCH
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.ipam.resource_allocator import IPAMResourceAllocator
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
-from .reservation import validate_reserved_prefix_length
+from .ip_pool_branch import get_namespace_on_branch, get_resources_on_branch
+from .kind_validation import validate_allocated_kind
+from .reservation import validate_reserved_kind, validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -36,36 +39,57 @@ class CoreIPPrefixPool(Node):
         size: int | None = None,
         member_type: str | None = None,
         prefix_type: str | None = None,
+        peer_kind: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> Node:
         # TODO(IFC-2945): drop this alias once the public `size` input field is renamed to `prefixlen`.
         if prefixlen is None:
             prefixlen = size
+        data = data or {}
+        pool_name = str(self.get_attribute("name").value)
+
+        # Only an explicitly requested kind is validated; the pool's own default is left alone.
+        requested_prefix_type = prefix_type or data.get("prefix_type", None)
+
+        validate_allocated_kind(
+            db=db,
+            branch=branch,
+            pool_kind="IPPrefixPool",
+            pool_name=pool_name,
+            requested_kind=requested_prefix_type,
+            peer_kind=peer_kind,
+        )
+
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
             if identifier:
                 query_get = await PrefixPoolGetReserved.init(db=db, pool_id=self.id, identifier=identifier)
                 await query_get.execute(db=db)
-                result = query_get.get_result()
-                if result:
-                    prefix = result.get_node("prefix")
-                    # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-                    node = await registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
-                    if node:
+                # A branch reuses the oldest reservation it can read, as a reservation made on
+                # another branch, or on a deleted one, points at a prefix it cannot see
+                reserved_ids = [result.get_node("prefix").get("uuid") for result in query_get.get_results()]
+                readable = await registry.manager.get_many(db=db, ids=reserved_ids, branch=branch)
+                for reserved_id in reserved_ids:
+                    if node := readable.get(reserved_id):
                         validate_reserved_prefix_length(
                             pool_kind="IPPrefixPool",
-                            pool_name=str(self.get_attribute("name").value),
+                            pool_name=pool_name,
                             reserved_value=node.get_attribute("prefix").value,
                             prefixlen=prefixlen,
                             data=data,
                         )
+                        validate_reserved_kind(
+                            pool_kind="IPPrefixPool",
+                            pool_name=pool_name,
+                            reserved_value=node.get_attribute("prefix").value,
+                            reserved_kind=node.get_kind(),
+                            requested_kind=requested_prefix_type,
+                        )
                         return node
 
-            ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
-
-            data = data or {}
+            ip_namespace = await get_namespace_on_branch(db=db, pool=self, branch=branch)
 
             prefixlen = prefixlen or data.get("prefixlen", None) or self.default_prefix_length.value  # type: ignore[attr-defined]
             if not prefixlen:
@@ -74,9 +98,11 @@ class CoreIPPrefixPool(Node):
                     "A prefixlen or a default_value must be provided to allocate a new prefix"
                 )
 
-            next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
+            next_prefix = await self._get_next_on_branch(
+                db=db, prefixlen=prefixlen, branch=branch, ip_namespace=ip_namespace
+            )
 
-            prefix_type = prefix_type or data.get("prefix_type", None) or self.default_prefix_type.value  # type: ignore[attr-defined]
+            prefix_type = requested_prefix_type or self.default_prefix_type.value  # type: ignore[attr-defined]
             if not prefix_type:
                 raise ValueError(
                     f"IPPrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
@@ -104,22 +130,35 @@ class CoreIPPrefixPool(Node):
 
             return node
 
-    async def get_next(self, db: InfrahubDatabase, prefixlen: int) -> IPNetworkType:
-        resources = await self.resources.get_peers(db=db)  # type: ignore[attr-defined]
-        ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
-        allocator = IPAMResourceAllocator(db=db, namespace=ip_namespace, branch=self._branch, branch_agnostic=True)
+    async def get_next(self, db: InfrahubDatabase, prefixlen: int, branch: Branch | None = None) -> IPNetworkType:
+        """Return the next free prefix of `prefixlen` on `branch`, by default the branch the pool was read on.
 
-        try:
-            weighted_resources = sorted(resources.values(), key=lambda r: r.allocation_weight.value or 0, reverse=True)
-        except AttributeError:
-            weighted_resources = list(resources.values())
+        Raises:
+            ResourceNotFoundError: When the pool's namespace does not exist on the branch.
+            PoolExhaustedError: When no resource exists on the branch, or none has room left.
 
-        for resource in weighted_resources:
+        """
+        branch = branch or self._branch
+        ip_namespace = await get_namespace_on_branch(db=db, pool=self, branch=branch)
+        return await self._get_next_on_branch(db=db, prefixlen=prefixlen, branch=branch, ip_namespace=ip_namespace)
+
+    async def _get_next_on_branch(
+        self, db: InfrahubDatabase, prefixlen: int, branch: Branch, ip_namespace: Node
+    ) -> IPNetworkType:
+        resources = await get_resources_on_branch(db=db, pool=self, branch=branch)
+        # A value stays taken while any live branch holds it, so free values are searched across branches.
+        allocator = IPAMResourceAllocator(db=db)
+
+        for resource in resources:
             resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             next_available = await allocator.get_next_prefix(
-                ip_prefix=resource_prefix, target_prefix_length=prefixlen, parent_uuid=resource.id
+                ip_prefix=resource_prefix,
+                target_prefix_length=prefixlen,
+                namespace=ip_namespace.get_id(),
+                on_branch=ANY_BRANCH,
+                parent_uuid=resource.id,
             )
             if next_available:
                 return next_available
 
-        raise IndexError("No more resources available")
+        raise PoolExhaustedError

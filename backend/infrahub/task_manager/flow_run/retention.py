@@ -60,7 +60,8 @@ class FlowRunRetention:
                         )
                     purged_total += 1
                     batch_purged += 1
-                except Exception as e:
+                # Best-effort retention: skip flow runs that fail to purge and keep processing the batch
+                except Exception as e:  # noqa: BLE001
                     logger.warning(f"Failed to {action} flow run {flow_run.id}: {e}")
                     failed_purges.append(flow_run.id)
 
