@@ -35,11 +35,15 @@ When a read must reflect what a branch itself defines (a branch that removed a k
 
 ### Initialization
 
+Build the text of a new query in `__init__` and create the query with its constructor:
+
 ```python
-query = await MyQuery.init(db=db, branch=branch, **kwargs)
+query = MyQuery(branch=branch, node_id=node_id)
 ```
 
-The `init()` classmethod calls `query_init()` for async initialization (schema lookups, etc.).
+Older queries build their text in `query_init()` and are created with `await MyQuery.init(db=db, branch=branch, **kwargs)`, which calls the constructor and then `query_init()`. Do not write `query_init()` in a new query: the base method raises `NotImplementedError`, so `init()` fails on a query that builds its text in `__init__`.
+
+Neither `__init__` nor `query_init()` sends a query to the database. When the text depends on a lookup, see [Queries Whose Shape Depends on a Lookup](query-shape-from-data.md).
 
 ### Building
 
@@ -78,7 +82,7 @@ for item in query.get_data():
 Useful for debugging:
 
 ```python
-query = await MyQuery.init(db=db, branch=branch, node_id="abc123")
+query = MyQuery(branch=branch, node_id="abc123")
 print(query.get_query())  # Preview generated Cypher
 print(query.get_query(var=True, inline=True))  # With variables substituted
 await query.execute(db=db)  # Execute when ready
@@ -196,8 +200,6 @@ class PagedNodeFieldsQuery(Query):
     def __init__(self, limit: int, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.limit = limit
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
         self.add_to_query("""
         MATCH (n:Node)
@@ -331,18 +333,7 @@ Every attribute with the same value and the same `is_default` flag links to one 
 
 When writing or modifying a query that selects vertices or edges by a property, follow [Database Indexes](database-indexes.md): check the existing indexes for each label or edge type and property, and declare only the missing indexes in the same change. Adding an index needs no migration. For selective reads across several labels, edge types, or properties, use separate hinted reads and verify their execution plans.
 
-#### Start a filtered read from the filter only when a count shows it reads less
-
-A read that filters a kind on an exact attribute value or on peer ids can start from every node of the kind, or from the indexed vertex of the filter (the value vertex, or the peer). Choose the start per query:
-
-- **Count, do not infer from the schema.** Starting from an indexed vertex reads every edge on it, whatever is at the other end. A value vertex is shared by the attributes of every kind that hold the value, and a peer can relate to most nodes of a kind, so a unique attribute or a cardinality-one relationship says nothing about the cost.
-- **Use counts that expand nothing.** `COUNT { ()-[:HAS_VALUE]-(av) }` reads the degree stored on the vertex, and `MATCH (n:<Kind>) RETURN count(n)` reads the count store. Run both in one query before building the main one. They include deleted nodes and every branch, so use them to compare the two starts, never as a result.
-- **Change the start only with a margin.** Start from the vertex with the fewest edges, and only when the kind holds several nodes per edge: following an edge to its node costs more than reading one node of the kind.
-- **Let the new start return a superset.** Give its `MATCH` no branch, time or status condition. The filter subqueries that already decide the result run after it, unchanged, so those rules stay in one place.
-- **Decide in Python and leave the other path byte-identical.** One statement that holds both starts in a `UNION` changes the text of every query: the planner can plan the previous start differently inside it, and the part that is not used can still scan the kind. With the choice made in Python, a query that keeps the previous start keeps its text and its plan.
-- **Prove it with the new start forced on.** Set the margin to zero so every query that qualifies takes the new start, run the existing tests, and compare the returned ids with the previous start. Profile one filter that few nodes match and one that most nodes match.
-
-`NodeGetListQuery` with `NodeGetListIndexStartQuery` (`backend/infrahub/core/query/index_start.py`) is the instance to read alongside a new one.
+A read that can start from every node of a kind or from the indexed vertex of a filter chooses between them with a count: see [Start a filtered read from the filter only when a count shows it reads less](query-shape-from-data.md#start-a-filtered-read-from-the-filter-only-when-a-count-shows-it-reads-less).
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
@@ -540,7 +531,7 @@ Specialized base classes for different domains:
 
 ### Design Decisions
 
-**Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
+**Database Object in Initialization:** The `InfrahubDatabase` object is passed to `query_init()` for the two reasons below, not to run queries:
 
 1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
