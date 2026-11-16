@@ -91,7 +91,8 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
             get_value_query = """
     MERGE (new_av:AttributeValue {
         is_default: av.is_default, value: av.value, value_key: $value_keys[%(lookup)s]
-    })""" % {"lookup": VALUE_LOOKUP % {"value": "av.value"}}
+    })
+    LIMIT 1""" % {"lookup": VALUE_LOOKUP % {"value": "av.value"}}
         # ruff: noqa: S608
         query = """
 // ------------
