@@ -265,20 +265,9 @@ async def allocate_from_resource_pools(
     An IP pool is recorded as the source of the relationship. A number pool is not written to the
     attribute's source: it is derived from the reservation record the allocation leaves behind.
     """
-    template_schema = template.get_schema()
     obj_schema = obj.get_schema()
 
-    for rel_schema in template_schema.relationships:
-        if not rel_schema.name.endswith(RESOURCE_POOL_REL_SUFFIX):
-            continue
-
-        original_name = rel_schema.name.removesuffix(RESOURCE_POOL_REL_SUFFIX)
-
-        pool_rel_manager = template.get_relationship(name=rel_schema.name)
-        pool = await pool_rel_manager.get_peer(db=db)
-        if not pool:
-            continue
-
+    for original_name, pool in (await _template_pools(db=db, template=template, skipped_fields=())).items():
         if original_name in obj_schema.attribute_names:
             if not AllocationScope.from_stored(
                 value=pool.get_attribute("allocation_scope").value, pool=pool.get_id()
