@@ -215,6 +215,20 @@ async def test_get_resource_address_type_overrides_pool_default(
     assert node.get_kind() == "TestIPAddress"
 
 
+async def test_get_resource_data_cannot_set_the_id_of_the_address_without_a_check(
+    db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
+) -> None:
+    """Only `id` in the data names the uuid of the new address, and that one is checked against the database."""
+    node = await kind_override_address_pool.get_resource(
+        db=db,
+        branch=default_branch,
+        peer_kind=InfrahubKind.IPADDRESS,
+        data={"generated_id": kind_override_address_pool.id},
+    )
+
+    assert node.id != kind_override_address_pool.id
+
+
 async def test_get_resource_address_type_falls_back_to_pool_default(
     db: InfrahubDatabase, default_branch: Branch, kind_override_address_pool: CoreIPAddressPool
 ) -> None:
