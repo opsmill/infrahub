@@ -13,10 +13,28 @@ vi.mock("@/entities/navigation/ui/sidebar/app-sidebar", () => ({
 vi.mock("@/entities/navigation/ui/app-header", () => ({
   AppHeader: () => <header data-testid="header-stub">header</header>,
 }));
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
+  Outlet: () => <main data-testid="page-stub">page</main>,
+}));
 
 describe("AppLayout", () => {
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  test("renders the page below the header, in the column next to the sidebar", async () => {
+    // GIVEN
+    vi.mocked(useConfig).mockReturnValue(generateConfigWithInstance("QA", "RED"));
+
+    // WHEN
+    const component = await render(<AppLayout />);
+
+    // THEN
+    const header = component.getByTestId("header-stub").element();
+    const page = component.getByTestId("page-stub").element();
+    expect(page.parentElement).toBe(header.parentElement);
+    expect(header.nextElementSibling).toBe(page);
   });
 
   test("renders the instance color bar edge to edge above the padded sidebar and header row", async () => {

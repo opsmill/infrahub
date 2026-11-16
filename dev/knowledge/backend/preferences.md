@@ -44,12 +44,18 @@ accepted) and normalizes an empty value to unset so the write reply agrees with 
 stay lenient, so any value stored before this validation existed is still returned as-is.
 
 `instance_label` follows the same rule: `validate_instance_label` runs on the write path and when the
-deployment settings load, never on a read. It strips surrounding whitespace, turns an empty result
-into unset, and rejects a control character
-(Unicode category `Cc`, which covers line breaks, tabs and NUL; the Unicode line and paragraph
-separators U+2028 and U+2029; and the bidirectional controls U+061C, U+200E, U+200F, U+202A–U+202E
-and U+2066–U+2069) or more than 32 characters with a `ValidationError` that names the
-rule. A stored value never breaks a read.
+deployment settings load, never on a read. It strips surrounding whitespace with Python's `str.strip()`
+and turns an empty result into unset. It then rejects, with a `ValidationError` that names the rule:
+
+- the value `NULL`, because a Preference node stores an unset property as that text, so the label
+  would read back as unset;
+- a character in Unicode category `Cc` (line breaks, tabs and NUL), `Zl` (U+2028, the line
+  separator) or `Zp` (U+2029, the paragraph separator);
+- a bidirectional control, which is in category `Cf`: U+061C, U+200E, U+200F, U+202A–U+202E and
+  U+2066–U+2069;
+- more than 32 characters.
+
+A stored value never breaks a read.
 
 `instance_color` needs no validator of its own on the write path: the GraphQL enum rejects an unknown
 member with the graphql-core message `Value '<x>' does not exist in 'InstanceColor' enum.`, which
