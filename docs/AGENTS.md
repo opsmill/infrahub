@@ -11,6 +11,11 @@ Infrahub documentation is organized using the [Diataxis framework](https://diata
 
 ## Before You Start
 
+Assess documentation gaps against supported user workflows and the intended deployment model in
+`dev/knowledge/`. Identify what users need to understand, decide, or do differently. A changelog
+fragment, internal setting, or available override alone does not establish a customer-docs gap.
+Keep implementation rationale in internal knowledge when no user-facing guidance needs to change.
+
 **Choose the right documentation type:**
 
 | Question | Doc Type | See Guide |
