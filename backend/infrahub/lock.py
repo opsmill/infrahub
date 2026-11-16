@@ -8,7 +8,7 @@ from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from prometheus_client import Histogram
 from redis.asyncio.lock import Lock as GlobalLock
@@ -507,6 +507,7 @@ class UninitializedLockRegistry(InfrahubLockRegistry):
     def __init__(self) -> None:
         super().__init__(local_only=True)
 
+    @override
     def _find(self, lock_name: str) -> InfrahubLock | None:
         """Refuse to look up a lock.
 
@@ -514,7 +515,21 @@ class UninitializedLockRegistry(InfrahubLockRegistry):
             InitializationError: Always.
 
         """
-        raise InitializationError(
+        raise self._not_initialized(lock_name=lock_name)
+
+    @override
+    def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        """Refuse to create a lock.
+
+        Raises:
+            InitializationError: Always.
+
+        """
+        raise self._not_initialized(lock_name=name)
+
+    @staticmethod
+    def _not_initialized(lock_name: str) -> InitializationError:
+        return InitializationError(
             f"The lock registry has not been initialized, call initialize_lock() before using lock {lock_name!r}"
         )
 
