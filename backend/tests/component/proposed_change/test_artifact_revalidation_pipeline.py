@@ -95,7 +95,7 @@ class PipelineRun:
 
 
 class TestArtifactRevalidationPipeline(ArtifactRegenTestBase):
-    """A new run of the artifact checks of a proposed change covers only what changed since the last successful one.
+    """A new run of the artifact checks of a proposed change covers what changed since the last one and its failed targets.
 
     Each scenario runs the pipeline, the selection of definitions and the validations in turn on a real
     branch diff, with the artifact checks themselves recorded rather than executed. The scenarios share
@@ -211,7 +211,8 @@ class TestArtifactRevalidationPipeline(ArtifactRegenTestBase):
         await self._run_artifact_checks(
             dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
         )
-        await self._update_device(db=db, device_id=dataset.dev2_id, color="orange")
+        # The scenarios share one branch, so each failed run needs a value the branch has not held yet.
+        await self._update_device(db=db, device_id=dataset.dev2_id, color=f"orange-{uuid.uuid4().hex[:8]}")
         workflow_recorder.execute_results[GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE.name] = ValidatorConclusion.FAILURE
         try:
             return await self._run_artifact_checks(
@@ -364,7 +365,7 @@ class TestArtifactRevalidationPipeline(ArtifactRegenTestBase):
             ValidatorConclusion.SUCCESS.value,
         )
 
-    async def test_run_after_a_failed_check_covers_the_whole_diff_again(
+    async def test_run_after_a_failed_check_renders_only_the_failed_target(
         self,
         db: InfrahubDatabase,
         dataset: Dataset,
@@ -374,13 +375,67 @@ class TestArtifactRevalidationPipeline(ArtifactRegenTestBase):
         workflow_recorder: WorkflowRecorder,
         failed_run: PipelineRun,
     ) -> None:
-        run = await self._run_artifact_checks(
+        retry = await self._run_artifact_checks(
+            dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
+        )
+        retry_status = await self._validator_status(db=db)
+        after_retry = await self._run_artifact_checks(
             dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
         )
 
         assert failed_run.rendered_targets == {dataset.dev2_id}
+        assert retry.validated_definitions == [DEFINITION_NAME]
+        assert retry.rendered_targets == {dataset.dev2_id}
+        assert retry_status == (ValidatorState.COMPLETED.value, ValidatorConclusion.SUCCESS.value)
+        assert after_retry.validated_definitions == []
+        assert after_retry.rendered_targets == set()
+
+    async def test_run_after_a_failed_check_renders_the_failed_target_and_the_later_changes(
+        self,
+        db: InfrahubDatabase,
+        dataset: Dataset,
+        default_branch: Branch,
+        context: InfrahubContext,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        failed_run: PipelineRun,
+    ) -> None:
+        await self._update_device(db=db, device_id=dataset.dev1_id, color="yellow")
+
+        run = await self._run_artifact_checks(
+            dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
+        )
+
         assert run.validated_definitions == [DEFINITION_NAME]
         assert run.rendered_targets == {dataset.dev1_id, dataset.dev2_id}
+
+    async def test_failed_check_is_retried_again_after_a_retry_fails(
+        self,
+        db: InfrahubDatabase,
+        dataset: Dataset,
+        default_branch: Branch,
+        context: InfrahubContext,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        failed_run: PipelineRun,
+    ) -> None:
+        workflow_recorder.execute_results[GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE.name] = ValidatorConclusion.FAILURE
+        try:
+            failed_retry = await self._run_artifact_checks(
+                dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
+            )
+        finally:
+            workflow_recorder.execute_results.pop(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE.name, None)
+        retry = await self._run_artifact_checks(
+            dataset=dataset, default_branch=default_branch, context=context, workflow_recorder=workflow_recorder
+        )
+
+        assert failed_retry.rendered_targets == {dataset.dev2_id}
+        assert retry.rendered_targets == {dataset.dev2_id}
+        assert await self._validator_status(db=db) == (
+            ValidatorState.COMPLETED.value,
+            ValidatorConclusion.SUCCESS.value,
+        )
 
     async def test_run_after_the_validator_failed_elsewhere_covers_the_whole_diff_again(
         self,

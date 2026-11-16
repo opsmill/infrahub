@@ -5,14 +5,14 @@ from datetime import datetime  # noqa: TC003  # Pydantic resolves the field anno
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003  # Pydantic resolves the field annotations at runtime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, ValidatorConclusion
 from infrahub.core.regeneration.predicates import definition_changed, query_changed
 from infrahub.proposed_change.branch_changes import BranchDiffWindow
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Awaitable, Collection
 
     from infrahub_sdk.diff import NodeDiff
 
@@ -31,9 +31,9 @@ GROUP_MEMBERS_RELATIONSHIP = "members"
 class ArtifactValidationRecord(BaseModel):
     """The state of a branch that one artifact validation of a definition read.
 
-    ``completed`` is true only once every check of that validation succeeded. A validation in progress
-    holds the record with its own pipeline id, so a validation that started later cannot be mistaken
-    for the one that completed.
+    ``completed`` is true only once every check of that validation ran, and ``failed_target_ids`` holds
+    the targets whose check did not succeed. A validation in progress holds the record with its own
+    pipeline id, so a validation that started later cannot be mistaken for the one that completed.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -44,14 +44,23 @@ class ArtifactValidationRecord(BaseModel):
     diff_to_time: datetime
     source_commit: str
     destination_commit: str
+    failed_target_ids: frozenset[str] = frozenset()
+
+
+class ArtifactValidationCompletion(BaseModel):
+    """The outcome of a validation that ran every check, stored as its completion mark."""
+
+    model_config = ConfigDict(frozen=True)
+
+    failed_target_ids: frozenset[str]
 
 
 class ArtifactValidationRecords:
     """The artifact validation records of one proposed change, kept in the cache.
 
     A missing record is always safe: the next validation then covers the whole diff of the branch. A
-    record is completed only when a completion mark exists for its own pipeline id, so a validation that
-    completes after another one started cannot mark the newer record as completed.
+    record is completed only when a readable completion mark exists for its own pipeline id, so a
+    validation that completes after another one started cannot mark the newer record as completed.
     """
 
     def __init__(self, cache: InfrahubCache, proposed_change_id: str) -> None:
@@ -76,20 +85,31 @@ class ArtifactValidationRecords:
                 for definition_id, record in stored.items()
             ]
         )
-        return {
-            definition_id: record.model_copy(update={"completed": bool(mark)})
-            for (definition_id, record), mark in zip(stored.items(), marks, strict=True)
-        }
+        records: dict[str, ArtifactValidationRecord] = {}
+        for (definition_id, record), mark in zip(stored.items(), marks, strict=True):
+            completion = _read_completion(mark=mark)
+            records[definition_id] = record.model_copy(
+                update={
+                    "completed": completion is not None,
+                    "failed_target_ids": completion.failed_target_ids if completion is not None else frozenset(),
+                }
+            )
+        return records
 
     async def start(self, definition_id: str, record: ArtifactValidationRecord) -> None:
         """Replace the stored record with the one of a validation that starts."""
-        await self._set(definition_id=definition_id, record=record.model_copy(update={"completed": False}))
+        await self._set(
+            definition_id=definition_id,
+            record=record.model_copy(update={"completed": False, "failed_target_ids": frozenset()}),
+        )
 
-    async def complete(self, definition_id: str, record: ArtifactValidationRecord) -> None:
-        """Mark the validation of the record's pipeline id as completed."""
+    async def complete(
+        self, definition_id: str, record: ArtifactValidationRecord, failed_target_ids: Collection[str]
+    ) -> None:
+        """Mark the validation of the record's pipeline id as completed, with the targets whose check failed."""
         await self._cache.set(
             key=self._completion_key(definition_id=definition_id, pipeline_id=record.pipeline_id),
-            value="completed",
+            value=ArtifactValidationCompletion(failed_target_ids=frozenset(failed_target_ids)).model_dump_json(),
             expires=ARTIFACT_VALIDATION_RECORD_TTL_SECONDS,
         )
 
@@ -108,6 +128,26 @@ class ArtifactValidationRecords:
 
     def _completion_key(self, definition_id: str, pipeline_id: UUID) -> str:
         return f"{self._key(definition_id=definition_id)}:{pipeline_id}:completed"
+
+
+def _read_completion(mark: str | None) -> ArtifactValidationCompletion | None:
+    if not mark:
+        return None
+    try:
+        return ArtifactValidationCompletion.model_validate_json(mark)
+    except ValidationError:
+        return None
+
+
+def record_matches_validator(*, record: ArtifactValidationRecord, conclusion: str | None) -> bool:
+    """Whether the validator of a definition shows the outcome its completed record holds.
+
+    A validator can be changed outside the validation the record describes; the record is then not
+    relied on.
+    """
+    if record.failed_target_ids:
+        return conclusion == ValidatorConclusion.FAILURE.value
+    return conclusion == ValidatorConclusion.SUCCESS.value
 
 
 def changes_validated_until(
@@ -145,9 +185,9 @@ class ArtifactValidationRun:
     """One validation of an artifact definition in a proposed change.
 
     It keeps the record of the definition in step with the validation, and tells which changes of the
-    branch a completed validation already covered. ``window`` is the time window of the branch diff
-    this run read; it is None when that diff cannot be relied on, and the validation then covers the
-    whole diff and leaves no record.
+    branch a completed validation already covered and which of its targets failed. ``window`` is the
+    time window of the branch diff this run read; it is None when that diff cannot be relied on, and
+    the validation then covers the whole diff and leaves no record.
     """
 
     def __init__(
@@ -176,20 +216,27 @@ class ArtifactValidationRun:
             else None
         )
         self._validated_until: datetime | None = None
+        self._targets_to_retry: frozenset[str] = frozenset()
 
-    async def start(self, *, previous_validation_succeeded: bool) -> None:
+    async def start(self, *, previous_conclusion: str | None) -> None:
         """Replace the stored record with the one of this validation.
 
-        The record of an earlier validation is relied on only when ``previous_validation_succeeded``.
+        ``previous_conclusion`` is the conclusion of the validator of a completed earlier validation, or
+        None when the validator is missing or not completed. The record of that validation is relied on
+        only when the validator shows the outcome the record holds.
         """
         self._validated_until = None
-        if previous_validation_succeeded:
-            previous_records = await self._records.get(definition_ids=[self._definition_id])
-            self._validated_until = changes_validated_until(
-                record=previous_records.get(self._definition_id),
-                window=self._window,
-                repository=self._repository,
-            )
+        self._targets_to_retry = frozenset()
+        if previous_conclusion is not None:
+            previous_record = (await self._records.get(definition_ids=[self._definition_id])).get(self._definition_id)
+            if previous_record is not None and record_matches_validator(
+                record=previous_record, conclusion=previous_conclusion
+            ):
+                self._validated_until = changes_validated_until(
+                    record=previous_record, window=self._window, repository=self._repository
+                )
+                if self._validated_until is not None:
+                    self._targets_to_retry = previous_record.failed_target_ids
         if self._record is None:
             await self._records.discard(definition_id=self._definition_id)
         else:
@@ -201,6 +248,11 @@ class ArtifactValidationRun:
         if self._window is None or self._validated_until is None:
             return None
         return BranchDiffWindow(from_time=self._validated_until, to_time=self._window.to_time)
+
+    @property
+    def targets_to_retry(self) -> frozenset[str]:
+        """The targets whose check failed in the completed validation this run relies on."""
+        return self._targets_to_retry
 
     def changes_to_validate(
         self,
@@ -227,10 +279,36 @@ class ArtifactValidationRun:
             return ChangesToValidate(diff_summary=diff_summary, validated_until=None)
         return ChangesToValidate(diff_summary=unvalidated_changes.diff_summary, validated_until=self._validated_until)
 
-    async def complete(self) -> None:
-        """Mark the record as completed, to call once every check of this validation succeeded."""
+    async def complete(self, *, failed_target_ids: Collection[str]) -> None:
+        """Mark the record as completed, to call once every check of this validation ran."""
         if self._record is not None:
-            await self._records.complete(definition_id=self._definition_id, record=self._record)
+            await self._records.complete(
+                definition_id=self._definition_id, record=self._record, failed_target_ids=failed_target_ids
+            )
+
+
+class TargetCheckOutcomes:
+    """The targets whose artifact check did not succeed in one validation.
+
+    A check that raises counts as failed, and the exception is raised again.
+    """
+
+    def __init__(self) -> None:
+        self._failed_target_ids: set[str] = set()
+
+    async def track(self, *, target_id: str, check: Awaitable[ValidatorConclusion]) -> ValidatorConclusion:
+        try:
+            conclusion = await check
+        except Exception:
+            self._failed_target_ids.add(target_id)
+            raise
+        if conclusion != ValidatorConclusion.SUCCESS:
+            self._failed_target_ids.add(target_id)
+        return conclusion
+
+    @property
+    def failed_target_ids(self) -> frozenset[str]:
+        return frozenset(self._failed_target_ids)
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

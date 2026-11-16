@@ -106,6 +106,7 @@ from infrahub.proposed_change.artifact_validation import (
     ArtifactValidationRecords,
     ArtifactValidationRun,
     RecentChanges,
+    TargetCheckOutcomes,
     changes_reach_definition,
     changes_validated_until,
     diff_tracks_members,
@@ -820,7 +821,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         window=await get_diff_window_cache(pipeline_id=model.branch_diff.pipeline_id, cache=cache),
         repository=repository,
     )
-    await validation_run.start(previous_validation_succeeded=_validation_succeeded(validator=previous_validator))
+    await validation_run.start(previous_conclusion=_completed_validation_conclusion(validator=previous_validator))
 
     validator = await start_validator(
         client=client,
@@ -878,7 +879,8 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     if changes.validated_until is not None:
         log.info(
             f"Artifact definition {artifact_definition.name.value} was validated with the changes made until "
-            f"{changes.validated_until.isoformat()}. Only later changes are considered."
+            f"{changes.validated_until.isoformat()}. Only later changes and the "
+            f"{len(validation_run.targets_to_retry)} targets whose check failed are considered."
         )
     database = await get_database()
     async with database.start_session() as db:
@@ -921,11 +923,12 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
     checks = []
+    check_outcomes = TargetCheckOutcomes()
 
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
-        if should_render_artifact(
+        if member.id in validation_run.targets_to_retry or should_render_artifact(
             artifact_id=artifact_id,
             regenerate_all_members=managed_branch,
             impacted_artifacts=impacted_artifacts,
@@ -958,11 +961,14 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             )
 
             checks.append(
-                get_workflow().execute_workflow(
-                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
-                    context=context,
-                    parameters={"model": check_model},
-                    expected_return=ValidatorConclusion,
+                check_outcomes.track(
+                    target_id=member.id,
+                    check=get_workflow().execute_workflow(
+                        workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+                        context=context,
+                        parameters={"model": check_model},
+                        expected_return=ValidatorConclusion,
+                    ),
                 )
             )
 
@@ -973,8 +979,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         proposed_change_id=model.proposed_change,
         context=context,
     )
-    if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
-        await validation_run.complete()
+    await validation_run.complete(failed_target_ids=check_outcomes.failed_target_ids)
 
 
 async def _artifact_validators_by_definition(
@@ -991,11 +996,13 @@ async def _artifact_validators_by_definition(
 
 
 def _validation_succeeded(validator: CoreArtifactValidator | None) -> bool:
-    return (
-        validator is not None
-        and validator.state.value == ValidatorState.COMPLETED.value
-        and validator.conclusion.value == ValidatorConclusion.SUCCESS.value
-    )
+    return _completed_validation_conclusion(validator=validator) == ValidatorConclusion.SUCCESS.value
+
+
+def _completed_validation_conclusion(validator: CoreArtifactValidator | None) -> str | None:
+    if validator is None or validator.state.value != ValidatorState.COMPLETED.value:
+        return None
+    return validator.conclusion.value
 
 
 async def _read_branch_changes(
@@ -1491,11 +1498,11 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         )
     if validation_records:
         validators = await _artifact_validators_by_definition(client=client, proposed_change_id=model.proposed_change)
-        # A record is relied on only while the validator it describes still shows a successful validation.
+        # A definition can be skipped only while every check of the validation it relies on succeeded.
         validation_records = {
             definition_id: record
             for definition_id, record in validation_records.items()
-            if _validation_succeeded(validator=validators.get(definition_id))
+            if not record.failed_target_ids and _validation_succeeded(validator=validators.get(definition_id))
         }
     recent_changes_by_time: dict[datetime, RecentChanges] = {}
 

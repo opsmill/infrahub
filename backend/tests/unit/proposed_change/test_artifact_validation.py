@@ -7,7 +7,7 @@ from uuid import UUID
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeRepository
@@ -17,6 +17,7 @@ from infrahub.proposed_change.artifact_validation import (
     ArtifactValidationRun,
     ChangesToValidate,
     RecentChanges,
+    TargetCheckOutcomes,
     changes_reach_definition,
     changes_validated_until,
     diff_tracks_members,
@@ -73,6 +74,7 @@ def _record(
     completed: bool = True,
     diff_from_time: datetime = BRANCHED_AT,
     diff_to_time: datetime = VALIDATED_UNTIL,
+    failed_target_ids: frozenset[str] = frozenset(),
 ) -> ArtifactValidationRecord:
     return ArtifactValidationRecord(
         pipeline_id=pipeline_id,
@@ -81,6 +83,7 @@ def _record(
         diff_to_time=diff_to_time,
         source_commit="source-1",
         destination_commit="destination-1",
+        failed_target_ids=failed_target_ids,
     )
 
 
@@ -210,9 +213,29 @@ async def test_completed_record_is_stored_as_completed() -> None:
     records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
     await records.start(definition_id=DEFINITION_ID, record=_record())
 
-    await records.complete(definition_id=DEFINITION_ID, record=_record())
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[])
 
     assert await records.get(definition_ids=[DEFINITION_ID]) == {DEFINITION_ID: _record(completed=True)}
+
+
+async def test_completed_record_holds_the_targets_whose_check_failed() -> None:
+    records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
+    await records.start(definition_id=DEFINITION_ID, record=_record())
+
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[DEVICE_1])
+
+    assert await records.get(definition_ids=[DEFINITION_ID]) == {
+        DEFINITION_ID: _record(completed=True, failed_target_ids=frozenset({DEVICE_1}))
+    }
+
+
+async def test_record_whose_completion_mark_cannot_be_read_is_not_completed() -> None:
+    cache = MemoryCache()
+    records = ArtifactValidationRecords(cache=cache, proposed_change_id=PROPOSED_CHANGE_ID)
+    await records.start(definition_id=DEFINITION_ID, record=_record())
+    await cache.set(key=f"{RECORD_KEY}:{FIRST_PIPELINE}:completed", value="completed")
+
+    assert await records.get(definition_ids=[DEFINITION_ID]) == {DEFINITION_ID: _record(completed=False)}
 
 
 async def test_record_of_a_later_validation_is_not_completed_by_an_earlier_one() -> None:
@@ -222,7 +245,7 @@ async def test_record_of_a_later_validation_is_not_completed_by_an_earlier_one()
     await records.start(definition_id=DEFINITION_ID, record=first)
     await records.start(definition_id=DEFINITION_ID, record=second)
 
-    await records.complete(definition_id=DEFINITION_ID, record=first)
+    await records.complete(definition_id=DEFINITION_ID, record=first, failed_target_ids=[])
 
     assert await records.get(definition_ids=[DEFINITION_ID]) == {
         DEFINITION_ID: _record(pipeline_id=SECOND_PIPELINE, diff_to_time=AFTER, completed=False)
@@ -255,7 +278,7 @@ async def test_validation_that_starts_while_another_completes_stays_not_complete
         await records.start(definition_id=DEFINITION_ID, record=second)
 
     cache.on_next_read = start_second
-    await records.complete(definition_id=DEFINITION_ID, record=first)
+    await records.complete(definition_id=DEFINITION_ID, record=first, failed_target_ids=[])
     if cache.on_next_read is not None:
         cache.on_next_read = None
         await start_second()
@@ -268,7 +291,7 @@ async def test_validation_that_starts_while_another_completes_stays_not_complete
 async def test_completing_a_record_that_is_no_longer_stored_leaves_no_record() -> None:
     records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
 
-    await records.complete(definition_id=DEFINITION_ID, record=_record())
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[])
 
     assert await records.get(definition_ids=[DEFINITION_ID]) == {}
 
@@ -277,7 +300,7 @@ async def test_record_of_a_validation_that_started_after_a_completion_is_not_com
     records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
     first = _record(pipeline_id=FIRST_PIPELINE)
     await records.start(definition_id=DEFINITION_ID, record=first)
-    await records.complete(definition_id=DEFINITION_ID, record=first)
+    await records.complete(definition_id=DEFINITION_ID, record=first, failed_target_ids=[])
 
     await records.start(definition_id=DEFINITION_ID, record=_record(pipeline_id=SECOND_PIPELINE, diff_to_time=AFTER))
 
@@ -332,7 +355,7 @@ CHANGES_AFTER_VALIDATION = BranchChanges(diff_summary=ONLY_DEVICE_2)
 async def _completed_records() -> ArtifactValidationRecords:
     records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
     await records.start(definition_id=DEFINITION_ID, record=_record())
-    await records.complete(definition_id=DEFINITION_ID, record=_record())
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[])
     return records
 
 
@@ -340,7 +363,7 @@ async def test_run_after_a_completed_validation_selects_from_the_later_changes_o
     records = await _completed_records()
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY,
         unvalidated_changes=CHANGES_AFTER_VALIDATION,
@@ -356,22 +379,22 @@ async def test_run_holds_the_record_as_not_completed_until_it_completes() -> Non
     records = await _completed_records()
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
 
     in_progress = _record(pipeline_id=SECOND_PIPELINE, diff_to_time=NOW, completed=False)
     assert await records.get(definition_ids=[DEFINITION_ID]) == {DEFINITION_ID: in_progress}
 
-    await run.complete()
+    await run.complete(failed_target_ids=[])
 
     completed = _record(pipeline_id=SECOND_PIPELINE, diff_to_time=NOW, completed=True)
     assert await records.get(definition_ids=[DEFINITION_ID]) == {DEFINITION_ID: completed}
 
 
-async def test_run_after_a_failed_validation_selects_from_the_whole_diff() -> None:
+async def test_run_after_a_validator_that_failed_outside_the_validation_selects_from_the_whole_diff() -> None:
     records = await _completed_records()
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=False)
+    await run.start(previous_conclusion=ValidatorConclusion.FAILURE.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY, unvalidated_changes=None, target_group_id=GROUP_ID, members_with_artifact=[]
     )
@@ -380,12 +403,105 @@ async def test_run_after_a_failed_validation_selects_from_the_whole_diff() -> No
     assert changes == ChangesToValidate(diff_summary=DIFF_SUMMARY, validated_until=None)
 
 
+async def _records_with_a_failed_target() -> ArtifactValidationRecords:
+    records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
+    await records.start(definition_id=DEFINITION_ID, record=_record())
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[DEVICE_1])
+    return records
+
+
+async def test_run_after_a_validation_with_a_failed_check_retries_its_target_with_the_later_changes() -> None:
+    run = _validation_run(records=await _records_with_a_failed_target(), window=_window())
+
+    await run.start(previous_conclusion=ValidatorConclusion.FAILURE.value)
+    changes = run.changes_to_validate(
+        diff_summary=DIFF_SUMMARY,
+        unvalidated_changes=CHANGES_AFTER_VALIDATION,
+        target_group_id=GROUP_ID,
+        members_with_artifact=[],
+    )
+
+    assert run.targets_to_retry == frozenset({DEVICE_1})
+    assert changes == ChangesToValidate(diff_summary=ONLY_DEVICE_2, validated_until=VALIDATED_UNTIL)
+
+
+@dataclass(frozen=True, kw_only=True)
+class FailedTargetCase:
+    name: str
+    previous_conclusion: str | None
+    window: BranchDiffWindow
+
+
+FAILED_TARGET_CASES: list[FailedTargetCase] = [
+    FailedTargetCase(
+        name="validator_shows_success",
+        previous_conclusion=ValidatorConclusion.SUCCESS.value,
+        window=_window(),
+    ),
+    FailedTargetCase(name="validator_not_completed", previous_conclusion=None, window=_window()),
+    FailedTargetCase(
+        name="branch_rebased_since",
+        previous_conclusion=ValidatorConclusion.FAILURE.value,
+        window=_window(from_time=REBASED_AT),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_TARGET_CASES])
+async def test_run_that_cannot_rely_on_a_validation_with_a_failed_check_selects_from_the_whole_diff(
+    test_case: FailedTargetCase,
+) -> None:
+    run = _validation_run(records=await _records_with_a_failed_target(), window=test_case.window)
+
+    await run.start(previous_conclusion=test_case.previous_conclusion)
+    changes = run.changes_to_validate(
+        diff_summary=DIFF_SUMMARY, unvalidated_changes=None, target_group_id=GROUP_ID, members_with_artifact=[]
+    )
+
+    assert run.targets_to_retry == frozenset()
+    assert changes == ChangesToValidate(diff_summary=DIFF_SUMMARY, validated_until=None)
+
+
+async def test_run_records_the_targets_whose_check_failed_when_it_completes() -> None:
+    records = await _completed_records()
+    run = _validation_run(records=records, window=_window())
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
+
+    await run.complete(failed_target_ids=[DEVICE_2])
+
+    assert await records.get(definition_ids=[DEFINITION_ID]) == {
+        DEFINITION_ID: _record(
+            pipeline_id=SECOND_PIPELINE, diff_to_time=NOW, completed=True, failed_target_ids=frozenset({DEVICE_2})
+        )
+    }
+
+
+async def _conclusion(conclusion: ValidatorConclusion) -> ValidatorConclusion:
+    return conclusion
+
+
+async def _raise_timeout() -> ValidatorConclusion:
+    raise TimeoutError("The artifact check timed out")
+
+
+async def test_check_outcomes_hold_the_targets_whose_check_failed_or_raised() -> None:
+    outcomes = TargetCheckOutcomes()
+
+    succeeded = await outcomes.track(target_id=DEVICE_1, check=_conclusion(ValidatorConclusion.SUCCESS))
+    failed = await outcomes.track(target_id=DEVICE_2, check=_conclusion(ValidatorConclusion.FAILURE))
+    with pytest.raises(TimeoutError, match=r"^The artifact check timed out$"):
+        await outcomes.track(target_id=GROUP_ID, check=_raise_timeout())
+
+    assert (succeeded, failed) == (ValidatorConclusion.SUCCESS, ValidatorConclusion.FAILURE)
+    assert outcomes.failed_target_ids == frozenset({DEVICE_2, GROUP_ID})
+
+
 async def test_run_after_a_validation_that_is_still_in_progress_selects_from_the_whole_diff() -> None:
     records = ArtifactValidationRecords(cache=MemoryCache(), proposed_change_id=PROPOSED_CHANGE_ID)
     await records.start(definition_id=DEFINITION_ID, record=_record())
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY, unvalidated_changes=None, target_group_id=GROUP_ID, members_with_artifact=[]
     )
@@ -398,14 +514,14 @@ async def test_run_without_a_diff_window_selects_from_the_whole_diff_and_removes
     cache = MemoryCache()
     records = ArtifactValidationRecords(cache=cache, proposed_change_id=PROPOSED_CHANGE_ID)
     await records.start(definition_id=DEFINITION_ID, record=_record())
-    await records.complete(definition_id=DEFINITION_ID, record=_record())
+    await records.complete(definition_id=DEFINITION_ID, record=_record(), failed_target_ids=[])
     run = _validation_run(records=records, window=None)
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY, unvalidated_changes=None, target_group_id=GROUP_ID, members_with_artifact=[]
     )
-    await run.complete()
+    await run.complete(failed_target_ids=[])
 
     assert run.unvalidated_window is None
     assert changes == ChangesToValidate(diff_summary=DIFF_SUMMARY, validated_until=None)
@@ -438,7 +554,7 @@ async def test_run_with_a_change_of_the_target_group_members(test_case: GroupMem
     records = await _completed_records()
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY,
         unvalidated_changes=BranchChanges(
@@ -516,7 +632,7 @@ async def test_run_for_a_target_group_the_diff_does_not_track_selects_from_the_w
     records = await _completed_records()
     run = _validation_run(records=records, window=_window())
 
-    await run.start(previous_validation_succeeded=True)
+    await run.start(previous_conclusion=ValidatorConclusion.SUCCESS.value)
     changes = run.changes_to_validate(
         diff_summary=DIFF_SUMMARY,
         unvalidated_changes=CHANGES_AFTER_VALIDATION,

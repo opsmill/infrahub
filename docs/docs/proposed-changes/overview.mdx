@@ -78,15 +78,17 @@ Two repository-level rules also apply:
 
 #### When you run the artifact checks again
 
-When you run the artifact checks of a proposed change again, Infrahub renders only the artifacts that a change made since their last successful validation can reach:
+When you run the artifact checks of a proposed change again, Infrahub renders only the artifacts that a change made since their last validation can reach, and the artifacts whose check failed in that validation:
 
-- An artifact definition that no such change reaches is not validated again. Its validator keeps its result, its start time and its completion time.
-- For an artifact definition that such a change reaches, only the reached artifacts get a new check result. The other checks keep their earlier result.
+- An artifact definition that no such change reaches, and whose checks all succeeded, is not validated again. Its validator keeps its result, its start time and its completion time.
+- For any other artifact definition, only the reached artifacts and the failed ones get a new check result. The other checks keep their earlier result.
 - An artifact is also rendered again when a value it reads was changed back to the value of the destination branch after that validation.
+
+For example, when 3 checks out of 800 fail and you select **Retry** on the artifact checks without changing anything else, Infrahub renders those 3 artifacts again.
 
 The checks cover every change of the branch again, as on the first run, in these cases:
 
-- The last validation of the artifact definition failed or did not finish.
+- The last validation of the artifact definition did not finish, or its validator shows a result that this validation did not produce.
 - The branch was rebased.
 - The repository of the Transformation has a new commit on the source or the destination branch.
 - The target group of the artifact definition is a group that exists only on the branch, such as a Generator group.
