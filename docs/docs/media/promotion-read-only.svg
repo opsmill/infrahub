@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 490" role="img" class="promo-ro">
+  <title>Three Infrahub instances, development, staging and production, above one Git repository. Each instance has a read-only repository whose ref on main is the Git branch of its environment. Steps 1 to 5 develop a change: a developer creates the Git branch feature/x, imports it on an Infrahub branch of the development instance by setting its ref to feature/x, merges the merge request into develop, sets the ref of the Infrahub branch to develop, and a reviewer merges its Proposed Change into main. Steps 6 to 10 promote the change, first to staging and then to production: a user opens a merge request into the next Git branch, creates an Infrahub branch on the target instance with its ref set to the source branch, merges the merge request when the import succeeds, sets the ref of the Infrahub branch to the target branch, and a reviewer merges its Proposed Change into main. Infrahub never writes to Git.</title>
+  <style>
+    /* Each var() has a light-theme fallback because the docs build inlines and drops a rule that only sets custom properties. */
+    [data-theme='dark'] .promo-ro { --fg:#f3f1fb; --bg:#1b1b1d; --tint:#242526; --line:#4a3f80; --muted:#aea8cc; --accent:#9bb8ea; --on-accent:#130d30; --git:#63cdd4; --git-fill:#12303c; }
+    .promo-ro text { font-family: Inter, Arial, system-ui, sans-serif; fill: var(--fg, #231556); }
+    .promo-ro .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    .promo-ro .small { font-size: 11px; fill: var(--muted, #5f5a7a); }
+    .promo-ro .name { font-size: 20px; font-weight: 700; }
+    .promo-ro .inst { fill: var(--tint, #f6f5fa); stroke: var(--line, #cfcbe0); stroke-width: 1.5; }
+    .promo-ro .repo { fill: var(--git-fill, #eaf8f9); stroke: var(--git, #1f8f97); stroke-width: 1.5; }
+    .promo-ro .box { fill: var(--bg, #ffffff); stroke: var(--line, #cfcbe0); stroke-width: 1.25; }
+    .promo-ro .review { fill: var(--accent, #426db1); stroke: var(--accent, #426db1); }
+    .promo-ro .on-review { fill: var(--on-accent, #ffffff); }
+    .promo-ro .pill { fill: var(--bg, #ffffff); stroke: var(--git, #1f8f97); stroke-width: 1.25; }
+    .promo-ro .long { stroke-width: 2.5; }
+    .promo-ro .flow { fill: none; stroke: var(--fg, #231556); stroke-width: 1.75; }
+    .promo-ro .ref { fill: none; stroke: var(--fg, #231556); stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .promo-ro .head { fill: var(--fg, #231556); }
+    .promo-ro .num { fill: var(--fg, #231556); }
+    .promo-ro .num-t { fill: var(--bg, #ffffff); font-size: 12px; font-weight: 700; }
+    .promo-ro .step { transition: opacity 160ms ease-out; }
+    .promo-ro:has(.s1:hover) .step:not(.s1),
+    .promo-ro:has(.s2:hover) .step:not(.s2),
+    .promo-ro:has(.s3:hover) .step:not(.s3),
+    .promo-ro:has(.s4:hover) .step:not(.s4),
+    .promo-ro:has(.s5:hover) .step:not(.s5),
+    .promo-ro:has(.s6:hover) .step:not(.s6),
+    .promo-ro:has(.s7:hover) .step:not(.s7),
+    .promo-ro:has(.s8:hover) .step:not(.s8),
+    .promo-ro:has(.s9:hover) .step:not(.s9),
+    .promo-ro:has(.s10:hover) .step:not(.s10) { opacity: 0.2; }
+    @media (prefers-reduced-motion: reduce) { .promo-ro .step { transition: none; } }
+  </style>
+  <defs>
+    <marker id="promo-ro-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="head" d="M0 0 L10 5 L0 10 Z"/>
+    </marker>
+  </defs>
+
+  <rect class="inst" x="15" y="20" width="330" height="260" rx="12"/>
+  <rect class="inst" x="385" y="20" width="330" height="260" rx="12"/>
+  <rect class="inst" x="755" y="20" width="330" height="260" rx="12"/>
+  <rect class="repo" x="15" y="330" width="1070" height="145" rx="12"/>
+  <text class="name" x="35" y="54">development</text>
+  <text class="mono small" x="35" y="74">read-only repository, ref develop</text>
+  <text class="name" x="405" y="54">staging</text>
+  <text class="mono small" x="405" y="74">read-only repository, ref staging</text>
+  <text class="name" x="775" y="54">production</text>
+  <text class="mono small" x="775" y="74">read-only repository, ref main</text>
+  <text class="name" x="35" y="362">Git</text>
+
+  <rect class="box" x="45" y="96" width="120" height="44" rx="6"/>
+  <text x="105" y="115" font-size="12.5" font-weight="600" text-anchor="middle">main</text>
+  <text class="mono small" x="105" y="131" text-anchor="middle">ref develop</text>
+  <rect class="box" x="415" y="96" width="120" height="44" rx="6"/>
+  <text x="475" y="115" font-size="12.5" font-weight="600" text-anchor="middle">main</text>
+  <text class="mono small" x="475" y="131" text-anchor="middle">ref staging</text>
+  <rect class="box" x="785" y="96" width="120" height="44" rx="6"/>
+  <text x="845" y="115" font-size="12.5" font-weight="600" text-anchor="middle">main</text>
+  <text class="mono small" x="845" y="131" text-anchor="middle">ref main</text>
+
+  <rect class="pill long" x="215" y="400" width="110" height="32" rx="16"/>
+  <text class="mono" x="270" y="420" font-size="12" font-weight="500" text-anchor="middle">develop</text>
+  <rect class="pill long" x="585" y="400" width="110" height="32" rx="16"/>
+  <text class="mono" x="640" y="420" font-size="12" font-weight="500" text-anchor="middle">staging</text>
+  <rect class="pill long" x="955" y="400" width="110" height="32" rx="16"/>
+  <text class="mono" x="1010" y="420" font-size="12" font-weight="500" text-anchor="middle">main</text>
+
+  <!-- Develop a change on the development instance -->
+  <g class="step s1">
+    <rect class="pill" x="25" y="400" width="140" height="32" rx="16"/>
+    <text class="mono" x="95" y="420" font-size="12" text-anchor="middle">feature/x</text>
+    <circle class="num" cx="60" cy="455" r="12"/><text class="num-t" x="60" y="459.5" text-anchor="middle">1</text>
+    <text class="small" x="77" y="459">from develop</text>
+  </g>
+
+  <g class="step s2">
+    <path class="ref" d="M95 398 V218 H198" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box" x="200" y="196" width="140" height="44" rx="6"/>
+    <text x="270" y="215" font-size="12.5" font-weight="600" text-anchor="middle">Infrahub branch</text>
+    <text class="small" x="270" y="231" text-anchor="middle">for testing</text>
+    <circle class="num" cx="95" cy="262" r="12"/><text class="num-t" x="95" y="266.5" text-anchor="middle">2</text>
+    <text class="mono small" x="112" y="266">ref feature/x</text>
+    <text class="small" x="112" y="281">import each push</text>
+  </g>
+
+  <g class="step s3">
+    <path class="flow" d="M167 416 H213" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="190" cy="388" r="12"/><text class="num-t" x="190" y="392.5" text-anchor="middle">3</text>
+    <text class="small" x="190" y="450" text-anchor="middle">merge request</text>
+  </g>
+
+  <g class="step s4">
+    <path class="ref" d="M270 398 V242" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="270" cy="300" r="12"/><text class="num-t" x="270" y="304.5" text-anchor="middle">4</text>
+    <text class="mono small" x="288" y="304">ref develop</text>
+  </g>
+
+  <g class="step s5">
+    <path class="flow" d="M270 196 V142" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box review" x="200" y="96" width="140" height="44" rx="6"/>
+    <text class="on-review" x="270" y="115" font-size="12.5" font-weight="600" text-anchor="middle">Proposed Change</text>
+    <text class="on-review" x="270" y="131" font-size="11" text-anchor="middle">a reviewer merges</text>
+    <path class="flow" d="M200 118 H167" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="245" cy="168" r="12"/><text class="num-t" x="245" y="172.5" text-anchor="middle">5</text>
+  </g>
+
+  <!-- Promote to staging -->
+  <g class="step s6">
+    <path class="flow" d="M327 416 H583" stroke-dasharray="6 4" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="400" cy="388" r="12"/><text class="num-t" x="400" y="392.5" text-anchor="middle">6</text>
+    <text class="small" x="400" y="450" text-anchor="middle">open a merge request</text>
+  </g>
+
+  <g class="step s7">
+    <path class="ref" d="M315 398 L568 232" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box" x="570" y="196" width="140" height="44" rx="6"/>
+    <text x="640" y="215" font-size="12.5" font-weight="600" text-anchor="middle">Infrahub branch</text>
+    <text class="small" x="640" y="231" text-anchor="middle">for the promotion</text>
+    <circle class="num" cx="441" cy="315" r="12"/><text class="num-t" x="441" y="319.5" text-anchor="middle">7</text>
+    <text class="mono small" x="458" y="319">ref develop</text>
+  </g>
+
+  <g class="step s8">
+    <circle class="num" cx="530" cy="388" r="12"/><text class="num-t" x="530" y="392.5" text-anchor="middle">8</text>
+    <text class="small" x="530" y="466" text-anchor="middle">merge after a clean import</text>
+  </g>
+
+  <g class="step s9">
+    <path class="ref" d="M640 398 V242" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="640" cy="300" r="12"/><text class="num-t" x="640" y="304.5" text-anchor="middle">9</text>
+    <text class="mono small" x="658" y="304">ref staging</text>
+  </g>
+
+  <g class="step s10">
+    <path class="flow" d="M640 196 V142" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box review" x="570" y="96" width="140" height="44" rx="6"/>
+    <text class="on-review" x="640" y="115" font-size="12.5" font-weight="600" text-anchor="middle">Proposed Change</text>
+    <text class="on-review" x="640" y="131" font-size="11" text-anchor="middle">a reviewer merges</text>
+    <path class="flow" d="M570 118 H537" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="615" cy="168" r="12"/><text class="num-t" x="615" y="172.5" text-anchor="middle">10</text>
+  </g>
+
+  <!-- Promote to production: the same steps -->
+  <g class="step s6">
+    <path class="flow" d="M697 416 H953" stroke-dasharray="6 4" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="770" cy="388" r="12"/><text class="num-t" x="770" y="392.5" text-anchor="middle">6</text>
+    <text class="small" x="770" y="450" text-anchor="middle">open a merge request</text>
+  </g>
+
+  <g class="step s7">
+    <path class="ref" d="M685 398 L938 232" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box" x="940" y="196" width="140" height="44" rx="6"/>
+    <text x="1010" y="215" font-size="12.5" font-weight="600" text-anchor="middle">Infrahub branch</text>
+    <text class="small" x="1010" y="231" text-anchor="middle">for the promotion</text>
+    <circle class="num" cx="811" cy="315" r="12"/><text class="num-t" x="811" y="319.5" text-anchor="middle">7</text>
+    <text class="mono small" x="828" y="319">ref staging</text>
+  </g>
+
+  <g class="step s8">
+    <circle class="num" cx="900" cy="388" r="12"/><text class="num-t" x="900" y="392.5" text-anchor="middle">8</text>
+    <text class="small" x="900" y="466" text-anchor="middle">merge after a clean import</text>
+  </g>
+
+  <g class="step s9">
+    <path class="ref" d="M1010 398 V242" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="1010" cy="300" r="12"/><text class="num-t" x="1010" y="304.5" text-anchor="middle">9</text>
+    <text class="mono small" x="1028" y="304">ref main</text>
+  </g>
+
+  <g class="step s10">
+    <path class="flow" d="M1010 196 V142" marker-end="url(#promo-ro-arr)"/>
+    <rect class="box review" x="940" y="96" width="140" height="44" rx="6"/>
+    <text class="on-review" x="1010" y="115" font-size="12.5" font-weight="600" text-anchor="middle">Proposed Change</text>
+    <text class="on-review" x="1010" y="131" font-size="11" text-anchor="middle">a reviewer merges</text>
+    <path class="flow" d="M940 118 H907" marker-end="url(#promo-ro-arr)"/>
+    <circle class="num" cx="985" cy="168" r="12"/><text class="num-t" x="985" y="172.5" text-anchor="middle">10</text>
+  </g>
+</svg>

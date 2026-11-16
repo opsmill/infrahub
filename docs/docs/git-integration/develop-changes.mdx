@@ -2,7 +2,13 @@
 title: Develop changes from a Git repository
 ---
 
-Change the schemas, objects, Transformations, Generators, and other [`.infrahub.yml`](./infrahub-yml.mdx) content an instance imports from a [read-only repository](./overview.mdx#read-only-vs-core), and land the change on the instance's `main` safely. This is the recommended workflow for a single instance; promoting a change across environments builds on it — see [promote changes between environments](./promote-between-environments.mdx).
+Change the schemas, objects, Transformations, Generators, and other [`.infrahub.yml`](./infrahub-yml.mdx) content an instance imports from a [read-only repository](./overview.mdx#read-only-vs-core), and land the change on the instance's `main` safely.
+
+:::tip With a read-write repository
+
+With a [read-write repository](./overview.mdx#read-only-vs-core), developing a change takes fewer steps. Push a `feature/` branch to Git, wait for the instance to import it, and merge its Proposed Change into `main`. Infrahub then merges the Git branch and pushes it. To follow these steps, see [promote changes between environments](./promote-between-environments.mdx#develop-a-change-on-the-development-instance). From Infrahub 1.12, the recommended workflow for several environments uses read-write repositories. The rest of this page applies to read-only repositories.
+
+:::
 
 The instance's `main` tracks a Git branch through the read-only repository's `ref`, and you never import onto `main` directly. Instead you develop on an Infrahub branch and merge it into `main` through a proposed change. This worked example adds a `color` attribute to the built-in Tag.
 
@@ -135,7 +141,7 @@ mutation {
 
 ## Related
 
-- [Promote changes between environments](./promote-between-environments.mdx) — repeat this workflow across dev / staging / production
+- [Promote changes with read-only repositories](./promote-read-only.mdx) — repeat this workflow across dev / staging / production
 - [Connect a repository](./connect-repository.mdx) — repository registration
 - [Schema extensions](../schema/extensions.mdx) — extending existing nodes like Tag
 - [Proposed changes](../proposed-changes/overview.mdx) — the review workflow used to merge into `main`
