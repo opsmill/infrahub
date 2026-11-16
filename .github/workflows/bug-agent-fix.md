@@ -255,10 +255,10 @@ contract, post a comment on the issue explaining the scope, add the label
 ### Step 8: Update the PR
 
 - Update the PR title to: `fix: <short description> (closes #<issue number>)`
-- Update the PR body: read the file `.github/pull_request_template.md` from the
-  repository and fill in every section using the context from this task.
-  Do not skip or remove any section. For sections where you have nothing meaningful to add
-  (e.g., Screenshots), write "N/A" rather than inventing content.
+- Update the PR body: read `dev/guidelines/pull-requests.md`, then fill in
+  `.github/pull_request_template.md` with the context from this task. Delete every section
+  you have nothing to say in; do not write "N/A" and do not invent content. Leave the
+  "Where I am unsure" section's comment in place for the human author.
 - Make sure the literal text `AGENT_FIX_COMPLETE` appears somewhere in the PR body.
   The downstream gate scans the PR body for this exact substring; if it is missing,
   the pipeline halts.

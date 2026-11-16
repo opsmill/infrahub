@@ -54,6 +54,7 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 - **Prefect Flow and Task Payloads**: [guidelines/backend/prefect-payloads.md](guidelines/backend/prefect-payloads.md) - What flows return, what tasks receive
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
+- **Pull Request Descriptions**: [guidelines/pull-requests.md](guidelines/pull-requests.md) - What a PR title and description hold
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
 - **Writing Documentation**: [guidelines/documentation.md](guidelines/documentation.md) - How to write user-facing documentation
 

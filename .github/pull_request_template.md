@@ -1,73 +1,65 @@
 <!--
-This template is a guide, not a gate. Use as much or as little as helps the
-reviewer understand your change. For straightforward PRs (dependency bumps,
-linting fixes, CI tweaks, typos) a one-liner description is perfectly fine
--- delete the sections that don't add value.
+Guide: https://github.com/opsmill/infrahub/blob/stable/dev/guidelines/pull-requests.md
 
-Rule of thumb: the more the change affects behavior, the more sections you
-should fill in.
+The reviewer already has the diff and the CI results. Write what neither of them shows.
+Delete every section that has nothing to say, and do not write "N/A". A dependency bump,
+a lint fix or a typo fix needs one line under "Why".
 -->
 
-# Why
+## Why
 
-<!-- Problem statement: what's broken/slow/confusing/missing today? (1-3 sentences) -->
+<!-- The problem as users, operators or developers meet it today, and what this PR achieves. -->
 
-<!-- Goal: what outcome does this PR achieve? -->
+<!-- Out of scope: what this PR deliberately does not do. -->
 
-<!-- Non-goals: what this PR intentionally does NOT do (prevents scope creep) -->
+Closes <!-- #issue or IFC-1234 -->
 
-Closes <!-- #issue -->
+## Approach and decisions
 
-## What changed
+<!--
+What the diff does not show: the approach, the alternatives you rejected and why, the behavior
+that changes, and what deliberately stays the same. Do not list files, functions or commits.
 
-<!-- Group changes by intent, not by file. -->
-
-<!-- Behavioral changes: what users/systems will observe differently -->
--
-
-<!-- Implementation notes: key design choices, tradeoffs, notable refactors -->
-
-<!-- What stayed the same: especially useful if you touched sensitive areas -->
-<!-- e.g., "No schema changes", "API contract unchanged", "Only affects branch X" -->
-
-<!-- If the diff is large, add a suggested review order:
-### Suggested review order
-1. Start with ...
-2. Then ...
-3. Tests are ...
+If the change alters a flow between components, the data passed between them or a state
+transition, add a short mermaid diagram, with a before and an after when possible.
 -->
 
-## How to review
+## Review guide
 
-<!-- Key files/areas to focus on vs. mechanical/generated changes -->
+<!--
+Where to start reading, which parts need the most scrutiny, and which parts are mechanical or
+generated. Name modules and symbols, not line numbers.
+-->
 
-<!-- Risky or uncertain parts where you want extra scrutiny -->
+## Evidence
 
-<!-- Alternatives considered (only if it affects future direction) -->
+<!--
+What CI does not show: a test that fails on the base branch and passes on this branch, checks on
+a running stack, measurements, or screenshots of a UI change. Put long logs and tables in a
+<details> block. Do not list the commands CI already runs.
+-->
 
-## How to test
+Not verified: <!-- what you did not check -->
 
-<!-- Make it runnable and specific -->
+## Impact
 
-```bash
-# Commands to validate
-```
+<!-- Keep only the lines that apply. -->
 
-<!-- Expected outputs, screenshots, or links to CI results -->
+- User-visible change: <!-- no, or yes with the changelog fragment, e.g. `changelog/1234.fixed.md` -->
+- Upgrade or migration:
+- Configuration:
+- API:
+- Performance:
 
-## Impact & rollout
+## Where I am unsure
 
-<!-- Delete items that don't apply -->
-
-- **Backward compatibility:** <!-- any breaking changes or migration steps -->
-- **Performance:** <!-- implications, measurements if relevant -->
-- **Config/env changes:** <!-- new settings, feature flags, env vars -->
-- **Deployment notes:** <!-- "safe to deploy" vs "requires coordinated release" -->
+<!--
+Written by the human author, never by an agent: the decisions you are least sure of and want the
+reviewer to check.
+-->
 
 ## Checklist
 
-- [ ] Tests added/updated
-- [ ] [Changelog entry](../.agents/skills/creating-changelog-entries/SKILL.md) added (`uv run towncrier create ...`)
-- [ ] External docs updated (if user-facing or ops-facing change)
-- [ ] Internal .md docs updated (internal knowledge and AI code tools knowledge)
-- [ ] I have reviewed AI generated content
+- [ ] Changelog fragment added, or the change is not visible to users
+- [ ] External docs updated, or not needed
+- [ ] Internal docs (`dev/`, `AGENTS.md`, `.agents/`) updated, or not needed

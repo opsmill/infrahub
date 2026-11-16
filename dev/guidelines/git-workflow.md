@@ -144,13 +144,7 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 
 ## Pull Requests
 
-**PR title pattern:** `<type>: <short description> [<issue reference>]`
-
-**PR description should include:**
-
-- What was changed and why
-- Any notable implementation details
-- Testing performed
+Write the title and description as [Pull Request Descriptions](pull-requests.md) describes.
 
 **Scope to match the change.** A trivial, code-only fix with no behavior change ships as just the
 code diff — no spec-kit design record (`dev/specs/<feature>/`, see
