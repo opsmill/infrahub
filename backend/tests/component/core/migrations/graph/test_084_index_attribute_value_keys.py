@@ -1,9 +1,7 @@
 import hashlib
-from collections.abc import Generator
 
 import pytest
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.migrations.graph.m084_index_attribute_value_keys import (
@@ -71,25 +69,12 @@ async def test_migration_084(
     assert await _node_value_keys(db=db, node_id=node.id) == expected
 
 
-READ_PAGE_SIZE = 300
-
-
-@pytest.fixture
-def small_read_pages() -> Generator[None, None, None]:
-    original = config.SETTINGS.database.query_size_limit
-    config.SETTINGS.database.query_size_limit = READ_PAGE_SIZE
-    yield
-    config.SETTINGS.database.query_size_limit = original
-
-
-async def test_migration_084_keys_values_across_read_pages_and_write_batches(
-    db: InfrahubDatabase, default_branch: Branch, small_read_pages: None
-) -> None:
-    """Every value without a key gets the hash of its value when the values span several pages and batches."""
+async def test_migration_084_keys_values_across_batches(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """Every value without a key gets the hash of its value when the values span several batches."""
     if db.db_type != DatabaseType.NEO4J:
         pytest.skip("The migration only manages Neo4j indexes")
 
-    # Neither the read page size nor the write batch size divides this count, so both end with a partial chunk.
+    # One value more than a batch, so a full batch is followed by a partial one.
     count = UPDATE_BATCH_SIZE + 1
     await db.execute_query(
         query="UNWIND range(1, $count) AS i CREATE (:AttributeValue {value: 'value-' + toString(i), is_default: false})",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any
 
 from infrahub.constants.database import IndexType
@@ -20,46 +21,19 @@ UPDATE_BATCH_SIZE = 1000
 
 
 class AttributeValuesWithoutKeyQuery(Query):
-    """List the values without the AttributeValueIndexed label that have no key yet."""
+    """Read the values without the AttributeValueIndexed label that have no key yet."""
 
     name = "attribute_values_without_key"
     type: QueryType = QueryType.READ
-
-    def __init__(self, **kwargs: Any) -> None:
-        # A stable order keeps the pages of the read from skipping or repeating a value.
-        super().__init__(order_by=["element_id"], **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (av:AttributeValue)
         WHERE NOT av:AttributeValueIndexed AND av.value_key IS NULL
-        WITH elementId(av) AS element_id
         """
         self.add_to_query(query)
-        self.return_labels = ["element_id"]
-
-    def get_element_ids(self) -> list[str]:
-        return [result.get_as_type("element_id", return_type=str) for result in self.get_results()]
-
-
-class AttributeValuesByIdQuery(Query):
-    name = "attribute_values_by_id"
-    type: QueryType = QueryType.READ
-
-    def __init__(self, element_ids: list[str], **kwargs: Any) -> None:
-        self.element_ids = element_ids
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["element_ids"] = self.element_ids
-        query = """
-        UNWIND $element_ids AS element_id
-        MATCH (av:AttributeValue)
-        WHERE elementId(av) = element_id
-        WITH element_id, av.value AS value
-        """
-        self.add_to_query(query)
-        self.return_labels = ["element_id", "value"]
+        # Projected in the RETURN clause so that counting the values does not read them.
+        self.return_labels = ["elementId(av) AS element_id", "av.value AS value"]
 
     def get_value_keys(self) -> list[dict[str, str]]:
         return [
@@ -112,16 +86,18 @@ class Migration084(ArbitraryMigration):
             return result
 
         try:
-            ids_query = await AttributeValuesWithoutKeyQuery.init(db=db)
-            await ids_query.execute(db=db)
-            element_ids = ids_query.get_element_ids()
-            for start in range(0, len(element_ids), UPDATE_BATCH_SIZE):
-                values_query = await AttributeValuesByIdQuery.init(
-                    db=db, element_ids=element_ids[start : start + UPDATE_BATCH_SIZE]
-                )
+            count_query = await AttributeValuesWithoutKeyQuery.init(db=db)
+            missing_keys = await count_query.count(db=db)
+            # The number of batches is fixed up front so that a write that keys nothing cannot repeat forever.
+            for _ in range(math.ceil(missing_keys / UPDATE_BATCH_SIZE)):
+                # A keyed value leaves the filter, so each read returns the next values without an offset.
+                values_query = await AttributeValuesWithoutKeyQuery.init(db=db, limit=UPDATE_BATCH_SIZE)
                 await values_query.execute(db=db)
-                set_query = await SetAttributeValueKeysQuery.init(db=db, value_keys=values_query.get_value_keys())
+                value_keys = values_query.get_value_keys()
+                set_query = await SetAttributeValueKeysQuery.init(db=db, value_keys=value_keys)
                 await set_query.execute(db=db)
+                if len(value_keys) < UPDATE_BATCH_SIZE:
+                    break
 
             index_manager = IndexManagerNeo4j(db=db)
             index_manager.init(nodes=[VALUE_KEY_INDEX], rels=[])
@@ -138,9 +114,8 @@ class Migration084(ArbitraryMigration):
         if db.db_type != DatabaseType.NEO4J:
             return result
 
-        ids_query = await AttributeValuesWithoutKeyQuery.init(db=db)
-        await ids_query.execute(db=db)
-        if missing_keys := len(ids_query.get_element_ids()):
+        count_query = await AttributeValuesWithoutKeyQuery.init(db=db)
+        if missing_keys := await count_query.count(db=db):
             result.errors.append(f"{missing_keys} non-indexed attribute values have no key")
 
         index_manager = IndexManagerNeo4j(db=db)
