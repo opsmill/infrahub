@@ -2,61 +2,273 @@
 title: Use namespaces
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import VideoPlayer from '../../src/components/VideoPlayer';
 
-Use IP namespaces to isolate sets of IP prefixes and addresses within the same Infrahub instance — for example, to give each customer or business unit its own IP space, even when their ranges overlap.
+An IP namespace is a separate IP address space. Prefixes and addresses in one namespace are independent of those in another, so the same prefix can exist in several namespaces, each with its own tree and its own utilization figures. With namespaces, you track networks whose address ranges overlap in one Infrahub instance, such as the networks of the customers of a managed service.
 
 <center>
   <VideoPlayer url='https://www.youtube.com/watch?v=T5Qiy-13kYg' light />
 </center>
 
-## Understanding IP namespaces
+## When to create a namespace
 
-If you are familiar with networking concepts, an IP namespace is analogous to:
+Create a namespace when the address space you track overlaps, or must be kept separate so that the same values can exist twice:
 
-- A VRF (Virtual Routing and Forwarding) instance
-- A routing table or routing instance
-- A separate IP address space in a multi-tenant environment
+- Customers of a managed service who each use `10.0.0.0/8` in their own network.
+- A lab or a disaster recovery network that reuses the addressing of production.
 
-Just as a VRF lets a single router maintain multiple independent routing tables, IP namespaces let Infrahub manage multiple independent sets of IP resources. Each namespace is a boundary: IP prefixes and addresses in one namespace are separate from those in another.
+Do not create a namespace only to record who owns a prefix. To record which customer, business unit, region or data center a prefix belongs to, relate the prefix to that object. The Marketplace [`infrahub/tenancy`](https://marketplace.infrahub.app/schemas/infrahub/tenancy) extension, for example, relates tenants to prefixes and addresses. Each namespace has its own tree and its own utilization figures, the web interface shows one namespace at a time, and a Resource Manager pool allocates from one namespace only.
+
+A deployment that manages a single network or organization usually needs only the `default` namespace.
+
+## Choose between a namespace and a VRF
+
+Model each VRF as a VRF node, and give a VRF its own namespace only when its address space overlaps with the address space of another VRF.
+
+- A VRF node records the routing instance. In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, it records the route distinguisher, the import and export route targets, and, through the `vrf` relationship of each prefix, the prefixes that belong to the VRF.
+- A namespace is what allows the same value to exist twice. The Marketplace IPAM schema makes prefixes unique within a namespace, so two VRFs that hold the same prefix need two namespaces.
+
+VRFs whose address space does not overlap can share a namespace, which then has one tree and one set of utilization figures for all of them. The VRF node of the Marketplace extension has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
 
 ## The default namespace
 
-Infrahub creates a namespace called `default` automatically on first start. This namespace holds IP resources when you don't specify a namespace.
+Infrahub creates a namespace named `default` when it starts for the first time. A prefix or an address created without a namespace is assigned to `default`. The `default` namespace cannot be deleted.
 
-For deployments managing a single network or organization, the default namespace is usually sufficient — create IP prefixes and addresses without configuring a namespace first.
+## Example: overlapping customer address space
 
-## When to use multiple namespaces
+A service provider runs managed networks for three customers, and each customer uses `10.0.0.0/8` internally. One namespace cannot hold three copies of the same prefix when prefixes are unique within a namespace. With one namespace per customer, each copy is tracked separately:
 
-- **Multi-tenant environments** — create a namespace per customer. Each customer can use the same RFC 1918 range (for example `10.0.0.0/8`) without conflict.
-- **Overlapping IP ranges** — track multiple isolated networks that reuse the same IP ranges, each in its own namespace.
-- **Organizational boundaries** — namespace per business unit, region, or data center to keep ownership and separation clear.
-- **Network segmentation** — model networks with separate routing domains, such as production versus lab, as distinct namespaces.
+![The namespaces customer-a, customer-b and customer-c each hold 10.0.0.0/8, 10.1.0.0/16 and the address 10.1.0.1/16 without conflict. Each namespace also holds a different second /16.](../media/ipam/ipam-namespaces.svg)
 
-## How namespaces work
+Each namespace has its own tree, its own utilization figures and its own addresses. A query filtered on `customer-a` returns only the prefixes and addresses of customer A.
 
-Every IP prefix and IP address belongs to exactly one namespace. An IP resource created without a namespace is assigned to `default`.
+## Create a namespace
 
-Within a namespace, IP prefixes form hierarchical trees based on their network containment, and IP addresses are associated automatically with their most specific containing prefix. A prefix such as `10.0.0.0/24` can exist in multiple namespaces at the same time without conflict — the same applies to IP addresses.
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. In the menu, select **IPAM** → **Namespaces**. You can also select **View all IP namespaces** in the **IP Namespace** selector of the IPAM page.
+2. Select **Add IP Namespace**.
+3. In the **Create IP Namespace** panel, enter the **Name**, for example `customer-a`, and an optional **Description**.
+4. Select **Save**.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamNamespaceCreate(data: {
+    name: {value: "customer-a"},
+    description: {value: "Customer A managed network"}
+  }) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+namespace = await client.create(
+    kind="IpamNamespace",
+    name="customer-a",
+    description="Customer A managed network",
+)
+await namespace.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Create a prefix or an address in a namespace
+
+Choose the namespace when you create the prefix or the address. Without one, Infrahub uses `default`.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+In the **Create Prefix** or **Create IP Address** panel, choose the namespace in the **IP Namespace** field.
+
+The field is empty when the panel opens, even when another namespace is selected in the **IP Namespace** selector of the IPAM page. If you leave it empty, Infrahub creates the prefix or the address in `default`.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Give the namespace by its name in `hfid`, or by its ID in `id`. `id` accepts only the ID of the namespace, not its name.
+
+```graphql
+mutation {
+  IpamPrefixCreate(data: {
+    prefix: {value: "10.0.0.0/8"},
+    member_type: {value: "prefix"},
+    ip_namespace: {hfid: ["customer-a"]}
+  }) {
+    ok
+    object {
+      hfid
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+namespace = await client.get(kind="IpamNamespace", name__value="customer-a")
+
+prefix = await client.create(
+    kind="IpamPrefix",
+    prefix="10.0.0.0/8",
+    member_type="prefix",
+    ip_namespace=namespace,
+)
+await prefix.save()
+```
+
+</TabItem>
+</Tabs>
+
+## View one namespace
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+The IPAM section of the web interface shows one namespace at a time. Choose the namespace in the **IP Namespace** selector at the top of the tree: Infrahub reloads the tree, the tables and the utilization figures for the selected namespace.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+A query returns prefixes and addresses from every namespace unless you filter on one. Filter with `ip_namespace__name__value`, or with `ip_namespace__ids`:
+
+```graphql
+query {
+  IpamPrefix(ip_namespace__name__value: "customer-a") {
+    edges {
+      node {
+        prefix { value }
+        utilization { value }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+A query returns prefixes and addresses from every namespace unless you filter on one:
+
+```python
+prefixes = await client.filters(kind="IpamPrefix", ip_namespace__name__value="customer-a")
+for prefix in prefixes:
+    print(prefix.prefix.value, prefix.utilization.value)
+```
+
+</TabItem>
+</Tabs>
+
+## Move a prefix or an address to another namespace
+
+Change the namespace of the prefix or the address. Infrahub moves only that prefix or address:
+
+- The child prefixes and addresses of a moved prefix stay in the old namespace, under the next prefix there that contains them, or at the top level.
+- In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level.
+
+To move a whole subtree, change the namespace of each of its prefixes and addresses.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+Open the prefix or the address, select **Edit**, choose the new namespace in **IP Namespace**, and save.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Identify the prefix by its ID in `id`:
+
+```graphql
+mutation {
+  IpamPrefixUpdate(data: {
+    id: "<prefix-id>",
+    ip_namespace: {hfid: ["customer-b"]}
+  }) {
+    ok
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/8",
+    ip_namespace__name__value="customer-a",
+)
+prefix.ip_namespace = await client.get(kind="IpamNamespace", name__value="customer-b")
+await prefix.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Delete a namespace
 
 :::warning
 
-Deleting a namespace deletes every IP prefix and IP address it contains. The `default` namespace cannot be deleted.
+When you delete a namespace, Infrahub deletes every prefix and every address in it. The `default` namespace cannot be deleted.
 
 :::
 
-## Practical example
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
 
-An Internet Service Provider runs managed network services for three customers, and each customer uses `10.0.0.0/8` internally. A single IPAM without namespaces cannot hold three copies of the same range. With one namespace per customer, each range is tracked independently:
+Select **IPAM** → **Namespaces** in the menu, and select the namespace to open it. Then select **Actions** → **Delete**, and confirm with **Delete**.
 
-- **customer-a** — Customer A's `10.0.0.0/8` and its subnets
-- **customer-b** — Customer B's `10.0.0.0/8` and its subnets
-- **customer-c** — Customer C's `10.0.0.0/8` and its subnets
+</TabItem>
 
-Each namespace has its own hierarchy, utilization figures, and address assignments, so a query scoped to one customer never returns another customer's addresses.
+  <TabItem value="graphql" label="GraphQL">
 
-## Switch the active namespace
+Identify the namespace by its ID in `id`:
 
-The IPAM section of the web interface scopes the prefix and address tree to one namespace at a time. Use the **IP Namespace** selector in the IPAM header to switch — the tree, filters, and utilization figures update to the selected namespace.
+```graphql
+mutation {
+  IpamNamespaceDelete(data: {id: "<namespace-id>"}) {
+    ok
+  }
+}
+```
 
-The Python SDK and GraphQL API don't have an equivalent "active namespace" concept — every query or mutation for a prefix or address takes the namespace explicitly, either as an `ip_namespace` filter or as part of the object's data.
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+namespace = await client.get(kind="IpamNamespace", name__value="customer-a")
+await namespace.delete()
+```
+
+</TabItem>
+</Tabs>
+
+## Next
+
+- [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) — Create, change and delete prefixes and addresses within a namespace
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Allocate from a pool, which draws from one namespace
+- [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Review a namespace change before it is merged

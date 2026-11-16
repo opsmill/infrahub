@@ -5,21 +5,24 @@ title: Query IPAM data
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Read the computed values on IP prefixes and addresses, or follow the hierarchy relationships. Use these patterns for reporting, automation, or verification.
+Query the computed values of prefixes and addresses, follow the tree, and list the free space in a prefix, with GraphQL or the Python SDK. Run these queries in reports and automation to find out how full a subnet is, which addresses it holds, and where a new prefix can go.
 
-## Query a prefix's computed values
+The same prefix can exist in several namespaces, so filter on the namespace when you look up one prefix or address. The examples filter on `default`.
 
-Every `IpamIPPrefix` exposes `utilization`, `netmask`, `hostmask`, `network_address`, and `broadcast_address` as read-only attributes, computed on read:
+## Query the computed values of a prefix
+
+Every prefix has the read-only attributes `utilization`, `netmask`, `hostmask`, `network_address` and `broadcast_address`, computed when you query them:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
 
 ```graphql
 query {
-  IpamIPPrefix(prefix__value: "192.0.2.0/24") {
+  IpamPrefix(prefix__value: "192.0.2.0/24", ip_namespace__name__value: "default") {
     edges {
       node {
         prefix { value }
+        member_type { value }
         utilization { value }
         netmask { value }
         hostmask { value }
@@ -36,7 +39,11 @@ query {
   <TabItem value="sdk" label="Python SDK">
 
 ```python
-prefix = await client.get(kind="IpamIPPrefix", prefix__value="192.0.2.0/24")
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="192.0.2.0/24",
+    ip_namespace__name__value="default",
+)
 print(prefix.utilization.value, prefix.netmask.value, prefix.hostmask.value)
 print(prefix.network_address.value, prefix.broadcast_address.value)
 ```
@@ -44,16 +51,18 @@ print(prefix.network_address.value, prefix.broadcast_address.value)
 </TabItem>
 </Tabs>
 
-## Query an address's computed values
+See [Utilization depends on the member type](./overview.mdx#utilization-depends-on-the-member-type) for how `utilization` is calculated, and why a prefix can have a utilization of 0%.
 
-`IpamIPAddress` has no equivalent sibling attributes — instead, the `address` attribute itself (kind `IPHost`) exposes computed sub-fields: `ip`, `netmask`, `hostmask`, `prefixlen`, and `version`.
+## Query the computed values of an address
+
+An address has no separate computed attributes. Its `address` attribute, of kind `IPHost`, has the computed sub-fields `ip`, `netmask`, `hostmask`, `prefixlen` and `version`:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
 
 ```graphql
 query {
-  IpamIPAddress(address__value: "192.0.2.10/24") {
+  IpamIPAddress(address__value: "192.0.2.10/24", ip_namespace__name__value: "default") {
     edges {
       node {
         address {
@@ -75,26 +84,74 @@ query {
   <TabItem value="sdk" label="Python SDK">
 
 ```python
-address = await client.get(kind="IpamIPAddress", address__value="192.0.2.10/24")
+address = await client.get(
+    kind="IpamIPAddress",
+    address__value="192.0.2.10/24",
+    ip_namespace__name__value="default",
+)
 value = address.address.value  # an ipaddress.IPv4Interface or IPv6Interface
 print(value.ip, value.netmask, value.hostmask, value.version)
 ```
 
-The Python SDK maps an `IPHost` attribute's value to the standard library's `ipaddress.IPv4Interface` or `IPv6Interface` — `netmask` and `hostmask` come from that object, not from a separate attribute.
+The Python SDK converts the value of an `IPHost` attribute to the standard library's `ipaddress.IPv4Interface` or `IPv6Interface`. `netmask` and `hostmask` come from that object, not from a separate attribute.
 
 </TabItem>
 </Tabs>
 
-## Navigate the hierarchy
+## Find the addresses in a prefix
 
-IP prefixes expose `parent`, `children`, `ancestors`, and `descendants` relationships. They are read-only — Infrahub manages them automatically.
+The `ip_addresses` relationship of a prefix holds the addresses in it, and the `ip_prefix` relationship of an address holds its prefix. Both relationships are read-only, and Infrahub sets them from the tree:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
 
 ```graphql
 query {
-  IpamIPPrefix(prefix__value: "10.0.0.0/16") {
+  IpamPrefix(prefix__value: "10.0.1.0/24", ip_namespace__name__value: "default") {
+    edges {
+      node {
+        prefix { value }
+        ip_addresses {
+          edges {
+            node { address { value } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.1.0/24",
+    ip_namespace__name__value="default",
+)
+await prefix.ip_addresses.fetch()
+for related in prefix.ip_addresses.peers:
+    print(related.peer.address.value)
+```
+
+</TabItem>
+</Tabs>
+
+`ip_addresses` holds only the addresses whose most specific prefix is this one. Addresses in a child prefix are listed on that child.
+
+## Navigate the hierarchy
+
+Prefixes have the read-only relationships `parent`, `children`, `ancestors` and `descendants`. `children` holds the direct child prefixes, and `descendants` holds every prefix below this one in the tree:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  IpamPrefix(prefix__value: "10.0.0.0/16", ip_namespace__name__value: "default") {
     edges {
       node {
         prefix { value }
@@ -126,19 +183,117 @@ query {
 
   <TabItem value="sdk" label="Python SDK">
 
+`fetch()` loads the related prefixes into the relationship, and `peers` lists them:
+
 ```python
-prefix = await client.get(kind="IpamIPPrefix", prefix__value="10.0.0.0/16")
-for child in await prefix.children.fetch():
-    print(child.prefix.value)
-for descendant in await prefix.descendants.fetch():
-    print(descendant.prefix.value)
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/16",
+    ip_namespace__name__value="default",
+)
+await prefix.children.fetch()
+for related in prefix.children.peers:
+    print(related.peer.prefix.value)
+
+await prefix.descendants.fetch()
+for related in prefix.descendants.peers:
+    print(related.peer.prefix.value)
 ```
 
 </TabItem>
 </Tabs>
 
+## List the top-level prefixes
+
+The read-only attribute `is_top_level` is `true` on a prefix that has no parent. Filter on it to list the roots of the tree in a namespace:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  IpamPrefix(ip_namespace__name__value: "default", is_top_level__value: true) {
+    edges {
+      node {
+        prefix { value }
+        utilization { value }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+roots = await client.filters(
+    kind="IpamPrefix",
+    ip_namespace__name__value="default",
+    is_top_level__value=True,
+)
+for prefix in roots:
+    print(prefix.prefix.value, prefix.utilization.value)
+```
+
+</TabItem>
+</Tabs>
+
+## List the free space in a prefix
+
+To find where a new prefix or address can go, query the children of a prefix with `include_available: true`. Infrahub then adds a row for each free block between the existing children. The argument exists only on the queries of the built-in generics, `BuiltinIPPrefix` and `BuiltinIPAddress`, and the query returns free rows only when you filter on one parent prefix:
+
+- `BuiltinIPPrefix(parent__ids: ["<prefix-id>"], include_available: true)` returns the child prefixes, and a row of type `InternalIPPrefixAvailable` for each free block, for example `10.0.2.0/23`.
+- `BuiltinIPAddress(ip_prefix__ids: ["<prefix-id>"], include_available: true)` returns the addresses, and a row of type `InternalIPRangeAvailable` for each free range. The row's `address` is the first free address, and its display label states the size of the range, for example "9 IP addresses available". The ranges leave out the network and broadcast addresses.
+
+The `count` of the query does not include the free rows.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query {
+  BuiltinIPPrefix(parent__ids: ["<prefix-id>"], include_available: true) {
+    edges {
+      node {
+        __typename
+        display_label
+        prefix { value }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+`client.filters()` cannot read the free rows, because their kinds have no schema in the SDK, so run the GraphQL query with `execute_graphql`:
+
+```python
+query = """
+query ($parent: ID!) {
+  BuiltinIPPrefix(parent__ids: [$parent], include_available: true) {
+    edges { node { __typename prefix { value } } }
+  }
+}
+"""
+result = await client.execute_graphql(query=query, variables={"parent": prefix.id})
+for edge in result["BuiltinIPPrefix"]["edges"]:
+    node = edge["node"]
+    if node["__typename"] == "InternalIPPrefixAvailable":
+        print("free:", node["prefix"]["value"])
+```
+
+</TabItem>
+</Tabs>
+
+To get only the next free address or prefix of a given size, use the next-available queries described in [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx#advanced-next-available-graphql-queries).
+
 ## Next
 
-- [IP Address Management](./overview.mdx) — the built-in generics and the hierarchy they participate in
-- [Use namespaces](./use-namespaces.mdx) — isolating the prefixes and addresses these queries run against
-- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — creating prefixes and addresses instead of reading them
+- [IP Address Management](./overview.mdx) — How the tree and utilization work
+- [Use namespaces](./use-namespaces.mdx) — The namespaces these queries filter on
+- [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) — Create and change the prefixes and addresses these queries read

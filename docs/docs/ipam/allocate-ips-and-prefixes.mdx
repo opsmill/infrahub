@@ -2,13 +2,28 @@
 title: Allocate IPs and prefixes
 ---
 
-## When to allocate from a pool
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-Allocate from a Resource Pool when something other than a person assigns the address — a provisioning pipeline creating devices, a Generator rendering configuration, a CI/CD job reserving space for a new service. If you are only recording and querying IP data that already exists, the IPAM nodes alone are enough.
+A Resource Manager pool assigns the next free address or prefix from IPAM prefixes you choose. It creates the address or prefix, and returns the same one when a request repeats an identifier. Allocate from a pool when something other than a person assigns the address: a provisioning pipeline that creates devices, a Generator that builds a site, a CI/CD job that reserves space for a new service. If you only record and query IP data that already exists, the IPAM nodes are enough on their own.
 
-## Use a resource pool
+## How a pool uses your prefixes
 
-Resource Pool is the recommended way to allocate IP addresses and prefixes. A `CoreIPAddressPool` or `CoreIPPrefixPool` takes your IPAM prefixes as its `resources` and returns the next available address or subnet on request.
+A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resources`, and allocates in one namespace. The `resources` relationship is the connection point between IPAM and the Resource Manager:
+
+- When you pass the same `identifier` on repeated allocation requests, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object.
+- Infrahub handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests to the same pool never receive the same resource.
+
+In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next free address, and a request that repeats an identifier receives the address already allocated to it:
+
+![A loopback pool uses the prefix 10.0.0.0/24 as its resource, and does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
+
+The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) page has the full identifier rules.
+
+## Create a pool
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
 
 ```graphql
 mutation {
@@ -16,8 +31,8 @@ mutation {
     name: {value: "Management IP Pool"},
     default_address_type: {value: "IpamIPAddress"},
     default_prefix_length: {value: 24},
-    resources: [{id: "<IpamIPPrefix-id>"}],
-    ip_namespace: {id: "default"}
+    resources: [{id: "<prefix-id>"}],
+    ip_namespace: {hfid: ["default"]}
   }) {
     ok
     object {
@@ -27,15 +42,42 @@ mutation {
 }
 ```
 
-The `resources` field references the `IpamIPPrefix` objects the pool allocates from, and is the connection point between IPAM and Resource Manager. When you pass the same `identifier` on repeated allocation requests through the GraphQL API, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object. Infrahub also handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests against the same pool never get the same resource. The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) page has the full identifier rules.
+</TabItem>
 
-For the full allocation walkthrough — creating the source prefix, creating the pool, and allocating directly or during node creation — see [Allocate IP addresses](../resource-manager/allocate-ip-address.mdx) and [Allocate IP prefixes](../resource-manager/allocate-ip-prefix.mdx).
-
-## Allocate from generators
-
-A Generator has the same Python SDK client available anywhere else, so allocating from a Resource Pool inside a Generator is a regular SDK call:
+  <TabItem value="sdk" label="Python SDK">
 
 ```python
+resource = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/24",
+    ip_namespace__name__value="default",
+)
+namespace = await client.get(kind="IpamNamespace", name__value="default")
+
+pool = await client.create(
+    kind="CoreIPAddressPool",
+    name="Management IP Pool",
+    default_address_type="IpamIPAddress",
+    default_prefix_length=24,
+    resources=[resource],
+    ip_namespace=namespace,
+)
+await pool.save()
+```
+
+</TabItem>
+</Tabs>
+
+For the full walkthrough, including creating the source prefix in the web interface and allocating directly or while you create a node, see [Allocate IP addresses](../resource-manager/allocate-ip-address.mdx) and [Allocate IP prefixes](../resource-manager/allocate-ip-prefix.mdx).
+
+## Allocate from Generators
+
+A Generator has the same Python SDK client available as any other script, so allocating from a pool inside a Generator is an ordinary SDK call:
+
+```python
+loopback_pool = await client.get(kind="CoreIPAddressPool", name__value="Loopback pool")
+interconnection_pool = await client.get(kind="CoreIPPrefixPool", name__value="Interconnection pool")
+
 device_loopback = await client.allocate_next_ip_address(
     resource_pool=loopback_pool,
     identifier=device_name,
@@ -45,16 +87,34 @@ device_loopback = await client.allocate_next_ip_address(
 
 interconnect_subnet = await client.allocate_next_ip_prefix(
     resource_pool=interconnection_pool,
-    kind=IpamIPPrefix,
     identifier=network.identifier,
     branch=branch,
 )
 ```
 
-`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations — passing a stable `identifier` (for example, the device name) keeps a Generator idempotent across reruns. The [infrastructure-edge topology model](https://github.com/opsmill/infrahub/blob/stable/models/infrastructure_edge.py) is a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
+`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations. Pass a stable `identifier`, such as the device name, so that a Generator receives the same address each time it runs again. The [infrastructure-edge topology model](https://github.com/opsmill/infrahub/blob/stable/models/infrastructure_edge.py) is a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
 
-## Advanced: next-available GraphQL primitives
+## Return an address to the pool
 
-`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet from a given prefix. Unlike a Resource Pool allocation, they don't create a record, and they don't provide the pool's cross-branch allocation guarantee — two callers on different branches can compute the same "next available" value independently and collide.
+A pool counts an address as in use as long as the address exists. To return it to the pool, delete the address. When you delete the device or interface it was allocated to, Infrahub leaves the address in place, unless the relationship between them cascades the delete. [Releasing an allocated resource](../resource-manager/overview.mdx#releasing-an-allocated-resource) has the rules, including the case of an address that another branch can still read.
 
-Use Resource Pool for production workflows. Use these queries only to look up a value without persisting it.
+## Advanced: next-available GraphQL queries
+
+`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet in a given prefix. They take the ID of the prefix in `prefix_id`, and an optional `prefix_length`:
+
+```graphql
+query {
+  InfrahubIPPrefixGetNextAvailable(prefix_id: "<prefix-id>", prefix_length: 24) {
+    prefix
+  }
+}
+```
+
+Unlike a pool allocation, they create no record, and they do not provide the pool's guarantee across branches: two callers on different branches can receive the same next free value and both try to create it.
+
+Use a pool for production workflows. Use these queries only to look up a value without storing it. To list all the free blocks of a prefix instead of the next one, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
+
+## Next
+
+- [Query IPAM data](./query-ipam-data.mdx) — Check utilization and the tree after allocating
+- [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Allocate on a branch and review the result before it is merged
