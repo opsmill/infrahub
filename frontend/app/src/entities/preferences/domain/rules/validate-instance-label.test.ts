@@ -11,7 +11,14 @@ describe("normalizeInstanceLabel", () => {
     { name: "a padded label", value: "  Production  ", expected: "Production" },
     { name: "an empty string", value: "", expected: null },
     { name: "whitespace only", value: "   ", expected: null },
-  ])("normalizes $name", ({ value, expected }) => {
+    {
+      name: "a label padded with an information separator",
+      value: "\u001FQA\u001C",
+      expected: "QA",
+    },
+    { name: "a label padded with a next-line character", value: "\u0085QA\u0085", expected: "QA" },
+    { name: "a label padded with a byte order mark", value: "\uFEFFQA", expected: "\uFEFFQA" },
+  ])("normalizes $name as the server does", ({ value, expected }) => {
     expect(normalizeInstanceLabel(value)).toBe(expected);
   });
 });

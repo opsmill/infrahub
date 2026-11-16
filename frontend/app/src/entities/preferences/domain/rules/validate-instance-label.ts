@@ -7,8 +7,17 @@ const STORED_NULL_MARKER = "NULL";
 // separators; the other code points are bidirectional controls, which can reorder how the label reads.
 const CONTROL_CHARACTER = /[\p{Cc}\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/u;
 
+// The server trims with Python's whitespace set, which differs from String.prototype.trim: it also
+// removes U+001C to U+001F and U+0085, and keeps U+FEFF.
+const SERVER_WHITESPACE =
+  "[\\t\\n\\v\\f\\r\\u001C-\\u001F \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]";
+const SURROUNDING_SERVER_WHITESPACE = new RegExp(
+  `^${SERVER_WHITESPACE}+|${SERVER_WHITESPACE}+$`,
+  "g"
+);
+
 export function normalizeInstanceLabel(value: string): string | null {
-  const trimmed = value.trim();
+  const trimmed = value.replace(SURROUNDING_SERVER_WHITESPACE, "");
   return trimmed === "" ? null : trimmed;
 }
 
