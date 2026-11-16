@@ -167,6 +167,9 @@ registry: InfrahubLockRegistry = None  # type: ignore[assignment]
 
 # ✅ Good - the annotation is always true, and use before startup raises
 class UninitializedLockRegistry(InfrahubLockRegistry):
+    def __init__(self) -> None:
+        super().__init__(local_only=True)
+
     def _find(self, lock_name: str) -> InfrahubLock | None:
         raise InitializationError("The lock registry has not been initialized")
 
@@ -177,6 +180,8 @@ def is_initialized() -> bool:
 ```
 
 - Override the method every operation goes through, so the placeholder returns no result.
+- Build the placeholder without reading configuration or opening a connection, because the module
+  creates it at import.
 - A caller that tested `is None` calls the predicate instead.
 - Check each attribute callers read from the global. An empty value on the placeholder, such as a
   connection that is `None`, must not select a fallback: move that caller to a method that raises.
