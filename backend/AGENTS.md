@@ -83,6 +83,7 @@ already exists.
 - Use Query class pattern for database operations
 - Create changelog fragments with `towncrier create` — never hand-write the file. Use the `creating-changelog-entries` skill.
 - Declare a new `INFRAHUB_*` environment setting in the `environment:` blocks of both `docker-compose.yml` and `development/docker-compose.yml` — compose forwards only declared variables, so a missing entry silently ignores the setting in that stack
+- Take a lock from the lock registry (`lock.registry.get()`, or a registry method such as `global_graph_lock()`), never by building an `InfrahubLock` — a lock built directly is not replaced when a test installs its own registry, and one built from the registry's connection before startup is a local lock with no error
 
 ### Ask First
 
