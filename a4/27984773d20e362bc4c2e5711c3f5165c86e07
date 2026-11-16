@@ -1,0 +1,25 @@
+frontend/app/src/app/providers/react-aria-router-provider.test.tsx
+  s_455a772d3c21e1::t_2fdcf8b38f8495 2,14,16-18,20-21,29-30,35,37,47
+frontend/app/src/app/providers/react-aria-router-provider.tsx
+  s_455a772d3c21e1::t_a0f228a54ced6b 13-14,19-29,32-35,40-41
+tests/e2e/test_login.py
+  s_455a772d3c21e1::t_b801354e184f5d 75
+  s_455a772d3c21e1::t_c1396ec9970db5 90-91
+  s_455a772d3c21e1::t_b843711a397c39 4-6,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a427984773d20e362bc4c2e5711c3f5165c86e07",
+  "prompts": {},
+  "sessions": {
+    "s_455a772d3c21e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc9a41aa-df1f-481e-9d24-7cb42087d8ce",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

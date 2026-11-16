@@ -1,0 +1,19 @@
+.agents/skills/upgrading-infrastructure-dependencies/SKILL.md
+  s_265b4067790ccd::t_7cd5b366d17b46 208-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c162059887a48b1df575d844240620c1054e780",
+  "prompts": {},
+  "sessions": {
+    "s_265b4067790ccd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7143ba8-b161-4d10-bc2b-60dd8c4c6758",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

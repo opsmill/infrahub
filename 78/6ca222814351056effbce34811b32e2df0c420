@@ -1,0 +1,33 @@
+backend/infrahub/core/migrations/graph/m084_index_edge_times.py
+  s_28a00f94c1478e::t_3ac2356313efde 1-80
+backend/infrahub/core/query/diff.py
+  s_28a00f94c1478e::t_4060e92e4c89be 8,58-63,85-92,94-122
+  s_28a00f94c1478e::t_c49470511edceb 123-124
+backend/infrahub/core/graph/__init__.py
+  s_28a00f94c1478e::t_3ac2356313efde 1
+backend/tests/component/core/diff/test_count_changes.py
+  s_28a00f94c1478e::t_321f1e1f60feb0 1-307
+  s_28a00f94c1478e::t_08745746da627b 308
+backend/infrahub/core/graph/index.py
+  s_28a00f94c1478e::t_3ac2356313efde 34,37,39-40,42-43,45-46,48-49,51-52,54-55
+backend/tests/component/core/migrations/graph/test_084_index_edge_times.py
+  s_28a00f94c1478e::t_80d1ff80a65dc9 1-77
+backend/tests/unit/core/graph/test_index.py
+  s_28a00f94c1478e::t_9ddf674355d6e8 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "786ca222814351056effbce34811b32e2df0c420",
+  "prompts": {},
+  "sessions": {
+    "s_28a00f94c1478e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a8b0bbc-5587-4725-93f8-2a48a4ea4dee",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}
