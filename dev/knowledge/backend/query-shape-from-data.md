@@ -2,7 +2,16 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [Query Pattern](query-pattern.md), [Database Schema](database-schema.md)
 
-Some queries have several valid shapes, and the best one depends on something that has to be looked up first: the routes the schema allows between two kinds, or the number of edges on the vertices a filter names. This page covers where that decision is made, and how to choose the start of a filtered read.
+Some queries have several valid shapes, and the best one depends on something that has to be looked up first: the routes the schema allows between two kinds, or the number of edges on the vertices a filter names. This page covers when to look it up with a small query, where that decision is made, and how to choose the start of a filtered read.
+
+## Run a small query to choose the shape of a large one
+
+When a query is slow for some inputs and fast for others, and no single shape is best for all of them, send a small query first and build the large one from its answer. Do this instead of one statement that holds every shape, and instead of guessing from the schema.
+
+- **The small query must cost almost nothing.** Read stored counts (the degree of a vertex, the number of nodes with a label) or an index. If it has to expand or filter, it costs what it is meant to save.
+- **Send one small query per large query.** Put every count the decision needs in the same statement.
+- **Keep the previous shape as the default.** Take the new shape only when the answer shows a clear margin, so an input the new shape does not help keeps its text and its plan.
+- **Measure the added round trip.** Every call pays for the small query, including the calls that keep the previous shape.
 
 ## Decide first, then build
 
@@ -33,7 +42,7 @@ What this keeps true:
 - The cost of the decision shows at the call site, where it can be skipped or made once for several queries.
 - A test can pass each possible decision to the query and compare the results, without arranging data that makes the lookup choose it.
 
-Existing instances:
+Where the codebase already does this:
 
 - Path traversal: the resolver in `backend/infrahub/graphql/queries/path.py` calls `SchemaPlanner.plan()` and passes the plan to `PathTraversalExecutor` (`backend/infrahub/graph_traversal/executor.py`), which hands it to the queries in `backend/infrahub/graph_traversal/path.py`. None of them calls the planner.
 - Filtered list reads: `NodeGetListQueryBuilder` (`backend/infrahub/core/query/node_get_list_builder.py`) runs `NodeGetListIndexStartQuery` and passes the selected start to `NodeGetListQuery`.
