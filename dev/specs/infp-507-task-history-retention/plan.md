@@ -9,7 +9,7 @@
 Bound the task manager's storage and make the activity log retention configurable, without adding tables or indexes to Prefect's database:
 
 - **Task history (part 1)**: turn on Prefect's built-in cleanup of old runs, driven by a new Infrahub retention setting; reimplement `infrahub tasks flush flow-runs` as a task-manager job that deletes with set-based SQL and, with `--rewrite`, rewrites each task history and activity log table whose live rows hold less than half of its disk space, whoever deleted the rows; the upgrade prints the task history size and the old runs, and as its last step runs the same cleanup when at least 100,000 runs are older than the retention, or prints why it skipped and the command, which operators then run after the upgrade.
-- **Activities page (part 2)**: filter on Prefect's indexed resource IDs instead of labels, read newest first in widening time windows, count only on request, plan each query for its values (both changes are carried in this pull request; PR #10379 is still an open draft), and page by time on the frontend.
+- **Activities page (part 2)**: filter on Prefect's indexed resource IDs instead of labels, read newest first in widening windows that hold a number of events, count only on request, plan each query for its values (both changes are carried in this pull request; PR #10379 is still an open draft), and page by time on the frontend.
 - **Activity log (part 3)**: keep Infrahub events for the activity log retention and delete Prefect's own events after their own retention, through a list of Prefect event types guarded by a test. The activity log default stays 7 days in the code; OpsMill's Enterprise Docker Compose file and Helm chart set 30 days.
 - **Documentation (part 4)**: configuration reference, CLI reference, upgrade guides, sizing, knowledge docs.
 
@@ -64,9 +64,10 @@ and its coverage when upgrading Prefect.
 ### Activities results and paging
 
 The GraphQL resolver resolves branch names and constructs resource filters; the task manager's
-`query_events` reads expanding time windows, counted back from the newest event of the requested
-event types, and computes a count only when requested. The default
-window follows retention when event cleanup is enabled, otherwise it spans at least 180 days.
+`query_events` reads expanding windows that hold a number of the newest events of the requested
+event types (2,000, then the next 48,000, then the rest of the range), and computes a count only
+when requested. The default range follows retention when event cleanup is enabled, otherwise it
+spans at least 180 days.
 The frontend continues by timestamp and deduplicates IDs. When every event of a full page has the
 boundary time, the next request keeps that time and adds an offset, the number of events of that
 time already shown. The task manager orders the events of one time by ID, so the offset skips
@@ -140,7 +141,7 @@ backend/infrahub/
 │   ├── retention.py                   # new: settings translation + PREFECT_EVENT_TYPES list
 │   ├── task_history.py                # new: cleanup job (SQL deletes per day, rewrite on Postgres) + routes
 │   ├── task_history_models.py         # new: request and job models the routes and the client share
-│   ├── database.py                    # newest-first time windows, optional count, plan per query
+│   ├── database.py                    # newest-first event windows, optional count, plan per query
 │   ├── events.py, models.py           # include_total, retention window, nullable total
 ├── task_manager/
 │   ├── event/models.py                # account/branch/node/parent/branch-name filters on resource IDs
@@ -181,7 +182,7 @@ CI proves the logic on small seeded data; only the private tests prove the outco
 | Part | Private tests | Proves |
 |---|---|---|
 | 1. Task history | `test_task_history_retention.py`, `test_task_history_upgrade.py`, `test_task_history_cleanup_load.py`, `test_database_size.py` (extended) | Old runs deleted, newer and stuck runs kept, settings reach a separate background-services container; upgrade duration, extra disk and size before/after on 25 and 100 GB (Q1); no lock waits, deadlocks or task errors under load; size and dead space per table over time |
-| 2. Activities page | PR #33 `test_activity_log.py` (T037 lands it and switches its retention override to the Infrahub setting, T038 extends it, both before the evidence run) | Identical results to the previous release; no plan flip on repeated queries; time windows; combined filters within 10 s; deep paging by time on Postgres 18 (open measurement) |
+| 2. Activities page | PR #33 `test_activity_log.py` (T037 lands it and switches its retention override to the Infrahub setting, T038 extends it, both before the evidence run) | Identical results to the previous release; no plan flip on repeated queries; the windows; combined filters within 10 s; deep paging by time on Postgres 18 (open measurement) |
 | 3. Activity log | `test_activity_log_retention.py` | No Infrahub event deleted, no orphaned related item, nothing newer than the retentions deleted, every stored Prefect event type in the list |
 
 **Recommendation: run the private tests in a new session.** The evidence tasks (T021-T024, T037, T038, T046, T057) live in another repository, so `/speckit.opsmill.implement` in this repository cannot do them. Start a separate Claude Code session in a checkout of opsmill/infrahub-private-tests, once a test image of this branch exists, with a prompt such as:
@@ -200,7 +201,7 @@ Keeping it separate keeps this repository's implementation context free of the p
 ## Delivery Order
 
 1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite modes `never` and `if_freed`, the latter for the command's rewrite option and per table over the six task history and two activity log tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, the task history size route, the upgrade's task history line and its cleanup step for a backlog of at least 100,000 old runs with `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, the hook's `--no-task-history-cleanup`) ships in the same release.
-2. **Part 2, Activities page** (before part 3): the count-on-request and plan-per-query changes of PR #10379 carried in, because that pull request is still an open draft; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
+2. **Part 2, Activities page** (before part 3): the count-on-request and plan-per-query changes of PR #10379 carried in, because that pull request is still an open draft; ID filters and branch resolution; windows that hold a number of events; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults. The 30-day Enterprise default ships in the same release in the Enterprise Docker Compose file (opsmill/infrahub-private) and the Enterprise Helm chart (opsmill/infrahub-helm#100).
 4. **Part 4, documentation**: ships with parts 1 and 3.
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,9 @@ if TYPE_CHECKING:
     from prefect.server.events.filters import EventFilter
     from sqlalchemy.ext.asyncio import AsyncSession
 
-NEWEST_FIRST_WINDOWS = (timedelta(hours=1), timedelta(days=1), timedelta(days=7), timedelta(days=30))
+# A window holds a number of events, not a duration, so a first page reads as few events when they are dense as when
+# they are sparse.
+NEWEST_FIRST_WINDOW_EVENT_COUNTS = (2_000, 48_000)
 
 # Steps from one event type to the next through the index on the event type, instead of reading every event.
 _STORED_EVENT_TYPES = sa.text(
@@ -52,20 +55,6 @@ def earlier_by(moment: datetime, duration: timedelta) -> datetime:
     return moment.astimezone(UTC) - duration
 
 
-def newest_first_ranges(since: datetime, until: datetime) -> list[tuple[datetime, datetime]]:
-    """Split the range into the windows read newest first, each ending just before the newer one starts."""
-    ranges: list[tuple[datetime, datetime]] = []
-    range_until = until
-    for window in NEWEST_FIRST_WINDOWS:
-        window_start = earlier_by(moment=until, duration=window)
-        if window_start <= since:
-            break
-        ranges.append((window_start, range_until))
-        range_until = window_start - timedelta(microseconds=1)
-    ranges.append((since, range_until))
-    return ranges
-
-
 async def _read_page(
     session: AsyncSession, filter: EventFilter, since: datetime, until: datetime, page_size: int, offset: int | None
 ) -> Sequence[Event]:
@@ -85,46 +74,86 @@ async def _read_page(
     return (await session.scalars(statement)).all()
 
 
-async def _newest_event_time(session: AsyncSession, filter: EventFilter, since: datetime) -> datetime | None:
-    """Return the time of the newest event in the filter's range that has one of its event types, if any."""
-    conditions = [Event.occurred >= since, Event.occurred <= filter.occurred.until]
+@dataclass(frozen=True)
+class _NewestEvents:
+    oldest: datetime
+    newest: datetime
+    count: int
+
+
+async def _newest_events(
+    session: AsyncSession, filter: EventFilter, since: datetime, until: datetime, limit: int
+) -> _NewestEvents | None:
+    """Return the time span and the number of the `limit` newest events of the filter's event types in the range, if any."""
+    conditions = [Event.occurred >= since, Event.occurred <= until]
     if filter.event:
         conditions.extend(filter.event.build_where_clauses())
-    return await session.scalar(sa.select(sa.func.max(Event.occurred)).where(*conditions))
+    newest = sa.select(Event.occurred).where(*conditions).order_by(Event.occurred.desc()).limit(limit).subquery()
+    oldest_time, newest_time, count = (
+        await session.execute(
+            sa.select(sa.func.min(newest.c.occurred), sa.func.max(newest.c.occurred), sa.func.count())
+        )
+    ).one()
+    if not count:
+        return None
+    return _NewestEvents(oldest=oldest_time, newest=newest_time, count=count)
 
 
 async def _read_newest_first(
-    session: AsyncSession, filter: EventFilter, since: datetime, page_size: int, offset: int | None
+    session: AsyncSession,
+    filter: EventFilter,
+    since: datetime,
+    page_size: int,
+    offset: int | None,
+    window_event_counts: Sequence[int],
 ) -> Sequence[Event]:
     """Read the page newest first, one window at a time, until the windows read so far fill it.
 
-    The windows are counted back from the newest event of the filter's event types, not from the end of the range, so
-    the first window holds events however old the newest one is.
+    Each window holds a number of the newest events of the filter's event types that no window before it holds, and
+    the last window holds the rest of the range, so the first window holds events however old the newest one is.
     """
-    until = await _newest_event_time(session=session, filter=filter, since=since)
-    if until is None:
-        return []
     page_limit = max(0, min(page_size, filter.logical_limit))
     one_per_resource = bool(filter.resource and filter.resource.distinct)
-    # An offset and the one event kept per resource are counted from `until`, so such a read starts there.
-    from_until = bool(offset) or one_per_resource
+    # An offset and the one event kept per resource are counted from the newest event, so such a read starts there.
+    from_newest = bool(offset) or one_per_resource
     page: list[Event] = []
-    for range_since, range_until in newest_first_ranges(since=since, until=until):
-        if from_until:
+    newest: datetime | None = None
+    window_until: datetime = filter.occurred.until
+    for event_count in (*window_event_counts, None):
+        window_since = since
+        range_is_read = True
+        if event_count is not None:
+            events = await _newest_events(
+                session=session, filter=filter, since=since, until=window_until, limit=event_count
+            )
+            if events is None:
+                break
+            # No event of these types is newer than the newest one found, so the window ends there.
+            window_since, window_until = events.oldest, events.newest
+            range_is_read = events.count < event_count or window_since <= since
+        if newest is None:
+            newest = window_until
+        if from_newest:
             rows = await _read_page(
-                session=session, filter=filter, since=range_since, until=until, page_size=page_size, offset=offset
+                session=session, filter=filter, since=window_since, until=newest, page_size=page_size, offset=offset
             )
             page = list(rows)
             # Once a read returns the events past the offset, the older windows hold only the events after them.
-            from_until = one_per_resource or not rows
+            from_newest = one_per_resource or not rows
         else:
             rows = await _read_page(
-                session=session, filter=filter, since=range_since, until=range_until, page_size=page_size, offset=None
+                session=session,
+                filter=filter,
+                since=window_since,
+                until=window_until,
+                page_size=page_size,
+                offset=None,
             )
             page.extend(rows)
-        if len(page) >= page_limit:
-            return page[:page_limit]
-    return page
+        if range_is_read or len(page) >= page_limit:
+            break
+        window_until = window_since - timedelta(microseconds=1)
+    return page[:page_limit]
 
 
 async def query_events(
@@ -134,15 +163,29 @@ async def query_events(
     page_size: int = INTERACTIVE_PAGE_SIZE,
     offset: int | None = None,
     include_total: bool = True,
+    window_event_counts: Sequence[int] = NEWEST_FIRST_WINDOW_EVENT_COUNTS,
 ) -> tuple[list[ReceivedEvent], int | None]:
-    """Read a page of events from the filter's start, or the retention back from its end when it sets no start."""
+    """Read a page of events from the filter's start, or the retention back from its end when it sets no start.
+
+    Args:
+        window_event_counts: Number of events in each window that a newest-first read tries before the rest of the
+            range.
+
+    """
     until = filter.occurred.until
     if "since" in filter.occurred.model_fields_set:
         since: datetime = filter.occurred.since
     else:
         since = earlier_by(moment=until, duration=retention)
     if filter.order == EventOrder.DESC:
-        page = await _read_newest_first(session=session, filter=filter, since=since, page_size=page_size, offset=offset)
+        page = await _read_newest_first(
+            session=session,
+            filter=filter,
+            since=since,
+            page_size=page_size,
+            offset=offset,
+            window_event_counts=window_event_counts,
+        )
     else:
         page = await _read_page(
             session=session, filter=filter, since=since, until=until, page_size=page_size, offset=offset

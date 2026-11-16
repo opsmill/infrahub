@@ -55,17 +55,17 @@ Request gains:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field first proposed in PR #10379, which is still an open draft; this pull request adds it under the same name and default) |
-| `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention, or at least 180 days when it does not delete old events | Widest time window; an explicit value must be positive and at most 31,536,000 seconds (365 days) |
+| `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention, or at least 180 days when it does not delete old events | How far back the range goes when the filter sets no `occurred.since`; an explicit value must be positive and at most 31,536,000 seconds (365 days) |
 
 Behaviour changes:
 
-- Events are read newest first, through the time windows 1 h, 1 d, 7 d, 30 d, then the retention, counted back from the newest event that has one of the filter's event types at or before the filter's `occurred.until` (now when unset), stopping at the first window that fills the page (or at the retention); each wider window reads only the events older than the window before it, and the page keeps the events found so far.
+- Events are read newest first, one window at a time: the 2,000 newest events that have one of the filter's event types at or before the filter's `occurred.until` (now when unset), then the next 48,000, then the rest of the range back to the retention. The read stops at the first window that fills the page, or when the range holds no more events of those types; each wider window reads only the events older than the window before it, and the page keeps the events found so far.
 - A filter whose event types have no event in its range returns an empty page without reading a window.
 - Events of the same time are ordered by their ID, in the direction of the filter's order, so an `offset` skips the same events in every request. A filter that keeps one event per resource is ordered by time only.
 - With `offset`, each window is read from `occurred.until` until one returns events, and the wider windows then read only older events, so position paging returns the same events as reading the whole range.
 - A filter that keeps one event per resource (`resource.distinct`) reads every window from `occurred.until`, so each resource keeps its newest event of the whole range.
 - A filter that sets `occurred.since` is read from that start instead of the retention; the Infrahub server leaves `since` out of the request when the caller did not set it.
-- A window or retention that reaches before 0001-01-01T00:00:00 UTC starts at that time, so the request returns the events up to `occurred.until` instead of failing.
+- A retention that reaches before 0001-01-01T00:00:00 UTC starts at that time, so the request returns the events up to `occurred.until` instead of failing.
 - A filter in ascending order is read in one query over the whole range.
 - Every query runs with a plan per query (first proposed in PR #10379, which is still an open draft; carried in this pull request).
 - Response `total` becomes nullable.

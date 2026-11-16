@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 DENSE_ACCOUNT = str(uuid4())
 SPARSE_ACCOUNT = str(uuid4())
-BOUNDARY_ACCOUNT = str(uuid4())
 REPEATED_NODE_ACCOUNT = str(uuid4())
 REPEATED_NODE_IDS = (str(uuid4()), str(uuid4()))
 SAME_TIME_ACCOUNT = str(uuid4())
@@ -49,14 +48,6 @@ SPARSE_AGES = [
     timedelta(days=200),
     timedelta(days=300),
 ]
-BOUNDARY_AGES = [
-    timedelta(hours=1),
-    timedelta(hours=1, microseconds=1),
-    timedelta(days=1),
-    timedelta(days=1, microseconds=1),
-    timedelta(days=7),
-    timedelta(days=7, microseconds=1),
-]
 REPEATED_NODE_EVENTS = [
     (REPEATED_NODE_IDS[0], timedelta(minutes=30)),
     (REPEATED_NODE_IDS[0], timedelta(days=2)),
@@ -69,11 +60,10 @@ class Seeded:
     now: datetime
     dense: list[str]
     sparse: list[str]
-    boundary: list[str]
     repeated_node: list[str]
 
     def account_events(self, account: str) -> list[str]:
-        return {DENSE_ACCOUNT: self.dense, SPARSE_ACCOUNT: self.sparse, BOUNDARY_ACCOUNT: self.boundary}[account]
+        return {DENSE_ACCOUNT: self.dense, SPARSE_ACCOUNT: self.sparse}[account]
 
 
 def _event(account: str, node_id: str | None = None) -> NodeUpdatedEvent:
@@ -99,14 +89,11 @@ async def seeded(prefect_client: PrefectClient) -> Seeded:
     now = datetime.now(UTC)
     dense = [str(await seed_infrahub_event(event=_event(DENSE_ACCOUNT), occurred=now - age)) for age in DENSE_AGES]
     sparse = [str(await seed_infrahub_event(event=_event(SPARSE_ACCOUNT), occurred=now - age)) for age in SPARSE_AGES]
-    boundary = [
-        str(await seed_infrahub_event(event=_event(BOUNDARY_ACCOUNT), occurred=now - age)) for age in BOUNDARY_AGES
-    ]
     repeated_node = [
         str(await seed_infrahub_event(event=_event(REPEATED_NODE_ACCOUNT, node_id=node_id), occurred=now - age))
         for node_id, age in REPEATED_NODE_EVENTS
     ]
-    return Seeded(now=now, dense=dense, sparse=sparse, boundary=boundary, repeated_node=repeated_node)
+    return Seeded(now=now, dense=dense, sparse=sparse, repeated_node=repeated_node)
 
 
 @pytest.fixture(scope="module")
@@ -135,7 +122,7 @@ class WindowCase:
 WINDOW_CASES = [
     WindowCase(name="dense_first_page", account=DENSE_ACCOUNT, limit=5, expected=[0, 1, 2, 3, 4]),
     WindowCase(
-        name="dense_page_past_the_first_window",
+        name="dense_page_with_an_offset",
         account=DENSE_ACCOUNT,
         limit=5,
         offset=10,
@@ -179,24 +166,11 @@ WINDOW_CASES = [
         expected=[0, 1, 2, 3],
     ),
     WindowCase(
-        name="explicit_start_inside_a_wider_window_that_fills_the_page",
+        name="explicit_start_that_leaves_fewer_events_than_the_page",
         account=DENSE_ACCOUNT,
         limit=13,
         since_age=timedelta(hours=2),
         expected=list(range(12)),
-    ),
-    WindowCase(
-        name="events_on_window_bounds_are_read_once",
-        account=BOUNDARY_ACCOUNT,
-        limit=5,
-        expected=[0, 1, 2, 3, 4],
-    ),
-    WindowCase(
-        name="events_on_window_bounds_after_an_offset",
-        account=BOUNDARY_ACCOUNT,
-        limit=3,
-        offset=1,
-        expected=[1, 2, 3],
     ),
     WindowCase(
         name="oldest_first",
@@ -321,21 +295,6 @@ async def test_a_range_reaching_before_year_1_starts_at_the_earliest_time(
     """A range whose retention reaches before year 1 starts at the earliest datetime instead of failing."""
     event_filter = InfrahubEventFilter.from_filters(
         order=order, account__ids=[SPARSE_ACCOUNT], until=datetime(1, 1, 2, tzinfo=UTC)
-    )
-
-    page = await filter_events(client=prefect_client, event_filter=event_filter, limit=10, include_total=True)
-
-    assert page == {"events": [], "total": 0}
-
-
-@pytest.mark.usefixtures("seeded")
-async def test_a_window_reaching_before_year_1_starts_at_the_earliest_time(prefect_client: PrefectClient) -> None:
-    """A time window that reaches before year 1 starts at the earliest datetime instead of failing."""
-    event_filter = InfrahubEventFilter.from_filters(
-        order=EventSortOrder.DESC,
-        account__ids=[SPARSE_ACCOUNT],
-        since=datetime(1, 1, 1, tzinfo=UTC),
-        until=datetime(1, 1, 1, 0, 30, tzinfo=UTC),
     )
 
     page = await filter_events(client=prefect_client, event_filter=event_filter, limit=10, include_total=True)

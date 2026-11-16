@@ -219,13 +219,13 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 |---|---|
 | An Infrahub event is emitted | Prefect stores it and its related resources, keeps it for `task_manager.retention.activity_log` (7 days by default, 30 days with OpsMill's Enterprise Docker Compose file and Helm chart), then its hourly vacuum deletes both; see [Event retention](task-manager-retention.md#event-retention) |
 | Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
-| The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from the newest event of the requested event types, so the first window holds events however old the newest one is |
+| The Activities page loads its first page | The task manager reads newest first, one window at a time: the 2,000 newest events of the requested event types, then the next 48,000, then the rest of the range. It stops at the window that fills the page |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
 | Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
 | A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
 | A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
-| An API client pages with `offset` | Still accepted; each window is read from `until` with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
+| An API client pages with `offset` | Still accepted; each window is read from the newest event with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
 
 ## Querying Events
 
@@ -237,24 +237,27 @@ Events can be queried through:
 
 ### Query-path performance constraints
 
-The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one time window
-at a time (1 hour, 1 day, 7 days, 30 days, then the whole range), and runs an unbounded `count(*)`
-over the whole range when asked. The windows are counted back from the newest event, at or before
-the filter's `until`, that has one of the filter's event types: one read finds its time, and a
-range that holds no such event returns an empty page without reading a window. Counting from
-that event instead of from `until` keeps the first window from being empty when the newest
-Infrahub events are old, as on a restored backup, where the whole range would otherwise be read.
-A few newer events of the filter's event types move the first window to them, and the page then
-reads the wider windows: a login stores an `infrahub.account.logged_in` event, so this happens to
-a request that lists no event type from a user who can view account events.
+The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one window at a
+time, and runs an unbounded `count(*)` over the whole range when asked. A window holds a number of
+events, not a duration: the 2,000 newest events, at or before the filter's `until`, that have one
+of the filter's event types, then the next 48,000, then the rest of the range
+(`NEWEST_FIRST_WINDOW_EVENT_COUNTS`). For each window, one read finds the time span of its events
+and a second reads the page in that span with the whole filter. The reads stop at the window that
+fills the page, or when the range holds no more events of those types; a range that holds none
+returns an empty page after the first read.
+A window of events costs the same whether its events are a minute or a month apart. A window of a
+duration does not: when a few events are much newer than the rest, the narrow windows hold only
+those few and the page is read in the widest one. A login stores an `infrahub.account.logged_in`
+event, so one login on a restored backup has this effect.
+A filter that few of the 50,000 newest events match is read over the rest of the range.
 Within one time, events are ordered by ID, so an `offset` skips the same events in every request.
 The range starts at the filter's `since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
 manager's event retention, or at least 180 days when the task manager does not delete old events,
 back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of the request so
 that this default applies. A wider window reads only the events older than the window before it,
-and the page keeps the events found so far. With an `offset`, each window is read from `until`
-until one returns events, because the offset counts matches back from `until`. A filter that keeps
-one event per resource (`resource.distinct`) reads every window from `until`, so each resource
+and the page keeps the events found so far. With an `offset`, each window is read from the newest
+event until one returns events, because the offset counts matches back from there. A filter that keeps
+one event per resource (`resource.distinct`) reads every window from the newest event, so each resource
 keeps its newest event of the whole range. A filter in ascending order is read in one query.
 Two hard-earned constraints apply to this path:
 
@@ -328,7 +331,7 @@ of Prefect event types and the tests that guard it are described in
 | Trigger models | `backend/infrahub/trigger/models.py` |
 | GraphQL queries | `backend/infrahub/graphql/queries/event.py` |
 | Activities filters | `backend/infrahub/task_manager/event/models.py` |
-| Newest-first time windows | `backend/infrahub/prefect_server/database.py::query_events` |
+| Newest-first event windows | `backend/infrahub/prefect_server/database.py::query_events` |
 | Activities paging by time | `frontend/app/src/entities/events/ui/queries/get-events.query.ts` |
 
 ## See Also

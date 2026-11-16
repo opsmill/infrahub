@@ -317,3 +317,15 @@ The body above is kept as written.
   - T071: the Enterprise Docker Compose file in opsmill/infrahub-private. Two changes are prepared, the 30-day default and the start of `task-manager-background-svc` with `infrahub tasks background-services`; both wait until the file's pointer to this repository includes [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289).
   - T072: the Enterprise Helm chart, in opsmill/infrahub-helm#100.
 - **Both decisions**: update the [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activity-log-retention-3dc228b830258012ba28dc3a23eece65) for them; whether it records them already is not known.
+
+## Update: Activities windows hold a number of events (16 November 2026)
+
+The Activities reader no longer reads windows of 1 hour, 1 day, 7 days and 30 days. It reads the 2,000 newest
+events of the requested event types, then the next 48,000, then the rest of the range. This entry supersedes:
+
+- "newest-first windows" in §1 and §5, where it means windows of a duration;
+- the row of §4 for `backend/tests/component/task_manager/test_event_query_windows.py`: its cases on the bounds
+  of the windows are removed, and `backend/tests/component/task_manager/test_event_query_event_windows.py` covers
+  the windows.
+
+The body above is kept as written.
