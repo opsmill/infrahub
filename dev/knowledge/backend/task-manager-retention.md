@@ -177,7 +177,9 @@ database, and can then rewrite the tables to return the disk space.
   decides again when `if_freed` arrives after a decision with `never`, and never rewrites twice. The mode change and the job's final check take the registry's
   start lock, so a request either reaches the job before that check or starts a new job.
 - **State in memory**: a task-manager restart loses the job (`GET` answers `404`) but not the
-  deletes already committed; a new job continues from the oldest remaining run.
+  deletes already committed; a new job continues from the oldest remaining run. With several
+  replicas, a `GET` that reaches a replica other than the job's also answers `404`, so the CLI's wait
+  reason names both causes: another task manager may run the cleanup, or a restart ended it.
 - **Models**: the request and job models are in `prefect_server/task_history_models.py`, which
   imports neither Prefect's database layer nor its driver, so the CLI client can use them; a unit test
   checks it.

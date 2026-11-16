@@ -43,7 +43,10 @@ class CleanupWait(StrEnum):
             case CleanupWait.RUNNING_ELSEWHERE:
                 reason = "the task manager answered that a cleanup runs elsewhere"
             case CleanupWait.UNKNOWN:
-                reason = "the task manager answered that it does not know the cleanup"
+                reason = (
+                    "the task manager that answered does not hold the cleanup, "
+                    "which another task manager may run or a restart ended"
+                )
             case CleanupWait.UNREACHABLE:
                 reason = "the task manager could not be reached"
             case _:

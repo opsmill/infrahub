@@ -416,7 +416,8 @@ LAST_WAIT_CASES: list[LastWaitCase] = [
         give_up_after=timedelta(seconds=2),
         expected_error=(
             "Gave up after 2 seconds without a cleanup to follow, "
-            "when the task manager answered that it does not know the cleanup"
+            "when the task manager that answered does not hold the cleanup, "
+            "which another task manager may run or a restart ended"
         ),
         expected_waits=[CleanupWait.UNKNOWN],
         expected_requests=[

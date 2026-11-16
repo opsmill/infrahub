@@ -183,7 +183,8 @@ async def test_each_wait_prints_one_line_when_it_starts_or_its_reason_changes() 
     assert exit_code == 0
     assert console.lines == [
         "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
-        "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
+        "Waiting to start the cleanup, because the task manager that answered does not hold the cleanup, "
+        "which another task manager may run or a restart ended",
         "Waiting to start the cleanup, because the task manager could not be reached",
         "Deleted at least 0 runs that ended before 2026-09-04 00:00 UTC",
         "Tables not rewritten",
@@ -278,7 +279,8 @@ async def test_a_cleanup_that_failed_after_a_lost_one_prints_the_runs_both_delet
     assert exit_code == 1
     assert console.lines == [
         "Deleting the runs that ended on 2026-01-15, 900 runs deleted so far",
-        "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
+        "Waiting to start the cleanup, because the task manager that answered does not hold the cleanup, "
+        "which another task manager may run or a restart ended",
         "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
         "Deleted at least 903 runs before the failure",
     ]
