@@ -11,7 +11,7 @@ When a query is slow for some inputs and fast for others, and no single shape is
 - **The small query must cost almost nothing.** Read stored counts (the degree of a vertex, the number of nodes with a label) or an index. If it has to expand or filter, it costs what it is meant to save.
 - **Send one small query per large query.** Put every count the decision needs in the same statement.
 - **Keep the previous shape as the default.** Take the new shape only when the answer shows a clear margin, so an input the new shape does not help keeps its text and its plan.
-- **Measure the added round trip.** Every call pays for the small query, including the calls that keep the previous shape.
+- **Measure the added round trip.** Every call that sends the small query pays for it, including the calls that then keep the previous shape. Skip the small query when the input rules the new shape out.
 
 ## Decide first, then build
 
