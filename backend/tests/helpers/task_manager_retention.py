@@ -5,6 +5,7 @@ The context manager isolates a test from the settings that applying the task man
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
@@ -12,6 +13,7 @@ from typing import TYPE_CHECKING
 import prefect.context
 
 from infrahub import config
+from infrahub.prefect_server.retention import PREFECT_CLEANUP_LOGGER
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -68,10 +70,14 @@ def unloaded_task_manager_retention(monkeypatch: pytest.MonkeyPatch, directory: 
         *PREFECT_RETENTION_VARIABLES,
     ):
         monkeypatch.delenv(name, raising=False)
+    cleanup_log = logging.getLogger(PREFECT_CLEANUP_LOGGER)
+    cleanup_log_level = cleanup_log.level
 
     try:
         yield
     finally:
+        # Applying the retention lowers the level of Prefect's cleanup logger for the whole process.
+        cleanup_log.setLevel(cleanup_log_level)
         # The code under test writes these directly, and pytest puts back only the values set before the test.
         for name in PREFECT_RETENTION_VARIABLES:
             os.environ.pop(name, None)

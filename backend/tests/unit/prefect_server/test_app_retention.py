@@ -14,11 +14,8 @@ import pytest
 from prefect.settings import get_current_settings
 
 from infrahub import config
-from infrahub.prefect_server.app import (
-    PREFECT_CLEANUP_LOGGER,
-    apply_infrahub_settings_to_prefect,
-    create_infrahub_prefect,
-)
+from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect, create_infrahub_prefect
+from infrahub.prefect_server.retention import PREFECT_CLEANUP_LOGGER
 from tests.helpers.task_manager_retention import (
     EVENT_RETENTION_OVERRIDES,
     EVENTS_RETENTION_PERIOD,
@@ -26,6 +23,7 @@ from tests.helpers.task_manager_retention import (
     PREFECT_RETENTION_VARIABLES,
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
+    unloaded_task_manager_retention,
 )
 
 if TYPE_CHECKING:
@@ -291,15 +289,27 @@ def test_startup_logs_the_retention_prefect_applies(
 def test_startup_shows_each_pass_of_the_hourly_cleanup(caplog: pytest.LogCaptureFixture) -> None:
     """Prefect logs a cleanup pass that deletes runs at INFO, which its default server log level hides."""
     cleanup_log = logging.getLogger(PREFECT_CLEANUP_LOGGER)
-    level = cleanup_log.level
     cleanup_log.setLevel(logging.WARNING)
-    try:
-        create_infrahub_prefect()
-        cleanup_log.info("Database vacuum: deleted 3 old flow runs, 30 logs and 0 artifacts.")
-    finally:
-        cleanup_log.setLevel(level)
+
+    create_infrahub_prefect()
+    cleanup_log.info("Database vacuum: deleted 3 old flow runs, 30 logs and 0 artifacts.")
 
     assert "Database vacuum: deleted 3 old flow runs, 30 logs and 0 artifacts." in caplog.messages
+
+
+def test_the_test_context_puts_back_the_level_of_the_cleanup_logger(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Applying the retention lowers the level of Prefect's cleanup logger for the whole process, so the tests' context restores it."""
+    cleanup_log = logging.getLogger(PREFECT_CLEANUP_LOGGER)
+    level_before = cleanup_log.level
+
+    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
+        cleanup_log.setLevel(logging.WARNING)
+        apply_infrahub_settings_to_prefect()
+        level_inside = cleanup_log.level
+
+    assert (level_inside, cleanup_log.level) == (logging.INFO, level_before)
 
 
 @pytest.mark.usefixtures("task_manager_environment")

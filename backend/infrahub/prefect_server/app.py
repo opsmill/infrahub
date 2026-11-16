@@ -21,6 +21,7 @@ from . import database_version, events, task_history
 from .bootstrap import init_prefect
 from .database import read_stored_event_types
 from .retention import (
+    PREFECT_CLEANUP_LOGGER,
     apply_prefect_retention_env,
     background_services_notice,
     event_types_with_retention_override,
@@ -41,8 +42,6 @@ log = logging.getLogger(__name__)
 
 # The task manager serves no request until the check ends, so a locked events table delays its start by at most this long.
 _STORED_EVENT_TYPES_TIME_LIMIT = "5s"
-# Prefect logs each pass of its hourly cleanup that deletes runs at INFO, below its default server log level.
-PREFECT_CLEANUP_LOGGER = "prefect.server.services.db_vacuum"
 
 router = APIRouter(prefix="/infrahub")
 
