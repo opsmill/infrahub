@@ -25,7 +25,8 @@ You also need to act in these cases:
 You have nothing to migrate in these cases:
 
 - You create and edit pools only in the web interface. From 1.12, the pool form sets ranges.
-- A `NumberPool` attribute declares neither `start_range` nor `end_range`. Its pool holds one range from `1` to the largest number Infrahub supports, as before 1.12.
+- A `NumberPool` attribute declares neither `start_range` nor `end_range`, and does not explicitly set `ranges: []`. Its pool holds one range from `1` to the largest number Infrahub supports, as before 1.12.
+- A `NumberPool` attribute declares `ranges: []`. Its pool holds no ranges; treat this as an intentional zero-range migration.
 
 ## Migrate with an AI coding agent
 
