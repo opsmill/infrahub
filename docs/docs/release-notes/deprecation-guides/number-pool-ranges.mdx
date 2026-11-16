@@ -45,9 +45,9 @@ Apply these changes:
          end: Y
    When only one of the two is set, write only that bound: `- start: X` or `- end: Y`. Do not keep `start_range` or `end_range` next to `ranges`.
 
-2. GraphQL mutations `CoreNumberPoolCreate`, `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert`: replace `start_range: {value: X}` and `end_range: {value: Y}` with `ranges: [{start: X, end: Y}]`. In an update, `ranges` replaces all the ranges of the pool, so send both bounds even when the old mutation set only one.
+2. GraphQL mutations `CoreNumberPoolCreate`, `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert`: replace `start_range: {value: X}` and `end_range: {value: Y}` with `ranges: [{start: X, end: Y}]`. In an update, `ranges` replaces all the ranges of the pool, so send both bounds. When the old mutation set only one bound, the code must first read the stored bounds of the pool, as described in item 4, and send the stored value for the other bound. Do not write a fixed value for that bound.
 
-3. Python SDK code that creates a `CoreNumberPool` with `start_range=X, end_range=Y`: replace them with `ranges=[{"start": X, "end": Y}]`. Python SDK code that sets `start_range.value` or `end_range.value` on an existing pool: declare the pool with `client.create(kind="CoreNumberPool", ...)` with the same `name`, `node` and `node_attribute` and the complete `ranges` list, then save it with `allow_upsert=True`.
+3. Python SDK code that creates a `CoreNumberPool` with `start_range=X, end_range=Y`: replace them with `ranges=[{"start": X, "end": Y}]`. Python SDK code that sets `start_range.value` or `end_range.value` on an existing pool: declare the pool with `client.create(kind="CoreNumberPool", ...)` with the same `name`, `node` and `node_attribute` and the complete `ranges` list, then save it with `allow_upsert=True`. When the old code set only one bound, read the stored bounds first, as described in item 4, and keep the stored value for the other bound.
 
 4. Code that reads `start_range` or `end_range`: read the `ranges` relationship of the pool instead and loop over every range. Each range has `start`, `end` and `allocation_weight`, and `start` or `end` can be null. In GraphQL, query `ranges { edges { node { start { value } end { value } allocation_weight { value } } } }`. With the Python SDK, get the pool with `include=["ranges"]`, fetch `pool.ranges` and loop over `pool.ranges.peers`.
 
@@ -155,7 +155,7 @@ From 1.12, creating a pool or changing its ranges also creates, updates or delet
 :::tip[Prompt for an AI coding agent]
 
 ```text
-In this repository, find each GraphQL mutation and each Python SDK call that creates or updates a `CoreNumberPool` with `start_range` or `end_range`. Replace them with `ranges`, a list of ranges with `start` and `end`: `ranges: [{start: X, end: Y}]` in GraphQL, `ranges=[{"start": X, "end": Y}]` in Python. In an update, `ranges` replaces all the ranges of the pool, so send both bounds. Do not change the bounds. List the files you changed.
+In this repository, find each GraphQL mutation and each Python SDK call that creates or updates a `CoreNumberPool` with `start_range` or `end_range`. Replace them with `ranges`, a list of ranges with `start` and `end`: `ranges: [{start: X, end: Y}]` in GraphQL, `ranges=[{"start": X, "end": Y}]` in Python. In an update, `ranges` replaces all the ranges of the pool, so send both bounds. When the old code set only one bound, read the stored bounds of the pool first and send the stored value for the other bound. Do not change the bounds. List the files you changed.
 ```
 
 :::
@@ -206,7 +206,7 @@ A range can leave out `start` or `end`, for example `ranges: [{start: 100}]`. In
 
 #### Update a pool
 
-`ranges` replaces all the ranges of the pool. Send both bounds of the range, even when the old mutation changed only one.
+`ranges` replaces all the ranges of the pool. Send both bounds of the range, even when the old mutation changed only one. Read the stored bound first, as described in [Migrate code that reads pools](#migrate-code-that-reads-pools). The example below keeps the stored start, `100`.
 
 **Before:**
 
@@ -273,7 +273,7 @@ await pool.save()
 
 #### Update a pool
 
-To change the ranges of an existing pool, declare the pool with its complete list of ranges and save it with `allow_upsert=True`. Infrahub finds the pool by its name, keeps the ranges whose bounds match, creates the new ones and deletes the others.
+To change the ranges of an existing pool, declare the pool with its complete list of ranges and save it with `allow_upsert=True`. When the old code changed only one bound, read the stored bounds first, as described in [Migrate code that reads pools](#migrate-code-that-reads-pools), and keep the stored value for the other bound. Infrahub finds the pool by its name, keeps the ranges whose bounds match, creates the new ones and deletes the others.
 
 **Before:**
 
