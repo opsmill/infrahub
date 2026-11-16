@@ -153,6 +153,37 @@ def get_node(self, label: str) -> Node:
 If the correct type causes many errors in callers, keep the callers' annotation for now, retype it in
 a separate change, and say so in the PR.
 
+## A global set at startup starts as a placeholder that raises, not `None`
+
+Give a module global that an `initialize_*()` function sets at startup a placeholder of the global's
+own type, whose operations raise `InitializationError`. `None` under a non-optional annotation needs
+a suppression, and `| None` adds a guard at every read. A module-level `__getattr__` that raises is
+not an alternative: type checkers then accept any attribute of the module, and `hasattr()` and
+`monkeypatch` raise instead of reporting the attribute as missing.
+
+```python
+# ❌ Bad - the annotation is false until startup, and a suppression hides it
+registry: InfrahubLockRegistry = None  # type: ignore[assignment]
+
+# ✅ Good - the annotation is always true, and use before startup raises
+class UninitializedLockRegistry(InfrahubLockRegistry):
+    def _find(self, lock_name: str) -> InfrahubLock | None:
+        raise InitializationError("The lock registry has not been initialized")
+
+registry: InfrahubLockRegistry = UninitializedLockRegistry()
+
+def is_initialized() -> bool:
+    return not isinstance(registry, UninitializedLockRegistry)
+```
+
+- Override the method every operation goes through, so the placeholder returns no result.
+- A caller that tested `is None` calls the predicate instead.
+- Check each attribute callers read from the global. An empty value on the placeholder, such as a
+  connection that is `None`, must not select a fallback: move that caller to a method that raises.
+
+When callers read typed sections from the global and call no methods on it, hold the optional value
+in a wrapper whose properties raise, as `infrahub/config.py::ConfiguredSettings` does.
+
 ## A change that makes a type real retires its suppressions
 
 CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore[code]` that no longer suppresses
