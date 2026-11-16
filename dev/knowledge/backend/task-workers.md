@@ -19,12 +19,6 @@ refused token request from each new client. The server applies this through
 `backend/infrahub/task_manager/client_settings.py::prefect_client_defaults`; the worker applies the
 same default in `backend/infrahub/workers/infrahub_async.py::InfrahubWorkerAsync.setup`.
 
-When assessing documentation gaps, treat this default as an internal performance decision that
-requires no operator action. The implementation accepts an explicit override, but that alone does
-not make CSRF enablement a recommended deployment option or a missing customer-docs topic. Check
-the intended deployment model and required user action before turning an internal setting into
-configuration guidance.
-
 ## From scheduled to running
 
 A worker polls the work pool every `worker_polling_interval` seconds (default 2). Each poll asks the
