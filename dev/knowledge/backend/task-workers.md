@@ -7,6 +7,24 @@ How a task worker finds, claims and starts flow runs, and what that means for th
 (`backend/infrahub/workers/infrahub_async.py`), a Prefect `BaseWorker` that runs every flow in the
 worker's main event loop; the enterprise worker subclasses it without changing how runs are claimed.
 
+## Task-manager access and CSRF
+
+Keep the task manager on the internal service network; it is not intended for public exposure.
+Cross-site request forgery (CSRF) protection stays off by default for this deployment model.
+Enabling it adds token-request overhead without enough benefit for the intended internal service
+access to justify that cost.
+
+Infrahub's Prefect clients default `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED` to `False`, avoiding a
+refused token request from each new client. The server applies this through
+`backend/infrahub/task_manager/client_settings.py::prefect_client_defaults`; the worker applies the
+same default in `backend/infrahub/workers/infrahub_async.py::InfrahubWorkerAsync.setup`.
+
+When assessing documentation gaps, treat this default as an internal performance decision that
+requires no operator action. The implementation accepts an explicit override, but that alone does
+not make CSRF enablement a recommended deployment option or a missing customer-docs topic. Check
+the intended deployment model and required user action before turning an internal setting into
+configuration guidance.
+
 ## From scheduled to running
 
 A worker polls the work pool every `worker_polling_interval` seconds (default 2). Each poll asks the
