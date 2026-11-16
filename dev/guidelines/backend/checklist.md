@@ -11,7 +11,7 @@ Key questions to consider when planning and implementing new backend features. U
 Consider whether the feature will:
 
 - Add, remove, or modify node/relationship properties in ways that the schema migrations can't resolve
-- Change indexes or constraints
+- Drop or replace an index, or change a constraint (adding an index needs no migration — see [Database Indexes](../../knowledge/backend/database-indexes.md))
 - Alter the graph structure or schema definitions
 - Modify how data is stored in Neo4j
 
@@ -47,7 +47,7 @@ Plan for query efficiency and data volume by considering:
 - **Pagination and streaming** - plan to process large result sets incrementally when appropriate
 - **Scalability testing** - consider how the feature behaves with 10, 100, 1000+ nodes
 - **Query optimization** - plan to use EXPLAIN in Neo4j to validate query performance
-- **Indexes** - when a new or modified query selects vertices or edges by a property, check that an index on that property exists for every label or edge type it reads, and add the missing index with its migration in the same change — see [Database Indexes](../../knowledge/backend/database-indexes.md)
+- **Indexes** - when a new or modified query selects vertices or edges by a property, check that an index on that property exists for every label or edge type it reads, and declare the missing index in the same change; adding an index needs no migration — see [Database Indexes](../../knowledge/backend/database-indexes.md)
 
 ## Security & Access Control
 

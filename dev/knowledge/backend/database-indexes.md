@@ -12,9 +12,14 @@ An index belongs to one label or one edge type. An index on `HAS_ATTRIBUTE(from)
 
 ## Add a missing index
 
-1. Declare the index in `node_indexes` or `rel_indexes`.
-2. Add a graph migration that creates the same index and waits until it is online, so that an upgraded database does not answer queries while the index builds. See [Creating Migrations](../../guides/backend/creating-migrations.md).
-3. Ask the maintainers before you add it: new database indexes are listed under "Ask First" in `backend/AGENTS.md`. Every write to that label or edge type updates the index, so an index is worth its cost only for a read that runs often.
+1. Declare the index in `node_indexes` or `rel_indexes`. Do not add a graph migration: when the API server starts, it sends `CREATE ... INDEX ... IF NOT EXISTS` for every declared index, so the first start after an upgrade creates the new index in an existing database.
+2. Ask the maintainers before you add it: new database indexes are listed under "Ask First" in `backend/AGENTS.md`. Every write to that label or edge type updates the index, so an index is worth its cost only for a read that runs often.
+
+Neo4j builds a new index in the background and the API server does not wait for it. Until the index is online, a query that needs it returns the same result without it, and reads every vertex of the label or every edge of the type. `infrahub upgrade` does not create indexes. `infrahub db index add` creates the declared indexes without starting the API server.
+
+## Drop or replace an index
+
+Dropping an index needs a graph migration, because the API server only creates indexes. The name of an index contains its type, so an entry that is removed from the lists, or declared again with another type, leaves the previous index in every upgraded database until a migration drops it. `m079_range_diff_indexes.py` in `backend/infrahub/core/migrations/graph/` replaces two TEXT indexes with RANGE indexes this way. See [Creating Migrations](../../guides/backend/creating-migrations.md).
 
 ## Write the query so that it uses the index
 
@@ -58,4 +63,4 @@ RETURN sum(num_edges) AS num_edges
 
 - [Query Pattern](query-pattern.md) - Query classes, parameter binding and the other performance rules
 - [Database Schema](database-schema.md) - Vertex labels, edge types and their properties
-- [Creating Migrations](../../guides/backend/creating-migrations.md) - Migration base classes and `GRAPH_VERSION`
+- [Creating Migrations](../../guides/backend/creating-migrations.md) - Migration base classes and `GRAPH_VERSION`, for a migration that drops or replaces an index

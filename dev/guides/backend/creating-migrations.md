@@ -9,7 +9,7 @@ Step-by-step guide for adding a new graph migration that transforms existing Neo
 Create a migration when you need to:
 
 - Modify node/relationship properties or labels
-- Add or remove indexes / constraints
+- Drop or replace an index, or add or remove a constraint (adding an index needs no migration: the API server creates every declared index when it starts — see [Database Indexes](../../knowledge/backend/database-indexes.md))
 - Normalize stored values to a new format
 - Backfill data after a schema change
 - Clean up orphaned or malformed data
