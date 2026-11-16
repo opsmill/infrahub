@@ -51,11 +51,11 @@ Not verified: <!-- what you did not check -->
 - API:
 - Performance:
 
-## Where I am unsure
+## Open questions
 
 <!--
-Written by the human author, never by an agent: the decisions you are least sure of and want the
-reviewer to check.
+Written by the human author, never by an agent: the decisions you want the reviewer to challenge,
+and the questions you could not settle yourself.
 -->
 
 ## Checklist

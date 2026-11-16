@@ -110,7 +110,7 @@ contract, **STOP** and escalate as described in your main prompt.
 - Update the PR body: read `dev/guidelines/pull-requests.md`, then fill in
   `.github/pull_request_template.md` with the context from this task. Delete every section
   you have nothing to say in; do not write "N/A" and do not invent content. Leave the
-  "Where I am unsure" section's comment in place for the human author.
+  "Open questions" section's comment in place for the human author.
 - Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears
   somewhere in the PR body: it is used by downstream automation to detect this PR.
 - Use `gh pr edit` to update the title and body.

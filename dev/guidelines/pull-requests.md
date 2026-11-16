@@ -72,10 +72,10 @@ names what you did not check, so the reviewer knows where the evidence stops.
 Keep only the lines that apply: a user-visible change, with its changelog fragment, an upgrade or
 migration step, a configuration change, an API change, or a performance change.
 
-### Where I am unsure
+### Open questions
 
-The human author writes this section: the decisions they are least sure of and want the reviewer
-to check. An agent leaves the section's comment in place for the author to fill in or delete, and
+The human author writes this section: the decisions they want the reviewer to challenge, and the
+questions they could not settle themselves. An agent leaves the section's comment in place for the author to fill in or delete, and
 never writes it.
 
 ### Checklist
@@ -125,7 +125,7 @@ tables, logs and long measurements in a `<details>` block:
   remove any claim the diff does not support
 - **Fill the template, not a fixed shape**: use the sections in `.github/pull_request_template.md`
   and delete the ones with nothing to say
-- **Leave "Where I am unsure" to the author**
+- **Leave "Open questions" to the author**
 - **Update it after review**: when a push changes behavior, the approach or the evidence, update
   the description in the same session. State when a later commit corrects an earlier one, so a
   reviewer who read the first version knows what changed

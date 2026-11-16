@@ -258,7 +258,7 @@ contract, post a comment on the issue explaining the scope, add the label
 - Update the PR body: read `dev/guidelines/pull-requests.md`, then fill in
   `.github/pull_request_template.md` with the context from this task. Delete every section
   you have nothing to say in; do not write "N/A" and do not invent content. Leave the
-  "Where I am unsure" section's comment in place for the human author.
+  "Open questions" section's comment in place for the human author.
 - Make sure the literal text `AGENT_FIX_COMPLETE` appears somewhere in the PR body.
   The downstream gate scans the PR body for this exact substring; if it is missing,
   the pipeline halts.
