@@ -59,7 +59,10 @@ def callback() -> None:
 # that was picked up but never got to start.
 STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
-TASK_HISTORY_CLEANUP_NOT_PROVIDED = "The task manager does not provide the task history cleanup yet; skipped."
+TASK_HISTORY_CLEANUP_NOT_PROVIDED = (
+    "The task manager does not provide the task history cleanup, so nothing was deleted; "
+    "run the command again once the task manager runs the same Infrahub release as this command"
+)
 TASK_HISTORY_REWRITE_COMMAND = "infrahub tasks flush flow-runs --rewrite"
 # Short, because a task manager that does not answer by then would also hold the upgrade's cleanup.
 TASK_HISTORY_SIZE_TIMEOUT = timedelta(seconds=10)
@@ -283,8 +286,8 @@ async def flush_old_flow_runs(
         console.log(f"{ERROR_BADGE} {type(exc).__name__}: {exc}")
         return 1
     if cleanup is None:
-        console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
-        return 0
+        console.log(f"{ERROR_BADGE} {TASK_HISTORY_CLEANUP_NOT_PROVIDED}")
+        return 1
     for line in _summary_lines(cleanup=cleanup):
         console.log(line)
     return 0

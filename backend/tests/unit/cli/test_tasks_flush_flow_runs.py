@@ -218,15 +218,18 @@ async def test_the_runs_of_a_cleanup_lost_in_a_restart_are_counted_in_the_progre
     ]
 
 
-async def test_a_task_manager_without_the_cleanup_skips_it_and_succeeds() -> None:
-    """A task manager that does not provide the cleanup is reported, and the command still succeeds."""
+async def test_a_task_manager_without_the_cleanup_fails_the_command() -> None:
+    """A task manager that does not provide the cleanup is reported as an error, because nothing was deleted."""
     task_manager = ScriptedTaskManager(responses=[route_missing()])
     console = RecordedConsole()
 
     exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
 
-    assert exit_code == 0
-    assert console.lines == ["The task manager does not provide the task history cleanup yet; skipped."]
+    assert exit_code == 1
+    assert console.lines == [
+        "ERROR The task manager does not provide the task history cleanup, so nothing was deleted; "
+        "run the command again once the task manager runs the same Infrahub release as this command"
+    ]
 
 
 async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:

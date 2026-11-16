@@ -435,7 +435,7 @@ async def test_a_cleanup_that_runs_elsewhere_is_left_to_finish_there(monkeypatch
 
 
 async def test_a_task_manager_without_the_cleanup_lets_the_upgrade_go_on() -> None:
-    """A task manager that reports its size but does not provide the cleanup is named, and the upgrade goes on."""
+    """A task manager that reports its size but does not provide the cleanup is named, with the command to run later."""
     task_manager = ScriptedTaskManager(responses=[route_missing()])
     console = RecordedConsole()
 
@@ -448,4 +448,9 @@ async def test_a_task_manager_without_the_cleanup_lets_the_upgrade_go_on() -> No
             poll_interval=timedelta(0),
         )
 
-    assert console.lines == [STARTED, "The task manager does not provide the task history cleanup yet; skipped."]
+    assert console.lines == [
+        STARTED,
+        "ERROR The task manager does not provide the task history cleanup, so nothing was deleted; "
+        "run the command again once the task manager runs the same Infrahub release as this command",
+        RERUN,
+    ]
