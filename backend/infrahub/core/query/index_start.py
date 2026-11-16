@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode
-from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
+from infrahub.core.query import Query, QueryElement, QueryNode, QueryRel, QueryRelDirection, QueryType
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import is_large_attribute_type
-
-if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
-    from infrahub.core.query import QueryElement
-    from infrahub.database import InfrahubDatabase
 
 # A start from an index reads every edge of the indexed vertices, whatever kind is on the other side; in query
 # profiles that reads more than a read of every node of the kind at one node per edge, and less at two.
 INDEX_START_MIN_KIND_NODES_PER_EDGE = 2
 
-ATTRIBUTE_LIST_KIND = "List"
+# The edges around a Relationship vertex point the way the relationship does, so the path to the peer follows them.
+PEER_PATH_DIRECTIONS: dict[RelationshipDirection, tuple[QueryRelDirection, QueryRelDirection]] = {
+    RelationshipDirection.BIDIR: (QueryRelDirection.OUTBOUND, QueryRelDirection.INBOUND),
+    RelationshipDirection.OUTBOUND: (QueryRelDirection.OUTBOUND, QueryRelDirection.OUTBOUND),
+    RelationshipDirection.INBOUND: (QueryRelDirection.INBOUND, QueryRelDirection.INBOUND),
+}
 
 
 @dataclass(frozen=True)
@@ -47,83 +50,92 @@ class IndexStart:
         return "".join(str(item) for item in self.path)
 
 
-def _is_exact_attribute_value_filter(
-    field: AttributeSchema, filter_name: str, filter_value: Any, partial_match: bool
-) -> bool:
-    if partial_match or field.kind == ATTRIBUTE_LIST_KIND or is_large_attribute_type(field.kind):
-        return False
-    if filter_name == "value":
-        return isinstance(filter_value, str | int | bool)
-    return filter_name == "values" and isinstance(filter_value, list)
+def _is_list_of_scalars(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str | int | bool) for item in value)
 
 
-def _is_peer_id_filter(filter_name: str, filter_value: Any) -> bool:
-    if filter_name == "id":
-        return isinstance(filter_value, str)
-    return filter_name == "ids" and isinstance(filter_value, list)
-
-
-def _can_start_from_index(
-    field: AttributeSchema | RelationshipSchema | None, filter_name: str, filter_value: Any, partial_match: bool
-) -> bool:
-    if isinstance(field, AttributeSchema):
-        return _is_exact_attribute_value_filter(
-            field=field, filter_name=filter_name, filter_value=filter_value, partial_match=partial_match
-        )
-    if isinstance(field, RelationshipSchema):
-        return _is_peer_id_filter(filter_name=filter_name, filter_value=filter_value)
-    return False
-
-
-async def find_index_start(
-    db: InfrahubDatabase,
-    field: AttributeSchema | RelationshipSchema | None,
-    name: str,
-    filter_name: str,
-    filter_value: Any,
-    branch: Branch,
-    partial_match: bool,
-    subquery_idx: int,
-    position: int,
+def _build_attribute_value_start(
+    field: AttributeSchema, filter_name: str, filter_value: Any, position: int
 ) -> IndexStart | None:
-    """Return the index start of a filter, or None when the filter cannot be answered from an index.
-
-    The start matches the same path as the filter does, without its branch and time conditions, so it reaches
-    every node the filter keeps.
-    """
-    if field is None or not _can_start_from_index(
-        field=field, filter_name=filter_name, filter_value=filter_value, partial_match=partial_match
-    ):
+    if is_large_attribute_type(field.kind):
         return None
 
-    field_filter, field_params, field_where = await field.get_query_filter(
-        db=db,
-        name=name,
-        include_match=False,
-        filter_name=filter_name,
-        filter_value=filter_value,
-        branch=branch,
-        param_prefix=f"filter{subquery_idx}",
-        partial_match=partial_match,
-    )
-    last_edge, indexed_vertex = field_filter[-2], field_filter[-1]
-    if not isinstance(last_edge, QueryRel) or not isinstance(indexed_vertex, QueryNode):
-        return None
-    is_filtered = bool(indexed_vertex.params or field_where)
-    is_indexed = isinstance(field, RelationshipSchema) or indexed_vertex.labels == [
-        GraphAttributeValueIndexedNode.get_default_label()
-    ]
-    if not is_filtered or not is_indexed:
+    value = field.convert_enum_to_value(filter_value) if field.enum else filter_value
+    prefix = f"index_start{position}"
+    indexed_vertex = QueryNode(name="av", labels=[GraphAttributeValueIndexedNode.get_default_label()])
+    indexed_vertex_where: list[str] = []
+    if filter_name == "value" and isinstance(value, str | int | bool):
+        indexed_vertex.params = {"value": f"${prefix}_value"}
+    elif filter_name == "values" and _is_list_of_scalars(value):
+        indexed_vertex_where.append(f"{indexed_vertex.name}.value IN ${prefix}_value")
+    else:
         return None
 
     return IndexStart(
         position=position,
-        path=field_filter[:-1],
-        last_edge=QueryRel(labels=last_edge.labels, direction=last_edge.direction),
+        path=[
+            QueryRel(labels=[RELATIONSHIP_TO_NODE_LABEL]),
+            QueryNode(name="i", labels=["Attribute"], params={"name": f"${prefix}_name"}),
+            QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]),
+        ],
+        last_edge=QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]),
         indexed_vertex=indexed_vertex,
-        indexed_vertex_where=field_where,
-        params=field_params,
+        indexed_vertex_where=indexed_vertex_where,
+        params={f"{prefix}_name": field.name, f"{prefix}_value": value},
     )
+
+
+def _build_peer_start(
+    field: RelationshipSchema, filter_name: str, filter_value: Any, position: int
+) -> IndexStart | None:
+    prefix = f"index_start{position}"
+    indexed_vertex = QueryNode(name="peer", labels=["Node"])
+    indexed_vertex_where: list[str] = []
+    params: dict[str, Any] = {f"{prefix}_rel_name": field.get_identifier()}
+    if filter_name == "id" and isinstance(filter_value, str):
+        indexed_vertex.params = {"uuid": f"${prefix}_peer_id"}
+        params[f"{prefix}_peer_id"] = filter_value
+    elif filter_name == "ids" and isinstance(filter_value, list):
+        indexed_vertex_where.append(f"{indexed_vertex.name}.uuid IN ${prefix}_peer_ids")
+        params[f"{prefix}_peer_ids"] = filter_value
+    else:
+        return None
+
+    edge_label = DatabaseEdgeType.IS_RELATED.value
+    to_relationship, to_peer = PEER_PATH_DIRECTIONS[field.direction]
+    return IndexStart(
+        position=position,
+        path=[
+            QueryRel(name="r1", labels=[edge_label], direction=to_relationship),
+            QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+            QueryRel(name="r2", labels=[edge_label], direction=to_peer),
+        ],
+        last_edge=QueryRel(labels=[edge_label], direction=to_peer),
+        indexed_vertex=indexed_vertex,
+        indexed_vertex_where=indexed_vertex_where,
+        params=params,
+    )
+
+
+def build_index_start(
+    field: AttributeSchema | RelationshipSchema | None,
+    filter_name: str,
+    filter_value: Any,
+    partial_match: bool,
+    position: int,
+) -> IndexStart | None:
+    """Return the index start of a filter, or None when the filter cannot be answered from an index.
+
+    An exact value of an attribute whose values are indexed qualifies, and so do the ids of the peers of a
+    relationship. The start has no branch or time condition, so it reaches every node the filter keeps.
+    """
+    if isinstance(field, AttributeSchema) and not partial_match:
+        return _build_attribute_value_start(
+            field=field, filter_name=filter_name, filter_value=filter_value, position=position
+        )
+    if isinstance(field, RelationshipSchema):
+        return _build_peer_start(field=field, filter_name=filter_name, filter_value=filter_value, position=position)
+    return None
 
 
 class NodeGetListIndexStartQuery(Query):
@@ -133,7 +145,7 @@ class NodeGetListIndexStartQuery(Query):
     type = QueryType.READ
 
     def __init__(self, node_kind: str, index_starts: list[IndexStart]) -> None:
-        # The query returns one row, and a read without a limit is run again until a page comes back short.
+        # One row comes back, and a read without a limit is sent a second time when a page holds one row.
         super().__init__(limit=1)
         self.index_starts = index_starts
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -8,10 +9,12 @@ import pytest
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery, find_index_start
+from infrahub.core.query.index_start import build_index_start
 from infrahub.core.query.node import NodeGetListQuery
+from infrahub.core.query.node_get_list_builder import NodeGetListQueryBuilder
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -142,6 +145,8 @@ class ListResultTestCase:
     branch: str = MAIN
     at_before_changes: bool = False
     partial_match: bool = False
+    index_starts: int = 1
+    """The number of filters the list query can enter from."""
 
 
 LIST_RESULT_TEST_CASES: list[ListResultTestCase] = [
@@ -236,17 +241,20 @@ LIST_RESULT_TEST_CASES: list[ListResultTestCase] = [
         name="peer_ids_and_value",
         filters={"owner__ids": ["john"], "name__value": "car-0"},
         expected=["car-0"],
+        index_starts=2,
     ),
     ListResultTestCase(
         name="peer_ids_and_value_of_another_node",
         filters={"owner__ids": ["fleet"], "color__value": "#111111"},
         expected=[],
+        index_starts=2,
     ),
     ListResultTestCase(
         name="peer_ids_and_value_changed_on_branch",
         filters={"owner__ids": ["jane"], "nbr_seats__value": 4},
         expected=["car-5"],
         branch=BRANCH,
+        index_starts=2,
     ),
     ListResultTestCase(
         name="peer_ids_and_partial_value",
@@ -322,10 +330,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         name="value_of_one_node",
         filters={"name__value": "car-0"},
         expected=[
-            "MATCH (av:AttributeValueIndexed { value: $filter1_value })",
+            "MATCH (av:AttributeValueIndexed { value: $index_start1_value })",
             "WITH collect(av) AS index_start_vertices",
             "UNWIND index_start_vertices AS av",
-            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av)",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $index_start1_name })-[:HAS_VALUE]-(av)",
             "WITH DISTINCT n",
             "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
         ],
@@ -335,10 +343,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         filters={"name__values": ["car-0", "car-2"]},
         expected=[
             "MATCH (av:AttributeValueIndexed)",
-            "WHERE av.value IN $filter1_value",
+            "WHERE av.value IN $index_start1_value",
             "WITH collect(av) AS index_start_vertices",
             "UNWIND index_start_vertices AS av",
-            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[:HAS_VALUE]-(av)",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $index_start1_name })-[:HAS_VALUE]-(av)",
             "WITH DISTINCT n",
             "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
         ],
@@ -347,10 +355,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         name="peer_id_with_few_nodes",
         filters={"owner__id": "john"},
         expected=[
-            "MATCH (peer:Node { uuid: $filter1_peer_id })",
+            "MATCH (peer:Node { uuid: $index_start1_peer_id })",
             "WITH collect(peer) AS index_start_vertices",
             "UNWIND index_start_vertices AS peer",
-            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer)",
+            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $index_start1_rel_name })-[r2:IS_RELATED]->(peer)",
             "WITH DISTINCT n",
             "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
         ],
@@ -360,10 +368,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         filters={"owner__ids": ["jane"]},
         expected=[
             "MATCH (peer:Node)",
-            "WHERE peer.uuid IN $filter1_peer_ids",
+            "WHERE peer.uuid IN $index_start1_peer_ids",
             "WITH collect(peer) AS index_start_vertices",
             "UNWIND index_start_vertices AS peer",
-            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[r2:IS_RELATED]->(peer)",
+            "MATCH (n:TestCar)-[r1:IS_RELATED]->(rl:Relationship { name: $index_start1_rel_name })-[r2:IS_RELATED]->(peer)",
             "WITH DISTINCT n",
             "CALL (n) {",
         ],
@@ -373,10 +381,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         name="filter_with_fewest_edges_listed_last",
         filters={"owner__ids": ["john"], "name__value": "car-0"},
         expected=[
-            "MATCH (av:AttributeValueIndexed { value: $filter2_value })",
+            "MATCH (av:AttributeValueIndexed { value: $index_start2_value })",
             "WITH collect(av) AS index_start_vertices",
             "UNWIND index_start_vertices AS av",
-            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av)",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $index_start2_name })-[:HAS_VALUE]-(av)",
             "WITH DISTINCT n",
             "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
         ],
@@ -385,10 +393,10 @@ QUERY_TEXT_TEST_CASES: list[QueryTextTestCase] = [
         name="value_listed_after_metadata_filter",
         filters={"node_metadata__created_at__before": "2100-01-01T00:00:00.000000Z", "name__value": "car-0"},
         expected=[
-            "MATCH (av:AttributeValueIndexed { value: $filter2_value })",
+            "MATCH (av:AttributeValueIndexed { value: $index_start1_value })",
             "WITH collect(av) AS index_start_vertices",
             "UNWIND index_start_vertices AS av",
-            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $filter2_name })-[:HAS_VALUE]-(av)",
+            "MATCH (n:TestCar)-[:HAS_ATTRIBUTE]-(i:Attribute { name: $index_start1_name })-[:HAS_VALUE]-(av)",
             "WITH DISTINCT n",
             "MATCH (root:Root)<-[r:IS_PART_OF]-(n)",
         ],
@@ -448,6 +456,42 @@ NO_INDEX_START_TEST_CASES: list[NoIndexStartTestCase] = [
     NoIndexStartTestCase(name="peer_attribute", field_name="owner", filter_name="name__value", filter_value="john"),
     NoIndexStartTestCase(name="peer_null_check", field_name="owner", filter_name="isnull", filter_value=False),
     NoIndexStartTestCase(name="peer_ids_without_value", field_name="owner", filter_name="ids", filter_value=None),
+    NoIndexStartTestCase(
+        name="values_with_one_that_is_not_a_scalar",
+        field_name="name",
+        filter_name="values",
+        filter_value=["car-0", None],
+    ),
+]
+
+
+@dataclass
+class BuildQueryCountTestCase:
+    name: str
+    filters: dict[str, Any] | None
+    """Relationship filters name the persons and `ids` names the cars, the test replaces the names with ids."""
+    expected: dict[str, int]
+    """The queries sent while the list query is built, by name."""
+    partial_match: bool = False
+
+
+BUILD_QUERY_COUNT_TEST_CASES: list[BuildQueryCountTestCase] = [
+    BuildQueryCountTestCase(
+        name="value_of_one_node", filters={"name__value": "car-0"}, expected={"node_get_list_index_start": 1}
+    ),
+    BuildQueryCountTestCase(
+        name="value_that_most_nodes_hold", filters={"nbr_seats__value": 4}, expected={"node_get_list_index_start": 1}
+    ),
+    BuildQueryCountTestCase(
+        name="two_filters_with_an_index_start",
+        filters={"owner__ids": ["john"], "name__value": "car-0"},
+        expected={"node_get_list_index_start": 1},
+    ),
+    BuildQueryCountTestCase(name="no_filter", filters=None, expected={}),
+    BuildQueryCountTestCase(name="partial_value", filters={"name__value": "car"}, expected={}, partial_match=True),
+    BuildQueryCountTestCase(
+        name="value_with_node_ids", filters={"ids": ["car-0", "car-2"], "name__value": "car-0"}, expected={}
+    ),
 ]
 
 
@@ -457,8 +501,7 @@ class TestNodeGetListQueryIndexStart:
         self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: ListResultTestCase
     ) -> None:
         branch = index_start_data.get_branch(name=test_case.branch)
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             branch=branch,
             schema=db.schema.get_node_schema(name="TestCar", branch=branch),
             filters=index_start_data.resolve_filters(filters=test_case.filters),
@@ -470,11 +513,33 @@ class TestNodeGetListQueryIndexStart:
         assert index_start_data.car_names(node_ids=query.get_node_ids()) == sorted(test_case.expected)
         assert await query.count(db=db) == len(test_case.expected)
 
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in LIST_RESULT_TEST_CASES])
+    async def test_list_and_count_from_each_index_start(
+        self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: ListResultTestCase
+    ) -> None:
+        branch = index_start_data.get_branch(name=test_case.branch)
+        details: dict[str, Any] = {
+            "branch": branch,
+            "schema": db.schema.get_node_schema(name="TestCar", branch=branch),
+            "filters": index_start_data.resolve_filters(filters=test_case.filters),
+            "partial_match": test_case.partial_match,
+            "at": index_start_data.before_changes if test_case.at_before_changes else None,
+        }
+        index_starts = NodeGetListQuery(**details).get_index_starts()
+        assert len(index_starts) == test_case.index_starts
+
+        for index_start in index_starts:
+            query = NodeGetListQuery(**details)
+            await query.query_init(db=db, index_start=index_start)
+            await query.execute(db=db)
+
+            assert index_start_data.car_names(node_ids=query.get_node_ids()) == sorted(test_case.expected)
+            assert await query.count(db=db) == len(test_case.expected)
+
     async def test_limit_and_offset(self, db: InfrahubDatabase, index_start_data: IndexStartData) -> None:
         owned_by_john = sorted(index_start_data.car_ids[name] for name in ("car-0", "car-1", "car-branch"))
 
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             branch=index_start_data.branch,
             schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.branch),
             filters={"owner__ids": [index_start_data.person_ids["john"]]},
@@ -488,8 +553,7 @@ class TestNodeGetListQueryIndexStart:
     async def test_list_read_one_row_at_a_time(
         self, db: InfrahubDatabase, index_start_data: IndexStartData, query_limit_of_one: None
     ) -> None:
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             branch=index_start_data.branch,
             schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.branch),
             filters={"owner__ids": [index_start_data.person_ids["john"]]},
@@ -503,8 +567,7 @@ class TestNodeGetListQueryIndexStart:
         self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: QueryTextTestCase
     ) -> None:
         branch = index_start_data.get_branch(name=test_case.branch)
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             branch=branch,
             schema=db.schema.get_node_schema(name="TestCar", branch=branch),
             filters=index_start_data.resolve_filters(filters=test_case.filters),
@@ -516,32 +579,17 @@ class TestNodeGetListQueryIndexStart:
     async def test_selected_index_start(
         self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: IndexStartSelectionTestCase
     ) -> None:
-        schema = db.schema.get_node_schema(name="TestCar", branch=index_start_data.main)
-        filter_by_position: dict[int, str] = {}
-        index_starts: list[IndexStart] = []
         filters = index_start_data.resolve_filters(filters=test_case.filters)
-        for position, (filter_key, filter_value) in enumerate(filters.items(), start=1):
-            field_name, filter_name = filter_key.split("__", maxsplit=1)
-            index_start = await find_index_start(
-                db=db,
-                field=schema.get_field(name=field_name),
-                name=field_name,
-                filter_name=filter_name,
-                filter_value=filter_value,
-                branch=index_start_data.main,
-                partial_match=False,
-                subquery_idx=position,
-                position=position,
-            )
-            assert index_start
-            index_starts.append(index_start)
-            filter_by_position[position] = filter_key
 
-        query = NodeGetListIndexStartQuery(node_kind="TestCar", index_starts=index_starts)
-        await query.execute(db=db)
-        selected = query.get_selected_index_start()
+        query = await NodeGetListQueryBuilder(db=db).build(
+            branch=index_start_data.main,
+            schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.main),
+            filters=filters,
+        )
 
-        assert (filter_by_position[selected.position] if selected else None) == test_case.expected
+        # Every filter of these cases has an index start, so the positions follow the order of the filters.
+        selected = list(filters)[query.index_start.position - 1] if query.index_start else None
+        assert selected == test_case.expected
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in NO_INDEX_START_TEST_CASES])
     async def test_filter_without_index_start(
@@ -549,16 +597,59 @@ class TestNodeGetListQueryIndexStart:
     ) -> None:
         schema = db.schema.get_node_schema(name="TestCar", branch=index_start_data.main)
 
-        index_start = await find_index_start(
-            db=db,
+        index_start = build_index_start(
             field=test_case.attribute or schema.get_field(name=test_case.field_name),
-            name=test_case.field_name,
             filter_name=test_case.filter_name,
             filter_value=test_case.filter_value,
-            branch=index_start_data.main,
             partial_match=test_case.partial_match,
-            subquery_idx=1,
             position=1,
         )
 
         assert index_start is None
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BUILD_QUERY_COUNT_TEST_CASES])
+    async def test_queries_sent_by_the_builder(
+        self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: BuildQueryCountTestCase
+    ) -> None:
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+        await NodeGetListQueryBuilder(db=counting_db).build(
+            branch=index_start_data.main,
+            schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.main),
+            filters=index_start_data.resolve_filters(filters=test_case.filters) if test_case.filters else None,
+            partial_match=test_case.partial_match,
+        )
+
+        assert counting_db.query_counts == Counter(test_case.expected)
+
+    async def test_list_query_sends_no_query_while_built(
+        self, db: InfrahubDatabase, index_start_data: IndexStartData
+    ) -> None:
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        details: dict[str, Any] = {
+            "branch": index_start_data.main,
+            "schema": db.schema.get_node_schema(name="TestCar", branch=index_start_data.main),
+            "filters": {"name__value": "car-0"},
+        }
+        index_starts = NodeGetListQuery(**details).get_index_starts()
+        assert len(index_starts) == 1
+
+        await NodeGetListQuery.init(db=counting_db, **details)
+        query = NodeGetListQuery(**details)
+        await query.query_init(db=counting_db, index_start=index_starts[0])
+
+        assert counting_db.query_counts == Counter()
+
+    async def test_index_start_with_node_ids(self, db: InfrahubDatabase, index_start_data: IndexStartData) -> None:
+        schema = db.schema.get_node_schema(name="TestCar", branch=index_start_data.main)
+        index_starts = NodeGetListQuery(
+            branch=index_start_data.main, schema=schema, filters={"name__value": "car-0"}
+        ).get_index_starts()
+        query = NodeGetListQuery(
+            branch=index_start_data.main,
+            schema=schema,
+            filters={"ids": [index_start_data.car_ids["car-0"]], "name__value": "car-0"},
+        )
+
+        with pytest.raises(ValueError, match=r"^A list query filtered on node ids cannot start from an index$"):
+            await query.query_init(db=db, index_start=index_starts[0])

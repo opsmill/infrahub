@@ -40,7 +40,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery, find_index_start
+from infrahub.core.query.index_start import IndexStart, build_index_start
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import (
     build_subquery_filter,
@@ -74,7 +74,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.core.schema.template_schema import TemplateSchema
@@ -1952,7 +1952,7 @@ class NodeGetListQuery(Query):
 
     def __init__(
         self,
-        schema: NodeSchema,
+        schema: MainSchemaTypes,
         filters: dict | None = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
@@ -1961,6 +1961,7 @@ class NodeGetListQuery(Query):
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
+        self.index_start: IndexStart | None = None
         self._variables_to_track = ["n", "rb"]
         self._validate_filters()
 
@@ -2148,8 +2149,20 @@ WITH %(tracked_vars)s,
                         self.add_to_query(f"AND {field} {far.comparison_operator} ${param_name}")
                     self.params[param_name] = far.field_attr_value
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, index_start: IndexStart | None = None, **kwargs: Any) -> None:  # noqa: ARG002
+        """Build the text of the query.
+
+        Args:
+            db: Gives the schema and the name of the id function; no query is sent.
+            index_start: One of the index starts of this query, to enter the query from. Without one the query
+                reads every node of the kind.
+
+        Raises:
+            ValueError: When an index start comes with a filter on node ids.
+
+        """
         self.order_by = []
+        self.index_start = index_start
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
 
@@ -2167,7 +2180,8 @@ WITH %(tracked_vars)s,
             node_labels = f"Node:{self.schema.kind}"
             node_ids_where = "n.uuid IN $node_ids"
 
-        index_start = await self._select_index_start(db=db)
+        if index_start and node_ids_where:
+            raise ValueError("A list query filtered on node ids cannot start from an index")
 
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
@@ -2257,34 +2271,25 @@ WITH %(tracked_vars)s,
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
 
-    async def _select_index_start(self, db: InfrahubDatabase) -> IndexStart | None:
-        """Return the filter to enter the query from, or None when the query reads every node of the kind."""
+    def get_index_starts(self) -> list[IndexStart]:
+        """Return the index start of each filter that has one, none when the query filters on node ids."""
         if not self.filters or "id" in self.filters or "ids" in self.filters:
-            return None
+            return []
 
         index_starts: list[IndexStart] = []
         for far in self._get_filter_requirements(start_index=1):
             if far.is_metadata:
                 continue
-            index_start = await find_index_start(
-                db=db,
+            index_start = build_index_start(
                 field=far.field,
-                name=far.field_name,
                 filter_name=far.field_attr_name,
                 filter_value=far.field_attr_value,
-                branch=self.branch,
                 partial_match=self.partial_match,
-                subquery_idx=far.index,
                 position=len(index_starts) + 1,
             )
             if index_start:
                 index_starts.append(index_start)
-        if not index_starts:
-            return None
-
-        query = NodeGetListIndexStartQuery(node_kind=self.schema.kind, index_starts=index_starts)
-        await query.execute(db=db)
-        return query.get_selected_index_start()
+        return index_starts
 
     def _add_index_start_query(self, index_start: IndexStart, branch_filter: str) -> None:
         """Match the nodes of the kind that the index start reaches.
