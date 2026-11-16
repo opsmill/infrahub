@@ -63,6 +63,12 @@ If your infrastructure uses a private certificate authority, mount its bundle in
 
 If your security policy does not allow containers that run as root, run the Infrahub containers as the non-root `infrahub` user. See [Run Infrahub as a non-root user](./non-root.mdx).
 
+### Task-manager CSRF protection
+
+The task manager runs with cross-site request forgery (CSRF) protection disabled by default. Infrahub servers and task workers therefore skip CSRF token requests to the task manager.
+
+If you enable CSRF protection on the task manager, set `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` in the environment of every Infrahub server and task worker, then restart those components. Their Prefect clients then request CSRF tokens when communicating with the task manager.
+
 <ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
 
 ## Step 2: Install Infrahub
