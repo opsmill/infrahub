@@ -35,7 +35,7 @@ What this keeps true:
 
 Existing instances:
 
-- Path traversal: the resolver in `backend/infrahub/graphql/queries/path.py` calls `SchemaPlanner.plan()` and passes the plan to `PathTraversalQuery`, which never calls the planner.
+- Path traversal: the resolver in `backend/infrahub/graphql/queries/path.py` calls `SchemaPlanner.plan()` and passes the plan to `PathTraversalExecutor` (`backend/infrahub/graph_traversal/executor.py`), which hands it to the queries in `backend/infrahub/graph_traversal/path.py`. None of them calls the planner.
 - Filtered list reads: `NodeGetListQueryBuilder` (`backend/infrahub/core/query/node_get_list_builder.py`) runs `NodeGetListIndexStartQuery` and passes the selected start to `NodeGetListQuery`.
 
 ## Write Cypher patterns in the query modules
