@@ -1,0 +1,1 @@
+Checking uniqueness constraints that include a relationship, and selecting the artifacts and Generators to run again, are now faster when the peer of that relationship changes: finding the nodes that point to the changed peer no longer reads every relationship of that name.
