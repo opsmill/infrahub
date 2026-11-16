@@ -7,13 +7,12 @@ import json
 import logging
 import os
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, assert_never
+from typing import TYPE_CHECKING, Any, Self, assert_never
 from uuid import UUID, uuid4
 
 from prefect.automations import AutomationCore
 from prefect.utilities.annotations import quote
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.registry import registry

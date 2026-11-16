@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator, Unpack
+from typing import TYPE_CHECKING, Any, Unpack
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -16,7 +16,7 @@ from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Generator, Sequence
 
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp

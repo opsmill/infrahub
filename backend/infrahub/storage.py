@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import io
-from typing import TYPE_CHECKING, Any, BinaryIO
+from typing import TYPE_CHECKING, Any, BinaryIO, Self
 
 import boto3
 import botocore.exceptions
 import fastapi_storages
-from typing_extensions import Self
 
 from infrahub.exceptions import NodeNotFoundError
 

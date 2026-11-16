@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
 from infrahub.auth.auth import authenticate_connection
 from infrahub.core.constants import InfrahubKind
@@ -16,6 +16,8 @@ from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from graphql import GraphQLResolveInfo, GraphQLSchema
 
     from infrahub.graphql.initialization import GraphqlContext

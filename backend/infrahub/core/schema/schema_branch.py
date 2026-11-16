@@ -6,13 +6,12 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, Self, TypedDict
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
-from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template

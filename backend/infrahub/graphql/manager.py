@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 import graphene
 
@@ -80,6 +80,8 @@ from .types.repository_branch_status import InfrahubRepositoryBranchStatusEdge
 from .types.task import TASK_TYPES
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from graphql import GraphQLSchema
 
     from infrahub.core.schema.schema_branch import SchemaBranch

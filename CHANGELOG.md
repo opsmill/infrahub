@@ -11,6 +11,22 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.12.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.12.1) - 2026-11-12
+
+### Security
+
+- Updated documentation dependencies to address `minimatch`, RE2JS, and UUID security advisories, and updated `minimatch` in the frontend plugin template.
+
+### Changed
+
+- Getting the next available prefix in a parent prefix that holds many subnets is now faster.
+- Loading many objects together with their relationships is now faster.
+
+### Fixed
+
+- Fixed the utilization of an IP prefix with `is_pool` set to true depending on the fields of the GraphQL query: a query that did not request `is_pool` left the network and broadcast addresses out of the usable total and returned a utilization that was too high. ([#11260](https://github.com/opsmill/infrahub/issues/11260))
+- Fixed the single sign-on buttons on the login page, which did not open the identity provider when clicked. ([#11541](https://github.com/opsmill/infrahub/issues/11541))
+
 ## [Infrahub - v1.12.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.12.0) - 2026-11-10
 
 Infrahub 1.12 focuses on how Infrahub works with your Git repositories. Before you merge an Infrahub branch, you can check which commit it imported from each repository and whether the import succeeded. If Infrahub cannot push a merge back to Git, you can view the cause and retry. The release also changes how number pools allocate numbers, reduces the processing after large merges, adds tracing for slow automation, and introduces dark mode as an alpha.
@@ -1790,7 +1806,7 @@ This release introduces a file objects feature, adds stronger branch life-cycle 
 
 Infrahub can now store files -- Text files, PDFs, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
 
-The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types: 
+The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types:
 
 - application/json
 - application/yaml

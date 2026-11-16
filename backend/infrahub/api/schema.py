@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from infrahub_sdk.schema.generated.read import (
@@ -71,7 +71,8 @@ from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
 from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from collections.abc import Sequence
+    from typing import Self
 
     from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
@@ -9,6 +9,8 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
     from infrahub.database import InfrahubDatabase

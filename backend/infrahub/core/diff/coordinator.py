@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 from uuid import uuid4
 
 from opentelemetry import trace
@@ -31,6 +31,7 @@ from .model.path import (
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Iterable, Sequence
 
     from structlog.stdlib import BoundLogger
 

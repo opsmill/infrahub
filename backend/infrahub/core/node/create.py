@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, cast, overload
+from typing import TYPE_CHECKING, Any, cast, overload
 
 from infrahub import lock
 from infrahub.core import registry
@@ -33,6 +33,8 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from infrahub.core.branch import Branch
     from infrahub.core.node import SchemaProtocol
     from infrahub.core.protocols import CoreObjectTemplate

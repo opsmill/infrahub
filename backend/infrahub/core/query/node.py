@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
+from typing import TYPE_CHECKING, Any
 
 import ujson
 
@@ -65,7 +65,7 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import AsyncIterator, Callable, Generator, Iterable
 
     from neo4j.graph import Node as Neo4jNode
 

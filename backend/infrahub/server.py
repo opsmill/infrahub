@@ -1,10 +1,10 @@
 import logging
 import os
 import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
-from typing import AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id

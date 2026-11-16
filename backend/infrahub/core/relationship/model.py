@@ -3,15 +3,12 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
-    Iterator,
     Literal,
-    Mapping,
     TypeVar,
     overload,
 )
@@ -51,9 +48,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 if TYPE_CHECKING:
+    from typing import Self
     from uuid import UUID
-
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog

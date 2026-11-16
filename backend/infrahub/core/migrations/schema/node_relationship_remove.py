@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.query import QueryType

@@ -209,7 +209,7 @@ git checkout -b docs/update-readme
 git push origin docs/update-readme
 ```
 
-2. Wait a few seconds for the synchronization cycle to complete
+2. Wait for the next synchronization to complete. Infrahub starts one once a minute
 3. Check the Infrahub UI or API — this branch should **not** appear in Infrahub
 
 ### Test with branches that SHOULD be imported
@@ -221,7 +221,7 @@ git checkout -b infra/network-update
 git push origin infra/network-update
 ```
 
-2. Wait a few seconds for the synchronization cycle to complete
+2. Wait for the next synchronization to complete. Infrahub starts one once a minute
 3. Check the Infrahub UI or API — this branch **should** appear in Infrahub
 
 ### Verify using the Infrahub UI
@@ -536,7 +536,7 @@ If you abandon the pending pushes, the remote branch stays. At the next synchron
 
 1. Verify the configuration is correct
 2. Restart Infrahub services
-3. Wait 10–15 seconds for the next synchronization cycle
+3. Wait for the next synchronization to complete. Infrahub starts one once a minute
 4. Test your regex pattern using an online regex tester
 
 ### Branches still appearing after adding rules

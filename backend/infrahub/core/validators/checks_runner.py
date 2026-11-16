@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Coroutine
+from collections.abc import Coroutine
+from typing import Any
 
 from infrahub_sdk.protocols import CoreValidator
 

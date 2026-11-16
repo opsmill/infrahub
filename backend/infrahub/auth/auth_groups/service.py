@@ -20,7 +20,7 @@ to suppress emission.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -31,6 +31,8 @@ from infrahub.exceptions import UniquenessViolationError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
