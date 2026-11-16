@@ -61,6 +61,8 @@ Never use default passwords or tokens in production. Generate strong unique valu
 
 If your infrastructure uses a private certificate authority, mount its bundle into the containers, then set `INFRAHUB_TLS_CA_BUNDLE` to the mounted path. A component can override the bundle with its own `*_TLS_CA_FILE` or `*_TLS_CA_BUNDLE` setting. See [Trust a private CA](./private-ca.mdx) for the mount and verification steps.
 
+If your security policy does not allow containers that run as root, run the Infrahub containers as the non-root `infrahub` user. See [Run Infrahub as a non-root user](./non-root.mdx).
+
 <ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
 
 ## Step 2: Install Infrahub

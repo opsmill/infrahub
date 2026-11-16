@@ -844,7 +844,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             subscriber_kind=InfrahubKind.ARTIFACT,
             every_target=list(artifacts_by_member.values()),
         )
-    impacted_artifacts = selection.ids
+    impacted_artifacts = set(selection.ids)
     if selection.widening is not None:
         log.warning(
             f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
@@ -1141,7 +1141,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             every_target=list(instance_by_member.values()),
         )
     definition_name = model.generator_definition.definition_name
-    impacted_instances = selection.ids
+    impacted_instances = set(selection.ids)
     if selection.widening is not None:
         log.warning(
             f"Generator definition {definition_name}: {selection.widening.detail}. All targets will be processed."

@@ -1,3 +1,4 @@
+import asyncio
 import re
 import uuid
 from copy import deepcopy
@@ -47,7 +48,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.pools.number_pool_locker import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
@@ -58,6 +61,7 @@ from tests.component.core.migrations.schema.metadata_helpers import (
 from tests.component.core.node.test_branch_agnostic_edges import assert_no_global_edges_with_wrong_branch_level
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.agnostic_edges import pool_reservation_edges
+from tests.helpers.attribute_rows import create_schema_number_pool
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import (
@@ -642,6 +646,71 @@ async def test_migration_numberpool_attribute(
         )
 
 
+async def test_migration_numberpool_attribute_holds_the_pool_alone_until_its_commit(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+    recording_lock_registry: RecordingLockRegistry,
+) -> None:
+    """Another allocation or range change can take the pool only once the migration's numbers are committed."""
+    pool = await create_schema_number_pool(db=db, node="TestServer", node_attribute="rack_unit")
+    pool_lock = f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool.get_id()}"
+    release_gate = recording_lock_registry.gate(f"{pool_lock}:release")
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=server_schema_with_numberpool,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=server_schema_with_numberpool, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution = asyncio.create_task(
+        migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    )
+    await release_gate.wait_reached()
+    async with db.start_session() as reader:
+        servers_at_release = await NodeManager.get_many(
+            db=reader, branch=branch, ids=[server.get_id() for server in servers_in_db]
+        )
+    release_gate.release()
+    execution_result = await asyncio.wait_for(execution, timeout=30)
+
+    assert not execution_result.errors
+    assert {server.get_attribute("rack_unit").value for server in servers_at_release.values()} == {1, 2, 3}
+    assert recording_lock_registry.timeline.acquire_sequence(prefix=f"{pool_lock}:exclusive") == [
+        f"{pool_lock}:exclusive"
+    ]
+
+
+async def test_migration_numberpool_attribute_on_a_kind_without_nodes_does_not_hold_the_pool(
+    db: InfrahubDatabase,
+    branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    server_schema_without_numberpool: NodeSchema,
+    server_schema_with_numberpool: NodeSchema,
+    recording_lock_registry: RecordingLockRegistry,
+) -> None:
+    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[server_schema_without_numberpool]), branch=branch.name)
+    pool = await create_schema_number_pool(db=db, node="TestServer", node_attribute="rack_unit")
+    pool_lock = f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool.get_id()}"
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=server_schema_with_numberpool,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=server_schema_with_numberpool, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+
+    assert not execution_result.errors
+    assert recording_lock_registry.timeline.acquire_sequence(prefix=f"{pool_lock}:exclusive") == []
+
+
 async def test_migration_numberpool_attribute_from_ranges_declaration(
     db: InfrahubDatabase,
     branch: Branch,
@@ -824,6 +893,34 @@ async def _add_site_scoped_vlan_id(db: InfrahubDatabase, branch: Branch, end_ran
 async def _vlan_ids(db: InfrahubDatabase, branch: Branch, kind: str) -> dict[str, int | None]:
     nodes = await NodeManager.query(db=db, schema=kind, branch=branch)
     return {str(node.get_attribute("name").value): node.get_attribute(SCOPED_ATTRIBUTE_NAME).value for node in nodes}
+
+
+async def test_migration_scoped_numberpool_attribute_holds_the_pool_alone_without_a_site_lock(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    scoped_switch_schema: None,
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    """No other allocation picks while the pool is held alone, so the migration needs no lock per site."""
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    await scoped_site(db=db, branch=default_branch, name="site-c")
+    for name, site in (("a-1", site_a), ("b-1", site_b), ("a-2", site_a)):
+        await _switch(db=db, branch=default_branch, name=name, site=site)
+
+    errors = await _add_site_scoped_vlan_id(db=db, branch=default_branch)
+
+    pools = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.NUMBERPOOL,
+        filters={"node__value": SCOPED_SWITCH.kind, "node_attribute__value": SCOPED_ATTRIBUTE_NAME},
+        branch_agnostic=True,
+    )
+    assert errors == []
+    assert len(pools) == 1
+    pool_lock = f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pools[0].get_id()}"
+    assert recording_lock_timeline.acquire_sequence(prefix=f"{pool_lock}:exclusive") == [f"{pool_lock}:exclusive"]
+    assert recording_lock_timeline.acquire_sequence(prefix=f"{pool_lock}.") == []
 
 
 async def test_migration_scoped_numberpool_attribute_gives_the_numbers_a_create_gives(

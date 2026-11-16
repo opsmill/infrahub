@@ -21,6 +21,7 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.scope import Division, DivisionElementPath
 from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
+from tests.helpers.constants import LOCK_WAIT_TIMEOUT_SECONDS
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_CARD,
@@ -48,6 +49,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.lock import RecordingLockRegistry
     from tests.adapters.lock.timeline import LockTimeline
 
 
@@ -172,8 +174,11 @@ async def test_devices_of_two_sites_each_receive_the_first_number_of_a_pool_the_
     assert (vlan_id(device_a1), vlan_id(device_b1), vlan_id(device_a2)) == (1, 1, 2)
 
 
-async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
-    db: InfrahubDatabase, default_branch: Branch, site_scoped_pool: CoreNumberPool
+async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number_without_holding_the_pool(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    site_scoped_pool: CoreNumberPool,
+    recording_lock_timeline: LockTimeline,
 ) -> None:
     """Asking the pool again for a node retrieves the reservation it holds in its division, not a new number."""
     site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
@@ -186,6 +191,8 @@ async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
         values=(site_b.id,),
     )
 
+    start = recording_lock_timeline.checkpoint("ask again")
+
     number = await site_scoped_pool.get_resource(
         db=db,
         branch=default_branch,
@@ -197,6 +204,11 @@ async def test_a_node_asking_its_scoped_pool_again_gets_its_reserved_number(
 
     assert attribute.value == 1
     assert number == 1
+    assert [
+        event.name
+        for event in recording_lock_timeline.events
+        if event.seq > start and event.name == f"resource_pool.{site_scoped_pool.id}:shared"
+    ] == []
 
 
 async def test_two_writers_in_one_division_receive_two_numbers_under_one_lock(
@@ -227,30 +239,39 @@ async def test_two_writers_in_two_divisions_take_different_locks(
     db: InfrahubDatabase,
     default_branch: Branch,
     site_scoped_pool: CoreNumberPool,
-    recording_lock_timeline: LockTimeline,
+    recording_lock_registry: RecordingLockRegistry,
 ) -> None:
+    """The writer of site-b completes while the writer of site-a holds the pool."""
     site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
     site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
-    payloads = [
-        device_payload(name="device-a1", site=site_a, pool=site_scoped_pool),
-        device_payload(name="device-b1", site=site_b, pool=site_scoped_pool),
-    ]
     lock_name_a = f"resource_pool.{site_scoped_pool.id}.{site_a.id}"
     lock_name_b = f"resource_pool.{site_scoped_pool.id}.{site_b.id}"
-
-    start = recording_lock_timeline.checkpoint("writes")
-
-    devices = await asyncio.gather(
-        *(create_device_in_own_session(db=db, branch=default_branch, payload=payload) for payload in payloads)
+    timeline = recording_lock_registry.timeline
+    start = timeline.checkpoint("writes")
+    site_a_gate = recording_lock_registry.gate(f"resource_pool.{site_scoped_pool.id}:shared")
+    site_a_write = asyncio.create_task(
+        create_device_in_own_session(
+            db=db, branch=default_branch, payload=device_payload(name="device-a1", site=site_a, pool=site_scoped_pool)
+        )
     )
+    await site_a_gate.wait_reached()
 
-    assert [vlan_id(device) for device in devices] == [1, 1]
-    acquired = [
-        name
-        for name, action in pool_lock_events(timeline=recording_lock_timeline, pool=site_scoped_pool, after=start)
-        if action is LockAction.ACQUIRE
+    site_b_device = await asyncio.wait_for(
+        create_device_in_own_session(
+            db=db, branch=default_branch, payload=device_payload(name="device-b1", site=site_b, pool=site_scoped_pool)
+        ),
+        timeout=LOCK_WAIT_TIMEOUT_SECONDS,
+    )
+    site_a_gate.release()
+    site_a_device = await asyncio.wait_for(site_a_write, timeout=LOCK_WAIT_TIMEOUT_SECONDS)
+
+    assert [vlan_id(site_a_device), vlan_id(site_b_device)] == [1, 1]
+    assert pool_lock_events(timeline=timeline, pool=site_scoped_pool, after=start) == [
+        (lock_name_a, LockAction.ACQUIRE),
+        (lock_name_b, LockAction.ACQUIRE),
+        (lock_name_b, LockAction.RELEASE),
+        (lock_name_a, LockAction.RELEASE),
     ]
-    assert sorted(acquired) == sorted([lock_name_a, lock_name_b])
 
 
 @dataclass(frozen=True)
@@ -486,7 +507,7 @@ async def test_an_unscoped_pool_keeps_allocating_from_one_space(
 ) -> None:
     site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
     site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
-    lock_name = f"resource_pool.{unscoped_device_pool.id}"
+    lock_name = f"resource_pool.{unscoped_device_pool.id}.all"
     start = recording_lock_timeline.checkpoint("writes")
 
     devices = [
@@ -655,7 +676,7 @@ class TestObjectTemplateNamingAPool:
             if case.expected_division in dataset.sites
             else case.expected_division
         )
-        expected_lock_name = f"resource_pool.{pool.id}" + (f".{division_key}" if division_key is not None else "")
+        expected_lock_name = f"resource_pool.{pool.id}.{division_key or 'all'}"
         start = recording_lock_timeline.checkpoint("write")
 
         device = await create_device_in_own_session(db=db, branch=branch, payload=payload)

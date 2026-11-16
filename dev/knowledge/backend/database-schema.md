@@ -175,6 +175,16 @@ shapes, one per pool kind:
 Write every record on the global branch (`-global-`), whichever branch the allocation was made on: an
 allocation consumes the resource for the whole graph, so no other branch can be handed the same one.
 
+An IP pool decides which values are free from the prefixes and addresses in its namespace, not from its
+`IS_RESERVED` records. A value is taken while the namespace exists on at least one live branch and a node
+holds the value on at least one live branch (`core/query/ipam.py::_build_allocated_values_in_windows_query`).
+The pool's `resources` and `ip_namespace` relationships are branch-agnostic, so they return linked peers
+from every live branch, but an allocation on a branch uses only the linked namespace and resources that
+exist on that branch: the new prefix or address is created there, and its branch-aware `ip_namespace` and
+its parent prefix must exist there too. A namespace missing on that branch raises `ResourceNotFoundError`,
+and a pool with no resource on that branch raises `PoolExhaustedError`
+(`core/node/resource_manager/ip_pool_branch.py`).
+
 A number pool decides which numbers are free from its own `IS_RESERVED` records only. It does not look at
 values objects hold outside those records, so a number set on an object without the pool stays free to
 that pool until it is attached. On a unique attribute the uniqueness check refuses such a number, and saving a pool range that
@@ -428,7 +438,7 @@ When a NodeSchema's `name`, `namespace`, or `inherit_from` changes, labels must 
 
 **Result:** Multiple Node vertices with same UUID exist, but only one is active per branch/time.
 
-**Important:** All UUID-based queries must account for duplicate-UUID nodes by filtering for the active one.
+**Important:** A query that reads one branch filters for the active vertex. A query that reads several branches at once finds both vertices active, because a branch created before the migration still reads the old one, so when it aggregates per node it groups by `uuid`, not by the vertex variable.
 
 ## Finding Active Nodes on Default/Global Branch
 

@@ -16,7 +16,7 @@ from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 
 
 class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, RequestArtifactDefinitionGenerate]):
@@ -79,7 +79,9 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
         )
         return [relationship.peer.id for relationship in group.members.peers]
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: Collection[str]
+    ) -> bool:
         return should_render_artifact(
             artifact_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_artifacts=impacted
         )
