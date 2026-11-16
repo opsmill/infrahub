@@ -157,8 +157,8 @@ a separate change, and say so in the PR.
 
 Give a module global that an `initialize_*()` function sets at startup a placeholder of the global's
 own type, whose operations raise `InitializationError`. `None` under a non-optional annotation needs
-a suppression, and `| None` adds a guard at every read. A module-level `__getattr__` that raises is
-not an alternative: type checkers then accept any attribute of the module, and `hasattr()` and
+a suppression, and `| None` adds a guard at every read. A module-level `__getattr__` that raises
+`InitializationError` is not an alternative: type checkers then accept any attribute of the module, and `hasattr()` and
 `monkeypatch` raise instead of reporting the attribute as missing.
 
 ```python
