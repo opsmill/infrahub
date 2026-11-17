@@ -1458,27 +1458,49 @@ class IPPrefixReconcileQuery(Query):
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             // ------------------
             // now get all the possible IPPrefix nodes for these AttributeValues
-            // the namespace is checked next from each candidate, as a path through it here can start from the namespace
+            // the namespace is checked next, as a path through it here can start from the namespace
             // ------------------
             OPTIONAL MATCH parent_path = (maybe_new_parent:%(ip_prefix_kind)s)
             -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
             -[:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
-            RETURN DISTINCT maybe_new_parent
+            WITH DISTINCT maybe_new_parent
+            RETURN collect(maybe_new_parent) AS candidates,
+                sum(COUNT { (maybe_new_parent)-[:IS_RELATED]->() }) AS candidates_degree
         }
-        CALL (ip_namespace, maybe_new_parent) {
+        // ------------------
+        // the candidates include the prefixes of every namespace that holds the same values,
+        // so the namespace is checked from the side with fewer edges, which Neo4j counts without reading them
+        // ------------------
+        WITH ip_namespace, ip_node, current_parent, current_children, candidates,
+            COUNT { (ip_namespace)-[:IS_RELATED]->() } < candidates_degree AS from_namespace
+        CALL (ip_namespace, candidates, from_namespace) {
+            CALL (ip_namespace, candidates, from_namespace) {
+                WITH ip_namespace, candidates, from_namespace
+                WHERE from_namespace
+                MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
+                WHERE maybe_new_parent IN candidates
+                AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+                RETURN maybe_new_parent, r1, r2
+                UNION ALL
+                WITH ip_namespace, candidates, from_namespace
+                WHERE NOT from_namespace
+                UNWIND candidates AS maybe_new_parent
+                // the namespace relationship is bidirectional, so the prefix's outgoing edges exclude those of its child prefixes
+                MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
+                WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+                RETURN maybe_new_parent, r1, r2
+            }
             // ------------------
             // filter to only active maybe_new_parent Nodes in the correct namespace
-            // the namespace relationship is bidirectional, so both of its edges point to the Relationship vertex,
-            // and following only the prefix's outgoing edges skips the incoming edges of its child prefixes
             // ------------------
-            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH maybe_new_parent, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY elementId(maybe_new_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
             WITH maybe_new_parent, head(collect(is_active)) AS is_active
-            RETURN is_active = TRUE AS parent_in_namespace
+            RETURN collect(CASE WHEN is_active THEN maybe_new_parent END) AS parents_in_namespace
         }
+        // a single NULL candidate keeps the row of the IP node when no prefix of the namespace can be its parent
+        UNWIND CASE WHEN size(parents_in_namespace) = 0 THEN [NULL] ELSE parents_in_namespace END AS maybe_new_parent
         CALL (maybe_new_parent) {
             // ------------------
             // filter to only active maybe_new_parent Nodes currently linked to one of the allowed AttributeValues
@@ -1508,9 +1530,7 @@ class IPPrefixReconcileQuery(Query):
         // set inactive maybe_new_parents to NULL
         // ------------------
         WITH ip_namespace, ip_node, current_parent, current_children, allowed_av.prefixlen AS mnp_prefixlen,
-            CASE WHEN parent_in_namespace = TRUE AND allowed_av IS NOT NULL
-                THEN maybe_new_parent ELSE NULL
-            END AS maybe_new_parent
+            CASE WHEN allowed_av IS NOT NULL THEN maybe_new_parent ELSE NULL END AS maybe_new_parent
         WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_prefixlen
         ORDER BY ip_node.uuid, mnp_prefixlen DESC
         WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent
