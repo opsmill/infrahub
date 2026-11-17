@@ -6,6 +6,13 @@
 
 React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 
+## Component reuse
+
+Before adding or modifying UI, read the [component patterns](../../dev/guidelines/frontend/component-patterns.md)
+and [reuse inventory](../../dev/knowledge/frontend/shared-components.md). When the same UI responsibility
+is repeated across callers, extract it in the same PR without waiting for a user or review request.
+Follow the guidelines for extraction boundaries, component placement, and preserving caller behavior.
+
 ## Commands
 
 ```bash

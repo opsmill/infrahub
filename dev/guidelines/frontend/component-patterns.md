@@ -4,14 +4,15 @@
 
 ## Reuse Before Reinvent
 
-Before creating a new picker, combobox, kind selector, card, modal, button, form input, or any component that "feels generic", consult the inventories:
+Before adding a component or applying the same UI change in multiple places, consult the inventories and search existing implementations:
 
 1. `dev/knowledge/frontend/shared-components.md` — full primitive map
 2. `dev/knowledge/frontend/design-system.md` — `@infrahub/ui` package
-3. `rg -i "<name>" frontend/app/src/shared/components/`
-4. `rg -i "<name>" frontend/packages/ui/src/components/`
+3. `rg -i "<name-or-behavior>" frontend/app/src/entities/` — entity components and their callers
+4. `rg -i "<name>" frontend/app/src/shared/components/`
+5. `rg -i "<name>" frontend/packages/ui/src/components/`
 
-If a primitive matches 80%+ of what you need, **wrap or extend it** instead of writing a new one. Examples:
+If an existing component serves the same responsibility, **compose or extend it** to add the missing behavior. Examples:
 
 - Need a peer picker with a paste-UUID toggle? Wrap `PeerInput` and add the toggle.
 - Need a card with a custom header slot? Extend `Card`/`CardHeader` in `@infrahub/ui`, not in feature code.
@@ -21,7 +22,7 @@ If you genuinely need a new primitive:
 
 - Justify it in the PR description ("evaluated `PeerInput`, `Combobox`, `RelationshipComboboxList` — none cover X because Y").
 - Add an entry to `shared-components.md` so the next person finds it.
-- Place it in `shared/components/` (not in an entity) if it's reusable. Place it in `frontend/packages/ui/` if it's generic enough for any surface.
+- Keep entity-specific components in the owning entity's `ui/`, even when several consumers reuse them. Use `shared/components/` for entity-agnostic components and `frontend/packages/ui/` for design-system primitives. Follow the [architecture dependency rules](../../knowledge/frontend/architecture.md).
 
 ### Anti-patterns
 
@@ -32,6 +33,36 @@ If you genuinely need a new primitive:
 | Reinvented kind combobox + object combobox | Wrap `PeerInput` (`shared/components/inputs/peer.tsx`) |
 | Custom dialog with focus trap | `Modal` from `@infrahub/ui` |
 | `<button className="bg-custom-blue-700 …">` | `Button` from `@infrahub/ui` |
+
+## Extract repeated UI behavior during implementation
+
+When a requirement makes multiple components repeat the same UI responsibility, **extract that
+responsibility into a reusable component in the same PR**. Do this as part of implementation and
+self-review; do not wait for the user or reviewer to request it. Two call sites are enough when
+their behavior must change together. This applies to styling changes as well as new functionality.
+
+1. Search for the behavior being changed, including existing component usages, metadata wiring,
+   interaction classes, and action controls. Check sibling render paths such as attributes,
+   single relationships, and relationship list items.
+2. Reuse or compose existing components first. Extract a cohesive responsibility, such as a
+   metadata control with its lock indicator and reveal behavior. Moving only a class string into
+   a constant leaves duplicated markup and interaction logic behind.
+3. Represent supported differences with typed props or slots. Keep field-specific decisions at
+   the caller; avoid a general-purpose component with unrelated modes or a growing set of boolean
+   flags. Preserve hover boundaries, keyboard access, permissions, and layout at every call site.
+4. Replace the equivalent copies within the feature being changed and document the reusable
+   component in the [inventory](../../knowledge/frontend/shared-components.md). Validate meaningful
+   differences between callers, especially nested interactions that a standalone test can miss.
+
+Similar markup alone does not require an abstraction. Keep components separate when they own
+different behavior or are expected to evolve independently; explain that distinction in the PR
+if the change still repeats a substantial block. Do not generalize for hypothetical future uses
+or expand a focused change into a repository-wide refactor.
+
+Before finishing, check the diff for the same requirement implemented in several places. A
+future change to that shared behavior should have one implementation to update. For example,
+`ObjectFieldMetadata` owns the lock, metadata mapping, and reveal styles for attribute and
+relationship rows, while callers supply their edit headers and choose the row or item hover scope.
 
 ## Early Return Style
 
@@ -142,7 +173,7 @@ function CheckConnectivity() {
 
 ### When to Extract
 
-- 3+ returns with same wrapper structure
+- Multiple returns share the same wrapper responsibility; do not wait for a third copy when they must change together
 - Wrapper has styling or layout logic
 - Structure is unlikely to diverge between states
 

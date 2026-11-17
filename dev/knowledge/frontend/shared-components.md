@@ -2,9 +2,12 @@
 
 > Part of: `dev/knowledge/frontend/`
 
-A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — before this map existed, a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were built for UI that already had one.
+A discovery map of reusable primitives and entity components. **Look here before adding UI or changing the same behavior in several components.** Reuse includes composed controls, metadata displays, actions, and layouts as well as pickers and form inputs.
 
 The dependency rule still applies: `app → pages → entities → shared`. Cross-entity reuse goes through another entity's `domain/` or `ui/` — never `api/`.
+
+The [component extraction guidelines](../../guidelines/frontend/component-patterns.md#extract-repeated-ui-behavior-during-implementation)
+define when repeated behavior needs a component and when similar markup should stay separate.
 
 ## When to use what
 
@@ -164,13 +167,13 @@ Import another entity's `domain/` types and async functions, or its `ui/` hooks/
 
 ## Discovery checklist before writing new code
 
-Before adding a new component, run this:
+Before adding a component or changing repeated UI behavior:
 
-1. `rg -i "<name>" frontend/app/src/shared/components/`
-2. `rg -i "<name>" frontend/packages/ui/src/components/`
-3. Check the table above for the closest match.
-4. If nothing fits, ask: can I extend an existing component, or am I duplicating it with a different name?
-5. If you really need something new, justify it in the PR description and update this file.
+1. Search the owning entity and its callers: `rg -i "<name-or-behavior>" frontend/app/src/entities/`.
+2. Search `frontend/app/src/shared/components/` and `frontend/packages/ui/src/components/` for an existing primitive.
+3. Check the inventory above for the closest match, including entity components.
+4. Apply the extraction guidelines when several callers implement the same responsibility.
+5. Add new reusable components to this inventory with their location and intended callers.
 
 ## Anti-patterns observed in past PRs
 
@@ -182,5 +185,6 @@ Before adding a new component, run this:
 | `<div className="flex items-center gap-2">` | `<Row>` from `shared/components/container` |
 | Hardcoding system namespace lists on the client | Backend is authoritative; surface via schema if needed |
 | Duplicating `useState` between page and selector | Single source of truth — see `dev/guidelines/frontend/page-architecture.md` |
+| Repeating lock icons, metadata mapping, and reveal styles in each field renderer | `ObjectFieldMetadata` with caller-specific headers and hover scope |
 | Hand-rolled tab bar with manual active-state CSS | `LinkTab` + `<nav aria-label="Tabs">` — see `dev/guidelines/frontend/route-architecture.md` |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` — runtime-checked, no type lie |
