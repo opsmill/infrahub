@@ -118,6 +118,8 @@ async def assert_second_run_changes_nothing(
         assert _graph_differences(before=before_first, after=after_first), "the first run changed nothing"
     else:
         assert_graph_unchanged(before=before_first, after=after_first)
+    # Checked before the second run too, so a damaged graph is attributed to the run that damaged it.
+    await verify_graph(db=db)
 
     await run_migrations(db=db, branch=branch, migrations=migrations, at=Timestamp(), user_id=SECOND_RUN_USER_ID)
     assert_graph_unchanged(before=after_first, after=await read_graph_state(db=db))

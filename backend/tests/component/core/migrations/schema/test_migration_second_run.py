@@ -33,7 +33,9 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, GenericSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
+from infrahub.database.validation import GraphValidationError
 from tests.component.core.migrations.schema.second_run_helpers import (
+    AGNOSTIC_BRANCH_KINDS,
     BRANCH_KINDS,
     BranchKind,
     assert_graph_unchanged,
@@ -45,8 +47,11 @@ from tests.component.core.migrations.schema.second_run_helpers import (
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+from tests.helpers.agnostic_edges import create_gadget, create_widget
+from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, BEACON_KIND, WIDGET_KIND
 
 
 @dataclass
@@ -512,3 +517,209 @@ async def test_node_uniqueness_constraints_update_remove(
     await assert_constraint_change_runs_twice_unchanged(
         db=db, branch=branch, uniqueness_constraints=NAME_ONLY_CONSTRAINT
     )
+
+
+@dataclass
+class AgnosticData:
+    gadgets: list[Node]
+    widgets: list[Node]
+    widget_profile: Node | None
+    beacons: list[Node]
+
+
+@pytest.fixture
+async def agnostic_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
+    schema = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
+    widget = next(node for node in schema.nodes if node.kind == WIDGET_KIND)
+    widget.attributes.append(
+        AttributeSchema(name="notes", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC)
+    )
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def agnostic_data(db: InfrahubDatabase, default_branch: Branch, agnostic_schema: SchemaBranch) -> AgnosticData:
+    gadgets = [await create_gadget(db=db, branch=default_branch, name=f"gadget-{index}") for index in range(2)]
+    widgets = [
+        await create_widget(
+            db=db, branch=default_branch, name=f"widget-{index}", serial=index, notes=f"note-{index}", gadget=gadget
+        )
+        for index, gadget in enumerate(gadgets)
+    ]
+    widget_profile = None
+    if agnostic_schema.has(name=f"Profile{WIDGET_KIND}"):
+        widget_profile = await Node.init(db=db, schema=f"Profile{WIDGET_KIND}", branch=default_branch)
+        await widget_profile.new(db=db, profile_name="widget-profile", serial=10, notes="profile-note")
+        await widget_profile.save(db=db)
+    beacons = []
+    for index in range(2):
+        beacon = await Node.init(db=db, schema=BEACON_KIND, branch=default_branch)
+        await beacon.new(db=db, name=f"beacon-{index}", serial=index)
+        await beacon.save(db=db)
+        beacons.append(beacon)
+    return AgnosticData(gadgets=gadgets, widgets=widgets, widget_profile=widget_profile, beacons=beacons)
+
+
+def candidate_with_node(branch: Branch, kind: str) -> tuple[NodeSchema, SchemaBranch, NodeSchema]:
+    """Return the node's current schema, a candidate schema branch and a copy of the node to change in it."""
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name=kind, duplicate=True)
+    candidate = schema_branch.duplicate()
+    return previous, candidate, candidate.get_node(name=kind, duplicate=True)
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_attribute_add(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    widget.attributes.append(
+        AttributeSchema(name="tag", kind="Text", optional=True, default_value="none", branch=BranchSupportType.AGNOSTIC)
+    )
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=attribute_path(kind=WIDGET_KIND, name="tag"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_attribute_remove(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    widget.get_attribute(name="serial").state = HashableModelState.ABSENT
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=attribute_path(kind=WIDGET_KIND, name="serial"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=GraphValidationError,
+    reason="the first run creates the renamed agnostic attribute with its edges on the migration branch, not -global-",
+)
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_attribute_name_update(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    attribute_id = str(uuid.uuid4())
+    previous.get_attribute(name="serial").id = attribute_id
+    renamed = widget.get_attribute(name="serial")
+    renamed.id = attribute_id
+    renamed.name = "serial_number"
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = AttributeNameUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=attribute_path(kind=WIDGET_KIND, name="serial_number"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=GraphValidationError,
+    reason="the first run writes the new HAS_VALUE edge of an agnostic attribute on the migration branch, not -global-",
+)
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_attribute_kind_update(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    widget.get_attribute(name="notes").kind = "TextArea"
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = AttributeKindUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=attribute_path(kind=WIDGET_KIND, name="notes"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_attribute_unique_update_on(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    if agnostic_data.widget_profile is None:
+        pytest.skip("the widget kind generates no profile kind, so the migration has no profile node to change")
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    attribute_id = str(uuid.uuid4())
+    previous.get_attribute(name="notes").id = attribute_id
+    notes = widget.get_attribute(name="notes")
+    notes.id = attribute_id
+    notes.unique = True
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=attribute_path(kind=WIDGET_KIND, name="notes"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_relationship_remove(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    widget.get_relationship(name="gadget").state = HashableModelState.ABSENT
+    candidate.set(name=WIDGET_KIND, schema=widget)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeRelationshipRemoveMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=WIDGET_KIND),
+        schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind=WIDGET_KIND, field_name="gadget"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_node_remove_with_agnostic_fields(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, _ = candidate_with_node(branch=branch, kind=WIDGET_KIND)
+    candidate.delete(name=WIDGET_KIND)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeRemoveMigration(
+        previous_node_schema=previous,
+        new_node_schema=None,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind=WIDGET_KIND),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+async def test_agnostic_kind_attribute_remove(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    previous, candidate, beacon = candidate_with_node(branch=branch, kind=BEACON_KIND)
+    beacon.get_attribute(name="serial").state = HashableModelState.ABSENT
+    candidate.set(name=BEACON_KIND, schema=beacon)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=BEACON_KIND),
+        schema_path=attribute_path(kind=BEACON_KIND, name="serial"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
