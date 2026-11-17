@@ -99,7 +99,7 @@ function RelationshipOneRow({
                 source={relationshipProperties.source}
                 owner={relationshipProperties.owner}
                 isProtected={relationshipProperties.is_protected}
-                triggerClassName="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                triggerClassName="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
@@ -171,7 +171,7 @@ function RelationshipManyRow({
               if (!relatedNode) return null;
 
               return (
-                <Row key={relatedNode.id} className="group/edge w-full">
+                <Row key={relatedNode.id} className="group/edge">
                   <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
                     {getNodeLabel(relatedNode)}
                   </Link>
@@ -186,7 +186,7 @@ function RelationshipManyRow({
                         source={edgeProperties.source}
                         owner={edgeProperties.owner}
                         isProtected={edgeProperties.is_protected}
-                        triggerClassName="opacity-0 transition-opacity group-hover/edge:opacity-100 focus-visible:opacity-100"
+                        triggerClassName="opacity-0 group-hover/edge:opacity-100 focus-visible:opacity-100"
                       />
                     </>
                   )}
