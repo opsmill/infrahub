@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
@@ -19,7 +20,8 @@ from tests.unit.core.schema_change.helpers import (
 
 def _add_attribute_to_generic(_: SchemaBranch) -> SchemaRoot:
     interface = base_generic_definition(TestKind.INTERFACE)
-    interface.attributes.append(AttributeSchema(name="mtu", kind="Number", optional=True))
+    # A parsed schema file holds the attribute class of the kind, which appending to the list does not convert to.
+    interface.attributes.append(NumberAttributeSchema(name="mtu", kind="Number", optional=True))
     return SchemaRoot(generics=[interface])
 
 

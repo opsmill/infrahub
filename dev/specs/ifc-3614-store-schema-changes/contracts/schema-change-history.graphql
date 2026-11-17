@@ -139,7 +139,8 @@ type InfrahubSchemaChangeOperation {
   element_name: String
   # Name of the property, dotted when nested. Set for the two PROPERTY types.
   property_name: String
-  # New value for a PROPERTY type, full definition for an ADD type.
+  # New value for a PROPERTY type, full definition for an ADD type. An added attribute or
+  # relationship also holds the order_weight that processing gave it when the file sets none.
   value: GenericScalar
   # Value before the change. Set for the two PROPERTY types.
   previous_value: GenericScalar

@@ -69,7 +69,7 @@ One change to the schema. The operations of a schema change apply in the order o
 | `section` | `SchemaOperationSection \| None` | `attributes` or `relationships`. Set for the three element types |
 | `element_name` | `str \| None` | Name of the attribute or relationship before the operation. Set for the three element types |
 | `property_name` | `str \| None` | Name of the property, dotted when nested. Set for the two property types |
-| `value` | JSON, stored as a string | New value for a property type; full definition for an add type |
+| `value` | JSON, stored as a string | New value for a property type; full definition for an add type. An added attribute or relationship also holds the `order_weight` that processing gave it when the file sets none ([research.md](research.md), R4) |
 | `previous_value` | JSON, stored as a string | Value before the change. Set for the two property types |
 
 Rules:

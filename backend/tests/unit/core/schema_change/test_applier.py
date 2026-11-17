@@ -229,7 +229,7 @@ def test_properties_that_no_operation_names_keep_their_value(equivalence_base_sc
         target_schema=equivalence_base_schema, operations=operations, default_branch_schema=equivalence_base_schema
     )
 
-    tag = applied.get(name=TestKind.TAG, duplicate=False)
+    tag = applied.get_node(name=TestKind.TAG, duplicate=False)
     assert (tag.label, tag.generate_profile, tag.order_by, tag.default_filter) == (
         "Label",
         False,

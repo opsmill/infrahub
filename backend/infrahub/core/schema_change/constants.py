@@ -55,6 +55,12 @@ class SchemaChangeEdgeType(InfrahubStringEnum):
 SCHEMA_OPERATION_FORMAT_VERSION = 1
 SCHEMA_CHANGE_NAME_VERSION_DIGITS = 5
 
+SCHEMA_KIND_NAME_PROPERTIES = ("name", "namespace")
+"""The properties of a kind that form its kind name, in the order their operations come."""
+
+SCHEMA_ELEMENT_NAME_PROPERTY = "name"
+SCHEMA_PROPERTY_PATH_SEPARATOR = "."
+
 SCHEMA_CHANGE_HISTORY_DEFAULT_LIMIT = 10
 SCHEMA_CHANGE_HISTORY_MAX_LIMIT = 50
 SCHEMA_CHANGE_OPERATIONS_DEFAULT_LIMIT = 50

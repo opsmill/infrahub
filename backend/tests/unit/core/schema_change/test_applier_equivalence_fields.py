@@ -2,13 +2,13 @@ import pytest
 
 from infrahub.core.constants import HashableModelState, InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
-    AttributeSchema,
     DropdownChoice,
     NodeExtensionSchema,
     RelationshipSchema,
     SchemaExtension,
     SchemaRoot,
 )
+from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
@@ -69,7 +69,8 @@ def _absent_relationship(_: SchemaBranch) -> SchemaRoot:
 def _extend_node(_: SchemaBranch) -> SchemaRoot:
     extension = NodeExtensionSchema(
         kind=TestKind.DEVICE,
-        attributes=[AttributeSchema(name="serial", kind="Text", optional=True)],
+        # The applier builds the attribute class of the kind, where a load keeps the class an extension was parsed into.
+        attributes=[TextAttributeSchema(name="serial", kind="Text", optional=True)],
         relationships=[
             RelationshipSchema(
                 name="labels",

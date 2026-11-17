@@ -310,7 +310,9 @@ branch. Count the records of that branch and of main before and after.
   - `human_friendly_id` or `uniqueness_constraints` calculated from a unique attribute.
 - **FR-012**: An operation that adds a node, an attribute or a relationship MUST hold the full
   definition as the user wrote it, without `id` and without `parameters.number_pool_id`, because
-  both are specific to one instance.
+  both are specific to one instance. An added attribute or relationship also holds the order
+  weight that processing gave it when the user wrote none, because the applier cannot calculate
+  the same weight from the operation ([research.md](research.md), R4).
 - **FR-013**: A calculated field that the user writes MUST be recorded with the user's value.
 - **FR-014**: Each operation MUST identify the node, attribute or relationship it changes by kind
   and name, never by vertex ID. A rename names the element by the name it had before the load.
@@ -456,7 +458,8 @@ branch. Count the records of that branch and of main before and after.
 - **Schema change operation**: one change to the schema. It has the kind of operation (one of
   six), the kind of the node, the name of the attribute or relationship when it changes one, the
   property when it changes one, the new value, and the value before the change. For an addition it
-  holds the full definition as written.
+  holds the full definition as written, and for an added attribute or relationship the order
+  weight that processing gave it when the file sets none.
 - **Application**: one time a schema change was applied to a branch. It has a status, the branch,
   a time, the error when it failed, and its migration records.
 - **Migration record**: one migration that an application ran. It has the schema path, the

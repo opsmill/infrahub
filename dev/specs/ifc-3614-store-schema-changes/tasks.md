@@ -246,7 +246,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
 
 ### Implementation
 
-- [ ] T015 [US1] Create `SchemaOperationBuilder` in
+- [X] T015 [US1] Create `SchemaOperationBuilder` in
       `backend/infrahub/core/schema_change/operation_builder.py`, following
       [research.md](research.md), R5, and its contract in
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md). It lays the file over
@@ -256,14 +256,14 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       element's ID. It emits the operations in the order of R5, and returns a
       `SchemaOperationBuildResult` with the operations and, as `direct_load_schema`, the
       processed schema of the laid-over file.
-- [ ] T016 [US1] Create `SchemaChangeApplier` in `backend/infrahub/core/schema_change/applier.py`,
+- [X] T016 [US1] Create `SchemaChangeApplier` in `backend/infrahub/core/schema_change/applier.py`,
       following [research.md](research.md), R6, and its contract. It duplicates the target,
       applies each operation in order, calls `BaseNodeSchema.apply_schema_path_updates` for each
       kind with the removed names and the map of renamed names, then runs `SchemaBranch.process`.
       `node_remove` sets the state of the kind to absent, as a load does. Select the handling
       of an operation with an exhaustive `match` on `SchemaOperationType` that ends with
       `typing.assert_never`.
-- [ ] T017 [US1] Run `uv run pytest backend/tests/unit/core/schema_change/` and make T007 to T014
+- [X] T017 [US1] Run `uv run pytest backend/tests/unit/core/schema_change/` and make T007 to T014
       pass. Each case of FR-025 passes or is a strict expected failure. When a case needs a change
       to the format of the operations, change `operations.py`, [data-model.md](data-model.md),
       [research.md](research.md) R4 to R6 and the GraphQL contract in the same commit. When the

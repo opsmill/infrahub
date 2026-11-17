@@ -114,13 +114,18 @@ logs.
 | `node_add` | a kind | the full definition as written, and whether it is a node or a generic |
 | `node_remove` | a kind | nothing else |
 | `node_property` | a property of a kind | the new value and the value before |
-| `element_add` | an attribute or a relationship of a kind | the full definition as written |
+| `element_add` | an attribute or a relationship of a kind | the full definition as written, with the order weight that processing gave it when the file sets none |
 | `element_remove` | an attribute or a relationship of a kind | nothing else |
 | `element_property` | a property of an attribute or a relationship | the new value and the value before |
 
 - A property can be nested, such as `parameters.regex`. The name is the dotted path that
   `core/models.py::SchemaUpdateValidationResult` already uses for nested properties.
 - An added definition never holds `id` or `parameters.number_pool_id`.
+- An added attribute or relationship also holds `order_weight`. When the file sets none, it is the
+  weight that processing gave the element in the schema of step 2 of R5. Processing numbers an
+  element without a weight by its place in the list of the kind, and a load puts the new elements
+  after the elements that the file leaves out, so the applier cannot calculate the same weight
+  from the operation alone.
 - A rename is a property operation on `name` (or `namespace` for a kind). It names the element by
   the name it had before the load.
 - The format has a version, `1`, stored on each schema change.
@@ -186,7 +191,24 @@ processing. It would record a change that processing reverts, for example `uniqu
 attribute that a uniqueness constraint keeps unique, so loading the same file twice would store a
 second schema change.
 
-**Not known**: whether one rule covers every case in the equivalence list. The suite decides.
+**What the equivalence suite showed** (T017): one rule covers every case in the list, with these
+details:
+
+- A path whose value in the schema of step 1 equals its value in the branch schema gives no
+  operation. Processing can change a path that the file states with the value it already had.
+- A nested property gives one operation for each changed field, such as `parameters.regex`. When
+  the two values are of different models, the operation holds the whole property.
+- An added definition holds the fields that the file sets, without `id` and
+  `parameters.number_pool_id`, and the order weight of R4.
+- A load keeps the class of an attribute as the file holds it. An attribute that a node
+  extension adds is parsed as the base attribute class, and the applier builds the class of its
+  kind, as a load does for an attribute of a node definition. The two schemas then differ in the
+  hash of that kind until the schema is read again from the database, and the comparer of R7
+  names the kind. The suite writes that attribute with the class of its kind.
+- A rename of an attribute on a generic, `unique` turned off on an attribute that a calculated
+  uniqueness constraint holds, a relationship kind changed to Component without `on_delete`, and
+  an attribute kind changed on a generic alone keep today's result: the four cases of FR-025 are
+  strict expected failures.
 
 ## R6. The applier
 
@@ -214,10 +236,11 @@ that names the operation and the missing element (FR-023).
 **Rationale**: these are the three steps of the design document. `apply_schema_path_updates` is
 the method that today's load reaches through `handle_field_renames_and_deletes`.
 
-**Risk to test**: today's load rewrites the paths first and then lays the file's values over them.
-The applier sets the values first and then rewrites. The two orders differ when a file renames an
-attribute and also writes `human_friendly_id` or another path list. The equivalence suite has a
-case for it. If the results differ, the applier rewrites first.
+**Risk tested**: today's load rewrites the paths first and then lays the file's values over them.
+The applier sets the values first and then rewrites. The two orders could differ when a file renames
+an attribute and also writes `human_friendly_id` or another path list. The equivalence case for it
+passes with the applier's order (T017), because the value that the file writes already names the
+new name, so the applier keeps setting the values first.
 
 ## R7. One component builds the candidate schema for the load, the check and the mutations
 
