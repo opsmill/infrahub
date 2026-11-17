@@ -4,12 +4,8 @@ from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-from infrahub.core.schema_change.constants import (
-    SCHEMA_CHANGE_NAME_VERSION_DIGITS,
-    SchemaOperationNodeType,
-    SchemaOperationSection,
-    SchemaOperationType,
-)
+from infrahub.core.schema_change.constants import SCHEMA_CHANGE_NAME_VERSION_DIGITS
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

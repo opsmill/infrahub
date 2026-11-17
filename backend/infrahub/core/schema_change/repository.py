@@ -13,8 +13,8 @@ from infrahub.core.query.schema_change import (
     SchemaChangeMigrationCreateQuery,
     SchemaChangeMigrationStatusUpdateQuery,
 )
-from infrahub.core.schema_change.constants import (
-    SCHEMA_OPERATION_FORMAT_VERSION,
+from infrahub.core.schema_change.constants import SCHEMA_OPERATION_FORMAT_VERSION
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,

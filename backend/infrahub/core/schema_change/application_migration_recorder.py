@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from neo4j.exceptions import Neo4jError
 
-from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus
+from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
 from infrahub.core.schema_change.migration_recorder import MigrationRecorder
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger

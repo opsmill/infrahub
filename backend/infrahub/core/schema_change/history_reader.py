@@ -30,7 +30,7 @@ if TYPE_CHECKING:
         SchemaChangeOperationRecordData,
         SchemaChangeRecordData,
     )
-    from infrahub.core.schema_change.constants import SchemaChangeStatus
+    from infrahub.core.schema_change.enums import SchemaChangeStatus
     from infrahub.database import InfrahubDatabase
 
 

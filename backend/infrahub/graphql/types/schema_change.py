@@ -8,12 +8,12 @@ from infrahub.core.schema_change.constants import (
     SCHEMA_CHANGE_OPERATIONS_DEFAULT_LIMIT,
     SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT,
 )
-from infrahub.core.schema_change.constants import SchemaChangeApplicationStatus as SchemaChangeApplicationStatusEnum
-from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus as SchemaChangeMigrationStatusEnum
-from infrahub.core.schema_change.constants import SchemaChangeStatus as SchemaChangeStatusEnum
-from infrahub.core.schema_change.constants import SchemaOperationNodeType as SchemaOperationNodeTypeEnum
-from infrahub.core.schema_change.constants import SchemaOperationSection as SchemaOperationSectionEnum
-from infrahub.core.schema_change.constants import SchemaOperationType as SchemaOperationTypeEnum
+from infrahub.core.schema_change.enums import SchemaChangeApplicationStatus as SchemaChangeApplicationStatusEnum
+from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus as SchemaChangeMigrationStatusEnum
+from infrahub.core.schema_change.enums import SchemaChangeStatus as SchemaChangeStatusEnum
+from infrahub.core.schema_change.enums import SchemaOperationNodeType as SchemaOperationNodeTypeEnum
+from infrahub.core.schema_change.enums import SchemaOperationSection as SchemaOperationSectionEnum
+from infrahub.core.schema_change.enums import SchemaOperationType as SchemaOperationTypeEnum
 from infrahub.graphql.resolvers.schema_change import (
     schema_change_applications_resolver,
     schema_change_operations_resolver,

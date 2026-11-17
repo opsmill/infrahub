@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.validators.model import SchemaViolation
 from infrahub.exceptions import (
     CommitNotFoundError,

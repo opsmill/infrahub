@@ -7,7 +7,7 @@ from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import DropdownChoice, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation

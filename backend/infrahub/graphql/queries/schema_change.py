@@ -4,11 +4,8 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull
 
-from infrahub.core.schema_change.constants import (
-    SCHEMA_CHANGE_HISTORY_DEFAULT_LIMIT,
-    SCHEMA_CHANGE_HISTORY_MAX_LIMIT,
-    SchemaChangeStatus,
-)
+from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_DEFAULT_LIMIT, SCHEMA_CHANGE_HISTORY_MAX_LIMIT
+from infrahub.core.schema_change.enums import SchemaChangeStatus
 from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.loaders.schema_change import SchemaChangeLoaders

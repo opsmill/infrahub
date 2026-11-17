@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import NULL_VALUE, SchemaPathType
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,

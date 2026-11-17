@@ -8,7 +8,7 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,
@@ -347,7 +347,6 @@ class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
                 "The operations built from the schema file do not rebuild its schema; "
                 f"kinds that differ: {', '.join(differing_kinds)}"
             )
-
 
     @staticmethod
     def _replaces_a_kind_by_an_unknown_id(*, branch_schema: SchemaBranch, direct_load_schema: SchemaBranch) -> bool:

@@ -7,7 +7,7 @@ from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
-from infrahub.core.schema_change.constants import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.schema_change.operations import SchemaOperation
 from tests.constants import TestKind

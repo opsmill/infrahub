@@ -10,7 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.timestamp import Timestamp

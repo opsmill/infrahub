@@ -15,7 +15,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.application_runner import SchemaChangeApplicationRunner
 from infrahub.core.schema_change.candidate import SchemaCandidate
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.recorder import SchemaChangeRecording
 from infrahub.core.timestamp import Timestamp

@@ -46,7 +46,7 @@ branch select edges by their `branch` property. An edge without one is invisible
   the records of that load, which then hold the error;
 - a merge and a rebase neither copy nor change the records of either branch;
 - the branch data deletion loops over `DatabaseEdgeType`, so the four edge types are kept out of it,
-  in `core/schema_change/constants.py::SchemaChangeEdgeType`.
+  in `core/schema_change/enums.py::SchemaChangeEdgeType`.
 
 The branch of a record is the `branch` property of the `SchemaChange` vertex, and the history query
 and the branch deletion select by it.

@@ -2,7 +2,7 @@ import pytest
 
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.operations_check import NoSchemaOperationsCheck

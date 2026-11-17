@@ -8,7 +8,7 @@ from infrahub.core.migrations.schema.models import SchemaMigrationPathResponseDa
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
-from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus
+from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
     CREATE_MIGRATION_RECORDS,

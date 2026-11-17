@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,

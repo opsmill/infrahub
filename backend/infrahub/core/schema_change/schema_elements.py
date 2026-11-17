@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.schema_change.constants import SCHEMA_PROPERTY_PATH_SEPARATOR, SchemaOperationSection
+from infrahub.core.schema_change.constants import SCHEMA_PROPERTY_PATH_SEPARATOR
+from infrahub.core.schema_change.enums import SchemaOperationSection
 
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, NodeExtensionSchema, RelationshipSchema

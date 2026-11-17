@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus
+    from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.timestamp import Timestamp
 

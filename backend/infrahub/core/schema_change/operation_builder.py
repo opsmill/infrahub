@@ -12,10 +12,8 @@ from infrahub.core.schema_change.constants import (
     SCHEMA_ELEMENT_NAME_PROPERTY,
     SCHEMA_KIND_NAME_PROPERTIES,
     SCHEMA_PROPERTY_PATH_SEPARATOR,
-    SchemaOperationNodeType,
-    SchemaOperationSection,
-    SchemaOperationType,
 )
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import (
     INSTANCE_ID_KEY,
     NUMBER_POOL_ID_KEY,

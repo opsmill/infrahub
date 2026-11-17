@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.initialization import create_branch
-from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus, SchemaChangeStatus
+from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeStatus
 from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params

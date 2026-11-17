@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,

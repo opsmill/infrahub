@@ -8,13 +8,8 @@ from pydantic import BaseModel, TypeAdapter
 from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
-from infrahub.core.schema_change.constants import (
-    SCHEMA_ELEMENT_NAME_PROPERTY,
-    SCHEMA_KIND_NAME_PROPERTIES,
-    SchemaOperationNodeType,
-    SchemaOperationSection,
-    SchemaOperationType,
-)
+from infrahub.core.schema_change.constants import SCHEMA_ELEMENT_NAME_PROPERTY, SCHEMA_KIND_NAME_PROPERTIES
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.schema_elements import find_element, split_property_path
 from infrahub.exceptions import SchemaOperationTargetNotFoundError
 

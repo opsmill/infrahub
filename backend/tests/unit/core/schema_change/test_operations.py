@@ -6,11 +6,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from infrahub.core.schema_change.constants import (
-    SchemaOperationNodeType,
-    SchemaOperationSection,
-    SchemaOperationType,
-)
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import (
     SchemaOperation,
     build_schema_change_name,

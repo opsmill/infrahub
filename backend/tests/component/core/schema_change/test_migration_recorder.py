@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.migrations.schema.models import SchemaMigrationPathResponseData
-from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus, SchemaChangeStatus
+from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeStatus
 from infrahub.core.schema_change.factory import build_migration_recorder
 from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
 from tests.helpers.schema_change import (

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub.core.diff.model.diff import SchemaConflict
-    from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+    from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
     from infrahub.core.validators.model import SchemaViolation
     from infrahub.git.models import PushRejectionReason
     from infrahub.pools.scope import Division

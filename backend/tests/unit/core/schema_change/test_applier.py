@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
-from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.exceptions import SchemaOperationTargetNotFoundError
 from tests.constants import TestKind

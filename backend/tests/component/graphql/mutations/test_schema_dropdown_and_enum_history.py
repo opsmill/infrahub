@@ -8,9 +8,8 @@ import pytest
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.core.schema_change.constants import (
-    SCHEMA_CHANGE_HISTORY_MAX_LIMIT,
-    SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT,
+from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_MAX_LIMIT, SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeStatus,
     SchemaOperationSection,

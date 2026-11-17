@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_change.constants import SchemaChangeStatus
+from infrahub.core.schema_change.enums import SchemaChangeStatus
 from infrahub.core.schema_change.models import SchemaChange
 from tests.helpers.schema import load_schema
 from tests.helpers.schema_change import (

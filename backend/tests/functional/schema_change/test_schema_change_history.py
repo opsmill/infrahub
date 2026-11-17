@@ -13,7 +13,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_account
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,

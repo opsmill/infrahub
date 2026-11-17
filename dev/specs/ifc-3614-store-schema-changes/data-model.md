@@ -180,13 +180,16 @@ record. Both classes convert `SchemaOperation` to or from `SchemaChangeOperation
 Neither class deletes records. The query that deletes the records of a branch is run by
 `core/branch/data_deleter.py::BranchDataDeleter` ([research.md](research.md), R13).
 
-## Constants
+## Enumerations and constants
 
-In `backend/infrahub/core/schema_change/constants.py`:
+In `backend/infrahub/core/schema_change/enums.py`:
 
 - `SchemaChangeStatus`, `SchemaChangeApplicationStatus`, `SchemaChangeMigrationStatus`,
   `SchemaOperationType`, `SchemaOperationNodeType`, `SchemaOperationSection`;
+- `SchemaChangeEdgeType`, the four edge type names.
+
+In `backend/infrahub/core/schema_change/constants.py`:
+
 - the operation format version, `1`;
 - the number of digits of the version in a name, `5`;
-- the four edge type names;
 - the page sizes of the history query ([research.md](research.md), R12).

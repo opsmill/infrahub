@@ -2,7 +2,7 @@ from pydantic import Field
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.schema_change.constants import (
+from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,

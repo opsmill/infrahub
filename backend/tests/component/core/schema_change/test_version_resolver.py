@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.schema_change.constants import SchemaChangeStatus
+from infrahub.core.schema_change.enums import SchemaChangeStatus
 from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersion, SchemaChangeVersionResolver
 from infrahub.core.timestamp import Timestamp

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.branch.data_deleter import BranchDataDeleter
-from infrahub.core.schema_change.constants import SchemaChangeEdgeType, SchemaChangeMigrationStatus, SchemaChangeStatus
+from infrahub.core.schema_change.enums import SchemaChangeEdgeType, SchemaChangeMigrationStatus, SchemaChangeStatus
 from infrahub.core.schema_change.models import (
     SchemaChange,
     SchemaChangeApplication,
