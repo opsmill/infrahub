@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from infrahub.config import FileSystemStorageSettings, StorageSettings
+from tests.helpers.route_caller import CALLER_ACCOUNT, CALLER_REQUEST
 
 KEY = StorageKey.derive("parity-test-secret-key-0123456789abcdef")
 OTHER_KEY = StorageKey.derive("another-parity-test-secret-key-987654321")
@@ -260,6 +261,8 @@ async def call_route(call: Call) -> Described:
         allow_unverified=call.allow_unverified,
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
     return describe_result(response.identifier, response.outcome, response.size, response.reason)
 
@@ -269,6 +272,8 @@ async def call_batch(call: Call) -> Described:
         request=EncryptBatchRequest(identifiers=[call.identifier], allow_unverified=call.allow_unverified),
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        http_request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
     (result,) = response.results
     return describe_result(result.identifier, result.outcome, result.size, result.reason)
@@ -283,6 +288,8 @@ async def call_batch_with_neighbours(call: Call) -> Described:
         ),
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        http_request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
     (result,) = [entry for entry in response.results if entry.identifier == call.identifier]
     return describe_result(result.identifier, result.outcome, result.size, result.reason)
@@ -750,6 +757,8 @@ async def test_batch_with_several_files_gives_each_the_outcome_of_the_shared_fun
         ),
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        http_request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
 
     by_identifier = {result.identifier: result for result in response.results}

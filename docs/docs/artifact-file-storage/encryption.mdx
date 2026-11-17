@@ -147,11 +147,22 @@ When the budget has no room for the next file, the request waits. A request for 
 
 Worst case for one process: the memory claimed for the files in progress never exceeds the budget, whatever the number of requests, files per request or file sizes. With the default, that is 600 MB. The claim is a little above what was measured: in tests, two files of 90 MiB made the server grow by 459 MiB, about 2.5 times the file size. The budget does not count the body of the request, the Python interpreter, or working buffers beyond the three copies. Each API server process has its own budget, so the total multiplies with the number of processes and replicas: for example, 4 processes with the default budget claim up to 2.4 GB. Set the budget so that this total fits in the memory of your API servers.
 
-### The artifact page after the command
+### The stored encryption value of artifacts
 
-The command does not write the stored `encryption` value of an artifact. After the command, an artifact whose file is now encrypted keeps the stored value `plaintext`. In a test with 50,000 artifacts, every artifact still had the value `plaintext` after its file was encrypted.
+When the server encrypts a file, or finds that the file is already encrypted for the current key, it also stores the `encryption` value `encrypted` on the artifacts whose current file it is. After the command, a read of the `encryption` attribute through GraphQL, a filter on it or a dashboard shows `encrypted` for these artifacts, without anyone opening the artifact page.
 
-The check that the artifact page runs when it opens updates the stored value, as described in [Check the encryption of an artifact](#check-the-encryption-of-an-artifact). It reads the first bytes of the file. When a signed-in user opens an artifact page, the page shows the green `encrypted` badge, and Infrahub stores the value `encrypted` if the user may update artifacts and the branch accepts writes. Until then, everything that reads the stored value shows `plaintext`, including the `encryption` attribute in GraphQL queries, and the artifact page shows the stored value for a past date. Nothing in the command updates all artifacts at once: the check runs for one artifact when someone opens its page or sends `POST /api/artifact/{artifact_id}/encryption`.
+The server does this for every request that contains the file, in the same request that encrypts it:
+
+- It finds the artifacts of all the files of a request with one query, and writes one change for each artifact whose stored value is not `encrypted`. An artifact whose stored value is already `encrypted` is not written again.
+- It looks at the file that the artifact points at now. A file that an artifact pointed at in an earlier version belongs to no artifact, so it changes no value.
+- It writes the value only when the user may update artifacts and the branch accepts writes, the same conditions as the check that the artifact page runs. A file that is missing, skipped or reported as `failed` changes no value, because the file is not known to be encrypted.
+- A file object and a file that no artifact refers to have no `encryption` value, so they change nothing.
+
+A failure to write the value does not change the outcome of the file: the file is encrypted, and the command reports `encrypted`. The server logs the failure with the identifier of the artifact and the message `Could not store the encryption of an artifact`, and the command shows nothing. To write the missing values, run the command again from the first file, with a new pass or with `--restart`: a file that is already encrypted is reported as `already_encrypted`, and the server stores the value for its artifact. A run that resumes from a saved position does not visit the files before that position.
+
+The storing of the values makes the command slower: each artifact whose value changes is one write to the database. In one test with 1,000 artifacts, 3,150 files of small size and local disk storage, the command took 4.2 to 4.9 seconds without storing the values and 8.3 to 8.9 seconds with it (three runs each), and the database ran about 3 more statements for each artifact. The effect on your installation is not known, because it depends on the number of artifacts and on the time that the file reads and writes take. See [Control the pace](#control-the-pace) to limit the effect on other users.
+
+Limit: the server looks for artifacts on the default branch only. An artifact that exists only on another branch, for example one that was generated on a branch that was never merged, keeps its stored value until a check runs for it on that branch: the artifact page runs it when it opens, as described in [Check the encryption of an artifact](#check-the-encryption-of-an-artifact), and `POST /api/artifact/{artifact_id}/encryption?branch=<name>` runs it for one artifact.
 
 ### Temporary files
 

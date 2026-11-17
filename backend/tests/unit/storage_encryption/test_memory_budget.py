@@ -32,6 +32,7 @@ from infrahub.storage_encryption.memory_budget import (
     ProcessMemoryBudget,
 )
 from infrahub.storage_encryption.migrate import EncryptOutcome, encrypt_object
+from tests.helpers.route_caller import CALLER_ACCOUNT, CALLER_REQUEST
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -299,6 +300,8 @@ async def call_single_route() -> list[EncryptOutcome]:
         allow_unverified=False,
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
     return [response.outcome]
 
@@ -308,6 +311,8 @@ async def call_batch_route() -> list[EncryptOutcome]:
         request=EncryptBatchRequest(identifiers=[FILE_ONE]),
         db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
+        http_request=CALLER_REQUEST,
+        account=CALLER_ACCOUNT,
     )
     return [result.outcome for result in response.results]
 

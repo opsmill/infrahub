@@ -2006,7 +2006,7 @@
         "/api/storage/objects": {
             "get": {
                 "summary": "List Stored Objects",
-                "description": "List the stored objects in the order of their identifiers, without reading their content.\n\nA request for the first page also deletes the temporary files that an interrupted replacement left in the\nlocal storage more than an hour ago.",
+                "description": "List the stored objects in the order of their identifiers, without reading their content.\n\nNo object is changed, but a request for the first page also deletes the temporary files that an\ninterrupted replacement left in the local storage more than an hour ago, and nothing else.\n\nA page can hold fewer objects than the limit, or none, when an object was deleted while it was read. The\nlast page is the one whose `next_start_after` is null: until then, request the next page with it.",
                 "operationId": "list_stored_objects_api_storage_objects_get",
                 "security": [
                     {
