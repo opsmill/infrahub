@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";
 
+import type { ProposedChangeEvent } from "@/entities/events/domain/model/event";
+
 import { render } from "../../../../tests/components/render";
 import { EventCard } from "./event-card";
 
@@ -69,5 +71,31 @@ describe("EventCard", () => {
     // THEN
     await expect.element(component.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
     await expect.element(component.getByText("description")).not.toBeInTheDocument();
+  });
+
+  test("shows the review action of a proposed change review event", async () => {
+    // GIVEN
+    const event: ProposedChangeEvent = {
+      id: "18a3c089-085a-ac67-38d1-c5139dd74202",
+      __typename: "ProposedChangeReviewEvent",
+      event: "infrahub.proposed_change.approved",
+      branch: "main",
+      occurred_at: "2026-04-06T21:29:30.290070+00:00",
+      level: 0,
+      account_id: null,
+      primary_node: null,
+      related_nodes: [],
+      has_children: false,
+      parent_id: null,
+    };
+
+    // WHEN
+    const component = await render(<EventCard {...event} />);
+
+    // THEN
+    await expect.element(component.getByText("approved the proposed change")).toBeVisible();
+    await expect
+      .element(component.getByText("infrahub.proposed_change.approved"))
+      .not.toBeInTheDocument();
   });
 });

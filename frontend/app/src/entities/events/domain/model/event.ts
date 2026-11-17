@@ -6,6 +6,7 @@ import type {
   BranchDeletedEvent,
   BranchMergedEvent,
   BranchRebasedEvent,
+  EventNodeInterface,
   GroupAutoCreateCappedEventType,
   GroupAutoCreatedEventType,
   GroupAutoCreateRejectedEventType,
@@ -33,13 +34,19 @@ export type GroupAutoCreateEvent =
   | GroupAutoCreateRejectedEventType
   | GroupAutoCreateCappedEventType;
 
+// The events query requests only the common event fields for proposed change events.
+type CommonEventFields<T extends EventNodeInterface & { __typename: string }> = Pick<
+  T,
+  "__typename" | keyof EventNodeInterface
+>;
+
 export type ProposedChangeEvent =
-  | ProposedChangeApprovalsRevokedEvent
-  | ProposedChangeMergedEvent
-  | ProposedChangeReviewEvent
-  | ProposedChangeReviewRequestedEvent
-  | ProposedChangeReviewRevokedEvent
-  | ProposedChangeThreadEvent;
+  | CommonEventFields<ProposedChangeApprovalsRevokedEvent>
+  | CommonEventFields<ProposedChangeMergedEvent>
+  | CommonEventFields<ProposedChangeReviewEvent>
+  | CommonEventFields<ProposedChangeReviewRequestedEvent>
+  | CommonEventFields<ProposedChangeReviewRevokedEvent>
+  | CommonEventFields<ProposedChangeThreadEvent>;
 
 export type EventType =
   | AccountEvent

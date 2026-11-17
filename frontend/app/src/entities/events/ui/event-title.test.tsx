@@ -1,25 +1,22 @@
-import type React from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import type {
   AccountLoggedInEventType,
   AccountLoggedOutEventType,
+  ArtifactEvent,
   BranchMergedEvent,
   GroupAutoCreatedEventType,
+  GroupEvent,
   NodeMutatedEvent,
-  ProposedChangeReviewEvent,
-  ProposedChangeThreadEvent,
   StandardEvent,
 } from "@/shared/api/graphql/generated/types";
 
-import type { EventType } from "@/entities/events/domain/model/event";
+import type { EventType, ProposedChangeEvent } from "@/entities/events/domain/model/event";
 
 import { render } from "../../../../tests/components/render";
-import { EventCard } from "./event-card";
 import { EventTitle } from "./event-title";
-import { Event } from "./global-event";
 
-const baseEvent = {
+const commonEvent = {
   id: "7dfb5bf2-d0ad-4a06-bfd3-d0916b5b904e",
   branch: "main",
   occurred_at: "2026-04-06T21:29:30.290070+00:00",
@@ -29,17 +26,9 @@ const baseEvent = {
   related_nodes: [],
   has_children: false,
   parent_id: null,
-  payload: {},
 };
 
-const approvedEvent: ProposedChangeReviewEvent = {
-  ...baseEvent,
-  __typename: "ProposedChangeReviewEvent",
-  event: "infrahub.proposed_change.approved",
-  reviewer_account_id: "18a2e83c-0e80-fa90-3392-c51809fb54cf",
-  reviewer_account_name: "jbauer",
-  reviewer_decision: "APPROVE",
-};
+const baseEvent = { ...commonEvent, payload: {} };
 
 describe("EventTitle", () => {
   afterEach(() => {
@@ -48,7 +37,11 @@ describe("EventTitle", () => {
 
   test("shows the review action for a proposed change review event", async () => {
     // GIVEN
-    const event = approvedEvent;
+    const event: ProposedChangeEvent = {
+      ...commonEvent,
+      __typename: "ProposedChangeReviewEvent",
+      event: "infrahub.proposed_change.approved",
+    };
 
     // WHEN
     const component = await render(<EventTitle event={event} />);
@@ -90,6 +83,86 @@ describe("EventTitle", () => {
     // THEN
     await expect.element(component.getByText("merged the branch")).toBeVisible();
     await expect.element(component.getByText("feature-1")).toBeVisible();
+  });
+
+  test("shows the standard title for a standard event", async () => {
+    // GIVEN
+    const event: StandardEvent = {
+      ...baseEvent,
+      __typename: "StandardEvent",
+      event: "infrahub.schema.update",
+    };
+
+    // WHEN
+    const component = await render(<EventTitle event={event} />);
+
+    // THEN
+    await expect.element(component.getByText("updated the schema")).toBeVisible();
+    await expect.element(component.getByText("infrahub.schema.update")).not.toBeInTheDocument();
+  });
+
+  test("shows the group title for a member added to a group", async () => {
+    // GIVEN
+    const event: GroupEvent = {
+      ...commonEvent,
+      __typename: "GroupEvent",
+      event: "infrahub.group.member_added",
+      primary_node: {
+        id: "18a2e83c-7c1e-2b9a-3399-c51c3c6f1a2b",
+        kind: "CoreStandardGroup",
+        __typename: "RelatedNode",
+      },
+      related_nodes: [
+        {
+          id: "18a2e83c-5415-e0f3-3399-c51c3c6f3398",
+          kind: "InfraDevice",
+          __typename: "RelatedNode",
+        },
+      ],
+      members: [
+        {
+          id: "18a2e83c-5415-e0f3-3399-c51c3c6f3398",
+          kind: "InfraDevice",
+          __typename: "RelatedNode",
+        },
+      ],
+      ancestors: [],
+    };
+
+    // WHEN
+    const component = await render(<EventTitle event={event} />);
+
+    // THEN
+    await expect.element(component.getByText("in group")).toBeVisible();
+    await expect
+      .element(component.getByText("infrahub.group.member_added"))
+      .not.toBeInTheDocument();
+  });
+
+  test("shows the artifact title for a created artifact", async () => {
+    // GIVEN
+    const event: ArtifactEvent = {
+      ...commonEvent,
+      __typename: "ArtifactEvent",
+      event: "infrahub.artifact.created",
+      primary_node: {
+        id: "18a2e83c-9d3f-4e1a-3399-c51c3c6f4b5c",
+        kind: "CoreArtifact",
+        __typename: "RelatedNode",
+      },
+      artifact_definition_id: "18a2e83c-a1b2-5c3d-3399-c51c3c6f6d7e",
+      checksum: "4f6b5d3c2a1e",
+      checksum_previous: null,
+      storage_id: "18a2e83c-b2c3-6d4e-3399-c51c3c6f8f90",
+      storage_id_previous: null,
+    };
+
+    // WHEN
+    const component = await render(<EventTitle event={event} />);
+
+    // THEN
+    await expect.element(component.getByText("created the artifact")).toBeVisible();
+    await expect.element(component.getByText("from the definition")).toBeVisible();
   });
 
   test("shows the object label for a node event", async () => {
@@ -191,8 +264,8 @@ describe("EventTitle", () => {
   test("shows the event name without a warning for a proposed change event that has no title", async () => {
     // GIVEN
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const event: ProposedChangeThreadEvent = {
-      ...baseEvent,
+    const event: ProposedChangeEvent = {
+      ...commonEvent,
       __typename: "ProposedChangeThreadEvent",
       event: "infrahub.proposed_change_thread.updated",
     };
@@ -222,22 +295,5 @@ describe("EventTitle", () => {
     // THEN
     await expect.element(component.getByText("infrahub.future.happened")).toBeVisible();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("unexpected type"));
-  });
-
-  test.each<[string, (props: EventType) => React.ReactElement]>([
-    ["activity card", (props) => <EventCard {...props} />],
-    ["Activities list row", (props) => <Event {...props} />],
-  ])("shows the proposed change review action in the %s", async (_, renderCaller) => {
-    // GIVEN
-    const event = approvedEvent;
-
-    // WHEN
-    const component = await render(renderCaller(event));
-
-    // THEN
-    await expect.element(component.getByText("approved the proposed change")).toBeVisible();
-    await expect
-      .element(component.getByText("infrahub.proposed_change.approved"))
-      .not.toBeInTheDocument();
   });
 });
