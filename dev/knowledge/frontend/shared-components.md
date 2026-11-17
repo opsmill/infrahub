@@ -169,7 +169,7 @@ Import another entity's `domain/` types and async functions, or its `ui/` hooks/
 
 Before adding a component or changing repeated UI behavior:
 
-1. Search the owning entity and its callers: `rg -i "<name-or-behavior>" frontend/app/src/entities/`.
+1. Search the owning entity and all callers, including `pages/` and `app/`: `rg -i "<name-or-behavior>" frontend/app/src/`.
 2. Search `frontend/app/src/shared/components/` and `frontend/packages/ui/src/components/` for an existing primitive.
 3. Check the inventory above for the closest match, including entity components.
 4. Apply the extraction guidelines when several callers implement the same responsibility.

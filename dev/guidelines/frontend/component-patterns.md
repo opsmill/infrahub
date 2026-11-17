@@ -8,7 +8,7 @@ Before adding a component or applying the same UI change in multiple places, con
 
 1. `dev/knowledge/frontend/shared-components.md` — full primitive map
 2. `dev/knowledge/frontend/design-system.md` — `@infrahub/ui` package
-3. `rg -i "<name-or-behavior>" frontend/app/src/entities/` — entity components and their callers
+3. `rg -i "<name-or-behavior>" frontend/app/src/` — components and their callers across all application layers
 4. `rg -i "<name>" frontend/app/src/shared/components/`
 5. `rg -i "<name>" frontend/packages/ui/src/components/`
 
