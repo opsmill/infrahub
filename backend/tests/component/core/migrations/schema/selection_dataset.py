@@ -189,6 +189,7 @@ async def load_selection_dataset(db: InfrahubDatabase, default_branch: Branch) -
 
     branch = await create_branch(db=db, branch_name=SELECTION_BRANCH_NAME)
     nodes["w5"] = await _create(db, branch, WIDGET_KIND, name="w5", color="green", gadget=nodes["g2"])
+    nodes["w6"] = await _create(db, branch, WIDGET_KIND, name="w6", gadget=nodes["g2"])
     await _delete(db, branch, nodes["w2"].id)
     w1_on_branch = await NodeManager.get_one(db=db, id=nodes["w1"].id, branch=branch, raise_on_error=True)
     w1_on_branch.get_attribute(name="color").value = "orange"
@@ -287,9 +288,9 @@ def build_node_remove_migration(branch: Branch, kind: str) -> NodeRemoveMigratio
 
 
 def build_relationship_remove_params(
-    db: InfrahubDatabase, branch: Branch, relationship_name: str
+    db: InfrahubDatabase, branch: Branch, node_kind: str, relationship_name: str
 ) -> tuple[NodeRelationshipRemoveMigration, RelationshipRemoveQueryParams]:
-    """Drop both sides of a `SelWidget` relationship from the registered schema and return the migration inputs.
+    """Drop both sides of a relationship of `node_kind` from the registered schema and return the migration inputs.
 
     Both sides must be gone first, or the migration skips every `Relationship` vertex.
 
@@ -298,7 +299,7 @@ def build_relationship_remove_params(
 
     """
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    previous_node = schema_branch.get(name=WIDGET_KIND)
+    previous_node = schema_branch.get(name=node_kind)
     identifier = previous_node.get_relationship(name=relationship_name).get_identifier()
 
     candidate = schema_branch.duplicate()
@@ -310,9 +311,9 @@ def build_relationship_remove_params(
 
     migration = NodeRelationshipRemoveMigration(
         previous_node_schema=previous_node,
-        new_node_schema=candidate.get(name=WIDGET_KIND),
+        new_node_schema=candidate.get(name=node_kind),
         schema_path=SchemaPath(
-            path_type=SchemaPathType.RELATIONSHIP, schema_kind=WIDGET_KIND, field_name=relationship_name
+            path_type=SchemaPathType.RELATIONSHIP, schema_kind=node_kind, field_name=relationship_name
         ),
     )
     query_params = migration._build_query_params(db=db, branch=branch)

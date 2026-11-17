@@ -44,6 +44,7 @@ from infrahub.core.schema import AttributeSchema, SchemaRoot
 from tests.component.core.migrations.schema.selection_dataset import (
     BEACON_KIND,
     EMPTY_KIND,
+    GADGET_KIND,
     SELECTION_BRANCH_NAME,
     WIDGET_KIND,
     SelectionDataset,
@@ -70,9 +71,13 @@ class CountCase:
 
 
 def _same_on_both_branches(expected: dict[str, int]) -> list[CountCase]:
+    return _per_branch(on_main=expected, on_branch=expected)
+
+
+def _per_branch(on_main: dict[str, int], on_branch: dict[str, int]) -> list[CountCase]:
     return [
-        CountCase(name="main", branch_name="main", expected=expected),
-        CountCase(name=SELECTION_BRANCH_NAME, branch_name=SELECTION_BRANCH_NAME, expected=expected),
+        CountCase(name="main", branch_name="main", expected=on_main),
+        CountCase(name=SELECTION_BRANCH_NAME, branch_name=SELECTION_BRANCH_NAME, expected=on_branch),
     ]
 
 
@@ -86,10 +91,14 @@ async def selection_dataset(db: InfrahubDatabase, default_branch: Branch, node_g
 # ---------------------------------------------------------------------------
 
 
-WIDGET_AND_GENERATED_KINDS = {WIDGET_KIND: 3, f"Profile{WIDGET_KIND}": 1, f"Template{WIDGET_KIND}": 1}
+# w1, w2 and w3 are active on main; w1, w3, w5 and w6 on the branch, where w2 is deleted
+WIDGET_AND_GENERATED_KINDS = _per_branch(
+    on_main={WIDGET_KIND: 3, f"Profile{WIDGET_KIND}": 1, f"Template{WIDGET_KIND}": 1},
+    on_branch={WIDGET_KIND: 4, f"Profile{WIDGET_KIND}": 1, f"Template{WIDGET_KIND}": 1},
+)
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_remove_aware(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -135,7 +144,7 @@ async def test_attribute_remove_generated_kinds(
     )
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_remove_agnostic_attribute(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -210,7 +219,7 @@ async def test_attribute_remove_generic_with_override(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_rename_aware(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -270,7 +279,7 @@ async def test_attribute_rename_agnostic_node_leaves_nothing_on_main(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_add_aware(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -327,7 +336,7 @@ async def test_attribute_add_given_nodes(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_node_kind_update_aware(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -362,7 +371,7 @@ async def test_node_kind_update_agnostic_node(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_kind_update_to_large(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -397,7 +406,9 @@ async def test_attribute_kind_update_agnostic_node(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _same_on_both_branches({WIDGET_KIND: 3}), ids=lambda case: case.name)
+@pytest.mark.parametrize(
+    "case", _per_branch(on_main={WIDGET_KIND: 3}, on_branch={WIDGET_KIND: 4}), ids=lambda case: case.name
+)
 async def test_node_remove_aware(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
@@ -450,21 +461,54 @@ async def test_node_remove_empty_kind(
 class RelationshipCase:
     name: str
     branch_name: str
+    node_kind: str
     relationship_name: str
     expected: dict[str, int]
 
 
+# g1 is the peer of w1 and w2 on main; g2 is the peer of w5 and w6 on the branch, where w2 is deleted
 RELATIONSHIP_CASES = [
-    RelationshipCase(name="aware-main", branch_name="main", relationship_name="gadget", expected={WIDGET_KIND: 2}),
     RelationshipCase(
-        name="aware-branch", branch_name=SELECTION_BRANCH_NAME, relationship_name="gadget", expected={WIDGET_KIND: 2}
+        name="aware-main",
+        branch_name="main",
+        node_kind=WIDGET_KIND,
+        relationship_name="gadget",
+        expected={WIDGET_KIND: 2},
     ),
-    RelationshipCase(name="agnostic-main", branch_name="main", relationship_name="partner", expected={WIDGET_KIND: 1}),
+    RelationshipCase(
+        name="aware-branch",
+        branch_name=SELECTION_BRANCH_NAME,
+        node_kind=WIDGET_KIND,
+        relationship_name="gadget",
+        expected={WIDGET_KIND: 3},
+    ),
+    RelationshipCase(
+        name="agnostic-main",
+        branch_name="main",
+        node_kind=WIDGET_KIND,
+        relationship_name="partner",
+        expected={WIDGET_KIND: 1},
+    ),
     RelationshipCase(
         name="agnostic-branch",
         branch_name=SELECTION_BRANCH_NAME,
+        node_kind=WIDGET_KIND,
         relationship_name="partner",
         expected={WIDGET_KIND: 1},
+    ),
+    RelationshipCase(
+        name="many-peers-main",
+        branch_name="main",
+        node_kind=GADGET_KIND,
+        relationship_name="widgets",
+        expected={GADGET_KIND: 1},
+    ),
+    RelationshipCase(
+        name="many-peers-branch",
+        branch_name=SELECTION_BRANCH_NAME,
+        node_kind=GADGET_KIND,
+        relationship_name="widgets",
+        expected={GADGET_KIND: 2},
     ),
 ]
 
@@ -474,7 +518,7 @@ async def test_relationship_remove(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: RelationshipCase
 ) -> None:
     branch = get_branch(selection_dataset, default_branch, case.branch_name)
-    migration, query_params = build_relationship_remove_params(db, branch, case.relationship_name)
+    migration, query_params = build_relationship_remove_params(db, branch, case.node_kind, case.relationship_name)
     await assert_count_matches_write(
         db=db,
         queries=[NodeRelationshipRemoveMigrationQuery],
