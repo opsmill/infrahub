@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from dataclasses import field
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub_sdk.graphql import Query
 from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality
@@ -83,38 +82,24 @@ class ComputedAttributeAutomations(BaseModel):
 class PythonTransformComputedAttribute(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
+    transform_id: str
     repository_id: str
     repository_name: str
     repository_kind: str
-    query_name: str
+    query_id: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
-    default_schema: bool
     branch_name: str
-    branch_commit: dict[str, str] = field(default_factory=dict)
+    branch_commit: dict[str, str | None] = field(default_factory=dict)
 
     @computed_field
-    def repository_commit(self) -> str:
+    def repository_commit(self) -> str | None:
         return self.branch_commit[self.branch_name]
 
     def populate_branch_commit(self, repository_data: RepositoryData | None = None) -> None:
         if repository_data:
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
-
-    def get_altered_branches(self) -> list[str]:
-        if registry.default_branch in self.branch_commit:
-            default_branch_commit = self.branch_commit[registry.default_branch]
-            return [
-                branch_name for branch_name, commit in self.branch_commit.items() if commit != default_branch_commit
-            ]
-        return list(self.branch_commit.keys())
-
-
-@dataclass
-class PythonTransformTarget:
-    kind: str
-    object_id: str
 
 
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
@@ -231,6 +216,8 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
+
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
         )
@@ -281,6 +268,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         computed_attribute: PythonTransformComputedAttribute,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
+        """Build the definition that answers a change to ``kind`` for this transform.
+
+        The definition is keyed on the transform and not on one attribute: within one branch the
+        attributes a transform feeds share its query, so they read the same kinds and the same
+        fields of them.
+        """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
         # where the computed attribute belongs that to will need to be created first which will trigger its own initial
@@ -299,10 +292,11 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
-            name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
+            name=f"transform{NAME_SEPARATOR}{computed_attribute.name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[
@@ -312,6 +306,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                         "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                         "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
                         "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
+                        # The flow reads no attribute name from the event, so it is told which
+                        # query matched and which transform runs it: that pair is what narrows the
+                        # groups and the attributes it recomputes.
+                        "graphql_query_id": computed_attribute.query_id,
+                        "transform_name": computed_attribute.name,
+                        "transform_id": computed_attribute.transform_id,
                         "context": {
                             "__prefect_kind": "json",
                             "value": {

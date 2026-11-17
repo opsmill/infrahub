@@ -22,8 +22,10 @@ safe-outputs:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   report-failure-as-issue: false
+  noop:
+    report-as-issue: false
   add-labels:
-    max: 30
+    max: 45
     target: "*"
     # Enumerated on purpose, not a group/* + category/* wildcard: this is the
     # enforcement boundary, so it must be a closed set. rest.issues.addLabels
@@ -47,6 +49,7 @@ safe-outputs:
       - category/error-reporting
       - category/permissions
       - category/pools
+      - category/derived-values
   missing-tool:
 ---
 

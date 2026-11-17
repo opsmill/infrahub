@@ -1,5 +1,6 @@
 import pytest
 from graphene.types.field import Field
+from pydantic import create_model
 
 from infrahub.core import attribute
 from infrahub.graphql import types
@@ -49,3 +50,21 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
     included.extend(name for name in fields if name not in excluded_fields)
 
     return sorted(included)
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(attribute_name, id=attribute_name) for attribute_name in ATTRIBUTE_PYTHON_TYPES],
+)
+def test_attribute_python_types_build_a_json_schema(test_case: str) -> None:
+    """Every attribute kind's python type can back a pydantic field, so the REST JSON schema endpoint can render it."""
+    model = create_model("Model", value=(ATTRIBUTE_PYTHON_TYPES[test_case], None))
+
+    assert "value" in model.model_json_schema()["properties"]
+
+
+def test_list_attribute_renders_as_untyped_array() -> None:
+    """A List attribute holds items of any type, so its JSON schema is an array with unconstrained items."""
+    model = create_model("Model", value=(ATTRIBUTE_PYTHON_TYPES["List"], ...))
+
+    assert model.model_json_schema()["properties"]["value"] == {"items": {}, "title": "Value", "type": "array"}

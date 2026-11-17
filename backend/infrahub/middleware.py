@@ -5,6 +5,12 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from infrahub import config
+from infrahub.api.admission.middleware import SHED_MARKER_HEADER
+
+# Response headers a cross-origin browser may read. Both belong to the API's own load-shed
+# contract rather than to a deployment, so they are not a setting: a shed 429 is only useful to a
+# cross-origin client that can read the advised wait and tell the shed from an ingress 429.
+CORS_EXPOSE_HEADERS: tuple[str, ...] = ("Retry-After", SHED_MARKER_HEADER)
 
 
 class InfrahubCORSMiddleware(CORSMiddleware):
@@ -14,6 +20,7 @@ class InfrahubCORSMiddleware(CORSMiddleware):
         kwargs["allow_credentials"] = config.SETTINGS.api.cors_allow_credentials
         kwargs["allow_methods"] = config.SETTINGS.api.cors_allow_methods
         kwargs["allow_headers"] = config.SETTINGS.api.cors_allow_headers
+        kwargs["expose_headers"] = CORS_EXPOSE_HEADERS
 
         super().__init__(app, *args, **kwargs)
 

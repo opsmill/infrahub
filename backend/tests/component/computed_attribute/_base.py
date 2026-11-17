@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar, Generator
+from typing import TYPE_CHECKING, Any, AsyncGenerator, ClassVar
 
 import pytest
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -17,8 +18,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedA
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.task_manager import setup_task_manager_once
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
@@ -26,9 +26,11 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -97,7 +99,7 @@ async def create_transform01(db: InfrahubDatabase, branch_name: str) -> Node:
     await query.new(
         db=db,
         name="query01",
-        query="query { TestCar { edges { node { name { value } } } } }",
+        query="query TestCarQuery($id: ID!) { TestCar(ids: [$id]) { edges { node { name { value } } } } }",
         models=["TestCar", "TestPerson"],
     )
     await query.save(db=db)
@@ -115,6 +117,18 @@ async def create_transform01(db: InfrahubDatabase, branch_name: str) -> Node:
     return repo
 
 
+async def commit_schema_branch(*, db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch) -> None:
+    """Register an edited schema on its branch and persist the new hash.
+
+    Processed first, the way the API path does it, because the hash is taken from the registry and
+    has to describe the schema a gather then reads.
+    """
+    schema_branch.process()
+    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    branch.update_schema_hash()
+    await branch.save(db=db)
+
+
 @dataclass
 class ScopedRecomputeCase:
     """A single ``(changed_elements -> expected submitted set)`` parametrize case."""
@@ -124,7 +138,7 @@ class ScopedRecomputeCase:
     expected_submitted: set[str]
 
 
-class ScopedRecomputeTestBase(TestInfrahubAppBase):
+class ScopedRecomputeTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Fixtures and helpers shared by the Jinja2 and Python scoped recompute tests.
 
     Subclasses set ``WORKFLOW`` to the recompute trigger workflow whose submissions
@@ -134,21 +148,17 @@ class ScopedRecomputeTestBase(TestInfrahubAppBase):
     WORKFLOW: ClassVar[WorkflowDefinition]
 
     @pytest.fixture(scope="class", autouse=True)
-    async def task_manager(self, prefect: Generator[str, None, None]) -> None:
-        await setup_task_manager_once()
-
-    @pytest.fixture(scope="class", autouse=True)
-    async def service(self, task_manager: None, test_client: Any) -> InfrahubServices:
-        return app.state.service
-
-    @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        dependency_provider: Provider,
         service: InfrahubServices,
+        dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def service(self, workflow_local: WorkflowLocalExecution, test_client: Any) -> InfrahubServices:
+        return app.state.service
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

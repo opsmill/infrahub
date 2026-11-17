@@ -1,10 +1,9 @@
 ---
 name: speckit-opsmill-extract
-description: Extract knowledge, guidelines, and ADRs from one or more completed spec
-  directories into the project documentation system.
+description: Extract knowledge, guidelines, and ADRs from one or more completed spec directories into the project documentation system.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: opsmill
   source: opsmill:commands/extract.md
 ---
 
@@ -223,11 +222,22 @@ Create new files in `dev/adr/` using this format:
 ### Knowledge updates
 
 For each knowledge update:
-1. Read the full target file
+1. Read the full target file (or create a new one if needed)
 2. Find the appropriate section (match by heading)
 3. Add or update content within that section
 4. If the section does not exist, create it in a logical position
-5. Add a source marker: `<!-- Extracted from specs/<spec-name> on YYYY-MM-DD -->`
+5. Add a source marker: `<!-- Extracted from specs/archive/<spec-name> on YYYY-MM-DD -->`
+
+If creating a new knowledge file, follow the standard structure:
+```markdown
+# <Topic>
+
+## Overview
+
+<Brief description of what this document covers.>
+
+## <Sections...>
+```
 
 ### Guidelines updates
 
@@ -235,7 +245,7 @@ Same approach as knowledge updates:
 1. Read the full target file (or create a new one if needed)
 2. Find the appropriate section
 3. Add the prescriptive pattern with code examples where relevant
-4. Add a source marker: `<!-- Extracted from specs/<spec-name> on YYYY-MM-DD -->`
+4. Add a source marker: `<!-- Extracted from specs/archive/<spec-name> on YYYY-MM-DD -->`
 
 If creating a new guidelines file, follow the standard structure:
 ```markdown

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLSchema, execute, parse, validate
 from graphql.error import GraphQLError
@@ -10,6 +10,8 @@ from graphql.execution import ExecutionResult
 from graphql.type import validate_schema
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from graphql import ExecutionContext, GraphQLFieldResolver, GraphQLTypeResolver
     from graphql.execution import Middleware
     from graphql.language import Source
@@ -75,18 +77,17 @@ async def execute_graphql_query(
 
     # Execute
     result = execute(
-        schema,
-        document,
-        root_value,
-        context_value,
-        variable_values,
-        operation_name,
-        field_resolver,
-        type_resolver,
-        None,
-        middleware,
-        execution_context_class,
-        is_awaitable,
+        schema=schema,
+        document=document,
+        root_value=root_value,
+        context_value=context_value,
+        variable_values=variable_values,
+        operation_name=operation_name,
+        field_resolver=field_resolver,
+        type_resolver=type_resolver,
+        middleware=middleware,
+        execution_context_class=execution_context_class,
+        is_awaitable=is_awaitable,
     )
 
     if isawaitable(result):

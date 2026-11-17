@@ -1,6 +1,7 @@
 import importlib
 import inspect
-from typing import Any, Awaitable, TypeVar
+from collections.abc import Awaitable
+from typing import Any, Self, TypeVar
 from uuid import UUID
 
 from prefect import Flow
@@ -9,13 +10,15 @@ from prefect.client.schemas.actions import DeploymentScheduleCreate
 from prefect.client.schemas.objects import ConcurrencyLimitStrategy, FlowRun
 from prefect.client.schemas.schedules import CronSchedule
 from pydantic import BaseModel, Field
-from typing_extensions import Self
 
 from infrahub import __version__
 
 from .constants import TAG_NAMESPACE, WorkflowPriority, WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
+
+TASK_RESULT_TTL_SECONDS = 2 * 24 * 60 * 60
+"""A result is read at most once, by the caller waiting for its flow run, so it only has to outlive that wait."""
 
 WorkflowReturn = TypeVar("WorkflowReturn")
 

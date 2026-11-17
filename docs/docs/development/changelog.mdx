@@ -40,7 +40,7 @@ What this means in practice for contributing to Infrahub is:
     - `fixed`
     - `security`
     - `housekeeping`
-    - *Note*: dependency-version bumps are recorded as `changed` (see the `upgrade-backend-dependencies` command), not `housekeeping`. Reserve `housekeeping` for tooling, build, and CI maintenance.
+    - *Note*: dependency-version bumps are recorded as `changed` (see the `upgrading-infrastructure-dependencies` skill), not `housekeeping`. Reserve `housekeeping` for tooling, build, and CI maintenance.
 1. Upon release of a new version, maintainers (and eventually CI) will execute `towncrier build` in each package directory which will do the following:
     1. Consolidate all Newsfragment files in each `changelog` directories into a respective file each named `CHANGELOG.md`, and automatically prepend the changelog into the relevant release section
     1. `git rm` all individual Newsfragment files

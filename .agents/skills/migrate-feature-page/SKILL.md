@@ -324,7 +324,7 @@ Everything else (~XX% of the lines changed) is verbatim from the source legacy f
 
 ### Step 11 — Lint, commit, push, open PR
 
-**Always lint before committing** — required by `docs/AGENTS.md`:
+**Always lint before committing** — it is required for every docs change:
 
 ```bash
 uv run invoke docs.lint

@@ -15,7 +15,7 @@ type LogsProps = {
 
 export const getSeverityBadge: { [key: string]: any } = {
   success: <Badge variant={"green"}>success</Badge>,
-  info: <Badge variant={"yellow"}>info</Badge>,
+  info: <Badge variant={"blue"}>info</Badge>,
   warning: <Badge variant={"yellow"}>warning</Badge>,
   error: <Badge variant={"red"}>error</Badge>,
   critical: <Badge variant={"red"}>critical</Badge>,

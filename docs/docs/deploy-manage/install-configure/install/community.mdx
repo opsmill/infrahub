@@ -62,6 +62,10 @@ docker ps | grep infrahub
 
 :::
 
+### Observability (optional)
+
+To also deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy), fetch the compose file with `?observability=true`: `curl "https://infrahub.opsmill.io/?observability=true" > docker-compose.yml`. See [Observability stack](./observability-stack).
+
 ### Stop and remove an Infrahub environment
 
 <Tabs groupId="os" queryString>
@@ -182,6 +186,8 @@ It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is
 <ReferenceLink title="Infrahub Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub" openInNewTab />
 <ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub/infrahub" openInNewTab />
 
+To run the Infrahub MCP server in the same release as Infrahub, set `infrahub-mcp.enabled: true` in your values file and put the MCP server settings under the `infrahub-mcp:` key. With the default settings, every MCP client reads and writes data in Infrahub through one shared API token. To require each client to send its own API token, and for the other settings, see [Deploy on Kubernetes with Helm](https://docs.infrahub.app/mcp/guides/kubernetes) in the Infrahub MCP server documentation.
+
 ### Prerequisites
 
 - A Kubernetes cluster
@@ -189,28 +195,64 @@ It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is
 
 :::warning Storage persistence for testing and lab environments
 
-By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+By default, the Helm chart disables storage persistence on all components (Neo4j, the task manager PostgreSQL database, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
 
 However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
 
 For long-running tests or lab environments, you should either:
 
-- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Enable storage persistence for the Neo4j database and the task manager PostgreSQL database at minimum (but also on the other components if possible)
 - Use Docker Compose instead, which provides more predictable behavior for non-production environments
 
+The PostgreSQL database is used by the task manager (Prefect) and stores task execution history, logs, and workflow state.
+
 :::
+
+#### Enable storage persistence
+
+Add the following to your `values.yml` file to store the data of the bundled components on persistent volumes provisioned from the default storage class of your cluster. The `neo4j` and `prefect-server` sections are the minimum; the `redis` and `rabbitmq` sections are optional but recommended.
+
+```yaml
+neo4j:
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 20Gi
+
+prefect-server:
+  postgresql:
+    primary:
+      persistence:
+        enabled: true
+        size: 20Gi
+
+redis:
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+rabbitmq:
+  persistence:
+    enabled: true
+    size: 8Gi
+```
+
+To use a storage class other than the cluster default, add `storageClass: <name>` to the `persistence` sections of PostgreSQL, Redis, and RabbitMQ, and set Neo4j to `mode: dynamic`, as shown in the example in [Step 1](#step-1-fill-in-the-values-file). See [Task manager database (PostgreSQL) storage](../hardware-requirements.mdx#task-manager-database-postgresql-storage) to size the PostgreSQL volume.
 
 ### Production deployment requirements
 
 The following are required for production deployments using Helm:
 
-- Data persistence for the database must be enabled
+- Data persistence must be enabled for the Neo4j database and the task manager PostgreSQL database
 - Multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can use the `affinity` variable to define the affinity policy for the pods
 - S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
 
 :::warning
 
-We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
+We do not recommend using the included dependencies (Neo4j, PostgreSQL, RabbitMQ, Redis) for production.
 They are present to ease deployment on non-production environments.
 
 :::
@@ -275,6 +317,14 @@ neo4j:
         storageClassName: premium-rwo
         requests:
           storage: 100Gi
+
+prefect-server:
+  postgresql:
+    primary:
+      persistence:
+        enabled: true
+        storageClass: premium-rwo
+        size: 100Gi
 ```
 
 :::warning
@@ -313,6 +363,23 @@ To deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy) on K
 
 </TabItem>
 </Tabs>
+
+## Log in
+
+Infrahub creates an administrator account the first time it starts with an empty database. Open the web interface, select **Log in** in the bottom-left corner, and enter the default credentials:
+
+:::info Default credentials
+
+- Username: `admin`
+- Password: `infrahub`
+
+:::
+
+With Docker Compose or a clone of the repository, the web interface is at [http://localhost:8000](http://localhost:8000). With Helm, use the address of the ingress or service that exposes the Infrahub API server.
+
+To start with a different password, set `INFRAHUB_INITIAL_ADMIN_PASSWORD` before the first start. Infrahub reads this variable only when it creates the account, so changing it later has no effect. After the first start, change the password from the account menu in the bottom-left corner: select **Account settings**, then the **Password** tab.
+
+For a production deployment, replace this password and the other default values listed in [Production deployment](../production-deployment/overview).
 
 ## Load a schema
 

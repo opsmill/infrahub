@@ -85,6 +85,10 @@
   description: "Resource pools: NumberPool, prefix pools, IPAM allocation"
   color: "1d76db"
 
+- name: "category/derived-values"
+  description: "Computed attribute, display label or HFID wrong, stale or slow; added on top of the primary category"
+  color: "1d76db"
+
 # ----------------------------------
 # TYPE INFRAHUB (default)
 # ----------------------------------
@@ -250,6 +254,10 @@
 
 - name: "ci/run-intensive-benchmarks"
   description: "Run intensive CodSpeed benchmarks, usually excluded."
+  color: "73FA20"
+
+- name: "ci/run-huge-runners"
+  description: "Run the huge-runner jobs on a pull request that would otherwise skip them"
   color: "73FA20"
 
 - name: "cd/preview"

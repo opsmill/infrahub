@@ -1,3 +1,3 @@
-from .importer import RecordingImporter
+from .importer import FailingImporter, RecordingImporter
 
-__all__ = ["RecordingImporter"]
+__all__ = ["FailingImporter", "RecordingImporter"]

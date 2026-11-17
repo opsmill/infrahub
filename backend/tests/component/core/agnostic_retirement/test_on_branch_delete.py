@@ -19,12 +19,14 @@ from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 from tests.component.core.agnostic_retirement.support import (
     FailingBranchRetirementDatabase,
     RetirementFailureError,
     delete_node,
+    merge_branch,
 )
 from tests.helpers.agnostic_edges import (
     TEST_ACTOR_ID,
@@ -51,7 +53,13 @@ class TestAgnosticRetirementOnBranchDelete:
         return default_branch_scope_class
 
     @pytest.fixture(scope="class")
-    async def agnostic_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+    async def agnostic_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        """The merge a test drives resolves core kinds while it synchronizes, so the core schema rides along."""
         registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=default_branch.name)
 
     async def _branch_vertex_count(self, db: InfrahubDatabase, branch_name: str) -> int:
@@ -148,6 +156,106 @@ class TestAgnosticRetirementOnBranchDelete:
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edges(after) == [], "the last retainer's deletion released it"
         assert {edge.status for edge in after} == {"active"}
+
+    async def test_a_release_larger_than_the_batch_closes_every_candidate_at_one_stamp(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """Retention is evaluated per batch of Nodes, and the batching is invisible in the result.
+
+        A batch smaller than the candidate set must still release every candidate, attribute and
+        relationship alike, and every closure carries the one stamp of the deletion rather than a
+        stamp per batch.
+        """
+        widgets = []
+        for index in range(5):
+            gadget = await Node.init(db=db, schema=GADGET_KIND, branch=default_branch)
+            await gadget.new(db=db, name=f"peer-of-batched-release-{index}")
+            await gadget.save(db=db)
+            widgets.append(
+                await create_widget(
+                    db=db, branch=default_branch, name=f"batched-release-{index}", serial=3400 + index, gadget=gadget
+                )
+            )
+        branch = await create_branch(db=db, branch_name="released-in-batches")
+
+        before = {
+            widget.id: (
+                await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial"),
+                await relationship_global_edges(db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER),
+            )
+            for widget in widgets
+        }
+        for widget in widgets:
+            await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+
+        lower_bound = Timestamp()
+        result = await BranchDataDeleter(db=db, batch_size=2).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        upper_bound = Timestamp()
+        assert result.branch_deleted
+
+        stamps: set[str | None] = set()
+        after = {}
+        for widget in widgets:
+            attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+            relationship_after = await relationship_global_edges(
+                db=db, node_id=widget.id, identifier=RELATIONSHIP_IDENTIFIER
+            )
+            assert open_edges(attribute_after) == [], f"widget {widget.id} kept an open attribute edge"
+            assert open_edges(relationship_after) == [], f"widget {widget.id} kept an open relationship edge"
+            after[widget.id] = (attribute_after, relationship_after)
+            stamps |= to_times(attribute_after) | to_times(relationship_after)
+
+        assert len(stamps) == 1, "every batch closes at the deletion's one stamp"
+        (stamp,) = stamps
+        assert stamp is not None
+        assert lower_bound.to_string() <= stamp <= upper_bound.to_string()
+        retired_at = Timestamp(stamp)
+        for widget in widgets:
+            attribute_before, relationship_before = before[widget.id]
+            attribute_after, relationship_after = after[widget.id]
+            assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=retired_at, by=TEST_ACTOR_ID)
+            assert_relationship_retired_at(
+                after=relationship_after, before=relationship_before, at=retired_at, by=TEST_ACTOR_ID
+            )
+
+    async def test_deleting_a_merged_branch_releases_what_the_default_branch_deleted_since(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+    ) -> None:
+        """The other candidate bound: an object that exists on the deleted branch itself.
+
+        Created on the branch and merged, the object is read on the branch through its own existence
+        edge rather than through the fork window. The default-branch delete closes nothing while the
+        merged branch still reads it; deleting that branch is what empties the retaining set.
+        """
+        branch = await create_branch(db=db, branch_name="merged-then-deleted")
+        widget = await create_widget(db=db, branch=branch, name="born-on-the-merged-branch", serial=3500)
+        await merge_branch(db=db, default_branch=default_branch, branch=branch, at=Timestamp())
+
+        before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
+
+        await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
+            edge_summary(before)
+        ), "the merged branch still reads the object, so the default-branch delete released nothing"
+
+        lower_bound = Timestamp()
+        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        upper_bound = Timestamp()
+        assert result.branch_deleted
+
+        after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_edges(after) == [], "the merged branch was the last retainer"
+        (stamp,) = to_times(after)
+        assert stamp is not None
+        assert lower_bound.to_string() <= stamp <= upper_bound.to_string()
+        assert_attribute_retired_at(after=after, before=before, at=Timestamp(stamp), by=TEST_ACTOR_ID)
 
     async def test_a_retirement_failure_fails_the_branch_delete(
         self,

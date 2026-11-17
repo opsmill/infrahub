@@ -21,14 +21,15 @@ from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
 
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -94,7 +96,7 @@ GENERATOR_SCHEMA = SchemaRoot(
 )
 
 
-class GeneratorRegenTestBase(TestInfrahubAppBase):
+class GeneratorRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
     """Shared harness for the generator-regeneration selection-gate component tests.
 
     Provides the application wiring every scenario needs - a recording workflow backend so
@@ -103,10 +105,10 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
     ``run_generators`` and read back the set of generator definitions dispatched for a check.
 
     The ``workflow_recorder``, ``service`` and ``client`` fixtures override the base ones on
-    purpose: the base ``client`` fixture assumes a ``WorkflowLocalExecution`` backend (it asserts
-    on it) and would execute the dispatched checks, whereas these tests install a
-    ``WorkflowRecorder`` so the dispatch itself is the observable under test. The base class also
-    does not provide a ``service`` fixture at all (only the local-execution subclasses do).
+    purpose: the base ``client`` fixture would execute the dispatched checks, whereas these tests
+    install a ``WorkflowRecorder`` so the dispatch itself is the observable under test. The
+    recorder takes over the workflow lookup only once the app has been built, so the app keeps the
+    ``WorkflowLocalExecution`` backend it is asserted on.
 
     Subclasses supply their own schema and dataset inline. Each dataset must expose
     ``proposed_change_id``, ``repository_id``, ``repository_name`` and ``source_branch`` so the
@@ -116,14 +118,16 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -144,9 +148,11 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
@@ -259,21 +265,16 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
         await repo.new(db=db, name="generator-regen-repo", location="https://github.com/test/generator-regen-repo.git")
         await repo.save(db=db)
 
-        # ``models`` is populated by the GraphQL mutation analyzer in production; nodes created
-        # directly against the database must set it explicitly so the data-change (MODIFIED_KINDS)
-        # path has the queried kinds to match against.
         query_a = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_a.new(db=db, name="GetADevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query_a.new(db=db, name="GetADevice", query=QUERY_A)
         await query_a.save(db=db)
 
         query_b = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_b.new(db=db, name="GetBDevice", query=QUERY_B, models=["TestNetworkDevice"])
+        await query_b.new(db=db, name="GetBDevice", query=QUERY_B)
         await query_b.save(db=db)
 
         query_source_only = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query_source_only.new(
-            db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY, models=["TestNetworkDevice"]
-        )
+        await query_source_only.new(db=db, name="GetSourceOnlyDevice", query=QUERY_SOURCE_ONLY)
         await query_source_only.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -628,7 +629,7 @@ class TestGeneratorRegenLegacyFallback(GeneratorRegenTestBase):
         await repo.save(db=db)
 
         query = await Node.init(db=db, schema="CoreGraphQLQuery")
-        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A)
         await query.save(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)

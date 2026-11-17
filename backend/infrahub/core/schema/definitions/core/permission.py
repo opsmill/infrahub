@@ -27,6 +27,7 @@ core_base_permission = GenericSchema(
     include_in_menu=False,
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/deploy-manage/user-management/permissions-roles/overview/",
     attributes=[
         Attr(name="description", kind="Text", optional=True),
         Attr(
@@ -65,6 +66,7 @@ core_object_permission = NodeSchema(
     uniqueness_constraints=[["namespace__value", "name__value", "action__value", "decision__value"]],
     generate_profile=False,
     inherit_from=[InfrahubKind.BASEPERMISSION],
+    documentation="/deploy-manage/user-management/permissions-roles/overview/",
     attributes=[
         Attr(
             name="namespace",
@@ -107,6 +109,7 @@ core_global_permission = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.BASEPERMISSION],
     branch=BranchSupportType.AGNOSTIC,
+    documentation="/deploy-manage/user-management/permissions-roles/overview/",
     attributes=[
         Attr(
             name="action",
@@ -137,6 +140,7 @@ core_account_role = NodeSchema(
     display_label="name__value",
     human_friendly_id=["name__value"],
     generate_profile=False,
+    documentation="/deploy-manage/user-management/permissions-roles/overview/",
     attributes=[Attr(name="name", kind="Text", unique=True)],
     relationships=[
         Rel(
@@ -171,6 +175,7 @@ core_account_group = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
     branch=BranchSupportType.AGNOSTIC,
+    documentation="/deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions/",
     attributes=[
         Attr(
             name="origin",

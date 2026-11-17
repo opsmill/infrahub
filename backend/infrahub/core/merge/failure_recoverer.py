@@ -284,7 +284,7 @@ class MergeFailureRecoverer:
     async def _reset_branch(self, branch: Branch) -> None:
         branch.status = BranchStatus.OPEN
         await branch.save(db=self.db)
-        registry.branch[branch.name] = branch
+        registry.refresh_cached_branch(branch)
 
     async def _restore_destination_schema_metadata(self, branch: Branch) -> None:
         """Realign the destination branch's persisted schema hash/changed-at with the rolled-back graph.
@@ -302,7 +302,7 @@ class MergeFailureRecoverer:
         default_branch.schema_changed_at = branch.pre_merge_destination_schema_changed_at
         await default_branch.save(db=self.db)
         self.default_branch = default_branch
-        registry.branch[default_branch.name] = default_branch
+        registry.refresh_cached_branch(default_branch)
 
     async def _load_destination_schema(self, branch: Branch) -> SchemaBranch:
         return await self.schema_manager.load_schema_from_db(db=self.db, branch=branch)

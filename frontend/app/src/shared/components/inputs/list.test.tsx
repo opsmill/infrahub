@@ -22,7 +22,7 @@ describe("List Component", () => {
     // THEN
     await expect.element(component.getByText("item 1")).toBeVisible();
     await expect.element(component.getByText("item 2")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Empty list");
+    await expect.element(component.baseElement).not.toMatchTextContent("Empty list");
   });
 
   test("adds new item when pressing enter", async () => {
@@ -38,7 +38,7 @@ describe("List Component", () => {
     // THEN
     await expect.element(component.getByText("test item")).toBeVisible();
     await expect.element(input).toHaveValue("");
-    await expect.element(component.baseElement).not.toHaveTextContent("Empty list");
+    await expect.element(component.baseElement).not.toMatchTextContent("Empty list");
     expect(items).toEqual(["test item"]);
   });
 
@@ -96,7 +96,7 @@ describe("List Component", () => {
 
     // THEN
     await expect.element(component.getByText("Empty list")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("test item");
+    await expect.element(component.baseElement).not.toMatchTextContent("test item");
     expect(items).toEqual([]);
   });
 
@@ -117,7 +117,7 @@ describe("List Component", () => {
     // THEN
     await expect.element(component.getByText("first")).toBeVisible();
     await expect.element(component.getByText("third")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("second");
+    await expect.element(component.baseElement).not.toMatchTextContent("second");
     expect(items).toEqual(["first", "third"]);
   });
 

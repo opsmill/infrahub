@@ -47,6 +47,12 @@ Each of the eight `import_*` methods above owns a compare/create/update lifecycl
 
 `base.py:183-188` — `@property sdk` lazily mutates `self.client` (a Pydantic-model field) inside the read accessor. `base.py:190-192` — `@property default_branch` falls back to `registry.default_branch` (module-global singleton) when `self.default_branch_name` is `None`.
 
+> **The `default_branch` half of that observation is being fixed elsewhere.** IFC-3105
+> (`dev/specs/ifc-3105-honour-default-branch/`) deletes both the optional field and the fallback
+> property, replacing them with a required field on the read-write kind and no trunk at all on the
+> read-only kind. Treat it as already gone when planning Story 6. The `sdk` property finding stands
+> and is untouched by that work.
+
 ### Public re-exports (FR-013)
 
 `backend/infrahub/git/__init__.py:1-11` exports `InfrahubReadOnlyRepository`, `InfrahubRepository`, `initialize_repositories_directory`. `repository.py` defines no `__all__`; the symbols imported elsewhere in the backend are the two classes plus `get_initialized_repo` (the `@task`-decorated public function at repository.py:320).
@@ -105,7 +111,7 @@ The `_impl` method stays on the class (not a free function) so it sees `self`. T
 
 Two `typing.Protocol` types, defined `runtime_checkable=False`:
 
-- `ReadOnlyRepositoryProtocol`: the methods read-only consumers need — `get_commit_value`, `get_worktree`, `find_files`, `get_file_content`, `get_repository_config`, plus the identification fields (`name`, `id`, `default_branch`).
+- `ReadOnlyRepositoryProtocol`: the methods read-only consumers need — `get_commit_value`, `get_worktree`, `find_files`, `get_file_content`, `get_repository_config`, plus the identification fields (`name`, `id`, ~~`default_branch`~~). **`default_branch` is struck**: IFC-3105 removes it from the read-only kind entirely (FR-004), so a protocol requiring it would be unsatisfiable by `InfrahubReadOnlyRepository`. See `contracts/protocols.md`.
 - `RepositoryProtocol(ReadOnlyRepositoryProtocol)`: adds the write surface — `pull`, `push`, `merge`, `rebase`, `sync`, `create_branch`, `delete_branch`, `update_commit_value`.
 
 Exact method set is pinned by a discovery sweep before the protocol-introduction PR lands (FR-020 audit). Both concrete classes (`InfrahubRepository`, `InfrahubReadOnlyRepository`) satisfy `RepositoryProtocol` structurally — the protocols are derived from existing behavior, not new.
@@ -151,7 +157,7 @@ ERROR_RULES: tuple[ErrorRule, ...] = (
 )
 ```
 
-Ordered tuple, first match wins, matches the existing top-to-bottom semantics of the conditional chain. The fallthrough `RepositoryError(identifier=..., message=stderr)` remains the loop's else clause. Adding a new pattern is one `ErrorRule(...)` line when the builder already exists, or one builder + one rule when it doesn't — no edit to `raise_enriched`'s body. Named builders avoid anonymous-lambda registries (they are searchable, independently testable, and de-duplicate the three `if`-branches that today produce `RepositoryConnectionError`).
+Ordered tuple, first match wins, matches the existing top-to-bottom semantics of the conditional chain. The fallthrough `RepositoryError(identifier=..., message=stderr)` remains the loop's else clause. Adding a new pattern is one `ErrorRule(...)` line when the builder already exists, or one builder + one rule when it doesn't — no edit to `raise_enriched`'s body. Named builders avoid anonymous-lambda registries: they are searchable, independently testable, and de-duplicate branches that construct the same exception. Branches that raise the same class with different arguments — the two `RepositoryConnectionError` branches, one of which passes the TLS certificate hint — keep one builder each, because FR-014 covers message strings too.
 
 **Alternatives considered:** regex-only matchers (rejected — current code uses plain substring matching and case-insensitive checks both; a `Callable[[str], bool]` matcher is more honest than forcing every check into a regex); a `dict[str, type[Exception]]` keyed by pattern (rejected — loses order, can't express "raise X with these constructor args from this matcher"); inline `lambda` factories on each rule (rejected — anonymous, not searchable, and duplicates the same exception construction across multiple rules); declarative `use_branch: bool` / `use_location: bool` flags on `ErrorRule` (rejected — pushes per-exception-shape knowledge into `raise_enriched`'s body via `**kwargs: Any`); a `from_context` classmethod on each exception (rejected — modifies shared exception classes used elsewhere in the backend, which raises FR-014 risk for what is supposed to be pure restructuring).
 

@@ -42,7 +42,11 @@ class TestTutorial4GitIntegration:
 
         # go to interface Ethernet1 for atl1-edge1
         await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Device Management").click()
-        await admin_page.get_by_role("menuitem", name="Device", exact=True).click()
+        await (
+            admin_page.get_by_role("dialog", name="Device Management")
+            .get_by_role("link", name="Device", exact=True)
+            .click()
+        )
         await expect(admin_page.get_by_text("Generic Device object")).to_be_visible()
         await admin_page.get_by_role("link", name="atl1-edge1").click()
         await admin_page.get_by_text("Interfaces15").click()

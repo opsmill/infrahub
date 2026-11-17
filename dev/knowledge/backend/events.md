@@ -33,6 +33,18 @@ when the model is constructed. Assigning `value`/`value_previous` on an existing
 the mask (`validate_assignment` is not enabled) and leaks the secret into the event payload. Build
 changelog entries with their final values; never patch them after construction.
 
+### Secondary changelogs and the parent marker
+
+A mutation's affected peers each get a secondary changelog. Its parent is held apart from the
+`relationships` dict, and `root_node_id` falls back to the changelog's own node when the parent is
+unset — so a path that builds or merges a secondary without carrying the parent over emits an event
+missing `infrahub.node.parent` and rooted on the wrong node. Every such path must propagate it.
+
+"Parent" here means a relationship of schema kind `Parent` only. The `parent`/`children`
+relationships generated for a `hierarchical` generic carry kind `Hierarchy` and are not treated as
+parents on any path; changing that for one path would make secondary events disagree with primary
+ones.
+
 ### Related resources cap
 
 The Prefect API rejects any event whose `related` list exceeds
@@ -48,12 +60,12 @@ available in the event payload's changelog.
 
 Events truncate to `get_related_resource_budget()`, which sits below that
 maximum rather than on it. Prefect's events worker appends run-context
-resources — flow run, task run, flow, deployment, work queue, work pool, and
-one per flow-run tag — after the event has been handed over, extending the list
-in place in a way that skips the client-side validation. An event that leaves
-Infrahub on the maximum therefore arrives above it, and the Prefect API answers
-by closing the `/events/in` websocket rather than by dropping the single event.
-The reserved headroom keeps the enlarged event acceptable.
+resources (flow run, task run, flow, deployment, work queue, work pool, and
+one per flow-run tag) after the event has been handed over, and attaches only
+as many of them as still fit under the maximum, logging a warning for the rest.
+An event that leaves Infrahub on the maximum therefore reaches the API valid
+but stripped of its run context, which carries the tags a run is filtered by.
+The reserved headroom keeps room for those resources.
 
 Group mutation events (`member_added` / `member_removed`) follow the same rule.
 Each member and each ancestor is a single related resource carrying its own
@@ -91,7 +103,7 @@ Application Code
        ▼
 InfrahubEventService.send(event)
        │
-       ├──► _send_bus() ──► Message Bus (RabbitMQ/NATS)
+       ├──► _send_bus() ──► Message Bus (RabbitMQ)
        │         │
        │         └──► event.get_messages() → Internal handlers
        │
@@ -101,6 +113,26 @@ InfrahubEventService.send(event)
 ```
 
 For example, `BranchDeletedEvent` drives the `branch-deleted-purge-tasks-trigger` automation, which runs the `branch-purge-tasks` flow to delete the deleted branch's settled flow runs so their completed tasks no longer surface on a same-named recreation (see [Asynchronous Tasks](async-tasks.md)).
+
+## Events a mutation sends
+
+Once a GraphQL mutation returns, `emit_node_mutation_events` (`graphql/mutations/main.py`) sends the
+node events that `generate_node_mutation_events` (`events/generator.py`) builds:
+
+| Event | For | Parent |
+|-------|-----|--------|
+| Created, updated or deleted, from the mutation's action | The main node, when its changelog has changes | None |
+| Updated, derived from the main node's changelog | Each peer the main node added or removed, on a relationship the peer declares back | Main node's event |
+| Deleted | Each node the delete removed besides the main node | Main node's event |
+| Created, updated or deleted, from the recorded action | Each node recorded on the main node's mutation context | Main node's event, or none when the main node did not change |
+| Group member added or removed | Each group among those events whose `members` changed | The group's event |
+
+- Record every node a mutation writes outside the main node's save, or that node gets no event. See
+  [Mutations](mutations.md#nodes-a-mutation-writes-besides-its-main-node).
+- A recorded node keeps its derived update unless its own changelog already lists the same change:
+  same relationship, same peer, added or removed. A node handed out by a resource pool is saved
+  before the main node links to it, so its created event does not carry that link.
+- The mutation sends nothing when neither the main node nor any recorded node changed.
 
 ## Trigger action parameters
 
@@ -115,8 +147,12 @@ Emit single-expression parameters through `jinja_parameter()` in `trigger/models
 The per-node trigger families — Jinja2 computed attributes, Python computed attributes (owner and
 query), display labels, human-friendly ids, and profile refresh — build one automation per branch
 whose definition differs from the default branch, plus one default-branch automation that owns
-every other branch. Divergence is the schema hash for the schema-driven families and the
-repository commit for the Python transform ones.
+every other branch. Divergence is the schema hash for the schema-driven families. The two Python
+transform families diverge on the repository commit or on that same whole-branch schema hash, so
+any schema difference gives a branch its own automations, whether or not the transform query reads
+the part that changed. A branch that edits the `CoreGraphQLQuery` text through the API moves
+neither, so it keeps the default-branch automations and its reads are answered with the default
+branch's read set.
 
 The default-branch automation has to exclude the branches that own their own automation.
 **Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`
@@ -164,7 +200,7 @@ The `EventMeta` class provides rich context:
 - **account_id**: Initiating account
 - **request_id**: Correlation ID
 - **context**: Full `InfrahubContext` for the operation
-- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for computed attributes, display labels, and human-friendly ids match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
+- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for the four coalesced families (Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes) match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 
@@ -191,6 +227,7 @@ Events can be queried through:
 |-----------|----------|
 | Base models | `backend/infrahub/events/models.py` |
 | Event definitions | `backend/infrahub/events/*.py` |
+| Mutation event generator | `backend/infrahub/events/generator.py` |
 | Service adapter | `backend/infrahub/services/adapters/event/__init__.py` |
 | Trigger models | `backend/infrahub/trigger/models.py` |
 | GraphQL queries | `backend/infrahub/graphql/queries/event.py` |
@@ -201,5 +238,7 @@ Events can be queried through:
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
+- [Mutations](mutations.md) - How mutations record the nodes they write besides their main node
+- [Changelog Enrichment](changelog-enrichment.md) - how node event changelogs get their display labels and HFIDs
 - [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure

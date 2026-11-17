@@ -18,10 +18,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.node import Node
@@ -46,6 +45,7 @@ from tests.helpers.agnostic_edges import (
     relationship_global_edges,
     relationship_metadata,
     relationship_peer_shape,
+    remove_attribute_from_schema,
     to_times,
 )
 from tests.helpers.db_validation import get_node_metadata
@@ -81,32 +81,6 @@ async def verify_graph_invariants(db: InfrahubDatabase, default_branch: Branch) 
 async def _delete(db: InfrahubDatabase, node_id: str, branch: Branch, at: Timestamp) -> None:
     to_delete = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     await to_delete.delete(db=db, at=at, user_id=TEST_ACTOR_ID)
-
-
-async def _remove_attribute_from_schema(
-    db: InfrahubDatabase,
-    branch: Branch,
-    at: Timestamp,
-    kind: str = WIDGET_KIND,
-    attribute_name: str = ATTRIBUTE_NAME,
-    user_id: str = TEST_ACTOR_ID,
-) -> MigrationResult:
-    """Run the attribute-removal migration for a branch-agnostic attribute on `branch`."""
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    previous_node = schema_branch.get(name=kind)
-
-    candidate = schema_branch.duplicate()
-    node_schema = candidate.get(name=kind)
-    node_schema.get_attribute(name=attribute_name).state = HashableModelState.ABSENT
-    candidate.set(name=kind, schema=node_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
-
-    migration = NodeAttributeRemoveMigration(
-        previous_node_schema=previous_node,
-        new_node_schema=node_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=attribute_name),
-    )
-    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
 
 
 async def _create_beacon(db: InfrahubDatabase, branch: Branch, name: str, serial: int) -> Node:
@@ -156,7 +130,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_no_branch_dec
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -202,7 +176,7 @@ async def test_an_attribute_stays_open_for_a_branch_that_forked_before_the_remov
     before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -263,7 +237,7 @@ async def test_one_removal_closes_only_the_objects_the_fork_cannot_reach(
     assert open_edge_types(retired_before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 2, "both objects went through the one removal, as one batch"
 
@@ -337,7 +311,7 @@ async def test_an_attribute_removed_on_a_fork_is_closed_when_the_object_is_delet
     widget = await create_widget(db=db, branch=default_branch, name="serial-dropped-by-a-fork", serial=600)
     branch = await create_branch(db=db, branch_name="dropped-the-attribute")
 
-    removal = await _remove_attribute_from_schema(db=db, branch=branch, at=Timestamp())
+    removal = await remove_attribute_from_schema(db=db, branch=branch, at=Timestamp())
     assert not removal.errors
     assert removal.nbr_migrations_executed == 1
 
@@ -386,7 +360,7 @@ async def test_an_attribute_removed_from_the_schema_is_closed_when_the_only_fork
     )
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     assert result.nbr_migrations_executed == 1
 
@@ -423,7 +397,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_is_closed_when_no_branch_d
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(
+    result = await remove_attribute_from_schema(
         db=db, branch=default_branch, at=removed_at, kind=BEACON_KIND, attribute_name=ATTRIBUTE_NAME
     )
     assert not result.errors
@@ -450,7 +424,7 @@ async def test_an_attribute_of_a_branch_agnostic_kind_stays_open_for_a_branch_th
     assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(
+    result = await remove_attribute_from_schema(
         db=db, branch=default_branch, at=removed_at, kind=BEACON_KIND, attribute_name=ATTRIBUTE_NAME
     )
     assert not result.errors
@@ -474,7 +448,7 @@ async def test_removing_an_attribute_stamps_the_removal_time_on_its_vertex(
     assert before.updated_at is not None, "precondition: creating the object stamped the attribute"
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
 
     after = await attribute_metadata(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
@@ -538,7 +512,7 @@ async def test_a_rolled_back_removal_leaves_the_global_edges_open(
     before_owner = await get_node_metadata(db=db, node_uuid=widget.id)
 
     removed_at = Timestamp()
-    result = await _remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=removed_at)
     assert not result.errors
     closed = await attribute_global_edges(db=db, node_id=widget.id, attribute_name=ATTRIBUTE_NAME)
     assert open_edges(closed) == [], "precondition: the removal closed the global edges"

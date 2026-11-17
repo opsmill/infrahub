@@ -5,7 +5,6 @@ import { Text } from "react-aria-components";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -18,6 +17,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
@@ -51,7 +51,7 @@ export function GeneratorDefinitionRunButton({
           const url =
             objectKind && objectId
               ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
-              : constructPath(`/tasks/${taskId}`);
+              : getTaskDetailsUrl(taskId);
 
           toast(
             <Alert

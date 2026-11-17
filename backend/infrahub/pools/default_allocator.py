@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.creation_context import NodeCreationContext
+from infrahub.core.constants import MutationAction
+from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.pools.allocator import PoolAllocator
 
 if TYPE_CHECKING:
@@ -41,7 +42,7 @@ class DefaultPoolAllocator(PoolAllocator):
         if not pool:
             return None
 
-        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)  # type: ignore
+        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)
         if allocated:
-            NodeCreationContext.record_if_active(node=allocated)
+            NodeMutationContext.record_if_active(node=allocated, action=MutationAction.CREATED)
         return allocated

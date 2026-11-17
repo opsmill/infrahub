@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from infrahub import lock
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.registry import registry
 from infrahub.log import get_logger
@@ -74,15 +75,17 @@ class MergeRollbackHandler:
             return False
 
         try:
-            # Reset the destination branch's schema. The hash and changed-at are restored literally
-            # rather than recomputed, which would stamp schema_changed_at with the rollback time.
-            self.schema_manager.set_schema_branch(
-                name=self.destination_branch.name, schema=pre_merge_state.destination_schema
-            )
-            self.destination_branch.schema_hash = pre_merge_state.destination_schema_hash
-            self.destination_branch.schema_changed_at = pre_merge_state.destination_schema_changed_at
-            await self.destination_branch.save(db=self.db, user_id=user_id)
-            registry.branch[self.destination_branch.name] = self.destination_branch
+            # A registry refresh also writes the schema registry and the cached branch, so it must not run alongside.
+            async with lock.registry.local_schema_lock():
+                # Reset the destination branch's schema. The hash and changed-at are restored literally
+                # rather than recomputed, which would stamp schema_changed_at with the rollback time.
+                self.schema_manager.set_schema_branch(
+                    name=self.destination_branch.name, schema=pre_merge_state.destination_schema
+                )
+                self.destination_branch.schema_hash = pre_merge_state.destination_schema_hash
+                self.destination_branch.schema_changed_at = pre_merge_state.destination_schema_changed_at
+                await self.destination_branch.save(db=self.db, user_id=user_id)
+                registry.refresh_cached_branch(self.destination_branch)
         except Exception:
             # Hold the write protection (leave the branch MERGING + key set) rather than reopening on a
             # partially-recovered state, so the failure is handled by recovery instead of allowing writes.
@@ -97,7 +100,8 @@ class MergeRollbackHandler:
             self.source_branch.branched_from = pre_merge_state.source_branched_from
             self.source_branch.status = BranchStatus.OPEN
             await self.source_branch.save(db=self.db, user_id=user_id)
-            registry.branch[self.source_branch.name] = self.source_branch
+            # The merge shares this object, so the cache gets a copy.
+            registry.refresh_cached_branch(self.source_branch.model_copy(deep=True))
         except Exception:
             # Never raise: raising here would mask the original merge error that triggered the rollback.
             self.log.exception("Branch state restore failed during merge rollback")

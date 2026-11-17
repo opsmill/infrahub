@@ -1,7 +1,9 @@
 from prefect.client.orchestration import PrefectClient
+from prefect_redis import RedisDatabase
 
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_task_manager  # noqa: TID251 - this module tests the setup itself
+from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME, TASK_RESULT_TTL_SECONDS
 from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 # @pytest.fixture
@@ -21,3 +23,6 @@ class TestTaskManagerSetup(TestWorkerInfrahubAsync):
 
         response = await prefect_client.read_work_pool(INFRAHUB_WORKER_POOL.name)
         assert response.type == "infrahubasync"
+
+        result_storage = await RedisDatabase.aload(TASK_RESULT_STORAGE_NAME)
+        assert result_storage.key_ttl == TASK_RESULT_TTL_SECONDS

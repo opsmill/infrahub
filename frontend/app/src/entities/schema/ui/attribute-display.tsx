@@ -113,6 +113,23 @@ const ChoicesRow = ({
   );
 };
 
+type NumberPoolParameters = components["schemas"]["NumberPoolParametersRead"];
+type NumberPoolRange = components["schemas"]["NumberPoolRangeRead"];
+
+const formatBound = (bound: number | null | undefined, openLabel?: string) =>
+  typeof bound === "number" ? formatNumberDisplay(bound) : openLabel;
+
+const formatRange = ({ start, end, weight }: NumberPoolRange) => {
+  const bounds = `${formatBound(start, "MIN")} – ${formatBound(end, "MAX")}`;
+  return typeof weight === "number" ? `${bounds} (weight ${weight})` : bounds;
+};
+
+// Leaving out ranges declares one range with no start or end, while an empty list declares no range.
+const getPoolRanges = ({ start_range, end_range, ranges }: NumberPoolParameters) => {
+  if (start_range != null || end_range != null) return [{ start: start_range, end: end_range }];
+  return ranges ?? [{ start: null, end: null }];
+};
+
 const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
   if (attribute.kind === "Text") {
     const parameters = attribute.parameters as components["schemas"]["TextAttributeParametersRead"];
@@ -146,7 +163,8 @@ const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
   }
 
   if (attribute.kind === "NumberPool") {
-    const parameters = attribute.parameters as components["schemas"]["NumberPoolParametersRead"];
+    const parameters = attribute.parameters as NumberPoolParameters;
+    const ranges = getPoolRanges(parameters).map(formatRange);
     return (
       <div>
         <PropertyTitle title="Parameters" />
@@ -160,8 +178,16 @@ const AttributeParameters = ({ attribute }: { attribute: AttributeSchema }) => {
               </Link>
             }
           />
-          <PropertyRow title="Start range" value={formatNumberDisplay(parameters.start_range)} />
-          <PropertyRow title="End range" value={formatNumberDisplay(parameters.end_range)} />
+          <PropertyRow title="Ranges" value={ranges.length > 0 ? ranges : "No range"} />
+          <PropertyRow
+            title="Allocation scope"
+            value={parameters.allocation_scope?.length ? parameters.allocation_scope : null}
+          />
+          <PropertyRow
+            title="Start range (deprecated)"
+            value={formatBound(parameters.start_range)}
+          />
+          <PropertyRow title="End range (deprecated)" value={formatBound(parameters.end_range)} />
         </div>
       </div>
     );

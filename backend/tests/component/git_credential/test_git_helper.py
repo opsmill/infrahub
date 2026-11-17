@@ -39,6 +39,15 @@ def test_get_with_path(
     assert result.exit_code == 0
 
 
+def test_erase_accepts_request_without_output() -> None:
+    input_data = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git\nusername=myusername"
+
+    result = runner.invoke(app=app, args=["erase", input_data])
+    assert not result.stderr
+    assert not result.stdout
+    assert result.exit_code == 0
+
+
 def test_get_no_path() -> None:
     input_data = "protocol=https\nhost=github.com"
 

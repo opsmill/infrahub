@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: "${{ matrix.branch-name }}"
           submodules: recursive
@@ -51,7 +51,7 @@ jobs:
           echo "BRANCH_EXISTS=$BRANCH_EXISTS" >> $GITHUB_ENV
 
       - name: Commit and push changes with github-actions-x/commit
-        uses: github-actions-x/commit@v2.9
+        uses: github-actions-x/commit@722d56b8968bf00ced78407bbe2ead81062d8baa # v2.9
         with:
           github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
           push-branch: ${{ env.BRANCH_NAME }}

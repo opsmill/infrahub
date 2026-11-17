@@ -153,6 +153,11 @@
 /* Additional Styles */
 /* Add any additional styles based on specific requirements or preferences */
 
+.markdown ul,
+.markdown ol {
+  padding-left: 2em;
+}
+
 .markdown ul {
   list-style-type: disc;
 }
@@ -163,11 +168,6 @@
 
 .markdown ul ul ul {
   list-style-type: square;
-}
-
-.markdown ul,
-.markdown ol {
-  padding-left: 2em;
 }
 
 .markdown ol {
@@ -188,10 +188,4 @@
 
 .markdown li > p {
   margin: 0;
-}
-
-.markdown .mermaid-error {
-  background-color: var(--danger-surface);
-  color: var(--danger);
-  white-space: pre-wrap;
 }

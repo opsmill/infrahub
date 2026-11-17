@@ -1,0 +1,27 @@
+schema_version: "1.0"
+
+preset:
+  id: "jira-branch"
+  name: "Jira branch"
+  version: "1.0.0"
+  description: "Override speckit.git.feature so that a feature branch is created only with a Jira or JPD ticket reference, as <short-name>-<ticket-id>."
+  author: "opsmill"
+  repository: "https://github.com/opsmill/opsmill-speckit"
+  license: "Apache-2.0"
+
+requires:
+  speckit_version: ">=0.8.0"
+
+provides:
+  templates:
+    - type: "command"
+      name: "speckit.git.feature"
+      file: "commands/speckit.git.feature.md"
+      description: "Validate Jira/JPD ticket reference and create a feature branch"
+      replaces: "speckit.git.feature"
+
+tags:
+  - "jira"
+  - "branching"
+  - "git"
+  - "opsmill"

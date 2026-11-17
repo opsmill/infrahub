@@ -55,14 +55,16 @@ class FakeValidator:
         self.save_count += 1
 
 
-async def _check(conclusion: ValidatorConclusion) -> ValidatorConclusion:
-    return conclusion
+async def _check(result: ValidatorConclusion | Exception) -> ValidatorConclusion:
+    if isinstance(result, Exception):
+        raise result
+    return result
 
 
 @dataclass
 class CheckRunnerCase:
     name: str
-    check_results: list[ValidatorConclusion]
+    check_results: list[ValidatorConclusion | Exception]
     expected_events: list[type]
     expected_conclusion: str
 
@@ -83,6 +85,18 @@ CASES = [
     CheckRunnerCase(
         name="a_failing_check_fails_the_validator",
         check_results=[ValidatorConclusion.SUCCESS, ValidatorConclusion.FAILURE],
+        expected_events=[ValidatorFailedEvent],
+        expected_conclusion=ValidatorConclusion.FAILURE.value,
+    ),
+    CheckRunnerCase(
+        name="a_check_that_raises_fails_the_validator",
+        check_results=[ValidatorConclusion.SUCCESS, RuntimeError("The check flow run failed")],
+        expected_events=[ValidatorFailedEvent],
+        expected_conclusion=ValidatorConclusion.FAILURE.value,
+    ),
+    CheckRunnerCase(
+        name="a_raising_check_and_a_failing_check_emit_one_failed_event",
+        check_results=[RuntimeError("The check flow run failed"), ValidatorConclusion.FAILURE],
         expected_events=[ValidatorFailedEvent],
         expected_conclusion=ValidatorConclusion.FAILURE.value,
     ),

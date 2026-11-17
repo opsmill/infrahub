@@ -35,7 +35,7 @@ Infrahub exposes the corresponding driver options as database settings:
     once with ConnectionAcquisitionTimeoutError before the pool recovers.
 
 Prerequisites: a local Neo4j, e.g.
-    docker run --rm -p 7687:7687 -e NEO4J_AUTH=neo4j/secretpassword neo4j:2026.05.0-community
+    docker run --rm -p 7687:7687 -e NEO4J_AUTH=neo4j/secretpassword neo4j:2026.10.1-community
 
 Run:
     NEO4J_PASSWORD=secretpassword uv run python utilities/neo4j_idle_killer_repro.py
@@ -260,7 +260,7 @@ def main() -> None:
         log(f"cannot reach Neo4j through the proxy: {type(exc).__name__}: {exc}")
         log(
             "is Neo4j running? e.g. docker run --rm -p 7687:7687 "
-            "-e NEO4J_AUTH=neo4j/secretpassword neo4j:2026.05.0-community"
+            "-e NEO4J_AUTH=neo4j/secretpassword neo4j:2026.10.1-community"
         )
         proxy.stop()
         driver.close()

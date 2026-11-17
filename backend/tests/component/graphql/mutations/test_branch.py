@@ -20,15 +20,17 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFoundError
+from infrahub.exceptions import BranchNotFoundError, MergeRefusedError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_database, build_message_bus
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 BRANCH_CREATE = """
 mutation(
@@ -445,9 +447,9 @@ async def local_services(db: InfrahubDatabase, dependency_provider: Provider) ->
     workflow = WorkflowLocalExecution()
 
     with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_message_bus, lambda: message_bus),
-        dependency_provider.scope(build_workflow, lambda: workflow),
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_message_bus, lambda: message_bus, dependency_provider=dependency_provider),
+        override_workflow(workflow, dependency_provider=dependency_provider),
     ):
         yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow, cache=MemoryCache())
 
@@ -759,9 +761,12 @@ async def test_branch_merge_with_conflict_fails(
         variable_values={},
     )
 
-    assert result.errors
-    assert len(result.errors) == 1
-    assert "contains conflicts with the default branch" in result.errors[0].message
+    assert [error.message for error in result.errors] == [
+        "Branch branch2 contains conflicts with the default branch. Please create a Proposed Change to resolve the "
+        "conflicts or manually update them before merging."
+    ]
+    # The refusal type is what keeps its traceback out of the task log of the merge.
+    assert type(result.errors[0].original_error) is MergeRefusedError
 
 
 async def _create_branch(branch_name: str, db: InfrahubDatabase, owner: Node) -> Branch:

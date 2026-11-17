@@ -5,7 +5,7 @@ paths:
 
 # Python typing discipline
 
-Applies to all Python, production and tests. Full reference: `dev/guidelines/backend/python.md`.
+Applies to all Python, production and tests. Full reference: `dev/guidelines/backend/typing.md`.
 
 ## Suppressions are tech debt, not a tool
 
@@ -18,11 +18,14 @@ The mypy `disable_error_code` blocks and the `[[tool.ty.overrides]]` in `pyproje
 Two narrow exceptions:
 
 - A linter/type-checker **version upgrade** introduces new rules the codebase has not yet met. Grandfather those as a scoped, commented step, then burn them down.
-- Re-enabling a previously-disabled rule for a module, where a scoped `# type: ignore[code]  # reason` grandfathers unrelated pre-existing violations (a net reduction, per `python.md`). This never applies to a new violation.
+- Re-enabling a previously-disabled rule for a module, where a scoped `# type: ignore[code]  # reason` grandfathers unrelated pre-existing violations (a net reduction, per `typing.md`). This never applies to a new violation.
+
+Never write a bare `# type: ignore`: ty reads it as its own blanket ignore and hides every ty error on the line. Name the mypy code (`# type: ignore[code]`), which ty skips when no code has a `ty:` prefix; a ty violation on the same line takes a separate `# ty: ignore[rule]` comment after the mypy one, not a `ty:` code inside mypy's brackets. See `dev/guidelines/backend/typing.md`.
 
 ## Fix the type, don't discard it
 
 When the checker warns, find the approach that is actually correct — a Pydantic-native shape, a proper model/field type, or `isinstance` narrowing — rather than defeating the check.
 
-- **No `cast()`.** It asserts a type without verifying it, turning type checking off exactly where a bug would hide. Avoid it at all costs; reshape the code so the real type flows through.
+- **No `cast()`.** It asserts a type without verifying it, turning type checking off exactly where a bug would hide. Narrow with a positive `isinstance` that returns the value instead — a `cast()` that only "records" what a check above established is still a `cast()`, and when the real check trips the checker in files you did not touch, root-cause that (usually an import) rather than falling back.
+- **No widening to `Any`.** Replacing a wrong annotation with `Any` (or `Sequence[Any]`) clears the checker the way `cast()` does — by giving up on the value — and nothing flags it afterwards. Declare the closed set the value can actually hold, as a union or alias of the domain/driver types, and narrow at the typed accessors; a library typing a value as `Any` describes its contract, not yours. When the honest type cascades into callers beyond your change, keep the cascade visible — measure it, leave the caller-facing annotation as it is, file the follow-up — rather than hiding it under `Any`.
 - **Prefer `isinstance` over `getattr()`.** `getattr(obj, "x", default)` hides the read from the checker and from grep. Narrow with `isinstance` (cover the whole family carrying the attribute) or use the typed, named accessor.

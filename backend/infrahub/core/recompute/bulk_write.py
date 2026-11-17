@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta
@@ -18,9 +19,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.event import InfrahubEventService
-
-DISPLAY_LABEL_FIELD = "display_label"
-HFID_FIELD = "human_friendly_id"
 
 
 @dataclass(frozen=True)
@@ -45,9 +43,9 @@ class WrittenNode:
 
 
 async def _apply(node: Node, write: AttributeValueWrite) -> None:
-    if write.field == DISPLAY_LABEL_FIELD:
+    if write.field == DISPLAY_LABEL_ATTRIBUTE_NAME:
         await node.set_display_label(value=cast("str | None", write.value))
-    elif write.field == HFID_FIELD:
+    elif write.field == HFID_ATTRIBUTE_NAME:
         await node.set_human_friendly_id(value=cast("list[str] | None", write.value))
     else:
         getattr(node, write.field).value = write.value
@@ -118,26 +116,35 @@ class BulkRecomputeWriter:
                             # so their cross-node readers chain too, not only the requested ones.
                             saved.append((node, sorted(set(node.node_changelog.updated_fields))))
                 for node, fields in saved:
-                    await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
+                    await send_node_updated_event(
+                        event_service=self.event_service,
+                        node=node,
+                        fields=fields,
+                        branch=branch,
+                        context=context,
+                        origin=origin,
+                    )
                     written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))
         return written
 
-    async def _emit(
-        self,
-        *,
-        node: Node,
-        fields: list[str],
-        branch: Branch,
-        context: EventContext,
-        origin: NodeMutationOrigin,
-    ) -> None:
-        meta = EventMeta.from_context(context=context, branch=branch)
-        meta.origin = origin
-        event = NodeUpdatedEvent(
-            kind=node.get_kind(),
-            node_id=node.get_id(),
-            changelog=node.node_changelog,
-            fields=fields,
-            meta=meta,
-        )
-        await self.event_service.send(event=event)
+
+async def send_node_updated_event(
+    *,
+    event_service: InfrahubEventService,
+    node: Node,
+    fields: list[str],
+    branch: Branch,
+    context: EventContext,
+    origin: NodeMutationOrigin,
+) -> None:
+    """Send the update event of a saved node, with the changelog of its last save."""
+    meta = EventMeta.from_context(context=context, branch=branch)
+    meta.origin = origin
+    event = NodeUpdatedEvent(
+        kind=node.get_kind(),
+        node_id=node.get_id(),
+        changelog=node.node_changelog,
+        fields=fields,
+        meta=meta,
+    )
+    await event_service.send(event=event)

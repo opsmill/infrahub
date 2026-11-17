@@ -1,15 +1,17 @@
 # Backend Testing
 
-> Part of: `dev/knowledge/backend/` | Related: [backend/AGENTS.md](../../../backend/AGENTS.md)
+> Part of: `dev/knowledge/backend/`
 
-Overview of the backend testing infrastructure, test types, and patterns.
+Overview of the backend testing infrastructure, test types, and patterns. Choose a test's scope with
+[Choosing tests](../../guides/backend/choosing-tests.md); the
+[testing standards](../../guidelines/backend/testing.md) define which coverage to retain.
 
 ## Testing Philosophy
 
 Infrahub uses pytest with TestContainers to provide reproducible, isolated tests. The testing approach balances:
 
 - **Speed**: Module-scoped containers minimize startup overhead
-- **Realism**: Tests run against real Neo4j/Redis/NATS when needed
+- **Realism**: Tests run against real Neo4j/Redis/RabbitMQ when needed
 - **Debuggability**: Functional tests run in a single process for breakpoint debugging
 - **Isolation**: Each test module gets a fresh database state
 
@@ -22,7 +24,7 @@ Fast unittests that require no external services to run. I.e. no database or net
 **Characteristics:**
 
 - Fast feedback loop
-- Sanity checks
+- Focused assertions on decisions and observable outputs
 
 **When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
 
@@ -148,7 +150,6 @@ Controlled by environment variable `INFRAHUB_USE_TEST_CONTAINERS=true`.
 | `memgraph_container` | Alternative graph database |
 | `redis_container` | Cache |
 | `rabbitmq_container` | Message broker |
-| `nats_container` | Event streaming |
 | `prefect_container` | Workflow engine |
 
 ```python
@@ -175,7 +176,7 @@ pytest session, so the session-scoped container fixtures above execute **once pe
 workers means four Neo4j containers, each with its own graph.
 
 That per-worker isolation is what makes the destructive fixtures safe. `empty_database` runs
-`delete_all_nodes`, which is a bare `MATCH (n) DETACH DELETE n` over the entire graph, and several
+`delete_all_nodes`, which detaches and deletes every vertex in the graph, and several
 tests assert on global counts rather than on nodes they can identify as their own. Both are only
 correct while a worker owns its database outright.
 
@@ -192,9 +193,11 @@ Two consequences worth remembering:
 ### One process, several Prefect servers
 
 A test process does not keep one Prefect server. The session-scoped `prefect_test_fixture` starts
-an ephemeral one for the whole session, and the `prefect` (module) and `prefect_class` (class)
-fixtures start a **container of their own** and re-point `PREFECT_API_URL` at it for that scope.
-Each orchestration client a test builds reads the setting when it is built, so it follows.
+an ephemeral one for the whole session. The module-scoped `prefect` fixture reuses the
+session-scoped `prefect_container`, while the class-scoped `prefect_class` starts a container per
+class; both re-point `PREFECT_API_URL` at their server for the scope, so a test can end up on a
+different server than the one before it. Each orchestration client a test builds reads the setting
+when it is built, so it follows.
 
 Prefect's background queue services do not. `EventsWorker` and `APILogWorker` are process-wide
 `QueueService` singletons, memoized on `hash((cls, *args))`, and `EventsWorker.instance()` passes
@@ -272,6 +275,7 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
 - `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
+- `FixedMachine` (`backend/tests/adapters/machine.py`) - A machine with a fixed CPU count, pinned CPUs and memory, passed to the telemetry resource reader so its figures can be checked against exact numbers
 
 **Event and Workflow Adapters:**
 
@@ -316,6 +320,7 @@ Test data and fixture files:
 | `constants.py` | Port numbers, image names |
 | `prefect_services.py` | Rebinds Prefect's process-wide queue services when the test process changes Prefect server (`prefect_api_target`). See [One process, several Prefect servers](#one-process-several-prefect-servers). |
 | `file_repo.py` | Builds throwaway on-disk Git "remote" repos from `repos/` fixtures (`FileRepo`). The remotes accept pushes to their checked-out branch, so tests exercise push and write-back like a hosted remote would. |
+| `schema_errors.py` | Flattens a 422 `detail` list into `(dotted field path, input, msg)` rows, rendering the location locally so an assertion on a schema load rejection names the offending field instead of a list of location segments. |
 
 ### Test Data (`backend/tests/test_data/`)
 
@@ -449,7 +454,10 @@ container is running — `component/api/conftest.py::workflow_local` and
 `setup_task_manager()`.** The raw call redoes every block, worker pool, deployment and builtin
 trigger against the current server with no timeout of its own; under CI load it hangs until
 pytest-timeout kills the whole class. The helper runs the registration once per server, bounded,
-and fails fast for that server afterwards.
+and fails fast for that server afterwards. It remembers a timed-out server the moment its ceiling is
+hit, before cancelling the registration: Prefect answers the cancellation with a shielded Crashed
+state write to the same server, which against a wedged one blocks for minutes, so the helper does
+not wait for it.
 
 **Never memoize server-side registration per process.** The registration goes to whichever server is
 current, so a process-wide "already done" flag lets the first server's setup satisfy fixtures pointing
@@ -458,34 +466,37 @@ on `get_current_settings().api.url`; anything else cached against a Prefect serv
 
 ### Swapping the Workflow Adapter for a Test Double
 
-Every class-scoped fixture that installs a `WorkflowLocalExecution` or a `WorkflowRecorder` goes
-through `tests/helpers/workflow_override.py::override_workflow`. It sets both places a lookup can
-come from — `config.OVERRIDE.workflow` and the `build_workflow` override in the dependency
-provider — and puts the *previous* values back in a `finally`. Do not hand-roll a class-scoped swap
-with `dependency_provider.scope`: that context manager pops its override instead of restoring the
-one it replaced, and neither it nor `config.OVERRIDE` is restored when the fixture is finalised
-through an exception, so the double leaks into whatever the next class builds.
+Swap a workflow double in through `tests/helpers/workflow_override.py::override_workflow`, which
+sets both places a lookup can come from — `config.OVERRIDE.workflow` and the `build_workflow`
+override in the dependency provider — and puts the *previous* values back in a `finally`. Swap any
+other dependency through `tests/helpers/dependency_override.py::override_dependency`, which does the
+same for one provider entry.
 
-A per-test swap of any dependant (`build_workflow`, `build_database`, `build_cache`, …) goes through
-`tests/helpers/dependency_override.py::override_dependency` when anything can raise inside the block —
-a `pytest.raises` around the call under test, or an assertion inside it. `dependency_provider.scope`
-pops its override on the statement after its `yield`, with no `finally`, so an exception thrown
-through it leaves the double installed for the rest of the xdist worker process. The next class on
-that worker whose app resolves `get_workflow()` before its own override is in place then starts with
-a `WorkflowRecorder` as its workflow and every one of its tests errors at `client` setup with
-`These tests are currently meant to run with a local worker`; which class that is depends on how
-xdist split the suite, so the failure moves between runs while the message stays the same. A
-`dependency_provider.scope` whose body cannot raise is still fine: it leaves `config.OVERRIDE.workflow`
-alone, so once it pops, lookups fall back to the adapter the class installed.
+Do not reach for `dependency_provider.scope` in new code. It pops its override instead of restoring
+the one it replaced, and it pops only when the block ends normally, so an exception thrown through
+it — a `pytest.raises` around the call under test included — leaves the double installed for the
+rest of the xdist worker process. Per-test `scope()` calls still exist across the suite and the
+guard below covers what they leak, but a fixture at class scope or wider outlives that guard, so a
+swap at that scope has to use the helpers.
 
-The app built by `test_client` resolves its workflow once, during `lifespan`. pytest orders autouse
-fixtures by name, so `service` (and with it `test_client`) would otherwise run before
-`workflow_local`; `TestInfrahubApp.service` therefore depends on `workflow_local` explicitly, and a
-subclass that swaps in a different adapter must do the same for the app to see it.
+That is worth recognising in CI, because the failure surfaces far from its cause: the next class on
+the worker whose app resolves its workflow before its own override is in place starts with a
+`WorkflowRecorder`, and every one of its tests errors at `client` setup with `These tests are
+currently meant to run with a local worker`. Which class that is depends on how xdist split the
+suite, so the victim moves between runs while the message stays the same. A function-scoped autouse
+fixture in `tests/conftest.py` now fails the test that leaves an override behind and puts the
+provider back, so a leak is attributed to its source instead.
+
+The app built by `test_client` resolves its workflow once, during `lifespan`, so the order the
+fixtures run in decides what the app gets. pytest orders autouse fixtures by name, which is not a
+thing to rely on: declare the order instead. `TestInfrahubApp.service` takes `workflow_local` as a
+parameter so the app is built under it, and a class that installs a second double on top — a
+recorder it wants the test body to see — takes `service` as a parameter so it takes over only once
+the app is built.
 
 ### Functional Tests with `TestInfrahubApp`
 
-`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+`TestInfrahubApp` provides a class-scoped `memory_cache` fixture that injects a `MemoryCache`. Use it in functional tests to pre-fill and assert on cache state:
 
 ```python
 from tests.helpers.test_app import TestInfrahubApp
@@ -514,4 +525,3 @@ uv run pytest backend/tests/unit/path/to/test.py -v
 
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Python Coding Standards](../../guidelines/backend/python.md) - Code style requirements
-- [Backend AGENTS.md](../../../backend/AGENTS.md) - Commands reference

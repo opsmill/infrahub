@@ -27,13 +27,17 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface SortEditorProps {
   schema: ModelSchema;
+  /** How many sort keys the surface can honour; unlimited when absent. */
+  maxSorts?: number;
 }
-export function SortEditor({ schema }: SortEditorProps) {
+export function SortEditor({ schema, maxSorts }: SortEditorProps) {
   const { appliedSort, setCustomSort } = useSort(schema);
 
   const addSort = (newSort: Sort) => {
     const withoutField = appliedSort.filter((existing) => existing.field !== newSort.field);
-    setCustomSort([...withoutField, newSort]);
+    const next = [...withoutField, newSort];
+
+    setCustomSort(maxSorts === undefined ? next : next.slice(-maxSorts));
   };
 
   if (appliedSort.length === 0) {
@@ -48,11 +52,13 @@ export function SortEditor({ schema }: SortEditorProps) {
         </SortableList>
       </SortListContainer>
 
-      <AddSortButton
-        schema={schema}
-        activeFields={new Set(appliedSort.map((sort) => sort.field))}
-        onSelect={addSort}
-      />
+      {(maxSorts === undefined || appliedSort.length < maxSorts) && (
+        <AddSortButton
+          schema={schema}
+          activeFields={new Set(appliedSort.map((sort) => sort.field))}
+          onSelect={addSort}
+        />
+      )}
     </Col>
   );
 }

@@ -4,16 +4,20 @@ import pytest
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.objects import WorkPool
+from prefect.context import AsyncClientContext
+from prefect.exceptions import ObjectNotFound
 from pydantic import ValidationError
 
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import WorkflowOrchestrationError
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
 from infrahub.tls.registry import TlsContextRegistry
 from infrahub.workers.infrahub_async import (
     InfrahubWorkerAsync,
 )
+from infrahub.workflows.models import WorkflowDefinition
 from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 
@@ -76,3 +80,43 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
             await task
 
         assert "validation error for DummyOutput" in str(exc.value)
+
+    async def test_execute_workflow_without_deployment(
+        self, prefect_client: PrefectClient, dummy_flows_deployment: None
+    ) -> None:
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+        workflow = WorkflowDefinition(
+            name="dummy_flow_not_deployed", module="infrahub.tasks.dummy", function="dummy_flow"
+        )
+
+        with pytest.raises(
+            WorkflowOrchestrationError,
+            match=r"^The task manager could not start the run of workflow dummy_flow_not_deployed "
+            r"or follow it to a final state\.$",
+        ) as exc:
+            await service.execute_workflow(
+                workflow=workflow, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
+            )
+
+        assert isinstance(exc.value.__cause__, ObjectNotFound)
+
+    async def test_execute_workflow_without_deployment_inside_a_flow_run(
+        self, prefect_client: PrefectClient, dummy_flows_deployment: None
+    ) -> None:
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+        workflow = WorkflowDefinition(
+            name="dummy_flow_not_deployed", module="infrahub.tasks.dummy", function="dummy_flow"
+        )
+
+        # A flow run holds a client context, so the call creates its run and follows it through that client.
+        async with AsyncClientContext():
+            with pytest.raises(
+                WorkflowOrchestrationError,
+                match=r"^The task manager could not start the run of workflow dummy_flow_not_deployed "
+                r"or follow it to a final state\.$",
+            ) as exc:
+                await service.execute_workflow(
+                    workflow=workflow, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
+                )
+
+        assert isinstance(exc.value.__cause__, ObjectNotFound)

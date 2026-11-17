@@ -1,4 +1,3 @@
-import logging
 import types
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,13 +81,15 @@ def _make_existing_transform(
     return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # type: ignore[return-value, ty:invalid-return-type]
 
 
-def _make_local_transform(description: str | None = None) -> TransformPythonInformation:
+def _make_local_transform(
+    description: str | None = None, class_name: str = "TestTransform"
+) -> TransformPythonInformation:
     return TransformPythonInformation(
         name="test",
         repository="repo-id",
         file_path="transforms/test.py",
         query="query-id",
-        class_name="TestTransform",
+        class_name=class_name,
         transform_class=object(),
         timeout=10,
         convert_query_response=False,
@@ -130,13 +131,10 @@ def _make_repository() -> InfrahubRepository:
         id=REPOSITORY_ID,
         name="test-repo",
         location="git@github.com:mock/test-repo.git",
-        default_branch_name="main",
+        default_branch="main",
         has_origin=True,
-        cache_repo=None,
-        is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-        infrahub_branch_name=None,
-        reinitialized=False,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
     )
 
 
@@ -160,22 +158,17 @@ DECLARED_PATH_CASES = [
 
 class TestGetPythonTransforms:
     @pytest.mark.parametrize("case", DECLARED_PATH_CASES, ids=lambda case: case.name)
-    async def test_file_path_comes_from_the_manifest(
-        self, monkeypatch: pytest.MonkeyPatch, case: DeclaredPathCase
-    ) -> None:
+    async def test_file_path_comes_from_the_manifest(self, case: DeclaredPathCase) -> None:
         """The built information carries the manifest-declared path, always repo-relative.
 
         The dependency closure and the fingerprint are both keyed on the manifest path. A path
         derived from the filesystem instead is resolved against the worktree and falls back to
         an absolute one when that resolution fails, so the two sides would silently disagree.
         """
-        monkeypatch.setattr("infrahub.git.integrator.get_run_logger", lambda: logging.getLogger("test"))
-
         module = types.ModuleType("transforms.test")
         module.TestTransform = _StubTransform  # type: ignore[attr-defined]
 
-        transforms = await InfrahubRepositoryIntegrator.get_python_transforms.fn(
-            _make_repository(),
+        transforms = await _make_repository().get_python_transforms(
             module=module,
             transform=InfrahubPythonTransformConfig(
                 name="test", file_path=Path(case.declared), class_name="TestTransform"
@@ -208,3 +201,8 @@ class TestComparePythonTransform:
         existing = _make_existing_transform(description="Same")
         local = _make_local_transform(description="Same")
         assert await InfrahubRepositoryIntegrator.compare_python_transform(existing, local) is True
+
+    async def test_class_name_changed_returns_false(self) -> None:
+        existing = _make_existing_transform()
+        local = _make_local_transform(class_name="OtherTransform")
+        assert await InfrahubRepositoryIntegrator.compare_python_transform(existing, local) is False

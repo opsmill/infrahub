@@ -53,20 +53,12 @@ Keep the `infrahub-common` skill directory, wherever your installer placed it. I
 
 ## 3. Connect the MCP server
 
-Run the server with `uvx`, which fetches it on first use:
+The server runs as `uvx infrahub-mcp`, which `uvx` fetches on first use. Your assistant launches it from its MCP configuration rather than you starting it in a shell, so the two connection variables go in that configuration alongside the command:
 
-```bash
-uvx infrahub-mcp
-```
+- `INFRAHUB_ADDRESS` — your instance, for example `http://localhost:8000`
+- `INFRAHUB_API_TOKEN` — your API token
 
-Point it at your instance with two environment variables:
-
-```bash
-export INFRAHUB_ADDRESS="http://localhost:8000"
-export INFRAHUB_API_TOKEN="<your-token>"
-```
-
-Then register the server with your assistant. The configuration file and its location differ per client, so follow your client's MCP documentation for where the entry goes.
+The configuration file, its location, and how it carries environment variables differ per client, so follow your client's MCP documentation for where the entry goes.
 
 **Choose a transport.** Use stdio when the server runs on the same machine as your assistant, which is the local development case. Use streamable HTTP for a remote server, and for any of the per-user authentication modes below.
 

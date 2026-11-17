@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
@@ -8,10 +8,6 @@ vi.mock("@/entities/nodes/relationships/api/get-relationships-from-api", () => (
 }));
 
 describe("getRelationships", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should fetch relationships with correct parameters", async () => {
     // GIVEN
     const peer = "test-peer";

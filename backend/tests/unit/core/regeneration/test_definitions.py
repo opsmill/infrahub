@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+import pytest
+
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.regeneration.definitions import parse_artifact_definitions
+from infrahub.core.regeneration.definitions import parse_artifact_definitions, selects_repository
 
 QUERY_PAYLOAD = "query { TestingCar { edges { node { name { value } } } } }"
 
@@ -22,7 +25,6 @@ def _artifact_definition_edge(
     dependencies: list[str] | None = None,
     dependencies_complete: bool | None = None,
     fingerprint: str | None = None,
-    query_models: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build one edge of the artifact-definition gathering query's response."""
     transformation: dict[str, Any] = {
@@ -34,7 +36,6 @@ def _artifact_definition_edge(
             "node": {
                 "id": "query-1",
                 "name": _attribute("GetCars"),
-                "models": _attribute(query_models),
                 "query": _attribute(QUERY_PAYLOAD),
             }
         },
@@ -93,13 +94,6 @@ def test_computed_closure_is_carried_through() -> None:
     assert definition.fingerprint == "abc123"
 
 
-def test_unset_query_models_parse_as_an_empty_list() -> None:
-    """``query_models`` is typed as a plain list, so a null has to be absorbed at parse time."""
-    parsed = parse_artifact_definitions([_artifact_definition_edge(query_models=None)])
-
-    assert parsed[0].query_models == []
-
-
 def test_jinja2_transform_carries_its_template_path() -> None:
     parsed = parse_artifact_definitions([_artifact_definition_edge(transform_typename=InfrahubKind.TRANSFORMJINJA2)])
 
@@ -123,3 +117,38 @@ def test_python_transform_carries_its_entry_point() -> None:
         "",
     )
     assert definition.convert_query_response is True
+
+
+@dataclass(frozen=True, kw_only=True)
+class RepositoryFilterCase:
+    name: str
+    exclude_repository_ids: list[str] | None
+    include_repository_ids: list[str] | None
+    expected: bool
+
+
+REPOSITORY_FILTER_CASES = [
+    RepositoryFilterCase(
+        name="empty_include_list_keeps_the_definition",
+        exclude_repository_ids=None,
+        include_repository_ids=[],
+        expected=True,
+    ),
+    RepositoryFilterCase(
+        name="exclusion_wins_over_inclusion",
+        exclude_repository_ids=["repo-1"],
+        include_repository_ids=["repo-1"],
+        expected=False,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REPOSITORY_FILTER_CASES])
+def test_selects_repository(case: RepositoryFilterCase) -> None:
+    selected = selects_repository(
+        repository_id="repo-1",
+        exclude_repository_ids=case.exclude_repository_ids,
+        include_repository_ids=case.include_repository_ids,
+    )
+
+    assert selected is case.expected

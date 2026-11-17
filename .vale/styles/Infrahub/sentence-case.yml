@@ -17,6 +17,8 @@ exceptions:
   - Neo4j
   - GraphQL
   - RabbitMQ
+  - Redis
+  - Sentinel
   - PostgreSQL
   - Kubernetes
   - Helm
@@ -55,8 +57,6 @@ exceptions:
   - E2E
   - URI
   - HFID
-  - NATS
-  - JetStream
   - CSS
   - VLAN
   - WebUI

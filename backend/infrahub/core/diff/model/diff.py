@@ -121,7 +121,8 @@ class RelationshipDiffElement(BaseDiffElement):
 class FileDiffElement(BaseDiffElement):
     branch: str
     location: str
-    repository: Node
+    repository_id: str
+    repository_display_label: str
     action: DiffAction
     commit_from: str
     commit_to: str
