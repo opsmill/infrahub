@@ -191,13 +191,20 @@ const renderTable = (
     </ObjectTableContext>
   );
 
-const getButtonLabels = () =>
-  Array.from(document.querySelectorAll("button")).map((button) => button.textContent);
+type RenderedTable = Awaited<ReturnType<typeof renderTable>>;
 
-const getMenuItemLabels = () =>
-  Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).map(
-    (item) => item.textContent
-  );
+const getButtonLabels = (component: RenderedTable) =>
+  component
+    .getByRole("button")
+    .elements()
+    .map((button) => button.textContent);
+
+const getMenuItemLabels = (component: RenderedTable) =>
+  component
+    .getByRole("menu")
+    .getByRole("menuitem")
+    .elements()
+    .map((item) => item.textContent);
 
 const getLastObjectsQuery = () => vi.mocked(useObjects).mock.lastCall?.[0];
 
@@ -232,11 +239,14 @@ describe("RoleManagerObjectTable", () => {
     mockObjects({ rows: [] });
 
     // WHEN
-    const component = await renderTable(accountSchema, accountTableProps);
+    const component = await renderTable(accountSchema, {
+      ...accountTableProps,
+      attributeNames: ["status", "name", "description", "account_type"],
+    });
 
     // THEN
     await expect.element(component.getByText("No Account found")).toBeVisible();
-    expect(getButtonLabels()).toEqual([
+    expect(getButtonLabels(component)).toEqual([
       "Description",
       "Account Type",
       "Status",
@@ -305,7 +315,7 @@ describe("RoleManagerObjectTable", () => {
 
       // THEN
       await expect.element(component.getByText(label, { exact: true })).toBeVisible();
-      expect(getButtonLabels().slice(0, 3)).toEqual(["Action", "Decision", "Roles"]);
+      expect(getButtonLabels(component).slice(0, 3)).toEqual(["Action", "Decision", "Roles"]);
     }
   );
 
@@ -376,7 +386,7 @@ describe("RoleManagerObjectTable", () => {
 
     // THEN
     await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
-    expect(getMenuItemLabels()).toEqual(["Sort ascending", "Sort descending", "Filter"]);
+    expect(getMenuItemLabels(component)).toEqual(["Sort ascending", "Sort descending", "Filter"]);
   });
 
   test("requests the objects in the order chosen from a column header", async () => {
@@ -430,6 +440,6 @@ describe("RoleManagerObjectTable", () => {
 
     // THEN
     await expect.element(component.getByText("Permission query failed")).toBeVisible();
-    expect(getButtonLabels()).toEqual([]);
+    expect(getButtonLabels(component)).toEqual([]);
   });
 });

@@ -34,9 +34,9 @@ const NAME_ATTRIBUTE = "name";
 const columnHelper = createColumnHelper<NodeObject>();
 
 export interface RoleManagerObjectTableProps {
-  /** Attributes to fetch and show as columns, in schema order. */
+  /** Attributes to fetch; each one except `name` becomes a column, ordered as in the schema. */
   attributeNames: string[];
-  /** Relationships to fetch and show as columns, in schema order. */
+  /** Relationships to fetch and show as columns, ordered as in the schema. */
   relationshipNames: string[];
   /** Relationships the row Edit form loads in addition to its default fields. */
   editRelationshipNames?: string[];
