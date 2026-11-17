@@ -649,6 +649,27 @@ async def test_search_anywhere_exact_match_finds_boolean_values(
     assert await _search_ids(gql_params=gql_params, query="true", partial_match=False) == [urgent.id]
 
 
+async def test_search_anywhere_ranks_objects_and_groups_within_one_limit(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A group named exactly as the search takes the only place before an object whose name only starts with it."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Kestrel Bay")
+    await person.save(db=db)
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
+    await group.new(db=db, name="Kestrel")
+    await group.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="kestrel", limit=1) == [group.id]
+    assert await _search_ids(gql_params=gql_params, query="kestrel") == [group.id, person.id]
+
+
 TICKET_WITH_LABELS = deepcopy(TICKET)
 TICKET_WITH_LABELS.attributes.append(
     AttributeSchema(name="labels", kind="List", optional=True, default_value=["network", "outage"])

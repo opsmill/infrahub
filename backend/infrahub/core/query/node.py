@@ -2506,7 +2506,7 @@ class NodeGetListByAttributeValueQueryResult:
 class NodeGetListByAttributeValueQuery(Query):
     """Find the nodes whose indexed attribute values match a search text, best match first.
 
-    Matches are scored and sorted before the branch and time checks, so the checks run only on
+    Matches are ranked and sorted before the branch and time checks, so the checks run only on
     the rows read until the limit is filled, and the first row of a node that passes them is its
     best match.
     """
@@ -2539,7 +2539,7 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params.update(branch_params)
         self.params["search_value"] = self.search_value
         self.params["null_value"] = NULL_VALUE
-        self.params["label_attribute_names"] = ["display_label", "name"]
+        self.params["label_attribute_names"] = [DISPLAY_LABEL_ATTRIBUTE_NAME, "name"]
 
         # A value stored as a list, such as a schema attribute's default value, converts to null and never matches.
         value = "toLower(toStringOrNull(av.value))"
@@ -2563,6 +2563,33 @@ class NodeGetListByAttributeValueQuery(Query):
             kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
             self.params["kinds"] = self.kinds
 
+        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
+            current_value_filter = """
+        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(current_value)
+            WHERE %(branch_filter)s
+            RETURN r, current_value
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, av
+        WHERE r.status = "active" AND current_value = av
+        """
+        else:
+            current_value_filter = """
+        CALL (attr, av) {
+            MATCH (attr)-[r:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, av
+        WHERE r.status = "active"
+        """
+        current_value_filter %= {"branch_filter": branch_filter}
+
         query = """
         // --------------------------
         // start with every attribute holding a matching value
@@ -2574,7 +2601,6 @@ class NodeGetListByAttributeValueQuery(Query):
         // rank each match, best first
         // --------------------------
         WITH attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
-        // The tier is multiplied by a billion, longer than any indexed value, so a shorter value ranks higher only within its tier.
         WITH attr, av, CASE
             WHEN is_label AND value = search THEN 6
             WHEN is_label AND value STARTS WITH search THEN 5
@@ -2582,22 +2608,9 @@ class NodeGetListByAttributeValueQuery(Query):
             WHEN value = search THEN 3
             WHEN value STARTS WITH search THEN 2
             ELSE 1
-        END * 1000000000 - size(value) AS score
+        END AS tier, size(value) AS length
         // Ties break on the attribute's uuid, not the node's, so that a node is read only when its row is checked.
-        ORDER BY score DESC, attr.uuid
-        // --------------------------
-        // keep the matches that are the attribute's current value
-        // --------------------------
-        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(current_value)
-            WHERE %(branch_filter)s
-            RETURN r, current_value
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH attr, av
-        WHERE r.status = "active" AND current_value = av
+        ORDER BY tier DESC, length ASC, attr.uuid
         // --------------------------
         // find the node that owns the attribute, of a searched kind
         // --------------------------
@@ -2608,9 +2621,13 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n
+        WITH n, attr, av
         WHERE r.status = "active"
         %(kind_filter)s
+        // --------------------------
+        // keep the matches that are the attribute's current value
+        // --------------------------
+        %(current_value_filter)s
         // --------------------------
         // keep the nodes that exist on the branch at the searched time
         // --------------------------
@@ -2629,6 +2646,7 @@ class NodeGetListByAttributeValueQuery(Query):
             "value": value,
             "search": search,
             "kind_filter": kind_filter,
+            "current_value_filter": current_value_filter,
             "branch_filter": branch_filter,
         }
 
