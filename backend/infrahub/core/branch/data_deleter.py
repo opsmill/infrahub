@@ -13,6 +13,7 @@ from infrahub.core.query.branch import (
     DeleteBranchReservedAttributesQuery,
 )
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
+from infrahub.core.query.schema_change import SchemaChangeDeleteByBranchQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
@@ -96,11 +97,13 @@ class BranchDataDeleter:
         """Remove a branch's data without requiring the branch itself to still exist.
 
         Returns the number of edges removed, so a caller whose own logging is the only thing the
-        operator can see is able to report progress.
+        operator can see is able to report progress. The schema change records of the branch are
+        deleted too, and their edges are not part of that number.
         """
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
         await self._retire_agnostic_fields(branch_name=branch_name, user_id=user_id)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
+        await self._delete_schema_changes(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
 
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
@@ -194,3 +197,19 @@ class BranchDataDeleter:
                 self.log.info(f"Deleted {deleted_total} {edge_type.value} edge(s) on branch '{branch_name}'")
 
         return edges_removed
+
+    async def _delete_schema_changes(self, branch_name: str) -> None:
+        """Delete the schema changes recorded on the branch, with their operations, applications and migration records."""
+        deleted_total = 0
+        while True:
+            query = await SchemaChangeDeleteByBranchQuery.init(
+                db=self.db, branch_name=branch_name, batch_size=self.batch_size
+            )
+            await query.execute(db=self.db)
+            deleted = query.get_data()
+            if not deleted:
+                break
+            deleted_total += deleted
+
+        if deleted_total:
+            self.log.info(f"Deleted {deleted_total} schema change(s) of branch '{branch_name}' with their records")

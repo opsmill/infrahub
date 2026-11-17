@@ -778,3 +778,45 @@ class SchemaChangeApplicationListQuery(Query):
                     for properties in _read_record_list(result=result, label="migrations")
                 ),
             )
+
+
+class SchemaChangeDeleteByBranchQuery(Query):
+    """Delete up to a batch of the schema changes of a branch, each with its operations, applications and migration records.
+
+    Run repeatedly until it deletes nothing.
+    """
+
+    name = "schema-change-delete-by-branch"
+    type = QueryType.WRITE
+    insert_return = False
+    insert_limit = False
+
+    def __init__(self, branch_name: str, batch_size: int, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.params["branch_name"] = branch_name
+        self.params["batch_size"] = batch_size
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = (
+            """
+        MATCH (schema_change:%(schema_change_label)s {branch: $branch_name})
+        WITH schema_change
+        LIMIT $batch_size
+        CALL (schema_change) {
+            MATCH (schema_change)-[:%(has_operation)s|%(has_application)s|%(has_migration)s*1..2]->(record)
+            DETACH DELETE record
+        }
+        DETACH DELETE schema_change
+        RETURN count(*) AS nbr_deleted
+        """
+            % LABELS_AND_EDGE_TYPES
+        )
+        self.add_to_query(query)
+        self.return_labels = ["nbr_deleted"]
+
+    def get_data(self) -> int:
+        """Return the number of schema changes deleted."""
+        result = self.get_result()
+        if result is None:
+            return 0
+        return result.get_as_type(label="nbr_deleted", return_type=int)

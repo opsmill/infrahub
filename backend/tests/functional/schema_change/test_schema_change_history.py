@@ -21,6 +21,7 @@ from infrahub.core.schema_change.constants import (
     SchemaOperationType,
 )
 from infrahub.core.schema_change.operations import SchemaOperation
+from tests.helpers.schema_change import count_schema_change_records, read_branch_schema_change_records
 
 from .shared import (
     CARD_KIND,
@@ -33,6 +34,7 @@ from .shared import (
     SHARED_CARD_NAME,
     SLOT_KIND,
     SchemaChangeDataset,
+    SchemaChangeHistorySnapshot,
     TestSchemaChangeBase,
     read_schema_change_history,
 )
@@ -147,6 +149,14 @@ query {
   }
 }
 """
+
+
+def _count_history_records(history: SchemaChangeHistorySnapshot) -> int:
+    return (
+        len(history.schema_change_ids)
+        + sum(page.count for page in history.operations.values())
+        + sum(1 + len(record.migrations) for records in history.applications.values() for record in records)
+    )
 
 
 class SlotAttributeAddMigrationThatFails(NodeAttributeAddMigration):
@@ -711,3 +721,50 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             (f"00005_{SLOT_HEIGHT_SUMMARY}", 5, "APPLIED"),
             (SLOT_HEIGHT_SUMMARY, None, "FAILED"),
         ]
+
+    async def test_step18_deleting_the_branch_deletes_its_records_including_the_failed_schema_change(
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_change_dataset: SchemaChangeDataset
+    ) -> None:
+        branch_name = schema_change_dataset.branch_name
+        branch_history = await read_schema_change_history(db=db, branch=branch_name)
+        branch_record_uuids = set(await read_branch_schema_change_records(db=db, branch=branch_name))
+        main_history = await read_schema_change_history(db=db, branch="main")
+        main_records = await read_branch_schema_change_records(db=db, branch="main")
+        assert [entry.schema_change.status for entry in branch_history.page.entries] == [
+            SchemaChangeStatus.APPLIED,
+            SchemaChangeStatus.APPLIED,
+            SchemaChangeStatus.APPLIED,
+            SchemaChangeStatus.APPLIED,
+            SchemaChangeStatus.FAILED,
+        ]
+        first_parent = branch_history.page.entries[0].parent
+        assert first_parent is not None
+        assert str(first_parent.uuid) == main_history.schema_change_ids[0]
+        assert len(branch_record_uuids) == _count_history_records(history=branch_history)
+        assert await count_schema_change_records(db=db) == len(branch_record_uuids) + len(main_records)
+
+        assert await client.branch.delete(branch_name=branch_name) is True
+
+        assert (await read_schema_change_history(db=db, branch=branch_name)).page.count == 0
+        assert await count_schema_change_records(db=db, uuids=sorted(branch_record_uuids)) == 0
+        assert await read_schema_change_history(db=db, branch="main") == main_history
+        assert await read_branch_schema_change_records(db=db, branch="main") == main_records
+        assert await count_schema_change_records(db=db) == len(main_records)
+
+    async def test_step19_query_on_main_returns_the_schema_change_of_main_after_the_deletion(
+        self, client: InfrahubClient
+    ) -> None:
+        result = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name="main")
+
+        page = result["InfrahubSchemaChange"]
+        assert page["count"] == 1
+        assert [
+            (
+                edge["node"]["name"],
+                edge["node"]["version"],
+                edge["node"]["status"],
+                edge["node"]["branch"],
+                edge["node"]["parent"],
+            )
+            for edge in page["edges"]
+        ] == [(MAIN_SCHEMA_CHANGE_NAME, 1, "APPLIED", "main", None)]

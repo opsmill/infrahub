@@ -9,10 +9,17 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.constants import (
+    SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,
     SchemaOperationSection,
     SchemaOperationType,
+)
+from infrahub.core.schema_change.models import (
+    SchemaChange,
+    SchemaChangeApplication,
+    SchemaChangeMigration,
+    SchemaChangeOperation,
 )
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
@@ -32,6 +39,21 @@ SEEDED_OPERATION_PROPERTY = "label"
 SEEDED_FAILURE_ERROR = "The migration node.attribute.add failed on 2 nodes"
 SEEDED_SUMMARY = "testcar_color_update"
 """The summary of a seeded schema change with one operation; `_and_<n>_more` follows when it has more."""
+
+SCHEMA_CHANGE_RECORD_LABELS = (
+    SchemaChange.get_type(),
+    SchemaChangeOperation.get_type(),
+    SchemaChangeApplication.get_type(),
+    SchemaChangeMigration.get_type(),
+)
+_RECORD_TREE_EDGE_TYPES = "|".join(
+    edge_type.value
+    for edge_type in (
+        SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_OPERATION,
+        SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION,
+        SchemaChangeEdgeType.SCHEMA_APPLICATION_HAS_MIGRATION,
+    )
+)
 
 
 def seeded_operation_value(position: int) -> str:
@@ -215,6 +237,60 @@ async def _seed_migrations(
             errors=list(seed.errors),
         )
     return record_ids
+
+
+@dataclass(frozen=True)
+class StoredSchemaChangeRecord:
+    """One record vertex as the database holds it."""
+
+    db_id: str
+    label: str
+    properties: dict[str, object]
+    edges: tuple[tuple[str, str], ...]
+    """Each edge that leaves the record, as its type and the database ID of its end, sorted."""
+
+
+async def read_branch_schema_change_records(
+    *, db: InfrahubDatabase, branch: str
+) -> dict[str, StoredSchemaChangeRecord]:
+    """Return the schema changes of a branch and every operation, application and migration record under them, by UUID."""
+    results = await db.execute_query(
+        query=f"""
+        MATCH (:{SchemaChange.get_type()} {{branch: $branch}})-[:{_RECORD_TREE_EDGE_TYPES}*0..2]->(record)
+        RETURN DISTINCT record.uuid AS uuid, elementId(record) AS db_id, labels(record)[0] AS label,
+            properties(record) AS properties,
+            [(record)-[edge]->(peer) | [type(edge), elementId(peer)]] AS edges
+        """,
+        params={"branch": branch},
+        name="test_schema_change_records_of_branch",
+    )
+    return {
+        str(result.get("uuid")): StoredSchemaChangeRecord(
+            db_id=str(result.get("db_id")),
+            label=str(result.get("label")),
+            properties=dict(result.get("properties")),
+            edges=tuple(sorted((str(edge_type), str(peer_id)) for edge_type, peer_id in result.get("edges"))),
+        )
+        for result in results
+    }
+
+
+async def count_schema_change_records(*, db: InfrahubDatabase, uuids: Sequence[str] | None = None) -> int:
+    """Count the record vertices of every branch, or only those with one of the UUIDs given."""
+    results = await db.execute_query(
+        query="""
+        MATCH (record)
+        WHERE any(label IN labels(record) WHERE label IN $record_labels)
+            AND ($uuids IS NULL OR record.uuid IN $uuids)
+        RETURN count(record) AS nbr_records
+        """,
+        params={
+            "record_labels": list(SCHEMA_CHANGE_RECORD_LABELS),
+            "uuids": list(uuids) if uuids is not None else None,
+        },
+        name="test_count_schema_change_records",
+    )
+    return int(results[0].get("nbr_records"))
 
 
 class SchemaOperationsRebuildError(AssertionError):

@@ -852,7 +852,7 @@ history ([quickstart.md](quickstart.md), section 2).
 **Independent Test**: load schema changes on a branch, including one that fails, delete the
 branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3).
 
-- [ ] T052 [P] [US5] Write the component tests in
+- [X] T052 [P] [US5] Write the component tests in
       `backend/tests/component/core/schema_change/test_delete_by_branch.py`, as one ordered
       class with `BranchDataDeleter(db=db, batch_size=5)`, as
       `backend/tests/component/core/test_branch.py` builds it. One class-scoped fixture requests
@@ -868,17 +868,17 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
         schema change that was the parent of the deleted branch's first schema change (FR-082);
       - a second call deletes nothing and raises nothing, and the records of main and of the
         second branch are still the same.
-- [ ] T053 [US5] Add the query that deletes the records of a branch to
+- [X] T053 [US5] Add the query that deletes the records of a branch to
       `backend/infrahub/core/query/schema_change.py`. It selects up to a batch of schema changes
       by their `branch` property, deletes each with its operations, applications and migration
       records, and returns the number of schema changes deleted. Add no repository method: the
       deleter runs the query itself ([research.md](research.md), R1 and R13).
-- [ ] T054 [US5] Add a step to `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`
+- [X] T054 [US5] Add a step to `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`
       that runs the query of T053 with the deleter's batch size until a run deletes nothing, in
       the way `_delete_edges` loops. The value that `delete_branch_data` returns stays the number
       of edges its existing steps removed; log the number of schema changes deleted. Make T052
       pass.
-- [ ] T055 [US5] Add the branch deletion methods to `TestSchemaChangeHistory` in
+- [X] T055 [US5] Add the branch deletion methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, as the last
       methods of the class. Read the records of the branch, which include the failed schema
       change of T046, and the records of main. Delete the branch through the `BranchDelete`
