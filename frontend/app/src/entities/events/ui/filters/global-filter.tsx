@@ -1,26 +1,20 @@
-import type React from "react";
-import { useState } from "react";
 import type { TagProps } from "react-aria-components";
-
-import { Icon } from "@/shared/components/display/icon";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { FilterFieldSchema } from "@/entities/schema/domain/model/schema";
 
+import { EventFilterTag } from "./event-filter-tag";
 import { GlobalFilterForm } from "./global-filter-form";
-import { FilterTag } from "./global-filter-tag";
 
 interface FilterTagProps extends TagProps {
-  label: React.ReactNode;
+  label: string;
   name: string;
   fieldSchema: FilterFieldSchema;
 }
 
 export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
   const [filters, setFilters] = useFilters();
-  const [showFilters, setShowFilters] = useState(false);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
 
@@ -51,54 +45,15 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
   };
 
   return (
-    <FilterTag currentFilter={currentFilter} label={label} {...props}>
-      <Popover open={showFilters} onOpenChange={setShowFilters}>
-        <PopoverTrigger className="flex h-6 items-center pl-1">
-          <span>{label}</span>
-
-          <div className="ml-1 w-px self-stretch bg-border-strong" />
-
-          {(currentFilter?.value === undefined || currentFilter?.value === null) && (
-            <Icon
-              icon="mdi:plus-circle-outline"
-              className="mx-1 text-base text-subtle-muted transition-all group-hover:text-accent"
-            />
-          )}
-
-          {currentFilter?.value !== undefined && currentFilter?.value !== null && (
-            <div
-              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-highlight"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleRemoveFilter(name);
-              }}
-            >
-              <div className="inline-flex items-center font-medium text-accent">
-                {getFilterDisplayValue()}
-              </div>
-
-              <Icon
-                icon="mdi:close-circle-outline"
-                className="text-base text-subtle-muted transition-all group-hover:text-accent"
-              />
-            </div>
-          )}
-        </PopoverTrigger>
-        <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-filter-tab -left-px rounded-t-md border border-b-0 bg-input px-2 py-1">
-            Filter by
-            <span className="ml-1 font-semibold">{label}</span>
-          </div>
-
-          <GlobalFilterForm
-            name={name}
-            fieldSchema={fieldSchema}
-            onSuccess={() => {
-              setShowFilters(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </FilterTag>
+    <EventFilterTag
+      label={label}
+      currentFilter={currentFilter}
+      renderValue={getFilterDisplayValue}
+      onRemove={() => handleRemoveFilter(name)}
+      renderForm={(close) => (
+        <GlobalFilterForm name={name} fieldSchema={fieldSchema} onSuccess={close} />
+      )}
+      {...props}
+    />
   );
 }
