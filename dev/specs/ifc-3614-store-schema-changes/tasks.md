@@ -330,7 +330,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         `update_schema_branch(limit=...)` and the `SchemaUpdatedEvent` payload name the same
         elements, and that `validate_update` returns no error for a change of `choices` or
         `enum`.
-- [ ] T021 [US1] Run the existing tests and confirm SC-002. Run each command on its own:
+- [X] T021 [US1] Run the existing tests and confirm SC-002. Run each command on its own:
       `uv run invoke backend.test-unit`,
       `uv run pytest backend/tests/component/api/test_40_schema.py`,
       `uv run pytest backend/tests/component/core/schema_manager/`,
@@ -341,7 +341,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       A test may change only when it asserts one of the four known bugs and the applier fixes it,
       or when it is one of the five calls that T019 changes. For any other failure, fix the
       builder or the applier and add the case to the suite.
-- [ ] T022 [US1] Measure the time of `SchemaCandidateBuilder.from_schema_root` against the time
+- [X] T022 [US1] Measure the time of `SchemaCandidateBuilder.from_schema_root` against the time
       of the reference function of T006 on the internal and core schema plus the largest schema
       of `backend/tests/helpers/schema/`. Write the result in [research.md](research.md), R7, as a
       ratio, with the command that reproduces it.

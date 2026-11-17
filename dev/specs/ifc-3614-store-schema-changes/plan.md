@@ -49,7 +49,8 @@ test for migrations that run on a separate worker.
 - a fixed number of record writes for each load, plus one small write each time a migration
   returns.
 
-A task measures the two processing passes on the largest schema fixture in the repository.
+A task measures the two processing passes on the largest schema fixture in the repository: building
+the candidate takes 2.00 times the time of the direct load ([research.md](research.md), R7).
 
 **Constraints**:
 
