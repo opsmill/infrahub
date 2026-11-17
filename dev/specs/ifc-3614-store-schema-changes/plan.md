@@ -176,7 +176,6 @@ backend/tests/
 
 schema/schema.graphql                     # regenerated
 frontend/app/src/shared/api/graphql/generated/   # regenerated
-docs/docs/schema/                         # user documentation of the query
 dev/knowledge/backend/schema-changes.md   # new: how stored schema changes work
 changelog/                                # one fragment, type "added"
 ```

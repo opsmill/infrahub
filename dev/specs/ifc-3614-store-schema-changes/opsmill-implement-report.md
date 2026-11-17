@@ -37,7 +37,7 @@
 | 16 | Phase 6 mutation history | T050–T051 (2) | ✅ 2 | `c7578b88b1` | Stored choice lists include `id: None` and `state`. `update_schema_hash()` is still called without `at`. |
 | 17 | Phase 7 branch deletion | T052–T055 (4) | ✅ 4 | `8be84871b6` | A batch is up to `batch_size` schema changes, each with all its records; a schema change with many operations makes one large transaction. |
 | 18 | Phase 8 tests | T056–T057 (2) | ✅ 2 | `97ec191eff` | A merge and a rebase store no record. A local image `registry.opsmill.io/opsmill/infrahub:local-ifc3614` was built and left on the machine. |
-| 19 | Phase 8 documentation | T058–T060 (3) | ✅ 3 | `03179b95b2` | The documentation skill's approval steps were skipped because a subagent cannot wait for them. |
+| 19 | Phase 8 documentation | T058–T060 (3) | ✅ 3 | `03179b95b2` | After the run, the user dropped the user documentation of T059 because the epic will change the query and the records; the section was removed. The changelog fragment and the knowledge document remain. |
 | 20 | Phase 8 validation | T061–T064 (4) | ✅ 3, ⚠️ 1 | `645e6c2e68`, `a47e6c86ec` | T063: quickstart section 6 was checked against the code and the Docker integration test, not run. The replay check found two failures, fixed in the review pass. |
 | R | Review fixes | — | ✅ 7 fixes | `d45772b250`, `9f4a728516`, `71ccf91104`, `c37ebabeec`, `5801f3b409`, `00d55f8849`, `897e0b5307`, `1a612aaf6c` | See §5. |
 
@@ -138,17 +138,18 @@ with the two failures that the test-only replay check found in chunk 20 (A and B
 - **Review triage.** Findings 4, 5, 6, 9 and 10 are deferred for the reasons in §5.
 - **T063.** Quickstart section 6, which needs a running instance, was checked against the code and
   against `integration_docker/test_schema_migration.py`, not run.
-- **Documentation skill approvals.** Chunk 19 wrote the user documentation without the approval
-  steps of `writing-infrahub-docs`.
+- **User documentation dropped.** After the run, the user decided to drop the user documentation
+  (T059), because it would not be accurate once the epic is complete. The section of
+  `docs/docs/schema/create-and-load.mdx` was removed, and `tasks.md`, `plan.md` and research R15
+  say so.
 
 ## 7. Suggested next steps
 
-1. Read the user documentation in `docs/docs/schema/create-and-load.mdx`, section "View the schema
-   changes of a branch", because its approval steps were skipped.
-2. Run `/pre-ci` for the backend, docs and frontend areas before pushing.
-3. Decide the deferred findings 4, 5 and 6, and whether the deleter should bound the size of one
+1. Run `/pre-ci` for the backend, docs and frontend areas before pushing.
+2. Decide the deferred findings 4, 5 and 6, and whether the deleter should bound the size of one
    transaction for a schema change with many operations (research R13).
-4. Decide whether migration positions should be stable between runs. Today they follow the order
+3. Decide whether migration positions should be stable between runs. Today they follow the order
    of a set in the schema diff (research R9).
+4. Write the user documentation of the history query when the epic is complete.
 5. Remove the local Docker image `registry.opsmill.io/opsmill/infrahub:local-ifc3614`.
 6. Open a pull request.

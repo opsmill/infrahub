@@ -906,10 +906,8 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
 - [X] T058 [P] Add a changelog fragment of type `added` with the `creating-changelog-entries`
       skill. Before writing it, check each claim against the diff: the name of the query, that it
       needs a logged-in account, and what stores a schema change.
-- [X] T059 [P] Document the history query for users in `docs/docs/schema/create-and-load.mdx`, in
-      a section on viewing the schema changes of a branch, with the
-      `opsmill-product:writing-infrahub-docs` skill when it is installed: what a schema change, an application and a migration are, an example query, and the
-      statuses. Run `uv run invoke docs.lint`.
+- [X] T059 [P] Dropped: no user documentation in this feature. The epic changes the history query
+      and the records further, so the user documentation is written when the epic is complete.
 - [X] T060 [P] Write `dev/knowledge/backend/schema-changes.md`: the records and their edges, why
       the edges have no `branch` property, how a load, a check and a mutation build their schema,
       where the applier runs and where the tests check the operations, when each status is set, and what keeps the status `running`. Load

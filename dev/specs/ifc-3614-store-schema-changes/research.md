@@ -639,7 +639,8 @@ gained a kind after the operations were recorded, to test FR-011 on the risk tha
   including for a pull request that changes only the back end. CI does not check `types.ts`, which
   `pnpm codegen` writes.
 - A changelog fragment of type `added`.
-- User documentation in `docs/docs/schema/` for the history query.
+- No user documentation in this feature: the epic changes the history query and the records
+  further, so the user documentation is written when the epic is complete.
 - `dev/knowledge/backend/`: a document on stored schema changes, linked from `backend/AGENTS.md`.
 - No new setting, no SDK change and no CLI change.
 
