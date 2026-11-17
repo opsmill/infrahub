@@ -213,6 +213,18 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 - `branch.created` and `branch.deleted` are stamped to the global branch, pending a general rule for branch-agnostic node events.
 - `branch.rebased` and `branch.migrated` inherit the caller's context branch; they are not overridden.
 
+## Activity log behaviour
+
+| Situation | What happens |
+|---|---|
+| The Activities page loads its first page | The task manager reads newest first, one window at a time: the 2,000 newest events of the requested event types, then the next 48,000, then the rest of the range. It stops at the window that fills the page |
+| The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
+| Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
+| A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
+| A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
+| A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
+| An API client pages with `offset` | Still accepted; each window is read from the newest event with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
+
 ## Querying Events
 
 Events can be queried through:
@@ -220,6 +232,87 @@ Events can be queried through:
 - **GraphQL**: `Events` query with filtering
 - **REST API**: `/infrahub/events/filter` endpoint
 - **Prefect Client**: Direct Prefect event API access
+
+### Query-path performance constraints
+
+The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one window at a
+time, and runs an unbounded `count(*)` over the whole range when asked. A window holds a number of
+events, not a duration: the 2,000 newest events, at or before the filter's `until`, that have one
+of the filter's event types, then the next 48,000, then the rest of the range
+(`NEWEST_FIRST_WINDOW_EVENT_COUNTS`). For each window, one read finds the time span of its events
+and a second reads the page in that span with the whole filter. The reads stop at the window that
+fills the page, or when the range holds no more events of those types; a range that holds none
+returns an empty page after the first read.
+A window of events costs the same whether its events are a minute or a month apart. A window of a
+duration does not: when a few events are much newer than the rest, the narrow windows hold only
+those few and the page is read in the widest one. A login stores an `infrahub.account.logged_in`
+event, so one login on a restored backup has this effect.
+A filter that few of the 50,000 newest events match is read over the rest of the range.
+Within one time, events are ordered by ID, so an `offset` skips the same events in every request.
+The range starts at the filter's `since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
+manager's event retention, or at least 180 days when the task manager does not delete old events,
+back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of the request so
+that this default applies. A wider window reads only the events older than the window before it,
+and the page keeps the events found so far. With an `offset`, each window is read from the newest
+event until one returns events, because the offset counts matches back from there. A filter that keeps
+one event per resource (`resource.distinct`) reads every window from the newest event, so each resource
+keeps its newest event of the whole range. A filter in ascending order is read in one query.
+Two hard-earned constraints apply to this path:
+
+- **The count is only computed when the caller asks for it.** The count aggregates every
+  matching row while the page read stops at the page size, so the count dominates the
+  endpoint's cost. The GraphQL resolver requests it (`include_total`) only when the query
+  selects `count` — the activity-log UI does not, so its page loads skip the aggregate
+  entirely. Keep that property when extending the endpoint.
+- **The endpoint forces per-execution planning** (`SET LOCAL plan_cache_mode =
+  force_custom_plan` at the start of its transaction). After five executions of a
+  prepared statement, Postgres may switch it to a *generic* plan chosen without seeing
+  the parameter values. For these event filters — a wide `occurred` window plus a JSON
+  label match against `event_resources` — the generic plan degrades from a linear hash
+  join to a quadratic nested loop (measured: 5 ms → 3.5 s on a 5k-event table, growing
+  quadratically). The flip is per pool connection and per statement, which made the
+  resulting stalls look like a once-a-week CI flake: one pool connection runs the
+  pathological plan while its siblings answer in milliseconds. `SET LOCAL` scopes the
+  countermeasure to this transaction only — the rest of the Prefect server keeps its
+  prepared-statement plan caching — at the cost of replanning these queries per
+  request (~1.5 ms). Do not remove it without re-checking the event queries' plans under
+  `plan_cache_mode = force_generic_plan`.
+
+### Activities filters match indexed IDs
+
+Filter on a resource ID or a related item's ID, not on a label alone. Labels are JSON fields
+without an index, so a label filter reads every related row in the range, while Prefect indexes
+`resource_id` on both the events and their related resources. The filters in
+`task_manager/event/models.py::InfrahubEventFilter` match:
+
+| Filter | Match |
+|---|---|
+| Account | Related ID `infrahub.account.<id>`, role `infrahub.account` |
+| Branch | Related ID `infrahub.branch.<branch_id>`, role `infrahub.branch`, after the GraphQL resolver resolves names to IDs |
+| Parent event | Related ID `<parent_id>`, role `infrahub.ancestor_event`, plus the `infrahub.event_parent.id` label, because ancestors include grandparents |
+| Merged, rebased or migrated by branch name | Resource ID `infrahub.branch.<name>` when every listed event type is a branch event; otherwise the `infrahub.branch.name` label, which other event types also have |
+| Primary node | Two filters (`InfrahubEventFilter.for_primary_nodes`). The first matches the resource ID forms `infrahub.node.<id>`, `<id>`, `infrahub.account.<id>` and `infrahub.proposed_change.<id>` plus the `infrahub.node.id` label, for every requested event type except `infrahub.branch.merged`, `infrahub.branch.deleted` and `infrahub.group.auto_created`, which have the node only in a label. The second lists those three event types, as far as the request asks for them, and matches the label alone. In both filters these conditions are added to the resource conditions that `event_type_filter` sets (the group auto-create labels, or the branch names of merged, rebased or migrated events), so an event must match both |
+
+- Match the primary node with the `prefect.resource.id` label of `EventResourceFilter`, which Prefect
+  looks up in the related-resources table, not with `EventResourceFilter.id`, which reads the
+  `resource_id` column of the events table: the only index containing that column starts with the
+  event name, which PostgreSQL 14 cannot skip over.
+- The two filters of a primary node are sent as two requests (`PrefectEvent.query_merged_events`).
+  Each returns its events up to the end of the page, and the pages are merged by time and then ID,
+  the order the task manager uses, before the offset is applied; a count is the sum of both
+  counts. The filters list different event types, so no event is returned twice. A page that ends
+  past `MERGED_PAGE_MAX_EVENTS` (1,000) is read through one filter on the `infrahub.node.id` label
+  instead, which the task manager pages, so a deep offset does not load every earlier event into the
+  task manager and the API server twice.
+- An event type that sets the `infrahub.node.id` label on a resource whose ID is not one of the
+  four forms must be added to `PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS`; otherwise a node filter does
+  not return its events. `backend/tests/unit/task_manager/event/test_models.py` reads every event
+  class and fails until the event type is listed.
+- `backend/tests/component/task_manager/test_event_filter_equivalence.py` compares each filter with
+  the label filter it replaced, kept in `backend/tests/helpers/event_filters.py`, so a Prefect
+  upgrade that changes how resource IDs are stored fails CI.
+- A label-only filter is correct but slow on a long activity log; give a new filter an ID match
+  before adding it to the Activities page.
 
 ## Key Locations
 
@@ -231,6 +324,9 @@ Events can be queried through:
 | Service adapter | `backend/infrahub/services/adapters/event/__init__.py` |
 | Trigger models | `backend/infrahub/trigger/models.py` |
 | GraphQL queries | `backend/infrahub/graphql/queries/event.py` |
+| Activities filters | `backend/infrahub/task_manager/event/models.py` |
+| Newest-first event windows | `backend/infrahub/prefect_server/database.py::query_events` |
+| Activities paging by time | `frontend/app/src/entities/events/ui/queries/get-events.query.ts` |
 
 ## See Also
 
