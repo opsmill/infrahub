@@ -25,6 +25,15 @@ For a change users can see in the UI, the API, the CLI or the documentation, als
 - Product: the pull request does more than one thing, or leaves out something its linked issue asks for.
 - User: an empty state, error message or permission denial that does not tell the user what happened and what to do next.
 
+## Repeated UI blocks
+
+In a frontend change, look for a UI block that now exists in more than one place:
+
+- A new component or block that repeats an existing one with different values, such as another kind, action or tab. Report it as a Nit and name the existing one by `file:line`.
+- A change to a block that also exists in other files. Search for the block's test ID, label or class string. Rate a copy the change missed like any other behavior finding, and the same edit made by hand in several copies as a Nit.
+
+`dev/guidelines/frontend/component-patterns.md` says when to extract a shared component.
+
 ## Evidence
 
 A finding about behavior cites `file:line` in the source, not an inference from a name.
