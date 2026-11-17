@@ -39,7 +39,7 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
               onOpenMenu={() => {
                 setOpen(true);
               }}
-              menuLabel={null}
+              isMenuUnnamed
               layout="fit"
             />
           ) : (

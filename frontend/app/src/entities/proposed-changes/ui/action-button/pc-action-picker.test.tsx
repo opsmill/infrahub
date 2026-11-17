@@ -5,6 +5,7 @@ import { cleanup } from "vitest-browser-react";
 import { store } from "@/shared/stores";
 
 import { AuthContext, type AuthContextType } from "@/entities/authentication/ui/auth-provider";
+import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { getProposedChangeAvailableActions } from "@/entities/proposed-changes/domain/use-cases/get-proposed-change-available-actions";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
@@ -34,6 +35,43 @@ const signedOut: AuthContextType = {
 
 const renderPicker = (picker: React.ReactElement, auth = signedIn) =>
   render(<AuthContext value={auth}>{picker}</AuthContext>);
+
+const signedInUserEdges = { edges: [{ node: { id: "user-1", __typename: "CoreAccount" } }] };
+
+/** Only the entry each option follows is unavailable, so the option is dimmed only when it reads that entry. */
+const optionsFollowingAnotherEntry: {
+  name: string;
+  picker: React.ReactElement;
+  proposedChange: Partial<ProposedChangeDetail>;
+  actions: Parameters<typeof generateProposedChangeActions>[0];
+  option: string;
+  entry: string;
+}[] = [
+  {
+    name: "a user who approved",
+    picker: <PcReviewButton />,
+    proposedChange: { approved_by: signedInUserEdges },
+    actions: { approve: { available: false, unavailability_reason: "Approvals are locked" } },
+    option: "Cancel Approval",
+    entry: "approve",
+  },
+  {
+    name: "a user who rejected",
+    picker: <PcReviewButton />,
+    proposedChange: { rejected_by: signedInUserEdges },
+    actions: { reject: { available: false, unavailability_reason: "Rejections are locked" } },
+    option: "Cancel Reject",
+    entry: "reject",
+  },
+  {
+    name: "a draft",
+    picker: <PcActionButton />,
+    proposedChange: { is_draft: { value: true } },
+    actions: { unsetDraft: { available: false, unavailability_reason: "Drafts are locked" } },
+    option: "Open",
+    entry: "unsetDraft",
+  },
+];
 
 const pickers = [
   {
@@ -121,6 +159,25 @@ describe("PcActionPicker", () => {
       await expect
         .element(component.getByRole("button", { name: otherOption, exact: true }))
         .toBeVisible();
+    }
+  );
+
+  test.each(optionsFollowingAnotherEntry)(
+    "lists $option for $name as unavailable when the $entry action is",
+    async ({ picker, proposedChange, actions, option }) => {
+      // GIVEN
+      store.set(proposedChangedState, generateProposedChange(proposedChange));
+      vi.mocked(getProposedChangeAvailableActions).mockResolvedValue(
+        generateProposedChangeActions(actions)
+      );
+      const component = await renderPicker(picker);
+
+      // WHEN
+      await component.getByRole("button", { name: "More actions" }).click();
+
+      // THEN
+      await expect.element(component.getByText(option, { exact: true })).toBeVisible();
+      expect(component.getByRole("option", { name: option }).query()).toBeNull();
     }
   );
 

@@ -3,9 +3,7 @@ import type React from "react";
 
 import { Icon } from "@/shared/components/display/icon";
 
-import type { PcActionsContextType } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
-
-export type PcActionAvailability = PcActionsContextType[keyof PcActionsContextType];
+import type { PcActionAvailability } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 interface PcSplitActionButtonProps {
   label: React.ReactNode;
@@ -19,8 +17,8 @@ interface PcSplitActionButtonProps {
   availability?: PcActionAvailability;
   /** Opens the action picker; without it the chevron is disabled. */
   onOpenMenu?: () => void;
-  /** Accessible name of the chevron when it opens the picker; null leaves it unnamed. */
-  menuLabel?: string | null;
+  /** Leaves the chevron without an accessible name. */
+  isMenuUnnamed?: boolean;
   /** "fill" stretches the buttons across the picker trigger; "fit" keeps the standard button height. */
   layout?: "fill" | "fit";
 }
@@ -34,7 +32,7 @@ export function PcSplitActionButton({
   isDisabled,
   availability,
   onOpenMenu,
-  menuLabel = "More actions",
+  isMenuUnnamed,
   layout = "fill",
 }: PcSplitActionButtonProps) {
   const isUnavailable = !!availability && !availability.available;
@@ -79,7 +77,7 @@ export function PcSplitActionButton({
         onPress={onOpenMenu}
         isDisabled={isDisabled || isPending || !onOpenMenu}
         data-testid={onOpenMenu ? "proposed-change-action-button-select" : undefined}
-        aria-label={onOpenMenu ? (menuLabel ?? undefined) : undefined}
+        aria-label={onOpenMenu && !isMenuUnnamed ? "More actions" : undefined}
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

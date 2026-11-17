@@ -106,10 +106,6 @@ Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails 
 
 The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
 
-### Proposed change action buttons
-
-The proposed change details card and the create form build their action control from `entities/proposed-changes/ui/action-button/`. `PcSplitActionButton` draws the main button and the chevron that opens the action picker: pass the action's `availability` entry to disable the main button when the backend reports the action unavailable, and `onOpenMenu` to enable the chevron and give it the `proposed-change-action-button-select` test id. `PcActionPicker` keeps the selected action and shows the "Please login" placeholder until the available actions load and a user is signed in. `PcActionComboboxList` lists the picker options and shows an unavailable option as dimmed text with its reason in a tooltip. Each action button keeps its own mutation and success message.
-
 ### Layout
 
 | Need | Use | Location |
@@ -139,6 +135,10 @@ The proposed change details card and the create form build their action control 
 Two limits worth knowing before you pick a paging primitive: `Pagination` always renders "of {count}" and cannot hide the total, so a list that must not show one (`entities/repository/ui/repository-commits-manager.tsx`) uses `DataTable` inside `InfiniteScroll` instead, passing `getRowId={(commit) => commit.hash}` because its rows are not nodes. `DataTable` keys node rows by their `id`; rows that are not nodes must pass `getRowId`, and passing it turns row selection off, because selection hands rows to the node toolbar. Row selection (`enableRowSelection`, `toolbarActions`) is therefore node-only, and the props reject it alongside `getRowId`. Second, `DataTable`'s `isLoading` renders `ObjectTableSkeleton`, whose first column is a checkbox, so a table without row selection shows its own spinner for a next-page fetch rather than passing `isLoading`.
 
 More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
+
+### Proposed change action buttons
+
+The proposed change details card and the create form build their action control from `entities/proposed-changes/ui/action-button/`. `PcSplitActionButton` draws the main button and the chevron that opens the action picker: pass the action's `availability` entry to disable the main button when the backend reports the action unavailable, and `onOpenMenu` to enable the chevron and give it the `proposed-change-action-button-select` test id. `PcActionPicker` keeps the selected action and shows the "Please login" placeholder until the available actions load and a user is signed in. `PcActionComboboxList` lists the picker options and shows an unavailable option as dimmed text with its reason in a tooltip. Each action button keeps its own mutation and success message.
 
 ### Hooks
 

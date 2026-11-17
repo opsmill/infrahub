@@ -2,7 +2,7 @@ import { Tooltip } from "@infrahub/ui";
 
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 
-import type { PcActionAvailability } from "@/entities/proposed-changes/ui/action-button/pc-split-action-button";
+import type { PcActionAvailability } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 export interface PcActionComboboxItem<TValue extends string> {
   value: TValue;
