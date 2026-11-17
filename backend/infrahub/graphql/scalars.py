@@ -20,8 +20,8 @@ from infrahub.exceptions import ValidationError
 class PositiveInteger(Scalar):
     """A GraphQL scalar for pagination arguments such as `limit` and `offset`.
 
-    It accepts integers >= 0 (and whole-number floats, matching the built-in Int
-    scalar) and rejects negative, fractional or non-integer values by raising
+    It accepts non-negative integers within the signed 32-bit range (and
+    whole-number floats, matching the built-in Int scalar) and rejects other values by raising
     ValidationError, which the executor wraps with the argument type name and
     source location. Zero is allowed because `offset: 0` is the first page.
     """
@@ -41,7 +41,7 @@ class PositiveInteger(Scalar):
         """Parse a value supplied as an inline literal in the query.
 
         Raises:
-            ValidationError: If the literal is not a non-negative integer.
+            ValidationError: If the literal is outside the non-negative signed 32-bit range.
 
         """
         if isinstance(node, IntValueNode):
@@ -50,13 +50,13 @@ class PositiveInteger(Scalar):
 
     @staticmethod
     def _validate(value: Any) -> int | None:
-        """Validate that the value is a non-negative integer.
+        """Validate that the value is a non-negative signed 32-bit integer.
 
         Booleans, strings and fractional floats are rejected so that variable
         inputs are validated as strictly as inline integer literals.
 
         Raises:
-            ValidationError: If the value is not a non-negative integer.
+            ValidationError: If the value is outside the non-negative signed 32-bit range.
 
         """
         if value is None:
@@ -70,6 +70,8 @@ class PositiveInteger(Scalar):
         value = int(value)
         if value < 0:
             raise ValidationError("Value must be a non-negative integer")
+        if value > MAX_INT:
+            raise ValidationError(f"Value must be less than or equal to {MAX_INT}")
 
         return value
 

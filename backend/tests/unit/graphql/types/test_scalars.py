@@ -84,6 +84,15 @@ class TestFixedGenericScalarParseLiteral:
 
 
 class TestPositiveIntegerParseValue:
+    @pytest.mark.parametrize("value", [2147483647, 2147483647.0])
+    def test_maximum_integer(self, value: float) -> None:
+        assert PositiveInteger.parse_value(value) == 2147483647
+
+    @pytest.mark.parametrize("value", [2147483648, 2147483648.0, 9223372036854775808])
+    def test_integer_above_maximum(self, value: float) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be less than or equal to 2147483647$"):
+            PositiveInteger.parse_value(value)
+
     def test_positive_integer(self) -> None:
         assert PositiveInteger.parse_value(5) == 5
 
@@ -114,6 +123,14 @@ class TestPositiveIntegerParseValue:
 
 
 class TestPositiveIntegerParseLiteral:
+    def test_maximum_integer_literal(self) -> None:
+        assert PositiveInteger.parse_literal(IntValueNode(value="2147483647")) == 2147483647
+
+    @pytest.mark.parametrize("value", ["2147483648", "9223372036854775808"])
+    def test_integer_literal_above_maximum(self, value: str) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be less than or equal to 2147483647$"):
+            PositiveInteger.parse_literal(IntValueNode(value=value))
+
     def test_positive_integer_literal(self) -> None:
         assert PositiveInteger.parse_literal(IntValueNode(value="5")) == 5
 

@@ -36,8 +36,8 @@ export type Scalars = {
   /**
    * A GraphQL scalar for pagination arguments such as `limit` and `offset`.
    *
-   * It accepts integers >= 0 (and whole-number floats, matching the built-in Int
-   * scalar) and rejects negative, fractional or non-integer values by raising
+   * It accepts non-negative integers within the signed 32-bit range (and
+   * whole-number floats, matching the built-in Int scalar) and rejects other values by raising
    * ValidationError, which the executor wraps with the argument type name and
    * source location. Zero is allowed because `offset: 0` is the first page.
    */
@@ -38896,8 +38896,8 @@ export type QueryInfrahubRepositoryCommitsArgs = {
 
 
 export type QueryInfrahubResourcePoolAllocatedArgs = {
-  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
-  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   pool_id: Scalars['String']['input'];
   resource_id: Scalars['String']['input'];
 };

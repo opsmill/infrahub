@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any, cast
 
-from graphene import BigInt, Field, Float, List, NonNull, ObjectType, String
+from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -18,7 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.scalars import PositiveInteger
+from infrahub.graphql.resolvers.resolver import validate_offset_and_limit
 from infrahub.graphql.types.enums import PoolRecordProvenance
 from infrahub.pools.number import NumberUtilizationGetter, UtilizationFigures
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -107,6 +107,7 @@ class PoolAllocated(ObjectType):
         offset: int = 0,
         limit: int = 10,
     ) -> dict:
+        validate_offset_and_limit(offset=offset, limit=limit)
         graphql_context: GraphqlContext = info.context
         async with graphql_context.db.start_session(read_only=True) as db:
             pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
@@ -430,8 +431,8 @@ InfrahubResourcePoolAllocated = Field(
     PoolAllocated,
     pool_id=String(required=True),
     resource_id=String(required=True),
-    limit=PositiveInteger(required=False),
-    offset=PositiveInteger(required=False),
+    limit=Int(required=False),
+    offset=Int(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
     description=RESOURCE_POOL_ALLOCATED_DESCRIPTION,

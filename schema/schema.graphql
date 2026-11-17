@@ -13015,8 +13015,8 @@ type PoolUtilization {
 """
 A GraphQL scalar for pagination arguments such as `limit` and `offset`.
 
-It accepts integers >= 0 (and whole-number floats, matching the built-in Int
-scalar) and rejects negative, fractional or non-integer values by raising
+It accepts non-negative integers within the signed 32-bit range (and
+whole-number floats, matching the built-in Int scalar) and rejects other values by raising
 ValidationError, which the executor wraps with the argument type name and
 source location. Zero is allowed because `offset: 0` is the first page.
 """
@@ -26875,7 +26875,7 @@ type Query {
   """
   The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead.
   """
-  InfrahubResourcePoolAllocated(limit: PositiveInteger, offset: PositiveInteger, pool_id: String!, resource_id: String!): PoolAllocated!
+  InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   """
   Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead.
   """
