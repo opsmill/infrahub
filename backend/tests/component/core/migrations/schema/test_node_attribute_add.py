@@ -1132,34 +1132,6 @@ async def test_aware_attribute_edges_stay_on_migration_branch(
     await verify_graph(db=db)
 
 
-async def test_agnostic_attribute_add_is_idempotent(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-) -> None:
-    """The re-run guard still matches an owning edge the previous run put on the global branch."""
-    migration_branch = await create_branch(branch_name="branch-agnostic-idempotent", db=db)
-
-    previous_schema, candidate = add_attribute_to_test_car(
-        branch_name=migration_branch.name,
-        attribute=AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
-    )
-
-    assert (
-        await run_test_car_attribute_add(
-            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
-        )
-        == 2
-    )
-    attribute_count = await count_nodes(db=db, label="Attribute")
-
-    assert (
-        await run_test_car_attribute_add(
-            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
-        )
-        == 0
-    )
-    assert await count_nodes(db=db, label="Attribute") == attribute_count
-
-
 async def test_migration_agnostic_numberpool_attribute(
     db: InfrahubDatabase,
     branch: Branch,
