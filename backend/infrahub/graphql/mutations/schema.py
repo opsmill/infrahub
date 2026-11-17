@@ -11,8 +11,9 @@ from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
-from infrahub.core.schema_change.factory import build_schema_candidate_builder
+from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
 from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
@@ -344,7 +345,10 @@ async def apply_attribute_property_change(
     service: InfrahubServices,
     context: InfrahubContext,
 ) -> None:
-    """Set the dropdown choices or the enum values of an attribute of the branch schema to `value`, and save it."""
+    """Set the dropdown choices or the enum values of an attribute of the branch schema to `value`, and save it.
+
+    The schema is saved with an applied schema change that holds the one operation, in the same transaction.
+    """
     candidate_builder = build_schema_candidate_builder()
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -370,13 +374,18 @@ async def apply_attribute_property_change(
 
         if diff.all:
             log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+            at = Timestamp()
             async with db.start_transaction() as dbt:
+                # The registry is replaced before the commit, so a failed record write must happen before it.
+                recorder = build_schema_change_recorder(db=dbt, default_branch_name=registry.default_branch)
+                await recorder.record_applied(branch=branch, operations=[operation], at=at, user_id=account_id)
                 await registry.schema.update_schema_branch(
                     schema=candidate.schema,
                     db=dbt,
                     branch=branch.name,
                     limit=diff.all,
                     update_db=True,
+                    at=at,
                     user_id=account_id,
                 )
                 branch.update_schema_hash()

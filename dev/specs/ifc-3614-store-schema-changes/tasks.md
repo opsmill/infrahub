@@ -814,7 +814,7 @@ error, and the status of each migration.
 **Independent Test**: add a choice to a dropdown attribute through the mutation, then query the
 history ([quickstart.md](quickstart.md), section 2).
 
-- [ ] T050 [P] [US4] Write the component tests in
+- [X] T050 [P] [US4] Write the component tests in
       `backend/tests/component/graphql/mutations/test_schema_dropdown_and_enum_history.py`, as
       one ordered class. Add a `choices_schema_scope_class` fixture beside `choices_schema` in
       `backend/tests/component/conftest.py`, on `node_group_schema_scope_class` and
@@ -830,7 +830,7 @@ history ([quickstart.md](quickstart.md), section 2).
       - a mutation that is refused, for a choice that already exists or a value still in use,
         stores none, and the history is the same as before it;
       - `applied_at` of each schema change equals the timestamp at which the schema was saved.
-- [ ] T051 [US4] Change `graphql/mutations/schema.py::apply_attribute_property_change` to take
+- [X] T051 [US4] Change `graphql/mutations/schema.py::apply_attribute_property_change` to take
       one `Timestamp` and to store the records. Inside its `db.start_transaction()` block, build
       the recorder with `build_schema_change_recorder` on the database handle of the
       transaction, and call `SchemaChangeRecorder.record_applied` with the operation of T020
