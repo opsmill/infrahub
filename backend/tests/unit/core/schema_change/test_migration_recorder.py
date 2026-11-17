@@ -15,8 +15,8 @@ from infrahub.exceptions import DatabaseError, QueryError
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
     CREATE_MIGRATION_RECORDS,
-    SET_MIGRATION_RECORDS_STATUS,
     FAILING_STORE_ERROR,
+    SET_MIGRATION_RECORDS_STATUS,
     FailingMigrationRecordStore,
     MigrationRecordStoreCall,
 )

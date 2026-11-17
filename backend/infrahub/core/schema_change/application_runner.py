@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-
 class ApplicationRecorder(Protocol):
     async def start(
         self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str

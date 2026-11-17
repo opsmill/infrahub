@@ -7,7 +7,7 @@ from pydantic_core import to_jsonable_python
 
 from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel, HashableModelDiff
-from infrahub.core.schema import GenericSchema
+from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.schema_change.constants import (
     SCHEMA_ELEMENT_NAME_PROPERTY,
     SCHEMA_KIND_NAME_PROPERTIES,
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
         AttributeSchema,
         MainSchemaTypes,
         NodeExtensionSchema,
-        NodeSchema,
         RelationshipSchema,
         SchemaRoot,
     )
@@ -233,7 +232,7 @@ class SchemaOperationBuilder:
         changes = self._changed_kind_operations(
             branch_schema=branch_schema,
             kind=kind,
-            kind_diff=processed_node.diff(other=branch_node),
+            kind_diff=self._kind_diff(processed_node=processed_node, branch_node=branch_node),
             unprocessed_node=unprocessed_node,
             processed_node=processed_node,
             stated_kind=stated_kind,
@@ -246,6 +245,14 @@ class SchemaOperationBuilder:
             *changes.element_renames,
             SchemaOperation(operation_type=SchemaOperationType.NODE_REMOVE, kind=kind_before),
         ]
+
+    def _kind_diff(self, processed_node: MainSchemaTypes, branch_node: MainSchemaTypes) -> HashableModelDiff:
+        if isinstance(processed_node, NodeSchema) and isinstance(branch_node, NodeSchema):
+            return processed_node.diff(other=branch_node)
+        if isinstance(processed_node, GenericSchema) and isinstance(branch_node, GenericSchema):
+            return processed_node.diff(other=branch_node)
+        # A load refuses to turn a node into a generic, so the two kinds always have the same type.
+        return HashableModelDiff()
 
     def _changed_kind_operations(
         self,
