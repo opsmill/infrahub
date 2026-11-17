@@ -1,14 +1,10 @@
-import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { EllipsisVerticalIcon, Maximize2Icon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
-import { queryClient } from "@/shared/api/rest/client";
-import { SlideOverTitle } from "@/shared/components/display/slide-over";
-
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -82,23 +78,15 @@ export function ObjectActionsCell({
         </MenuTrigger>
       </StickyRightCell>
 
-      <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>
-        <SlideOverTitle
-          schema={schema}
-          currentObjectLabel={objectLabel}
-          title={`Edit ${objectLabel}`}
-        />
-        <ObjectEdit
-          closeDrawer={() => setShowEditForm(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-            setShowEditForm(false);
-          }}
-          objectId={objectId}
-          objectKind={objectKind}
-          extraRelationshipNames={extraRelationshipNames}
-        />
-      </Sheet>
+      <ObjectEditSheet
+        isOpen={showEditForm}
+        onOpenChange={() => setShowEditForm(false)}
+        schema={schema}
+        objectId={objectId}
+        objectKind={objectKind}
+        objectLabel={objectLabel}
+        extraRelationshipNames={extraRelationshipNames}
+      />
 
       <DeleteObjectModal
         objectKind={objectKind}

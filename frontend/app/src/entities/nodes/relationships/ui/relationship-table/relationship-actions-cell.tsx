@@ -1,16 +1,13 @@
-import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger, Sheet } from "@infrahub/ui";
+import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger } from "@infrahub/ui";
 import { EllipsisVerticalIcon, PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { Icon } from "@/shared/components/display/icon";
-import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
-import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/domain/rules/can-dissociate-relationship";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
@@ -110,22 +107,14 @@ export function RelationshipActionsCell({
         />
       </PopoverContent>
 
-      <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>
-        <SlideOverTitle
-          schema={parentSchema}
-          currentObjectLabel={relationshipLabel}
-          title={`Edit ${relationshipLabel}`}
-        />
-        <ObjectEdit
-          closeDrawer={() => setShowEditForm(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-            setShowEditForm(false);
-          }}
-          objectId={relationshipId}
-          objectKind={relationshipKind}
-        />
-      </Sheet>
+      <ObjectEditSheet
+        isOpen={showEditForm}
+        onOpenChange={() => setShowEditForm(false)}
+        schema={parentSchema}
+        objectId={relationshipId}
+        objectKind={relationshipKind}
+        objectLabel={relationshipLabel}
+      />
 
       {showDissociateModal && (
         <DissociateRelationshipsModal

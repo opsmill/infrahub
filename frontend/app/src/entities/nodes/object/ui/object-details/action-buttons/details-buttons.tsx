@@ -1,11 +1,9 @@
-import { Button, LinkButton, Sheet, Tooltip } from "@infrahub/ui";
+import { Button, LinkButton, Tooltip } from "@infrahub/ui";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@/shared/components/display/icon";
-import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/domain/model/artifact";
@@ -18,8 +16,7 @@ import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
@@ -88,23 +85,14 @@ export function DetailsButtons({
         </LinkButton>
       </div>
 
-      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <SlideOverTitle
-          schema={schema}
-          currentObjectLabel={nodeLabel}
-          title={`Edit ${nodeLabel}`}
-          subtitle={schema.description}
-        />
-        <ObjectEdit
-          closeDrawer={() => setIsEditModalOpen(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-            setIsEditModalOpen(false);
-          }}
-          objectId={objectDetailsData.id!}
-          objectKind={schema.kind!}
-        />
-      </Sheet>
+      <ObjectEditSheet
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        schema={schema}
+        objectId={objectDetailsData.id}
+        objectLabel={nodeLabel}
+        subtitle={schema.description}
+      />
     </>
   );
 }
