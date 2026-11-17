@@ -14,16 +14,17 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import HashableModelState, SchemaPathType
+from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType
 from infrahub.core.migrations.schema.attribute_kind_update import AttributeKindUpdateMigration
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigration
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import AttributeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from tests.component.core.migrations.schema.second_run_helpers import (
     BRANCH_KINDS,
@@ -247,5 +248,83 @@ async def test_node_remove(
         previous_node_schema=previous,
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+def rename_car_kind(candidate: SchemaBranch, namespace: str, name: str) -> str:
+    """Replace TestCar with a kind of the given namespace and name, and point the person's peers at it."""
+    car = candidate.get_node(name="TestCar", duplicate=True)
+    candidate.delete(name="TestCar")
+    car.namespace = namespace
+    car.name = name
+    candidate.set(name=car.kind, schema=car)
+    person = candidate.get_node(name="TestPerson", duplicate=True)
+    for relationship in person.relationships:
+        if relationship.peer == "TestCar":
+            relationship.peer = car.kind
+    candidate.set(name="TestPerson", schema=person)
+    return car.kind
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_inherit_from_update(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name="TestCar", duplicate=True)
+    candidate = schema_branch.duplicate()
+    generic = GenericSchema(
+        name="Asset",
+        namespace="Test",
+        branch=BranchSupportType.AWARE,
+        attributes=[AttributeSchema(name="status", kind="Text", default_value="active", optional=True)],
+    )
+    candidate.set(name=generic.kind, schema=generic)
+    car = candidate.get_node(name="TestCar", duplicate=True)
+    car.inherit_from = [*car.inherit_from, generic.kind]
+    candidate.set(name="TestCar", schema=car)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name="TestCar"),
+        schema_path=attribute_path(kind="TestCar", name="inherit_from"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_name_update(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name="TestCar", duplicate=True)
+    candidate = schema_branch.duplicate()
+    new_kind = rename_car_kind(candidate=candidate, namespace="Test", name="Auto")
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=new_kind),
+        schema_path=attribute_path(kind=new_kind, name="name"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_namespace_update(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name="TestCar", duplicate=True)
+    candidate = schema_branch.duplicate()
+    new_kind = rename_car_kind(candidate=candidate, namespace="Test2", name="Car")
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name=new_kind),
+        schema_path=attribute_path(kind=new_kind, name="namespace"),
     )
     await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
