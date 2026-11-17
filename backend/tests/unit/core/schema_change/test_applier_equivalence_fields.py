@@ -57,6 +57,13 @@ def _absent_node(_: SchemaBranch) -> SchemaRoot:
     return SchemaRoot(nodes=[tag])
 
 
+def _absent_node_with_absent_attribute(_: SchemaBranch) -> SchemaRoot:
+    tag = base_node_definition(TestKind.TAG)
+    tag.state = HashableModelState.ABSENT
+    tag.get_attribute(name="description").state = HashableModelState.ABSENT
+    return SchemaRoot(nodes=[tag])
+
+
 def _absent_attribute_on_generic(_: SchemaBranch) -> SchemaRoot:
     interface = base_generic_definition(TestKind.INTERFACE)
     interface.get_attribute(name="enabled").state = HashableModelState.ABSENT
@@ -144,6 +151,7 @@ FIELD_EQUIVALENCE_CASES: list[EquivalenceCase] = [
     EquivalenceCase(name="remove_dropdown_choice", schema_file=_remove_dropdown_choice),
     EquivalenceCase(name="change_dropdown_choice_color", schema_file=_change_dropdown_choice_color),
     EquivalenceCase(name="absent_node", schema_file=_absent_node),
+    EquivalenceCase(name="absent_node_with_absent_attribute", schema_file=_absent_node_with_absent_attribute),
     EquivalenceCase(name="absent_attribute_on_generic", schema_file=_absent_attribute_on_generic),
     EquivalenceCase(name="absent_relationship", schema_file=_absent_relationship),
     EquivalenceCase(name="extend_node_with_attribute_and_relationship", schema_file=_extend_node),

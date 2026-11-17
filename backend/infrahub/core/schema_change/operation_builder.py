@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 ORDER_WEIGHT_KEY = "order_weight"
+STATE_PROPERTY = "state"
 SECTION_ORDER = (SchemaOperationSection.ATTRIBUTES, SchemaOperationSection.RELATIONSHIPS)
 SECTION_NAMES = frozenset(section.value for section in SECTION_ORDER)
 
@@ -118,12 +119,16 @@ class SchemaOperationBuilder:
         diff = branch_schema.diff(other=direct_load_schema)
 
         operations = [
-            SchemaOperation(
-                operation_type=SchemaOperationType.NODE_REMOVE,
-                kind=self._kind_before(branch_schema=branch_schema, kind=kind, node=unprocessed[kind]),
-            )
+            operation
             for kind in sorted(diff.removed)
             if kind in unprocessed and stated_kinds[kind].definitions
+            for operation in self._removed_kind_operations(
+                branch_schema=branch_schema,
+                kind=kind,
+                unprocessed_node=unprocessed[kind],
+                processed_node=direct_load_schema.get(name=kind, duplicate=False),
+                stated_kind=stated_kinds[kind],
+            )
         ]
         added_kinds = [kind for kind in diff.added if kind in unprocessed and stated_kinds[kind].definitions]
         operations.extend(
@@ -210,6 +215,39 @@ class SchemaOperationBuilder:
         parameters = definition.get(PARAMETERS_KEY)
         if isinstance(parameters, dict):
             parameters.pop(NUMBER_POOL_ID_KEY, None)
+
+    def _removed_kind_operations(
+        self,
+        branch_schema: SchemaBranch,
+        kind: str,
+        unprocessed_node: MainSchemaTypes,
+        processed_node: MainSchemaTypes,
+        stated_kind: _StatedKind,
+    ) -> list[SchemaOperation]:
+        """Return the operations of a kind that the file marks absent, ending with its removal.
+
+        A load keeps the removed kind in the schema with the other changes that the file states for it merged in, such
+        as the attributes and relationships that the file also marks absent, so the operations make those changes
+        first.
+        """
+        kind_before = self._kind_before(branch_schema=branch_schema, kind=kind, node=unprocessed_node)
+        branch_node = branch_schema.get(name=kind_before, duplicate=False)
+        changes = self._changed_kind_operations(
+            branch_schema=branch_schema,
+            kind=kind,
+            kind_diff=processed_node.diff(other=branch_node),
+            unprocessed_node=unprocessed_node,
+            processed_node=processed_node,
+            stated_kind=stated_kind,
+        )
+        return [
+            *changes.element_removals,
+            *changes.element_additions,
+            *(operation for operation in changes.node_properties if operation.property_name != STATE_PROPERTY),
+            *changes.element_properties,
+            *changes.element_renames,
+            SchemaOperation(operation_type=SchemaOperationType.NODE_REMOVE, kind=kind_before),
+        ]
 
     def _changed_kind_operations(
         self,

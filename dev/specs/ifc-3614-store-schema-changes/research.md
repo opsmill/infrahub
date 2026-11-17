@@ -179,7 +179,8 @@ leaves out (`core/schema/attribute_parameters.py::NumberPoolParameters.update` r
 
 **Order of the operations** in one schema change:
 
-1. removals of kinds, then additions of kinds, generics before nodes, each group by kind name;
+1. removals of kinds, each preceded by the other changes that the file states for that kind, then
+   additions of kinds, generics before nodes, each group by kind name;
 2. then each changed kind, by kind name. Inside a kind: removals of attributes and relationships,
    additions, property changes other than a rename, renames of attributes and relationships, and
    last the rename of the kind itself.
@@ -206,6 +207,11 @@ details:
 - `state: absent` on an attribute or a relationship that a node overrides from its generic gives
   an `element_remove`. The diff reports that element as changed, not removed, because processing
   inherits it again from the generic.
+- `state: absent` on a node gives a `node_remove`. A load keeps the removed kind in the schema with
+  the other changes that the file states for it merged in, such as the attributes and
+  relationships that the file also marks absent. So the operations of those changes come first,
+  in the order of a changed kind, without a change of `state`, `name` or `namespace`, and the
+  `node_remove` comes last.
 - An added definition holds the fields that the file sets, without `id` and
   `parameters.number_pool_id`, and the order weight of R4.
 - A load keeps the class of an attribute as the file holds it. An attribute that a node

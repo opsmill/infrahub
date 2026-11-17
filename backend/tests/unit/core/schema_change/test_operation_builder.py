@@ -89,9 +89,10 @@ def _rename_attribute_on_generic(schema: SchemaBranch) -> SchemaRoot:
 
 
 def _file_with_every_operation_type(schema: SchemaBranch, *, reverse: bool) -> SchemaRoot:
-    """Remove a kind, add a generic and a node, and remove, add, change and rename attributes of other kinds."""
+    """Remove a kind and one of its attributes, add a generic and a node, and remove, add, change and rename attributes of other kinds."""
     tag = base_node_definition(TestKind.TAG)
     tag.state = HashableModelState.ABSENT
+    tag.get_attribute(name="description").state = HashableModelState.ABSENT
     connector = GenericSchema(
         name="Connector",
         namespace="Testing",
@@ -344,6 +345,14 @@ class TestOperationsOfAFileWithEveryOperationType:
         )
 
         expected: list[OperationTarget] = [
+            (
+                SchemaOperationType.ELEMENT_REMOVE,
+                TestKind.TAG,
+                None,
+                SchemaOperationSection.ATTRIBUTES,
+                "description",
+                None,
+            ),
             (SchemaOperationType.NODE_REMOVE, TestKind.TAG, None, None, None, None),
             (SchemaOperationType.NODE_ADD, CONNECTOR_KIND, SchemaOperationNodeType.GENERIC, None, None, None),
             (SchemaOperationType.NODE_ADD, CABLE_KIND, SchemaOperationNodeType.NODE, None, None, None),
