@@ -750,7 +750,7 @@ error, and the status of each migration.
 
 ### Tests (write first)
 
-- [ ] T044 [P] [US3] Add component tests of `fail` to
+- [X] T044 [P] [US3] Add component tests of `fail` to
       `backend/tests/component/core/schema_change/test_recorder.py`:
       - `fail` sets the schema change and the application to `failed` and stores the error
         (FR-060);
@@ -759,7 +759,7 @@ error, and the status of each migration.
         `failed`, `running` or `waiting` keeps its status (spec, decision 6);
       - the next schema change completed on the branch gets the next version, and its parent is
         the last applied schema change.
-- [ ] T045 [P] [US3] Write the unit tests of the runner in
+- [X] T045 [P] [US3] Write the unit tests of the runner in
       `backend/tests/unit/core/schema_change/test_application_runner.py`. Add to
       `backend/tests/unit/core/schema_change/helpers.py` an `ApplicationRecorder` and a
       `SchemaUpdateExecutor` that record their calls in order, and one of each that raises. No
@@ -772,7 +772,7 @@ error, and the status of each migration.
         `complete`, in that order, and returns the hash;
       - the executor receives the `user_id` and the `context` that `run` received;
       - `complete` receives the `branch` that `start` received.
-- [ ] T046 [US3] Add the failed load methods to `TestSchemaChangeHistory` in
+- [X] T046 [US3] Add the failed load methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
       of T028 and before the deletion. They continue from the three applied schema changes of
       the class and load nothing again. Make a migration fail as
@@ -790,14 +790,14 @@ error, and the status of each migration.
 
 ### Implementation
 
-- [ ] T047 [US3] Confirm that the query and the repository method `mark_failed`, which T030 and
+- [X] T047 [US3] Confirm that the query and the repository method `mark_failed`, which T030 and
       T032 create because the seeding function of T023 needs them, set both statuses, store the
       error on the application, and set the migration records of the application that are
       `applied` to `rolled_back`, in one query. Change
       `backend/infrahub/core/query/schema_change.py` only if T044 shows a difference.
-- [ ] T048 [US3] Add `fail` to `SchemaChangeRecorder` in
+- [X] T048 [US3] Add `fail` to `SchemaChangeRecorder` in
       `backend/infrahub/core/schema_change/recorder.py`. Make T044 pass.
-- [ ] T049 [US3] Add the failure path to `SchemaChangeApplicationRunner.run` in
+- [X] T049 [US3] Add the failure path to `SchemaChangeApplicationRunner.run` in
       `backend/infrahub/core/schema_change/application_runner.py`: catch the exception that
       `executor.execute` raises after its rollback, call `recorder.fail`, log a
       failure of `recorder.fail` itself, and raise the original exception. Load

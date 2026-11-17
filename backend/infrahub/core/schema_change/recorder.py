@@ -66,6 +66,18 @@ class SchemaChangeRecorder:
             user_id=user_id,
         )
 
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+        """Set the schema change and its application to failed with the error, without a version.
+
+        The migration records that were applied become rolled back, and the others keep their status.
+        """
+        await self.repository.mark_failed(
+            schema_change_id=recording.schema_change_id,
+            application_id=recording.application_id,
+            error=error,
+            user_id=user_id,
+        )
+
     async def record_applied(
         self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
     ) -> SchemaChangeRecording:

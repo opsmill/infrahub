@@ -3,11 +3,16 @@ from __future__ import annotations
 from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
+import infrahub.core.migrations.schema.tasks as tasks_module
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.initialization import create_account
+from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema_change.constants import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
@@ -19,21 +24,26 @@ from infrahub.core.schema_change.operations import SchemaOperation
 
 from .shared import (
     CARD_KIND,
+    HEIGHT_ATTRIBUTE,
     INVALID_HUMAN_FRIENDLY_ID,
     POSITION_ATTRIBUTE,
+    POWER_SLOT_KIND,
     SERIAL_ATTRIBUTE,
     SERIAL_LABEL,
     SHARED_CARD_NAME,
+    SLOT_KIND,
     SchemaChangeDataset,
     TestSchemaChangeBase,
     read_schema_change_history,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
+    from infrahub.core.migrations.query import MigrationBaseQuery
     from infrahub.database import InfrahubDatabase
     from tests.helpers.test_client import InfrahubTestClient
 
@@ -43,6 +53,8 @@ MAIN_SCHEMA_CHANGE_NAME = "00001_testingslot_add_and_4_more"
 CARD_SERIAL_SUMMARY = "testingcard_serial_add"
 CARD_SERIAL_LABEL_SUMMARY = "testingcard_serial_update"
 SLOT_POSITION_SUMMARY = "testingslot_position_add"
+SLOT_HEIGHT_SUMMARY = "testingslot_height_add"
+SLOT_MIGRATION_FAILURE = "The height of 2 slots could not be added"
 
 ADDED_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "state": "present",
@@ -126,6 +138,38 @@ query {
   }
 }
 """
+
+
+POWER_SLOTS_QUERY = """
+query {
+  TestingPowerSlot {
+    edges { node { id name { value } position { value } } }
+  }
+}
+"""
+
+
+class SlotAttributeAddMigrationThatFails(NodeAttributeAddMigration):
+    """Fails on the generic slot, and adds the attribute as usual on any other kind."""
+
+    async def execute(
+        self,
+        migration_input: MigrationInput,
+        branch: Branch,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,
+    ) -> MigrationResult:
+        if self.schema_path.schema_kind == SLOT_KIND:
+            return MigrationResult(errors=[SLOT_MIGRATION_FAILURE])
+        return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
+
+
+@pytest.fixture
+def failing_slot_attribute_add_migration() -> Generator[None]:
+    original_map = tasks_module.MIGRATION_MAP.copy()
+    tasks_module.MIGRATION_MAP["node.attribute.add"] = SlotAttributeAddMigrationThatFails
+    yield
+    tasks_module.MIGRATION_MAP.clear()
+    tasks_module.MIGRATION_MAP.update(original_map)
 
 
 @pytest.fixture
@@ -518,3 +562,152 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                 }
             },
         )
+
+    async def test_step13_load_whose_migration_fails_leaves_the_schema_and_the_data_as_before(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_change_dataset: SchemaChangeDataset,
+        schema_slot_height: dict[str, Any],
+        failing_slot_attribute_add_migration: None,
+    ) -> None:
+        branch_name = schema_change_dataset.branch_name
+        branch = await registry.get_branch(db=db, branch=branch_name)
+        registry_hash_before = registry.schema.get_schema_branch(name=branch_name).get_hash()
+        stored_hash_before = (await registry.schema.load_schema_from_db(db=db, branch=branch)).get_hash()
+        power_slots_before = await client.execute_graphql(query=POWER_SLOTS_QUERY, branch_name=branch_name)
+
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await client.schema.load(schemas=[schema_slot_height], branch=branch_name)
+
+        assert (exc_info.value.response.status_code, exc_info.value.response.json()) == (
+            502,
+            {"data": None, "errors": [{"message": SLOT_MIGRATION_FAILURE, "extensions": {"code": 502}}]},
+        )
+        assert registry.schema.get_schema_branch(name=branch_name).get_hash() == registry_hash_before
+        assert (await registry.schema.load_schema_from_db(db=db, branch=branch)).get_hash() == stored_hash_before
+        assert await client.execute_graphql(query=POWER_SLOTS_QUERY, branch_name=branch_name) == power_slots_before
+        assert len(power_slots_before["TestingPowerSlot"]["edges"]) == 2
+
+    async def test_step14_failed_load_is_stored_as_a_failed_schema_change_with_the_error_of_the_migration(
+        self, db: InfrahubDatabase, schema_change_dataset: SchemaChangeDataset
+    ) -> None:
+        history = await read_schema_change_history(db=db, branch=schema_change_dataset.branch_name)
+
+        assert history.page.count == 4
+        failed_entry = history.page.entries[3]
+        failed_id = history.schema_change_ids[3]
+        assert (
+            failed_entry.schema_change.status,
+            failed_entry.schema_change.version,
+            failed_entry.schema_change.applied_at,
+            failed_entry.schema_change.summary,
+            failed_entry.parent,
+        ) == (SchemaChangeStatus.FAILED, None, None, SLOT_HEIGHT_SUMMARY, None)
+        assert [(stored.position, stored.operation) for stored in history.operations[failed_id].operations] == [
+            (
+                0,
+                SchemaOperation(
+                    operation_type=SchemaOperationType.ELEMENT_ADD,
+                    kind=SLOT_KIND,
+                    section=SchemaOperationSection.ATTRIBUTES,
+                    element_name=HEIGHT_ATTRIBUTE,
+                    value={"name": HEIGHT_ATTRIBUTE, "kind": "Number", **ADDED_ATTRIBUTE_DEFAULTS},
+                ),
+            )
+        ]
+        [application] = history.applications[failed_id]
+        assert (application.application.status, application.application.error) == (
+            SchemaChangeApplicationStatus.FAILED,
+            SLOT_MIGRATION_FAILURE,
+        )
+        assert sorted(
+            (
+                migration.schema_kind,
+                migration.migration_name,
+                migration.field_name,
+                migration.status,
+                migration.errors,
+            )
+            for migration in application.migrations
+        ) == [
+            (
+                POWER_SLOT_KIND,
+                "node.attribute.add",
+                HEIGHT_ATTRIBUTE,
+                SchemaChangeMigrationStatus.ROLLED_BACK,
+                [],
+            ),
+            (
+                SLOT_KIND,
+                "node.attribute.add",
+                HEIGHT_ATTRIBUTE,
+                SchemaChangeMigrationStatus.FAILED,
+                [SLOT_MIGRATION_FAILURE],
+            ),
+        ]
+
+    async def test_step15_query_lists_the_applied_schema_changes_by_version_then_the_failed_one(
+        self, client: InfrahubClient, schema_change_dataset: SchemaChangeDataset
+    ) -> None:
+        result = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name=schema_change_dataset.branch_name)
+
+        page = result["InfrahubSchemaChange"]
+        assert page["count"] == 4
+        assert [
+            (edge["node"]["name"], edge["node"]["version"], edge["node"]["status"], edge["node"]["parent"] is None)
+            for edge in page["edges"]
+        ] == [
+            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED", False),
+            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED", False),
+            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED", False),
+            (SLOT_HEIGHT_SUMMARY, None, "FAILED", True),
+        ]
+
+    async def test_step16_corrected_load_gets_the_next_version_with_the_last_applied_as_parent(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_change_dataset: SchemaChangeDataset,
+        schema_slot_height: dict[str, Any],
+    ) -> None:
+        branch_name = schema_change_dataset.branch_name
+
+        response = await client.schema.load(schemas=[schema_slot_height], branch=branch_name)
+
+        assert response.errors == {}
+        assert response.schema_updated
+        history = await read_schema_change_history(db=db, branch=branch_name)
+        assert history.page.count == 5
+        last_applied_id = history.schema_change_ids[2]
+        corrected = history.page.entries[3]
+        assert (
+            corrected.schema_change.status,
+            corrected.schema_change.version,
+            corrected.schema_change.summary,
+            str(corrected.parent.uuid) if corrected.parent else None,
+        ) == (SchemaChangeStatus.APPLIED, 5, SLOT_HEIGHT_SUMMARY, last_applied_id)
+        assert [
+            (record.application.status, [migration.status for migration in record.migrations])
+            for record in history.applications[history.schema_change_ids[3]]
+        ] == [
+            (
+                SchemaChangeApplicationStatus.APPLIED,
+                [SchemaChangeMigrationStatus.APPLIED, SchemaChangeMigrationStatus.APPLIED],
+            )
+        ]
+
+    async def test_step17_failed_schema_change_is_still_listed_after_the_corrected_load(
+        self, client: InfrahubClient, schema_change_dataset: SchemaChangeDataset
+    ) -> None:
+        result = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name=schema_change_dataset.branch_name)
+
+        page = result["InfrahubSchemaChange"]
+        assert page["count"] == 5
+        assert [(edge["node"]["name"], edge["node"]["version"], edge["node"]["status"]) for edge in page["edges"]] == [
+            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED"),
+            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED"),
+            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED"),
+            (f"00005_{SLOT_HEIGHT_SUMMARY}", 5, "APPLIED"),
+            (SLOT_HEIGHT_SUMMARY, None, "FAILED"),
+        ]

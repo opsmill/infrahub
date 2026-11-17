@@ -12,8 +12,10 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaRoot,
 )
+from infrahub.core.schema_change.application_runner import ApplicationRecorder, SchemaUpdateExecutor
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
+from infrahub.core.schema_change.recorder import SchemaChangeRecording
 from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
@@ -23,10 +25,13 @@ if TYPE_CHECKING:
 
     from pydantic import JsonValue
 
-    from infrahub.core.models import SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
+    from infrahub.context import InfrahubContext
+    from infrahub.core.branch import Branch
+    from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus
     from infrahub.core.schema_change.operations import SchemaOperation
+    from infrahub.core.timestamp import Timestamp
 
 TAG_STATUS_ATTRIBUTE = "status"
 DEVICE_SPARE_SFPS_RELATIONSHIP = "spare_sfps"
@@ -369,3 +374,149 @@ class RecordingSchemaOperationsCheck(SchemaOperationsCheck):
                 direct_load_schema=direct_load_schema,
             )
         )
+
+
+RECORDER_START = "start"
+RECORDER_COMPLETE = "complete"
+RECORDER_FAIL = "fail"
+EXECUTOR_EXECUTE = "execute"
+RECORDED_SCHEMA_CHANGE_ID = "2f1c9a64-8d3e-4b7a-9c51-0e6d4f3a8b21"
+RECORDED_APPLICATION_ID = "7b4e2d19-5a6c-4f08-b3d7-91c2e8a05f63"
+
+
+@dataclass(frozen=True)
+class SchemaApplicationCall:
+    method: str
+    arguments: dict[str, object]
+
+
+class RecordingApplicationRecorder(ApplicationRecorder):
+    """An application recorder that appends each call to `calls`, which it can share with an executor.
+
+    `start` returns a recording with `RECORDED_SCHEMA_CHANGE_ID` and `RECORDED_APPLICATION_ID`.
+    """
+
+    def __init__(self, calls: list[SchemaApplicationCall]) -> None:
+        self.calls = calls
+
+    @override
+    async def start(
+        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> SchemaChangeRecording:
+        self.calls.append(
+            SchemaApplicationCall(
+                method=RECORDER_START,
+                arguments={"branch": branch, "operations": list(operations), "at": at, "user_id": user_id},
+            )
+        )
+        return SchemaChangeRecording(
+            schema_change_id=RECORDED_SCHEMA_CHANGE_ID, application_id=RECORDED_APPLICATION_ID, at=at
+        )
+
+    @override
+    async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None:
+        self.calls.append(
+            SchemaApplicationCall(
+                method=RECORDER_COMPLETE, arguments={"recording": recording, "branch": branch, "user_id": user_id}
+            )
+        )
+
+    @override
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+        self.calls.append(
+            SchemaApplicationCall(
+                method=RECORDER_FAIL, arguments={"recording": recording, "error": error, "user_id": user_id}
+            )
+        )
+
+
+class FailingApplicationRecorder(RecordingApplicationRecorder):
+    """An application recorder that records each call, and raises a database error from `fail`."""
+
+    @override
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+        await super().fail(recording=recording, error=error, user_id=user_id)
+        raise DatabaseError(message=FAILING_STORE_ERROR)
+
+
+class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
+    """A schema update executor that appends each call to `calls`, which it can share, and returns `updated_hash`."""
+
+    def __init__(self, calls: list[SchemaApplicationCall], updated_hash: str) -> None:
+        self.calls = calls
+        self.updated_hash = updated_hash
+
+    @override
+    async def execute(
+        self,
+        *,
+        branch: Branch,
+        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        context: InfrahubContext,
+        diff: SchemaDiff,
+        migrations: list[SchemaUpdateMigrationInfo],
+        limit: list[str],
+        user_id: str,
+        application_id: str,
+    ) -> str:
+        self.calls.append(
+            SchemaApplicationCall(
+                method=EXECUTOR_EXECUTE,
+                arguments={
+                    "branch": branch,
+                    "origin_schema": origin_schema,
+                    "rollback_schema": rollback_schema,
+                    "candidate_schema": candidate_schema,
+                    "at": at,
+                    "context": context,
+                    "diff": diff,
+                    "migrations": list(migrations),
+                    "limit": list(limit),
+                    "user_id": user_id,
+                    "application_id": application_id,
+                },
+            )
+        )
+        return self.updated_hash
+
+
+class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
+    """A schema update executor that records each call, then raises `error`."""
+
+    def __init__(self, calls: list[SchemaApplicationCall], error: Exception) -> None:
+        super().__init__(calls=calls, updated_hash="")
+        self.error = error
+
+    @override
+    async def execute(
+        self,
+        *,
+        branch: Branch,
+        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        context: InfrahubContext,
+        diff: SchemaDiff,
+        migrations: list[SchemaUpdateMigrationInfo],
+        limit: list[str],
+        user_id: str,
+        application_id: str,
+    ) -> str:
+        await super().execute(
+            branch=branch,
+            origin_schema=origin_schema,
+            rollback_schema=rollback_schema,
+            candidate_schema=candidate_schema,
+            at=at,
+            context=context,
+            diff=diff,
+            migrations=migrations,
+            limit=limit,
+            user_id=user_id,
+            application_id=application_id,
+        )
+        raise self.error

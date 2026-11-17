@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.schema_change.constants import SchemaChangeApplicationStatus, SchemaChangeStatus
+from infrahub.core.schema_change.constants import (
+    SchemaChangeApplicationStatus,
+    SchemaChangeMigrationStatus,
+    SchemaChangeStatus,
+)
 from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
 from infrahub.core.schema_change.recorder import SchemaChangeRecorder, SchemaChangeRecording
 from infrahub.core.schema_change.repository import SchemaChangeRepository
@@ -13,6 +17,7 @@ from infrahub.core.schema_change.version_resolver import SchemaChangeVersionReso
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema_change import (
     BranchHistorySeed,
+    attribute_migration,
     build_seeded_operations,
     seed_schema_change_history,
 )
@@ -22,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 EMPTY_OPERATIONS_ERROR = r"^A schema change needs at least one operation$"
+FAILURE_ERROR = "The migration attribute.kind.update failed on 3 nodes"
 
 
 def _build_recorder(db: InfrahubDatabase, default_branch: Branch) -> SchemaChangeRecorder:
@@ -164,3 +170,110 @@ async def test_start_and_record_applied_refuse_an_empty_list_of_operations(
         await recorder.record_applied(branch=default_branch, operations=[], at=Timestamp(), user_id=SYSTEM_USER_ID)
 
     assert await _read_records(db=db, branch=default_branch) == []
+
+
+async def test_fail_sets_both_to_failed_with_the_error_and_without_version_or_parent(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    await seed_schema_change_history(
+        db=db, branches=[BranchHistorySeed(branch=default_branch.name, changes=[SchemaChangeStatus.APPLIED])]
+    )
+    recorder = _build_recorder(db=db, default_branch=default_branch)
+    at = Timestamp()
+    recording = await recorder.start(
+        branch=default_branch, operations=build_seeded_operations(nbr_operations=1), at=at, user_id=SYSTEM_USER_ID
+    )
+
+    await recorder.fail(recording=recording, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
+
+    records = await _read_records(db=db, branch=default_branch)
+    assert records[1] == (
+        recording.schema_change_id,
+        SchemaChangeStatus.FAILED,
+        None,
+        None,
+        None,
+        [(recording.application_id, SchemaChangeApplicationStatus.FAILED.value, at.to_string())],
+    )
+    assert len(records) == 2
+    applications = await SchemaChangeHistoryReader(db=db).list_applications(
+        schema_change_ids=[recording.schema_change_id]
+    )
+    assert [record.application.error for record in applications[recording.schema_change_id]] == [FAILURE_ERROR]
+
+
+async def test_fail_rolls_back_the_applied_migration_records_and_keeps_the_others(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    recorder = _build_recorder(db=db, default_branch=default_branch)
+    recording = await recorder.start(
+        branch=default_branch,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+    )
+    repository = SchemaChangeRepository(db=db)
+    statuses_before = [
+        SchemaChangeMigrationStatus.APPLIED,
+        SchemaChangeMigrationStatus.FAILED,
+        SchemaChangeMigrationStatus.RUNNING,
+        SchemaChangeMigrationStatus.WAITING,
+    ]
+    record_ids = await repository.create_migration_records(
+        application_id=recording.application_id,
+        migrations=[attribute_migration(field_name=f"field{position}") for position in range(len(statuses_before))],
+    )
+    for position, status in enumerate(statuses_before):
+        if status != SchemaChangeMigrationStatus.WAITING:
+            await repository.set_migration_records_status(
+                record_ids=[record_ids[position]], status=status, nbr_migrations_executed=None, errors=[]
+            )
+
+    await recorder.fail(recording=recording, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
+
+    applications = await SchemaChangeHistoryReader(db=db).list_applications(
+        schema_change_ids=[recording.schema_change_id]
+    )
+    [application] = applications[recording.schema_change_id]
+    assert [(migration.position, migration.status) for migration in application.migrations] == [
+        (0, SchemaChangeMigrationStatus.ROLLED_BACK),
+        (1, SchemaChangeMigrationStatus.FAILED),
+        (2, SchemaChangeMigrationStatus.RUNNING),
+        (3, SchemaChangeMigrationStatus.WAITING),
+    ]
+
+
+async def test_change_completed_after_a_failed_one_gets_the_next_version_with_the_last_applied_as_parent(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    recorder = _build_recorder(db=db, default_branch=default_branch)
+    applied = await recorder.record_applied(
+        branch=default_branch,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+    )
+    failed = await recorder.start(
+        branch=default_branch,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+    )
+    await recorder.fail(recording=failed, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
+    corrected = await recorder.start(
+        branch=default_branch,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+    )
+
+    await recorder.complete(recording=corrected, branch=default_branch, user_id=SYSTEM_USER_ID)
+
+    assert [
+        (schema_change_id, status, version, parent_id)
+        for schema_change_id, status, version, parent_id, _, _ in await _read_records(db=db, branch=default_branch)
+    ] == [
+        (applied.schema_change_id, SchemaChangeStatus.APPLIED, 1, None),
+        (corrected.schema_change_id, SchemaChangeStatus.APPLIED, 2, applied.schema_change_id),
+        (failed.schema_change_id, SchemaChangeStatus.FAILED, None, None),
+    ]

@@ -33,6 +33,7 @@ CARD_KIND = "TestingCard"
 SERIAL_ATTRIBUTE = "serial"
 SERIAL_LABEL = "Serial number"
 POSITION_ATTRIBUTE = "position"
+HEIGHT_ATTRIBUTE = "height"
 SHARED_CARD_NAME = "line-card"
 """The name of both cards, so that making the name unique fails on the data."""
 
@@ -117,6 +118,14 @@ class TestSchemaChangeBase(TestInfrahubApp):
         """Add an optional attribute to the generic that the power slot inherits."""
         slot = SLOT.duplicate()
         slot.attributes.append(AttributeSchema(name=POSITION_ATTRIBUTE, kind="Number", optional=True))
+        return _schema_file(SchemaRoot(generics=[slot]))
+
+    @pytest.fixture(scope="class")
+    def schema_slot_height(self) -> dict[str, Any]:
+        """Add a second optional attribute to the generic that the power slot inherits."""
+        slot = SLOT.duplicate()
+        slot.attributes.append(AttributeSchema(name=POSITION_ATTRIBUTE, kind="Number", optional=True))
+        slot.attributes.append(AttributeSchema(name=HEIGHT_ATTRIBUTE, kind="Number", optional=True))
         return _schema_file(SchemaRoot(generics=[slot]))
 
     @pytest.fixture(scope="class")
