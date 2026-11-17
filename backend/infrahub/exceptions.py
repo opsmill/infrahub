@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub.core.diff.model.diff import SchemaConflict
+    from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
     from infrahub.core.validators.model import SchemaViolation
     from infrahub.git.models import PushRejectionReason
     from infrahub.pools.scope import Division
@@ -416,6 +417,36 @@ class SchemaNotFoundError(Error):
         {self.message}
         {self.branch_name} | {self.identifier}
         """
+
+
+class SchemaOperationTargetNotFoundError(Error):
+    """A schema operation names a kind, attribute or relationship that the schema it applies to does not have."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(
+        self,
+        *,
+        position: int,
+        operation_type: SchemaOperationType,
+        kind: str,
+        section: SchemaOperationSection | None = None,
+        element_name: str | None = None,
+    ) -> None:
+        """Build the error for a missing kind, or for a missing element of a kind when `element_name` is given."""
+        self.position = position
+        self.operation_type = operation_type
+        self.kind = kind
+        self.section = section
+        self.element_name = element_name
+        if section is not None and element_name is not None:
+            target = f"'{element_name}' in the {section.value} of the kind {kind}"
+        else:
+            target = f"the kind {kind}"
+        self.message = (
+            f"Schema operation {position} ({operation_type.value}) names {target}, which the schema does not have."
+        )
+        super().__init__(self.message)
 
 
 class QueryError(Error):

@@ -373,7 +373,9 @@ change only after the whole flow ends.
   branch's first schema change when main has none, have no parent.
 - The summary is stored. It comes from the first operation: the kind in lower case, the attribute,
   relationship or property name when there is one, and `add`, `remove` or `update`. With more
-  operations it ends with `_and_<n>_more`.
+  operations it ends with `_and_<n>_more`. An `element_property` operation gives the attribute or
+  relationship name, not the property name (`dcimgenericdevice_serial_update`); a `node_property`
+  operation gives the property name (`dcimgenericdevice_generate_profile_update`).
 - The name is not stored. It is `<version, five digits>_<summary>`, or the summary alone when the
   schema change has no version.
 

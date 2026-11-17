@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
+from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
 from infrahub.core.validators.model import SchemaViolation
 from infrahub.exceptions import (
     CommitNotFoundError,
@@ -27,6 +28,7 @@ from infrahub.exceptions import (
     RepositoryPushRejectedError,
     RPCError,
     SchemaNotFoundError,
+    SchemaOperationTargetNotFoundError,
     ValidationError,
 )
 from infrahub.git.models import PushRejectionReason
@@ -111,6 +113,16 @@ ERROR_PICKLE_CASES = [
             message="Unable to push the branch main to the remote for repository repo-1: [remote rejected]",
         ),
     ),
+    ErrorPickleCase(
+        name="schema_operation_target_not_found",
+        error=SchemaOperationTargetNotFoundError(
+            position=2,
+            operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+    ),
 ]
 
 
@@ -143,6 +155,63 @@ def test_pickle_preserves_slot_state() -> None:
 
     assert isinstance(restored, SlottedError)
     assert restored.detail == "slot-value"
+
+
+@dataclass
+class SchemaOperationTargetNotFoundMessageCase:
+    name: str
+    error: SchemaOperationTargetNotFoundError
+    expected: str
+
+
+SCHEMA_OPERATION_TARGET_NOT_FOUND_MESSAGE_CASES: list[SchemaOperationTargetNotFoundMessageCase] = [
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_kind",
+        error=SchemaOperationTargetNotFoundError(
+            position=0, operation_type=SchemaOperationType.NODE_PROPERTY, kind="DcimGenericDevice"
+        ),
+        expected="Schema operation 0 (node_property) names the kind DcimGenericDevice, which the schema does not have.",
+    ),
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_attribute",
+        error=SchemaOperationTargetNotFoundError(
+            position=3,
+            operation_type=SchemaOperationType.ELEMENT_REMOVE,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+        expected=(
+            "Schema operation 3 (element_remove) names 'serial' in the attributes of the kind DcimGenericDevice, "
+            "which the schema does not have."
+        ),
+    ),
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_relationship",
+        error=SchemaOperationTargetNotFoundError(
+            position=1,
+            operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.RELATIONSHIPS,
+            element_name="site",
+        ),
+        expected=(
+            "Schema operation 1 (element_property) names 'site' in the relationships of the kind DcimGenericDevice, "
+            "which the schema does not have."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in SCHEMA_OPERATION_TARGET_NOT_FOUND_MESSAGE_CASES],
+)
+def test_schema_operation_target_not_found_names_the_operation_and_the_target(
+    case: SchemaOperationTargetNotFoundMessageCase,
+) -> None:
+    assert case.error.message == case.expected
+    assert str(case.error) == case.expected
 
 
 @dataclass

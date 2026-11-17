@@ -98,7 +98,7 @@ query all read it.
 
 **Blocks**: every phase from 3 onwards.
 
-- [ ] T003 [P] Write the unit tests of the operation model in
+- [X] T003 [P] Write the unit tests of the operation model in
       `backend/tests/unit/core/schema_change/test_operations.py`. They cover the rules of
       [data-model.md](data-model.md), "SchemaChangeOperation", that our code enforces:
       - an element type without `section` or `element_name` is refused;
@@ -111,13 +111,13 @@ query all read it.
       - the summary of several operations ends with `_and_<n>_more`;
       - the name is `<version, five digits>_<summary>`, and the summary alone without a version;
       - a version above 99999 gives a name with more than five digits.
-- [ ] T004 Create `backend/infrahub/core/schema_change/operations.py` with `SchemaOperation`, a
+- [X] T004 Create `backend/infrahub/core/schema_change/operations.py` with `SchemaOperation`, a
       Pydantic model with the fields `operation_type`, `kind`,
       `node_type: SchemaOperationNodeType | None`, `section: SchemaOperationSection | None`,
       `element_name`, `property_name`, `value` and `previous_value`, a model validator for the
       rules of T003, and two functions that build the summary of a list of operations and the
       name from a version and a summary ([research.md](research.md), R4 and R10). Make T003 pass.
-- [ ] T005 [P] Add `SchemaOperationTargetNotFoundError` to `backend/infrahub/exceptions.py`. Its
+- [X] T005 [P] Add `SchemaOperationTargetNotFoundError` to `backend/infrahub/exceptions.py`. Its
       message names the position and the type of the operation and the kind, attribute or
       relationship that the schema does not have (FR-023).
 
