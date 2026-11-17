@@ -13,6 +13,10 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import HashableModelState, SchemaPathType
+from infrahub.core.migrations.schema.attribute_name_update import (
+    AttributeNameUpdateMigration,
+    AttributeNameUpdateMigrationQuery01,
+)
 from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
     AttributeSupportsGeneratedSchemaMigration,
     ProfilesAttributeRemoveMigrationQuery,
@@ -181,4 +185,64 @@ async def test_attribute_remove_generic_with_override(
         init_kwargs={"migration": migration},
         branch=default_branch,
         expected={"TestGazCar": 1},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Attribute rename
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+async def test_attribute_rename_aware(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_attribute_migration(AttributeNameUpdateMigration, branch, WIDGET_KIND, "color", name="colour")
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeNameUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({BEACON_KIND: 2}), ids=lambda case: case.name)
+async def test_attribute_rename_agnostic_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_attribute_migration(
+        AttributeNameUpdateMigration, branch, BEACON_KIND, "serial", name="serial_number"
+    )
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeNameUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+        check_remaining=case.branch_name == SELECTION_BRANCH_NAME,
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "on the default branch the rename closes only the edges the default branch owns and shadows none, "
+        "so the old attribute of a branch-agnostic node stays active on the global branch"
+    ),
+)
+async def test_attribute_rename_agnostic_node_leaves_nothing_on_main(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    migration = build_attribute_migration(
+        AttributeNameUpdateMigration, default_branch, BEACON_KIND, "serial", name="serial_number"
+    )
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeNameUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=default_branch,
+        expected={BEACON_KIND: 2},
     )

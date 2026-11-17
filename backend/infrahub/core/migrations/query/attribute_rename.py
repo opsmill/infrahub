@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
-from infrahub.core.query import Query
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ class AttributeInfo(BaseModel):
     branch_support: str = BranchSupportType.AWARE.value
 
 
-class AttributeRenameQuery(Query):
+class AttributeRenameQuery(MigrationSelectionQuery):
     name = "attribute_rename"
     insert_return: bool = False
 
@@ -41,6 +41,39 @@ class AttributeRenameQuery(Query):
         MATCH (node:%(node_kind)s|Profile%(node_kind)s|Template%(node_kind)s)
         WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
         """ % {"node_kind": self.previous_attr.node_kind}
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return (
+            self.render_match()
+            + """
+        // --------------
+        // Filter to just the active nodes
+        // --------------
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH node as active_node
+        WHERE r.status = "active"
+        // --------------
+        // Find all the attributes that need to be updated
+        // --------------
+        CALL (active_node) {
+            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(active_attr:Attribute { name: $prev_attr.name })
+            WHERE %(branch_filter)s
+            RETURN r, active_attr
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH active_node, active_attr
+        WHERE r.status = "active"
+        """
+            % {"branch_filter": branch_filter}
+        )
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -79,34 +112,10 @@ class AttributeRenameQuery(Query):
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["at"] = self.at.to_string()
 
-        self.add_to_query(self.render_match())
+        self.add_to_query(self.render_selection())
 
         add_uuid = db.render_uuid_generation(node_label="new_attr", node_attr="uuid")
         query = """
-        // --------------
-        // Filter to just the active nodes
-        // --------------
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH node as active_node
-        WHERE r.status = "active"
-        // --------------
-        // Find all the attributes that need to be updated
-        // --------------
-        CALL (active_node) {
-            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(active_attr:Attribute { name: $prev_attr.name })
-            WHERE %(branch_filter)s
-            RETURN r, active_attr
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH active_node, active_attr
-        WHERE r.status = "active"
         // --------------
         // Create the new attribute vertexes
         // --------------

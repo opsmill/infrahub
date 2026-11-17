@@ -350,8 +350,12 @@ async def assert_count_matches_write(
     init_kwargs: dict[str, Any],
     branch: Branch,
     expected: dict[str, int],
+    check_remaining: bool = True,
 ) -> None:
-    """Count with the last query, run every query in order, then check the count against the changes."""
+    """Count with the last query, run every query in order, then check the count against the changes.
+
+    With `check_remaining`, a count taken after the write must find nothing left to change.
+    """
     at = Timestamp()
     instances = [await query_cls.init(db=db, branch=branch, at=at, **init_kwargs) for query_cls in queries]
 
@@ -363,6 +367,8 @@ async def assert_count_matches_write(
     changed = {kind: len(ids) for kind, ids in (await changed_node_ids(db=db, kinds=list(expected), at=at)).items()}
     assert counted == changed, f"counted {counted}, the write changed {changed}"
 
+    if not check_remaining:
+        return
     recount = await queries[-1].init(db=db, branch=branch, at=Timestamp(), **init_kwargs)
     remaining = await recount.count_changes(db=db)
     assert remaining == {}, f"counted {remaining} after the write"
