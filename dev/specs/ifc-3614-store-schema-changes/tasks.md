@@ -891,7 +891,7 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
 
 ## Phase 8: Documentation and polish
 
-- [ ] T056 [P] Write the functional test that the records are outside the branch-aware graph,
+- [X] T056 [P] Write the functional test that the records are outside the branch-aware graph,
       as a second class `TestSchemaChangeRecordsUntouched(TestSchemaChangeBase)` in
       `backend/tests/functional/schema_change/test_schema_change_records_untouched.py`. It uses
       the data set of T027 and is separate from `TestSchemaChangeHistory` because a merge
@@ -899,7 +899,7 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       branch. Take a snapshot of the records of main and of the branch, then run a rebase of
       the branch and a merge of the branch. After each one, the records, their fields and their
       edges are the same (FR-008, FR-080).
-- [ ] T057 [P] Add an assertion to `backend/tests/integration_docker/test_schema_migration.py`:
+- [X] T057 [P] Add an assertion to `backend/tests/integration_docker/test_schema_migration.py`:
       after a load whose migrations run on a task worker, `InfrahubSchemaChange` returns the
       schema change with the status `applied` and its migration records with the status
       `applied`.
