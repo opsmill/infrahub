@@ -2539,7 +2539,7 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params.update(branch_params)
         self.params["search_value"] = self.search_value
         self.params["null_value"] = NULL_VALUE
-        self.params["label_attribute_names"] = [DISPLAY_LABEL_ATTRIBUTE_NAME, "name"]
+        self.params["label_attribute_name"] = DISPLAY_LABEL_ATTRIBUTE_NAME
 
         # A value stored as a list, such as a schema attribute's default value, converts to null and never matches.
         value = "toLower(toStringOrNull(av.value))"
@@ -2573,7 +2573,7 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         // rank each match, best first
         // --------------------------
-        WITH attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
+        WITH attr, av, attr.name = $label_attribute_name AS is_label, %(value)s AS value, %(search)s AS search
         WITH attr, av, CASE
             WHEN is_label AND value = search THEN 6
             WHEN is_label AND value STARTS WITH search THEN 5
