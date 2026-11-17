@@ -1,13 +1,12 @@
 import { Button, Tooltip } from "@infrahub/ui";
-import { LockIcon } from "lucide-react";
 
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { ObjectFieldMetadata } from "@/entities/nodes/object/ui/object-details/object-data-display/object-field-metadata";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
@@ -36,14 +35,8 @@ export function ObjectAttributeRow({
         <>
           <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
 
-          {attributeData.is_protected && <LockIcon className="size-3.5 text-foreground-muted" />}
-
-          <MetaDetailsTooltip
-            updatedAt={attributeData.updated_at}
-            source={attributeData.source}
-            owner={attributeData.owner}
-            triggerClassName="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-            isProtected={attributeData.is_protected}
+          <ObjectFieldMetadata
+            metadata={attributeData}
             header={
               !attributeSchema.read_only && (
                 <div className="flex items-center justify-between border-border-strong border-b p-1 pl-2">

@@ -1,9 +1,7 @@
 import { Button, Tooltip } from "@infrahub/ui";
-import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
 import type {
@@ -14,6 +12,7 @@ import type {
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { ObjectFieldMetadata } from "@/entities/nodes/object/ui/object-details/object-data-display/object-field-metadata";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
@@ -90,40 +89,31 @@ function RelationshipOneRow({
           )}
 
           {relationshipProperties && (
-            <>
-              {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-foreground-muted" />
-              )}
-              <MetaDetailsTooltip
-                updatedAt={relationshipProperties.updated_at}
-                source={relationshipProperties.source}
-                owner={relationshipProperties.owner}
-                isProtected={relationshipProperties.is_protected}
-                triggerClassName="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                header={
-                  onClickMetadata && (
-                    <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
-                      <div className="font-semibold">
-                        {getRelationshipLabel(relationshipSchema, peerSchema)}
-                      </div>
-
-                      <Tooltip message={permission.update.message ?? undefined}>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          shape="circle"
-                          isDisabledAndFocusable={!permission.update.isAllowed}
-                          onPress={() => onClickMetadata(relationshipSchema)}
-                          data-testid="edit-metadata-button"
-                        >
-                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                        </Button>
-                      </Tooltip>
+            <ObjectFieldMetadata
+              metadata={relationshipProperties}
+              header={
+                onClickMetadata && (
+                  <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
+                    <div className="font-semibold">
+                      {getRelationshipLabel(relationshipSchema, peerSchema)}
                     </div>
-                  )
-                }
-              />
-            </>
+
+                    <Tooltip message={permission.update.message ?? undefined}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        shape="circle"
+                        isDisabledAndFocusable={!permission.update.isAllowed}
+                        onPress={() => onClickMetadata(relationshipSchema)}
+                        data-testid="edit-metadata-button"
+                      >
+                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                )
+              }
+            />
           )}
 
           {relationshipSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
@@ -177,18 +167,7 @@ function RelationshipManyRow({
                   </Link>
 
                   {edgeProperties && (
-                    <>
-                      {edgeProperties.is_protected && (
-                        <LockIcon className="size-3.5 text-foreground-muted" />
-                      )}
-                      <MetaDetailsTooltip
-                        updatedAt={edgeProperties.updated_at}
-                        source={edgeProperties.source}
-                        owner={edgeProperties.owner}
-                        isProtected={edgeProperties.is_protected}
-                        triggerClassName="opacity-0 transition-opacity group-hover/edge:opacity-100 focus-visible:opacity-100"
-                      />
-                    </>
+                    <ObjectFieldMetadata metadata={edgeProperties} hoverScope="edge" />
                   )}
                 </Row>
               );

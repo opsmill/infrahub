@@ -106,6 +106,15 @@ Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails 
 
 The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
 
+### Object field metadata
+
+`ObjectFieldMetadata` in `entities/nodes/object/ui/object-details/object-data-display/` composes
+`MetaDetailsTooltip` with the protected lock icon for attribute and relationship values. Pass the
+metadata object and an optional `header` for field-specific editing controls. The default hover
+scope uses the surrounding `ObjectDataRow` group; relationship list items use `hoverScope="edge"`
+with a `group/edge` wrapper so hovering one item reveals only its metadata button. Keyboard focus
+also reveals the button.
+
 ### Layout
 
 | Need | Use | Location |
