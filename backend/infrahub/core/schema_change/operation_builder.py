@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from pydantic_core import to_jsonable_python
 
-from infrahub.core.models import HashableModelDiff
+from infrahub.core.constants import HashableModelState
+from infrahub.core.models import HashableModel, HashableModelDiff
 from infrahub.core.schema import GenericSchema
 from infrahub.core.schema_change.constants import (
     SCHEMA_ELEMENT_NAME_PROPERTY,
@@ -21,13 +22,17 @@ from infrahub.core.schema_change.operations import (
     PARAMETERS_KEY,
     SchemaOperation,
 )
-from infrahub.core.schema_change.schema_elements import find_element, find_element_by_id, read_property
+from infrahub.core.schema_change.schema_elements import (
+    find_element,
+    find_element_by_id,
+    read_property,
+    split_property_path,
+)
 from infrahub.exceptions import SchemaNotFoundError
 
 if TYPE_CHECKING:
     from pydantic import JsonValue
 
-    from infrahub.core.models import HashableModel
     from infrahub.core.schema import (
         AttributeSchema,
         MainSchemaTypes,
@@ -290,7 +295,16 @@ class SchemaOperationBuilder:
         processed_node: MainSchemaTypes,
         stated_kind: _StatedKind,
     ) -> None:
-        for element_name in sorted(section_diff.removed):
+        # Processing inherits a removed override again from its generic, so the diff reports that element as changed.
+        removed_overrides = {
+            element_name
+            for element_name in section_diff.changed
+            if any(
+                item.state == HashableModelState.ABSENT
+                for item in stated_kind.find_elements(section=section, name=element_name)
+            )
+        }
+        for element_name in sorted(section_diff.removed.keys() | removed_overrides):
             if stated_kind.find_elements(section=section, name=element_name):
                 result.element_removals.append(
                     SchemaOperation(
@@ -321,7 +335,12 @@ class SchemaOperationBuilder:
         for element_name, element_diff in section_diff.changed.items():
             element = find_element(node=unprocessed_node, section=section, name=element_name)
             file_elements = stated_kind.find_elements(section=section, name=element_name)
-            if element is None or not file_elements or not isinstance(element_diff, HashableModelDiff):
+            if (
+                element is None
+                or element_name in removed_overrides
+                or not file_elements
+                or not isinstance(element_diff, HashableModelDiff)
+            ):
                 continue
             element_before = None
             if element.id is not None:
@@ -366,7 +385,21 @@ class SchemaOperationBuilder:
         ]
 
     def _states_property(self, holder: object, path: str) -> bool:
-        return read_property(holder=holder, property_name=path) is not None
+        """Return whether the file states a property, or another field of the nested model that holds it.
+
+        A nested model can replace its other fields when the file sets one of them, as the number pool parameters do
+        when the file declares the range by its bounds or by a list of ranges.
+        """
+        if read_property(holder=holder, property_name=path) is not None:
+            return True
+        *parents, _ = split_property_path(path)
+        if not parents:
+            return False
+        parent = read_property(holder=holder, property_name=SCHEMA_PROPERTY_PATH_SEPARATOR.join(parents))
+        if not isinstance(parent, HashableModel):
+            return False
+        declared_fields = type(parent).model_fields.keys() - HashableModel.model_fields.keys()
+        return any(getattr(parent, field_name) is not None for field_name in declared_fields)
 
     def _changed_values(
         self, path: str, new_holder: object, previous_holder: object

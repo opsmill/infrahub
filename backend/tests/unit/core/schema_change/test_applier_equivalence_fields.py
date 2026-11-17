@@ -1,9 +1,12 @@
 import pytest
+from pydantic import JsonValue
 
 from infrahub.core.constants import HashableModelState, InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
+    AttributeSchema,
     DropdownChoice,
     NodeExtensionSchema,
+    NodeSchema,
     RelationshipSchema,
     SchemaExtension,
     SchemaRoot,
@@ -162,23 +165,140 @@ FIELD_EQUIVALENCE_CASES: list[EquivalenceCase] = [
 def test_applied_field_operations_give_the_direct_load_result(
     test_case: EquivalenceCase, equivalence_base_schema: SchemaBranch
 ) -> None:
+    _assert_applied_operations_give_the_direct_load_result(test_case=test_case, branch_schema=equivalence_base_schema)
+
+
+def _assert_applied_operations_give_the_direct_load_result(
+    *, test_case: EquivalenceCase, branch_schema: SchemaBranch
+) -> None:
     expected = build_direct_load_result(
-        branch_schema=equivalence_base_schema,
-        schema_root=test_case.schema_file(equivalence_base_schema),
-        default_branch_schema=equivalence_base_schema,
+        branch_schema=branch_schema,
+        schema_root=test_case.schema_file(branch_schema),
+        default_branch_schema=branch_schema,
     )
     assert expected.validation.diff.all, "the schema file of the case must change the schema"
 
     build_result = SchemaOperationBuilder().build(
-        branch_schema=equivalence_base_schema,
-        schema_root=test_case.schema_file(equivalence_base_schema),
-        default_branch_schema=equivalence_base_schema,
+        branch_schema=branch_schema,
+        schema_root=test_case.schema_file(branch_schema),
+        default_branch_schema=branch_schema,
     )
     applied_schema = SchemaChangeApplier().apply(
-        target_schema=equivalence_base_schema,
+        target_schema=branch_schema,
         operations=build_result.operations,
-        default_branch_schema=equivalence_base_schema,
+        default_branch_schema=branch_schema,
     )
-    actual = validate_candidate_schema(branch_schema=equivalence_base_schema, candidate_schema=applied_schema)
+    actual = validate_candidate_schema(branch_schema=branch_schema, candidate_schema=applied_schema)
 
     assert_same_load_result(expected=expected, actual=actual)
+
+
+COUNTER_KIND = "TestingCounter"
+BOUNDS_POOL_ATTRIBUTE = "bounds_number"
+RANGES_POOL_ATTRIBUTE = "ranges_number"
+BOUNDS_POOL_PARAMETERS: dict[str, JsonValue] = {"start_range": 50, "end_range": 1200}
+RANGES_POOL_PARAMETERS: dict[str, JsonValue] = {"ranges": [{"start": 1, "end": 10}, {"start": 100, "end": 200}]}
+
+
+def _counter_definition(
+    *,
+    bounds_parameters: dict[str, JsonValue] = BOUNDS_POOL_PARAMETERS,
+    ranges_parameters: dict[str, JsonValue] = RANGES_POOL_PARAMETERS,
+) -> NodeSchema:
+    return NodeSchema(
+        name="Counter",
+        namespace="Testing",
+        label="Counter",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(
+                name=BOUNDS_POOL_ATTRIBUTE, kind="NumberPool", read_only=True, parameters=bounds_parameters
+            ),
+            AttributeSchema(
+                name=RANGES_POOL_ATTRIBUTE, kind="NumberPool", read_only=True, parameters=ranges_parameters
+            ),
+        ],
+    )
+
+
+def _replace_range_bounds_with_ranges(_: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(
+        nodes=[
+            _counter_definition(bounds_parameters={"ranges": [{"start": 10, "end": 20}, {"start": 100, "end": 200}]})
+        ]
+    )
+
+
+def _replace_ranges_with_range_bounds(_: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(nodes=[_counter_definition(ranges_parameters={"start_range": 300, "end_range": 400})])
+
+
+def _set_start_range_alone(_: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(nodes=[_counter_definition(bounds_parameters={"start_range": 60})])
+
+
+NUMBER_POOL_EQUIVALENCE_CASES: list[EquivalenceCase] = [
+    EquivalenceCase(name="replace_number_pool_range_bounds_with_ranges", schema_file=_replace_range_bounds_with_ranges),
+    EquivalenceCase(name="replace_number_pool_ranges_with_range_bounds", schema_file=_replace_ranges_with_range_bounds),
+    EquivalenceCase(name="set_number_pool_start_range_alone", schema_file=_set_start_range_alone),
+]
+
+
+class TestNumberPoolParametersEquivalence:
+    @pytest.fixture(scope="class")
+    def counter_schema(self, equivalence_base_schema: SchemaBranch) -> SchemaBranch:
+        """The shared schema with a node that holds one number pool declared by range bounds and one by ranges."""
+        schema_root = SchemaRoot(nodes=[_counter_definition()])
+        schema_root.generate_uuid()
+        schema = equivalence_base_schema.duplicate()
+        schema.load_schema(schema=schema_root)
+        schema.process()
+        return schema
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in NUMBER_POOL_EQUIVALENCE_CASES])
+    def test_applied_number_pool_operations_give_the_direct_load_result(
+        self, test_case: EquivalenceCase, counter_schema: SchemaBranch
+    ) -> None:
+        _assert_applied_operations_give_the_direct_load_result(test_case=test_case, branch_schema=counter_schema)
+
+
+OVERRIDDEN_ATTRIBUTE = "enabled"
+
+
+def _physical_interface_with_override(*, state: HashableModelState = HashableModelState.PRESENT) -> NodeSchema:
+    physical_interface = base_node_definition(TestKind.PHYSICAL_INTERFACE)
+    physical_interface.attributes.append(
+        AttributeSchema(
+            name=OVERRIDDEN_ATTRIBUTE,
+            kind="Boolean",
+            default_value=False,
+            description="Disabled until cabled",
+            order_weight=1033,
+            state=state,
+        )
+    )
+    return physical_interface
+
+
+def _remove_override_of_inherited_attribute(_: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(nodes=[_physical_interface_with_override(state=HashableModelState.ABSENT)])
+
+
+class TestInheritedAttributeOverrideEquivalence:
+    @pytest.fixture(scope="class")
+    def override_schema(self, equivalence_base_schema: SchemaBranch) -> SchemaBranch:
+        """The shared schema where a node overrides an attribute that it inherits from a generic."""
+        schema_root = SchemaRoot(nodes=[_physical_interface_with_override()])
+        schema_root.generate_uuid()
+        schema = equivalence_base_schema.duplicate()
+        schema.load_schema(schema=schema_root)
+        schema.process()
+        return schema
+
+    def test_removed_override_gives_the_direct_load_result(self, override_schema: SchemaBranch) -> None:
+        _assert_applied_operations_give_the_direct_load_result(
+            test_case=EquivalenceCase(
+                name="remove_override_of_inherited_attribute", schema_file=_remove_override_of_inherited_attribute
+            ),
+            branch_schema=override_schema,
+        )

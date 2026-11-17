@@ -155,7 +155,10 @@ schema with the applier's result without processing the file again (R7).
 
 "The file states a path" means: the kind is in the file's nodes, generics or extensions, the
 attribute or relationship is in the file under that kind, and the property is not `None` in the
-file's model.
+file's model. A field of a nested property, such as `parameters.start_range`, is also stated when
+the file sets another field of that property, because a load can clear the fields that the file
+leaves out (`core/schema/attribute_parameters.py::NumberPoolParameters.update` replaces the
+`start_range` and `end_range` pair and the `ranges` list with each other).
 
 **Rationale**:
 
@@ -197,7 +200,12 @@ details:
 - A path whose value in the schema of step 1 equals its value in the branch schema gives no
   operation. Processing can change a path that the file states with the value it already had.
 - A nested property gives one operation for each changed field, such as `parameters.regex`. When
-  the two values are of different models, the operation holds the whole property.
+  the two values are of different models, the operation holds the whole property. A file that
+  declares a number pool by `ranges` where the branch schema has `start_range` and `end_range`
+  gives three operations: `ranges` set, and `start_range` and `end_range` set to `null`.
+- `state: absent` on an attribute or a relationship that a node overrides from its generic gives
+  an `element_remove`. The diff reports that element as changed, not removed, because processing
+  inherits it again from the generic.
 - An added definition holds the fields that the file sets, without `id` and
   `parameters.number_pool_id`, and the order weight of R4.
 - A load keeps the class of an attribute as the file holds it. An attribute that a node
@@ -282,8 +290,23 @@ cases; the warning reports any other case in production.
 
 **Cost**: a load and a check now process the schema twice, once to find the operations and once in
 the applier. The design document measured about 0.16 s to build the internal and core schema in
-memory, and says the time on a schema of customer size is not measured. A task measures both
-passes on the largest schema fixture in the repository.
+memory, and says the time on a schema of customer size is not measured.
+
+Measured (T022): `SchemaCandidateBuilder.from_schema_root` takes **2.00 times** the time of the
+direct load of the equivalence suite (`build_direct_load_result` in
+`backend/tests/unit/core/schema_change/helpers.py`). The branch schema is the processed internal
+and core schema, with an ID on every element, and the file is `DEVICE_SCHEMA`, the largest schema
+of `backend/tests/helpers/schema/` (two generics and four nodes, all added). Median of 10 rounds:
+541.8 ms against 270.3 ms; minimum 539.2 ms against 269.0 ms. Measured on 2026-11-17, Python
+3.12.13, one AMD EPYC 9R45 core, with no other test run on the machine. A schema of customer size
+is still not measured. Command, from the repository root:
+
+```bash
+INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_candidate_builder.py --dist=no
+```
+
+The two benchmarks share one `pytest-benchmark` group, so the table prints the ratio next to
+each time.
 
 **Alternative rejected**: saving the schema that step 2 of R5 already processed. FR-021 requires
 the saved schema to come from the applier, so that a load and a later replay cannot differ.
