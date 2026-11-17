@@ -30,7 +30,7 @@ A VRF and a namespace record different things. A VRF node records the routing in
 How you combine them depends on how your organization models its networks. Each of these models works with Infrahub:
 
 - One namespace for each VRF. Each VRF has its own tree and its own utilization figures, and every VRF can hold the same prefixes as another.
-- Several VRFs in one namespace. A VRF node records each routing instance, and the `vrf` relationship of each prefix records the VRF it belongs to. The VRFs share one tree and one set of utilization figures, and with the Marketplace IPAM schema they cannot hold the same prefix twice.
+- Several VRFs in one namespace. A VRF node records each routing instance, and the `vrf` relationship of each prefix records the VRF it belongs to. The VRFs share one tree and one set of utilization figures, and with the Marketplace IPAM schema they cannot hold the same prefix or address twice.
 - A VRF node that is also the namespace. Define a VRF node that inherits from `BuiltinIPNamespace`, and add the VRF attributes to it, such as the route distinguisher. Each VRF is then a namespace, with its own tree, and you manage one node for each VRF instead of two.
 
 In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, the VRF node records the route distinguisher, the import and export route targets, and, through the `vrf` relationship of each prefix, the prefixes that belong to the VRF. It has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
@@ -256,7 +256,7 @@ async def move_subtree(client, prefix: str, source: str, target: str, branch: st
         include=["descendants"],
         branch=branch,
     )
-    prefix_ids = [root.id, *(peer.id for peer in root.descendants.peers)]
+    prefix_ids = [root.id, *(related.id for related in root.descendants.peers)]
     prefixes = await client.filters(kind="IpamPrefix", ids=prefix_ids, branch=branch)
     addresses = await client.filters(kind="IpamIPAddress", ip_prefix__ids=prefix_ids, branch=branch)
     for node in [*prefixes, *addresses]:
