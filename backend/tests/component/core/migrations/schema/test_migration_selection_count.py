@@ -31,6 +31,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigrationQuery01
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, SchemaRoot
@@ -42,6 +43,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     assert_count_matches_write,
     build_attribute_add_migration,
     build_attribute_migration,
+    build_node_kind_update_migration,
     get_branch,
     load_selection_dataset,
 )
@@ -306,6 +308,41 @@ async def test_attribute_add_given_nodes(
             "branch_support": BranchSupportType.AWARE.value,
             "uuids": [selection_dataset.nodes["w1"].id],
         },
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Node kind update
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+async def test_node_kind_update_aware(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_node_kind_update_migration(branch, WIDGET_KIND, namespace="Selx")
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeKindUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({BEACON_KIND: 2}), ids=lambda case: case.name)
+async def test_node_kind_update_agnostic_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_node_kind_update_migration(branch, BEACON_KIND, name="Lighthouse")
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeKindUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
     )

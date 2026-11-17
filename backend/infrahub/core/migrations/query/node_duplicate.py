@@ -6,7 +6,8 @@ from pydantic import BaseModel
 
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query, QueryType
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
+from infrahub.core.query import QueryType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -20,7 +21,7 @@ class SchemaNodeInfo(BaseModel):
     kind: str
 
 
-class NodeDuplicateQuery(Query):
+class NodeDuplicateQuery(MigrationSelectionQuery):
     """Duplicates a Node to use a new kind or inheritance.
 
     Creates a copy of each affected Node and sets the new kind/inheritance.
@@ -66,6 +67,24 @@ class NodeDuplicateQuery(Query):
             AND all(node_label IN labels(node) WHERE node_label IN target.new_all_labels)
         )
         """ % {"previous_kinds": self.previous_kinds}
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return (
+            self.render_match()
+            + """
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN node as active_node, r.status = "active" AS is_active
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH target, active_node, is_active
+        WHERE is_active = TRUE
+        """
+            % {"branch_filter": branch_filter}
+        )
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
@@ -165,18 +184,9 @@ class NodeDuplicateQuery(Query):
         sub_query_out, sub_query_out_args = self._render_sub_query_out()
         sub_query_in, sub_query_in_args = self._render_sub_query_in()
 
-        self.add_to_query(self.render_match())
+        self.add_to_query(self.render_selection())
 
         query = """
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN node as active_node, r.status = "active" AS is_active
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH target, active_node, is_active
-        WHERE is_active = TRUE
         CREATE (new_node:Node:$(target.new_labels) {
             uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
         })
