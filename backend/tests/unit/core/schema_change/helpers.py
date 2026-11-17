@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
@@ -12,6 +12,8 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaRoot,
 )
+from infrahub.core.schema_change.applier import SchemaChangeApplier
+from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
 from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
@@ -303,3 +305,67 @@ class FailingMigrationRecordStore:
     def _raise_if_failing(self, method: str) -> None:
         if method in self.failing_methods:
             raise DatabaseError(message=FAILING_STORE_ERROR)
+
+
+@dataclass(frozen=True)
+class ApplierCall:
+    target_schema: SchemaBranch
+    operations: list[SchemaOperation]
+    default_branch_schema: SchemaBranch
+
+
+class RecordingSchemaChangeApplier(SchemaChangeApplier):
+    """An applier that records each call, then applies the operations."""
+
+    def __init__(self) -> None:
+        self.calls: list[ApplierCall] = []
+
+    @override
+    def apply(
+        self,
+        *,
+        target_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        default_branch_schema: SchemaBranch,
+    ) -> SchemaBranch:
+        self.calls.append(
+            ApplierCall(
+                target_schema=target_schema, operations=list(operations), default_branch_schema=default_branch_schema
+            )
+        )
+        return super().apply(
+            target_schema=target_schema, operations=operations, default_branch_schema=default_branch_schema
+        )
+
+
+@dataclass(frozen=True)
+class OperationsCheckCall:
+    branch_schema: SchemaBranch
+    operations: list[SchemaOperation]
+    default_branch_schema: SchemaBranch
+    direct_load_schema: SchemaBranch
+
+
+class RecordingSchemaOperationsCheck(SchemaOperationsCheck):
+    """An operations check that records each call and checks nothing."""
+
+    def __init__(self) -> None:
+        self.calls: list[OperationsCheckCall] = []
+
+    @override
+    def check(
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        default_branch_schema: SchemaBranch,
+        direct_load_schema: SchemaBranch,
+    ) -> None:
+        self.calls.append(
+            OperationsCheckCall(
+                branch_schema=branch_schema,
+                operations=list(operations),
+                default_branch_schema=default_branch_schema,
+                direct_load_schema=direct_load_schema,
+            )
+        )

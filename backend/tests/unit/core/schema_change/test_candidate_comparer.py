@@ -5,6 +5,8 @@ from infrahub.core.schema_change.candidate_comparer import SchemaCandidateCompar
 from tests.constants import TestKind
 
 CABLE_KIND = "TestingCable"
+DESCRIPTION_MAX_LENGTH = 128
+"""The longest description that a kind accepts when it is parsed."""
 
 
 def _with_device_attribute(schema: SchemaBranch, attribute: AttributeSchema) -> SchemaBranch:
@@ -72,3 +74,16 @@ def test_an_attribute_with_another_content_in_another_class_is_returned(
     )
 
     assert differing_kinds == [TestKind.DEVICE]
+
+
+def test_a_kind_that_cannot_be_parsed_again_is_returned(equivalence_base_schema: SchemaBranch) -> None:
+    applied_schema = equivalence_base_schema.duplicate()
+    tag = applied_schema.get(name=TestKind.TAG)
+    tag.description = "x" * (DESCRIPTION_MAX_LENGTH + 1)
+    applied_schema.set(name=TestKind.TAG, schema=tag)
+
+    differing_kinds = SchemaCandidateComparer().differing_kinds(
+        direct_load_schema=equivalence_base_schema, applied_schema=applied_schema
+    )
+
+    assert differing_kinds == [TestKind.TAG]

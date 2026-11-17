@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from infrahub.core.constants import SYSTEM_USER_ID, SchemaPathType
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema_change.applier import SchemaChangeApplier
+from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.constants import (
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,
@@ -13,12 +15,15 @@ from infrahub.core.schema_change.constants import (
     SchemaOperationType,
 )
 from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
 from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import SchemaOperationTargetNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 SEEDED_OPERATION_KIND = "TestCar"
@@ -210,3 +215,56 @@ async def _seed_migrations(
             errors=list(seed.errors),
         )
     return record_ids
+
+
+class SchemaOperationsRebuildError(AssertionError):
+    """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
+
+
+class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
+    """Apply the operations to the branch schema and raise when the result differs from the schema of the file.
+
+    It is an assertion error, so a schema load does not report it as a refused schema.
+    """
+
+    def __init__(self, applier: SchemaChangeApplier, comparer: SchemaCandidateComparer) -> None:
+        self.applier = applier
+        self.comparer = comparer
+
+    @override
+    def check(
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        default_branch_schema: SchemaBranch,
+        direct_load_schema: SchemaBranch,
+    ) -> None:
+        """Raise when the operations do not rebuild `direct_load_schema` from `branch_schema`.
+
+        Raises:
+            SchemaOperationsRebuildError: When the applier refuses an operation, or when kinds differ; the message
+                names the operation or the kinds.
+
+        """
+        try:
+            applied_schema = self.applier.apply(
+                target_schema=branch_schema, operations=operations, default_branch_schema=default_branch_schema
+            )
+        except SchemaOperationTargetNotFoundError as exc:
+            raise SchemaOperationsRebuildError(
+                f"The operations built from the schema file cannot be applied to the branch schema: {exc.message}"
+            ) from exc
+
+        differing_kinds = self.comparer.differing_kinds(
+            direct_load_schema=direct_load_schema, applied_schema=applied_schema
+        )
+        if differing_kinds:
+            raise SchemaOperationsRebuildError(
+                "The operations built from the schema file do not rebuild its schema; "
+                f"kinds that differ: {', '.join(differing_kinds)}"
+            )
+
+
+def build_replay_schema_operations_check() -> ReplaySchemaOperationsCheck:
+    return ReplaySchemaOperationsCheck(applier=SchemaChangeApplier(), comparer=SchemaCandidateComparer())

@@ -44,18 +44,20 @@ test for migrations that run on a separate worker.
 
 **Performance Goals**: the sources set none. The plan keeps the added cost of a load to:
 
-- one more in-memory processing of the schema, because the applier processes the schema after the
-  file was laid over it to find the operations;
+- building the operations from the diff of the processed schema, which a load already
+  calculates; the schema is processed once, as a direct load does (spec, decision 8);
 - a fixed number of record writes for each load, plus one small write each time a migration
   returns.
 
-A task measures the two processing passes on the largest schema fixture in the repository: building
-the candidate takes 2.00 times the time of the direct load ([research.md](research.md), R7).
+A task measures the candidate builder on the largest schema fixture in the repository: building
+the candidate takes 1.00 times the time of the direct load ([research.md](research.md), R7).
+With a second processing pass in the applier, before T065, it took 2.00 times.
 
 **Constraints**:
 
-- Every schema load, schema check and dropdown or enum mutation goes through the applier, so the
-  existing tests of those paths must pass with the same expected results (SC-002).
+- Every schema load, schema check and dropdown or enum mutation goes through the candidate
+  builder, and every mutation through the applier, so the existing tests of those paths must pass
+  with the same expected results (SC-002).
 - The records must not be reverted by the rollback of a failed load, and must not be read by a
   diff, a rebase or a merge of data.
 - `schema/schema.graphql` and the generated front-end GraphQL types must be regenerated, because
@@ -73,7 +75,7 @@ change, no CLI command change, no new setting.
 
 | Principle | Assessment |
 | --- | --- |
-| **I. Schema-Driven Integrity** | Pass. The applier ends with `SchemaBranch.process`, and the load keeps `validate_node_deletions`, `validate_update` and the constraint workflow, all on the applier's result. The records are internal `StandardNode` vertices, as `Preference` is, and the task excludes a core kind. No generated file is edited by hand. |
+| **I. Schema-Driven Integrity** | Pass. The applier ends with `SchemaBranch.process`. The load keeps `validate_node_deletions`, `validate_update` and the constraint workflow, on the processed schema of the laid-over file; a mutation runs them on the applier's result. The records are internal `StandardNode` vertices, as `Preference` is, and the task excludes a core kind. No generated file is edited by hand. |
 | **II. Branch-Safe by Default** | Pass. Each record names its branch in a property. The edges between records have no `branch` property, so the rebase, rollback and diff queries do not select them. The behaviour at merge and rebase is specified: this feature writes and changes no record there, and a functional test asserts it. Records are hard-deleted only when their branch is deleted. |
 | **III. Type Safety & Explicit Contracts** | Pass. Operations are a Pydantic model with an enumerated type. Statuses are enumerations. Every query returns a typed result. The GraphQL contract and the internal contracts are written in [contracts/](contracts/) before implementation. |
 | **IV. Test Discipline** | Pass. The equivalence suite is written first. Each tier is used for what it can prove ([research.md](research.md), R14). No Playwright test: the feature has no user interface, and front-end work is out of scope in the source design. |
@@ -114,8 +116,9 @@ backend/infrahub/
 │   │   ├── operations.py                 # SchemaOperation, summary and name
 │   │   ├── operation_builder.py          # SchemaOperationBuilder
 │   │   ├── applier.py                    # SchemaChangeApplier
-│   │   ├── candidate_comparer.py         # SchemaCandidateComparer
+│   │   ├── candidate_comparer.py         # SchemaCandidateComparer, used by the replay check of the tests
 │   │   ├── candidate.py                  # SchemaCandidate, SchemaCandidateBuilder
+│   │   ├── operations_check.py           # SchemaOperationsCheck interface, NoSchemaOperationsCheck
 │   │   ├── models.py                     # the four StandardNode records
 │   │   ├── repository.py                 # SchemaChangeRepository: writes and the version read
 │   │   ├── history_reader.py             # SchemaChangeHistoryReader: paged reads of the history query
@@ -184,10 +187,11 @@ The detail of each decision is in [research.md](research.md). The records are in
 2. Build the candidate builder, the coordinator and the runner with `factory.py`.
 3. Take the schema lock, as today. Build the candidate with `build_candidate_from_schemas`, which
    the schema check also calls: merge the files, lay them over the branch schema, process, keep
-   the paths of the diff that the files state as operations, apply the operations with the
-   applier, then calculate the diff, the migrations and the constraints from the applier's
-   result. The operation builder returns the processed schema of the laid-over files, and
-   `SchemaCandidateComparer` compares it with the applier's result for the warning.
+   the paths of the diff that the files state as operations, then calculate the migrations and
+   the constraints from that processed schema and that diff. The applier does not run, and the
+   schema is processed once. The builder passes the operations to its `SchemaOperationsCheck`,
+   which checks nothing in production; in the tests it applies the operations with the applier
+   and raises when the result differs ([research.md](research.md), R7).
 4. Return without writing when the diff is empty, as today.
 5. Run the constraint workflow, as today. A violation refuses the load, and nothing is stored.
 6. Run `SchemaChangeApplicationRunner` with the account of the request and the context that has
@@ -203,8 +207,8 @@ The detail of each decision is in [research.md](research.md). The records are in
 
 ### How the schema check runs
 
-The check calls the same `build_candidate_from_schemas` and returns the diff of the applier's
-result. It runs the constraint workflow through `_validate_migrations`, as the load does. It
+The check calls the same `build_candidate_from_schemas` and returns the diff of the processed
+schema of the laid-over files. It runs the constraint workflow through `_validate_migrations`, as the load does. It
 stores nothing.
 
 ### How a dropdown or enum mutation runs
@@ -240,17 +244,17 @@ its other queries. Neither the repository nor the history reader has a delete me
 | A schema change holds a value that processing calculated, and a later replay brings back an out-of-date value | The builder keeps only the paths that the file states, with values read before processing. A group of unit tests applies recorded operations to a target that gained a kind |
 | The format of the operations has to change after the suite | The format has a version on every schema change, and no workflow stores records before the suite passes |
 | The write that ends a load fails, and a schema change keeps the status `running` | The operations are stored, so a recovery task can finish it. Recovery is out of scope in the source design |
-| Two processing passes slow a load on a large schema | A task measures it. The design document measured about 0.16 s for one pass on the internal and core schema |
+| The stored operations of a load miss a change, and a later replay gives another schema than the saved one | The schema is processed once and the operations are not applied in production (spec, decision 8). In the tests, every load applies them with the applier and fails when the result differs; the equivalence suite covers the listed cases |
 | A new edge type is picked up by a query that matches edges without a type | The edges have no `branch` property. A functional test runs a rebase, a merge and a failed load and asserts that the records are unchanged |
 | Error strings stored in the records hold the text of an internal exception | The query needs a logged-in account ([research.md](research.md), R12) |
-| A case outside the equivalence list differs in production | The candidate builder logs a warning that names the kinds whose content differs between the laid-over file and the applier's result |
+| A case outside the equivalence list differs in production | Nothing detects it in production. Every test that loads a schema file fails on it, with the kinds that differ ([research.md](research.md), R7) |
 | A branch created while a load on main is running gets the wrong base version | `applied_at` is the timestamp of the load's writes, and a component test covers the timing ([research.md](research.md), R10) |
 
 ## Complexity Tracking
 
 | Item | Why it is needed | Simpler alternative rejected because |
 | --- | --- | --- |
-| A load and a check process the schema twice | The operations are found by laying the file over the schema, and FR-021 requires the saved schema to come from the applier | Saving the first processed schema would let a load and a later replay of its operations give different schemas |
+| `SchemaOperationsCheck` is an interface whose production implementation checks nothing | The tests verify, on every schema load, that the operations rebuild the schema; production processes the schema once (spec, decision 8) | Applying the operations in every load processes the schema a second time; a setting or an environment variable to turn the check on was not wanted |
 | Three `Protocol` classes have one production implementation each (`ApplicationRecorder`, `SchemaUpdateExecutor`, `MigrationRecordStore`) | Each has a recording or a failing implementation in the tests, which the component guideline counts as the second implementation | Typing the runner and the migration recorder against the concrete classes would need a database or a mock library to test the handling of a failure |
 | `MigrationRecorder` is an interface with an implementation that does nothing | A merge, a rebase and the core schema update run the same flow without an application until their own tasks add one | An optional collaborator with a `None` check at each use is what the component guideline forbids |
 | `SchemaChangeApplicationRunner` has one caller in this feature | The source design lists "code that applies one schema change, creates an application and a record for each migration, and updates their status" in this task's scope. The staging and replay tasks apply a schema change that already exists, so they extend the runner; this feature does not design for them | Writing the sequence in the load endpoint would put the handling of a failed load where a unit test cannot reach it with test implementations of the recorder and the coordinator |

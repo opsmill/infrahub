@@ -23,11 +23,12 @@ the schema owner made them, because the loads are not stored. Infrahub calculate
 change instead.
 
 This feature stores every schema change, every time it is applied, and every migration that the
-application runs. It also changes how a schema is built from user input: one applier builds the
-schema from the stored operations, for every schema load, every dropdown or enum mutation and
-every schema check. Later tasks of the same epic use the stored records and the applier to report
-the progress of a load, to stage a schema change, and to apply schema changes in order at rebase
-and merge.
+application runs. It also changes how a schema is built from user input: every schema load and
+every schema check builds the operations of the file, and one applier builds the schema from
+operations for every dropdown or enum mutation. The tests check that the applier rebuilds the
+schema of each loaded file from its operations (decision 8). Later tasks of the same epic use the
+stored records and the applier to report the progress of a load, to stage a schema change, and to
+apply schema changes in order at rebase and merge.
 
 The schema owner reads the history through a GraphQL query. A page in the UI, SDK methods and CLI
 commands for the history are separate work.
@@ -82,14 +83,15 @@ commands for the history are separate work.
 ### User Story 1 - A schema load gives the same schema and the same migrations as before (Priority: P1)
 
 A schema owner loads a schema file on a branch, changes a dropdown or enum through a mutation, or
-checks a schema file before loading it. Infrahub now builds the schema from the operations it
-records, with one applier. The branch ends with the same schema, and the nodes go through the same
-migrations, as a load gave before this feature.
+checks a schema file before loading it. Infrahub now records the operations of each change, and
+the operations give the same schema when the applier applies them. The branch ends with the same
+schema, and the nodes go through the same migrations, as a load gave before this feature.
 
-**Why this priority**: every schema load, mutation and check goes through the applier. A case that
-the applier handles wrongly breaks ordinary schema loads, not only the history. The source design
-makes this the first task for that reason, and the format of the stored operations stays open
-until it passes.
+**Why this priority**: every dropdown or enum mutation goes through the applier, and the later
+tasks apply the stored operations of every load with it. A case that the applier handles wrongly
+breaks ordinary schema changes, or stores operations that do not rebuild the schema. The source
+design makes this the first task for that reason, and the format of the stored operations stays
+open until it passes.
 
 **Independent Test**: for each case in the equivalence list (FR-024), build the schema twice from
 the same starting schema: once by laying the schema file over the branch schema as a load does
@@ -108,8 +110,8 @@ schemas and the lists of migrations.
    the applier applies the recorded operations, **Then** the expected result is the fixed
    behaviour that the bug's ticket describes, not today's result.
 4. **Given** a schema file sent to the schema check, **When** the check ends, **Then** the diff it
-   returns is the diff between the branch schema and the schema that the applier built, and no
-   schema change is stored.
+   returns is the diff between the branch schema and the processed schema of the file laid over
+   the branch schema, from which the operations are built, and no schema change is stored.
 5. **Given** an operation that names a node, attribute or relationship that the target schema does
    not have, **When** the applier applies it, **Then** the applier refuses the schema change and
    the error names the operation and the missing element.
@@ -331,14 +333,16 @@ branch. Count the records of that branch and of main before and after.
     `default_filter`, as a load does today;
   - run processing.
 - **FR-021**: A direct schema load, a dropdown or enum mutation and the schema check MUST each
-  build their operations and apply them with the applier. The schema that a load saves, the
-  migrations it runs and the diff that the check returns MUST come from the applier's result. A
-  load still lays the file over the branch schema to find what changed, because the operations are
-  built from that diff. A load, a check and a mutation MUST build their candidate schema through
-  one shared component, so the diff of each is the difference between the branch schema and the
-  applier's result.
+  build their operations. A load and a check lay the file over the branch schema and process it to
+  find what changed, because the operations are built from that diff. The schema that a load
+  saves, the migrations it runs and the diff that the check returns MUST come from that processed
+  schema and that diff, without applying the operations again (decision 8). A mutation MUST apply
+  its operation with the applier, and the schema it saves and its diff MUST come from the
+  applier's result. A load, a check and a mutation MUST build their candidate schema through one
+  shared component. The tests MUST fail when the applier, applying the operations of a loaded file
+  to the branch schema, gives a schema that differs from the processed schema of that file.
 - **FR-022**: Each application MUST calculate its migrations and its constraint checks after
-  processing, from the difference between the target branch's schema before and after the applier.
+  processing, from the difference between the target branch's schema before and after the change.
   The changes that processing produces therefore still get their own migrations and checks.
 - **FR-023**: The applier MUST refuse a schema change that holds an operation on a node, attribute
   or relationship that the target schema does not have. The error MUST name the operation and the
@@ -580,6 +584,17 @@ review.
    transaction. Storing the records in that transaction means that the schema and its records are
    saved together or not at all, and that a mutation retried after a database error leaves no
    failed schema change in the history.
+
+8. **A schema load and a schema check process the schema once, and the tests verify the
+   operations.** Decided by the user during implementation, on 2026-11-17. A load builds its
+   operations from the diff of the processed schema of the laid-over file, so that processed
+   schema is already in memory: the load saves it, and does not apply the operations with the
+   applier to process the schema a second time. The processed schema is not stored; the
+   operations are stored as before. The user accepted the risk that the operations miss a change
+   of the load, so that the stored operations and the saved schema differ. In the tests only,
+   every load applies the operations with the applier and fails when the result differs from the
+   processed schema of the file ([research.md](research.md), R7). The user also said that the
+   time of a schema load is not critical to them.
 
 ## Sources
 

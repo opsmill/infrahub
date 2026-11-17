@@ -127,8 +127,9 @@ query all read it.
 
 ## Phase 3: User Story 1 — a schema load gives the same schema and the same migrations as before (P1)
 
-**Goal**: one applier builds the schema for the schema load, the schema check and the dropdown and
-enum mutations, with the same result as today. Nothing is stored yet.
+**Goal**: the schema load and the schema check build their operations from the laid-over file,
+and the dropdown and enum mutations build their schema with one applier, with the same result as
+today. Nothing is stored yet.
 
 **Independent Test**: `uv run pytest backend/tests/unit/core/schema_change/` passes, and the
 existing tests of the schema load, the schema check and the mutations pass with the same expected
@@ -272,13 +273,13 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
 - [X] T018 [US1] Create `SchemaCandidateComparer` in
       `backend/infrahub/core/schema_change/candidate_comparer.py`, then `SchemaCandidate` and
       `SchemaCandidateBuilder` in `backend/infrahub/core/schema_change/candidate.py`, following
-      their contracts. The builder takes the operation builder, the applier and the comparer in
-      its constructor. `from_schema_root` and `from_operations` return the operations, the
+      their contracts. The builder takes the operation builder, the applier and, since T065, an
+      operations check in its constructor. `from_operations` returns the operations, the
       applier's schema and the `SchemaUpdateValidationResult` calculated from the diff between
-      the branch schema and the applier's schema. `from_schema_root` passes the
-      `direct_load_schema` that the operation builder returned and the applier's schema to the
-      comparer, and logs a warning that names the kinds it returns. It does not process the
-      file a third time.
+      the branch schema and the applier's schema. Since T065, `from_schema_root` returns the
+      `direct_load_schema` that the operation builder returned and validates it with the
+      builder's diff: it does not run the applier and processes the schema once. The comparison
+      of the applier's schema with `direct_load_schema` runs only in the tests (T065).
       Create `backend/infrahub/core/schema_change/factory.py` with
       `build_schema_candidate_builder()`. Add unit tests, on the shared schema of T006:
       - in `backend/tests/unit/core/schema_change/test_candidate_comparer.py`: two equal schemas
@@ -299,7 +300,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         before the schema lock. Each reads the branch schema and the default branch schema from
         the registry where it reads the branch schema today, and passes them.
       - `load_schema` keeps the `SchemaCandidate`, so that phase 4 can store its operations.
-      - `check_schema` returns the diff of the applier's result (FR-021). It calls
+      - `check_schema` returns the diff of the candidate (FR-021). It calls
         `_validate_migrations` with the schema and the constraints of the candidate, in place of
         its own copy of the constraint workflow call.
       - Change the five calls of `evaluate_candidate_schemas` in
@@ -344,10 +345,12 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
 - [X] T022 [US1] Measure the time of `SchemaCandidateBuilder.from_schema_root` against the time
       of the reference function of T006 on the internal and core schema plus the largest schema
       of `backend/tests/helpers/schema/`. Write the result in [research.md](research.md), R7, as a
-      ratio, with the command that reproduces it.
+      ratio, with the command that reproduces it. T065 measures it again after it removes the
+      second processing pass, and updates the figure.
 
-**Checkpoint**: user story 1 can be delivered alone. Every schema load, check and mutation builds
-its schema with the applier, and nothing is stored.
+**Checkpoint**: user story 1 can be delivered alone. Every schema load and check builds its
+operations from the laid-over file, every mutation builds its schema with the applier, and nothing
+is stored.
 
 ---
 
@@ -489,7 +492,7 @@ a GraphQL query returns the history of a branch in pages.
       - a load that is refused for an invalid file, or for a constraint that the nodes of the
         data set fail, stores none, and the records are the same as before (spec, decision 1);
       - a schema check stores none, and returns the diff between the branch schema and the
-        applier's result (FR-021).
+        candidate schema (FR-021).
 - [X] T028 [US2] Add the history query methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
       of T027. Load one more file that adds an attribute to a generic, so the branch has three
@@ -691,6 +694,48 @@ the reader converts it back. Neither has a delete method. Name the two migration
       codegen:graphql` for `frontend/app/src/shared/api/graphql/generated/`. Do not edit either
       by hand.
 
+### Processing the schema of a load once
+
+- [X] T065 [US1] Change `SchemaCandidateBuilder.from_schema_root` in
+      `backend/infrahub/core/schema_change/candidate.py` so that the candidate's schema is the
+      `direct_load_schema` of the operation builder, and validate it with the diff that the
+      operation builder calculated (spec, decision 8; [research.md](research.md), R7).
+      - Add `diff` to `SchemaOperationBuildResult` in `operation_builder.py`. `from_schema_root`
+        passes it to `validate_node_deletions` and `validate_update`, and calls neither the
+        applier nor `SchemaBranch.diff`. Nothing new is stored; the operations are stored as
+        before. `from_operations` is unchanged.
+      - Create `backend/infrahub/core/schema_change/operations_check.py` with the
+        `SchemaOperationsCheck` interface and `NoSchemaOperationsCheck`, which checks nothing.
+        The builder takes the check as a required constructor argument in place of the
+        comparer, and `from_schema_root` calls it with the branch schema, the operations, the
+        default branch schema and `direct_load_schema`. `build_schema_candidate_builder()` uses
+        `config.OVERRIDE.schema_operations_check` when it is set, and `NoSchemaOperationsCheck`
+        otherwise; add that field to `config.Override`. There is no setting and no environment
+        variable.
+      - Add `ReplaySchemaOperationsCheck` and `SchemaOperationsRebuildError`, an
+        `AssertionError`, to `backend/tests/helpers/schema_change.py`. The check applies the
+        operations to the branch schema with the applier, compares the result with
+        `direct_load_schema` with `SchemaCandidateComparer`, and raises the error with the
+        differing kinds, or with the operation that the applier refuses. A session-scoped
+        autouse fixture in `backend/tests/conftest.py` sets it in `config.OVERRIDE`, so every
+        test that loads a schema file fails on a builder gap. A module-scoped autouse fixture in
+        `backend/tests/benchmark/conftest.py` clears it, so the benchmark of T022 measures the
+        builder of production.
+      - `SchemaCandidateComparer` returns a kind that cannot be parsed again, in place of
+        raising the validation error.
+      - Tests: in `test_candidate.py`, `from_schema_root` calls the check once and the applier
+        never, and gives the schema, the diff, the migrations and the constraints of the
+        reference function of T006; `from_operations` calls the applier once and the check
+        never. In `test_operations_check.py`, `NoSchemaOperationsCheck` raises nothing for
+        operations that do not rebuild the schema, and the replay check accepts operations that
+        rebuild it and names the kinds, or the refused operation, otherwise. In
+        `test_candidate_comparer.py`, a kind that cannot be parsed again is returned. The
+        recording applier and the recording check are in
+        `backend/tests/unit/core/schema_change/helpers.py`.
+      - Run the benchmark of T022 again and update the figures of [research.md](research.md),
+        R7. Update every file of this directory that states the second processing pass or the
+        rule of FR-021.
+
 **Checkpoint**: user stories 1 and 2 work together. A load that succeeds is in the history.
 
 ---
@@ -866,8 +911,8 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       `opsmill-product:writing-infrahub-docs` skill when it is installed: what a schema change, an application and a migration are, an example query, and the
       statuses. Run `uv run invoke docs.lint`.
 - [ ] T060 [P] Write `dev/knowledge/backend/schema-changes.md`: the records and their edges, why
-      the edges have no `branch` property, how a load, a check and a mutation build their schema
-      with the applier, when each status is set, and what keeps the status `running`. Load
+      the edges have no `branch` property, how a load, a check and a mutation build their schema,
+      where the applier runs and where the tests check the operations, when each status is set, and what keeps the status `running`. Load
       `dev/guidelines/documentation.md` first. Add the document to the knowledge list of
       `backend/AGENTS.md`.
 - [ ] T061 Run `uv run invoke format`, then `uv run invoke lint`, and fix what they report without
@@ -896,7 +941,8 @@ T019 and T020. T021 and T022 after T020.
 
 Inside phase 4: T029 before T030 and T031. T030 and T031 before T032. T032 before T033 and T034.
 T035 before T036 and T037. T033, T034, T036 and T037 before T038. T039 before T040 and T041.
-T041 before T042. T042 before T043. T023 before T024, T025 and T026. T027 before T028.
+T041 before T042. T042 before T043. T023 before T024, T025 and T026. T027 before T028. T065
+after T038; it updates the figure that T022 wrote.
 
 Across phases, in `test_schema_change_history.py`: T027, then T028, then T046, then T055. The
 methods of one class run in the order they are defined.
@@ -928,9 +974,9 @@ methods of one class run in the order they are defined.
 | 1. Setup | T001 to T002 | 2 |
 | 2. Foundational | T003 to T005 | 3 |
 | 3. User Story 1 | T006 to T022 | 17 |
-| 4. User Story 2 | T023 to T043 | 21 |
+| 4. User Story 2 | T023 to T043, T065 | 22 |
 | 5. User Story 3 | T044 to T049 | 6 |
 | 6. User Story 4 | T050 to T051 | 2 |
 | 7. User Story 5 | T052 to T055 | 4 |
 | 8. Documentation and polish | T056 to T064 | 9 |
-| Total | | 64 |
+| Total | | 65 |

@@ -6,15 +6,23 @@ import pytest
 from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import DropdownChoice, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
 from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.factory import build_schema_candidate_builder
+from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation
 from tests.constants import TestKind
 from tests.unit.core.schema_change.helpers import (
     TAG_STATUS_ATTRIBUTE,
+    ApplierCall,
+    OperationsCheckCall,
+    RecordingSchemaChangeApplier,
+    RecordingSchemaOperationsCheck,
     SchemaLoadResult,
+    assert_same_load_result,
     base_node_definition,
     build_base_schema_root,
+    build_direct_load_result,
     summarize_load_result,
 )
 
@@ -60,6 +68,19 @@ def _add_enum_value() -> SchemaRoot:
     device = base_node_definition(TestKind.DEVICE)
     device.get_attribute(name="airflow").enum = [*DEVICE_AIRFLOW_ENUM_BEFORE, "Unknown"]
     return SchemaRoot(nodes=[device])
+
+
+RELABEL_ATTRIBUTE_OPERATIONS = [
+    SchemaOperation(
+        operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+        kind=TestKind.DEVICE,
+        section=SchemaOperationSection.ATTRIBUTES,
+        element_name="manufacturer",
+        property_name="label",
+        value="Maker",
+        previous_value="Manufacturer",
+    )
+]
 
 
 def _relabel_attribute() -> SchemaRoot:
@@ -114,17 +135,7 @@ CANDIDATE_CASES = [
     CandidateCase(
         name="attribute_label_changed",
         schema_file=_relabel_attribute,
-        operations=[
-            SchemaOperation(
-                operation_type=SchemaOperationType.ELEMENT_PROPERTY,
-                kind=TestKind.DEVICE,
-                section=SchemaOperationSection.ATTRIBUTES,
-                element_name="manufacturer",
-                property_name="label",
-                value="Maker",
-                previous_value="Manufacturer",
-            )
-        ],
+        operations=RELABEL_ATTRIBUTE_OPERATIONS,
         expected_changed_kinds=[TestKind.DEVICE],
         expected_migrations=[],
         expected_constraints=[],
@@ -194,3 +205,63 @@ def test_a_file_that_changes_nothing_gives_an_empty_diff_and_no_operation(
     assert candidate.operations == []
     assert candidate.validation.diff.all == []
     assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
+
+
+def test_a_schema_file_gives_the_processed_schema_of_the_file_without_applying_its_operations(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    applier = RecordingSchemaChangeApplier()
+    operations_check = RecordingSchemaOperationsCheck()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, operations_check=operations_check
+    )
+
+    candidate = builder.from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=_relabel_attribute(),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert applier.calls == []
+    assert operations_check.calls == [
+        OperationsCheckCall(
+            branch_schema=equivalence_base_schema,
+            operations=RELABEL_ATTRIBUTE_OPERATIONS,
+            default_branch_schema=equivalence_base_schema,
+            direct_load_schema=candidate.schema,
+        )
+    ]
+    assert candidate.operations == RELABEL_ATTRIBUTE_OPERATIONS
+    direct_load = build_direct_load_result(
+        branch_schema=equivalence_base_schema,
+        schema_root=_relabel_attribute(),
+        default_branch_schema=equivalence_base_schema,
+    )
+    assert_same_load_result(
+        expected=direct_load, actual=SchemaLoadResult(schema=candidate.schema, validation=candidate.validation)
+    )
+    assert candidate.validation.diff.model_dump() == direct_load.validation.diff.model_dump()
+
+
+def test_operations_are_applied_once_and_not_checked(equivalence_base_schema: SchemaBranch) -> None:
+    applier = RecordingSchemaChangeApplier()
+    operations_check = RecordingSchemaOperationsCheck()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, operations_check=operations_check
+    )
+
+    candidate = builder.from_operations(
+        branch_schema=equivalence_base_schema,
+        operations=RELABEL_ATTRIBUTE_OPERATIONS,
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert applier.calls == [
+        ApplierCall(
+            target_schema=equivalence_base_schema,
+            operations=RELABEL_ATTRIBUTE_OPERATIONS,
+            default_branch_schema=equivalence_base_schema,
+        )
+    ]
+    assert operations_check.calls == []
+    assert sorted(candidate.validation.diff.changed) == [TestKind.DEVICE]

@@ -18,6 +18,7 @@ Builds the operations of a schema load. No database access.
 class SchemaOperationBuildResult:
     operations: list[SchemaOperation]
     direct_load_schema: SchemaBranch
+    diff: SchemaDiff
 
 
 class SchemaOperationBuilder:
@@ -33,6 +34,8 @@ class SchemaOperationBuilder:
 - `direct_load_schema` is the schema that a direct load builds: the file laid over a copy of the
   branch schema, then processed. The builder calculates it to find the operations. It is
   returned so that no caller processes the file again.
+- `diff` is the diff from `branch_schema` to `direct_load_schema`, from which the operations are
+  built. It is returned so that no caller calculates it again.
 - `operations` is empty when the file changes nothing after processing.
 - Never changes `branch_schema`.
 - Each operation follows [data-model.md](../data-model.md), "SchemaChangeOperation".
@@ -70,7 +73,8 @@ class SchemaChangeApplier:
 
 ## `SchemaCandidateComparer`
 
-Compares two processed schemas. No database access, and it writes no log.
+Compares two processed schemas. No database access, and it writes no log. Only the replay check of
+the tests (`SchemaOperationsCheck`, below) uses it.
 
 ```python
 class SchemaCandidateComparer:
@@ -85,7 +89,37 @@ class SchemaCandidateComparer:
   schema read from the database is, and is returned only when the hash of that content still
   differs. An attribute held in another Python class with the same values, such as an attribute
   that a node extension adds, is not a difference.
+- A kind that cannot be parsed again in either schema is returned. The validation error is not
+  raised.
 - Never changes either schema.
+
+## `SchemaOperationsCheck`
+
+Checks that the operations built from a schema file rebuild the processed schema of that file.
+No database access. An ABC in `operations_check.py`, beside `NoSchemaOperationsCheck`.
+
+```python
+class SchemaOperationsCheck(ABC):
+    @abstractmethod
+    def check(
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        default_branch_schema: SchemaBranch,
+        direct_load_schema: SchemaBranch,
+    ) -> None: ...
+```
+
+- `NoSchemaOperationsCheck` checks nothing. Production uses it, so a load processes the schema
+  once (spec, decision 8).
+- `ReplaySchemaOperationsCheck`, in `backend/tests/helpers/schema_change.py`, takes the applier
+  and the comparer. It applies the operations to `branch_schema` with the applier, and raises
+  `SchemaOperationsRebuildError`, an `AssertionError`, when the applier refuses an operation or
+  when the comparer returns kinds between `direct_load_schema` and the applier's result. The
+  message names the operation or the kinds. A session-scoped autouse fixture of
+  `backend/tests/conftest.py` installs it for every test, through `config.OVERRIDE` (below).
+- Never changes `branch_schema` or `direct_load_schema`.
 
 ## `SchemaCandidateBuilder`
 
@@ -104,7 +138,7 @@ class SchemaCandidateBuilder:
         self,
         operation_builder: SchemaOperationBuilder,
         applier: SchemaChangeApplier,
-        comparer: SchemaCandidateComparer,
+        operations_check: SchemaOperationsCheck,
     ) -> None: ...
 
     def from_schema_root(
@@ -116,14 +150,15 @@ class SchemaCandidateBuilder:
     ) -> SchemaCandidate: ...
 ```
 
-- `validation.diff` is the diff between `branch_schema` and the applier's result.
-  `validation.migrations` and `validation.constraints` are calculated from that diff, after
-  processing.
-- Runs `validate_node_deletions` on the applier's result.
-- `from_schema_root` passes the `direct_load_schema` of the operation builder and the applier's
-  result to the comparer, and logs a warning that names the kinds the comparer returns. It does not
-  refuse the load, and it processes the schema twice in all: once in the operation builder and
-  once in the applier.
+- `from_schema_root`: `schema` is the `direct_load_schema` of the operation builder, and
+  `validation.diff` is the `diff` of the operation builder. It calls `operations_check.check` with
+  the branch schema, the operations, the default branch schema and `direct_load_schema`, and then
+  validates. It does not call the applier or `SchemaBranch.diff`, and the schema is processed once,
+  in the operation builder.
+- `from_operations`: `schema` is the applier's result, and `validation.diff` is the diff between
+  `branch_schema` and it. It does not call `operations_check`.
+- `validation.migrations` and `validation.constraints` are calculated from `validation.diff`,
+  after processing. Both methods run `validate_node_deletions` on `schema` with that diff.
 - It has two entry methods because a candidate is built from a schema file or from operations,
   and both end with the same validation.
 - `api/schema.py::build_candidate_from_schemas` replaces `evaluate_candidate_schemas`. It takes
@@ -541,11 +576,14 @@ async def seed_schema_change_history(
 
 `backend/infrahub/core/schema_change/factory.py` holds the functions that build the components.
 Each takes `db` and plain values, and reads no setting and no registry. The entry point passes
-`registry.default_branch` as `default_branch_name`.
+`registry.default_branch` as `default_branch_name`. `build_schema_candidate_builder()` reads one
+process-wide value, `config.OVERRIDE.schema_operations_check`, which only the tests set, as
+`git/state/factory.py::build_repository_git_state_reader` reads
+`config.OVERRIDE.repository_git_state_reader`.
 
 | Function | Returns | Called by |
 | --- | --- | --- |
-| `build_schema_candidate_builder()` | `SchemaCandidateBuilder` with its operation builder, applier and comparer | `api/schema.py::load_schema` and `api/schema.py::check_schema`, each at its top, and `graphql/mutations/schema.py::apply_attribute_property_change` |
+| `build_schema_candidate_builder()` | `SchemaCandidateBuilder` with its operation builder, its applier, and `config.OVERRIDE.schema_operations_check` when it is set or `NoSchemaOperationsCheck` otherwise | `api/schema.py::load_schema` and `api/schema.py::check_schema`, each at its top, and `graphql/mutations/schema.py::apply_attribute_property_change` |
 | `build_schema_change_recorder(db, default_branch_name)` | `SchemaChangeRecorder` with its repository and version resolver | `apply_attribute_property_change`, and the function below |
 | `build_schema_change_application_runner(db, executor, default_branch_name)` | `SchemaChangeApplicationRunner` | `load_schema`, at its top and before the schema lock. It builds the `SchemaUpdateCoordinator` there and passes it as `executor` |
 | `build_migration_recorder(db, application_id)` | `ApplicationMigrationRecorder` when `application_id` is set, `NoRecordMigrationRecorder` otherwise | `core/migrations/schema/tasks.py::schema_apply_migrations`, at its top |
@@ -562,6 +600,7 @@ One place builds a component after the work started, and it is deliberate:
 | `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute` | New keyword argument `application_id: str \| None` without a default, passed to the message. The argument `update_registry` and the three overloads are removed, because no caller passes `False`. The callers in `cli/db.py`, `core/branch/tasks.py` and `core/merge/orchestrator.py` pass `application_id=None` |
 | `core/migrations/schema/tasks.py::schema_apply_migrations` | Calls `get_database()` once at its top, builds a `MigrationRecorder` with `build_migration_recorder` on a session started from that database, and pairs each migration with its position in the message. Return value unchanged |
 | `core/migrations/schema/tasks.py::split_migrations_by_phase` and `::_apply_migration_batch` | Take `PositionedMigration` items. `_apply_migration_batch` takes the recorder and the database |
+| `config.py::Override` | New field `schema_operations_check: SchemaOperationsCheck \| None`, default `None`. Only the tests set it |
 | `api/schema.py::evaluate_candidate_schemas` | Replaced by `build_candidate_from_schemas`. Five calls in three component test modules call the candidate builder directly |
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |
 | `graphql/mutations/schema.py::update_registry` | Replaced by `apply_attribute_property_change` |

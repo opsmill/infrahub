@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -13,7 +15,8 @@ class SchemaCandidateComparer:
     def differing_kinds(self, *, direct_load_schema: SchemaBranch, applied_schema: SchemaBranch) -> list[str]:
         """Return the sorted kinds whose content differs between the two schemas, or that only one of them has.
 
-        Two kinds with the same content are equal even when an attribute is held in another Python class.
+        Two kinds with the same content are equal even when an attribute is held in another Python class. A kind that
+        cannot be parsed again in either schema is returned, and nothing is raised for it.
         """
         direct_load_hashes = self._kind_hashes(schema=direct_load_schema)
         applied_hashes = self._kind_hashes(schema=applied_schema)
@@ -31,9 +34,12 @@ class SchemaCandidateComparer:
     def _same_content(self, *, direct_load_schema: SchemaBranch, applied_schema: SchemaBranch, kind: str) -> bool:
         if not direct_load_schema.has(name=kind) or not applied_schema.has(name=kind):
             return False
-        return self._content_hash(direct_load_schema.get(name=kind, duplicate=False)) == self._content_hash(
-            applied_schema.get(name=kind, duplicate=False)
-        )
+        try:
+            return self._content_hash(direct_load_schema.get(name=kind, duplicate=False)) == self._content_hash(
+                applied_schema.get(name=kind, duplicate=False)
+            )
+        except ValidationError:
+            return False
 
     @staticmethod
     def _content_hash(node: MainSchemaTypes) -> str:

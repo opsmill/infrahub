@@ -143,8 +143,8 @@ passes.
 ## R5. How operations are built from a schema load
 
 **Decision**: a `SchemaOperationBuilder` builds the operations in three steps. It returns the
-operations and the processed schema of step 2, so that the candidate builder can compare that
-schema with the applier's result without processing the file again (R7).
+operations, the processed schema of step 2 and its diff with the branch schema, so that the
+candidate builder validates and saves that schema without processing the file again (R7).
 
 1. Lay the file over a copy of the branch schema with `SchemaBranch.load_schema`, as a load does
    today, and keep that schema before processing.
@@ -211,8 +211,8 @@ details:
 - A load keeps the class of an attribute as the file holds it. An attribute that a node
   extension adds is parsed as the base attribute class, and the applier builds the class of its
   kind, as a load does for an attribute of a node definition. The two schemas then differ in the
-  stored hash of that kind until the schema is read again from the database. The comparer of R7
-  does not name the kind, because it compares the content of a kind parsed into the class of each
+  stored hash of that kind until the schema is read again from the database. The comparer that
+  the tests use (R7) does not name the kind, because it compares the content of a kind parsed into the class of each
   attribute kind. The suite writes that attribute with the class of its kind.
 - A rename of an attribute on a generic, `unique` turned off on an attribute that a calculated
   uniqueness constraint holds, a relationship kind changed to Component without `on_delete`, and
@@ -256,9 +256,11 @@ new name, so the applier keeps setting the values first.
 **Decision**: a `SchemaCandidateBuilder` returns the operations, the processed candidate schema
 and the `SchemaUpdateValidationResult` (diff, migrations, constraints, errors).
 
-- From a schema file: build the operations (R5), apply them (R6), then `diff`,
-  `validate_node_deletions` and `validate_update` on the applier's result.
-- From operations: apply them, then the same three calls.
+- From a schema file: build the operations (R5), then `validate_node_deletions` and
+  `validate_update` on the processed schema of step 2 of R5, with the diff that the operation
+  builder calculated. The applier does not run, and the schema is processed once.
+- From operations: apply them (R6), then `diff`, `validate_node_deletions` and `validate_update`
+  on the applier's result.
 
 `api/schema.py::build_candidate_from_schemas` replaces `evaluate_candidate_schemas`. It takes the
 candidate builder and the two schemas as arguments, merges the files of the request, calls the
@@ -277,39 +279,58 @@ checks and its own save, and runs none of the migrations or constraints that the
 The diff then runs from the branch schema to the candidate, as a load's does; today's mutation
 calculates it in the other direction.
 
-**A difference is logged**: the builder holds two processed schemas, the one of the laid-over
-file, which the operation builder returns, and the applier's result. A `SchemaCandidateComparer`
-returns the kinds whose content differs, and the builder logs a warning that names them. A kind
-whose stored hash differs is parsed again into the class of each attribute kind, as a schema read
-from the database is, and is returned only when the hash of that content still differs; an
-attribute held in another Python class with the same values is not a difference. The
-comparison is a component of its own, so that the candidate builder changes only when the way a
-candidate is built changes. The builder does not refuse the load: the applier's result is the one
-that is saved, and a known-bug case can differ on purpose. The equivalence suite covers the listed
-cases; the warning reports any other case in production.
+**The tests check that the operations rebuild the schema** (spec, decision 8): the builder takes
+a `SchemaOperationsCheck` as a required constructor argument, and `from_schema_root` calls it with
+the branch schema, the operations and the processed schema of the file.
 
-**Cost**: a load and a check now process the schema twice, once to find the operations and once in
-the applier. The design document measured about 0.16 s to build the internal and core schema in
-memory, and says the time on a schema of customer size is not measured.
+- In production, `build_schema_candidate_builder()` gives the builder `NoSchemaOperationsCheck`,
+  which checks nothing.
+- In the tests, a session-scoped autouse fixture of `backend/tests/conftest.py` sets
+  `config.OVERRIDE.schema_operations_check` to `ReplaySchemaOperationsCheck`
+  (`backend/tests/helpers/schema_change.py`), and `build_schema_candidate_builder()` uses it. The
+  check applies the operations to the branch schema with the applier, and raises
+  `SchemaOperationsRebuildError`, an `AssertionError`, when the applier refuses an operation or
+  when `SchemaCandidateComparer` returns kinds. The error names the operation or the kinds. It is
+  not a `ValueError`, so the load endpoint does not report it as a refused schema. Every unit,
+  component, functional and integration test that loads a schema file through
+  `build_schema_candidate_builder()` therefore fails on a case where the operations do not
+  rebuild the schema.
+- `SchemaCandidateComparer` returns the kinds whose content differs. A kind whose stored hash
+  differs is parsed again into the class of each attribute kind, as a schema read from the
+  database is, and is returned only when the hash of that content still differs; an attribute
+  held in another Python class with the same values is not a difference. A kind that cannot be
+  parsed again is returned, and the comparer raises nothing for it.
+- The benchmark below clears the override in a module-scoped autouse fixture of
+  `backend/tests/benchmark/conftest.py`, so it measures the builder of production.
 
-Measured (T022): `SchemaCandidateBuilder.from_schema_root` takes **2.00 times** the time of the
-direct load of the equivalence suite (`build_direct_load_result` in
+**Cost**: a load and a check process the schema once, to find the operations, as a direct load
+does. The design document measured about 0.16 s to build the internal and core schema in memory,
+and says the time on a schema of customer size is not measured.
+
+Measured (T022, then T065): `SchemaCandidateBuilder.from_schema_root`, built by
+`build_schema_candidate_builder()` with `NoSchemaOperationsCheck`, takes **1.00 times** the
+time of the direct load of the equivalence suite (`build_direct_load_result` in
 `backend/tests/unit/core/schema_change/helpers.py`). The branch schema is the processed internal
 and core schema, with an ID on every element, and the file is `DEVICE_SCHEMA`, the largest schema
 of `backend/tests/helpers/schema/` (two generics and four nodes, all added). Median of 10 rounds:
-541.8 ms against 270.3 ms; minimum 539.2 ms against 269.0 ms. Measured on 2026-11-17, Python
-3.12.13, one AMD EPYC 9R45 core, with no other test run on the machine. A schema of customer size
-is still not measured. Command, from the repository root:
+270.9 ms against 269.9 ms; minimum 268.1 ms against 268.4 ms. Measured on 2026-11-17, Python
+3.12.13, one AMD EPYC 9R45 core, with no other test run on the machine. Before T065, when the
+builder also applied the operations and processed the schema a second time, the ratio was 2.00
+(median 541.8 ms against 270.3 ms). A schema of customer size is still not measured. Command, from
+the repository root:
 
 ```bash
-INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_candidate_builder.py --dist=no
+INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_candidate_builder.py --dist=no -p no:randomly
 ```
 
 The two benchmarks share one `pytest-benchmark` group, so the table prints the ratio next to
 each time.
 
-**Alternative rejected**: saving the schema that step 2 of R5 already processed. FR-021 requires
-the saved schema to come from the applier, so that a load and a later replay cannot differ.
+**Alternative rejected**: applying the operations with the applier in every load and saving the
+applier's result, so that a load and a later replay of its operations cannot differ. It processes
+the schema a second time, which doubled the time of `from_schema_root`, to verify information that
+the load already holds. The user chose to process once and accepted the risk that the operations
+miss a change of the load (spec, decision 8); the tests keep the verification.
 
 ## R8. A load records its schema change in three steps
 
@@ -545,6 +566,11 @@ another flow, and a failure there would leave the records with no branch.
   `load_schema`, `process`, `diff` and `validate_update`. It does not call
   `SchemaCandidateBuilder` for the reference, so the reference and the result under test do not
   come from the same code.
+- Outside the equivalence suite, every test that loads a schema file through
+  `build_schema_candidate_builder()` applies the operations of the file with the applier and fails
+  when they do not rebuild the processed schema of the file, through the replay check that a
+  session-scoped autouse fixture of `backend/tests/conftest.py` installs (R7). The benchmarks
+  clear it.
 - A component test covers the timing of R10: main loads a schema, a branch is created with a
   `branched_from` after the timestamp of that load's writes, and the branch's first schema change
   gets main's version plus 1 and main's schema change as its parent.
