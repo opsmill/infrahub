@@ -649,6 +649,31 @@ async def test_search_anywhere_exact_match_finds_boolean_values(
     assert await _search_ids(gql_params=gql_params, query="true", partial_match=False) == [urgent.id]
 
 
+TICKET_WITH_LABELS = deepcopy(TICKET)
+TICKET_WITH_LABELS.attributes.append(
+    AttributeSchema(name="labels", kind="List", optional=True, default_value=["network", "outage"])
+)
+
+
+@pytest.mark.parametrize("case_sensitive", [False, True])
+async def test_search_anywhere_ignores_values_stored_as_lists(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    case_sensitive: bool,
+) -> None:
+    """A value stored as a list, such as the list default value of a schema attribute, never fails a search."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET_WITH_LABELS]), update_db=True)
+    ticket = await Node.init(db=db, schema="TestingTicket", branch=default_branch)
+    await ticket.new(db=db, title="Optics", ticket_id=7)
+    await ticket.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert await _search_ids(gql_params=gql_params, query="Optics", case_sensitive=case_sensitive) == [ticket.id]
+
+
 async def test_search_anywhere_ranks_a_renamed_node_by_its_current_name(
     db: InfrahubDatabase,
     default_branch: Branch,

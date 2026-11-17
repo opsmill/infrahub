@@ -2541,7 +2541,8 @@ class NodeGetListByAttributeValueQuery(Query):
         self.params["null_value"] = NULL_VALUE
         self.params["label_attribute_names"] = ["display_label", "name"]
 
-        value = "toLower(toString(av.value))"
+        # A value stored as a list, such as a schema attribute's default value, converts to null and never matches.
+        value = "toLower(toStringOrNull(av.value))"
         search = "toLower($search_value)"
         operator = "CONTAINS" if self.partial_match else "="
         if self.case_sensitive:
