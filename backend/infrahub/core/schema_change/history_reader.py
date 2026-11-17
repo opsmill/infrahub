@@ -86,11 +86,9 @@ class SchemaChangeHistoryReader:
             db=self.db, branch_name=branch, statuses=statuses, limit=limit, offset=offset
         )
         await list_query.execute(db=self.db)
-        count_query = await SchemaChangeCountQuery.init(db=self.db, branch_name=branch, statuses=statuses)
-        await count_query.execute(db=self.db)
 
         return SchemaChangeHistoryPage(
-            count=count_query.get_data(),
+            count=await self.count_schema_changes(branch=branch, statuses=statuses),
             entries=[
                 SchemaChangeHistoryEntry(
                     schema_change=self._to_schema_change(data=row.schema_change),
@@ -99,6 +97,12 @@ class SchemaChangeHistoryReader:
                 for row in list_query.get_data()
             ],
         )
+
+    async def count_schema_changes(self, *, branch: str, statuses: Sequence[SchemaChangeStatus] | None = None) -> int:
+        """Return the number of schema changes of a branch, on all pages."""
+        count_query = await SchemaChangeCountQuery.init(db=self.db, branch_name=branch, statuses=statuses)
+        await count_query.execute(db=self.db)
+        return count_query.get_data()
 
     async def list_operations(
         self, *, schema_change_ids: Sequence[str], limit: int, offset: int

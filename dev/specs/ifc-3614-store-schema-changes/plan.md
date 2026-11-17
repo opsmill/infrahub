@@ -148,6 +148,8 @@ backend/infrahub/
     │   └── schema_change.py              # new
     ├── loaders/
     │   └── schema_change.py              # new: operations and applications loaders
+    ├── resolvers/
+    │   └── schema_change.py              # new: operations and applications fields, through the loaders
     ├── mutations/
     │   └── schema.py                     # changed: apply_attribute_property_change replaces update_registry
     └── schema.py                         # changed: registers the query
@@ -174,7 +176,7 @@ changelog/                                # one fragment, type "added"
 **Structure Decision**: the feature is a back-end package next to `core/preferences/`, the
 existing example of internal records with a repository and query classes. The query classes go in
 `core/query/`, where the other query classes are. The GraphQL modules follow the layout of
-`graphql/queries/`, `graphql/types/` and `graphql/loaders/`.
+`graphql/queries/`, `graphql/types/`, `graphql/loaders/` and `graphql/resolvers/`.
 
 ## Design
 
@@ -228,7 +230,9 @@ stores nothing.
 `InfrahubSchemaChange` reads the schema changes of the branch of the request in pages, for a
 logged-in account, through `SchemaChangeHistoryReader`. Two data loaders read the operations and
 the applications with their migration records for every schema change of the page, through the
-same reader.
+same reader. The resolver of the query builds the two loaders once for its page, and each loader
+opens a read-only session of its own, because graphql-core resolves the nested fields of the page
+concurrently.
 
 ### How the records of a branch are deleted
 

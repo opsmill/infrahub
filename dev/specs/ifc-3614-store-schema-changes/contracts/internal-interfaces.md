@@ -292,6 +292,10 @@ class SchemaChangeHistoryReader:
         self, *, branch: str, limit: int, offset: int, statuses: Sequence[SchemaChangeStatus] | None = None
     ) -> SchemaChangeHistoryPage: ...
 
+    async def count_schema_changes(
+        self, *, branch: str, statuses: Sequence[SchemaChangeStatus] | None = None
+    ) -> int: ...
+
     async def list_operations(
         self, *, schema_change_ids: Sequence[str], limit: int, offset: int
     ) -> dict[str, SchemaOperationPage]: ...
@@ -304,6 +308,8 @@ class SchemaChangeHistoryReader:
 - `list_schema_changes` orders the applied schema changes by version, then the others by
   `created_at`. `count` is the number of schema changes that match on all pages. `statuses` set to
   `None` filters nothing.
+- `count_schema_changes` returns the same `count` as `list_schema_changes`, without reading a page.
+  The query calls it when the request selects `count` and not `edges`.
 - The two other reads return a key for each ID of `schema_change_ids` that names a stored schema
   change. `list_operations` returns the operations in the order of `position`, and `count` is the
   number of operations of that schema change. `list_applications` returns the migration records

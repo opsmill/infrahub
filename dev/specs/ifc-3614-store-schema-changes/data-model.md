@@ -164,6 +164,7 @@ the history query:
 | Method | Purpose |
 | --- | --- |
 | List the schema changes of a branch in pages, and count them | The page of the query |
+| Count the schema changes of a branch, without reading a page | The query when it selects `count` and not `edges` |
 | List operations in pages for a set of schema changes, with their counts | The operations loader |
 | List applications with their migration records for a set of schema changes | The applications loader |
 

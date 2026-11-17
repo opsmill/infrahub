@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -399,9 +400,8 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             query=LAST_SCHEMA_CHANGE_QUERY, branch_name=schema_change_dataset.branch_name
         )
 
-        def migration(position: int, kind: str) -> dict[str, Any]:
+        def migration(kind: str) -> dict[str, Any]:
             return {
-                "position": position,
                 "migration_name": "node.attribute.add",
                 "path": f"schema/{kind}/{POSITION_ATTRIBUTE}",
                 "path_type": "ATTRIBUTE",
@@ -412,7 +412,20 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                 "errors": [],
             }
 
-        assert result["InfrahubSchemaChange"]["edges"] == [
+        edges = result["InfrahubSchemaChange"]["edges"]
+        records = [
+            record
+            for edge in edges
+            for application in edge["node"]["applications"]
+            for record in application.pop("migrations")
+        ]
+        # The schema diff orders the two inheriting kinds by a set of IDs, so their positions differ between processes.
+        assert [record["position"] for record in records] == [0, 1]
+        assert sorted(
+            ({key: value for key, value in record.items() if key != "position"} for record in records),
+            key=itemgetter("schema_kind"),
+        ) == [migration("TestingPowerSlot"), migration("TestingSlot")]
+        assert edges == [
             {
                 "node": {
                     "name": f"00004_{SLOT_POSITION_SUMMARY}",
@@ -439,7 +452,6 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                             "status": "APPLIED",
                             "branch": schema_change_dataset.branch_name,
                             "error": None,
-                            "migrations": [migration(0, "TestingSlot"), migration(1, "TestingPowerSlot")],
                         }
                     ],
                 }

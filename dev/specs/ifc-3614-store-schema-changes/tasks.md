@@ -667,18 +667,18 @@ the reader converts it back. Neither has a delete method. Name the two migration
 
 ### The query
 
-- [ ] T039 [P] [US2] Create the GraphQL types of
+- [X] T039 [P] [US2] Create the GraphQL types of
       [contracts/schema-change-history.graphql](contracts/schema-change-history.graphql) in
       `backend/infrahub/graphql/types/schema_change.py`. Build the enumerations from the Python
       enumerations with one-line descriptions, as `backend/infrahub/graphql/types/preferences.py`
       does. Use `GenericScalar` from `backend/infrahub/graphql/scalars.py` for `value` and
       `previous_value`.
-- [ ] T040 [US2] Create two data loaders in `backend/infrahub/graphql/loaders/schema_change.py`,
+- [X] T040 [US2] Create two data loaders in `backend/infrahub/graphql/loaders/schema_change.py`,
       in the style of `backend/infrahub/graphql/loaders/account.py`: one that loads a page of
       operations for each schema change ID, keyed by `limit` and `offset`, and one that loads the
       applications with their migration records for each schema change ID. Each loader reads
       through `SchemaChangeHistoryReader` and runs one query for all the IDs of a request.
-- [ ] T041 [US2] Create the resolver and the field `InfrahubSchemaChange` in
+- [X] T041 [US2] Create the resolver and the field `InfrahubSchemaChange` in
       `backend/infrahub/graphql/queries/schema_change.py`, in the style of
       `graphql/queries/branch.py::infrahub_branch_resolver`. It reads the branch from the GraphQL
       context, refuses a `limit` below 1 or above the maximum and an `offset` below 0 with
@@ -686,10 +686,10 @@ the reader converts it back. Neither has a delete method. Name the two migration
       `SchemaChangeHistoryReader` on it, and reads `edges` and `count` only when the request
       selects them. The `operations` and `applications` fields resolve
       through the loaders of T040.
-- [ ] T042 [US2] Export the field from `backend/infrahub/graphql/queries/__init__.py`, add it to
+- [X] T042 [US2] Export the field from `backend/infrahub/graphql/queries/__init__.py`, add it to
       `InfrahubBaseQuery` in `backend/infrahub/graphql/schema.py`, and add `InfrahubSchemaChange`
       to `QUERIES_REQUIRING_AUTHENTICATION` in the same file. Make T026 and T028 pass.
-- [ ] T043 [US2] Regenerate the generated files and commit them: `uv run invoke
+- [X] T043 [US2] Regenerate the generated files and commit them: `uv run invoke
       schema.generate-graphqlschema` for `schema/schema.graphql`, then `cd frontend/app && pnpm
       codegen:graphql` for `frontend/app/src/shared/api/graphql/generated/`. Do not edit either
       by hand.
