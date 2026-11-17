@@ -41,26 +41,37 @@ export const getThreadTitle = (thread?: any, label?: string) => {
       return null;
     }
 
-    const proposedChangePath = pathname.match(/^(\/proposed-changes\/[^/]+)/)?.[1] ?? pathname;
+    // The data tab that shows the object exists only on a proposed change page.
+    const proposedChangePath = pathname.match(/^(\/proposed-changes\/[^/]+)/)?.[1];
+
+    const objectLabel = (
+      <>
+        <NodeLabel id={nodeId} />
+
+        {nodeProperty && (
+          <>
+            <Icon icon={"mdi:chevron-right"} />
+            {nodeProperty}
+          </>
+        )}
+      </>
+    );
 
     return (
       <div className="flex items-center gap-2 text-sm">
         <Badge variant={"gray-outline"}>Object</Badge>
 
-        <LinkButton
-          href={`${proposedChangePath}/data#${nodeId}`}
-          className="flex items-center gap-2 px-1"
-          variant={"ghost"}
-        >
-          <NodeLabel id={nodeId} />
-
-          {nodeProperty && (
-            <>
-              <Icon icon={"mdi:chevron-right"} />
-              {nodeProperty}
-            </>
-          )}
-        </LinkButton>
+        {proposedChangePath ? (
+          <LinkButton
+            href={`${proposedChangePath}/data#${nodeId}`}
+            className="flex items-center gap-2 px-1"
+            variant={"ghost"}
+          >
+            {objectLabel}
+          </LinkButton>
+        ) : (
+          <div className="flex items-center gap-2 px-1">{objectLabel}</div>
+        )}
       </div>
     );
   }
