@@ -639,7 +639,7 @@ the reader converts it back. Neither has a delete method. Name the two migration
 
 ### The load
 
-- [ ] T037 [US2] Create `SchemaChangeApplicationRunner` in
+- [X] T037 [US2] Create `SchemaChangeApplicationRunner` in
       `backend/infrahub/core/schema_change/application_runner.py`, with the `ApplicationRecorder`
       and `SchemaUpdateExecutor` protocols of the contract declared beside it.
       `SchemaUpdateExecutor.execute` has the arguments the runner passes, each with a required
@@ -652,7 +652,7 @@ the reader converts it back. Neither has a delete method. Name the two migration
       failure path. Add `build_schema_change_recorder(db, default_branch_name)` and
       `build_schema_change_application_runner(db, executor, default_branch_name)` to
       `factory.py`.
-- [ ] T038 [US2] Change `api/schema.py::load_schema` to build the coordinator and the runner at
+- [X] T038 [US2] Change `api/schema.py::load_schema` to build the coordinator and the runner at
       its top, after the permission checks and before the schema lock, next to the candidate
       builder of T019. It builds the runner with `build_schema_change_application_runner`, and
       passes the coordinator as `executor` and `registry.default_branch` as

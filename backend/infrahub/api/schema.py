@@ -51,8 +51,8 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
-from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
-from infrahub.core.schema_change.factory import build_schema_candidate_builder
+from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
+from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_application_runner
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -409,6 +409,15 @@ async def load_schema(
 
     candidate_builder = build_schema_candidate_builder()
     service: InfrahubServices = request.app.state.service
+    coordinator = SchemaUpdateCoordinator(
+        db=db,
+        schema_manager=registry.schema,
+        rollbacker=GraphRollbacker(db=db),
+        workflow=service.workflow,
+    )
+    runner = build_schema_change_application_runner(
+        db=db, executor=coordinator, default_branch_name=registry.default_branch
+    )
     log.info("schema_load_request", branch=branch.name)
 
     errors: list[str] = []
@@ -455,29 +464,15 @@ async def load_schema(
 
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
 
-        coordinator = SchemaUpdateCoordinator(
-            db=db,
-            schema_manager=registry.schema,
-            rollbacker=GraphRollbacker(db=db),
-            workflow=service.workflow,
-        )
-
-        updated_hash = await coordinator.execute(
+        updated_hash = await runner.run(
             branch=branch,
             origin_schema=origin_schema,
-            rollback_schema=origin_schema,
-            candidate_schema=candidate.schema,
+            candidate=candidate,
             at=Timestamp(),
             # The caller blocks on this request: a priority stamped into the
             # context puts the migration task tree in the interactive lane.
             context=context.model_copy(update={"priority": WorkflowPriority.HIGH}),
-            migration_executor=MigrationExecutor.WORKFLOW,
-            diff=result.diff,
-            migrations=result.migrations,
-            limit=result.diff.all,
-            update_db=True,
             user_id=account_session.account_id,
-            application_id=None,
         )
 
     await service.component.refresh_schema_hash(branches=[branch.name])
