@@ -379,10 +379,11 @@ so they extend the runner; this feature does not design for them.
 schema change and its application keep the status `running` in these cases:
 
 - the worker stops, or the request is cancelled, during the load;
-- the write that sets them to `applied` raises after the coordinator saved the schema and ran the
+- the write that sets them to `applied` raises a `DatabaseError`, a `QueryError`, a
+  `QueryTimeoutError` or a `Neo4jError` after the coordinator saved the schema and ran the
   migrations. The runner calls `complete` after its `try` block, so it does not call `fail` for
-  that error: the records stay `running`, and the load returns the error to its caller although
-  the schema of the branch changed;
+  that error: it logs the error and returns the new hash, the load succeeds, and the records stay
+  `running`;
 - the write that sets them to `failed` raises a `DatabaseError`, a `QueryError`, a
   `QueryTimeoutError` or a `Neo4jError`. The runner logs it and raises the error of the load.
 

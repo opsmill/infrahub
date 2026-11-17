@@ -471,10 +471,13 @@ class SchemaChangeApplicationRunner:
   `recorder.complete`.
 - When the executor raises, calls `recorder.fail` with the text of the error, then raises the
   same exception. The caller receives the same error as today.
-- `recorder.complete` runs after the handling of an executor error. When it raises after the
-  executor saved the schema, the runner does not call `recorder.fail`: the schema change and its
-  application keep the status `running`, and the caller receives the error of `complete` although
-  the schema of the branch changed ([research.md](../research.md), R8).
+- `recorder.complete` runs after the handling of an executor error. When it raises a
+  `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a `neo4j` `Neo4jError` after the
+  executor saved the schema, the runner logs the event
+  `Could not record the application of a schema change` with `schema_change_id`,
+  `application_id` and the exception, does not call `recorder.fail`, and returns the new hash:
+  the schema change and its application keep the status `running` ([research.md](../research.md),
+  R8). Any other exception that `recorder.complete` raises reaches the caller.
 - `run` always creates a new schema change. Applying a schema change that already exists, as the
   staging and replay tasks do, is not in this contract; those tasks extend it.
 - When `recorder.fail` raises a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a

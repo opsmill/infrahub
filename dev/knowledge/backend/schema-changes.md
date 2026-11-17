@@ -107,7 +107,8 @@ when the diff is not empty. A load refused before that point stores nothing.
    record to `applied` or `failed` when its result arrives. A record write that fails is logged and
    does not stop the migrations.
 3. On success, `complete` asks `SchemaChangeVersionResolver` for the version and the parent and
-   marks both records `applied`, with `applied_at` equal to the application's `at`. On failure, the
+   marks both records `applied`, with `applied_at` equal to the application's `at`. A record write
+   error of `complete` is logged and the load still returns the new hash. On failure, the
    coordinator has already rolled back; the runner calls `fail` with the error text and raises the
    original exception again.
 
@@ -143,9 +144,15 @@ application stay `running` when:
 
 - the API server stops, or the request is cancelled, after `start`: a `CancelledError` is not an
   `Exception`, so the runner does not record a failure;
-- `fail` itself raises a database error, which the runner logs;
-- `complete` raises after the update succeeded: the schema is applied and the records stay
+- `fail` itself raises a record write error, which the runner logs before it raises the error of
+  the load;
+- `complete` raises a record write error after the update succeeded: the runner logs it and
+  returns the new hash, so the load succeeds, the schema is applied and the records stay
   `running`.
+
+A record write error is one of `RECORD_WRITE_ERRORS` (`core/schema_change/record_errors.py`): a
+`DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a `neo4j` `Neo4jError`. Another exception
+that `fail` or `complete` raises reaches `load_schema`.
 
 A migration record stays `running` or `waiting` when a migration raises an exception, because the
 flow stops reading the results that come after it, and when its own record write fails. Records of

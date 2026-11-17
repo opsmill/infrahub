@@ -257,8 +257,8 @@ branch. Count the records of that branch and of main before and after.
 - **A worker that stops during a load, a load request that is cancelled, or a write of the end
   status that fails**: the schema change and its application keep the status `running`. They have
   no version and are not part of the history that later tasks apply. When the write that sets
-  `applied` fails after the schema was saved, the load also returns that error to the schema
-  owner, although the schema of the branch changed ([research.md](research.md), R8). Recovery
+  `applied` fails with a database error after the schema was saved, the load succeeds and the
+  error is logged ([research.md](research.md), R8). Recovery
   after a worker stops during a schema load is out of scope, as in the source design.
 - **A migration that is waiting when another migration fails**: its record keeps the status
   `waiting`. The status `failed` of the application tells the reader that it did not run.

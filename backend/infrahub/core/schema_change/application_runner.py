@@ -77,7 +77,8 @@ class SchemaChangeApplicationRunner:
         """Record a running schema change, apply the candidate at `at`, then record the schema change as applied.
 
         When the update raises, the schema change is recorded as failed with the text of the error, and the same
-        exception is raised again.
+        exception is raised again. When recording the schema change as applied raises a record write error after the
+        update saved the schema, the error is logged, the schema change stays running and the hash is returned.
 
         Returns:
             The schema hash of the branch after the update.
@@ -101,8 +102,18 @@ class SchemaChangeApplicationRunner:
         except Exception as exc:
             await self._record_failure(recording=recording, error=_error_text(exc), user_id=user_id)
             raise
-        await self.recorder.complete(recording=recording, branch=branch, user_id=user_id)
+        await self._record_completion(recording=recording, branch=branch, user_id=user_id)
         return updated_hash
+
+    async def _record_completion(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None:
+        try:
+            await self.recorder.complete(recording=recording, branch=branch, user_id=user_id)
+        except RECORD_WRITE_ERRORS:
+            log.exception(
+                "Could not record the application of a schema change",
+                schema_change_id=recording.schema_change_id,
+                application_id=recording.application_id,
+            )
 
     async def _record_failure(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         try:

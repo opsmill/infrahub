@@ -442,6 +442,15 @@ class FailingApplicationRecorder(RecordingApplicationRecorder):
         raise DatabaseError(message=FAILING_STORE_ERROR)
 
 
+class FailingCompleteApplicationRecorder(RecordingApplicationRecorder):
+    """An application recorder that records each call, and raises a database error from `complete`."""
+
+    @override
+    async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None:
+        await super().complete(recording=recording, branch=branch, user_id=user_id)
+        raise DatabaseError(message=FAILING_STORE_ERROR)
+
+
 class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
     """A schema update executor that appends each call to `calls`, which it can share, and returns `updated_hash`."""
 

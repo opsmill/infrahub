@@ -29,6 +29,7 @@ from tests.unit.core.schema_change.helpers import (
     RECORDER_FAIL,
     RECORDER_START,
     FailingApplicationRecorder,
+    FailingCompleteApplicationRecorder,
     FailingSchemaUpdateExecutor,
     RecordingApplicationRecorder,
     RecordingSchemaUpdateExecutor,
@@ -38,6 +39,7 @@ from tests.unit.core.schema_change.helpers import (
 USER_ID = "4d0c7e2a-6b19-4f3e-8a52-c1d9e7f30b64"
 UPDATED_HASH = "f3a1c92e7b4d5068"
 RECORD_FAILURE_EVENT = "Could not record the failure of a schema change"
+RECORD_COMPLETION_EVENT = "Could not record the application of a schema change"
 CHANGED_KIND = "TestCar"
 MIGRATION_FAILURE = "The migration node.attribute.add failed on 2 nodes"
 
@@ -214,6 +216,31 @@ async def test_run_raises_the_error_of_the_executor_and_logs_when_recording_the_
     failures = find_logged_events(
         caplog,
         event=RECORD_FAILURE_EVENT,
+        schema_change_id=RECORDED_SCHEMA_CHANGE_ID,
+        application_id=RECORDED_APPLICATION_ID,
+    )
+    assert len(failures) == 1
+    assert failures[0]["exc_info"]
+
+
+async def test_run_returns_the_hash_and_logs_when_recording_the_application_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    calls: list[SchemaApplicationCall] = []
+    runner = SchemaChangeApplicationRunner(
+        recorder=FailingCompleteApplicationRecorder(calls=calls),
+        executor=RecordingSchemaUpdateExecutor(calls=calls, updated_hash=UPDATED_HASH),
+    )
+    run_input = _build_run_input()
+
+    with caplog.at_level(logging.ERROR, logger="infrahub"):
+        updated_hash = await _run(runner=runner, run_input=run_input)
+
+    assert updated_hash == UPDATED_HASH
+    assert [call.method for call in calls] == [RECORDER_START, EXECUTOR_EXECUTE, RECORDER_COMPLETE]
+    failures = find_logged_events(
+        caplog,
+        event=RECORD_COMPLETION_EVENT,
         schema_change_id=RECORDED_SCHEMA_CHANGE_ID,
         application_id=RECORDED_APPLICATION_ID,
     )

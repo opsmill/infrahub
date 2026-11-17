@@ -257,7 +257,7 @@ A migration has one of these statuses:
 - `FAILED`: the migration returned errors, which the `errors` field lists.
 - `ROLLED_BACK`: the migration was applied, then the load failed and Infrahub reverted the data of the branch.
 
-When a load fails, the migrations that had not ended keep the status `WAITING` or `RUNNING`. A schema change and its application keep the status `RUNNING` when the API server stops, or the request is cancelled, before the load ends.
+When a load fails, the migrations that had not ended keep the status `WAITING` or `RUNNING`. A schema change and its application keep the status `RUNNING` when the API server stops, or the request is cancelled, before the load ends. They also keep it when Infrahub cannot write their end status to the database because of a database error. When that happens after Infrahub saved the schema, the load succeeds and the API server logs the error.
 
 The GraphQL schema also lists the status `STAGED` for a schema change, and `ROLLED_BACK` and `SKIPPED` for an application. Infrahub does not set these statuses in this version.
 
