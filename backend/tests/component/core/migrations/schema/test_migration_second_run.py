@@ -8,6 +8,7 @@ that rewrites an edge, bumps metadata or closes a global edge fails the test.
 from __future__ import annotations
 
 import uuid
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -17,11 +18,17 @@ from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType
 from infrahub.core.migrations.schema.attribute_kind_update import AttributeKindUpdateMigration
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
+from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
+    AttributeSupportsGeneratedSchemaMigration,
+)
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigration
+from infrahub.core.migrations.schema.node_uniqueness_constraints_update import (
+    NodeUniquenessConstraintsUpdateMigration,
+)
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, GenericSchema, SchemaRoot
@@ -51,20 +58,18 @@ class CarData:
     template_car: Node
 
 
-@pytest.fixture
-async def car_schema(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
+def register_car_schema(default_branch: Branch, schema: SchemaRoot) -> SchemaBranch:
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]), branch=default_branch.name
     )
-    for node in car_person_schema_unregistered.nodes:
+    for node in schema.nodes:
         node.generate_template = True
-    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
-@pytest.fixture
-async def car_data(db: InfrahubDatabase, default_branch: Branch, car_schema: SchemaBranch) -> CarData:
+async def create_car_data(
+    db: InfrahubDatabase, default_branch: Branch, seats_on_profile: bool = True, seats_on_template: bool = True
+) -> CarData:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="John", height=180)
     await person.save(db=db)
@@ -79,26 +84,40 @@ async def car_data(db: InfrahubDatabase, default_branch: Branch, car_schema: Sch
         cars.append(car)
 
     profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
-    await profile.new(db=db, profile_name="car-profile", nbr_seats=3, color="#333333", is_electric=True)
+    profile_seats = {"nbr_seats": 3} if seats_on_profile else {}
+    await profile.new(db=db, profile_name="car-profile", color="#333333", is_electric=True, **profile_seats)
     await profile.save(db=db)
 
     template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
     await template_person.new(db=db, template_name="person-template")
     await template_person.save(db=db)
     template_car = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    template_seats = {"nbr_seats": 2} if seats_on_template else {}
     await template_car.new(
         db=db,
         template_name="car-template",
-        nbr_seats=2,
         color="#444444",
         is_electric=True,
         owner=template_person,
+        **template_seats,
     )
     await template_car.save(db=db)
 
     return CarData(
         person=person, cars=cars, profile=profile, template_person=template_person, template_car=template_car
     )
+
+
+@pytest.fixture
+async def car_schema(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    return register_car_schema(default_branch=default_branch, schema=car_person_schema_unregistered)
+
+
+@pytest.fixture
+async def car_data(db: InfrahubDatabase, default_branch: Branch, car_schema: SchemaBranch) -> CarData:
+    return await create_car_data(db=db, default_branch=default_branch)
 
 
 async def test_graph_state_detects_duplicate_vertex(db: InfrahubDatabase, car_data: CarData) -> None:
@@ -328,3 +347,162 @@ async def test_node_namespace_update(
         schema_path=attribute_path(kind=new_kind, name="namespace"),
     )
     await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+SEATS_IN_CONSTRAINT = [["name__value", "nbr_seats__value"]]
+NAME_ONLY_CONSTRAINT = [["name__value"]]
+
+
+def car_schema_variant(
+    schema: SchemaRoot,
+    unique: bool = False,
+    read_only: bool = False,
+    uniqueness_constraints: list[list[str]] | None = None,
+) -> SchemaRoot:
+    variant = deepcopy(schema)
+    car = next(node for node in variant.nodes if node.name == "Car")
+    seats = next(attribute for attribute in car.attributes if attribute.name == "nbr_seats")
+    seats.unique = unique
+    seats.read_only = read_only
+    if uniqueness_constraints is not None:
+        car.uniqueness_constraints = uniqueness_constraints
+    return variant
+
+
+async def assert_seats_change_runs_twice_unchanged(
+    db: InfrahubDatabase,
+    branch: Branch,
+    unique: bool | None = None,
+    read_only: bool | None = None,
+    optional: bool | None = None,
+    uniqueness_constraints: list[list[str]] | None = None,
+    first_run_changes: bool = True,
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name="TestCar", duplicate=True)
+    # A schema registered in memory has no IDs, and the migration treats an attribute without one as new.
+    attribute_id = str(uuid.uuid4())
+    previous.get_attribute(name="nbr_seats").id = attribute_id
+    candidate = schema_branch.duplicate()
+    car = candidate.get_node(name="TestCar", duplicate=True)
+    seats = car.get_attribute(name="nbr_seats")
+    seats.id = attribute_id
+    if unique is not None:
+        seats.unique = unique
+    if read_only is not None:
+        seats.read_only = read_only
+    if optional is not None:
+        seats.optional = optional
+    if uniqueness_constraints is not None:
+        car.uniqueness_constraints = uniqueness_constraints
+    candidate.set(name="TestCar", schema=car)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name="TestCar"),
+        schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
+    )
+    await assert_second_run_changes_nothing(
+        db=db, branch=branch, migrations=[migration], first_run_changes=first_run_changes
+    )
+
+
+async def assert_constraint_change_runs_twice_unchanged(
+    db: InfrahubDatabase, branch: Branch, uniqueness_constraints: list[list[str]]
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous = schema_branch.get_node(name="TestCar", duplicate=True)
+    candidate = schema_branch.duplicate()
+    car = candidate.get_node(name="TestCar", duplicate=True)
+    car.uniqueness_constraints = uniqueness_constraints
+    candidate.set(name="TestCar", schema=car)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = NodeUniquenessConstraintsUpdateMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_node(name="TestCar"),
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.NODE,
+            schema_kind="TestCar",
+            field_name="uniqueness_constraints",
+            property_name="uniqueness_constraints",
+        ),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_unique_update_on(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_seats_change_runs_twice_unchanged(db=db, branch=branch, unique=True)
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_unique_update_off(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot, branch_kind: BranchKind
+) -> None:
+    register_car_schema(
+        default_branch=default_branch, schema=car_schema_variant(schema=car_person_schema_unregistered, unique=True)
+    )
+    await create_car_data(db=db, default_branch=default_branch, seats_on_profile=False, seats_on_template=False)
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    # Processing a unique attribute adds it to the uniqueness constraints, which turning unique off leaves behind.
+    await assert_seats_change_runs_twice_unchanged(
+        db=db, branch=branch, unique=False, uniqueness_constraints=NAME_ONLY_CONSTRAINT
+    )
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_read_only_update_on(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_seats_change_runs_twice_unchanged(db=db, branch=branch, read_only=True)
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_read_only_update_off(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot, branch_kind: BranchKind
+) -> None:
+    register_car_schema(
+        default_branch=default_branch,
+        schema=car_schema_variant(schema=car_person_schema_unregistered, read_only=True),
+    )
+    await create_car_data(db=db, default_branch=default_branch, seats_on_profile=False, seats_on_template=False)
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_seats_change_runs_twice_unchanged(db=db, branch=branch, read_only=False)
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_optional_update(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    """Profile and template support depends on read_only and unique, not on optional, so neither run changes data."""
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_seats_change_runs_twice_unchanged(db=db, branch=branch, optional=False, first_run_changes=False)
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_uniqueness_constraints_update_add(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_constraint_change_runs_twice_unchanged(
+        db=db, branch=branch, uniqueness_constraints=SEATS_IN_CONSTRAINT
+    )
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_uniqueness_constraints_update_remove(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot, branch_kind: BranchKind
+) -> None:
+    register_car_schema(
+        default_branch=default_branch,
+        schema=car_schema_variant(schema=car_person_schema_unregistered, uniqueness_constraints=SEATS_IN_CONSTRAINT),
+    )
+    await create_car_data(db=db, default_branch=default_branch, seats_on_profile=False)
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    await assert_constraint_change_runs_twice_unchanged(
+        db=db, branch=branch, uniqueness_constraints=NAME_ONLY_CONSTRAINT
+    )
