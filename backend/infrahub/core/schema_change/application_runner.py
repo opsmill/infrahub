@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from neo4j.exceptions import Neo4jError
-
-from infrahub.exceptions import DatabaseError, Error, QueryError, QueryTimeoutError
+from infrahub.core.schema_change.record_errors import RECORD_WRITE_ERRORS
+from infrahub.exceptions import Error
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-RECORD_UPDATE_ERRORS = (DatabaseError, QueryError, QueryTimeoutError, Neo4jError)
 
 
 class ApplicationRecorder(Protocol):
@@ -109,7 +107,7 @@ class SchemaChangeApplicationRunner:
     async def _record_failure(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         try:
             await self.recorder.fail(recording=recording, error=error, user_id=user_id)
-        except RECORD_UPDATE_ERRORS:
+        except RECORD_WRITE_ERRORS:
             log.exception(
                 "Could not record the failure of a schema change",
                 schema_change_id=recording.schema_change_id,

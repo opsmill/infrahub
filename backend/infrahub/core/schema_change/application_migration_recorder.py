@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from neo4j.exceptions import Neo4jError
-
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
 from infrahub.core.schema_change.migration_recorder import MigrationRecorder
-from infrahub.exceptions import DatabaseError, QueryTimeoutError
+from infrahub.core.schema_change.record_errors import RECORD_WRITE_ERRORS
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -16,8 +14,6 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateMigrationInfo
 
 log = get_logger()
-
-RECORD_WRITE_ERRORS = (DatabaseError, QueryTimeoutError, Neo4jError)
 
 
 class MigrationRecordStore(Protocol):

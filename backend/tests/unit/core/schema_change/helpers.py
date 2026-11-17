@@ -263,15 +263,18 @@ class MigrationRecordStoreCall:
 
 
 class FailingMigrationRecordStore:
-    """A migration record store that records each call, then raises for the methods named in `failing_methods`.
+    """A migration record store that records each call, then raises `error` for the methods named in `failing_methods`.
 
     A method that does not fail returns the record ID `record-<position>` for each migration.
     """
 
     def __init__(
-        self, failing_methods: frozenset[str] = frozenset({CREATE_MIGRATION_RECORDS, SET_MIGRATION_RECORDS_STATUS})
+        self,
+        failing_methods: frozenset[str] = frozenset({CREATE_MIGRATION_RECORDS, SET_MIGRATION_RECORDS_STATUS}),
+        error: Exception | None = None,
     ) -> None:
         self.failing_methods = failing_methods
+        self.error = error or DatabaseError(message=FAILING_STORE_ERROR)
         self.calls: list[MigrationRecordStoreCall] = []
 
     async def create_migration_records(
@@ -309,7 +312,7 @@ class FailingMigrationRecordStore:
 
     def _raise_if_failing(self, method: str) -> None:
         if method in self.failing_methods:
-            raise DatabaseError(message=FAILING_STORE_ERROR)
+            raise self.error
 
 
 @dataclass(frozen=True)

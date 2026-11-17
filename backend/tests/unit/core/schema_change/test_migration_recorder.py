@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+
+import pytest
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.models import SchemaMigrationPathResponseData
@@ -9,16 +11,15 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
+from infrahub.exceptions import DatabaseError, QueryError
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
     CREATE_MIGRATION_RECORDS,
     SET_MIGRATION_RECORDS_STATUS,
+    FAILING_STORE_ERROR,
     FailingMigrationRecordStore,
     MigrationRecordStoreCall,
 )
-
-if TYPE_CHECKING:
-    import pytest
 
 APPLICATION_ID = "18a2cd5c-3f0b-4c41-9d3e-6a1d7c2b9e10"
 MIGRATION_ERROR = "Unable to convert the value of 2 nodes"
@@ -42,10 +43,26 @@ CREATE_CALL = MigrationRecordStoreCall(
 )
 
 
+@dataclass(frozen=True)
+class StoreErrorCase:
+    name: str
+    error: Exception
+
+
+STORE_ERROR_CASES = [
+    StoreErrorCase(name="database_error", error=DatabaseError(message=FAILING_STORE_ERROR)),
+    StoreErrorCase(
+        name="query_error_when_the_application_is_missing",
+        error=QueryError(query="MATCH (application) RETURN application", params={}),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in STORE_ERROR_CASES])
 async def test_register_logs_a_failure_to_create_the_records_and_does_not_raise(
-    caplog: pytest.LogCaptureFixture,
+    test_case: StoreErrorCase, caplog: pytest.LogCaptureFixture
 ) -> None:
-    store = FailingMigrationRecordStore()
+    store = FailingMigrationRecordStore(error=test_case.error)
     recorder = ApplicationMigrationRecorder(store=store, application_id=APPLICATION_ID)
 
     with caplog.at_level(logging.WARNING, logger="infrahub"):

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 BRANCH_NAME = "main"
 MIGRATION_ERROR = "Unable to convert the value of 2 nodes"
+MISSING_APPLICATION_ID = "5c8e1f2d-7a3b-4e96-8d10-b2f4a6c9e357"
 
 MIGRATIONS: list[SchemaUpdateMigrationInfo] = [
     attribute_migration(migration_name="node.attribute.add", field_name="color"),
@@ -165,3 +166,19 @@ async def test_recorder_without_application_creates_no_record(db: InfrahubDataba
     )
     assert results[0].get("nbr_records") == 0
     assert await _read_migrations(db=db, schema_change=schema_change) == []
+
+
+async def test_recorder_of_a_missing_application_creates_no_record_and_does_not_raise(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    recorder = build_migration_recorder(db=db, application_id=MISSING_APPLICATION_ID)
+
+    await recorder.register(migrations=MIGRATIONS)
+    await recorder.batch_started(positions=[0, 1, 2])
+    await recorder.migration_ended(position=0, result=_result(MIGRATIONS[0], nbr_migrations_executed=1))
+
+    results = await db.execute_query(
+        query="MATCH (record:SchemaChangeMigration) RETURN count(record) AS nbr_records",
+        name="test_count_migration_records",
+    )
+    assert results[0].get("nbr_records") == 0

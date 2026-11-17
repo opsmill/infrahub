@@ -525,6 +525,8 @@ class MigrationRecordStore(Protocol):
   methods write nothing for the positions that have no record.
 - `MigrationRecordStore` holds the two methods the recorder calls. `SchemaChangeRepository`
   satisfies it by its signatures. A unit test passes a store that raises on every call.
+- The runner and the migration recorder catch the same errors of a record write, the tuple
+  `RECORD_WRITE_ERRORS` of `core/schema_change/record_errors.py`.
 - The application ID is a constructor argument, because one recorder serves one application for
   the length of one flow run, and the interface is shared with a recorder that has no
   application.
@@ -546,9 +548,9 @@ class MigrationRecordStore(Protocol):
     result has no error, or `failed` with the errors of the result, and the
     `nbr_migrations_executed` of the result in both cases.
 - A failure to write a record does not stop a migration. It is logged, and the record keeps its
-  earlier status. The recorder catches the `DatabaseError`, the `QueryTimeoutError` and the
-  `neo4j` `Neo4jError` (which covers a transient error such as a deadlock) that the store raises, and
-  logs a warning with `get_logger()` and `exc_info=True`, with these events and fields:
+  earlier status. The recorder catches the `DatabaseError`, the `QueryError` (raised when the
+  application does not exist), the `QueryTimeoutError` and the `neo4j` `Neo4jError` (which covers
+  a transient error such as a deadlock) that the store raises, and logs a warning with `get_logger()` and `exc_info=True`, with these events and fields:
 
   | Method | Event | Fields |
   | --- | --- | --- |
