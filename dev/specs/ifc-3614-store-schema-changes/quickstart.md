@@ -2,9 +2,10 @@
 
 **Feature**: `dev/specs/ifc-3614-store-schema-changes`
 
-How to run the validation for this feature, and what each run must show. The test paths below are
-planned: `tasks.md` creates them. The unit tests need no database. The component and functional
-tests start Neo4j through testcontainers, so they need a running Docker daemon.
+How to run the validation for this feature, and what each run must show. The unit tests need no
+database. The component and functional tests start Neo4j through testcontainers, so they need a
+running Docker daemon. Run one command that uses Docker at a time, because the test sessions
+share the database container.
 
 ## Prerequisites
 
@@ -24,9 +25,10 @@ What it must show:
   the same hash for every kind as the schema of a direct load, and the migrations and constraints
   are the same.
 - Each of the four known-bug cases of FR-025 either passes or is reported as an expected failure
-  that names its bug. An expected failure that starts to pass fails the run, so the marker is
-  removed when the bug is fixed.
-- No recorded operation holds an `id` or a `number_pool_id`.
+  whose reason describes the bug. The markers are strict: an expected failure that starts to pass
+  fails the run, so the marker is removed when the bug is fixed. On this branch all four are
+  expected failures.
+- No recorded operation holds an `id` or a `number_pool_id` with a value.
 
 This suite must pass before any other task of the feature starts, because the format of the
 operations stays open until it does.
@@ -45,14 +47,16 @@ uv run pytest backend/tests/component/core/test_branch.py
 What they must show:
 
 - The repository creates and updates the four records, the history reader reads schema changes
-  and operations in pages, and the branch deletion deletes the records of a branch.
+  and operations in pages, and the migration recorder writes the migration records.
 - The first schema change of a branch gets main's version at `branched_from` plus 1, and has
   main's schema change at that version as its parent.
 - The history query returns applied schema changes by version and the others by creation time,
-  and the count of all pages. It refuses a request without a logged-in account.
+  and the count of all pages. It refuses a limit or an offset out of range.
 - A dropdown or enum mutation stores one schema change with one operation. A refused mutation
   stores none.
-- Deleting a branch's data deletes its records and leaves the records of main.
+- Deleting a branch's data deletes its records and leaves the records of main and of the other
+  branches (`backend/tests/component/core/schema_change/test_delete_by_branch.py`).
+- The existing tests of the branch data deletion in `test_branch.py` still pass.
 
 ## 3. Loads with data, in one process (user stories 2, 3 and 5)
 
@@ -66,6 +70,8 @@ What it must show:
   load stores none, and a schema check stores none.
 - Three loads on a branch with nodes give three applied schema changes with consecutive versions,
   each with the migrations that ran.
+- The history query refuses a request without a logged-in account, and answers an account
+  without any permission.
 - A load whose migration fails leaves the schema and the data as they were, and the history shows
   the schema change and its application as failed, with the error and the status of each
   migration.
@@ -74,12 +80,19 @@ What it must show:
 
 ## 4. Migrations on a separate worker
 
+The test starts Infrahub from a Docker image, so build an image of this checkout first and point
+the test at it. `<tag>` is a tag name that contains `local`, such as `local-schema-change`,
+because `dev.build` builds the image only for such a tag.
+
 ```bash
-uv run pytest backend/tests/integration_docker/test_schema_migration.py
+INFRAHUB_IMAGE_VER=<tag> uv run invoke dev.build
+INFRAHUB_TESTING_IMAGE_VER=<tag> INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest backend/tests/integration_docker/test_schema_migration.py
 ```
 
-What it must show: after a load whose migrations run on a task worker, the history query returns
-the migration records with the status `applied`.
+What it must show: after two loads whose migrations run on a task worker, the history query
+returns both schema changes as `APPLIED`, and the second one has its `node.remove` migration
+record with the status `APPLIED`.
 
 ## 5. The existing behaviour is unchanged (SC-002)
 
@@ -118,9 +131,10 @@ query {
 }
 ```
 
-What it must show: at least one applied schema change for the schema that was loaded. The first
-one has the version 1 and a name that starts with `00001_`. Load the same schema again and run the
-query again: `count` is unchanged.
+What it must show: one applied schema change for the schema that was loaded, because
+`infrahubctl schema load` sends every file of `models/base` in one request and the core schema
+update at startup stores none. It has the version 1 and a name that starts with `00001_`. Load
+the same schema again and run the query again: `count` is unchanged.
 
 The contract of the query is in
 [contracts/schema-change-history.graphql](contracts/schema-change-history.graphql).
@@ -131,8 +145,10 @@ The contract of the query is in
 uv run invoke schema.generate-graphqlschema
 uv run invoke schema.validate-graphqlschema
 uv run invoke docs.validate
-(cd frontend/app && pnpm codegen:graphql)
+(cd frontend/app && pnpm codegen:graphql && pnpm codegen)
 ```
 
 What it must show: `schema/schema.graphql` and the generated front-end GraphQL types include the
-new query, and the validation commands report no stale file.
+new query, the validation commands exit with status 0, and `git status` lists no changed file.
+`pnpm codegen:graphql` writes `graphql-env.d.ts` and `graphql-cache.d.ts`, which CI checks;
+`pnpm codegen` writes `types.ts`, which CI does not check.

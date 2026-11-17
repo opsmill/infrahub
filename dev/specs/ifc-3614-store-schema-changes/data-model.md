@@ -53,8 +53,8 @@ schema load:             (created) running ──► applied
 dropdown/enum mutation:  (created) applied
 ```
 
-`staged` is created by the staging task of the same epic. A `failed` schema change is never
-applied again.
+No code of this feature sets `staged`. The staging task of the same epic creates it. A `failed`
+schema change is never applied again.
 
 ## SchemaChangeOperation
 
@@ -81,6 +81,11 @@ Rules:
 - Both fields are always JSON-encoded text when set. `StandardNode` stores `None` as the text
   `NULL` and reads that text back as `None`, so the JSON value `null` is stored as `null`, a text
   value as text inside quotes, and a field that is not set as `None`.
+- A dropdown or enum mutation stores one `element_property` operation on `choices` or `enum`,
+  with the whole list in `value` and the whole list before the change in `previous_value`. Each
+  dropdown choice holds every field of the choice model, including `id`, which is always `null`,
+  and `state`. The choice that the mutation adds holds the fields as the mutation input gives them,
+  so its `color` and `description` can be `null` where the saved schema has a value.
 
 The in-memory form is `SchemaOperation`, a Pydantic model in
 `backend/infrahub/core/schema_change/operations.py`. The builder creates it, the applier reads it,
@@ -105,8 +110,9 @@ schema load:             (created) running ──► applied
 dropdown/enum mutation:  (created) applied
 ```
 
-`rolled_back` and `skipped` are set by the task that applies schema changes in order at rebase and
-merge. The source design writes the first one `rolled back`; the stored value has an underscore.
+No code of this feature sets `rolled_back` or `skipped` on an application. The task that applies
+schema changes in order at rebase and merge sets them. The source design writes the first one
+`rolled back`; the stored value has an underscore.
 
 ## SchemaChangeMigration
 
@@ -114,7 +120,7 @@ One migration that an application ran.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `position` | `int` | Order in the list of migrations of the application |
+| `position` | `int` | Index of the migration in the list of the migration message of the application. That list follows the order of the schema diff, which can differ between two runs of the same load ([research.md](research.md), R9) |
 | `migration_name` | `str` | For example `node.attribute.add` |
 | `path_type` | `SchemaPathType` | `node`, `attribute` or `relationship`. The existing enum in `core/constants`, which `core/path.py::SchemaPath.path_type` uses |
 | `schema_kind` | `str` | Kind in the schema path |

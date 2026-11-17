@@ -254,10 +254,12 @@ branch. Count the records of that branch and of main before and after.
   version, not by name, so the order stays correct.
 - **A branch created before this feature is deployed**, or main with no stored schema change:
   main's version is 0, so the branch's first schema change has the version 1.
-- **A worker that stops during a load, or a load request that is cancelled**: the schema change
-  and its application keep the status `running`. They have no version and are not part of the
-  history that later tasks apply. Recovery after a worker stops during a schema load is out of
-  scope, as in the source design.
+- **A worker that stops during a load, a load request that is cancelled, or a write of the end
+  status that fails**: the schema change and its application keep the status `running`. They have
+  no version and are not part of the history that later tasks apply. When the write that sets
+  `applied` fails after the schema was saved, the load also returns that error to the schema
+  owner, although the schema of the branch changed ([research.md](research.md), R8). Recovery
+  after a worker stops during a schema load is out of scope, as in the source design.
 - **A migration that is waiting when another migration fails**: its record keeps the status
   `waiting`. The status `failed` of the application tells the reader that it did not run.
 - **A load that Infrahub refuses before it writes anything**, for example an invalid file or a
@@ -556,9 +558,9 @@ review.
    deleted automatically.
 2. **A known-bug case whose fix has not landed is an expected failure.** The sources say that the
    expected result is the fixed behaviour, and the four bugs are separate tickets that are not
-   fixed yet. Each such case states the fixed behaviour and is marked as an expected failure that
-   names its bug, so the suite reports it when the fix lands. A case that the applier fixes is a
-   normal passing case.
+   fixed yet. Each such case states the fixed behaviour and is marked as a strict expected failure
+   whose reason describes the cause of its bug, without the ticket number, so the suite reports it
+   when the fix lands. A case that the applier fixes is a normal passing case.
 3. **Reading the history needs a logged-in account, and no other permission.** The sources say
    that anyone who can read the schema can view a staged schema change, in the staging task. They
    do not say who can read the history. The history holds the error text of failed loads, which is

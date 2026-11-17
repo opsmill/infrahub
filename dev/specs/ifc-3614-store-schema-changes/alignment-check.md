@@ -1,5 +1,7 @@
 # Alignment check: spec against the Jira task and the design document
 
+Superseded in part: spec decision 8 (2026-11-17) makes the schema load and the schema check save the processed schema of the file without the applier, so the bullet on "its use by the schema load ... and the schema check" no longer holds; only the dropdown and enum mutations and the tests use the applier.
+
 **Date**: 2026-11-14
 
 ## Source

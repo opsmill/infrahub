@@ -244,8 +244,8 @@ class SchemaChangeRepository:
 - `mark_failed` sets both to `failed`, stores the error on the application, and sets the migration
   records of the application that are `applied` to `rolled_back`. It is created with the other
   writes, not in phase 5, because the seeding function of the tests creates failed schema changes.
-- `get_highest_applied_version_at` counts the applied schema changes of the branch whose
-  `applied_at` is at or before `at`.
+- `get_highest_applied_version_at` returns the applied schema change with the highest version
+  among those of the branch whose `applied_at` is at or before `at`.
 - A schema change with the status `running` or `failed` is never returned by the two version
   reads.
 
@@ -471,10 +471,16 @@ class SchemaChangeApplicationRunner:
   `recorder.complete`.
 - When the executor raises, calls `recorder.fail` with the text of the error, then raises the
   same exception. The caller receives the same error as today.
+- `recorder.complete` runs after the handling of an executor error. When it raises after the
+  executor saved the schema, the runner does not call `recorder.fail`: the schema change and its
+  application keep the status `running`, and the caller receives the error of `complete` although
+  the schema of the branch changed ([research.md](../research.md), R8).
 - `run` always creates a new schema change. Applying a schema change that already exists, as the
   staging and replay tasks do, is not in this contract; those tasks extend it.
-- When `recorder.fail` itself raises, the original exception is still raised, and the failure of
-  the record update is logged.
+- When `recorder.fail` raises a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a
+  `neo4j` `Neo4jError`, the failure of the record update is logged and the original exception is
+  still raised. Any other exception that `recorder.fail` raises reaches the caller in place of the
+  original one.
 
 ## `MigrationRecorder`
 
@@ -610,7 +616,7 @@ One place builds a component after the work started, and it is deliberate:
 | `api/schema.py::evaluate_candidate_schemas` | Replaced by `build_candidate_from_schemas`. Five calls in three component test modules call the candidate builder directly |
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |
 | `graphql/mutations/schema.py::update_registry` | Replaced by `apply_attribute_property_change` |
-| `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data` | Also deletes the schema change records of the branch |
+| `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data` | Also deletes the schema change records of the branch, at most the deleter's batch size of schema changes for each query, each with all its records. The number of edges it returns does not count the edges of these records |
 | `POST /api/schema/load` | Request and response unchanged. Stores a schema change when the schema changed |
 | `POST /api/schema/check` | Request and response unchanged. Stores nothing |
 | `SchemaDropdownAdd`, `SchemaDropdownRemove`, `SchemaEnumAdd`, `SchemaEnumRemove` | Input and payload unchanged. Each stores a schema change when the schema changed |

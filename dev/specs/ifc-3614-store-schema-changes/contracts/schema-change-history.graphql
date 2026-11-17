@@ -14,6 +14,7 @@
 # operations: "limit must be >= 1", "limit must be <= <maximum>" (50 or 500),
 # "offset must be >= 0".
 
+# No code of this feature sets STAGED. The staging task of the same epic does.
 enum SchemaChangeStatus {
   STAGED
   RUNNING
@@ -21,6 +22,8 @@ enum SchemaChangeStatus {
   FAILED
 }
 
+# No code of this feature sets ROLLED_BACK or SKIPPED on an application. The
+# task that applies schema changes in order at rebase and merge does.
 enum SchemaChangeApplicationStatus {
   RUNNING
   APPLIED
@@ -28,6 +31,9 @@ enum SchemaChangeApplicationStatus {
   ROLLED_BACK
   SKIPPED
 }
+
+# This feature sets ROLLED_BACK on a migration record that was APPLIED when its
+# schema load failed.
 
 enum SchemaChangeMigrationStatus {
   WAITING
@@ -164,7 +170,9 @@ type InfrahubSchemaChangeApplication {
 
 type InfrahubSchemaChangeMigration {
   id: ID!
-  # Order in the list of migrations of the application, from 0.
+  # Order in the list of migrations of the application, from 0. The list follows
+  # the order of the schema diff, which can differ between two runs of the same
+  # load.
   position: Int!
   # For example "node.attribute.add".
   migration_name: String!

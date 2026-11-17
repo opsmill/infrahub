@@ -915,13 +915,13 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       where the applier runs and where the tests check the operations, when each status is set, and what keeps the status `running`. Load
       `dev/guidelines/documentation.md` first. Add the document to the knowledge list of
       `backend/AGENTS.md`.
-- [ ] T061 Run `uv run invoke format`, then `uv run invoke lint`, and fix what they report without
+- [X] T061 Run `uv run invoke format`, then `uv run invoke lint`, and fix what they report without
       a new suppression.
-- [ ] T062 Run `uv run invoke schema.validate-graphqlschema` and `uv run invoke docs.validate`,
+- [X] T062 Run `uv run invoke schema.validate-graphqlschema` and `uv run invoke docs.validate`,
       and confirm that the generated front-end GraphQL types are committed.
-- [ ] T063 Run every section of [quickstart.md](quickstart.md) and correct the file where a
+- [X] T063 Run every section of [quickstart.md](quickstart.md) and correct the file where a
       command or an expected result differs from what the code does.
-- [ ] T064 Read the diff against every claim in [spec.md](spec.md), [plan.md](plan.md),
+- [X] T064 Read the diff against every claim in [spec.md](spec.md), [plan.md](plan.md),
       [research.md](research.md), [data-model.md](data-model.md) and [contracts/](contracts/),
       and correct each file where the code differs.
 

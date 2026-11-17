@@ -365,11 +365,19 @@ from its operations, creates an application and a record for each migration it r
 their status". The staging task and the replay task apply a schema change that already exists,
 so they extend the runner; this feature does not design for them.
 
-**Known limit**: the write of the last step is not in the same transaction as the load. If it
-fails, if the worker stops, or if the request is cancelled, the schema change keeps the status
-`running`. Its operations are
-stored, so a later recovery task can finish or fail it. Recovery after a worker stops during a
-load is out of scope in the design document.
+**Known limit**: the write of the last step is not in the same transaction as the load. The
+schema change and its application keep the status `running` in these cases:
+
+- the worker stops, or the request is cancelled, during the load;
+- the write that sets them to `applied` raises after the coordinator saved the schema and ran the
+  migrations. The runner calls `complete` after its `try` block, so it does not call `fail` for
+  that error: the records stay `running`, and the load returns the error to its caller although
+  the schema of the branch changed;
+- the write that sets them to `failed` raises a `DatabaseError`, a `QueryError`, a
+  `QueryTimeoutError` or a `Neo4jError`. The runner logs it and raises the error of the load.
+
+Their operations are stored, so a later recovery task can finish or fail them. Recovery after a
+worker stops during a load is out of scope in the design document.
 
 ## R9. The migration flow writes the migration records
 
@@ -401,6 +409,10 @@ Three facts of the existing code shape this:
 - A record is identified by the position of its migration in the list of the message. The flow
   passes positions when a batch starts and with each result, because two migrations of one
   application can have the same name and the same schema path.
+- The list of the message follows the order of the schema diff. `SchemaBranch.diff` lists the
+  changed kinds that keep their ID in the order of a Python set of IDs, so two runs of the same
+  load can list the migrations in another order. A position is the order of one message, not an
+  order that is the same across runs.
 - The recorder that writes records depends on a `Protocol` with the two store methods it calls,
   which `SchemaChangeRepository` satisfies. A unit test passes a store that raises, to prove that
   a failed record write does not stop a migration.
@@ -505,8 +517,9 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
   task names are not paginated; `InfrahubBranch` is the paginated query over `StandardNode`
   records.
 - Order: applied schema changes by version, then the others by the time they were created.
-- The resolver fetches `edges` and `count` only when the request selects them, and opens its own
-  read-only database session.
+- The resolver reads a page only when the request selects `edges`; the page read also returns
+  `count`. When the request selects `count` without `edges`, the resolver only counts. It opens
+  its own read-only database session.
 - `operations` is a nested connection with its own `limit` and `offset`. `applications` is a list,
   each with its `migrations`.
 - Nested fields are loaded with data loaders (`graphql/loaders/`), one query for the operations of
@@ -538,8 +551,10 @@ account that ran the load receives it.
 
 **Decision**: `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data` runs one more
 step. A `Query` deletes the schema changes whose `branch` is the deleted branch, with their
-operations, applications and migration records, in batches of the deleter's batch size, until a
-run deletes nothing.
+operations, applications and migration records, until a run deletes nothing. Each run takes at
+most the deleter's batch size of schema changes, and deletes each of them with all its operations,
+applications and migration records, so the batch size limits the number of schema changes of a
+run, not the number of records.
 
 **Rationale**: `delete_branch_data` is also called for a branch that was left in the status
 `DELETING`, so the records of such a branch are deleted when the deletion is finished. Each query
@@ -603,8 +618,10 @@ gained a kind after the operations were recorded, to test FR-011 on the risk tha
 ## R15. Generated files and documentation
 
 - `schema/schema.graphql`: `uv run invoke schema.generate-graphqlschema`.
-- Front-end GraphQL types: `cd frontend/app && pnpm codegen`. CI fails when they are out of date,
-  including for a pull request that changes only the back end.
+- Front-end GraphQL types: `cd frontend/app && pnpm codegen:graphql && pnpm codegen`. CI runs
+  `pnpm codegen:graphql` and fails when `graphql-env.d.ts` or `graphql-cache.d.ts` is out of date,
+  including for a pull request that changes only the back end. CI does not check `types.ts`, which
+  `pnpm codegen` writes.
 - A changelog fragment of type `added`.
 - User documentation in `docs/docs/schema/` for the history query.
 - `dev/knowledge/backend/`: a document on stored schema changes, linked from `backend/AGENTS.md`.
