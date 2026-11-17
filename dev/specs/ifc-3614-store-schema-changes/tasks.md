@@ -66,11 +66,11 @@ suite the first task.
 
 **Purpose**: the packages and the constants that every later task imports.
 
-- [ ] T001 [P] Create the package `backend/infrahub/core/schema_change/` with an empty
+- [X] T001 [P] Create the package `backend/infrahub/core/schema_change/` with an empty
       `__init__.py`, and the test packages `backend/tests/unit/core/schema_change/`,
       `backend/tests/component/core/schema_change/` and `backend/tests/functional/schema_change/`,
       each with an empty `__init__.py`.
-- [ ] T002 Create `backend/infrahub/core/schema_change/constants.py`, with constant values only.
+- [X] T002 Create `backend/infrahub/core/schema_change/constants.py`, with constant values only.
       Load `dev/guidelines/constants.md` first. It holds:
       - `SchemaChangeStatus`: `staged`, `running`, `applied`, `failed`;
       - `SchemaChangeApplicationStatus`: `running`, `applied`, `failed`, `rolled_back`, `skipped`;
