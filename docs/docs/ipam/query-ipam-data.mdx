@@ -245,7 +245,7 @@ for prefix in roots:
 To find where a new prefix or address can go, query the children of a prefix with `include_available: true`. Infrahub then adds a row for each free block between the existing children. The argument exists only on the queries of the built-in generics, `BuiltinIPPrefix` and `BuiltinIPAddress`, and the query returns free rows only when you filter on one parent prefix:
 
 - `BuiltinIPPrefix(parent__ids: ["<prefix-id>"], include_available: true)` returns the child prefixes, and a row of type `InternalIPPrefixAvailable` for each free block, for example `10.0.2.0/23`.
-- `BuiltinIPAddress(ip_prefix__ids: ["<prefix-id>"], include_available: true)` returns the addresses, and a row of type `InternalIPRangeAvailable` for each free range. The row's `address` is the first free address, and its display label states the size of the range, for example "9 IP addresses available". The ranges leave out the network and broadcast addresses.
+- `BuiltinIPAddress(ip_prefix__ids: ["<prefix-id>"], include_available: true)` returns the addresses, and a row of type `InternalIPRangeAvailable` for each free range. The row's `address` is the first free address, and its display label states the size of the range, for example "9 IP addresses available". In an IPv4 prefix, the ranges leave out the network and broadcast addresses, unless `is_pool` is `true` or the prefix is a `/31` with the member type `address`. In an IPv6 prefix, the ranges include them.
 
 The `count` of the query does not include the free rows.
 
@@ -273,6 +273,11 @@ query {
 `client.filters()` cannot read the free rows, because their kinds have no schema in the SDK, so run the GraphQL query with `execute_graphql`:
 
 ```python
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/16",
+    ip_namespace__name__value="default",
+)
 query = """
 query ($parent: ID!) {
   BuiltinIPPrefix(parent__ids: [$parent], include_available: true) {
