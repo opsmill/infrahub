@@ -36,11 +36,13 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigrationQuery01,
 )
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigrationQuery01
+from infrahub.core.migrations.schema.node_remove import NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from tests.component.core.migrations.schema.selection_dataset import (
     BEACON_KIND,
+    EMPTY_KIND,
     SELECTION_BRANCH_NAME,
     WIDGET_KIND,
     SelectionDataset,
@@ -48,6 +50,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     build_attribute_add_migration,
     build_attribute_migration,
     build_node_kind_update_migration,
+    build_node_remove_migration,
     get_branch,
     load_selection_dataset,
 )
@@ -384,4 +387,53 @@ async def test_attribute_kind_update_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Node removal
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({WIDGET_KIND: 3}), ids=lambda case: case.name)
+async def test_node_remove_aware(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_node_remove_migration(branch, WIDGET_KIND)
+    inbound = await NodeRemoveMigrationQueryIn.init(db=db, branch=branch, migration=migration)
+    assert await inbound.count_changes(db=db) == case.expected
+
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({BEACON_KIND: 2}), ids=lambda case: case.name)
+async def test_node_remove_agnostic_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut],
+        init_kwargs={"migration": build_node_remove_migration(branch, BEACON_KIND)},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+async def test_node_remove_empty_kind(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut],
+        init_kwargs={"migration": build_node_remove_migration(default_branch, EMPTY_KIND)},
+        branch=default_branch,
+        expected={},
     )
