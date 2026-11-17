@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
+from ..query.selection import MigrationSelectionQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
@@ -13,12 +14,36 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
+class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelectionQuery):
     name = "migration_attribute_kind"
     insert_return = False
+    selected_node = "n"
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
+        kind = self.migration.previous_schema.kind
+        return """
+MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+WHERE attr.name = $attr_name
+WITH DISTINCT n, attr
+
+// ------------
+// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
+// ------------
+CALL (n, attr) {
+    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
+    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
+    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
+    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
+    LIMIT 1
+    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
+    WHERE is_active AND is_indexed <> $needs_index
+    RETURN has_value_e, av
+}
+""" % {"schema_kinds": f"{kind}|Profile{kind}|Template{kind}", "branch_filter": branch_filter}
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        _, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)
         self.params["needs_index"] = needs_index
@@ -39,23 +64,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 // ------------
 // start with all the Attribute vertices we might care about
 // ------------
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
-WHERE attr.name = $attr_name
-WITH DISTINCT n, attr
-
-// ------------
-// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
-// ------------
-CALL (n, attr) {
-    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
-    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
-    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
-    LIMIT 1
-    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
-    WHERE is_active AND is_indexed <> $needs_index
-    RETURN has_value_e, av
-}
+%(selection)s
 
 // ------------
 // check if the correct AttributeValue vertex to use exists
@@ -75,23 +84,7 @@ CALL (av_is_default, av_value) {
 // ------------
 WITH 1 AS one
 LIMIT 1
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
-WHERE attr.name = $attr_name
-WITH DISTINCT n, attr
-
-// ------------
-// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
-// ------------
-CALL (n, attr) {
-    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
-    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
-    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
-    LIMIT 1
-    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
-    WHERE is_active AND is_indexed <> $needs_index
-    RETURN has_value_e, av
-}
+%(selection)s
 
 // ------------
 // create and update the HAS_VALUE edges
@@ -156,10 +149,7 @@ CALL (attr, n) {
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kinds": (
-                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
-            ),
-            "branch_filter": branch_filter,
+            "selection": self.render_selection(),
             "new_attr_value_labels": new_attr_value_labels,
         }
         self.add_to_query(query)

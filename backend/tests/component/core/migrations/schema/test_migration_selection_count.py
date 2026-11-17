@@ -14,6 +14,10 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType
 from infrahub.core.migrations.query.attribute_add import AttributeAddQuery
+from infrahub.core.migrations.schema.attribute_kind_update import (
+    AttributeKindUpdateMigration,
+    AttributeKindUpdateMigrationQuery,
+)
 from infrahub.core.migrations.schema.attribute_name_update import (
     AttributeNameUpdateMigration,
     AttributeNameUpdateMigrationQuery01,
@@ -342,6 +346,41 @@ async def test_node_kind_update_agnostic_node(
     await assert_count_matches_write(
         db=db,
         queries=[NodeKindUpdateMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Attribute kind update
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+async def test_attribute_kind_update_to_large(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_attribute_migration(AttributeKindUpdateMigration, branch, WIDGET_KIND, "color", kind="TextArea")
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeKindUpdateMigrationQuery],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({BEACON_KIND: 2}), ids=lambda case: case.name)
+async def test_attribute_kind_update_agnostic_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_attribute_migration(AttributeKindUpdateMigration, branch, BEACON_KIND, "serial", kind="TextArea")
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeKindUpdateMigrationQuery],
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
