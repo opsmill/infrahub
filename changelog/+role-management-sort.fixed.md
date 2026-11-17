@@ -1,0 +1,1 @@
+Fixed the Sort button on the Users & Permissions tabs, which did not change the order of accounts, groups, roles and permissions, and added sort options to their attribute column headers except Decision.
