@@ -142,25 +142,39 @@ query {
 }
 ```
 
-The query returns the value and creates nothing, so another client can use the same value before you create it. For allocation from automation, use a pool instead, as described in [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx). To list every free block of the parent prefix, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
-
 </TabItem>
 
   <TabItem value="sdk" label="Python SDK">
 
-Allocate the next free prefix from a pool that uses the parent prefix as a resource. Infrahub creates the prefix and records the allocation:
+Query the next free prefix of a given size in the parent prefix, then create it:
 
 ```python
-pool = await client.get(kind="CoreIPPrefixPool", name__value="Site subnets")
-subnet = await client.allocate_next_ip_prefix(
-    resource_pool=pool,
-    identifier="site-atl1-servers",
-    prefix_length=24,
+parent = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/16",
+    ip_namespace__name__value="default",
 )
+query = """
+query ($parent: String!) {
+  InfrahubIPPrefixGetNextAvailable(prefix_id: $parent, prefix_length: 24) {
+    prefix
+  }
+}
+"""
+result = await client.execute_graphql(query=query, variables={"parent": parent.id})
+subnet = await client.create(
+    kind="IpamPrefix",
+    prefix=result["InfrahubIPPrefixGetNextAvailable"]["prefix"],
+)
+await subnet.save()
 ```
 
 </TabItem>
 </Tabs>
+
+The query returns the value and creates nothing, so another client can use the same value before you create it. To list every free block of the parent prefix, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
+
+When automation assigns the prefix, allocate it from a Resource Manager pool instead. The pool creates the prefix and records the allocation in one request, and it does not give the same value to two requests with different identifiers. A pool has to exist first, with the parent prefix as one of its resources. See [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx).
 
 ## Change a prefix or an address
 
