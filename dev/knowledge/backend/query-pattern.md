@@ -35,11 +35,15 @@ When a read must reflect what a branch itself defines (a branch that removed a k
 
 ### Initialization
 
+Build the text of a new query in `__init__` and create the query with its constructor:
+
 ```python
-query = await MyQuery.init(db=db, branch=branch, **kwargs)
+query = MyQuery(branch=branch, node_id=node_id)
 ```
 
-The `init()` classmethod calls `query_init()` for async initialization (schema lookups, etc.).
+Older queries build their text in `query_init()` and are created with `await MyQuery.init(db=db, branch=branch, **kwargs)`, which calls the constructor and then `query_init()`. Do not write `query_init()` in a new query: the base method raises `NotImplementedError`, so `init()` fails on a query that builds its text in `__init__`.
+
+Neither `__init__` nor `query_init()` sends a query to the database. When the text depends on a lookup, see [Queries Whose Shape Depends on a Lookup](query-shape-from-data.md).
 
 ### Building
 
@@ -78,7 +82,7 @@ for item in query.get_data():
 Useful for debugging:
 
 ```python
-query = await MyQuery.init(db=db, branch=branch, node_id="abc123")
+query = MyQuery(branch=branch, node_id="abc123")
 print(query.get_query())  # Preview generated Cypher
 print(query.get_query(var=True, inline=True))  # With variables substituted
 await query.execute(db=db)  # Execute when ready
@@ -196,8 +200,6 @@ class PagedNodeFieldsQuery(Query):
     def __init__(self, limit: int, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.limit = limit
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
         self.add_to_query("""
         MATCH (n:Node)
@@ -330,6 +332,8 @@ The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label 
 Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
 
 When writing or modifying a query that selects vertices or edges by a property, follow [Database Indexes](database-indexes.md): check the existing indexes for each label or edge type and property, and declare only the missing indexes in the same change. Adding an index needs no migration. For selective reads across several labels, edge types, or properties, use separate hinted reads and verify their execution plans.
+
+A read that can start from every node of a kind or from the indexed vertex of a filter chooses between them with a count: see [Start a filtered read from the filter only when a count shows it reads less](query-shape-from-data.md#start-a-filtered-read-from-the-filter-only-when-a-count-shows-it-reads-less).
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
@@ -527,7 +531,7 @@ Specialized base classes for different domains:
 
 ### Design Decisions
 
-**Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
+**Database Object in Initialization:** The `InfrahubDatabase` object is passed to `query_init()` for the two reasons below, not to run queries:
 
 1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 

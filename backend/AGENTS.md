@@ -121,6 +121,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 
 - `dev/knowledge/backend/architecture.md` - Backend architecture overview; read first for layer responsibilities and entry points
 - `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
+- `dev/knowledge/backend/query-shape-from-data.md` - Where a lookup that decides the text of a query runs (a builder or planner, never the query), which Cypher helpers not to call, and how to choose the start of a filtered read; read before a query runs another query, before building Cypher from a schema class, or before changing where a list read starts
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
 - `dev/knowledge/backend/database-indexes.md` - Which indexes exist, how to add one (no migration needed) or drop one (migration needed), and the read shape that uses it; read before writing a query that selects vertices or edges by a property
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
