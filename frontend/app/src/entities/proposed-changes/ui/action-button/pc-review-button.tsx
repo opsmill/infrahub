@@ -1,64 +1,75 @@
-import { type ReactElement, useState } from "react";
-
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
-import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
+import type { ComponentType } from "react";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/domain/rules/has-user-approved-proposed-change";
+import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/domain/rules/has-user-rejected-proposed-change";
+import {
+  type PcActionComboboxItem,
+  PcActionComboboxList,
+} from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
+import {
+  PcActionPicker,
+  type PcActionPickerListProps,
+} from "@/entities/proposed-changes/ui/action-button/pc-action-picker";
 import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
-import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
-import { ReviewComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-review-combobox-list";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
-import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import {
+  PcActionsContext,
+  usePcActionsContext,
+} from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
-
-type ReviewButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
 type Review = "approve" | "reject";
 
-const actionsListMapping: Record<Review, ReviewButtonComponent> = {
-  approve: ({ setOpen }) => <ApproveButton setOpen={setOpen} />,
-  reject: ({ setOpen }) => <RejectButton setOpen={setOpen} />,
+const reviewButtons: Record<Review, ComponentType<ProposedChangeActionButtonProps>> = {
+  approve: ApproveButton,
+  reject: RejectButton,
+};
+
+const ReviewComboboxList = ({ value, onSelect }: PcActionPickerListProps<Review>) => {
+  const auth = useAuth();
+  const { approve, reject } = usePcActionsContext();
+  const proposedChangesDetails = useProposedChange();
+
+  const items: PcActionComboboxItem<Review>[] = [
+    {
+      value: "approve",
+      name:
+        auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user)
+          ? "Cancel Approval"
+          : "Approve",
+      availability: approve,
+    },
+    {
+      value: "reject",
+      name:
+        auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user)
+          ? "Cancel Reject"
+          : "Reject",
+      availability: reject,
+    },
+  ];
+
+  return <PcActionComboboxList items={items} value={value} onSelect={onSelect} />;
 };
 
 export const PcReviewButton = () => {
-  const auth = useAuth();
   const proposedChange = useProposedChange();
 
   const { data, isPending } = useGetProposedChangeAvailableActions({
     proposedChangeId: proposedChange.id,
   });
 
-  const [open, setOpen] = useState(false);
-  const [action, setReview] = useState<Review>("approve");
-
   return (
     <PcActionsContext value={data}>
-      <Combobox open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className={classNames(inputStyle, "flex border-0 p-0")}>
-            {isPending && <LoadingIndicator />}
-            {!isPending && auth?.user?.id ? (
-              actionsListMapping?.[action]?.({ setOpen })
-            ) : (
-              <PcPlaceholderButton />
-            )}
-          </div>
-        </PopoverTrigger>
-        <ComboboxContent fitTriggerWidth={false}>
-          <ReviewComboboxList
-            value={action}
-            onSelect={(action) => {
-              setOpen(false);
-              setReview(action as Review);
-            }}
-          />
-        </ComboboxContent>
-      </Combobox>
+      <PcActionPicker
+        isLoading={isPending}
+        defaultAction="approve"
+        buttons={reviewButtons}
+        list={ReviewComboboxList}
+      />
     </PcActionsContext>
   );
 };

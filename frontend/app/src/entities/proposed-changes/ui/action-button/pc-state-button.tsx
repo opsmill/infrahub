@@ -1,16 +1,17 @@
-import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { Icon } from "@/shared/components/display/icon";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { PcActionComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
-import { StateComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-state-combobox-list";
+import { PcSplitActionButton } from "@/entities/proposed-changes/ui/action-button/pc-split-action-button";
 import { pcStatesList } from "@/entities/proposed-changes/ui/action-button/pc-states-list";
+
+const stateItems = Object.values(pcStatesList);
 
 interface PcStateButtonProps {
   state?: string;
@@ -30,37 +31,25 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
       <PopoverTrigger asChild>
         <div className={classNames("flex border-0 p-0")}>
           {auth?.user?.id ? (
-            <>
-              <Button
-                className="flex gap-2 rounded-r-none"
-                variant={"primary"}
-                type="submit"
-                isPending={isLoading}
-                isDisabled={isLoading}
-              >
-                {state && pcStatesList[state] && pcStatesList[state].message}
-              </Button>
-
-              <Button
-                className="h-9 rounded-l-none border-l-0"
-                variant={"primary"}
-                size={"sm"}
-                onPress={() => {
-                  setOpen(true);
-                }}
-                isDisabled={isLoading}
-                data-testid="proposed-change-action-button-select"
-              >
-                <Icon icon="mdi:unfold-more-horizontal" />
-              </Button>
-            </>
+            <PcSplitActionButton
+              label={state && pcStatesList[state] && pcStatesList[state].message}
+              variant={"primary"}
+              type="submit"
+              isPending={isLoading}
+              onOpenMenu={() => {
+                setOpen(true);
+              }}
+              menuLabel={null}
+              layout="fit"
+            />
           ) : (
             <PcPlaceholderButton />
           )}
         </div>
       </PopoverTrigger>
       <ComboboxContent fitTriggerWidth={false}>
-        <StateComboboxList
+        <PcActionComboboxList
+          items={stateItems}
           value={state}
           onSelect={(action) => {
             setOpen(false);
