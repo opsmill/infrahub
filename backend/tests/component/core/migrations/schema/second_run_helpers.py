@@ -10,7 +10,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.shared import MigrationInput, SchemaMigration
 from infrahub.core.timestamp import Timestamp
-from infrahub.database.validation import verify_graph
+from infrahub.database.validation import GraphValidationError, collect_graph_violations, verify_graph
 from tests.db_snapshot import DbSnapshot, DbSnapshotter
 
 if TYPE_CHECKING:
@@ -137,6 +137,10 @@ async def assert_second_run_changes_nothing(
     """Run the migrations twice on the branch and assert that the second run leaves the graph unchanged.
 
     Each run uses its own timestamp and user, so a write that repeats the same values still changes the graph.
+
+    Raises:
+        GraphValidationError: When the first run leaves a graph-integrity violation.
+
     """
     before_first = await read_graph_state(db=db)
     await run_migrations(db=db, branch=branch, migrations=migrations, at=Timestamp(), user_id=FIRST_RUN_USER_ID)
@@ -145,9 +149,11 @@ async def assert_second_run_changes_nothing(
         assert _graph_differences(before=before_first, after=after_first), "the first run changed nothing"
     else:
         assert_graph_unchanged(before=before_first, after=after_first)
-    # Checked before the second run too, so a damaged graph is attributed to the run that damaged it.
-    await verify_graph(db=db)
+    # Raised only after the comparison, so a first run that damages the graph still has its second run checked.
+    first_run_violations = await collect_graph_violations(db=db)
 
     await run_migrations(db=db, branch=branch, migrations=migrations, at=Timestamp(), user_id=SECOND_RUN_USER_ID)
     assert_graph_unchanged(before=after_first, after=await read_graph_state(db=db))
+    if first_run_violations:
+        raise GraphValidationError(violations=first_run_violations)
     await verify_graph(db=db)

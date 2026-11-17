@@ -549,7 +549,7 @@ async def test_node_uniqueness_constraints_update_remove(
 class AgnosticData:
     gadgets: list[Node]
     widgets: list[Node]
-    widget_profile: Node | None
+    widget_profile: Node
     beacons: list[Node]
 
 
@@ -572,11 +572,9 @@ async def agnostic_data(db: InfrahubDatabase, default_branch: Branch, agnostic_s
         )
         for index, gadget in enumerate(gadgets)
     ]
-    widget_profile = None
-    if agnostic_schema.has(name=f"Profile{WIDGET_KIND}"):
-        widget_profile = await Node.init(db=db, schema=f"Profile{WIDGET_KIND}", branch=default_branch)
-        await widget_profile.new(db=db, profile_name="widget-profile", serial=10, notes="profile-note")
-        await widget_profile.save(db=db)
+    widget_profile = await Node.init(db=db, schema=f"Profile{WIDGET_KIND}", branch=default_branch)
+    await widget_profile.new(db=db, profile_name="widget-profile", serial=10, notes="profile-note")
+    await widget_profile.save(db=db)
     beacons = []
     for index in range(2):
         beacon = await Node.init(db=db, schema=BEACON_KIND, branch=default_branch)
@@ -630,12 +628,34 @@ async def test_agnostic_attribute_remove(
     await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
 
 
-@pytest.mark.xfail(
+SECOND_RUN_RENAMES_AGAIN = pytest.mark.xfail(
     strict=True,
-    raises=GraphValidationError,
-    reason="the first run creates the renamed agnostic attribute with its edges on the migration branch, not -global-",
+    raises=AssertionError,
+    reason="on the default branch, the second run renames the agnostic attribute again and adds new attribute vertices",
 )
-@pytest.mark.parametrize("branch_kind", AGNOSTIC_BRANCH_KINDS)
+
+
+@pytest.mark.parametrize(
+    "branch_kind",
+    [
+        pytest.param(BranchKind.DEFAULT, id=BranchKind.DEFAULT.value, marks=SECOND_RUN_RENAMES_AGAIN),
+        pytest.param(
+            BranchKind.USER,
+            id=BranchKind.USER.value,
+            marks=pytest.mark.xfail(
+                strict=True,
+                raises=GraphValidationError,
+                reason="the first run creates the renamed agnostic attribute with its edges on the user branch, "
+                "not -global-",
+            ),
+        ),
+        pytest.param(
+            BranchKind.DEFAULT_WITH_READER_BRANCH,
+            id=BranchKind.DEFAULT_WITH_READER_BRANCH.value,
+            marks=SECOND_RUN_RENAMES_AGAIN,
+        ),
+    ],
+)
 async def test_agnostic_attribute_name_update(
     db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
 ) -> None:
@@ -682,8 +702,6 @@ async def test_agnostic_attribute_kind_update(
 async def test_agnostic_attribute_unique_update_on(
     db: InfrahubDatabase, default_branch: Branch, agnostic_data: AgnosticData, branch_kind: BranchKind
 ) -> None:
-    if agnostic_data.widget_profile is None:
-        pytest.skip("the widget kind generates no profile kind, so the migration has no profile node to change")
     branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
     previous, candidate, widget = candidate_with_node(branch=branch, kind=WIDGET_KIND)
     attribute_id = str(uuid.uuid4())
