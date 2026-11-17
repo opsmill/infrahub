@@ -17,7 +17,7 @@ A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resour
 
 In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next free address, and a request that repeats an identifier receives the address already allocated to it:
 
-![A loopback pool uses the prefix 10.0.0.0/24 as its resource, and does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
+![A loopback pool uses the prefix 10.0.0.0/24 as its resource. The prefix does not count every address as usable, so the pool does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
 
 The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) page has the full identifier rules.
 

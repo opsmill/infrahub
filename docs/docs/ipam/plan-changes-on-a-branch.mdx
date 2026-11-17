@@ -15,7 +15,7 @@ A branch holds an addressing change, such as a subnet split or the prefixes of a
 
 Infrahub updates the tree of a branch after each change on it, so the prefixes and addresses on the branch have the right parents while you work. When you merge or rebase the branch, Infrahub reads the diff between the two branches, finds the prefixes and addresses that changed, and updates the parents of those only: on the branch being merged into, or on the rebased branch.
 
-![On the subnet-redesign branch, creating 10.0.0.0/17 updates the branch's prefix tree right away. When the branch is merged, Infrahub updates the tree on the default branch for the prefixes and addresses that changed.](../media/ipam/ipam-branch-reconciliation.svg)
+![On the customer-a-subnet-split branch, creating 10.1.0.0/17 updates the branch's prefix tree right away. When the branch is merged, Infrahub updates the tree on the default branch for the prefixes and addresses that changed.](../media/ipam/ipam-branch-reconciliation.svg)
 
 Utilization is computed for the branch you query, so the figures on the branch include its changes, and the figures on the default branch include them only after the merge.
 
