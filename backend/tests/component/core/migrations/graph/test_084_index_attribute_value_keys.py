@@ -1,4 +1,5 @@
 import hashlib
+from typing import Any
 
 import pytest
 
@@ -7,6 +8,7 @@ from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.migrations.graph.m084_index_attribute_value_keys import (
     UPDATE_BATCH_SIZE,
     VALUE_KEY_INDEX,
+    AttributeValuesPendingKeyQuery,
     Migration084,
 )
 from infrahub.core.migrations.shared import MigrationInput
@@ -25,6 +27,11 @@ RETURN attr.name AS name, av.value_key AS value_key
 async def _node_value_keys(db: InfrahubDatabase, node_id: str) -> dict[str, str | None]:
     results = await db.execute_query(query=NODE_VALUE_KEYS_QUERY, params={"node_id": node_id})
     return {result["name"]: result["value_key"] for result in results}
+
+
+async def _pending_value_count(db: InfrahubDatabase) -> int:
+    results = await db.execute_query(query="MATCH (av:AttributeValueKeyPending) RETURN count(av) AS count")
+    return results[0]["count"]
 
 
 async def test_migration_084(
@@ -96,3 +103,65 @@ async def test_migration_084_keys_values_across_batches(db: InfrahubDatabase, de
         f"value-{index}": hashlib.md5(f"value-{index}".encode(), usedforsecurity=False).hexdigest()
         for index in range(1, count + 1)
     }
+    assert await _pending_value_count(db=db) == 0
+
+
+async def test_migration_084_keys_values_left_labelled_by_an_interrupted_run(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """Values an interrupted run labelled and values it never reached both get their key, and the label goes."""
+    if db.db_type != DatabaseType.NEO4J:
+        pytest.skip("The migration only manages Neo4j indexes")
+
+    values = ["labelled-1", "labelled-2", "unlabelled-1", "unlabelled-2"]
+    await db.execute_query(
+        query="UNWIND $values AS value CREATE (:AttributeValue {value: value, is_default: false})",
+        params={"values": values},
+    )
+    await db.execute_query(
+        query="MATCH (av:AttributeValue) WHERE av.value STARTS WITH 'labelled-' SET av:AttributeValueKeyPending"
+    )
+    assert await _pending_value_count(db=db) == 2
+
+    migration = Migration084()
+    result = await migration.execute(migration_input=MigrationInput(db=db))
+    assert not result.errors
+
+    rows = await db.execute_query(
+        query="""
+        MATCH (av:AttributeValue)
+        WHERE av.value IN $values
+        RETURN av.value AS value, av.value_key AS value_key, labels(av) AS labels
+        """,
+        params={"values": values},
+    )
+    assert {row["value"]: (row["value_key"], row["labels"]) for row in rows} == {
+        "labelled-1": ("c978a9d1708c77695a1f0200154eb8f8", ["AttributeValue"]),
+        "labelled-2": ("ed094783f743ac484ebb9e2399e7b3a5", ["AttributeValue"]),
+        "unlabelled-1": ("3d73a897349f46415922e4fbcb478c6e", ["AttributeValue"]),
+        "unlabelled-2": ("ec5192df43b8affad08a77613d88b3cf", ["AttributeValue"]),
+    }
+    validation_result = await migration.validate_migration(db=db)
+    assert not validation_result.errors
+
+
+def _vertex_reads(plan: dict[str, Any]) -> list[str]:
+    operator = plan["operatorType"].removesuffix("@neo4j")
+    reads = [f"{operator} {plan['args']['Details']}"] if operator.endswith(("Scan", "Seek")) else []
+    return reads + [read for child in plan.get("children", []) for read in _vertex_reads(child)]
+
+
+async def test_migration_084_batch_read_scans_only_the_labelled_values(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A batch finds its values through the label of the values waiting for a key, not through every value."""
+    if db.db_type != DatabaseType.NEO4J:
+        pytest.skip("The migration only manages Neo4j indexes")
+
+    query = await AttributeValuesPendingKeyQuery.init(db=db, limit=UPDATE_BATCH_SIZE)
+    rendered = query.render()
+    _, metadata = await db.execute_query_with_metadata(
+        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_pending_values"
+    )
+
+    assert _vertex_reads(metadata["plan"]) == ["NodeByLabelScan av:AttributeValueKeyPending"]
