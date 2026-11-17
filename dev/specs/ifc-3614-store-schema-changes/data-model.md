@@ -65,8 +65,8 @@ One change to the schema. The operations of a schema change apply in the order o
 | `position` | `int` | Starts at 0. Unique within one schema change |
 | `operation_type` | `SchemaOperationType` | `node_add`, `node_remove`, `node_property`, `element_add`, `element_remove`, `element_property` |
 | `kind` | `str` | Kind of the node or generic. For a renamed kind, the kind before the operation |
-| `node_type` | `str \| None` | `node` or `generic`. Set for `node_add` |
-| `section` | `str \| None` | `attributes` or `relationships`. Set for the three element types |
+| `node_type` | `SchemaOperationNodeType \| None` | `node` or `generic`. Set for `node_add` |
+| `section` | `SchemaOperationSection \| None` | `attributes` or `relationships`. Set for the three element types |
 | `element_name` | `str \| None` | Name of the attribute or relationship before the operation. Set for the three element types |
 | `property_name` | `str \| None` | Name of the property, dotted when nested. Set for the two property types |
 | `value` | JSON, stored as a string | New value for a property type; full definition for an add type |
@@ -178,7 +178,7 @@ Neither class deletes records. The query that deletes the records of a branch is
 In `backend/infrahub/core/schema_change/constants.py`:
 
 - `SchemaChangeStatus`, `SchemaChangeApplicationStatus`, `SchemaChangeMigrationStatus`,
-  `SchemaOperationType`;
+  `SchemaOperationType`, `SchemaOperationNodeType`, `SchemaOperationSection`;
 - the operation format version, `1`;
 - the number of digits of the version in a name, `5`;
 - the four edge type names;

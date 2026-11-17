@@ -77,6 +77,8 @@ suite the first task.
       - `SchemaChangeMigrationStatus`: `waiting`, `running`, `applied`, `failed`, `rolled_back`;
       - `SchemaOperationType`: `node_add`, `node_remove`, `node_property`, `element_add`,
         `element_remove`, `element_property`;
+      - `SchemaOperationNodeType`: `node`, `generic`;
+      - `SchemaOperationSection`: `attributes`, `relationships`;
       - the operation format version, `1`;
       - the number of digits of the version in a name, `5`;
       - the four edge type names `SCHEMA_CHANGE_HAS_OPERATION`, `SCHEMA_CHANGE_HAS_APPLICATION`,
@@ -110,7 +112,8 @@ query all read it.
       - the name is `<version, five digits>_<summary>`, and the summary alone without a version;
       - a version above 99999 gives a name with more than five digits.
 - [ ] T004 Create `backend/infrahub/core/schema_change/operations.py` with `SchemaOperation`, a
-      Pydantic model with the fields `operation_type`, `kind`, `node_type`, `section`,
+      Pydantic model with the fields `operation_type`, `kind`,
+      `node_type: SchemaOperationNodeType | None`, `section: SchemaOperationSection | None`,
       `element_name`, `property_name`, `value` and `previous_value`, a model validator for the
       rules of T003, and two functions that build the summary of a list of operations and the
       name from a version and a summary ([research.md](research.md), R4 and R10). Make T003 pass.
@@ -219,8 +222,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         before the load, with the new name as the value and the old name as the previous value
         (FR-014, FR-015);
       - no operation holds an `id` or a `parameters.number_pool_id` (FR-012);
-      - the result holds the processed schema of the laid-over file, with the same hashes as
-        the reference of T006;
+      - the `direct_load_schema` of the result has the same hashes as the reference of T006;
       - the operations come in the order of [research.md](research.md), R5, whatever the order of
         the file;
       - every operation survives a JSON round trip: dump the list to JSON, load it, apply it, and
@@ -252,8 +254,8 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       each path of the processed diff that the file states. Values are read from the schema before
       processing, previous values from the branch schema, and the name before a rename by the
       element's ID. It emits the operations in the order of R5, and returns a
-      `SchemaOperationBuildResult` with the operations and the processed schema of the laid-over
-      file.
+      `SchemaOperationBuildResult` with the operations and, as `direct_load_schema`, the
+      processed schema of the laid-over file.
 - [ ] T016 [US1] Create `SchemaChangeApplier` in `backend/infrahub/core/schema_change/applier.py`,
       following [research.md](research.md), R6, and its contract. It duplicates the target,
       applies each operation in order, calls `BaseNodeSchema.apply_schema_path_updates` for each
@@ -273,9 +275,10 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       their contracts. The builder takes the operation builder, the applier and the comparer in
       its constructor. `from_schema_root` and `from_operations` return the operations, the
       applier's schema and the `SchemaUpdateValidationResult` calculated from the diff between
-      the branch schema and the applier's schema. `from_schema_root` passes the processed schema
-      that the operation builder returned and the applier's schema to the comparer, and logs a
-      warning that names the kinds it returns. It does not process the file a third time.
+      the branch schema and the applier's schema. `from_schema_root` passes the
+      `direct_load_schema` that the operation builder returned and the applier's schema to the
+      comparer, and logs a warning that names the kinds it returns. It does not process the
+      file a third time.
       Create `backend/infrahub/core/schema_change/factory.py` with
       `build_schema_candidate_builder()`. Add unit tests, on the shared schema of T006:
       - in `backend/tests/unit/core/schema_change/test_candidate_comparer.py`: two equal schemas
@@ -509,7 +512,8 @@ a GraphQL query returns the history of a branch in pages.
       - `SchemaChange`: `branch: str`, `status: SchemaChangeStatus`, `version: int | None`,
         `summary: str`, `format_version: int`, `applied_at: str | None`;
       - `SchemaChangeOperation`: `position: int`, `operation_type: SchemaOperationType`,
-        `kind: str`, `node_type: str | None`, `section: str | None`, `element_name: str | None`,
+        `kind: str`, `node_type: SchemaOperationNodeType | None`,
+        `section: SchemaOperationSection | None`, `element_name: str | None`,
         `property_name: str | None`, `value` and `previous_value` as JSON-encoded text or `None`;
       - `SchemaChangeApplication`: `branch: str`, `status: SchemaChangeApplicationStatus`,
         `at: str`, `error: str | None`;
@@ -715,7 +719,8 @@ error, and the status of each migration.
         failure of `fail` is logged;
       - on success the runner calls `start`, then the executor with the application ID, then
         `complete`, in that order, and returns the hash;
-      - the executor receives the `user_id` and the `context` that `run` received.
+      - the executor receives the `user_id` and the `context` that `run` received;
+      - `complete` receives the `branch` that `start` received.
 - [ ] T046 [US3] Add the failed load methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
       of T028 and before the deletion. They continue from the three applied schema changes of

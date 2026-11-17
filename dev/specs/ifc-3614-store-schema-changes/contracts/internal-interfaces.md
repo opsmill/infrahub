@@ -17,7 +17,7 @@ Builds the operations of a schema load. No database access.
 @dataclass(frozen=True)
 class SchemaOperationBuildResult:
     operations: list[SchemaOperation]
-    overlay_schema: SchemaBranch
+    direct_load_schema: SchemaBranch
 
 
 class SchemaOperationBuilder:
@@ -30,9 +30,9 @@ class SchemaOperationBuilder:
     ) -> SchemaOperationBuildResult: ...
 ```
 
-- `overlay_schema` is the processed schema of the file laid over the branch schema, which the
-  builder calculates to find the operations. It is returned so that no caller processes the file
-  again.
+- `direct_load_schema` is the schema that a direct load builds: the file laid over a copy of the
+  branch schema, then processed. The builder calculates it to find the operations. It is
+  returned so that no caller processes the file again.
 - `operations` is empty when the file changes nothing after processing.
 - Never changes `branch_schema`.
 - Each operation follows [data-model.md](../data-model.md), "SchemaChangeOperation".
@@ -74,7 +74,9 @@ Compares two processed schemas. No database access, and it writes no log.
 
 ```python
 class SchemaCandidateComparer:
-    def differing_kinds(self, *, overlay_schema: SchemaBranch, applied_schema: SchemaBranch) -> list[str]: ...
+    def differing_kinds(
+        self, *, direct_load_schema: SchemaBranch, applied_schema: SchemaBranch
+    ) -> list[str]: ...
 ```
 
 - Returns the sorted kinds whose hash differs between the two schemas, including a kind that only
@@ -114,8 +116,8 @@ class SchemaCandidateBuilder:
   `validation.migrations` and `validation.constraints` are calculated from that diff, after
   processing.
 - Runs `validate_node_deletions` on the applier's result.
-- `from_schema_root` passes the `overlay_schema` of the operation builder and the applier's result
-  to the comparer, and logs a warning that names the kinds the comparer returns. It does not
+- `from_schema_root` passes the `direct_load_schema` of the operation builder and the applier's
+  result to the comparer, and logs a warning that names the kinds the comparer returns. It does not
   refuse the load, and it processes the schema twice in all: once in the operation builder and
   once in the applier.
 - It has two entry methods because a candidate is built from a schema file or from operations,
@@ -199,6 +201,11 @@ class SchemaChangeRecorder:
 - It has four entry methods because they are the steps of one schema change, and each needs the
   `SchemaChangeRecording` that an earlier one returned.
 - `start` and `record_applied` raise when `operations` is empty.
+- `complete` and `record_applied` take `branch` because they assign the version, and the
+  resolver reads the name and the `branched_from` of the branch. `fail` assigns no version and
+  takes no branch.
+- `SchemaChangeRecording` holds two IDs and no `Branch`, so that it can be built again from
+  stored records. The caller passes to `complete` the branch that it passed to `start`.
 - The caller holds the schema lock, so `complete` and `record_applied` can ask the resolver for
   the next version and write it without a second lock.
 - The caller calls `record_applied` before `SchemaManager.update_schema_branch` inside the

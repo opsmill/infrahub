@@ -44,6 +44,22 @@ enum SchemaOperationType {
   ELEMENT_PROPERTY
 }
 
+enum SchemaOperationNodeType {
+  NODE
+  GENERIC
+}
+
+enum SchemaOperationSection {
+  ATTRIBUTES
+  RELATIONSHIPS
+}
+
+enum SchemaPathType {
+  NODE
+  ATTRIBUTE
+  RELATIONSHIP
+}
+
 type Query {
   InfrahubSchemaChange(
     # Number of schema changes to return. Default 10, maximum 50, minimum 1.
@@ -115,10 +131,10 @@ type InfrahubSchemaChangeOperation {
   position: Int!
   operation_type: SchemaOperationType!
   kind: String!
-  # "node" or "generic". Set for NODE_ADD.
-  node_type: String
-  # "attributes" or "relationships". Set for the three ELEMENT types.
-  section: String
+  # Set for NODE_ADD.
+  node_type: SchemaOperationNodeType
+  # Set for the three ELEMENT types.
+  section: SchemaOperationSection
   # Name of the attribute or relationship before the operation.
   element_name: String
   # Name of the property, dotted when nested. Set for the two PROPERTY types.
@@ -151,8 +167,7 @@ type InfrahubSchemaChangeMigration {
   migration_name: String!
   # Text form of the schema path, for example "schema/DcimCloudDevice/serial".
   path: String!
-  # "node", "attribute" or "relationship".
-  path_type: String!
+  path_type: SchemaPathType!
   schema_kind: String!
   field_name: String
   property_name: String

@@ -109,7 +109,7 @@ backend/infrahub/
 ├── core/
 │   ├── schema_change/                    # new package
 │   │   ├── __init__.py
-│   │   ├── constants.py                  # statuses, operation types, format version, edge types, page sizes
+│   │   ├── constants.py                  # statuses, operation enumerations, format version, edge types, page sizes
 │   │   ├── operations.py                 # SchemaOperation, summary and name
 │   │   ├── operation_builder.py          # SchemaOperationBuilder
 │   │   ├── applier.py                    # SchemaChangeApplier
