@@ -1,13 +1,17 @@
 import pytest
 
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.constants import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.operations_check import NoSchemaOperationsCheck
 from tests.constants import TestKind
 from tests.helpers.schema_change import SchemaOperationsRebuildError, build_replay_schema_operations_check
+from tests.unit.core.schema_change.helpers import base_node_definition
 
 RELABELED_TAG = "Relabeled tag"
+UNKNOWN_KIND_ID = "0e7b5c2a-91d4-4f6e-b3a8-5d2c7f10e946"
 TAG_LABEL_OPERATION = SchemaOperation(
     operation_type=SchemaOperationType.NODE_PROPERTY,
     kind=TestKind.TAG,
@@ -83,3 +87,22 @@ def test_the_replay_check_names_an_operation_that_the_applier_refuses(equivalenc
             default_branch_schema=equivalence_base_schema,
             direct_load_schema=equivalence_base_schema,
         )
+
+
+def test_the_replay_check_accepts_a_file_that_gives_an_existing_kind_an_unknown_id(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    tag = base_node_definition(TestKind.TAG)
+    tag.id = UNKNOWN_KIND_ID
+    build_result = SchemaOperationBuilder().build(
+        branch_schema=equivalence_base_schema,
+        schema_root=SchemaRoot(nodes=[tag]),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    build_replay_schema_operations_check().check(
+        branch_schema=equivalence_base_schema,
+        operations=build_result.operations,
+        default_branch_schema=equivalence_base_schema,
+        direct_load_schema=build_result.direct_load_schema,
+    )

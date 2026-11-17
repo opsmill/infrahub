@@ -301,6 +301,10 @@ the branch schema, the operations and the processed schema of the file.
   component, functional and integration test that loads a schema file through
   `build_schema_candidate_builder()` therefore fails on a case where the operations do not
   rebuild the schema.
+- The check checks nothing when the file gives a kind of the branch schema an ID that the branch
+  schema does not hold. A load replaces that kind whole, without the IDs of its attributes and
+  relationships, which no operation holds, and the load is refused when the coordinator writes
+  that kind to the database. Checking it would raise the check's error in place of that refusal.
 - `SchemaCandidateComparer` returns the kinds whose content differs. A kind whose stored hash
   differs is parsed again into the class of each attribute kind, as a schema read from the
   database is, and is returned only when the hash of that content still differs; an attribute

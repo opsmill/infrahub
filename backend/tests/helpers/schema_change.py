@@ -301,6 +301,10 @@ class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
     """Apply the operations to the branch schema and raise when the result differs from the schema of the file.
 
     It is an assertion error, so a schema load does not report it as a refused schema.
+
+    It checks nothing when the schema file gives a kind of the branch schema an ID that the branch schema does not
+    hold. A load replaces that kind whole, without the IDs of its attributes and relationships, which no operation
+    holds, and the load is refused when it writes the kind to the database.
     """
 
     def __init__(self, applier: SchemaChangeApplier, comparer: SchemaCandidateComparer) -> None:
@@ -323,6 +327,9 @@ class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
                 names the operation or the kinds.
 
         """
+        if self._replaces_a_kind_by_an_unknown_id(branch_schema=branch_schema, direct_load_schema=direct_load_schema):
+            return
+
         try:
             applied_schema = self.applier.apply(
                 target_schema=branch_schema, operations=operations, default_branch_schema=default_branch_schema
@@ -340,6 +347,16 @@ class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
                 "The operations built from the schema file do not rebuild its schema; "
                 f"kinds that differ: {', '.join(differing_kinds)}"
             )
+
+
+    @staticmethod
+    def _replaces_a_kind_by_an_unknown_id(*, branch_schema: SchemaBranch, direct_load_schema: SchemaBranch) -> bool:
+        branch_kind_ids = branch_schema.get_all_kind_id_map(nodes_and_generics_only=True)
+        known_ids = set(branch_kind_ids.values())
+        return any(
+            kind_id is not None and kind in branch_kind_ids and kind_id not in known_ids
+            for kind, kind_id in direct_load_schema.get_all_kind_id_map(nodes_and_generics_only=True).items()
+        )
 
 
 def build_replay_schema_operations_check() -> ReplaySchemaOperationsCheck:

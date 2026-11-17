@@ -84,7 +84,10 @@ The session-scoped autouse fixture `_schema_operations_rebuild_the_schema` in
 result with the processed copy with `SchemaCandidateComparer`, and raises
 `SchemaOperationsRebuildError`, an `AssertionError`, naming the differing kinds or the operation the
 applier refused. Every test whose process loads a schema through `build_schema_candidate_builder`
-therefore fails when the operations miss a change of the file. A server or task worker started in a
+therefore fails when the operations miss a change of the file. The check checks nothing when the
+file gives a kind of the branch schema an ID that the branch schema does not hold: a load replaces
+that kind whole, without the IDs of its attributes and relationships, which no operation holds, and
+the load is refused when it writes the kind to the database. A server or task worker started in a
 container by the docker or e2e suites does not run the check, because the fixture sets it in the
 test process only. `backend/tests/benchmark/conftest.py` clears the override so that the benchmark
 measures the production builder.
