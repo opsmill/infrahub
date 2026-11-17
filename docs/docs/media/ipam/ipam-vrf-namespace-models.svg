@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
-<title id="title">Three ways to combine VRFs and namespaces</title><desc id="desc">Three models for two VRFs, red and blue. One namespace for each VRF: two namespaces, red and blue, each hold 10.0.0.0/16, and each corresponds to a VRF node. Several VRFs in one namespace: a single namespace, default, holds 10.0.0.0/16, related to VRF red, and 10.1.0.0/16, related to VRF blue, in one tree, so the same prefix cannot exist twice. A VRF node that is also the namespace: the VRF nodes red and blue inherit from BuiltinIPNamespace, have a route distinguisher, and each hold 10.0.0.0/16 in their own tree.</desc>
+<title id="title">Three ways to combine VRFs and namespaces</title><desc id="desc">Three models for two VRFs, red and blue. One namespace for each VRF: two namespaces, red and blue, each hold 10.0.0.0/16, and each corresponds to a VRF object. Several VRFs in one namespace: a single namespace, default, holds 10.0.0.0/16, related to VRF red, and 10.1.0.0/16, related to VRF blue, in one tree, so the same prefix cannot exist twice. A VRF node that is also the namespace: red and blue are objects of a VRF node that inherits from BuiltinIPNamespace. Each has a route distinguisher and holds 10.0.0.0/16 in its own tree.</desc>
 <rect width="960" height="520" rx="16" fill="white"/>
 <g font-family="Inter, Arial, sans-serif">
 <rect x="15" y="15" width="300" height="440" rx="16" fill="white" stroke="#d7e6eb" stroke-width="1.5"/>
@@ -55,17 +55,17 @@
 <text x="914" y="253" text-anchor="end" font-size="13" font-weight="500" fill="#264D59">RD 65000:2</text>
 <rect x="680" y="271" width="150" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
 <text x="755" y="295" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
-<text x="665" y="372" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Two VRF nodes that inherit from</text>
-<text x="665" y="394" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">BuiltinIPNamespace. Each has its</text>
-<text x="665" y="416" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">own tree, and the same prefix</text>
-<text x="665" y="438" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">can exist in both.</text>
+<text x="665" y="372" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Two objects of a VRF node that</text>
+<text x="665" y="394" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">inherits from BuiltinIPNamespace.</text>
+<text x="665" y="416" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Each has its own tree, and the</text>
+<text x="665" y="438" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">same prefix can exist in both.</text>
 <rect x="35" y="478" width="34" height="22" rx="6" fill="#d4eff6" stroke="#08738f" stroke-width="2"/>
 <text x="79" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">Namespace</text>
 <rect x="190" y="478" width="34" height="22" rx="6" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
-<text x="234" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF node</text>
+<text x="234" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF object</text>
 <rect x="335" y="478" width="34" height="22" rx="6" fill="#d4eff6" stroke="#231556" stroke-width="3"/>
-<text x="379" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF node that is also a namespace</text>
-<rect x="650" y="478" width="44" height="22" rx="11" fill="white" stroke="#08738f" stroke-width="2.5"/>
-<text x="704" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">Prefix</text>
+<text x="379" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF object that is also a namespace</text>
+<rect x="672" y="478" width="44" height="22" rx="11" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="726" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">Prefix</text>
 </g>
 </svg>
