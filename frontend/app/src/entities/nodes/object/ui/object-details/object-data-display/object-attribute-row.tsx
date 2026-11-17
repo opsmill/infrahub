@@ -42,7 +42,7 @@ export function ObjectAttributeRow({
             updatedAt={attributeData.updated_at}
             source={attributeData.source}
             owner={attributeData.owner}
-            triggerClassName="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            triggerClassName="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
             isProtected={attributeData.is_protected}
             header={
               !attributeSchema.read_only && (

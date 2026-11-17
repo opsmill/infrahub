@@ -99,7 +99,7 @@ function RelationshipOneRow({
                 source={relationshipProperties.source}
                 owner={relationshipProperties.owner}
                 isProtected={relationshipProperties.is_protected}
-                triggerClassName="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                triggerClassName="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
