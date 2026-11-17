@@ -3,18 +3,24 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
-import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type { NodeObject, NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
+import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
+import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { ObjectActionsCell } from "@/entities/nodes/object/ui/object-table/cells/object-actions-cell";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { getProfiles } from "@/entities/nodes/profiles/domain/use-cases/get-profiles";
 import { RelationshipActionsCell } from "@/entities/nodes/relationships/ui/relationship-table/relationship-actions-cell";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../tests/components/render";
+import { generateRelationshipNodeWithMetadata } from "../../../../../../tests/fake/node";
 import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { ObjectEditSheet } from "./object-edit-sheet";
+
+vi.mock("@/entities/nodes/profiles/domain/use-cases/get-profiles");
 
 vi.mock("@/entities/nodes/object/ui/object-edit/object-item-edit-paginated", () => ({
   default: vi.fn(
@@ -246,6 +252,73 @@ describe("ObjectEditSheet callers", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Edit", exact: true }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "Edit atl1-edge", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByText("Network device in a rack", { exact: true }))
+      .toBeVisible();
+    expect(objectEditMock.mock.lastCall?.[0]).toMatchObject({
+      objectId: "device-1",
+      objectKind: "TestDevice",
+    });
+  });
+
+  it("opens from the details Actions menu with the schema description as subtitle", async () => {
+    // GIVEN
+    const component = await render(
+      <ObjectDetailsMenu
+        objectSchema={deviceSchema}
+        objectData={device}
+        permission={generatePermission()}
+      />
+    );
+    await component.getByTestId("object-details-menu").click();
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Edit", exact: true }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { name: "Edit atl1-edge", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByText("Network device in a rack", { exact: true }))
+      .toBeVisible();
+    expect(objectEditMock.mock.lastCall?.[0]).toMatchObject({
+      objectId: "device-1",
+      objectKind: "TestDevice",
+    });
+  });
+
+  it("opens from the Profiles row with the schema description as subtitle", async () => {
+    // GIVEN
+    vi.mocked(getProfiles).mockResolvedValue([
+      { id: "profile-1", __typename: "ProfileTestDevice", display_label: "edge-default" },
+    ]);
+    const deviceInGroup = {
+      ...device,
+      member_of_groups: {
+        edges: [
+          generateRelationshipNodeWithMetadata({
+            node: { id: "group-1", __typename: "CoreStandardGroup", display_label: "edge-routers" },
+          }),
+        ],
+      },
+    } as NodeObjectWithMetadata;
+    const component = await render(
+      <ObjectProfilesGroupsCard
+        objectSchema={{ ...deviceSchema, generate_profile: true }}
+        objectData={deviceInGroup}
+        permission={generatePermission()}
+      />
+    );
+    const emptyProfilesRow = component.getByText("-", { exact: true });
+
+    // WHEN
+    await emptyProfilesRow.click();
 
     // THEN
     await expect

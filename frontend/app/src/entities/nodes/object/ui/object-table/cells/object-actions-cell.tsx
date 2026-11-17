@@ -83,7 +83,6 @@ export function ObjectActionsCell({
         onOpenChange={() => setShowEditForm(false)}
         schema={schema}
         objectId={objectId}
-        objectKind={objectKind}
         objectLabel={objectLabel}
         extraRelationshipNames={extraRelationshipNames}
       />
