@@ -196,7 +196,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         ([research.md](research.md), R6);
       - a file that clears an optional text field with an empty string
         ([research.md](research.md), R5).
-- [ ] T011 [P] [US1] Write the four known-bug cases of FR-025 in
+- [X] T011 [P] [US1] Write the four known-bug cases of FR-025 in
       `backend/tests/unit/core/schema_change/test_applier_known_bugs.py`. Each case states the
       fixed behaviour as its expected result, written by hand, not taken from the reference:
 
@@ -210,7 +210,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       A case that fails because its bug is not fixed is marked `xfail(strict=True)` with a reason
       that describes the behaviour, not the ticket. A case that passes has no marker (spec,
       decision 2). The table above is the only place that links a case to its ticket.
-- [ ] T012 [P] [US1] Write the tests of the operation builder in
+- [X] T012 [P] [US1] Write the tests of the operation builder in
       `backend/tests/unit/core/schema_change/test_operation_builder.py`:
       - a file that changes nothing gives no operation (FR-003);
       - an attribute added to a generic gives one `element_add` on the generic, and no operation
@@ -227,7 +227,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         the file;
       - every operation survives a JSON round trip: dump the list to JSON, load it, apply it, and
         get a schema with the same hash.
-- [ ] T013 [P] [US1] Write the tests of the applier in
+- [X] T013 [P] [US1] Write the tests of the applier in
       `backend/tests/unit/core/schema_change/test_applier.py`:
       - an operation on a kind, an attribute or a relationship that the target does not have
         raises `SchemaOperationTargetNotFoundError`, and the message names the operation and the
@@ -236,7 +236,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       - a property that no operation names keeps its value (FR-020);
       - the same target and operations give the same hash twice;
       - the shared schema of T006 has the same hash after the whole module ran as before it.
-- [ ] T014 [P] [US1] Write the tests on a target that changed, in
+- [X] T014 [P] [US1] Write the tests on a target that changed, in
       `backend/tests/unit/core/schema_change/test_applier_changed_target.py`. Record the
       operations against one schema, then apply them to a schema that changed separately:
       - "add an attribute to a generic", applied to a target that gained a kind that inherits the

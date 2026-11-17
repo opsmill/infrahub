@@ -18,8 +18,11 @@ from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_I
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from pydantic import JsonValue
+
     from infrahub.core.models import SchemaUpdateValidationResult
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema_change.operations import SchemaOperation
 
 TAG_STATUS_ATTRIBUTE = "status"
 DEVICE_SPARE_SFPS_RELATIONSHIP = "spare_sfps"
@@ -180,6 +183,23 @@ def build_direct_load_result(
     candidate_schema.load_schema(schema=schema_root)
     candidate_schema.process(default_branch_schema=default_branch_schema)
     return validate_candidate_schema(branch_schema=branch_schema, candidate_schema=candidate_schema)
+
+
+def schema_content_hashes(schema: SchemaBranch) -> dict[str, str]:
+    """Return the hash of every kind, calculated again from the content of its schema object.
+
+    A schema object changed in place keeps its stored hash, so only a hash calculated again shows the change.
+    """
+    return {name: schema.get(name=name, duplicate=False).get_hash() for name in schema.all_names}
+
+
+def describe_operation(operation: SchemaOperation) -> dict[str, JsonValue]:
+    """Return every field of an operation as JSON values, and whether `value` and `previous_value` are set."""
+    return {
+        **operation.model_dump(mode="json"),
+        "has_value": operation.has_value,
+        "has_previous_value": operation.has_previous_value,
+    }
 
 
 def summarize_load_result(result: SchemaLoadResult) -> SchemaLoadSummary:
