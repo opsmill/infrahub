@@ -22,6 +22,8 @@ The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) p
 
 ## Create a pool
 
+Give the namespace by its HFID, which holds its name: `{hfid: ["default"]}` in GraphQL, `["default"]` in the Python SDK. Give each prefix in `resources` by its ID: the relationship accepts a prefix of any kind that inherits from `BuiltinIPPrefix`, and that generic has no HFID.
+
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
 
@@ -52,7 +54,6 @@ resource = await client.get(
     prefix__value="10.0.0.0/24",
     ip_namespace__name__value="default",
 )
-namespace = await client.get(kind="IpamNamespace", name__value="default")
 
 pool = await client.create(
     kind="CoreIPAddressPool",
@@ -60,7 +61,7 @@ pool = await client.create(
     default_address_type="IpamIPAddress",
     default_prefix_length=24,
     resources=[resource],
-    ip_namespace=namespace,
+    ip_namespace=["default"],
 )
 await pool.save()
 ```

@@ -124,14 +124,14 @@ mutation {
 
   <TabItem value="sdk" label="Python SDK">
 
-```python
-namespace = await client.get(kind="IpamNamespace", name__value="customer-a")
+Give the namespace by its HFID, a list that holds its name:
 
+```python
 prefix = await client.create(
     kind="IpamPrefix",
     prefix="10.0.0.0/8",
     member_type="prefix",
-    ip_namespace=namespace,
+    ip_namespace=["customer-a"],
 )
 await prefix.save()
 ```
@@ -221,7 +221,7 @@ prefix = await client.get(
     prefix__value="10.0.0.0/8",
     ip_namespace__name__value="customer-a",
 )
-prefix.ip_namespace = await client.get(kind="IpamNamespace", name__value="customer-b")
+prefix.ip_namespace = ["customer-b"]
 await prefix.save()
 ```
 
