@@ -1,1 +1,1 @@
-Showed the attribute and relationship metadata icon only on row hover, after the protected-status lock icon
+On the object details page, the metadata icon of each attribute and relationship now appears only when you hover over the row, move keyboard focus to the icon or open its metadata panel. The protected-status lock icon now appears before the metadata icon.
