@@ -107,12 +107,15 @@ When two branches each create the same prefix in a namespace, Infrahub checks th
 
 ## VLAN, VRF, and other extensions
 
-VLAN and VRF are Marketplace extensions, not part of the IPAM schema. Fetch them individually:
+VLAN, VRF and aggregates are Marketplace extensions, not part of the IPAM schema. Fetch them individually:
 
 ```shell
 infrahubctl marketplace get infrahub/vrf
 infrahubctl marketplace get infrahub/vlan
+infrahubctl marketplace get infrahub/ipam_aggregate
 ```
+
+The [`infrahub/ipam_aggregate`](https://marketplace.infrahub.app/schemas/infrahub/ipam_aggregate) extension defines `IpamAggregate`, a top-level prefix assigned by a Regional Internet Registry (RIR), and `OrganizationRIR` for the registry. `IpamAggregate` inherits from `BuiltinIPPrefix`, so aggregates are prefixes in the tree. Its uniqueness constraint is on the value alone, so one aggregate value cannot exist in two namespaces.
 
 The [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension defines a VRF node with a route distinguisher and import and export route targets, and adds a `vrf` relationship to `IpamPrefix`. To choose how to combine VRFs and namespaces, see [Use namespaces](./use-namespaces.mdx#choose-between-a-namespace-and-a-vrf).
 
