@@ -138,7 +138,7 @@ class TestSchemaUpdateAndRollback:
             diff=diff,
             migrations=validation_result.migrations,
             update_db=True,
-            update_registry=True,
+            application_id=None,
         )
 
         # Step 5: Verify changes applied
@@ -278,7 +278,7 @@ class TestSchemaUpdateAndRollback:
                 migration_executor=MigrationExecutor.DIRECT,
                 diff=diff,
                 update_db=True,
-                update_registry=True,
+                application_id=None,
             )
 
         try:

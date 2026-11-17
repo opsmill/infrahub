@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, NoReturn, overload
+from typing import TYPE_CHECKING, NoReturn
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -80,66 +80,6 @@ class SchemaUpdateCoordinator:
             raise RuntimeError("Workflow service is required but not provided")
         return self.workflow
 
-    @overload
-    async def execute(
-        self,
-        *,
-        branch: Branch,
-        origin_schema: SchemaBranch,
-        rollback_schema: SchemaBranch,
-        candidate_schema: SchemaBranch,
-        at: Timestamp,
-        context: InfrahubContext | None = ...,
-        migration_executor: MigrationExecutor = ...,
-        diff: SchemaDiff | None = ...,
-        migrations: list[SchemaUpdateMigrationInfo] | None = ...,
-        limit: list[str] | None = ...,
-        update_db: Literal[True] = True,
-        update_registry: bool = ...,
-        user_id: str = ...,
-        manage_rollback: bool = ...,
-    ) -> str: ...
-
-    @overload
-    async def execute(
-        self,
-        *,
-        branch: Branch,
-        origin_schema: SchemaBranch,
-        rollback_schema: SchemaBranch,
-        candidate_schema: SchemaBranch,
-        at: Timestamp,
-        context: InfrahubContext | None = ...,
-        migration_executor: MigrationExecutor = ...,
-        diff: SchemaDiff | None = ...,
-        migrations: list[SchemaUpdateMigrationInfo] | None = ...,
-        limit: list[str] | None = ...,
-        update_db: Literal[False] = ...,
-        update_registry: Literal[True] = ...,
-        user_id: str = ...,
-        manage_rollback: bool = ...,
-    ) -> str: ...
-
-    @overload
-    async def execute(
-        self,
-        *,
-        branch: Branch,
-        origin_schema: SchemaBranch,
-        rollback_schema: SchemaBranch,
-        candidate_schema: SchemaBranch,
-        at: Timestamp,
-        context: InfrahubContext | None = ...,
-        migration_executor: MigrationExecutor = ...,
-        diff: SchemaDiff | None = ...,
-        migrations: list[SchemaUpdateMigrationInfo] | None = ...,
-        limit: list[str] | None = ...,
-        update_db: Literal[False] = ...,
-        update_registry: Literal[False] = ...,
-        user_id: str = ...,
-        manage_rollback: bool = ...,
-    ) -> str | None: ...
-
     async def execute(
         self,
         *,
@@ -154,10 +94,10 @@ class SchemaUpdateCoordinator:
         migrations: list[SchemaUpdateMigrationInfo] | None = None,
         limit: list[str] | None = None,
         update_db: bool = True,
-        update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
         manage_rollback: bool = True,
-    ) -> str | None:
+        application_id: str | None,
+    ) -> str:
         """Execute the schema update with migrations and rollback on failure.
 
         Args:
@@ -174,15 +114,15 @@ class SchemaUpdateCoordinator:
             diff: Schema diff for update_schema_branch (optional, for incremental updates)
             migrations: List of migrations to run
             limit: Limit schema update to specific items
-            update_db: Whether to update the database
-            update_registry: Whether to update the registry (used when DB already updated externally)
+            update_db: Whether to update the database; the registry is always updated
             user_id: User ID for all operations
             manage_rollback: When True (default), this coordinator handles its own rollback on
                 failure (DB rollback + registry restore). When False, exceptions propagate without
                 triggering internal rollback.
+            application_id: The schema application the migrations report to, or None when they report to none
 
         Returns:
-            The updated schema hash, or None if the schema was not updated
+            The updated schema hash
 
         Raises:
             RuntimeError: When migrations must run via the WORKFLOW executor but workflow or context is not provided.
@@ -202,33 +142,30 @@ class SchemaUpdateCoordinator:
         origin_schema_changed_at = branch.schema_changed_at
         origin_schema_hash = branch.schema_hash
 
-        # Step 1: Update schema in DB and/or registry
-        updated_hash: str | None = None
-        if update_db or update_registry:
-            try:
-                updated_hash = await self._update_schema(
+        # Step 1: Update schema in DB and registry
+        try:
+            updated_hash = await self._update_schema(
+                branch=branch,
+                candidate_schema=candidate_schema,
+                at=at,
+                diff=diff,
+                limit=limit,
+                update_db=update_db,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            if manage_rollback:
+                await self._handle_failure_and_rollback(
                     branch=branch,
-                    candidate_schema=candidate_schema,
+                    rollback_schema=rollback_schema,
+                    origin_schema_changed_at=origin_schema_changed_at,
+                    origin_schema_hash=origin_schema_hash,
                     at=at,
-                    diff=diff,
-                    limit=limit,
-                    update_db=update_db,
-                    update_registry=update_registry,
-                    user_id=user_id,
+                    phase="update",
+                    exception=exc,
+                    error_msgs=[],
                 )
-            except Exception as exc:
-                if manage_rollback:
-                    await self._handle_failure_and_rollback(
-                        branch=branch,
-                        rollback_schema=rollback_schema,
-                        origin_schema_changed_at=origin_schema_changed_at,
-                        origin_schema_hash=origin_schema_hash,
-                        at=at,
-                        phase="update",
-                        exception=exc,
-                        error_msgs=[],
-                    )
-                raise
+            raise
 
         if not migrations:
             return updated_hash
@@ -243,6 +180,7 @@ class SchemaUpdateCoordinator:
             migration_executor=migration_executor,
             context=context,
             user_id=user_id,
+            application_id=application_id,
         )
 
         if error_msgs or exception is not None:
@@ -271,10 +209,9 @@ class SchemaUpdateCoordinator:
         diff: SchemaDiff | None,
         limit: list[str] | None,
         update_db: bool,
-        update_registry: bool,
         user_id: str,
     ) -> str:
-        """Update schema in database and/or registry.
+        """Update schema in the registry, and in the database when `update_db` is set.
 
         Args:
             branch: The branch being updated
@@ -283,7 +220,6 @@ class SchemaUpdateCoordinator:
             diff: Schema diff for incremental updates
             limit: Limit to specific schema items
             update_db: If True, update DB via update_schema_branch.
-            update_registry: If True, update registry via set_schema_branch.
 
         Returns:
             The updated schema hash
@@ -300,8 +236,7 @@ class SchemaUpdateCoordinator:
                 at=at,
                 user_id=user_id,
             )
-        if update_registry:
-            self.schema_manager.set_schema_branch(name=branch.name, schema=candidate_schema)
+        self.schema_manager.set_schema_branch(name=branch.name, schema=candidate_schema)
 
         branch.update_schema_hash()
         self.log.info("Schema has been updated", extra={"branch": branch.name, "hash": branch.active_schema_hash.main})
@@ -319,6 +254,7 @@ class SchemaUpdateCoordinator:
         migration_executor: MigrationExecutor,
         context: InfrahubContext | None,
         user_id: str,
+        application_id: str | None,
     ) -> tuple[list[str], Exception | None]:
         """Run migrations using the configured executor."""
         apply_migration_data = SchemaApplyMigrationData(
@@ -328,6 +264,7 @@ class SchemaUpdateCoordinator:
             migrations=migrations,
             at=at,
             user_id=user_id,
+            application_id=application_id,
         )
 
         if migration_executor == MigrationExecutor.WORKFLOW:

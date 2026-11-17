@@ -408,9 +408,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                         migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
                         migrations=migrations,
                         update_db=False,
-                        update_registry=True,
                         user_id=user_id,
                         manage_rollback=True,
+                        application_id=None,
                     )
                     log.info("Migrations completed")
 

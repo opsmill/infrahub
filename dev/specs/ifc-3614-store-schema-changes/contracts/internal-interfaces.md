@@ -474,7 +474,8 @@ class MigrationRecordStore(Protocol):
   migration with the status `waiting`, and keeps the ID of each record by its position.
   `batch_started` sets the records at the positions given to `running`. `migration_ended` sets
   one record to `applied` when the result has no error, or to `failed` with the errors, and
-  stores `nbr_migrations_executed`.
+  stores `nbr_migrations_executed`. When `register` could not create the records, the two other
+  methods write nothing for the positions that have no record.
 - `MigrationRecordStore` holds the two methods the recorder calls. `SchemaChangeRepository`
   satisfies it by its signatures. A unit test passes a store that raises on every call.
 - The application ID is a constructor argument, because one recorder serves one application for
@@ -498,7 +499,8 @@ class MigrationRecordStore(Protocol):
     result has no error, or `failed` with the errors of the result, and the
     `nbr_migrations_executed` of the result in both cases.
 - A failure to write a record does not stop a migration. It is logged, and the record keeps its
-  earlier status. The recorder catches at least the `DatabaseError` that the store raises, and
+  earlier status. The recorder catches the `DatabaseError`, the `QueryTimeoutError` and the
+  `neo4j` `Neo4jError` (which covers a transient error such as a deadlock) that the store raises, and
   logs a warning with `get_logger()` and `exc_info=True`, with these events and fields:
 
   | Method | Event | Fields |
@@ -558,7 +560,7 @@ One place builds a component after the work started, and it is deliberate:
 | --- | --- |
 | `core/migrations/schema/models.py::SchemaApplyMigrationData` | New optional field `application_id: str \| None`, default `None`. The hand-written `serialize_model` is replaced by field serializers, because it lists its keys and would drop the new field before the message reaches a task worker |
 | `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute` | New keyword argument `application_id: str \| None` without a default, passed to the message. The argument `update_registry` and the three overloads are removed, because no caller passes `False`. The callers in `cli/db.py`, `core/branch/tasks.py` and `core/merge/orchestrator.py` pass `application_id=None` |
-| `core/migrations/schema/tasks.py::schema_apply_migrations` | Calls `get_database()` once at its top, builds a `MigrationRecorder` with `build_migration_recorder`, and pairs each migration with its position in the message. Return value unchanged |
+| `core/migrations/schema/tasks.py::schema_apply_migrations` | Calls `get_database()` once at its top, builds a `MigrationRecorder` with `build_migration_recorder` on a session started from that database, and pairs each migration with its position in the message. Return value unchanged |
 | `core/migrations/schema/tasks.py::split_migrations_by_phase` and `::_apply_migration_batch` | Take `PositionedMigration` items. `_apply_migration_batch` takes the recorder and the database |
 | `api/schema.py::evaluate_candidate_schemas` | Replaced by `build_candidate_from_schemas`. Five calls in three component test modules call the candidate builder directly |
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |

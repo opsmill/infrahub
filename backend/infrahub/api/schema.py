@@ -477,6 +477,7 @@ async def load_schema(
             limit=result.diff.all,
             update_db=True,
             user_id=account_session.account_id,
+            application_id=None,
         )
 
     await service.component.refresh_schema_hash(branches=[branch.name])

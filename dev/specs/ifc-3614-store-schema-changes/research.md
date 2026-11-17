@@ -370,7 +370,10 @@ Three facts of the existing code shape this:
   belongs to. The flow pairs each migration with its position once (`PositionedMigration`), and
   each entry of the batch returns its position with its result.
 - `_apply_migration_batch` calls `get_database()` for each migration. The flow now calls it once
-  at its top and passes the database to the recorder factory and to the helper.
+  at its top, passes the database to the helper, and passes a session started from it to the
+  recorder factory. The database that `get_database()` returns serves every flow of the worker
+  and keeps the first session a query opens on it, so the recorder writes through a session of
+  its own. The recorder writes one record at a time from the flow, never two at once.
 
 - With an application ID, the recorder creates the records, and updates one record each time a
   migration returns, from its `SchemaMigrationPathResponseData`.

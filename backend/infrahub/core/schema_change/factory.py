@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
 from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
+from infrahub.core.schema_change.migration_recorder import MigrationRecorder, NoRecordMigrationRecorder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
+from infrahub.core.schema_change.repository import SchemaChangeRepository
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 
 def build_schema_candidate_builder() -> SchemaCandidateBuilder:
@@ -12,3 +20,9 @@ def build_schema_candidate_builder() -> SchemaCandidateBuilder:
         applier=SchemaChangeApplier(),
         comparer=SchemaCandidateComparer(),
     )
+
+
+def build_migration_recorder(db: InfrahubDatabase, application_id: str | None) -> MigrationRecorder:
+    if application_id is None:
+        return NoRecordMigrationRecorder()
+    return ApplicationMigrationRecorder(store=SchemaChangeRepository(db=db), application_id=application_id)

@@ -574,7 +574,7 @@ the reader converts it back. Neither has a delete method. Name the two migration
 
 ### Migration records
 
-- [ ] T034 [US2] Create the `MigrationRecorder` interface and `NoRecordMigrationRecorder` in
+- [X] T034 [US2] Create the `MigrationRecorder` interface and `NoRecordMigrationRecorder` in
       `backend/infrahub/core/schema_change/migration_recorder.py`, which imports nothing that
       reaches the database. Create `ApplicationMigrationRecorder` and the `MigrationRecordStore`
       protocol in `backend/infrahub/core/schema_change/application_migration_recorder.py`,
@@ -583,7 +583,7 @@ the reader converts it back. Neither has a delete method. Name the two migration
       failure to write a record is logged and does not raise. Load
       `dev/guidelines/backend/exceptions.md` before writing the `try`/`except`. Add
       `build_migration_recorder(db, application_id)` to `factory.py`. Make T025 pass.
-- [ ] T035 [US2] Carry the application ID from the coordinator to the migration flow. Load
+- [X] T035 [US2] Carry the application ID from the coordinator to the migration flow. Load
       `dev/guidelines/backend/prefect-payloads.md` first.
       - In `core/migrations/schema/models.py::SchemaApplyMigrationData`, add
         `application_id: str | None = None`. Replace the hand-written `serialize_model`, which
@@ -609,7 +609,7 @@ the reader converts it back. Neither has a delete method. Name the two migration
         `backend/tests/component/core/test_branch_rebase.py` and
         `backend/tests/component/core/merge/test_orchestrator.py`. Their expected results do not
         change.
-- [ ] T036 [US2] Change the flow in `core/migrations/schema/tasks.py` so that it reports each
+- [X] T036 [US2] Change the flow in `core/migrations/schema/tasks.py` so that it reports each
       migration by its position in the message. Today `schema_apply_migrations` splits the
       migrations into two lists, and `_apply_migration_batch` reads results in the order they
       complete, so an index inside that function is not the position in the message.
