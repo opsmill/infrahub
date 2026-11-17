@@ -2545,7 +2545,7 @@ class NodeGetListByAttributeValueQuery(Query):
         search = "toLower($search_value)"
         operator = "CONTAINS" if self.partial_match else "="
         if self.case_sensitive:
-            # Matching four spellings keeps the value indexes usable.
+            # Comparing the stored value to four spellings, rather than lowercasing it, keeps the value indexes usable.
             match_predicate = (
                 f"(av.value {operator} $search_original OR av.value {operator} $search_lower "
                 f"OR av.value {operator} $search_upper OR av.value {operator} $search_title)"
@@ -2573,7 +2573,7 @@ class NodeGetListByAttributeValueQuery(Query):
         // rank each match, best first
         // --------------------------
         WITH attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
-        // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
+        // The tier is multiplied by a billion, longer than any indexed value, so a shorter value ranks higher only within its tier.
         WITH attr, av, CASE
             WHEN is_label AND value = search THEN 6
             WHEN is_label AND value STARTS WITH search THEN 5
@@ -2582,13 +2582,12 @@ class NodeGetListByAttributeValueQuery(Query):
             WHEN value STARTS WITH search THEN 2
             ELSE 1
         END * 1000000000 - size(value) AS score
-        // Checking matches best first makes a node's first valid match its best one, so the checks stop once the limit is reached.
-        // Ties break on the attribute's uuid, so that the node is read only for the rows checked.
+        // Ties break on the attribute's uuid, not the node's, so that a node is read only when its row is checked.
         ORDER BY score DESC, attr.uuid
         // --------------------------
-        // filter HAS_VALUE edges
+        // keep the matches that are the attribute's current value
         // --------------------------
-        // The attribute's latest value edge decides, as a value changed on a branch leaves the old value's edge active on its parent.
+        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
         CALL (attr) {
             MATCH (attr)-[r:HAS_VALUE]->(current_value)
             WHERE %(branch_filter)s
@@ -2599,7 +2598,7 @@ class NodeGetListByAttributeValueQuery(Query):
         WITH attr, av
         WHERE r.status = "active" AND current_value = av
         // --------------------------
-        // find the node through its HAS_ATTRIBUTE edge
+        // find the node that owns the attribute, of a searched kind
         // --------------------------
         CALL (attr) {
             MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
@@ -2612,7 +2611,7 @@ class NodeGetListByAttributeValueQuery(Query):
         WHERE r.status = "active"
         %(kind_filter)s
         // --------------------------
-        // keep the nodes that exist at the searched time
+        // keep the nodes that exist on the branch at the searched time
         // --------------------------
         CALL (n) {
             MATCH (n)-[r:IS_PART_OF]->(:Root)
