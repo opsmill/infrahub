@@ -2,14 +2,16 @@ import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
-import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { Icon } from "@/shared/components/display/icon";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 
-import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type {
+  NodeAttributeMetadata,
+  NodeRelationshipMetadata,
+} from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -17,23 +19,18 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 // Hovering an element with this class reveals every metadata icon inside it that is set to reveal on hover.
 export const METADATA_HOVER_AREA = "group/metadata";
 
-interface MetaDetailsTooltipProps {
+interface FieldMetadataPopoverProps {
+  metadata: NodeAttributeMetadata | NodeRelationshipMetadata;
   header?: React.ReactNode;
-  updatedAt: AnyAttribute["updated_at"];
-  source?: NodeCore | null;
-  owner?: NodeCore | null;
-  isProtected: AnyAttribute["is_protected"];
   revealOnHover?: boolean;
 }
 
-export default function MetaDetailsTooltip({
+export function FieldMetadataPopover({
+  metadata,
   header,
-  updatedAt,
-  source,
-  owner,
-  isProtected,
   revealOnHover = false,
-}: MetaDetailsTooltipProps) {
+}: FieldMetadataPopoverProps) {
+  const { source, owner, updated_at: updatedAt, is_protected: isProtected } = metadata;
   const { isProfile, isTemplate } = useSchema(source?.__typename);
   const { formatDate } = useFormatDate();
 
