@@ -242,7 +242,7 @@ its other queries. Neither the repository nor the history reader has a delete me
 | Two processing passes slow a load on a large schema | A task measures it. The design document measured about 0.16 s for one pass on the internal and core schema |
 | A new edge type is picked up by a query that matches edges without a type | The edges have no `branch` property. A functional test runs a rebase, a merge and a failed load and asserts that the records are unchanged |
 | Error strings stored in the records hold the text of an internal exception | The query needs a logged-in account ([research.md](research.md), R12) |
-| A case outside the equivalence list differs in production | The candidate builder logs a warning that names the kinds whose hash differs between the laid-over file and the applier's result |
+| A case outside the equivalence list differs in production | The candidate builder logs a warning that names the kinds whose content differs between the laid-over file and the applier's result |
 | A branch created while a load on main is running gets the wrong base version | `applied_at` is the timestamp of the load's writes, and a component test covers the timing ([research.md](research.md), R10) |
 
 ## Complexity Tracking

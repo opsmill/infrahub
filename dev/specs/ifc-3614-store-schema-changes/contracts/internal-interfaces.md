@@ -79,8 +79,12 @@ class SchemaCandidateComparer:
     ) -> list[str]: ...
 ```
 
-- Returns the sorted kinds whose hash differs between the two schemas, including a kind that only
-  one of them has. Returns an empty list when the two are the same.
+- Returns the sorted kinds whose content differs between the two schemas, including a kind that
+  only one of them has. Returns an empty list when the two are the same.
+- A kind whose stored hash differs is parsed again into the class of each attribute kind, as a
+  schema read from the database is, and is returned only when the hash of that content still
+  differs. An attribute held in another Python class with the same values, such as an attribute
+  that a node extension adds, is not a difference.
 - Never changes either schema.
 
 ## `SchemaCandidateBuilder`

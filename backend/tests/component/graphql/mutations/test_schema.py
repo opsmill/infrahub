@@ -8,12 +8,14 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.events.schema_action import ChangedElementsPayload, SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations.schema import validate_kind, validate_kind_dropdown, validate_kind_enum
 from infrahub.services import InfrahubServices
 from infrahub.services.component import InfrahubComponent
 from tests.adapters.cache import MemoryCache
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql
 
@@ -199,10 +201,12 @@ async def test_add_enum_option_success(
 ) -> None:
     cache = MemoryCache()
     bus = BusRecorder()
+    event_service = MemoryInfrahubEvent()
     service = await InfrahubServices.new(
         database=db,
         message_bus=bus,
         cache=cache,
+        event=event_service,
         component_type=ComponentType.API_SERVER,
         component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
     )
@@ -235,6 +239,11 @@ async def test_add_enum_option_success(
     assert color_attr.enum
     assert "yellow" in color_attr.enum
     assert color_attr.enum == ["red", "green", "blue", "yellow"]
+    assert [event.changed_elements for event in event_service.events if isinstance(event, SchemaUpdatedEvent)] == [
+        ChangedElementsPayload(
+            added_kinds=[], removed_kinds=[], changed_fields={"BaseChoice": ["color"], "TestChoice": ["color"]}
+        )
+    ]
 
 
 async def test_remove_enum_option_success(
@@ -246,10 +255,12 @@ async def test_remove_enum_option_success(
 ) -> None:
     cache = MemoryCache()
     bus = BusRecorder()
+    event_service = MemoryInfrahubEvent()
     service = await InfrahubServices.new(
         database=db,
         message_bus=bus,
         cache=cache,
+        event=event_service,
         component_type=ComponentType.API_SERVER,
         component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
     )
@@ -282,6 +293,11 @@ async def test_remove_enum_option_success(
     assert color_attr.enum
     assert "green" not in color_attr.enum
     assert color_attr.enum == ["red", "blue"]
+    assert [event.changed_elements for event in event_service.events if isinstance(event, SchemaUpdatedEvent)] == [
+        ChangedElementsPayload(
+            added_kinds=[], removed_kinds=[], changed_fields={"BaseChoice": ["color"], "TestChoice": ["color"]}
+        )
+    ]
 
 
 async def test_add_enum_option_does_not_corrupt_schema_cache(
@@ -441,10 +457,12 @@ async def test_add_dropdown_option_does_not_corrupt_schema_cache(
     """
     cache = MemoryCache()
     bus = BusRecorder()
+    event_service = MemoryInfrahubEvent()
     service = await InfrahubServices.new(
         database=db,
         message_bus=bus,
         cache=cache,
+        event=event_service,
         component_type=ComponentType.API_SERVER,
         component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
     )
@@ -498,6 +516,9 @@ async def test_add_dropdown_option_does_not_corrupt_schema_cache(
     choices_after = [c.name for c in temp_attr_after.choices]
     assert "fahrenheit" in choices_after, f"Dropdown 'fahrenheit' not found in choices: {choices_after}"
     assert "celsius" in choices_after
+    assert [event.changed_elements for event in event_service.events if isinstance(event, SchemaUpdatedEvent)] == [
+        ChangedElementsPayload(added_kinds=[], removed_kinds=[], changed_fields={"TestChoice": ["temperature_scale"]})
+    ]
 
     # The bug: The mutation modified the cached schema object in-place (with duplicate=False),
     # so test_choice_schema (which we got before the mutation) now has the new dropdown too.

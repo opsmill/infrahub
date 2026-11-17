@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, NodeExtensionSchema, RelationshipSchema
     from infrahub.core.schema.basenode_schema import BaseNodeSchema
 
-    ElementHolder = BaseNodeSchema | NodeExtensionSchema
+    type ElementHolder = BaseNodeSchema | NodeExtensionSchema
 
 
 def section_elements(

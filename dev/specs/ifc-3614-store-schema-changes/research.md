@@ -203,8 +203,9 @@ details:
 - A load keeps the class of an attribute as the file holds it. An attribute that a node
   extension adds is parsed as the base attribute class, and the applier builds the class of its
   kind, as a load does for an attribute of a node definition. The two schemas then differ in the
-  hash of that kind until the schema is read again from the database, and the comparer of R7
-  names the kind. The suite writes that attribute with the class of its kind.
+  stored hash of that kind until the schema is read again from the database. The comparer of R7
+  does not name the kind, because it compares the content of a kind parsed into the class of each
+  attribute kind. The suite writes that attribute with the class of its kind.
 - A rename of an attribute on a generic, `unique` turned off on an attribute that a calculated
   uniqueness constraint holds, a relationship kind changed to Component without `on_delete`, and
   an attribute kind changed on a generic alone keep today's result: the four cases of FR-025 are
@@ -270,7 +271,10 @@ calculates it in the other direction.
 
 **A difference is logged**: the builder holds two processed schemas, the one of the laid-over
 file, which the operation builder returns, and the applier's result. A `SchemaCandidateComparer`
-returns the kinds whose hash differs, and the builder logs a warning that names them. The
+returns the kinds whose content differs, and the builder logs a warning that names them. A kind
+whose stored hash differs is parsed again into the class of each attribute kind, as a schema read
+from the database is, and is returned only when the hash of that content still differs; an
+attribute held in another Python class with the same values is not a difference. The
 comparison is a component of its own, so that the candidate builder changes only when the way a
 candidate is built changes. The builder does not refuse the load: the applier's result is the one
 that is saved, and a known-bug case can differ on purpose. The equivalence suite covers the listed

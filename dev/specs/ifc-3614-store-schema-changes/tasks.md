@@ -269,7 +269,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       [research.md](research.md) R4 to R6 and the GraphQL contract in the same commit. When the
       case of R6 shows that the path rewrite must run before the values are set, change the
       applier and R6. **This task is the gate for phases 4 to 8.**
-- [ ] T018 [US1] Create `SchemaCandidateComparer` in
+- [X] T018 [US1] Create `SchemaCandidateComparer` in
       `backend/infrahub/core/schema_change/candidate_comparer.py`, then `SchemaCandidate` and
       `SchemaCandidateBuilder` in `backend/infrahub/core/schema_change/candidate.py`, following
       their contracts. The builder takes the operation builder, the applier and the comparer in
@@ -287,7 +287,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       - in `backend/tests/unit/core/schema_change/test_candidate.py`: both methods give the same
         diff, migrations and constraints for the same change, and a file that changes nothing
         gives an empty diff and no operation.
-- [ ] T019 [US1] Replace `api/schema.py::evaluate_candidate_schemas` with one function that the
+- [X] T019 [US1] Replace `api/schema.py::evaluate_candidate_schemas` with one function that the
       load and the check both call:
       `build_candidate_from_schemas(*, candidate_builder, branch_schema, default_branch_schema, schemas) -> SchemaCandidate`.
       It merges the schema files of the request, calls
@@ -308,7 +308,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         `backend/tests/component/pools/test_schema_number_pool_scope.py` to call
         `build_schema_candidate_builder().from_schema_root(...)` and read `candidate.schema` and
         `candidate.validation`. Their expected results do not change (SC-002).
-- [ ] T020 [US1] Replace `graphql/mutations/schema.py::update_registry` with
+- [X] T020 [US1] Replace `graphql/mutations/schema.py::update_registry` with
       `apply_attribute_property_change(*, kind, attribute, property_name, value, db, branch, account_id, service, context)`,
       where `property_name` is `choices` or `enum` and `value` is the new list, and change its
       four callers.

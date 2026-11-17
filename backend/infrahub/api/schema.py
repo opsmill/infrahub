@@ -38,7 +38,6 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
     SchemaUpdateConstraintInfo,
-    SchemaUpdateValidationResult,
 )
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import (
@@ -53,6 +52,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
+from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -77,6 +77,7 @@ if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema_change.candidate import SchemaCandidate, SchemaCandidateBuilder
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
 
@@ -216,27 +217,33 @@ def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
     return merged
 
 
-def evaluate_candidate_schemas(
-    branch_schema: SchemaBranch, schemas_to_evaluate: Sequence[SchemaRoot]
-) -> tuple[SchemaBranch, SchemaUpdateValidationResult]:
-    candidate_schema = branch_schema.duplicate()
+def build_candidate_from_schemas(
+    *,
+    candidate_builder: SchemaCandidateBuilder,
+    branch_schema: SchemaBranch,
+    default_branch_schema: SchemaBranch,
+    schemas: Sequence[SchemaRoot],
+) -> SchemaCandidate:
+    """Merge the schema files of a request and build their candidate schema over the branch schema.
+
+    Raises:
+        SchemaNotValidError: When the files cannot be merged or laid over the branch schema, or when the candidate
+            is not a valid update of the branch schema.
+
+    """
     try:
-        schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
-
-        candidate_schema.load_schema(schema=schema)
-        candidate_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
-
-        schema_diff = branch_schema.diff(other=candidate_schema)
-        candidate_schema.validate_node_deletions(diff=schema_diff)
+        candidate = candidate_builder.from_schema_root(
+            branch_schema=branch_schema,
+            schema_root=_merge_candidate_schemas(schemas=schemas),
+            default_branch_schema=default_branch_schema,
+        )
     except ValueError as exc:
         raise SchemaNotValidError(message=str(exc)) from exc
 
-    result = branch_schema.validate_update(other=candidate_schema, diff=schema_diff)
+    if candidate.validation.errors:
+        raise SchemaNotValidError(message=", ".join([error.to_string() for error in candidate.validation.errors]))
 
-    if result.errors:
-        raise SchemaNotValidError(message=", ".join([error.to_string() for error in result.errors]))
-
-    return candidate_schema, result
+    return candidate
 
 
 @router.get("")
@@ -400,6 +407,7 @@ async def load_schema(
             ),
         )
 
+    candidate_builder = build_schema_candidate_builder()
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
@@ -418,11 +426,16 @@ async def load_schema(
 
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
+        default_branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
         original_hash = branch_schema.get_hash()
 
-        candidate_schema, result = evaluate_candidate_schemas(
-            branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+        candidate = build_candidate_from_schemas(
+            candidate_builder=candidate_builder,
+            branch_schema=branch_schema,
+            default_branch_schema=default_branch_schema,
+            schemas=candidate_schemas,
         )
+        result = candidate.validation
 
         if not result.diff.all:
             return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
@@ -432,7 +445,7 @@ async def load_schema(
         # ----------------------------------------------------------
         await _validate_migrations(
             branch=branch,
-            candidate_schema=candidate_schema,
+            candidate_schema=candidate.schema,
             constraints=result.constraints,
             service=service,
             context=context,
@@ -453,7 +466,7 @@ async def load_schema(
             branch=branch,
             origin_schema=origin_schema,
             rollback_schema=origin_schema,
-            candidate_schema=candidate_schema,
+            candidate_schema=candidate.schema,
             at=Timestamp(),
             # The caller blocks on this request: a priority stamped into the
             # context puts the migration task tree in the interactive lane.
@@ -495,6 +508,7 @@ async def check_schema(
     context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
+    candidate_builder = build_schema_candidate_builder()
     service: InfrahubServices = request.app.state.service
     log.info("schema_check_request", branch=branch.name)
 
@@ -511,36 +525,28 @@ async def check_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    branch_schema = registry.schema.get_schema_branch(name=branch.name)
-
-    candidate_schema, result = evaluate_candidate_schemas(
-        branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+    candidate = build_candidate_from_schemas(
+        candidate_builder=candidate_builder,
+        branch_schema=registry.schema.get_schema_branch(name=branch.name),
+        default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
+        schemas=candidate_schemas,
     )
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    validate_migration_data = SchemaValidateMigrationData(
+    await _validate_migrations(
         branch=branch,
-        schema_branch=candidate_schema,
-        constraints=result.constraints,
-        is_isolated=True,
-    )
-    responses = await service.workflow.execute_workflow(
-        workflow=SCHEMA_VALIDATE_MIGRATION,
+        candidate_schema=candidate.schema,
+        constraints=candidate.validation.constraints,
+        service=service,
         context=context,
-        expected_return=list[SchemaValidatorPathResponseData],
-        parameters={"message": validate_migration_data},
-        priority=WorkflowPriority.HIGH,
     )
-    error_messages = [violation.message for response in responses for violation in response.violations]
-    if error_messages:
-        raise SchemaNotValidError(message=",\n".join(error_messages))
 
     return JSONResponse(
         status_code=202,
         content={
-            "diff": result.diff.model_dump(),
+            "diff": candidate.validation.diff.model_dump(),
             "warnings": [warning.model_dump(mode="json") for warning in warnings],
         },
     )
