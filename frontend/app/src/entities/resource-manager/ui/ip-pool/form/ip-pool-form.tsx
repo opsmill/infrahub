@@ -22,21 +22,24 @@ import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface IpPoolKindConfig {
-  resourceGenericKind: typeof IP_PREFIX_GENERIC | typeof IP_ADDRESS_GENERIC;
+  ipGenericKind: typeof IP_PREFIX_GENERIC | typeof IP_ADDRESS_GENERIC;
   defaultTypeFieldName: "default_prefix_type" | "default_address_type";
   label: "IP prefix pool" | "IP address pool";
+  toastId: "ip-prefix-pool" | "ip-address-pool";
 }
 
 const IP_POOL_KIND_CONFIG: Record<IpPoolKind, IpPoolKindConfig> = {
   [IP_PREFIX_POOL]: {
-    resourceGenericKind: IP_PREFIX_GENERIC,
+    ipGenericKind: IP_PREFIX_GENERIC,
     defaultTypeFieldName: "default_prefix_type",
     label: "IP prefix pool",
+    toastId: "ip-prefix-pool",
   },
   [IP_ADDRESS_POOL]: {
-    resourceGenericKind: IP_ADDRESS_GENERIC,
+    ipGenericKind: IP_ADDRESS_GENERIC,
     defaultTypeFieldName: "default_address_type",
     label: "IP address pool",
+    toastId: "ip-address-pool",
   },
 };
 
@@ -52,9 +55,8 @@ export function IpPoolForm({
   onSubmit,
   ...props
 }: IpPoolFormProps) {
-  const { resourceGenericKind, defaultTypeFieldName, label } = IP_POOL_KIND_CONFIG[poolKind];
-  const toastIdPrefix = `alert-success-${label.toLowerCase().replaceAll(" ", "-")}`;
-  const { schema: resourceGenericSchema, isGeneric } = useSchema(resourceGenericKind);
+  const { ipGenericKind, defaultTypeFieldName, label, toastId } = IP_POOL_KIND_CONFIG[poolKind];
+  const { schema: ipGenericSchema, isGeneric } = useSchema(ipGenericKind);
   const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
@@ -70,13 +72,13 @@ export function IpPoolForm({
       parentData,
     });
 
-    if (!resourceGenericSchema || !isGeneric) return schemaFields;
+    if (!ipGenericSchema || !isGeneric) return schemaFields;
 
     // The attribute is free text, so restrict it to the kinds that inherit from the generic.
     return schemaFields.map((field) => {
       if (field.name === defaultTypeFieldName) {
         const items =
-          resourceGenericSchema.used_by?.map((kind) => {
+          ipGenericSchema.used_by?.map((kind) => {
             const { schema } = getSchema(kind);
 
             if (!schema) {
@@ -134,7 +136,7 @@ export function IpPoolForm({
         {
           onSuccess: async (updatedNode) => {
             toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${label} updated`} />, {
-              toastId: `${toastIdPrefix}-update`,
+              toastId: `alert-success-${toastId}-update`,
             });
             if (onSuccess) await onSuccess(updatedNode);
           },
@@ -152,7 +154,7 @@ export function IpPoolForm({
         {
           onSuccess: async (newNode) => {
             toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${label} created`} />, {
-              toastId: `${toastIdPrefix}-create`,
+              toastId: `alert-success-${toastId}-create`,
             });
             if (onSuccess) {
               await onSuccess(newNode);

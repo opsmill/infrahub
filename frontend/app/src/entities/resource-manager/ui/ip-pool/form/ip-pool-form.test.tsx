@@ -12,6 +12,7 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/crea
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../tests/components/render";
@@ -19,6 +20,7 @@ import {
   generateAttributeSchema,
   generateGenericSchema,
   generateNodeSchema,
+  generateRelationshipSchema,
 } from "../../../../../../tests/fake/schema";
 import { IpPoolForm } from "./ip-pool-form";
 
@@ -60,7 +62,12 @@ const initialGenericSchemas = store.get(genericSchemasAtom);
 
 const savedPool: NodeCore = { id: "pool-id", display_label: "pool-1", __typename: "CorePool" };
 
-function setSchemas(poolCase: PoolCase, { usedBy }: { usedBy: string[] | null }) {
+interface PoolSchemaOptions {
+  usedBy: string[] | null;
+  relationships?: RelationshipSchema[];
+}
+
+function buildSchemas(poolCase: PoolCase, { usedBy, relationships = [] }: PoolSchemaOptions) {
   const poolSchema = generateNodeSchema({
     kind: poolCase.poolKind,
     namespace: "Core",
@@ -74,22 +81,30 @@ function setSchemas(poolCase: PoolCase, { usedBy }: { usedBy: string[] | null })
         order_weight: 2,
       }),
     ],
-    relationships: [],
+    relationships,
   });
-  store.set(nodeSchemasAtom, [
+  return {
     poolSchema,
-    ...[poolCase.resource, poolCase.otherResource].map((resource) =>
-      generateNodeSchema({
-        kind: resource.kind,
-        label: resource.label,
-        namespace: resource.namespace,
-      })
-    ),
-  ]);
-  store.set(
-    genericSchemasAtom,
-    usedBy ? [generateGenericSchema({ kind: poolCase.genericKind, used_by: usedBy })] : []
-  );
+    nodeSchemas: [
+      poolSchema,
+      ...[poolCase.resource, poolCase.otherResource].map((resource) =>
+        generateNodeSchema({
+          kind: resource.kind,
+          label: resource.label,
+          namespace: resource.namespace,
+        })
+      ),
+    ],
+    genericSchemas: usedBy
+      ? [generateGenericSchema({ kind: poolCase.genericKind, used_by: usedBy })]
+      : [],
+  };
+}
+
+function setSchemas(poolCase: PoolCase, options: PoolSchemaOptions) {
+  const { poolSchema, nodeSchemas, genericSchemas } = buildSchemas(poolCase, options);
+  store.set(nodeSchemasAtom, nodeSchemas);
+  store.set(genericSchemasAtom, genericSchemas);
   return poolSchema;
 }
 
@@ -289,6 +304,48 @@ describe("IpPoolForm", () => {
   });
 
   test.each(POOL_CASES)(
+    "confirms a $poolKind created while the other IP pool kind's confirmation is on screen",
+    async (poolCase) => {
+      // GIVEN
+      mockMutations();
+      const otherCase = POOL_CASES.find(({ poolKind }) => poolKind !== poolCase.poolKind)!;
+      const schemas = [otherCase, poolCase].map((pool) =>
+        buildSchemas(pool, { usedBy: [pool.resource.kind] })
+      );
+      store.set(
+        nodeSchemasAtom,
+        schemas.flatMap(({ nodeSchemas }) => nodeSchemas)
+      );
+      store.set(
+        genericSchemasAtom,
+        schemas.flatMap(({ genericSchemas }) => genericSchemas)
+      );
+      const component = await render(
+        <>
+          <ObjectForm kind={otherCase.poolKind} />
+          <ObjectForm kind={poolCase.poolKind} />
+        </>
+      );
+      const nameInputs = component.getByRole("textbox", { name: "Name *" });
+      const saveButtons = component.getByRole("button", { name: "Save" });
+      await nameInputs.nth(0).fill("pool-1");
+      await saveButtons.nth(0).click();
+      await expect
+        .element(component.getByText(`${otherCase.poolLabel} created`, { exact: true }))
+        .toBeVisible();
+      await nameInputs.nth(1).fill("pool-2");
+
+      // WHEN
+      await saveButtons.nth(1).click();
+
+      // THEN
+      await expect
+        .element(component.getByText(`${poolCase.poolLabel} created`, { exact: true }))
+        .toBeVisible();
+    }
+  );
+
+  test.each(POOL_CASES)(
     "updates a $poolKind and confirms it when editing without onSubmit",
     async (poolCase) => {
       // GIVEN
@@ -357,11 +414,24 @@ describe("IpPoolForm", () => {
   );
 
   test.each(POOL_CASES)(
-    "creates a $poolKind from the add-new action that pre-fills a parent",
+    "creates a $poolKind from the add-new action that pre-fills its parent",
     async (poolCase) => {
       // GIVEN
       const { create, update } = mockMutations();
-      setSchemas(poolCase, { usedBy: [poolCase.resource.kind] });
+      // A schema extension can give a pool a parent, which a common_parent relationship then pre-fills.
+      setSchemas(poolCase, {
+        usedBy: [poolCase.resource.kind],
+        relationships: [
+          generateRelationshipSchema({
+            name: "site",
+            label: "Site",
+            peer: "LocationSite",
+            kind: "Parent",
+            cardinality: "one",
+            optional: false,
+          }),
+        ],
+      });
       const initialObject: NodeFieldsWithMetadata = {
         site: {
           node: { id: "site-id", display_label: "atl1", __typename: "LocationSite" },
@@ -384,7 +454,10 @@ describe("IpPoolForm", () => {
         .element(component.getByText(`${poolCase.poolLabel} created`, { exact: true }))
         .toBeVisible();
       expect(create).toHaveBeenCalledTimes(1);
-      expect(create.mock.calls[0]![0]).toMatchObject({ objectKind: poolCase.poolKind });
+      expect(create.mock.calls[0]![0]).toMatchObject({
+        objectKind: poolCase.poolKind,
+        data: { name: { value: "pool-1" }, site: { id: "site-id" } },
+      });
       expect(update).not.toHaveBeenCalled();
     }
   );
