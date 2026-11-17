@@ -460,7 +460,7 @@ a GraphQL query returns the history of a branch in pages.
       - a page of several schema changes runs a fixed number of queries, whatever the number of
         schema changes on it. Count them with `CountingInfrahubDatabase` from
         `backend/tests/helpers/db_query_counter.py`.
-- [ ] T027 [US2] Create the base class and the data set of the functional tests in
+- [X] T027 [US2] Create the base class and the data set of the functional tests in
       `backend/tests/functional/schema_change/shared.py`, in the way
       `backend/tests/integration/schema_lifecycle/shared.py::TestSchemaLifecycleBase` does:
       - `TestSchemaChangeBase(TestInfrahubApp)`, with the schema files of the scenario as
@@ -490,7 +490,7 @@ a GraphQL query returns the history of a branch in pages.
         data set fail, stores none, and the records are the same as before (spec, decision 1);
       - a schema check stores none, and returns the diff between the branch schema and the
         applier's result (FR-021).
-- [ ] T028 [US2] Add the history query methods to `TestSchemaChangeHistory` in
+- [X] T028 [US2] Add the history query methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
       of T027. Load one more file that adds an attribute to a generic, so the branch has three
       applied schema changes, then query `InfrahubSchemaChange` through GraphQL:
