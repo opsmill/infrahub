@@ -104,7 +104,7 @@ class SchemaChangeMigrationRecordData:
 class StoredProperties:
     """The properties of one record as a query returned them, read with the type each one is stored with.
 
-    A property whose value is the text `NULL` is read as `None`, as `StandardNode` stores `None`.
+    A property whose value is the text `NULL` is read as `None`, because a record stores `None` as that text.
     """
 
     def __init__(self, label: str, properties: Mapping[str, CypherValue]) -> None:
