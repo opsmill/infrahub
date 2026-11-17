@@ -2504,11 +2504,11 @@ class NodeGetListByAttributeValueQueryResult:
 
 
 class NodeGetListByAttributeValueQuery(Query):
-    """Find the nodes whose attribute values match a search text, best match first.
+    """Find the nodes whose indexed attribute values match a search text, best match first.
 
-    A node whose display label or name equals the search text comes first, then one whose label
-    starts with or contains it, then one matched on another attribute; within the same rank, the
-    node with the shorter matching value comes first.
+    Matches are scored and sorted before the branch and time checks, so the checks run only on
+    the rows read until the limit is filled, and the first row of a node that passes them is its
+    best match.
     """
 
     name = "node_get_list_by_attribute_value"
