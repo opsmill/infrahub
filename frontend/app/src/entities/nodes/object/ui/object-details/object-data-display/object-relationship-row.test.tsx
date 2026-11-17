@@ -171,6 +171,26 @@ describe("ObjectRelationshipRow", () => {
       const lockIcon = component.container.querySelector("svg");
       expect(lockIcon).not.toBeNull();
     });
+
+    it("keeps the metadata icon visible while its details are open", async () => {
+      // GIVEN
+      const component = await render(
+        <ObjectRelationshipRow
+          relationshipSchema={relationshipSchemaOne}
+          relationshipData={relationshipDataWithNode}
+          permission={allowedPermission}
+        />
+      );
+      const metadataButton = component.getByTestId("view-metadata-button");
+
+      // WHEN
+      await metadataButton.click();
+
+      // THEN
+      await expect.element(component.getByTestId("metadata-tooltip")).toBeVisible();
+      const metadataIcon = metadataButton.element().querySelector("iconify-icon");
+      await expect.poll(() => metadataIcon && getComputedStyle(metadataIcon).opacity).toBe("1");
+    });
   });
 
   describe("Cardinality many", () => {

@@ -99,7 +99,7 @@ function RelationshipOneRow({
                 source={relationshipProperties.source}
                 owner={relationshipProperties.owner}
                 isProtected={relationshipProperties.is_protected}
-                iconClassName="opacity-0 group-hover/row:opacity-100 in-focus-visible:opacity-100"
+                iconClassName="opacity-0 group-hover/row:opacity-100 in-focus-visible:opacity-100 in-aria-expanded:opacity-100"
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
@@ -186,7 +186,7 @@ function RelationshipManyRow({
                         source={edgeProperties.source}
                         owner={edgeProperties.owner}
                         isProtected={edgeProperties.is_protected}
-                        iconClassName="opacity-0 group-hover/edge:opacity-100 in-focus-visible:opacity-100"
+                        iconClassName="opacity-0 group-hover/edge:opacity-100 in-focus-visible:opacity-100 in-aria-expanded:opacity-100"
                       />
                     </>
                   )}
