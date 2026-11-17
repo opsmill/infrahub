@@ -11,7 +11,10 @@ React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 Before adding or modifying UI, read the [component patterns](../../dev/guidelines/frontend/component-patterns.md)
 and [reuse inventory](../../dev/knowledge/frontend/shared-components.md). When the same UI responsibility
 is repeated across callers, extract it in the same PR without waiting for a user or review request.
-Follow the guidelines for extraction boundaries, component placement, and preserving caller behavior.
+The same applies when you add a variant of an existing component or make one change in several
+files: pass the differences to one component instead of copying it, and extract the block before
+changing its copies. Follow the guidelines for extraction boundaries, component placement, and
+preserving caller behavior.
 
 ## Commands
 
