@@ -14,6 +14,7 @@ A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resour
 - When a pool allocates an address or a prefix on a branch, it reserves the value on every branch at that moment. A request to the same pool from another branch receives a different value, so two branches that allocate from one pool do not hold the same value when they are merged. See [Branch-agnostic allocation](../resource-manager/overview.mdx#branch-agnostic-allocation).
 - When you pass the same `identifier` on repeated allocation requests, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object.
 - Infrahub handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests to the same pool never receive the same resource.
+- When a pool has several prefixes as resources, it allocates from the prefix with the highest `allocation_weight` first. The attribute comes from the `CoreWeightedPoolResource` generic. The Marketplace `IpamPrefix` does not inherit from it, so add it to your prefix node to use weights. See [Weighted allocation](../resource-manager/weighted-allocation.mdx).
 
 In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next free address, and a request that repeats an identifier receives the address already allocated to it:
 
