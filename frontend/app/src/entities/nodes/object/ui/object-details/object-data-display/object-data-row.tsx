@@ -32,12 +32,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
   const defaultTab = isRelationship ? "relationships" : "attributes";
 
   return (
-    <div
-      className={classNames(
-        "group/row grid grid-cols-detail-row gap-4 px-3 py-2 text-sm",
-        className
-      )}
-    >
+    <div className={classNames("grid grid-cols-detail-row gap-4 px-3 py-2 text-sm", className)}>
       <dt className="flex h-8 min-w-0 items-center font-medium text-foreground-muted">
         {schema ? (
           <DialogTrigger>

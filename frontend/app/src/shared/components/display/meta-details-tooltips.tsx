@@ -14,13 +14,16 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
+// Hovering an element with this class reveals every metadata icon inside it that is set to reveal on hover.
+export const METADATA_HOVER_AREA = "group/metadata";
+
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
   updatedAt: AnyAttribute["updated_at"];
   source?: NodeCore | null;
   owner?: NodeCore | null;
   isProtected: AnyAttribute["is_protected"];
-  iconClassName?: string;
+  revealOnHover?: boolean;
 }
 
 export default function MetaDetailsTooltip({
@@ -29,7 +32,7 @@ export default function MetaDetailsTooltip({
   source,
   owner,
   isProtected,
-  iconClassName,
+  revealOnHover = false,
 }: MetaDetailsTooltipProps) {
   const { isProfile, isTemplate } = useSchema(source?.__typename);
   const { formatDate } = useFormatDate();
@@ -84,9 +87,17 @@ export default function MetaDetailsTooltip({
         shape="circle"
         variant="ghost"
         className="text-foreground-muted"
+        aria-label="View metadata"
         data-testid="view-metadata-button"
       >
-        <Icon icon="mdi:information-slab-circle-outline" className={iconClassName} />
+        <Icon
+          icon="mdi:information-slab-circle-outline"
+          className={
+            revealOnHover
+              ? "in-aria-expanded:opacity-100 in-focus-visible:opacity-100 opacity-0 group-hover/metadata:opacity-100"
+              : undefined
+          }
+        />
       </Button>
 
       <Popover data-testid="metadata-tooltip">

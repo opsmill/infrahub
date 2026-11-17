@@ -2,7 +2,9 @@ import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import MetaDetailsTooltip, {
+  METADATA_HOVER_AREA,
+} from "@/shared/components/display/meta-details-tooltips";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
@@ -30,6 +32,7 @@ export function ObjectAttributeRow({
 
   return (
     <ObjectDataRow
+      className={METADATA_HOVER_AREA}
       fieldSchema={attributeSchema}
       objectKind={objectKind}
       value={
@@ -42,7 +45,7 @@ export function ObjectAttributeRow({
             updatedAt={attributeData.updated_at}
             source={attributeData.source}
             owner={attributeData.owner}
-            iconClassName="opacity-0 group-hover/row:opacity-100 in-focus-visible:opacity-100 in-aria-expanded:opacity-100"
+            revealOnHover
             isProtected={attributeData.is_protected}
             header={
               !attributeSchema.read_only && (

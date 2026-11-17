@@ -121,7 +121,7 @@ describe("ObjectRelationshipRow", () => {
       );
 
       // WHEN - click the metadata button to open the tooltip
-      await component.getByTestId("view-metadata-button").click();
+      await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
       const editButton = component.getByTestId("edit-metadata-button");
@@ -142,7 +142,7 @@ describe("ObjectRelationshipRow", () => {
       );
 
       // WHEN - click the metadata button to open the tooltip
-      await component.getByTestId("view-metadata-button").click();
+      await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
       const editButton = component.getByTestId("edit-metadata-button");
@@ -179,9 +179,10 @@ describe("ObjectRelationshipRow", () => {
           relationshipSchema={relationshipSchemaOne}
           relationshipData={relationshipDataWithNode}
           permission={allowedPermission}
+          objectKind="TestDevice"
         />
       );
-      const metadataButton = component.getByTestId("view-metadata-button");
+      const metadataButton = component.getByRole("button", { name: "View metadata" });
 
       // WHEN
       await metadataButton.click();

@@ -3,7 +3,9 @@ import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import MetaDetailsTooltip, {
+  METADATA_HOVER_AREA,
+} from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
 import type {
@@ -77,6 +79,7 @@ function RelationshipOneRow({
 
   return (
     <ObjectDataRow
+      className={METADATA_HOVER_AREA}
       fieldSchema={relationshipSchema}
       objectKind={objectKind}
       value={
@@ -99,7 +102,7 @@ function RelationshipOneRow({
                 source={relationshipProperties.source}
                 owner={relationshipProperties.owner}
                 isProtected={relationshipProperties.is_protected}
-                iconClassName="opacity-0 group-hover/row:opacity-100 in-focus-visible:opacity-100 in-aria-expanded:opacity-100"
+                revealOnHover
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
@@ -171,7 +174,7 @@ function RelationshipManyRow({
               if (!relatedNode) return null;
 
               return (
-                <Row key={relatedNode.id} className="group/edge">
+                <Row key={relatedNode.id} className={METADATA_HOVER_AREA}>
                   <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
                     {getNodeLabel(relatedNode)}
                   </Link>
@@ -186,7 +189,7 @@ function RelationshipManyRow({
                         source={edgeProperties.source}
                         owner={edgeProperties.owner}
                         isProtected={edgeProperties.is_protected}
-                        iconClassName="opacity-0 group-hover/edge:opacity-100 in-focus-visible:opacity-100 in-aria-expanded:opacity-100"
+                        revealOnHover
                       />
                     </>
                   )}
