@@ -2608,9 +2608,9 @@ class NodeGetListByAttributeValueQuery(Query):
             WHEN value = search THEN 3
             WHEN value STARTS WITH search THEN 2
             ELSE 1
-        END AS tier, size(value) AS length
+        END AS match_quality, size(value) AS value_length
         // Ties break on the attribute's uuid, not the node's, so that a node is read only when its row is checked.
-        ORDER BY tier DESC, length ASC, attr.uuid
+        ORDER BY match_quality DESC, value_length ASC, attr.uuid
         // --------------------------
         // find the node that owns the attribute, of a searched kind
         // --------------------------
