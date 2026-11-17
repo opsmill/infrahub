@@ -8,7 +8,6 @@ import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
-import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -21,7 +20,7 @@ interface MetaDetailsTooltipProps {
   source?: NodeCore | null;
   owner?: NodeCore | null;
   isProtected: AnyAttribute["is_protected"];
-  triggerClassName?: string;
+  iconClassName?: string;
 }
 
 export default function MetaDetailsTooltip({
@@ -30,7 +29,7 @@ export default function MetaDetailsTooltip({
   source,
   owner,
   isProtected,
-  triggerClassName,
+  iconClassName,
 }: MetaDetailsTooltipProps) {
   const { isProfile, isTemplate } = useSchema(source?.__typename);
   const { formatDate } = useFormatDate();
@@ -84,10 +83,10 @@ export default function MetaDetailsTooltip({
         size="xs"
         shape="circle"
         variant="ghost"
-        className={classNames("text-foreground-muted", triggerClassName)}
+        className="text-foreground-muted"
         data-testid="view-metadata-button"
       >
-        <Icon icon="mdi:information-slab-circle-outline" />
+        <Icon icon="mdi:information-slab-circle-outline" className={iconClassName} />
       </Button>
 
       <Popover data-testid="metadata-tooltip">
