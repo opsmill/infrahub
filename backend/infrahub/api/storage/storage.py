@@ -9,7 +9,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_artifact_content_reader, get_current_user, get_db
-from infrahub.api.storage import file_object
+from infrahub.api.storage import encryption_migration, file_object
 from infrahub.artifacts.content import ArtifactContentReader  # noqa: TC001
 from infrahub.core import registry
 from infrahub.core.protocols import CoreFileObject
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 router = APIRouter(prefix="/storage")
 router.include_router(file_object.router)
+router.include_router(encryption_migration.router)
 
 
 class UploadResponse(BaseModel):

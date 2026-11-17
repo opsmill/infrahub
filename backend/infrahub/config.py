@@ -396,6 +396,25 @@ class StorageSettings(BaseSettings):
             "it makes the files encrypted with the previous value unreadable."
         ),
     )
+    encryption_migration_max_size: int = Field(
+        default=100,
+        ge=1,
+        description=(
+            "Largest stored file, in MB, that the API server reads into memory to encrypt a file stored before "
+            "storage encryption was enabled. A larger file is skipped and reported."
+        ),
+    )
+    encryption_migration_memory_budget: int = Field(
+        default=600,
+        ge=3,
+        description=(
+            "Memory, in MB, that one API server process may use at the same time to encrypt files stored before "
+            "storage encryption was enabled. A file takes three times its size while it is encrypted, so the "
+            "default encrypts two files of the largest size at once. A request waits for free memory and is "
+            "answered with a 429 response when none is free in time. A file larger than a third of this value is "
+            "skipped and reported."
+        ),
+    )
 
 
 class DatabaseSettings(BaseSettings):

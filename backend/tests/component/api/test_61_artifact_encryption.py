@@ -8,6 +8,7 @@ import pytest
 
 from infrahub import config
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import AesGcmCodec
 from infrahub.storage_encryption.crypto import StorageKey, seal
 from tests.helpers.artifact import create_stored_artifact, stored_artifact_encryption
 
@@ -67,7 +68,7 @@ async def test_check_follows_the_key_and_stores_what_it_finds(
 ) -> None:
     artifact = await create_artifact(db=db, car_person_data_generic=car_person_data_generic)
     url = f"/api/artifact/{artifact.id}/encryption"
-    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(encryption_enabled)).store(
         identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT)
     )
 
@@ -154,7 +155,7 @@ async def test_check_of_a_deleted_file_leaves_an_encrypted_value_stored(
 ) -> None:
     artifact = await create_artifact(db=db, car_person_data_generic=car_person_data_generic)
     url = f"/api/artifact/{artifact.id}/encryption"
-    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(encryption_enabled)).store(
         identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT)
     )
 
