@@ -472,7 +472,7 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
         user_id: str,
-        application_id: str,
+        application_id: str | None,
     ) -> str:
         self.calls.append(
             SchemaApplicationCall(
@@ -516,7 +516,7 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
         user_id: str,
-        application_id: str,
+        application_id: str | None,
     ) -> str:
         await super().execute(
             branch=branch,

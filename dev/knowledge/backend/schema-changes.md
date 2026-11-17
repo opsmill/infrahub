@@ -96,7 +96,10 @@ measures the production builder.
 
 `api/schema.py::load_schema` runs `SchemaChangeApplicationRunner.run` in place of calling
 `SchemaUpdateCoordinator.execute`, inside the schema lock, after the constraint checks pass and only
-when the diff is not empty. A load refused before that point stores nothing.
+when the diff is not empty. A load refused before that point stores nothing. When the diff is not
+empty but the candidate has no operation, the runner calls the coordinator with
+`application_id=None`, stores no schema change and logs a warning naming the branch, so the stored
+history misses that change; in the tests the operations check reports it.
 
 1. `SchemaChangeRecorder.start` creates the schema change and one application, both `running`, with
    the operations, at the timestamp the coordinator then uses for every write.

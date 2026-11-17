@@ -434,7 +434,7 @@ class SchemaUpdateExecutor(Protocol):
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
         user_id: str,
-        application_id: str,
+        application_id: str | None,
     ) -> str: ...
 
 
@@ -459,7 +459,8 @@ class SchemaChangeApplicationRunner:
   and do not import them. The unit tests of the runner pass a recording and a failing
   implementation of each, from `backend/tests/unit/core/schema_change/helpers.py`.
 - The arguments of `SchemaUpdateExecutor.execute` are the ones the runner passes, each with a
-  required type, because the runner always has a value for each.
+  required type, because the runner always has a value for each. `application_id` is `None` for
+  a candidate without operations.
   `SchemaUpdateCoordinator.execute` accepts wider types and has one signature after this feature
   removes its overloads ("Changed contracts"), so it satisfies the protocol.
 - The runner passes the `user_id` and the `context` it received to the executor unchanged.
@@ -469,6 +470,10 @@ class SchemaChangeApplicationRunner:
 - Returns the new schema hash.
 - Calls `recorder.start`, then `executor.execute` with the application ID, then
   `recorder.complete`.
+- When the candidate has no operation, calls only `executor.execute`, with
+  `application_id=None`, and logs the warning
+  `Applying a schema change that has no operation, without recording it` with `branch` and
+  `diff`. No schema change is stored, and the migrations write no record.
 - When the executor raises, calls `recorder.fail` with the text of the error, then raises the
   same exception. The caller receives the same error as today.
 - `recorder.complete` runs after the handling of an executor error. When it raises a

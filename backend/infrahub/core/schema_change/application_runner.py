@@ -46,7 +46,7 @@ class SchemaUpdateExecutor(Protocol):
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
         user_id: str,
-        application_id: str,
+        application_id: str | None,
     ) -> str: ...
 
 
@@ -80,22 +80,37 @@ class SchemaChangeApplicationRunner:
         exception is raised again. When recording the schema change as applied raises a record write error after the
         update saved the schema, the error is logged, the schema change stays running and the hash is returned.
 
+        A candidate without operations is applied without storing a schema change, and a warning names the branch.
+
         Returns:
             The schema hash of the branch after the update.
 
         """
-        recording = await self.recorder.start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
-        try:
-            updated_hash = await self.executor.execute(
+        if not candidate.operations:
+            # A schema change needs an operation, and a load must not fail because its operations missed a change.
+            log.warning(
+                "Applying a schema change that has no operation, without recording it",
+                branch=branch.name,
+                diff=candidate.validation.diff.all,
+            )
+            return await self._execute(
                 branch=branch,
                 origin_schema=origin_schema,
-                rollback_schema=origin_schema,
-                candidate_schema=candidate.schema,
+                candidate=candidate,
                 at=at,
                 context=context,
-                diff=candidate.validation.diff,
-                migrations=candidate.validation.migrations,
-                limit=candidate.validation.diff.all,
+                user_id=user_id,
+                application_id=None,
+            )
+
+        recording = await self.recorder.start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
+        try:
+            updated_hash = await self._execute(
+                branch=branch,
+                origin_schema=origin_schema,
+                candidate=candidate,
+                at=at,
+                context=context,
                 user_id=user_id,
                 application_id=recording.application_id,
             )
@@ -104,6 +119,31 @@ class SchemaChangeApplicationRunner:
             raise
         await self._record_completion(recording=recording, branch=branch, user_id=user_id)
         return updated_hash
+
+    async def _execute(
+        self,
+        *,
+        branch: Branch,
+        origin_schema: SchemaBranch,
+        candidate: SchemaCandidate,
+        at: Timestamp,
+        context: InfrahubContext,
+        user_id: str,
+        application_id: str | None,
+    ) -> str:
+        return await self.executor.execute(
+            branch=branch,
+            origin_schema=origin_schema,
+            rollback_schema=origin_schema,
+            candidate_schema=candidate.schema,
+            at=at,
+            context=context,
+            diff=candidate.validation.diff,
+            migrations=candidate.validation.migrations,
+            limit=candidate.validation.diff.all,
+            user_id=user_id,
+            application_id=application_id,
+        )
 
     async def _record_completion(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None:
         try:

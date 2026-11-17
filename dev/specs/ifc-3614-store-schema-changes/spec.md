@@ -279,7 +279,9 @@ branch. Count the records of that branch and of main before and after.
   the schema of a branch. Its operations are built from the mutation's input, because the mutation
   has no schema file.
 - **FR-003**: A schema load or a mutation that changes nothing MUST store nothing. Loading the same
-  file twice stores one schema change.
+  file twice stores one schema change. A load whose diff is not empty but gives no operation is
+  applied without storing a schema change, and a warning naming the branch is logged
+  ([research.md](research.md), R5).
 - **FR-004**: A schema change whose operations need no migration, such as a changed label, MUST
   still be stored. Its application has no migration records.
 - **FR-005**: A schema change MUST hold:

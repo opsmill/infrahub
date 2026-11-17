@@ -176,6 +176,11 @@ leaves out (`core/schema/attribute_parameters.py::NumberPoolParameters.update` r
   (`SchemaBranch.get_by_id`, and the attribute and relationship maps of `BaseNodeSchema`).
 - A file that changes nothing gives an empty processed diff, so no operation and no schema change
   (FR-003).
+- A processed diff that is not empty can still give no operation, when every changed path is one
+  that the file does not state. The runner then applies the candidate without a record, as a
+  merge does, and logs a warning that names the branch: the stored history misses that change.
+  In the tests, the operations check reports it, because the operations do not rebuild the
+  schema.
 
 **Order of the operations** in one schema change:
 

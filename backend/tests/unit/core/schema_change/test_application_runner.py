@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
@@ -40,6 +40,7 @@ USER_ID = "4d0c7e2a-6b19-4f3e-8a52-c1d9e7f30b64"
 UPDATED_HASH = "f3a1c92e7b4d5068"
 RECORD_FAILURE_EVENT = "Could not record the failure of a schema change"
 RECORD_COMPLETION_EVENT = "Could not record the application of a schema change"
+NO_OPERATION_EVENT = "Applying a schema change that has no operation, without recording it"
 CHANGED_KIND = "TestCar"
 MIGRATION_FAILURE = "The migration node.attribute.add failed on 2 nodes"
 
@@ -105,7 +106,7 @@ def _start_call(run_input: RunInput) -> SchemaApplicationCall:
     )
 
 
-def _execute_call(run_input: RunInput) -> SchemaApplicationCall:
+def _execute_call(run_input: RunInput, application_id: str | None = RECORDED_APPLICATION_ID) -> SchemaApplicationCall:
     validation = run_input.candidate.validation
     return SchemaApplicationCall(
         method=EXECUTOR_EXECUTE,
@@ -120,7 +121,7 @@ def _execute_call(run_input: RunInput) -> SchemaApplicationCall:
             "migrations": validation.migrations,
             "limit": [CHANGED_KIND],
             "user_id": USER_ID,
-            "application_id": RECORDED_APPLICATION_ID,
+            "application_id": application_id,
         },
     )
 
@@ -246,3 +247,23 @@ async def test_run_returns_the_hash_and_logs_when_recording_the_application_fail
     )
     assert len(failures) == 1
     assert failures[0]["exc_info"]
+
+
+async def test_run_applies_a_candidate_without_operations_without_recording_it_and_logs_a_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    calls: list[SchemaApplicationCall] = []
+    runner = SchemaChangeApplicationRunner(
+        recorder=RecordingApplicationRecorder(calls=calls),
+        executor=RecordingSchemaUpdateExecutor(calls=calls, updated_hash=UPDATED_HASH),
+    )
+    run_input = _build_run_input()
+    run_input = replace(run_input, candidate=replace(run_input.candidate, operations=[]))
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"):
+        updated_hash = await _run(runner=runner, run_input=run_input)
+
+    assert updated_hash == UPDATED_HASH
+    assert calls == [_execute_call(run_input, application_id=None)]
+    warnings = find_logged_events(caplog, event=NO_OPERATION_EVENT, branch=run_input.branch.name)
+    assert len(warnings) == 1
