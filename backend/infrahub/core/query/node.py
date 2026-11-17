@@ -2594,7 +2594,7 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, av
+        WITH n, attr, av, match_quality, value_length
         WHERE r.status = "active"
         %(kind_filter)s
         // --------------------------
@@ -2608,7 +2608,7 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n
+        WITH n, attr, match_quality, value_length
         WHERE r.status = "active" AND current_value = av
         // --------------------------
         // keep the nodes that exist on the branch at the searched time
@@ -2620,8 +2620,11 @@ class NodeGetListByAttributeValueQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n
+        WITH n, attr, match_quality, value_length
         WHERE r.status = "active"
+        // An ORDER BY holds only for the clause right after it, so the ranking is applied again before the results.
+        WITH n
+        ORDER BY match_quality DESC, value_length ASC, attr.uuid
         RETURN DISTINCT n.uuid AS uuid, n.kind AS kind
         """ % {
             "match_predicate": match_predicate,
