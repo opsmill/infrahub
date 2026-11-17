@@ -36,6 +36,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigrationQuery01,
 )
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigrationQuery01
+from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigrationQuery
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -51,6 +52,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     build_attribute_migration,
     build_node_kind_update_migration,
     build_node_remove_migration,
+    build_relationship_remove_params,
     get_branch,
     load_selection_dataset,
 )
@@ -436,4 +438,47 @@ async def test_node_remove_empty_kind(
         init_kwargs={"migration": build_node_remove_migration(default_branch, EMPTY_KIND)},
         branch=default_branch,
         expected={},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Relationship removal
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RelationshipCase:
+    name: str
+    branch_name: str
+    relationship_name: str
+    expected: dict[str, int]
+
+
+RELATIONSHIP_CASES = [
+    RelationshipCase(name="aware-main", branch_name="main", relationship_name="gadget", expected={WIDGET_KIND: 2}),
+    RelationshipCase(
+        name="aware-branch", branch_name=SELECTION_BRANCH_NAME, relationship_name="gadget", expected={WIDGET_KIND: 2}
+    ),
+    RelationshipCase(name="agnostic-main", branch_name="main", relationship_name="partner", expected={WIDGET_KIND: 1}),
+    RelationshipCase(
+        name="agnostic-branch",
+        branch_name=SELECTION_BRANCH_NAME,
+        relationship_name="partner",
+        expected={WIDGET_KIND: 1},
+    ),
+]
+
+
+@pytest.mark.parametrize("case", RELATIONSHIP_CASES, ids=lambda case: case.name)
+async def test_relationship_remove(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: RelationshipCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration, query_params = build_relationship_remove_params(db, branch, case.relationship_name)
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeRelationshipRemoveMigrationQuery],
+        init_kwargs={"migration": migration, "query_params": query_params},
+        branch=branch,
+        expected=case.expected,
     )
