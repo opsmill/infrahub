@@ -127,6 +127,140 @@ infrahubctl schema show <kind> [--branch <branch_name>]
 
 `schema show` prints the attributes and relationships of a kind, which is useful when querying or creating objects with [`infrahubctl`](../objects/manage-from-cli).
 
+## View the schema changes of a branch
+
+Infrahub records each change to the schema of a branch as a schema change. Query the schema changes of a branch to find out which loads changed its schema and in what order, which attributes and relationships each load added, removed or changed, which data migrations ran on the objects of the branch, and why a load failed.
+
+### What a schema change contains
+
+A schema change is one schema load that changed the schema of a branch, or one mutation that changed the choices of a dropdown attribute or the values of an enum attribute. It contains:
+
+- Operations: an operation is one change to the schema. It is the addition or removal of a node or a generic, a change to a property of one, the addition or removal of an attribute or a relationship, or a change to a property of one. The `position` of an operation gives the order in which the operations apply. An operation that changes a property stores the value before and after the change.
+- Applications: an application is one time Infrahub applied the schema change to the branch. It stores the time of the change and, when the load failed, the error.
+- Migrations: a migration is one update that Infrahub ran on the existing objects of the branch to match the new schema, for example `node.attribute.add` on the path `schema/DcimCloudDevice/serial`. Each migration stores its status, the `nbr_migrations_executed` result it returned and its errors. A load that changes only a label runs no migration.
+
+Infrahub records a schema change when one of these actions changes the schema:
+
+- a schema load with `infrahubctl schema load` or from a [linked repository](../git-integration/overview);
+- the `SchemaDropdownAdd`, `SchemaDropdownRemove`, `SchemaEnumAdd` and `SchemaEnumRemove` mutations.
+
+Infrahub records no schema change for a load whose files change nothing, for a load that Infrahub refuses before it changes the schema (an invalid file, or existing objects that do not meet a new constraint), for `infrahubctl schema check`, for a merge or for a rebase. A merge and a rebase leave the schema changes of both branches as they were. When you delete a branch, Infrahub deletes its schema changes.
+
+Each applied schema change has a version. On the default branch, the first applied schema change has version 1, and each one after it has the next version. On another branch, the versions continue from the last version that the default branch had applied when you created the branch. The name of a schema change is its version in five digits followed by a summary of its first operation and, when there are more operations, their number, for example `00008_dcimgenericdevice_serial_add`. The `parent` field returns the applied schema change that came before it. For the first schema change of a branch, the parent is the last schema change that the default branch had applied when you created the branch, if there is one.
+
+### Query the schema changes of a branch
+
+Send the `InfrahubSchemaChange` query to the GraphQL endpoint of the branch, `/graphql/<branch_name>`. The query needs a logged-in account or an API token, and no other permission. Infrahub refuses it from an anonymous user, even when anonymous read access is on.
+
+Infrahub returns the applied schema changes by version, oldest first, then the other schema changes by the time Infrahub created them.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="graphql" label="GraphQL" default>
+
+```graphql title="Read the last schema changes of a branch, with their operations and migrations"
+query SchemaChangeHistory {
+  InfrahubSchemaChange(limit: 10, offset: 0) {
+    count
+    edges {
+      node {
+        name
+        version
+        status
+        applied_at
+        parent { name branch }
+        operations(limit: 50) {
+          count
+          edges {
+            node {
+              position
+              operation_type
+              kind
+              section
+              element_name
+              property_name
+              value
+              previous_value
+            }
+          }
+        }
+        applications {
+          status
+          at
+          error
+          migrations {
+            migration_name
+            path
+            status
+            nbr_migrations_executed
+            errors
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="sdk" label="Python SDK">
+
+The SDK has no method for this query. Send it with `execute_graphql()` and the name of the branch. The client reads the API token from the `INFRAHUB_API_TOKEN` environment variable.
+
+```python
+from infrahub_sdk import InfrahubClient
+
+QUERY = """
+query SchemaChangeHistory {
+  InfrahubSchemaChange(status: [FAILED]) {
+    count
+    edges {
+      node {
+        name
+        status
+        applications { error migrations { migration_name path status errors } }
+      }
+    }
+  }
+}
+"""
+
+client = InfrahubClient(address="http://localhost:8000")
+result = await client.execute_graphql(query=QUERY, branch_name="add-device-serial")
+```
+
+  </TabItem>
+</Tabs>
+
+The query takes these arguments:
+
+- `limit`: the number of schema changes to return, 10 by default and 50 at most.
+- `offset`: the number of schema changes to skip.
+- `status`: return only the schema changes with one of these statuses, for example `[FAILED]`.
+
+The `operations` field takes its own `limit`, 50 by default and 500 at most, and its own `offset`. `count` returns the number of schema changes, or of operations, on all pages.
+
+### Statuses of a schema change and its migrations
+
+A schema change has one of these statuses:
+
+- `RUNNING`: the load has started and has not ended.
+- `APPLIED`: the load ended without an error. Only an applied schema change has a version.
+- `FAILED`: the load failed. Infrahub reverted the schema and the data of the branch to what they were before the load, and stored the error on the application. A failed schema change has no version, and its name is its summary alone. Infrahub does not apply a failed schema change again: correct the schema file and load it again, and Infrahub records a new schema change.
+
+An application has the status `RUNNING`, `APPLIED` or `FAILED`, in the same way as its schema change.
+
+A migration has one of these statuses:
+
+- `WAITING`: Infrahub has not started the migration.
+- `RUNNING`: Infrahub has started the group of migrations that the migration belongs to.
+- `APPLIED`: the migration ended without an error.
+- `FAILED`: the migration returned errors, which the `errors` field lists.
+- `ROLLED_BACK`: the migration was applied, then the load failed and Infrahub reverted the data of the branch.
+
+When a load fails, the migrations that had not ended keep the status `WAITING` or `RUNNING`. A schema change and its application keep the status `RUNNING` when the API server stops, or the request is cancelled, before the load ends.
+
+The GraphQL schema also lists the status `STAGED` for a schema change, and `ROLLED_BACK` and `SKIPPED` for an application. Infrahub does not set these statuses in this version.
+
 ## Troubleshooting
 
 ### Input should be a valid string (string_type)
