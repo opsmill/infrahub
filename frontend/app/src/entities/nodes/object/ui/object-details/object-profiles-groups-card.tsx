@@ -5,7 +5,6 @@ import { Link } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
@@ -20,6 +19,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { FieldMetadataPopover } from "@/entities/nodes/object/ui/metadata/field-metadata-popover";
 import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
@@ -129,12 +129,7 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
                   {getNodeLabel(edge.node)}
                 </Badge>
               </Link>
-              <MetaDetailsTooltip
-                updatedAt={edge.properties.updated_at}
-                source={edge.properties.source}
-                owner={edge.properties.owner}
-                isProtected={edge.properties.is_protected}
-              />
+              <FieldMetadataPopover metadata={edge.properties} />
             </div>
           ))}
         </div>
@@ -211,12 +206,7 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
                     {getNodeLabel(edge.node)}
                   </Badge>
                 </Link>
-                <MetaDetailsTooltip
-                  updatedAt={edge.properties.updated_at}
-                  source={edge.properties.source}
-                  owner={edge.properties.owner}
-                  isProtected={edge.properties.is_protected}
-                />
+                <FieldMetadataPopover metadata={edge.properties} />
               </div>
             );
           })}
