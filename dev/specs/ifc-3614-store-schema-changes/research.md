@@ -638,9 +638,8 @@ gained a kind after the operations were recorded, to test FR-011 on the risk tha
   `pnpm codegen:graphql` and fails when `graphql-env.d.ts` or `graphql-cache.d.ts` is out of date,
   including for a pull request that changes only the back end. CI does not check `types.ts`, which
   `pnpm codegen` writes.
-- A changelog fragment of type `added`.
-- No user documentation in this feature: the epic changes the history query and the records
-  further, so the user documentation is written when the epic is complete.
+- No changelog fragment and no user documentation in this feature: the epic changes the history
+  query and the records further, so both are written when the epic is complete.
 - `dev/knowledge/backend/`: a document on stored schema changes, linked from `backend/AGENTS.md`.
 - No new setting, no SDK change and no CLI change.
 

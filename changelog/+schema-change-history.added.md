@@ -1,1 +1,0 @@
-Added the `InfrahubSchemaChange` GraphQL query, which returns to a logged-in account the history of schema changes that schema loads and dropdown or enum mutations made on a branch, with their operations, the status of each migration and the error of a failed load.

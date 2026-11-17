@@ -177,7 +177,6 @@ backend/tests/
 schema/schema.graphql                     # regenerated
 frontend/app/src/shared/api/graphql/generated/   # regenerated
 dev/knowledge/backend/schema-changes.md   # new: how stored schema changes work
-changelog/                                # one fragment, type "added"
 ```
 
 **Structure Decision**: the feature is a back-end package next to `core/preferences/`, the

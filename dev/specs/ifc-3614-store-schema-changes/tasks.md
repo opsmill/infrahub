@@ -903,9 +903,8 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       after a load whose migrations run on a task worker, `InfrahubSchemaChange` returns the
       schema change with the status `applied` and its migration records with the status
       `applied`.
-- [X] T058 [P] Add a changelog fragment of type `added` with the `creating-changelog-entries`
-      skill. Before writing it, check each claim against the diff: the name of the query, that it
-      needs a logged-in account, and what stores a schema change.
+- [X] T058 [P] Dropped: no changelog fragment in this feature. The epic changes the history query
+      and the records further, so the fragment is written when the epic is complete.
 - [X] T059 [P] Dropped: no user documentation in this feature. The epic changes the history query
       and the records further, so the user documentation is written when the epic is complete.
 - [X] T060 [P] Write `dev/knowledge/backend/schema-changes.md`: the records and their edges, why
