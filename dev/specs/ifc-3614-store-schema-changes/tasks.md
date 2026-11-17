@@ -506,7 +506,7 @@ a GraphQL query returns the history of a branch in pages.
 
 ### Records
 
-- [ ] T029 [US2] Create the four `StandardNode` records in
+- [X] T029 [US2] Create the four `StandardNode` records in
       `backend/infrahub/core/schema_change/models.py`, with exactly the fields of
       [data-model.md](data-model.md):
       - `SchemaChange`: `branch: str`, `status: SchemaChangeStatus`, `version: int | None`,
@@ -525,7 +525,7 @@ a GraphQL query returns the history of a branch in pages.
 
       The models hold data only. They get no query and no persistence method beyond what
       `StandardNode` gives them. Timestamps are text in the format of `Timestamp.to_string()`.
-- [ ] T030 [US2] Create the write queries in `backend/infrahub/core/query/schema_change.py`:
+- [X] T030 [US2] Create the write queries in `backend/infrahub/core/query/schema_change.py`:
       - create a schema change, its operations and one application in one query, each vertex with
         its `IS_PART_OF` edge to `Root` as `StandardNodeCreateQuery` creates it, and the edges of
         [data-model.md](data-model.md);
@@ -539,7 +539,7 @@ a GraphQL query returns the history of a branch in pages.
         application, and the migration records of the application that are `applied` set to
         `rolled_back`, in one query. The seeding function of T023 creates failed schema changes
         through it, so it is written here and not in phase 5.
-- [ ] T031 [US2] Create the read queries in `backend/infrahub/core/query/schema_change.py`, each
+- [X] T031 [US2] Create the read queries in `backend/infrahub/core/query/schema_change.py`, each
       with a typed result:
       - the highest version of the applied schema changes of a branch, with the ID of that schema
         change;
@@ -552,7 +552,7 @@ a GraphQL query returns the history of a branch in pages.
       - the operations of a set of schema changes, a page for each one, with the count for each;
       - the applications of a set of schema changes, with their migration records in the order
         of `position`.
-- [ ] T032 [US2] Create `SchemaChangeRepository` in
+- [X] T032 [US2] Create `SchemaChangeRepository` in
       `backend/infrahub/core/schema_change/repository.py` and `SchemaChangeHistoryReader` in
       `backend/infrahub/core/schema_change/history_reader.py`, each with its methods of
       [data-model.md](data-model.md), "What the repository and the history reader offer", with
@@ -563,7 +563,7 @@ a GraphQL query returns the history of a branch in pages.
 the reader converts it back. Neither has a delete method. Name the two migration record
       methods of the repository `create_migration_records` and `set_migration_records_status`,
       with the signatures of `MigrationRecordStore` in the contract. Make T023 pass.
-- [ ] T033 [US2] Create `SchemaChangeVersionResolver` and `SchemaChangeVersion` in
+- [X] T033 [US2] Create `SchemaChangeVersionResolver` and `SchemaChangeVersion` in
       `backend/infrahub/core/schema_change/version_resolver.py`, following the contract and
       [research.md](research.md), R10. Then create `SchemaChangeRecorder` and
       `SchemaChangeRecording` in `backend/infrahub/core/schema_change/recorder.py` with `start`,

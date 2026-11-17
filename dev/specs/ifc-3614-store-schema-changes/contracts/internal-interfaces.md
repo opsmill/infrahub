@@ -315,6 +315,7 @@ Owns the statuses of the records. Uses `SchemaChangeRepository` for the writes a
 class SchemaChangeRecording:
     schema_change_id: str
     application_id: str
+    at: Timestamp
 
 
 class SchemaChangeRecorder:
@@ -347,8 +348,10 @@ class SchemaChangeRecorder:
 - `complete` and `record_applied` take `branch` because they assign the version, and the
   resolver reads the name and the `branched_from` of the branch. `fail` assigns no version and
   takes no branch.
-- `SchemaChangeRecording` holds two IDs and no `Branch`, so that it can be built again from
-  stored records. The caller passes to `complete` the branch that it passed to `start`.
+- `SchemaChangeRecording` holds the two IDs and the application's `at`, and no `Branch`, so
+  that it can be built again from stored records. `complete` stores its `at` as `applied_at`
+  without reading the application again. The caller passes to `complete` the branch that it
+  passed to `start`.
 - The caller holds the schema lock, so `complete` and `record_applied` can ask the resolver for
   the next version and write it without a second lock.
 - The caller calls `record_applied` before `SchemaManager.update_schema_branch` inside the
