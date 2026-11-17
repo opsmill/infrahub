@@ -31,7 +31,7 @@ export function ObjectFieldMetadata({
         isProtected={metadata.is_protected}
         header={header}
         triggerClassName={classNames(
-          "opacity-0 transition-opacity focus-visible:opacity-100",
+          "opacity-0 transition-opacity focus-visible:opacity-100 [@media(hover:none)]:opacity-100",
           hoverScope === "edge" ? "group-hover/edge:opacity-100" : "group-hover:opacity-100"
         )}
       />

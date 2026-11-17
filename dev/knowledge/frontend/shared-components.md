@@ -116,7 +116,7 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 metadata object and an optional `header` for field-specific editing controls. The default hover
 scope uses the surrounding `ObjectDataRow` group; relationship list items use `hoverScope="edge"`
 with a `group/edge` wrapper so hovering one item reveals only its metadata button. Keyboard focus
-also reveals the button.
+also reveals the button. On devices without hover, the button stays visible.
 
 ### Layout
 

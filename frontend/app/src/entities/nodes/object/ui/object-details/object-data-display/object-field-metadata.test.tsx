@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import type { CDPSession } from "@vitest/browser-playwright";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { cdp, userEvent } from "vitest/browser";
 
 import { store } from "@/shared/stores";
 
@@ -128,6 +129,29 @@ describe("ObjectFieldMetadata", () => {
     const trigger = component.getByTestId("view-metadata-button");
     await expect.element(trigger).toHaveFocus();
     await expect.element(trigger).toHaveStyle({ opacity: "1" });
+  });
+
+  it.each([
+    "row",
+    "edge",
+  ] as const)("keeps %s metadata visible on touch-only devices", async (hoverScope) => {
+    // GIVEN
+    const session: CDPSession = cdp();
+    onTestFinished(async () => {
+      await session.send("Emulation.setTouchEmulationEnabled", { enabled: false });
+    });
+    await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    expect(window.matchMedia("(hover: none)").matches).toBe(true);
+
+    // WHEN
+    const component = await render(
+      <ObjectFieldMetadata metadata={metadata} hoverScope={hoverScope} />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByTestId("view-metadata-button"))
+      .toHaveStyle({ opacity: "1" });
   });
 
   it("preserves metadata content and the attribute edit action", async () => {
