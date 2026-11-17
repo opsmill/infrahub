@@ -86,7 +86,7 @@ Stores attribute metadata. Label: `Attribute`.
 
 ### AttributeValue / AttributeValueIndexed
 
-Stores attribute values. Labels always include `AttributeValue`. Labels include `AttributeValueIndexed` if the value is indexed.
+Stores attribute values. Labels always include `AttributeValue`. Labels include `AttributeValueIndexed` if the value is indexed. An interrupted run of migration 084 can leave the temporary label `AttributeValueKeyPending` on values that have no `value_key`, and the next run of the migration removes it.
 
 | Property | Type | Description |
 |----------|------|-------------|
