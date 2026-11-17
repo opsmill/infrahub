@@ -6,6 +6,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 
 import { EventFilterTag } from "./event-filter-tag";
 import { GlobalKindFilterForm } from "./global-kind-filter-form";
+import { useApplyEventFilter } from "./use-apply-event-filter";
 
 interface FilterTagProps extends TagProps {
   label: string;
@@ -13,13 +14,10 @@ interface FilterTagProps extends TagProps {
 }
 
 export function GlobalKindFilter({ label, name, ...props }: FilterTagProps) {
-  const [filters, setFilters] = useFilters();
+  const [filters] = useFilters();
+  const applyFilter = useApplyEventFilter(name);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
-
-  const handleRemoveFilter = (filterName: string) => {
-    setFilters(filters.filter((f) => f.name !== `${filterName}__value`));
-  };
 
   const getFilterDisplayValue = () => {
     return currentFilter?.value
@@ -34,7 +32,7 @@ export function GlobalKindFilter({ label, name, ...props }: FilterTagProps) {
       label={label}
       currentFilter={currentFilter}
       renderValue={getFilterDisplayValue}
-      onRemove={() => handleRemoveFilter(name)}
+      onRemove={() => applyFilter(null)}
       renderForm={(close) => <GlobalKindFilterForm name={name} onSuccess={close} />}
       {...props}
     />

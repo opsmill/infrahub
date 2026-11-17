@@ -6,6 +6,7 @@ import type { FilterFieldSchema } from "@/entities/schema/domain/model/schema";
 
 import { EventFilterTag } from "./event-filter-tag";
 import { GlobalFilterForm } from "./global-filter-form";
+import { useApplyEventFilter } from "./use-apply-event-filter";
 
 interface FilterTagProps extends TagProps {
   label: string;
@@ -14,13 +15,10 @@ interface FilterTagProps extends TagProps {
 }
 
 export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
-  const [filters, setFilters] = useFilters();
+  const [filters] = useFilters();
+  const applyFilter = useApplyEventFilter(name);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
-
-  const handleRemoveFilter = (filterName: string) => {
-    setFilters(filters.filter((f) => f.name !== `${filterName}__value`));
-  };
 
   const getFilterDisplayValue = () => {
     if (typeof currentFilter?.value === "boolean") {
@@ -49,7 +47,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
       label={label}
       currentFilter={currentFilter}
       renderValue={getFilterDisplayValue}
-      onRemove={() => handleRemoveFilter(name)}
+      onRemove={() => applyFilter(null)}
       renderForm={(close) => (
         <GlobalFilterForm name={name} fieldSchema={fieldSchema} onSuccess={close} />
       )}
