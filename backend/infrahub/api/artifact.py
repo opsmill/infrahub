@@ -15,6 +15,7 @@ from infrahub.api.dependencies import (
     get_permission_manager,
 )
 from infrahub.artifacts.content import get_artifact_content_reader
+from infrahub.artifacts.encryption import may_store_artifact_encryption, store_artifact_encryption, stored_encryption
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -104,11 +105,7 @@ async def check_artifact_encryption(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    stored = (
-        ArtifactEncryption(artifact.encryption.value.value)
-        if artifact.encryption.value
-        else ArtifactEncryption.PLAINTEXT
-    )
+    stored = stored_encryption(artifact)
     storage_id = artifact.storage_id.value
     if storage_id:
         check: EncryptionCheck = await run_in_threadpool(registry.storage.inspect_encryption, str(storage_id))
@@ -118,39 +115,17 @@ async def check_artifact_encryption(
     # A missing file says nothing about its encryption, so the stored value stays.
     found = check.encryption or stored
     updated = False
-    if found != stored and await _may_store_encryption(
-        request=request, db=db, branch_params=branch_params, permission_manager=permission_manager
+    if found != stored and await may_store_artifact_encryption(
+        db=db,
+        branch=branch_params.branch,
+        permission_manager=permission_manager,
+        merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache),
     ):
-        artifact.get_attribute("encryption").value = found.value
-        await artifact.save(db=db, user_id=context.account.account_id)
-        updated = True
+        updated = await store_artifact_encryption(
+            db=db, artifact=artifact, found=found, user_id=context.account.account_id
+        )
 
     return ArtifactEncryptionCheckResponse(encryption=found, reason=check.reason, updated=updated)
-
-
-async def _may_store_encryption(
-    request: Request, db: InfrahubDatabase, branch_params: BranchParams, permission_manager: PermissionManager
-) -> bool:
-    permission_decision = (
-        PermissionDecisionFlag.ALLOW_DEFAULT
-        if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-        else PermissionDecisionFlag.ALLOW_OTHER
-    )
-    permission = ObjectPermission(
-        namespace="Core",
-        name="Artifact",
-        action=PermissionAction.UPDATE.value,
-        decision=permission_decision,
-    )
-    if not permission_manager.has_permission(permission=permission):
-        return False
-    try:
-        await BranchStatusChecker(
-            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
-        ).check(branch=branch_params.branch)
-    except BranchStatusError:
-        return False
-    return True
 
 
 @router.post("/generate/{artifact_definition_id:str}")

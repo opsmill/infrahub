@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreArtifact
 
 if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
@@ -52,6 +53,31 @@ async def create_stored_artifact(
     )
     await artifact.save(db=db)
     return artifact
+
+
+async def create_sibling_artifact(
+    db: InfrahubDatabase,
+    artifact: Node,
+    target: Node,
+    name: str,
+    storage_id: str,
+    checksum: str,
+    on: Branch | None = None,
+) -> Node:
+    """Create another artifact of the same definition for another target, on a branch when one is given."""
+    sibling = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=on)
+    await sibling.new(
+        db=db,
+        name=name,
+        definition=await artifact.get_relationship(name="definition").get_peer(db=db),
+        status="Ready",
+        object=target,
+        storage_id=storage_id,
+        checksum=checksum,
+        content_type=ContentType.APPLICATION_JSON,
+    )
+    await sibling.save(db=db)
+    return sibling
 
 
 async def stored_artifact_encryption(db: InfrahubDatabase, artifact_id: str) -> str:

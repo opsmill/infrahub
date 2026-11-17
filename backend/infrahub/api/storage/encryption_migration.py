@@ -4,21 +4,24 @@ import asyncio
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from starlette.status import HTTP_409_CONFLICT, HTTP_422_UNPROCESSABLE_CONTENT, HTTP_429_TOO_MANY_REQUESTS
 
 from infrahub import config
-from infrahub.api.dependencies import get_db, get_permission_manager
+from infrahub.api.dependencies import get_current_user, get_db, get_permission_manager
 from infrahub.core import registry
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import StorageEncryptionError
 from infrahub.permissions import PermissionManager  # noqa: TC001
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
+from infrahub.storage_encryption.artifact_values import store_encrypted_artifact_values
 from infrahub.storage_encryption.memory_budget import MemoryBudget, MemoryBudgetBusyError, ProcessMemoryBudget
 from infrahub.storage_encryption.migrate import EncryptOutcome, EncryptResult, encrypt_stored_objects
 
 if TYPE_CHECKING:
+    from infrahub.auth.session import AccountSession
     from infrahub.storage import InfrahubObjectStorage, StoredObjectListing
 
 LIST_DEFAULT_LIMIT = 1000
@@ -131,17 +134,28 @@ async def list_stored_objects(
 
 
 async def _encrypt(
-    db: InfrahubDatabase, identifiers: list[str], allow_unverified: bool, wait_seconds: float
+    request: Request,
+    db: InfrahubDatabase,
+    permission_manager: PermissionManager,
+    account: AccountSession,
+    identifiers: list[str],
+    allow_unverified: bool,
+    wait_seconds: float,
 ) -> list[EncryptResult]:
-    """Encrypt the objects in a task that outlives a cancelled request, so an object that was read is still written.
+    """Encrypt the objects, then store `encrypted` on the artifacts that point at them.
+
+    Both steps run in a task that outlives a cancelled request, so an object that was read is still written. A
+    failure to store a value does not change the result of its object.
 
     Raises:
         NoFreeMemoryError: With status 429 when an object waited `wait_seconds` for memory and none was free.
         HTTPException: With status 409 when storage encryption is disabled or this process has no storage key.
 
     """
-    task = asyncio.create_task(
-        encrypt_stored_objects(
+    merge_write_blocker = MergeWriteBlocker(cache=request.app.state.service.cache)
+
+    async def encrypt_and_store() -> list[EncryptResult]:
+        results = await encrypt_stored_objects(
             db=db,
             storage=registry.storage,
             identifiers=identifiers,
@@ -150,7 +164,16 @@ async def _encrypt(
             wait_seconds=wait_seconds,
             allow_unverified=allow_unverified,
         )
-    )
+        await store_encrypted_artifact_values(
+            db=db,
+            results=results,
+            permission_manager=permission_manager,
+            merge_write_blocker=merge_write_blocker,
+            user_id=account.account_id,
+        )
+        return results
+
+    task = asyncio.create_task(encrypt_and_store())
     try:
         return await asyncio.shield(task)
     except StorageEncryptionError as exc:
@@ -167,12 +190,14 @@ def _response(result: EncryptResult) -> EncryptObjectResponse:
 
 @router.post("/object/{identifier:str}/encrypt")
 async def encrypt_stored_object_route(
+    request: Request,
     identifier: str,
     allow_unverified: bool = Query(
         default=False, description="Encrypt the object even when no node records a checksum for it"
     ),
     db: InfrahubDatabase = Depends(get_db),
     permission_manager: PermissionManager = Depends(get_permission_manager),
+    account: AccountSession = Depends(get_current_user),
 ) -> EncryptObjectResponse:
     """Encrypt one object that was stored before storage encryption was enabled.
 
@@ -185,16 +210,24 @@ async def encrypt_stored_object_route(
     validate_identifier(identifier=identifier)
 
     (result,) = await _encrypt(
-        db=db, identifiers=[identifier], allow_unverified=allow_unverified, wait_seconds=MEMORY_WAIT_SECONDS
+        request=request,
+        db=db,
+        permission_manager=permission_manager,
+        account=account,
+        identifiers=[identifier],
+        allow_unverified=allow_unverified,
+        wait_seconds=MEMORY_WAIT_SECONDS,
     )
     return _response(result)
 
 
 @router.post("/objects/encrypt")
 async def encrypt_stored_objects_route(
+    http_request: Request,
     request: EncryptBatchRequest,
     db: InfrahubDatabase = Depends(get_db),
     permission_manager: PermissionManager = Depends(get_permission_manager),
+    account: AccountSession = Depends(get_current_user),
 ) -> EncryptBatchResponse:
     """Encrypt several stored objects, with one lookup of their recorded checksums for the whole request.
 
@@ -217,7 +250,10 @@ async def encrypt_stored_objects_route(
         validate_identifier(identifier=identifier)
 
     results = await _encrypt(
+        request=http_request,
         db=db,
+        permission_manager=permission_manager,
+        account=account,
         identifiers=request.identifiers,
         allow_unverified=request.allow_unverified,
         wait_seconds=BATCH_MEMORY_WAIT_SECONDS,

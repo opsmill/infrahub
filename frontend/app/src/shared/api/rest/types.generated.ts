@@ -519,8 +519,11 @@ export interface paths {
          * List Stored Objects
          * @description List the stored objects in the order of their identifiers, without reading their content.
          *
-         *     A request for the first page also deletes the temporary files that an interrupted replacement left in the
-         *     local storage more than an hour ago.
+         *     No object is changed, but a request for the first page also deletes the temporary files that an
+         *     interrupted replacement left in the local storage more than an hour ago, and nothing else.
+         *
+         *     A page can hold fewer objects than the limit, or none, when an object was deleted while it was read. The
+         *     last page is the one whose `next_start_after` is null: until then, request the next page with it.
          */
         get: operations["list_stored_objects_api_storage_objects_get"];
         put?: never;
