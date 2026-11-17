@@ -32,6 +32,34 @@ and merge.
 The schema owner reads the history through a GraphQL query. A page in the UI, SDK methods and CLI
 commands for the history are separate work.
 
+## Clarifications
+
+### Session 2026-11-16
+
+- Q: When a dropdown or enum mutation changes the schema, should it build its schema through the
+  component that the schema load uses, or call the applier directly? → A: Through the same
+  component. The mutation builds its candidate schema from its one operation in the way a load
+  does, and reads the schema and the diff from the result. It keeps its own checks and its own
+  save, and runs none of the migrations or constraint checks that the result lists.
+- Q: Should the stored records be read and written through one repository class, or through
+  separate classes for the different consumers? → A: Two classes. One holds the writes and the
+  version read that record a schema change and its migrations. The other holds the paged reads of
+  the history query. The deletion of a branch's records is a query that the branch deletion runs
+  itself.
+- Q: Should the calculation of a schema change's version and parent be its own component, or stay
+  inside the component that sets the statuses of the records? → A: Its own component. It takes a
+  branch and returns the next version and the parent, and the component that sets the statuses
+  calls it when a schema change becomes `applied`.
+- Q: How should the tests that load schema files through the running application share their
+  setup? → A: One base class with one data set (base schema, nodes, branch) for each class. One
+  ordered class covers the loads, the check, the history query, the failed load, the corrected
+  load and the branch deletion, in that order. The test that a rebase and a merge leave the
+  records unchanged is a second class on the same base.
+- Q: Should the rest of the review's suggestions on component design and test fixtures be applied?
+  → A: All of them. They change no requirement of this spec. They are recorded in
+  [plan.md](plan.md), [research.md](research.md) (R5, R7, R8, R9 and R14),
+  [contracts/internal-interfaces.md](contracts/internal-interfaces.md) and [tasks.md](tasks.md).
+
 ## Terms
 
 - **Schema change operation**: one change to the schema: add, remove or change a node, an
@@ -304,7 +332,9 @@ branch. Count the records of that branch and of main before and after.
   build their operations and apply them with the applier. The schema that a load saves, the
   migrations it runs and the diff that the check returns MUST come from the applier's result. A
   load still lays the file over the branch schema to find what changed, because the operations are
-  built from that diff.
+  built from that diff. A load, a check and a mutation MUST build their candidate schema through
+  one shared component, so the diff of each is the difference between the branch schema and the
+  applier's result.
 - **FR-022**: Each application MUST calculate its migrations and its constraint checks after
   processing, from the difference between the target branch's schema before and after the applier.
   The changes that processing produces therefore still get their own migrations and checks.
@@ -440,8 +470,10 @@ branch. Count the records of that branch and of main before and after.
   equals the schema of a direct load, and the lists of migrations are the same. The four known-bug
   cases are compared with the fixed behaviour.
 - **SC-002**: The existing tests of the schema load, the schema check and the dropdown and enum
-  mutations pass with the same expected results as before this feature. The one exception is a
-  test that asserts one of the four known bugs in FR-025, when the applier fixes that bug.
+  mutations pass with the same expected results as before this feature. There are two exceptions:
+  a test that asserts one of the four known bugs in FR-025, when the applier fixes that bug; and
+  a test that calls an internal function this feature replaces, which changes its call and keeps
+  its expected results.
 - **SC-003**: After N schema loads that each change the schema of a branch, the history of the
   branch lists N applied schema changes with N consecutive versions. Loading one of the files a
   second time adds none.

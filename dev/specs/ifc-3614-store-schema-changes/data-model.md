@@ -84,7 +84,7 @@ Rules:
 
 The in-memory form is `SchemaOperation`, a Pydantic model in
 `backend/infrahub/core/schema_change/operations.py`. The builder creates it, the applier reads it,
-and the repository converts it to and from `SchemaChangeOperation`.
+the repository converts it to `SchemaChangeOperation`, and the history reader converts it back.
 
 ## SchemaChangeApplication
 
@@ -116,7 +116,7 @@ One migration that an application ran.
 | --- | --- | --- |
 | `position` | `int` | Order in the list of migrations of the application |
 | `migration_name` | `str` | For example `node.attribute.add` |
-| `path_type` | `str` | `node`, `attribute` or `relationship` |
+| `path_type` | `SchemaPathType` | `node`, `attribute` or `relationship`. The existing enum in `core/constants`, which `core/path.py::SchemaPath.path_type` uses |
 | `schema_kind` | `str` | Kind in the schema path |
 | `field_name` | `str \| None` | Attribute or relationship in the schema path |
 | `property_name` | `str \| None` | Property in the schema path |
@@ -137,11 +137,17 @@ Status transitions in this feature:
                              └──► failed
 ```
 
-A record that is `waiting` or `running` when the load fails keeps its status.
+A record that is `waiting` or `running` when the load fails keeps its status. When a migration
+raises an exception, the flow does not read the results that come after it, so those records keep
+the status `running`.
 
-## What the repository offers
+`running` means that the phase of the migration started. The flow runs the kind updates one at a
+time, so the records of that phase have the status `running` while most of them wait.
 
-`SchemaChangeRepository(db)` in `backend/infrahub/core/schema_change/repository.py`:
+## What the repository and the history reader offer
+
+`SchemaChangeRepository(db)` in `backend/infrahub/core/schema_change/repository.py`, for the
+recorder, the version resolver and the migration recorder:
 
 | Method | Purpose |
 | --- | --- |
@@ -150,14 +156,22 @@ A record that is `waiting` or `running` when the load fails keeps its status.
 | Set the status of migration records by element ID | The migration flow, when a batch starts and when a migration returns |
 | Mark a schema change and its application applied, with version, parent and time | The end of a load |
 | Mark a schema change and its application failed, with the error, and its applied migration records rolled back | The end of a failed load |
-| Get the base version and the parent for a branch | Version assignment ([research.md](research.md), R10) |
-| List the schema changes of a branch in pages, and count them | The history query |
-| List operations in pages for a set of schema changes, with their counts | The history query |
-| List applications with their migration records for a set of schema changes | The history query |
-| Delete the records of a branch, in batches | The branch deletion |
+| Get the highest applied version of a branch, and the highest version of main applied at or before a timestamp, each with the ID of its schema change | `SchemaChangeVersionResolver` ([research.md](research.md), R10) |
+
+`SchemaChangeHistoryReader(db)` in `backend/infrahub/core/schema_change/history_reader.py`, for
+the history query:
+
+| Method | Purpose |
+| --- | --- |
+| List the schema changes of a branch in pages, and count them | The page of the query |
+| List operations in pages for a set of schema changes, with their counts | The operations loader |
+| List applications with their migration records for a set of schema changes | The applications loader |
 
 Each read returns a typed result built by its `Query` class. No method returns a raw database
-record.
+record. Both classes convert `SchemaOperation` to or from `SchemaChangeOperation`.
+
+Neither class deletes records. The query that deletes the records of a branch is run by
+`core/branch/data_deleter.py::BranchDataDeleter` ([research.md](research.md), R13).
 
 ## Constants
 

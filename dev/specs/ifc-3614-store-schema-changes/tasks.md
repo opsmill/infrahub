@@ -44,6 +44,18 @@ suite the first task.
 - Load `dev/knowledge/backend/query-pattern.md` and `dev/knowledge/backend/database-schema.md`
   before writing Cypher. Every query is parameterized and returns a typed result.
 - No test name, comment or docstring names a Jira ticket. A known bug is named by its behaviour.
+- Tests that read the same data build it once. Put them in a class and build the data in
+  `@pytest.fixture(scope="class")` fixtures on the `_scope_class` fixture variants
+  (`dev/guidelines/backend/testing.md`, "Share one schema and data load across a class"). A
+  class-scoped fixture cannot request a function-scoped one: when a fixture has no
+  `_scope_class` variant, add one beside it.
+- A component test of the records requests no schema fixture. The records are not schema nodes;
+  the test needs `db` and an empty database, and a default branch only when it creates a branch.
+- A test implementation of a collaborator (one that records its calls, one that raises) goes in
+  `backend/tests/unit/core/schema_change/helpers.py`, not in the test module.
+- The components are built with the functions of `core/schema_change/factory.py`
+  ([contracts/internal-interfaces.md](contracts/internal-interfaces.md), "Where the components
+  are built"). The task that creates a component adds its function there.
 - When a task changes a value that another file of this directory states (a field, a status, an
   order, a page size), update every file of `dev/specs/ifc-3614-store-schema-changes/` that
   states it, in the same commit.
@@ -121,26 +133,41 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
 
 ### The equivalence suite (write first; it must fail before T015 and T016)
 
-- [ ] T006 [US1] Create the helpers of the suite in
-      `backend/tests/unit/core/schema_change/conftest.py`:
-      - a function that builds a processed `SchemaBranch` from the internal schema, the core
-        schema and a `SchemaRoot`, with an ID on every node, attribute and relationship
-        (`SchemaRoot.generate_uuid`), as `_load_processed_branch` does in
-        `backend/tests/unit/core/schema/test_schema_branch.py`;
+- [ ] T006 [US1] Create the shared schema and the helpers of the suite.
+
+      In `backend/tests/unit/core/schema_change/conftest.py`, one session-scoped fixture that
+      returns a processed `SchemaBranch` built once from the internal schema, the core schema
+      and one base `SchemaRoot` for the suite, with an ID on every node, attribute and
+      relationship (`SchemaRoot.generate_uuid`), as `_load_processed_branch` does in
+      `backend/tests/unit/core/schema/test_schema_branch.py`:
+      - design the base `SchemaRoot` so that most cases start from it: a generic with
+        attributes and a relationship, two kinds that inherit it, a dropdown attribute, a unique
+        attribute, a kind with `generate_profile` off. Reuse the schemas of
+        `backend/tests/helpers/schema/` before defining one;
+      - every case reads this one schema and never changes it. The operation builder and the
+        applier never change their input, and T013 asserts it. A case that needs another
+        starting schema derives it with `duplicate()` and `load_schema`, and does not build the
+        internal and core schema again;
+      - a session-scoped fixture cannot request the function-scoped
+        `set_registry_default_branch` of `backend/tests/unit/conftest.py`. If the build reads
+        the default branch of the registry, set it inside the fixture and restore it.
+
+      In `backend/tests/unit/core/schema_change/helpers.py`, as plain functions:
       - a reference function that builds the result of a direct load with `SchemaBranch` calls
         only: `duplicate`, `load_schema`, `process`, `diff`, `validate_node_deletions`,
         `validate_update`. It must not call `SchemaCandidateBuilder`
         ([research.md](research.md), R14);
       - a function that compares two results: the hash of every node, generic, profile and
         template kind (`SchemaBranch.to_dict`), the migrations as a sorted list of migration name
-        and schema path, and the constraints in the same form.
-
-      Reuse the schemas of `backend/tests/helpers/schema/` and the fixtures of
-      `backend/tests/unit/conftest.py` before defining a new schema.
+        and schema path, and the constraints in the same form. It must not call
+        `SchemaCandidateComparer`.
 - [ ] T007 [US1] Write the cases that the first spike covered in
-      `backend/tests/unit/core/schema_change/test_applier_equivalence.py`. Each case builds the
-      operations from a schema file with `SchemaOperationBuilder`, applies them with
-      `SchemaChangeApplier`, and compares the result with the reference of T006:
+      `backend/tests/unit/core/schema_change/test_applier_equivalence.py`. Write the cases of
+      T007 to T010 as dataclass test cases (`dev/guidelines/backend/testing.md`, "Dataclass Test
+      Case Pattern"): a `name` and the schema file to load, in a module-level list, with one
+      parametrized test for each module. The test starts from the shared schema of T006, builds
+      the operations with `SchemaOperationBuilder`, applies them with `SchemaChangeApplier`, and
+      compares the result with the reference of T006:
       - adding an attribute to a generic;
       - turning on `generate_profile`;
       - making an attribute unique;
@@ -192,6 +219,8 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         before the load, with the new name as the value and the old name as the previous value
         (FR-014, FR-015);
       - no operation holds an `id` or a `parameters.number_pool_id` (FR-012);
+      - the result holds the processed schema of the laid-over file, with the same hashes as
+        the reference of T006;
       - the operations come in the order of [research.md](research.md), R5, whatever the order of
         the file;
       - every operation survives a JSON round trip: dump the list to JSON, load it, apply it, and
@@ -203,7 +232,8 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         element (FR-023);
       - the target schema is unchanged after `apply`;
       - a property that no operation names keeps its value (FR-020);
-      - the same target and operations give the same hash twice.
+      - the same target and operations give the same hash twice;
+      - the shared schema of T006 has the same hash after the whole module ran as before it.
 - [ ] T014 [P] [US1] Write the tests on a target that changed, in
       `backend/tests/unit/core/schema_change/test_applier_changed_target.py`. Record the
       operations against one schema, then apply them to a schema that changed separately:
@@ -221,38 +251,82 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       a copy of the branch schema, keeps that schema before processing, processes it, and keeps
       each path of the processed diff that the file states. Values are read from the schema before
       processing, previous values from the branch schema, and the name before a rename by the
-      element's ID. It emits the operations in the order of R5.
+      element's ID. It emits the operations in the order of R5, and returns a
+      `SchemaOperationBuildResult` with the operations and the processed schema of the laid-over
+      file.
 - [ ] T016 [US1] Create `SchemaChangeApplier` in `backend/infrahub/core/schema_change/applier.py`,
       following [research.md](research.md), R6, and its contract. It duplicates the target,
       applies each operation in order, calls `BaseNodeSchema.apply_schema_path_updates` for each
       kind with the removed names and the map of renamed names, then runs `SchemaBranch.process`.
-      `node_remove` sets the state of the kind to absent, as a load does.
+      `node_remove` sets the state of the kind to absent, as a load does. Select the handling
+      of an operation with an exhaustive `match` on `SchemaOperationType` that ends with
+      `typing.assert_never`.
 - [ ] T017 [US1] Run `uv run pytest backend/tests/unit/core/schema_change/` and make T007 to T014
       pass. Each case of FR-025 passes or is a strict expected failure. When a case needs a change
       to the format of the operations, change `operations.py`, [data-model.md](data-model.md),
       [research.md](research.md) R4 to R6 and the GraphQL contract in the same commit. When the
       case of R6 shows that the path rewrite must run before the values are set, change the
       applier and R6. **This task is the gate for phases 4 to 8.**
-- [ ] T018 [US1] Create `SchemaCandidate` and `SchemaCandidateBuilder` in
-      `backend/infrahub/core/schema_change/candidate.py`, following the contract. `from_schema_root`
-      and `from_operations` return the operations, the applier's schema and the
-      `SchemaUpdateValidationResult` calculated from the diff between the branch schema and the
-      applier's schema. `from_schema_root` logs a warning that names the kinds whose hash differs
-      between the processed schema of the laid-over file and the applier's result. Add unit tests
-      in `backend/tests/unit/core/schema_change/test_candidate.py`: both methods give the same
-      diff, migrations and constraints for the same change, and a file that changes nothing gives
-      an empty diff and no operation.
-- [ ] T019 [US1] Change `api/schema.py::evaluate_candidate_schemas` to call
-      `SchemaCandidateBuilder.from_schema_root` and keep its return type and the errors it raises
-      (`SchemaNotValidError` for a `ValueError` and for validation errors). Change
-      `api/schema.py::load_schema` to call the builder directly and keep the `SchemaCandidate`,
-      so that phase 4 can store its operations. `check_schema` returns the diff of the applier's
-      result (FR-021).
-- [ ] T020 [US1] Change `graphql/mutations/schema.py::update_registry` and its four callers so
-      that the mutation builds one `element_property` operation on `choices` or `enum`, with the
-      list before the change as the previous value, and gets its schema from
-      `SchemaChangeApplier` in place of `tmp_schema.set` and `tmp_schema.process`. The checks,
-      the save and the event are unchanged (FR-002, FR-021).
+- [ ] T018 [US1] Create `SchemaCandidateComparer` in
+      `backend/infrahub/core/schema_change/candidate_comparer.py`, then `SchemaCandidate` and
+      `SchemaCandidateBuilder` in `backend/infrahub/core/schema_change/candidate.py`, following
+      their contracts. The builder takes the operation builder, the applier and the comparer in
+      its constructor. `from_schema_root` and `from_operations` return the operations, the
+      applier's schema and the `SchemaUpdateValidationResult` calculated from the diff between
+      the branch schema and the applier's schema. `from_schema_root` passes the processed schema
+      that the operation builder returned and the applier's schema to the comparer, and logs a
+      warning that names the kinds it returns. It does not process the file a third time.
+      Create `backend/infrahub/core/schema_change/factory.py` with
+      `build_schema_candidate_builder()`. Add unit tests, on the shared schema of T006:
+      - in `backend/tests/unit/core/schema_change/test_candidate_comparer.py`: two equal schemas
+        give an empty list; a kind whose property differs, and a kind that only one schema has,
+        are returned, in sorted order;
+      - in `backend/tests/unit/core/schema_change/test_candidate.py`: both methods give the same
+        diff, migrations and constraints for the same change, and a file that changes nothing
+        gives an empty diff and no operation.
+- [ ] T019 [US1] Replace `api/schema.py::evaluate_candidate_schemas` with one function that the
+      load and the check both call:
+      `build_candidate_from_schemas(*, candidate_builder, branch_schema, default_branch_schema, schemas) -> SchemaCandidate`.
+      It merges the schema files of the request, calls
+      `SchemaCandidateBuilder.from_schema_root`, and raises `SchemaNotValidError` for a
+      `ValueError` and for the errors of the candidate's validation, as today. It reads no
+      registry and builds no component.
+      - `load_schema` and `check_schema` each build the candidate builder at their top with
+        `build_schema_candidate_builder()`, after the permission checks and, for the load,
+        before the schema lock. Each reads the branch schema and the default branch schema from
+        the registry where it reads the branch schema today, and passes them.
+      - `load_schema` keeps the `SchemaCandidate`, so that phase 4 can store its operations.
+      - `check_schema` returns the diff of the applier's result (FR-021). It calls
+        `_validate_migrations` with the schema and the constraints of the candidate, in place of
+        its own copy of the constraint workflow call.
+      - Change the five calls of `evaluate_candidate_schemas` in
+        `backend/tests/component/core/constraint_validators/test_number_pool_scope.py`,
+        `backend/tests/component/core/constraint_validators/test_number_pool_rename.py` and
+        `backend/tests/component/pools/test_schema_number_pool_scope.py` to call
+        `build_schema_candidate_builder().from_schema_root(...)` and read `candidate.schema` and
+        `candidate.validation`. Their expected results do not change (SC-002).
+- [ ] T020 [US1] Replace `graphql/mutations/schema.py::update_registry` with
+      `apply_attribute_property_change(*, kind, attribute, property_name, value, db, branch, account_id, service, context)`,
+      where `property_name` is `choices` or `enum` and `value` is the new list, and change its
+      four callers.
+      - Each mutation keeps its checks where they run today. It calculates the new list without
+        changing a copy of the kind, and builds no operation.
+      - The function builds the candidate builder with `build_schema_candidate_builder()` at its
+        top. Inside `lock.registry.global_schema_lock()` it reads the list before the change
+        from the branch schema, builds one `element_property` operation with that list as the
+        previous value, and calls `SchemaCandidateBuilder.from_operations` in place of
+        `tmp_schema.set`, `tmp_schema.process` and `tmp_schema.diff`.
+      - It reads the schema and the diff from the `SchemaCandidate` and keeps the candidate, so
+        that phase 6 can store its operation. It runs none of the migrations or constraints
+        that the candidate lists.
+      - The save and the event are unchanged (FR-002, FR-021). The save keeps
+        `update_schema_branch(limit=...)` ([research.md](research.md), R11 and R16).
+      - The candidate's diff runs from the branch schema to the candidate, where today's code
+        calculates it in the other direction: confirm with
+        `backend/tests/component/graphql/mutations/test_schema.py` that
+        `update_schema_branch(limit=...)` and the `SchemaUpdatedEvent` payload name the same
+        elements, and that `validate_update` returns no error for a change of `choices` or
+        `enum`.
 - [ ] T021 [US1] Run the existing tests and confirm SC-002. Run each command on its own:
       `uv run invoke backend.test-unit`,
       `uv run pytest backend/tests/component/api/test_40_schema.py`,
@@ -261,8 +335,9 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       `uv run pytest backend/tests/component/pools/test_schema_number_pool_scope.py`,
       `uv run pytest backend/tests/integration/schema_lifecycle/`,
       `uv run pytest backend/tests/functional/schemas/ backend/tests/functional/api/test_load_schema.py`.
-      A test may change only when it asserts one of the four known bugs and the applier fixes it.
-      For any other failure, fix the builder or the applier and add the case to the suite.
+      A test may change only when it asserts one of the four known bugs and the applier fixes it,
+      or when it is one of the five calls that T019 changes. For any other failure, fix the
+      builder or the applier and add the case to the suite.
 - [ ] T022 [US1] Measure the time of `SchemaCandidateBuilder.from_schema_root` against the time
       of the reference function of T006 on the internal and core schema plus the largest schema
       of `backend/tests/helpers/schema/`. Write the result in [research.md](research.md), R7, as a
@@ -283,8 +358,21 @@ a GraphQL query returns the history of a branch in pages.
 
 ### Tests (write first)
 
-- [ ] T023 [P] [US2] Write the component tests of the repository in
-      `backend/tests/component/core/schema_change/test_repository.py`, against Neo4j:
+- [ ] T023 [US2] Write the seeding function and the component tests of the repository and
+      of the history reader, against Neo4j.
+
+      In `backend/tests/helpers/schema_change.py`, one async function that creates a history
+      through `SchemaChangeRepository` and returns a dataclass with the IDs and the timestamps
+      it created. It takes the number of applied, failed and running schema changes for each
+      branch name, the number of operations of each, and the migrations of each application.
+      T024, T025, T026 and T052 use it, so no test module creates these records by hand.
+
+      The first five cases below write, so each is a function test in
+      `backend/tests/component/core/schema_change/test_repository.py` that requests `db` and
+      `empty_database` only. The last three only read, so they are methods of one class in
+      `backend/tests/component/core/schema_change/test_history_reader.py`, with one class-scoped
+      fixture that requests `empty_database_scope_class` and seeds main, two branches, applied,
+      failed and running schema changes, and more operations than one page:
       - creating a schema change with operations and one application stores the operations in
         the order of `position` and links them with the edges of [data-model.md](data-model.md);
       - no edge between records has a `branch` property;
@@ -297,35 +385,65 @@ a GraphQL query returns the history of a branch in pages.
         `limit`, `offset`, a status filter and the count of all pages;
       - operations for a set of schema changes come in pages with the count for each one;
       - applications for a set of schema changes come with their migration records.
-- [ ] T024 [P] [US2] Write the component tests of the recorder in
-      `backend/tests/component/core/schema_change/test_recorder.py`:
+- [ ] T024 [P] [US2] Write the component tests of the version resolver and of the recorder.
+      Neither module requests a schema fixture.
+
+      In `backend/tests/component/core/schema_change/test_version_resolver.py`, as methods of
+      one class. The resolver only reads, so one class-scoped fixture on
+      `default_branch_scope_class` creates the branches and seeds every case below with the
+      function of T023, each case on branches of its own:
+      - main with no schema change gives version 1 and no parent;
+      - main with applied versions 1, 2 and 3 gives version 4, with version 3 as the parent
+        (FR-030, FR-034);
+      - a branch created when main was at version 2 gives 3, with main's version 2 as the
+        parent; after the branch applied that one, it gives 4, with the branch's version 3 as
+        the parent (FR-031);
+      - two branches created from the same version of main each give that version plus 1;
+      - main has a schema change whose `applied_at` is before the `branched_from` of a branch:
+        the branch gives main's version plus 1 ([research.md](research.md), R10);
+      - main has a schema change whose `applied_at` is after the `branched_from` of a branch: the
+        branch does not count it;
+      - a `running` or a `failed` schema change on the branch does not change the result
+        (FR-032).
+
+      In `backend/tests/component/core/schema_change/test_recorder.py`, as function tests that
+      request `db` and `default_branch`, because each one writes:
       - `start` creates a schema change with the status `running`, no version and no parent, and
         an application with the status `running` and the timestamp given;
-      - `complete` sets both to `applied`, assigns the version, the parent and `applied_at`;
-      - three changes completed on main get the versions 1, 2 and 3, each with the one before as
-        its parent, and the first with no parent (FR-030, FR-034);
-      - a branch created when main was at version 2 gets 3 for its first schema change, with
-        main's version 2 as its parent, and 4 for the next (FR-031);
-      - two branches created from the same version of main each get that version plus 1;
-      - main loads a schema, then a branch is created with a `branched_from` after the timestamp
-        of that load: the branch's first schema change gets main's version plus 1
-        ([research.md](research.md), R10);
-      - a branch created with a `branched_from` before that timestamp gets main's version;
-      - a `running` schema change on the branch does not change the next version (FR-032);
+      - `complete` sets both to `applied`, and stores the version and the parent that the
+        resolver returns and `applied_at`;
+      - two changes completed one after the other on main get the versions 1 and 2, and the
+        second has the first as its parent;
       - `record_applied` creates an applied schema change and an applied application in one call;
       - `start` and `record_applied` raise when the list of operations is empty (FR-003).
-- [ ] T025 [P] [US2] Write the component tests of the migration recorder in
-      `backend/tests/component/core/schema_change/test_migration_recorder.py`:
+- [ ] T025 [P] [US2] Write the tests of the migration recorder.
+
+      In `backend/tests/component/core/schema_change/test_migration_recorder.py`, as function
+      tests that request `db` and `empty_database` only, each on one application created with
+      the function of T023:
       - `register` creates the records with the status `waiting` (FR-052);
-      - `batch_started` sets the records of the batch to `running`;
+      - `batch_started` sets the records at the positions given to `running`, and no other;
       - `migration_ended` with a result without error sets the record at that position to
         `applied` and stores `nbr_migrations_executed`, including the value 0 (FR-053);
       - `migration_ended` with errors sets the record to `failed` and stores the errors;
       - two migrations with the same name and path are updated separately, by position;
-      - `NoRecordMigrationRecorder` writes nothing.
+      - the recorder that `build_migration_recorder` returns for no application ID creates no
+        record when its three methods are called.
+
+      In `backend/tests/unit/core/schema_change/test_migration_recorder.py`, without a database.
+      Add to `backend/tests/unit/core/schema_change/helpers.py` a `MigrationRecordStore` that
+      records each call and then raises:
+      - with that store, `register`, `batch_started` and `migration_ended` do not raise. Assert
+        the log record of each failure with `caplog`, and that the store received each call.
 - [ ] T026 [P] [US2] Write the component tests of the query in
-      `backend/tests/component/graphql/queries/test_schema_change.py`, in the style of
-      `backend/tests/component/graphql/queries/test_branch.py`:
+      `backend/tests/component/graphql/queries/test_schema_change.py`, as methods of one class in
+      the style of
+      `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters`.
+      Every case only reads, so one class-scoped fixture seeds the history once with the
+      function of T023: main and two branches, one of them with no schema change, applied and
+      failed schema changes, several operations and migrations. It does not load a schema file.
+      The class requests `default_branch_scope_class`, the `_scope_class` variants of the schema
+      fixtures that `prepare_graphql_params` needs, and `session_admin_scope_class`:
       - the query returns the schema changes of the branch of the request only;
       - `count` and `edges` follow `limit` and `offset`, and a page holds at most `limit` items
         (FR-072);
@@ -334,32 +452,54 @@ a GraphQL query returns the history of a branch in pages.
       - `operations(limit, offset)` returns pages in the order of `position` with the count;
       - `applications` returns each application with its migrations, each with its path, name,
         status, result and errors (FR-070);
-      - a request without a logged-in account is refused (FR-073);
       - a `limit` below 1 or above the maximum, and an `offset` below 0, are refused;
       - a branch with no schema change returns an empty page and a count of 0;
       - a page of several schema changes runs a fixed number of queries, whatever the number of
         schema changes on it. Count them with `CountingInfrahubDatabase` from
         `backend/tests/helpers/db_query_counter.py`.
-- [ ] T027 [P] [US2] Add component tests of the load and the check to
-      `backend/tests/component/api/test_40_schema.py`:
+- [ ] T027 [US2] Create the base class and the data set of the functional tests in
+      `backend/tests/functional/schema_change/shared.py`, in the way
+      `backend/tests/integration/schema_lifecycle/shared.py::TestSchemaLifecycleBase` does:
+      - `TestSchemaChangeBase(TestInfrahubApp)`, with the schema files of the scenario as
+        class-scoped fixtures. Reuse the schemas of
+        `backend/tests/integration/schema_lifecycle/shared.py` or `backend/tests/helpers/schema/`
+        before defining one;
+      - one class-scoped fixture that loads the base schema, creates the nodes and creates the
+        branch of the scenario, and returns their IDs. Every class of this package uses it, so
+        the registry, the base schema and the nodes are set up once for each class and never for
+        each test.
+
+      Then create the ordered class `TestSchemaChangeHistory(TestSchemaChangeBase)` in
+      `backend/tests/functional/schema_change/test_schema_change_history.py`. Its methods run in
+      the order they are defined, and each one continues from the state the one before it left.
+      Say so in the docstring of the class. Phases 4, 5 and 7 add methods to it in this order:
+      loads and check (this task), history query (T028), failed load and corrected load (T046),
+      branch deletion (T055), which stays last.
+
+      The methods of this task, on the branch, each asserting the records through
+      `SchemaChangeHistoryReader`:
       - a load that changes the schema stores one schema change with the status `applied` and
         the operations of the file;
       - loading the same file a second time stores none (FR-003);
       - a load that only changes a label stores a schema change whose application has no
         migration record (FR-004);
-      - a load that is refused for an invalid file, or for a constraint that existing nodes fail,
-        stores none (spec, decision 1);
-      - a schema check stores none, and returns the diff it returned before (FR-021).
-- [ ] T028 [P] [US2] Write the functional test of the history in
-      `backend/tests/functional/schema_change/test_schema_change_history.py`, with
-      `TestInfrahubApp` and the schemas of `backend/tests/integration/schema_lifecycle/shared.py`
-      or `backend/tests/helpers/schema/`. On a branch with nodes, load three files that each
-      change the schema, then query `InfrahubSchemaChange` through GraphQL:
+      - a load that is refused for an invalid file, or for a constraint that the nodes of the
+        data set fail, stores none, and the records are the same as before (spec, decision 1);
+      - a schema check stores none, and returns the diff between the branch schema and the
+        applier's result (FR-021).
+- [ ] T028 [US2] Add the history query methods to `TestSchemaChangeHistory` in
+      `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
+      of T027. Load one more file that adds an attribute to a generic, so the branch has three
+      applied schema changes, then query `InfrahubSchemaChange` through GraphQL:
       - three applied schema changes with consecutive versions that start after main's version;
       - each name starts with its version in five digits;
-      - an attribute added to a generic gives one operation on the generic, and one migration
+      - the attribute added to a generic gives one operation on the generic, and one migration
         record for each migration that ran, with the status `applied`;
-      - each schema change after the first has the one before as its parent.
+      - each schema change after the first has the one before as its parent;
+      - the same query sent through the HTTP client without a token is refused, and the same
+        query with the token of an account that has no other permission returns the page
+        (FR-073). This case is here and not in T026 because the GraphQL application enforces
+        `QUERIES_REQUIRING_AUTHENTICATION` (`graphql/api/dependencies.py`), not the resolver.
 
 ### Records
 
@@ -373,7 +513,8 @@ a GraphQL query returns the history of a branch in pages.
         `property_name: str | None`, `value` and `previous_value` as JSON-encoded text or `None`;
       - `SchemaChangeApplication`: `branch: str`, `status: SchemaChangeApplicationStatus`,
         `at: str`, `error: str | None`;
-      - `SchemaChangeMigration`: `position: int`, `migration_name: str`, `path_type: str`,
+      - `SchemaChangeMigration`: `position: int`, `migration_name: str`,
+        `path_type: SchemaPathType` (the existing enum in `infrahub.core.constants`),
         `schema_kind: str`, `field_name: str | None`, `property_name: str | None`,
         `status: SchemaChangeMigrationStatus`, `nbr_migrations_executed: int | None`,
         `errors: list[str]`.
@@ -404,47 +545,112 @@ a GraphQL query returns the history of a branch in pages.
       - the applications of a set of schema changes, with their migration records in the order
         of `position`.
 - [ ] T032 [US2] Create `SchemaChangeRepository` in
-      `backend/infrahub/core/schema_change/repository.py` with the methods of
-      [data-model.md](data-model.md), "What the repository offers", except the two that phases 5
-      and 7 add. It takes `db` in its constructor, converts `SchemaOperation` to and from
-      `SchemaChangeOperation`, and returns typed results. Make T023 pass.
-- [ ] T033 [US2] Create `SchemaChangeRecorder` and `SchemaChangeRecording` in
-      `backend/infrahub/core/schema_change/recorder.py` with `start`, `complete` and
-      `record_applied`, following the contract and [research.md](research.md), R8 and R10.
-      `complete` and `record_applied` read the base version and the parent, then write the next
-      version. `applied_at` is the application's `at`. Make T024 pass.
+      `backend/infrahub/core/schema_change/repository.py` and `SchemaChangeHistoryReader` in
+      `backend/infrahub/core/schema_change/history_reader.py`, each with its methods of
+      [data-model.md](data-model.md), "What the repository and the history reader offer", except
+      the repository method that phase 5 adds. Each takes `db` in its constructor and returns
+      typed results. The repository converts `SchemaOperation` to `SchemaChangeOperation`, and
+the reader converts it back. Neither has a delete method. Name the two migration record
+      methods of the repository `create_migration_records` and `set_migration_records_status`,
+      with the signatures of `MigrationRecordStore` in the contract. Make T023 pass.
+- [ ] T033 [US2] Create `SchemaChangeVersionResolver` and `SchemaChangeVersion` in
+      `backend/infrahub/core/schema_change/version_resolver.py`, following the contract and
+      [research.md](research.md), R10. Then create `SchemaChangeRecorder` and
+      `SchemaChangeRecording` in `backend/infrahub/core/schema_change/recorder.py` with `start`,
+      `complete` and `record_applied`, following the contract and R8. The recorder takes the
+      repository and the resolver in its constructor. `complete` and `record_applied` ask the
+      resolver for the version and the parent, then write them. `applied_at` is the
+      application's `at`. Make T024 pass.
 
 ### Migration records
 
-- [ ] T034 [US2] Create `MigrationRecorder`, `ApplicationMigrationRecorder` and
-      `NoRecordMigrationRecorder` in `backend/infrahub/core/schema_change/migration_recorder.py`,
-      following the contract. A failure to write a record is logged and does not raise. Load
-      `dev/guidelines/backend/exceptions.md` before writing the `try`/`except`. Make T025 pass.
-- [ ] T035 [US2] Add `application_id: str | None = None` to
-      `core/migrations/schema/models.py::SchemaApplyMigrationData`, and an optional
-      `application_id` argument to `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute`,
-      to its three overloads and to `_run_migrations`, which puts it in the message. Load
+- [ ] T034 [US2] Create the `MigrationRecorder` interface and `NoRecordMigrationRecorder` in
+      `backend/infrahub/core/schema_change/migration_recorder.py`, which imports nothing that
+      reaches the database. Create `ApplicationMigrationRecorder` and the `MigrationRecordStore`
+      protocol in `backend/infrahub/core/schema_change/application_migration_recorder.py`,
+      following the contract. `ApplicationMigrationRecorder` takes a `MigrationRecordStore` and
+      the application ID in its constructor, and identifies every migration by its position. A
+      failure to write a record is logged and does not raise. Load
+      `dev/guidelines/backend/exceptions.md` before writing the `try`/`except`. Add
+      `build_migration_recorder(db, application_id)` to `factory.py`. Make T025 pass.
+- [ ] T035 [US2] Carry the application ID from the coordinator to the migration flow. Load
       `dev/guidelines/backend/prefect-payloads.md` first.
-- [ ] T036 [US2] Change `core/migrations/schema/tasks.py::schema_apply_migrations` to build the
-      `MigrationRecorder` at its top: `ApplicationMigrationRecorder` with a repository on the
-      database of the flow when the message has an application ID, `NoRecordMigrationRecorder`
-      otherwise. It calls `register` with all the migrations before the first batch. Change
-      `_apply_migration_batch` to take the recorder, call `batch_started`, keep the position of
-      each migration it submits, and call `migration_ended` with that position each time a result
-      arrives. The return value of the flow is unchanged.
+      - In `core/migrations/schema/models.py::SchemaApplyMigrationData`, add
+        `application_id: str | None = None`. Replace the hand-written `serialize_model`, which
+        returns six keys and would drop the new field before it reaches a task worker, with
+        `@field_serializer` functions for the four fields that need one (`branch`,
+        `previous_schema`, `new_schema`, `at`). A field added later then serializes by default.
+      - Extend
+        `backend/tests/component/core/migrations/schema/test_models.py::test_SchemaApplyMigrationData_serializer`:
+        build the message with an application ID, dump it to JSON, rebuild it from the JSON, and
+        assert the application ID, the user ID and the timestamp on the rebuilt object against
+        literal values.
+      - In `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute`, remove the
+        argument `update_registry` and the three overloads. No caller passes `False`. `execute`
+        always returns `str`, and `_update_schema` always sets the schema in the registry.
+      - Add `application_id: str | None` to `execute` as a keyword argument without a default,
+        and pass it to `_run_migrations`, which puts it in the message.
+      - Change the callers of `execute`: `api/schema.py::load_schema`, `cli/db.py` (core schema
+        update), `core/branch/tasks.py` (rebase), `core/merge/orchestrator.py`, and the two
+        calls in `backend/tests/component/core/schema_manager/test_schema_rollback.py`. Each
+        drops `update_registry=True` where it passes it, and passes `application_id=None`.
+        `load_schema` passes the real value from T038 on.
+      - Run `backend/tests/component/core/schema_manager/test_schema_rollback.py`,
+        `backend/tests/component/core/test_branch_rebase.py` and
+        `backend/tests/component/core/merge/test_orchestrator.py`. Their expected results do not
+        change.
+- [ ] T036 [US2] Change the flow in `core/migrations/schema/tasks.py` so that it reports each
+      migration by its position in the message. Today `schema_apply_migrations` splits the
+      migrations into two lists, and `_apply_migration_batch` reads results in the order they
+      complete, so an index inside that function is not the position in the message.
+      - Add a frozen dataclass
+        `PositionedMigration(position: int, migration: SchemaUpdateMigrationInfo)`. The flow
+        builds the list once from `enumerate(message.migrations)`.
+      - `split_migrations_by_phase` takes and returns `PositionedMigration` items.
+      - `schema_apply_migrations` calls `get_database()` once at its top, builds the
+        `MigrationRecorder` with `build_migration_recorder` from that database and the
+        application ID of the message, and calls `register` with all the migrations before the
+        first phase. The flow imports the interface only.
+      - `_apply_migration_batch` takes the `PositionedMigration` items of one phase, the
+        recorder and the database, and no longer calls `get_database()`. It calls
+        `batch_started` with the positions of the phase. Each entry of the batch is a small
+        typed coroutine function that awaits `schema_path_migrate` and returns the position
+        with the result. It calls `migration_ended` with that position each time a result
+        arrives.
+      - When the recorder reads `migration_name` or `schema_path` of
+        `SchemaMigrationPathResponseData`, make both fields required: `schema_path_migrate`
+        always sets them.
+      - In `backend/tests/unit/core/migrations/schema/test_tasks.py`, change the two tests of
+        `split_migrations_by_phase` to the new input type, and add a case: kind-update
+        migrations placed between other migrations keep their positions in the message after
+        the split.
+
+      The return value of the flow is unchanged.
 
 ### The load
 
 - [ ] T037 [US2] Create `SchemaChangeApplicationRunner` in
-      `backend/infrahub/core/schema_change/application_runner.py` with the success path of the
-      contract: `recorder.start`, `SchemaUpdateCoordinator.execute` with the application ID and
-      the diff, migrations and `limit` of the candidate, then `recorder.complete`. Phase 5 adds
-      the failure path.
-- [ ] T038 [US2] Change `api/schema.py::load_schema` to build the repository, the recorder, the
-      coordinator and the runner next to where it builds the coordinator today, and to call
-      `runner.run` with the `SchemaCandidate` of T019 in place of `coordinator.execute`. The lock,
+      `backend/infrahub/core/schema_change/application_runner.py`, with the `ApplicationRecorder`
+      and `SchemaUpdateExecutor` protocols of the contract declared beside it.
+      `SchemaUpdateExecutor.execute` has the arguments the runner passes, each with a required
+      type: `branch`, `origin_schema`, `rollback_schema`, `candidate_schema`, `at`, `context`,
+      `diff`, `migrations`, `limit`, `user_id` and `application_id`. The runner takes both
+      protocols in its constructor and imports neither `SchemaChangeRecorder` nor
+      `SchemaUpdateCoordinator`. Write the success path: `recorder.start`, `executor.execute`
+      with the application ID, the `user_id` and the `context` it received, and the diff,
+      migrations and `limit` of the candidate, then `recorder.complete`. Phase 5 adds the
+      failure path. Add `build_schema_change_recorder(db, default_branch_name)` and
+      `build_schema_change_application_runner(db, executor, default_branch_name)` to
+      `factory.py`.
+- [ ] T038 [US2] Change `api/schema.py::load_schema` to build the coordinator and the runner at
+      its top, after the permission checks and before the schema lock, next to the candidate
+      builder of T019. It builds the runner with `build_schema_change_application_runner`, and
+      passes the coordinator as `executor` and `registry.default_branch` as
+      `default_branch_name`. Call `runner.run` with the `SchemaCandidate` of T019 in place of
+      `coordinator.execute`, with `user_id=account_session.account_id` and the copy of the
+      context that has the priority `HIGH`, as the call to the coordinator has today. The lock,
       the constraint workflow, the early return for an empty diff, the hash refresh, the event
-      and the response are unchanged. Make T027 pass.
+      and the response are unchanged. Make the methods of T027 pass.
 
 ### The query
 
@@ -457,14 +663,15 @@ a GraphQL query returns the history of a branch in pages.
 - [ ] T040 [US2] Create two data loaders in `backend/infrahub/graphql/loaders/schema_change.py`,
       in the style of `backend/infrahub/graphql/loaders/account.py`: one that loads a page of
       operations for each schema change ID, keyed by `limit` and `offset`, and one that loads the
-      applications with their migration records for each schema change ID. Each loader runs one
-      query for all the IDs of a request.
+      applications with their migration records for each schema change ID. Each loader reads
+      through `SchemaChangeHistoryReader` and runs one query for all the IDs of a request.
 - [ ] T041 [US2] Create the resolver and the field `InfrahubSchemaChange` in
       `backend/infrahub/graphql/queries/schema_change.py`, in the style of
       `graphql/queries/branch.py::infrahub_branch_resolver`. It reads the branch from the GraphQL
       context, refuses a `limit` below 1 or above the maximum and an `offset` below 0 with
-      `ValidationError`, opens its own read-only database session, and reads `edges` and `count`
-      only when the request selects them. The `operations` and `applications` fields resolve
+      `ValidationError`, opens its own read-only database session, builds a
+      `SchemaChangeHistoryReader` on it, and reads `edges` and `count` only when the request
+      selects them. The `operations` and `applications` fields resolve
       through the loaders of T040.
 - [ ] T042 [US2] Export the field from `backend/infrahub/graphql/queries/__init__.py`, add it to
       `InfrahubBaseQuery` in `backend/infrahub/graphql/schema.py`, and add `InfrahubSchemaChange`
@@ -498,18 +705,24 @@ error, and the status of each migration.
       - the next schema change completed on the branch gets the next version, and its parent is
         the last applied schema change.
 - [ ] T045 [P] [US3] Write the unit tests of the runner in
-      `backend/tests/unit/core/schema_change/test_application_runner.py`, with a recorder and a
-      coordinator written for the test that record their calls and can raise. No mock library:
-      - when the coordinator raises, the runner calls `fail` with the text of the error and
-        raises the same exception;
-      - when `fail` raises as well, the runner still raises the coordinator's exception;
-      - on success the runner calls `start`, then the coordinator with the application ID, then
-        `complete`, and returns the hash.
-- [ ] T046 [P] [US3] Write the functional test of a failed load in
-      `backend/tests/functional/schema_change/test_schema_change_failed_load.py`. Make a
-      migration fail as
+      `backend/tests/unit/core/schema_change/test_application_runner.py`. Add to
+      `backend/tests/unit/core/schema_change/helpers.py` an `ApplicationRecorder` and a
+      `SchemaUpdateExecutor` that record their calls in order, and one of each that raises. No
+      mock library, and no database:
+      - when the executor raises, the runner calls `fail` with the text of the error and raises
+        the same exception;
+      - when `fail` raises as well, the runner still raises the executor's exception, and the
+        failure of `fail` is logged;
+      - on success the runner calls `start`, then the executor with the application ID, then
+        `complete`, in that order, and returns the hash;
+      - the executor receives the `user_id` and the `context` that `run` received.
+- [ ] T046 [US3] Add the failed load methods to `TestSchemaChangeHistory` in
+      `backend/tests/functional/schema_change/test_schema_change_history.py`, after the methods
+      of T028 and before the deletion. They continue from the three applied schema changes of
+      the class and load nothing again. Make a migration fail as
       `backend/tests/integration/schema_lifecycle/test_schema_load_rollback.py` does, with a
-      migration class that returns an error:
+      migration class that returns an error and a function-scoped fixture that puts it in
+      `MIGRATION_MAP` and restores the map:
       - the branch schema and the data are as they were before the load;
       - the history holds the schema change with the status `failed`, no version, and an
         application with the status `failed` and the error (FR-060, FR-061);
@@ -530,7 +743,7 @@ error, and the status of each migration.
       `backend/infrahub/core/schema_change/recorder.py`. Make T044 pass.
 - [ ] T049 [US3] Add the failure path to `SchemaChangeApplicationRunner.run` in
       `backend/infrahub/core/schema_change/application_runner.py`: catch the exception that
-      `SchemaUpdateCoordinator.execute` raises after its rollback, call `recorder.fail`, log a
+      `executor.execute` raises after its rollback, call `recorder.fail`, log a
       failure of `recorder.fail` itself, and raise the original exception. Load
       `dev/guidelines/backend/exceptions.md` first. Make T045 and T046 pass.
 
@@ -546,22 +759,31 @@ error, and the status of each migration.
 history ([quickstart.md](quickstart.md), section 2).
 
 - [ ] T050 [P] [US4] Write the component tests in
-      `backend/tests/component/graphql/mutations/test_schema_dropdown_and_enum_history.py`:
-      - `SchemaDropdownAdd` stores one schema change with the status `applied`, one
-        `element_property` operation on `choices` with the list before the change, and one
-        application with the status `applied` and no migration record;
-      - `SchemaDropdownRemove`, `SchemaEnumAdd` and `SchemaEnumRemove` each store one;
+      `backend/tests/component/graphql/mutations/test_schema_dropdown_and_enum_history.py`, as
+      one ordered class. Add a `choices_schema_scope_class` fixture beside `choices_schema` in
+      `backend/tests/component/conftest.py`, on `node_group_schema_scope_class` and
+      `default_branch_scope_class`, with the body of the two fixtures in one shared function.
+      The schema and the nodes are then loaded once for the class. The methods run in the order
+      they are defined, and each continues from the history the one before it left:
+      - `SchemaDropdownAdd` stores one schema change with the status `applied`, version 1, no
+        parent, one `element_property` operation on `choices` with the list before the change,
+        and one application with the status `applied` and no migration record. The previous
+        value of the operation is the list of the branch schema;
+      - `SchemaDropdownRemove`, then `SchemaEnumAdd`, then `SchemaEnumRemove` each store one
+        more, with the next version and the one before as its parent;
       - a mutation that is refused, for a choice that already exists or a value still in use,
-        stores none;
-      - the schema change gets the next version of the branch and the right parent;
-      - `applied_at` equals the timestamp at which the schema was saved.
-- [ ] T051 [US4] Change `graphql/mutations/schema.py::update_registry` to take one `Timestamp`,
-      pass it to `registry.schema.update_schema_branch` as `at`, and, inside the same
-      `db.start_transaction()` block, call `SchemaChangeRecorder.record_applied` with the
-      operation of T020, built on a repository that uses the database handle of the transaction
-      ([research.md](research.md), R11). Nothing is stored when the diff is empty. Make T050 pass,
-      and run the existing tests of these four mutations in
-      `backend/tests/component/graphql/mutations/test_schema.py`.
+        stores none, and the history is the same as before it;
+      - `applied_at` of each schema change equals the timestamp at which the schema was saved.
+- [ ] T051 [US4] Change `graphql/mutations/schema.py::apply_attribute_property_change` to take
+      one `Timestamp` and to store the records. Inside its `db.start_transaction()` block, build
+      the recorder with `build_schema_change_recorder` on the database handle of the
+      transaction, and call `SchemaChangeRecorder.record_applied` with the operation of T020
+      first, before `registry.schema.update_schema_branch`. `update_schema_branch` replaces the
+      schema in the registry of the process before the transaction commits, so a record write
+      that failed after it would leave the registry ahead of the database
+      ([research.md](research.md), R11). Pass the timestamp to both calls. Nothing is stored
+      when the diff is empty. Make T050 pass, and run the existing tests of these four mutations
+      in `backend/tests/component/graphql/mutations/test_schema.py`.
 
 **Checkpoint**: every way of changing a schema from user input is in the history.
 
@@ -575,27 +797,37 @@ history ([quickstart.md](quickstart.md), section 2).
 branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3).
 
 - [ ] T052 [P] [US5] Write the component tests in
-      `backend/tests/component/core/schema_change/test_delete_by_branch.py`, with
-      `BranchDataDeleter(db=db, batch_size=5)` as `backend/tests/component/core/test_branch.py`
-      does:
+      `backend/tests/component/core/schema_change/test_delete_by_branch.py`, as one ordered
+      class with `BranchDataDeleter(db=db, batch_size=5)`, as
+      `backend/tests/component/core/test_branch.py` builds it. One class-scoped fixture requests
+      `empty_database_scope_class` and no schema fixture, and seeds with the function of T023:
+      main, a branch to delete and a second branch. The branch to delete gets a number of schema
+      changes that is derived from the batch size and is not a multiple of it (two batches plus
+      one), one of them failed, and its first schema change has a schema change of main as its
+      parent. The methods, in order:
+      - before the deletion, the records of the three branches are the ones seeded;
       - after `delete_branch_data`, no schema change, operation, application or migration record
-        of the branch remains, including those of a failed schema change (FR-081);
-      - the records of main and of a second branch are unchanged, including main's schema change
-        that is the parent of the deleted branch's first schema change (FR-082);
-      - more records than the batch size are all deleted;
-      - a second call deletes nothing and raises nothing.
+        of the branch remains, including those of the failed schema change (FR-081);
+      - the records of main and of the second branch are the same as before, including main's
+        schema change that was the parent of the deleted branch's first schema change (FR-082);
+      - a second call deletes nothing and raises nothing, and the records of main and of the
+        second branch are still the same.
 - [ ] T053 [US5] Add the query that deletes the records of a branch to
       `backend/infrahub/core/query/schema_change.py`. It selects up to a batch of schema changes
       by their `branch` property, deletes each with its operations, applications and migration
-      records, and returns the number of schema changes deleted. Add the repository method in
-      `backend/infrahub/core/schema_change/repository.py`.
+      records, and returns the number of schema changes deleted. Add no repository method: the
+      deleter runs the query itself ([research.md](research.md), R1 and R13).
 - [ ] T054 [US5] Add a step to `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`
       that runs the query of T053 with the deleter's batch size until a run deletes nothing, in
-      the way `_delete_edges` loops. Make T052 pass.
-- [ ] T055 [P] [US5] Add a functional test to
-      `backend/tests/functional/schema_change/test_schema_change_history.py`: delete the branch
-      through the `BranchDelete` mutation, then confirm that the history of main is unchanged and
-      that no record of the branch remains.
+      the way `_delete_edges` loops. The value that `delete_branch_data` returns stays the number
+      of edges its existing steps removed; log the number of schema changes deleted. Make T052
+      pass.
+- [ ] T055 [US5] Add the branch deletion methods to `TestSchemaChangeHistory` in
+      `backend/tests/functional/schema_change/test_schema_change_history.py`, as the last
+      methods of the class. Read the records of the branch, which include the failed schema
+      change of T046, and the records of main. Delete the branch through the `BranchDelete`
+      mutation, then confirm that no record of the branch remains and that the records of main
+      are the same as before.
 
 **Checkpoint**: all five user stories work.
 
@@ -603,11 +835,14 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
 
 ## Phase 8: Documentation and polish
 
-- [ ] T056 [P] Write the functional test that the records are outside the branch-aware graph, in
-      `backend/tests/functional/schema_change/test_schema_change_records_untouched.py`. Take a
-      snapshot of the records of main and of a branch, then run a rebase of the branch and a
-      merge of the branch. After each one, the records, their fields and their edges are the same
-      (FR-008, FR-080).
+- [ ] T056 [P] Write the functional test that the records are outside the branch-aware graph,
+      as a second class `TestSchemaChangeRecordsUntouched(TestSchemaChangeBase)` in
+      `backend/tests/functional/schema_change/test_schema_change_records_untouched.py`. It uses
+      the data set of T027 and is separate from `TestSchemaChangeHistory` because a merge
+      changes main. One class-scoped fixture loads a schema change on main and one on the
+      branch. Take a snapshot of the records of main and of the branch, then run a rebase of
+      the branch and a merge of the branch. After each one, the records, their fields and their
+      edges are the same (FR-008, FR-080).
 - [ ] T057 [P] Add an assertion to `backend/tests/integration_docker/test_schema_migration.py`:
       after a load whose migrations run on a task worker, `InfrahubSchemaChange` returns the
       schema change with the status `applied` and its migration records with the status
@@ -640,7 +875,8 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
 
 - **Phase 1** then **Phase 2** block everything.
 - **Phase 3 (US1)** blocks phases 4 to 8. T017 is the gate.
-- **Phase 4 (US2)** blocks phases 5, 6 and 7, which use the repository and the recorder.
+- **Phase 4 (US2)** blocks phases 5, 6 and 7, which use the repository, the recorder and the
+  query module.
 - **Phases 5 (US3), 6 (US4) and 7 (US5)** do not depend on each other.
 - **Phase 8** comes last. T056 needs phase 4. T057 needs phase 4. T058 to T060 need all stories.
 
@@ -649,16 +885,21 @@ T019 and T020. T021 and T022 after T020.
 
 Inside phase 4: T029 before T030 and T031. T030 and T031 before T032. T032 before T033 and T034.
 T035 before T036 and T037. T033, T034, T036 and T037 before T038. T039 before T040 and T041.
-T041 before T042. T042 before T043.
+T041 before T042. T042 before T043. T023 before T024, T025 and T026. T027 before T028.
+
+Across phases, in `test_schema_change_history.py`: T027, then T028, then T046, then T055. The
+methods of one class run in the order they are defined.
 
 ## Parallel opportunities
 
 - T003 and T005 in phase 2.
 - T008 to T014 in phase 3, after T006: seven test modules in seven files.
-- T023 to T028 in phase 4: six test modules. T039 can start while T029 to T038 are in progress.
-- T044, T045 and T046 in phase 5.
+- T024 to T026 in phase 4, after T023, which writes the seeding function they use. T027 then
+  T028 write one class in one file, in that order. T039 can start while T029 to T038 are in
+  progress.
+- T044 and T045 in phase 5. T046 adds to the class of T027, after T028.
 - Phases 5, 6 and 7 can run at the same time after phase 4, with one exception: T047 and T053
-  both change `core/query/schema_change.py` and `repository.py`.
+  both change `core/query/schema_change.py`.
 - T056 to T060 in phase 8.
 
 ## Implementation strategy

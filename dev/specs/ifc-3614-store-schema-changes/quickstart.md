@@ -38,21 +38,18 @@ Run one package for each pytest session.
 ```bash
 uv run pytest backend/tests/component/core/schema_change/
 uv run pytest backend/tests/component/graphql/queries/test_schema_change.py
-uv run pytest backend/tests/component/api/test_40_schema.py
 uv run pytest backend/tests/component/graphql/mutations/test_schema_dropdown_and_enum_history.py
 uv run pytest backend/tests/component/core/test_branch.py
 ```
 
 What they must show:
 
-- The repository creates, reads, updates and deletes the four records, and reads schema changes
-  and operations in pages.
+- The repository creates and updates the four records, the history reader reads schema changes
+  and operations in pages, and the branch deletion deletes the records of a branch.
 - The first schema change of a branch gets main's version at `branched_from` plus 1, and has
   main's schema change at that version as its parent.
 - The history query returns applied schema changes by version and the others by creation time,
   and the count of all pages. It refuses a request without a logged-in account.
-- A schema load stores one schema change, a second load of the same file stores none, and a
-  schema check stores none.
 - A dropdown or enum mutation stores one schema change with one operation. A refused mutation
   stores none.
 - Deleting a branch's data deletes its records and leaves the records of main.
@@ -65,6 +62,8 @@ uv run pytest backend/tests/functional/schema_change/
 
 What it must show:
 
+- A schema load stores one schema change, a second load of the same file stores none, a refused
+  load stores none, and a schema check stores none.
 - Three loads on a branch with nodes give three applied schema changes with consecutive versions,
   each with the migrations that ran.
 - A load whose migration fails leaves the schema and the data as they were, and the history shows
