@@ -137,4 +137,20 @@ describe("RelationshipComboboxList", () => {
       ids: ["17a4cdef-1234-4abc-8def-0123456789ab"],
     });
   });
+
+  test("fetches the next page when Load more is selected", async () => {
+    // GIVEN
+    const relationships = { ...setupReturn(), hasNextPage: true };
+    useRelationshipsMock.mockReturnValue(relationships);
+    useSchemaMock.mockReturnValue({ schema: { label: "Device" } });
+    const component = await render(
+      <RelationshipComboboxList peer="InfraDevice" onSelect={vi.fn()} />
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: "Load more" }).click();
+
+    // THEN
+    expect(relationships.fetchNextPage).toHaveBeenCalledOnce();
+  });
 });
