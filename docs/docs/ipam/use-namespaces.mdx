@@ -25,12 +25,15 @@ A deployment that manages a single network or organization usually needs only th
 
 ## Choose between a namespace and a VRF
 
-Model each VRF as a VRF node, and give a VRF its own namespace only when its address space overlaps with the address space of another VRF.
+A VRF and a namespace record different things. A VRF node records the routing instance. A namespace is what allows the same prefix to exist twice: the Marketplace IPAM schema makes prefixes unique within a namespace, so two VRFs that hold the same prefix need two namespaces.
 
-- A VRF node records the routing instance. In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, it records the route distinguisher, the import and export route targets, and, through the `vrf` relationship of each prefix, the prefixes that belong to the VRF.
-- A namespace is what allows the same value to exist twice. The Marketplace IPAM schema makes prefixes unique within a namespace, so two VRFs that hold the same prefix need two namespaces.
+How you combine them depends on how your organization models its networks. Each of these models works with Infrahub:
 
-VRFs whose address space does not overlap can share a namespace, which then has one tree and one set of utilization figures for all of them. The VRF node of the Marketplace extension has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
+- One namespace for each VRF. Each VRF has its own tree and its own utilization figures, and every VRF can hold the same prefixes as another.
+- Several VRFs in one namespace. A VRF node records each routing instance, and the `vrf` relationship of each prefix records the VRF it belongs to. The VRFs share one tree and one set of utilization figures, and with the Marketplace IPAM schema their address space cannot overlap.
+- A VRF node that is also the namespace. Define a VRF node that inherits from `BuiltinIPNamespace`, and add the VRF attributes to it, such as the route distinguisher. Each VRF is then a namespace, with its own tree, and you manage one node for each VRF instead of two.
+
+In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, the VRF node records the route distinguisher, the import and export route targets, and, through the `vrf` relationship of each prefix, the prefixes that belong to the VRF. It has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
 
 ## The default namespace
 
