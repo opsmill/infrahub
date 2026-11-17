@@ -136,7 +136,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
 
 ### The equivalence suite (write first; it must fail before T015 and T016)
 
-- [ ] T006 [US1] Create the shared schema and the helpers of the suite.
+- [X] T006 [US1] Create the shared schema and the helpers of the suite.
 
       In `backend/tests/unit/core/schema_change/conftest.py`, one session-scoped fixture that
       returns a processed `SchemaBranch` built once from the internal schema, the core schema
@@ -164,7 +164,7 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
         template kind (`SchemaBranch.to_dict`), the migrations as a sorted list of migration name
         and schema path, and the constraints in the same form. It must not call
         `SchemaCandidateComparer`.
-- [ ] T007 [US1] Write the cases that the first spike covered in
+- [X] T007 [US1] Write the cases that the first spike covered in
       `backend/tests/unit/core/schema_change/test_applier_equivalence.py`. Write the cases of
       T007 to T010 as dataclass test cases (`dev/guidelines/backend/testing.md`, "Dataclass Test
       Case Pattern"): a `name` and the schema file to load, in a module-level list, with one
@@ -177,14 +177,14 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       - removing an attribute;
       - renaming an attribute on a node, and on a generic;
       - adding a node.
-- [ ] T008 [P] [US1] Write the relationship cases in
+- [X] T008 [P] [US1] Write the relationship cases in
       `backend/tests/unit/core/schema_change/test_applier_equivalence_relationships.py`: adding a
       relationship, removing one, renaming one, and changing `peer`, `cardinality`, `optional`
       and `kind`.
-- [ ] T009 [P] [US1] Write the kind cases in
+- [X] T009 [P] [US1] Write the kind cases in
       `backend/tests/unit/core/schema_change/test_applier_equivalence_kinds.py`: renaming a kind,
       changing its namespace, adding a generic to `inherit_from`, and removing a generic.
-- [ ] T010 [P] [US1] Write the remaining cases of FR-024 in
+- [X] T010 [P] [US1] Write the remaining cases of FR-024 in
       `backend/tests/unit/core/schema_change/test_applier_equivalence_fields.py`:
       - dropdown choices: adding a choice, removing one with `state: absent`, changing a colour;
       - `state: absent` on a node, on an attribute and on a relationship;
