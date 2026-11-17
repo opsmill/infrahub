@@ -132,7 +132,7 @@ class TestProposedChangeUniquenessMerge(TestInfrahubApp):
         # The rejection is recorded on the schema-integrity validator.
         proposed_change = await NodeManager.get_one(db=db, id=pc_two.id, kind=CoreProposedChange)
         assert proposed_change
-        peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
+        peers = await proposed_change.validations.get_peers(db=db)
         schema_validators = [v for v in peers.values() if v.label.value == "Schema Integrity"]
         assert schema_validators
         assert schema_validators[0].conclusion.value.value == ValidatorConclusion.FAILURE.value

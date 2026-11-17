@@ -131,7 +131,7 @@ class PoolAllocated(ObjectType):
                 case InfrahubKind.IPADDRESSPOOL:
                     allocated_kinds.append(InfrahubKind.IPADDRESS)
 
-            resources = await pool.resources.get_peers(db=db)  # type: ignore[attr-defined,union-attr]
+            resources = await pool.resources.get_peers(db=db)  # type: ignore[attr-defined]
             if resource_id not in resources:
                 raise ValidationError(
                     input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
@@ -231,7 +231,7 @@ class PoolUtilization(ObjectType):
             resources_map: dict[str, Node] = {}
 
             with contextlib.suppress(SchemaNotFoundError):
-                resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+                resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined]
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
             resources = list(resources_map.values())
