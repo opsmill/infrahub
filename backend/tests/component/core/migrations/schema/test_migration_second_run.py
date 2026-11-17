@@ -84,23 +84,29 @@ async def create_car_data(
         cars.append(car)
 
     profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
-    profile_seats = {"nbr_seats": 3} if seats_on_profile else {}
-    await profile.new(db=db, profile_name="car-profile", color="#333333", is_electric=True, **profile_seats)
+    if seats_on_profile:
+        await profile.new(db=db, profile_name="car-profile", color="#333333", is_electric=True, nbr_seats=3)
+    else:
+        await profile.new(db=db, profile_name="car-profile", color="#333333", is_electric=True)
     await profile.save(db=db)
 
     template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
     await template_person.new(db=db, template_name="person-template")
     await template_person.save(db=db)
     template_car = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
-    template_seats = {"nbr_seats": 2} if seats_on_template else {}
-    await template_car.new(
-        db=db,
-        template_name="car-template",
-        color="#444444",
-        is_electric=True,
-        owner=template_person,
-        **template_seats,
-    )
+    if seats_on_template:
+        await template_car.new(
+            db=db,
+            template_name="car-template",
+            color="#444444",
+            is_electric=True,
+            owner=template_person,
+            nbr_seats=2,
+        )
+    else:
+        await template_car.new(
+            db=db, template_name="car-template", color="#444444", is_electric=True, owner=template_person
+        )
     await template_car.save(db=db)
 
     return CarData(
