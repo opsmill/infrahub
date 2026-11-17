@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="title desc">
+<title id="title">The built-in IPAM generics</title><desc id="desc">BuiltinIPNamespace has the attributes name and description. BuiltinIPPrefix has prefix, member_type, is_pool and the read-only utilization, an ip_namespace relationship to the namespace, and the read-only parent and children relationships to other prefixes. BuiltinIPAddress has address and description, a read-only ip_prefix relationship to its prefix, and an ip_namespace relationship to the namespace. IpamNamespace inherits from BuiltinIPNamespace, IpamPrefix from BuiltinIPPrefix, and IpamIPAddress from BuiltinIPAddress.</desc>
+<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#08738f"/></marker></defs>
+<rect width="960" height="400" rx="16" fill="white"/>
+<g font-family="Inter, Arial, sans-serif">
+<rect x="20" y="40" width="230" height="236" rx="18" fill="#f2fcff"/>
+<text x="38" y="76" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">BuiltinIPNamespace</text>
+<text x="38" y="110" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">name</text>
+<text x="38" y="136" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">description</text>
+<path d="M36 212 H234" fill="none" stroke="#b4cbd3" stroke-width="1.5"/>
+<text x="38" y="238" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Inherited by</text>
+<text x="38" y="260" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">IpamNamespace</text>
+<rect x="360" y="40" width="230" height="236" rx="18" fill="#f2fcff"/>
+<text x="378" y="76" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">BuiltinIPPrefix</text>
+<text x="378" y="110" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">prefix</text>
+<text x="378" y="136" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">member_type</text>
+<text x="378" y="162" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">is_pool</text>
+<text x="378" y="188" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">utilization (read-only)</text>
+<path d="M376 212 H574" fill="none" stroke="#b4cbd3" stroke-width="1.5"/>
+<text x="378" y="238" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Inherited by</text>
+<text x="378" y="260" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">IpamPrefix</text>
+<rect x="700" y="40" width="230" height="236" rx="18" fill="#f2fcff"/>
+<text x="718" y="76" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">BuiltinIPAddress</text>
+<text x="718" y="110" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">address</text>
+<text x="718" y="136" text-anchor="start" font-size="15" font-weight="500" fill="#264D59">description</text>
+<path d="M716 212 H914" fill="none" stroke="#b4cbd3" stroke-width="1.5"/>
+<text x="718" y="238" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Inherited by</text>
+<text x="718" y="260" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">IpamIPAddress</text>
+<path d="M360 150 H254" fill="none" stroke="#08738f" stroke-width="2.5" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="305" y="140" text-anchor="middle" font-size="14" font-weight="500" fill="#08738f">ip_namespace</text>
+<path d="M700 150 H594" fill="none" stroke="#08738f" stroke-width="2.5" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="645" y="140" text-anchor="middle" font-size="14" font-weight="500" fill="#08738f">ip_prefix</text>
+<path d="M500 276 V304 H544 V281" fill="none" stroke="#08738f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="556" y="298" text-anchor="start" font-size="14" font-weight="500" fill="#08738f">parent, children</text>
+<path d="M815 276 V340 H135 V281" fill="none" stroke="#08738f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="475" y="332" text-anchor="middle" font-size="14" font-weight="500" fill="#08738f">ip_namespace</text>
+<text x="20" y="380" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Infrahub computes the read-only values: parent, children, ip_prefix and utilization.</text>
+</g>
+</svg>

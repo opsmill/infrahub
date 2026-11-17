@@ -36,6 +36,10 @@ See [Infrahub Marketplace](../schema/marketplace/index.mdx) for the full fetch-a
 
 The prefix and address nodes of any IPAM schema inherit from the built-in generics, which define the attributes and relationships that Infrahub uses to build the tree and compute utilization:
 
+![BuiltinIPNamespace has a name and a description. BuiltinIPPrefix has prefix, member_type, is_pool and the read-only utilization, an ip_namespace relationship to the namespace, and the read-only parent and children relationships to other prefixes. BuiltinIPAddress has address and description, a read-only ip_prefix relationship to its prefix, and an ip_namespace relationship to the namespace. IpamNamespace, IpamPrefix and IpamIPAddress inherit from these three generics.](../media/ipam/ipam-generics.svg)
+
+The full list of attributes and relationships of each generic:
+
 - `BuiltinIPNamespace`
   - Attributes: `name` and `description`.
   - Relationships: `ip_prefixes` and `ip_addresses`. When you delete a namespace, Infrahub deletes the prefixes and addresses it holds.
