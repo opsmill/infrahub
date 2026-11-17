@@ -11,6 +11,7 @@ A Resource Manager pool assigns the next free address or prefix from IPAM prefix
 
 A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resources`, and allocates in one namespace. The `resources` relationship is the connection point between IPAM and the Resource Manager:
 
+- When a pool allocates an address or a prefix on a branch, it reserves the value on every branch at that moment. A request to the same pool from another branch receives a different value, so two branches that allocate from one pool do not hold the same value when they are merged. See [Branch-agnostic allocation](../resource-manager/overview.mdx#branch-agnostic-allocation).
 - When you pass the same `identifier` on repeated allocation requests, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object.
 - Infrahub handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests to the same pool never receive the same resource.
 
