@@ -466,18 +466,12 @@ async def test_selected_or_filtered_fields_by_kind(
     assert analyzer.query_report.fields_by_kind(kind="TestPerson") == ["cars", "height", "name"]
 
 
-async def test_relationship_filtered_fields_by_kind_leaves_out_the_root_filters(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
-) -> None:
-    """Report only the filters of a relationship read, since a root filter applies to the queried object itself."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    analyzer = InfrahubGraphQLQueryAnalyzer(
+OUTSIDE_ID_ROOT_CASES = [
+    RequestedReadCase(
+        name="filters_of_the_root_selected_by_an_ids_variable_are_left_out",
         query="""
-        query {
-            TestPerson(name__value: "John") {
+        query ($id: ID!) {
+            TestPerson(ids: [$id], name__value: "John") {
                 edges {
                     node {
                         cars(color__value: "red") {
@@ -488,16 +482,51 @@ async def test_relationship_filtered_fields_by_kind_leaves_out_the_root_filters(
             }
         }
         """,
-        schema=gql_params.schema,
-        branch=default_branch,
-        schema_branch=schema_branch,
+        expected_fields_by_kind={
+            "TestCar": {"color"},
+            "TestElectricCar": {"color"},
+            "TestGazCar": {"color"},
+        },
+    ),
+    RequestedReadCase(
+        name="filters_of_a_root_pinned_by_a_literal_are_kept",
+        query="""
+        query {
+            TestPerson(name__value: "John", height__value: 180) {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"name", "height"}},
+    ),
+    RequestedReadCase(
+        name="a_filter_on_a_peer_field_is_reported_on_the_peer_kind",
+        query="""
+        query ($id: ID!) {
+            TestCar(ids: [$id], owner__name__value: "John") {
+                edges { node { name { value } } }
+            }
+        }
+        """,
+        expected_fields_by_kind={"TestPerson": {"name"}},
+    ),
+]
+
+
+@pytest.mark.parametrize("case", OUTSIDE_ID_ROOT_CASES, ids=lambda case: case.name)
+async def test_filtered_fields_outside_id_roots_by_kind(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, case: RequestedReadCase
+) -> None:
+    """Report the filters that can let in a node other than the one an ``ids`` variable selects."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
     )
 
-    assert analyzer.query_report.relationship_filtered_fields_by_kind == {
-        "TestCar": {"color"},
-        "TestElectricCar": {"color"},
-        "TestGazCar": {"color"},
-    }
+    assert analyzer.query_report.filtered_fields_outside_id_roots_by_kind == case.expected_fields_by_kind
 
 
 async def test_filtered_fields_by_kind_reports_the_hfid_filter(

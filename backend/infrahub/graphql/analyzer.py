@@ -524,27 +524,37 @@ class ReachedPathResolver:
         return None
 
 
+def _fields_selected_by(argument_name: str, model: MainSchemaTypes) -> set[str]:
+    """Return the fields of ``model`` that a filter argument named ``argument_name`` selects on."""
+    if argument_name == "hfid":
+        return {"human_friendly_id"}
+    field_name, separator, _ = argument_name.partition("__")
+    if not separator:
+        return set()
+    attribute_names = set(model.attribute_names)
+    if field_name == "any":
+        return attribute_names
+    if field_name in attribute_names | set(model.relationship_names) | {"display_label"}:
+        return {field_name}
+    return set()
+
+
 def _filtered_fields_by_kind(query_models: Iterable[GraphQLQueryModel]) -> dict[str, set[str]]:
     """Return, per kind, the fields the filter arguments of ``query_models`` select on."""
     filtered: dict[str, set[str]] = {}
     for query_model in query_models:
-        attribute_names = set(query_model.model.attribute_names)
-        field_names = attribute_names | set(query_model.model.relationship_names) | {"display_label"}
         for argument in query_model.arguments:
-            field_name, separator, _ = argument.name.partition("__")
-            if argument.name == "hfid":
-                selected = {"human_friendly_id"}
-            elif not separator:
-                continue
-            elif field_name == "any":
-                selected = attribute_names
-            elif field_name in field_names:
-                selected = {field_name}
-            else:
-                continue
-            filtered.setdefault(query_model.model.kind, set()).update(selected)
+            if selected := _fields_selected_by(argument.name, query_model.model):
+                filtered.setdefault(query_model.model.kind, set()).update(selected)
 
     return filtered
+
+
+def _is_id_root(query_model: GraphQLQueryModel) -> bool:
+    """Whether a query model is a root that an ``ids`` variable selects."""
+    return query_model.root and any(
+        argument.name == "ids" and argument.contains_variable for argument in query_model.arguments
+    )
 
 
 @dataclass
@@ -588,11 +598,29 @@ class GraphQLQueryReport:
         return _filtered_fields_by_kind(query_model for query in self.queries for query_model in query.get_models())
 
     @cached_property
-    def relationship_filtered_fields_by_kind(self) -> dict[str, set[str]]:
-        """Return, per kind, the fields the filter arguments of a relationship read select on."""
-        return _filtered_fields_by_kind(
-            query_model for query in self.queries for query_model in query.get_models() if not query_model.root
-        )
+    def filtered_fields_outside_id_roots_by_kind(self) -> dict[str, set[str]]:
+        """Return, per kind, the filtered fields that can move the result for an object an ``ids`` variable does not select.
+
+        These are the filters of every query model but a root that an ``ids`` variable selects, and
+        the peer fields of a filter such as ``owner__name__value``, reported on each peer kind.
+        """
+        query_models = [query_model for query in self.queries for query_model in query.get_models()]
+        filtered = _filtered_fields_by_kind(query_model for query_model in query_models if not _is_id_root(query_model))
+        if self.schema_branch is None:
+            return filtered
+
+        for query_model in query_models:
+            for argument in query_model.arguments:
+                field_name, _, peer_argument_name = argument.name.partition("__")
+                relationship = query_model.model.get_relationship_or_none(name=field_name)
+                if relationship is None or not peer_argument_name:
+                    continue
+                peer = self.schema_branch.get(name=relationship.peer, duplicate=False)
+                if selected := _fields_selected_by(peer_argument_name, peer):
+                    for kind in peer.concrete_kinds:
+                        filtered.setdefault(kind, set()).update(selected)
+
+        return filtered
 
     @cached_property
     def selected_or_filtered_fields_by_kind(self) -> dict[str, set[str]]:

@@ -20,7 +20,10 @@ def transform_read_set_from_query_report(
     *, report: GraphQLQueryReport, schema_branch: SchemaBranch
 ) -> TransformReadSet:
     """Map an analyzed GraphQL query report into the kinds and fields it reads or filters on."""
-    read_fields_by_kind = report.selected_or_filtered_fields_by_kind
+    outside_id_roots = report.filtered_fields_outside_id_roots_by_kind
+    read_fields_by_kind = {kind: set(fields) for kind, fields in report.selected_or_filtered_fields_by_kind.items()}
+    for kind, fields in outside_id_roots.items():
+        read_fields_by_kind.setdefault(kind, set()).update(fields)
 
     # Only a kind with a derived read is a candidate; the walrus keeps that read set for the check.
     scopable_derived_kinds = {
@@ -33,8 +36,7 @@ def transform_read_set_from_query_report(
     return TransformReadSet.from_read_fields(
         read_fields_by_kind,
         scopable_derived_kinds=scopable_derived_kinds,
-        filter_fields_by_kind=report.filtered_fields_by_kind,
-        relationship_filter_fields_by_kind=report.relationship_filtered_fields_by_kind,
+        filter_fields_outside_id_roots_by_kind=outside_id_roots,
     )
 
 

@@ -347,10 +347,8 @@ def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, ta
 
     self_ids = signature.kind == target_kind
 
-    # The transform runs with the target's own id, so only a root filter on the target kind is the target's alone.
-    widening_fields = read_set.relationship_filter_fields.get(signature.kind, frozenset())
-    if not self_ids:
-        widening_fields |= read_set.filter_fields.get(signature.kind, frozenset())
+    # The transform sets the ids variable to the target, so a filter on that root decides only the target's own value.
+    widening_fields = read_set.filter_fields_outside_id_roots.get(signature.kind, frozenset())
     if widening_fields and (
         not signature.changed_fields
         or signature.changed_fields & widening_fields

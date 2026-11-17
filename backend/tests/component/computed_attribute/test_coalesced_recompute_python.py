@@ -95,12 +95,14 @@ QUERY_LABEL = "query TestCarLabel($id: ID!) { TestCar(ids: [$id]) { edges { node
 # No root filter, so any number of cars can answer it.
 QUERY_UNPINNED = "query TestCarAll { TestCar { edges { node { name { value } } } } }"
 
-# Filters the car on its owner at the root, and the owner's cars on their seat count through a
-# relationship read, without selecting the seat count.
+# The root selected by ``$id`` filters the car on its seat count, which it does not select, and on
+# the name of its owner. The owner's cars are filtered on their name through a relationship read,
+# and a second root pinned to car5 by its unique name filters on the owner.
 QUERY_FILTERED = (
     "query TestCarFiltered($id: ID!) "
-    '{ TestCar(ids: [$id], owner__name__value: "owner01") { edges { node { name { value } '
-    "owner { node { cars(nbr_seats__value: 4) { edges { node { id } } } } } } } } }"
+    '{ TestCar(ids: [$id], nbr_seats__value: 4, owner__name__value: "owner01") { edges { node { name { value } '
+    'owner { node { cars(name__value: "car0") { edges { node { id } } } } } } } } '
+    'reference: TestCar(name__value: "car5", owner__ids: ["unknown"]) { edges { node { id } } } }'
 )
 
 
@@ -750,6 +752,50 @@ class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
         }
 
 
+# Stands for a narrowed target over every car, which the shared query group subscribes.
+EVERY_CAR = "every-car"
+
+
+@dataclass
+class FilterChangeCase:
+    name: str
+    kind: str
+    field: str
+    expected: dict[str, str]
+
+
+FILTER_CHANGE_CASES = [
+    # The car can enter the result of every car of its owner, and none of them holds it as a member yet.
+    FilterChangeCase(
+        name="a_relationship_filter_field_widens",
+        kind=CAR_KIND,
+        field="name",
+        expected={NAME_ATTRIBUTE: EVERY_CAR, OWNER_ATTRIBUTE: WHOLE_KIND},
+    ),
+    # The root selected by $id decides only the car's own value, so the readers come from the query group.
+    FilterChangeCase(
+        name="a_root_filter_field_of_the_target_narrows",
+        kind=CAR_KIND,
+        field="nbr_seats",
+        expected={OWNER_ATTRIBUTE: EVERY_CAR},
+    ),
+    # A rename of the owner decides whether each of its cars passes the filter of its own root.
+    FilterChangeCase(
+        name="a_peer_field_of_a_root_filter_widens",
+        kind=PERSON_KIND,
+        field="name",
+        expected={OWNER_ATTRIBUTE: WHOLE_KIND},
+    ),
+    # The reference root can let car5 into the result of every car.
+    FilterChangeCase(
+        name="a_filter_field_of_a_second_root_of_the_target_kind_widens",
+        kind=CAR_KIND,
+        field="owner",
+        expected={OWNER_ATTRIBUTE: WHOLE_KIND},
+    ),
+]
+
+
 class TestCoalescedRecomputePythonFilteredQuery(CoalescedPythonTestBase):
     """A field the transform query filters on selects the attribute like a field it reads."""
 
@@ -768,57 +814,31 @@ class TestCoalescedRecomputePythonFilteredQuery(CoalescedPythonTestBase):
             owner_query=QUERY_FILTERED,
         )
 
-    async def test_a_change_to_a_relationship_filter_field_widens(
+    @pytest.mark.parametrize("case", FILTER_CHANGE_CASES, ids=lambda case: case.name)
+    async def test_a_filter_field_change(
         self,
+        case: FilterChangeCase,
         filtered_dataset: PythonRecomputeDataset,
         db: InfrahubDatabase,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        """The car can enter the result of every car of its owner, and none of them holds it as a member yet."""
+        node_id = filtered_dataset.car_ids[0] if case.kind == CAR_KIND else filtered_dataset.person_id
         submissions = await self._run_pass(
             db=db,
             recorder=workflow_recorder,
             default_branch=default_branch,
             admin_account=admin_account,
             changes=[
-                MergeChange(
-                    node_id=filtered_dataset.car_ids[0],
-                    kind=CAR_KIND,
-                    action="updated",
-                    changed_fields=frozenset({"nbr_seats"}),
-                )
+                MergeChange(node_id=node_id, kind=case.kind, action="updated", changed_fields=frozenset({case.field}))
             ],
         )
 
-        assert submissions == {OWNER_ATTRIBUTE: WHOLE_KIND}
-
-    async def test_a_change_to_a_root_filter_field_of_the_target_kind_narrows(
-        self,
-        filtered_dataset: PythonRecomputeDataset,
-        db: InfrahubDatabase,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        """The root filter decides only the car's own value, so the readers come from the query group."""
-        submissions = await self._run_pass(
-            db=db,
-            recorder=workflow_recorder,
-            default_branch=default_branch,
-            admin_account=admin_account,
-            changes=[
-                MergeChange(
-                    node_id=filtered_dataset.car_ids[0],
-                    kind=CAR_KIND,
-                    action="updated",
-                    changed_fields=frozenset({"owner"}),
-                )
-            ],
-        )
-
-        assert submissions == {OWNER_ATTRIBUTE: sorted(filtered_dataset.car_ids)}
+        assert submissions == {
+            attribute: sorted(filtered_dataset.car_ids) if expected == EVERY_CAR else expected
+            for attribute, expected in case.expected.items()
+        }
 
 
 class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):

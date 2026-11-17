@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 # that label cannot be named, so any change to TestCar recomputes it, while a change to a kind
 # its query never reaches does not. That holds because TestCar's label is built from its own
 # attributes; a label crossing a relationship recomputes on any schema change instead.
-# ``computed_desc_python_filtered`` selects no field of TestCar and filters on its owner via
-# transform_filtered.
+# ``computed_desc_python_filtered`` selects no field of TestCar and filters on the name of its
+# owner via transform_filtered, so it reads TestPerson.name too.
 CAR_PERSON_FILTERED_PYTHON_SCHEMA = deepcopy(CAR_PERSON_PYTHON_SCHEMA)
 CAR_PERSON_FILTERED_PYTHON_SCHEMA.nodes[0].attributes.append(
     AttributeSchema(
@@ -69,9 +69,9 @@ PYTHON_CASES = [
         expected_submitted={"computed_desc_python", "computed_desc_python_opaque"},
     ),
     ScopedRecomputeCase(
-        name="unread_kind_skips_scoped_and_opaque",
+        name="peer_filter_field_recomputes_filtered_only",
         changed_elements=ChangedElementsPayload(changed_fields={"TestPerson": ["name"]}),
-        expected_submitted=set(),
+        expected_submitted={"computed_desc_python_filtered"},
     ),
     ScopedRecomputeCase(
         name="filtered_field_recomputes_filtered_and_opaque",

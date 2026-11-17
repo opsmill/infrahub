@@ -72,15 +72,14 @@ UNPINNED = PythonAttributeReadSet(
     pinned=False,
 )
 # Reads the device name and keeps only the spine devices of the sites in one region: ``role`` is
-# filtered at the root, ``region`` on the site relationship.
+# filtered on the root that ``$id`` selects, ``region`` on the site relationship.
 SPINE_UPLINKS = PythonAttributeReadSet(
     kind=DEVICE,
     attribute_name="uplinks",
     read_set=TransformReadSet(
         read_kinds=frozenset({DEVICE, SITE}),
         read_fields={DEVICE: frozenset({"name", "role"}), SITE: frozenset({"region"})},
-        filter_fields={DEVICE: frozenset({"role"}), SITE: frozenset({"region"})},
-        relationship_filter_fields={SITE: frozenset({"region"})},
+        filter_fields_outside_id_roots={SITE: frozenset({"region"})},
     ),
 )
 # Reads the device name and keeps only the sites with one display label, which no field names.
@@ -91,18 +90,18 @@ SITE_LABEL_FILTER = PythonAttributeReadSet(
         read_kinds=frozenset({DEVICE, SITE}),
         read_fields={DEVICE: frozenset({"name"})},
         imprecise_kinds=frozenset({SITE}),
-        filter_fields={SITE: frozenset({"display_label"})},
-        relationship_filter_fields={SITE: frozenset({"display_label"})},
+        filter_fields_outside_id_roots={SITE: frozenset({"display_label"})},
     ),
 )
-# A router attribute whose query root is a device filtered on its role.
-SPINE_PEERS = PythonAttributeReadSet(
-    kind=ROUTER,
-    attribute_name="spine_peers",
+# A device attribute whose query has a second root, pinned to one reference device by a literal
+# and filtered on its role.
+REFERENCE_ROLE = PythonAttributeReadSet(
+    kind=DEVICE,
+    attribute_name="reference_role",
     read_set=TransformReadSet(
         read_kinds=frozenset({DEVICE}),
         read_fields={DEVICE: frozenset({"name", "role"})},
-        filter_fields={DEVICE: frozenset({"role"})},
+        filter_fields_outside_id_roots={DEVICE: frozenset({"role"})},
     ),
 )
 
@@ -578,8 +577,8 @@ class FilterWideningCase:
             change=MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"region"})),
         ),
         FilterWideningCase(
-            name="a_root_filter_field_of_another_kind",
-            attribute=SPINE_PEERS,
+            name="a_filter_field_of_the_target_kind_on_a_root_that_ids_does_not_select",
+            attribute=REFERENCE_ROLE,
             change=MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"role"})),
         ),
         FilterWideningCase(
