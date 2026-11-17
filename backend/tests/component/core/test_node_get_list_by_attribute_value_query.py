@@ -173,6 +173,29 @@ async def test_query_NodeGetListByAttributeValueQuery_filter_by_multiple_kinds(
     assert car_accord_main.id in result_uuids
 
 
+async def test_query_NodeGetListByAttributeValueQuery_skips_a_better_match_of_a_kind_not_searched(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    branch: Branch,
+) -> None:
+    """A node of a kind not searched never takes a place within the limit, even when it matches best."""
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="Jo", nbr_seats=4, is_electric=True, owner=person_john_main.id)
+    await car.save(db=db)
+
+    query = await NodeGetListByAttributeValueQuery.init(
+        db=db,
+        branch=branch,
+        search_value="jo",
+        kinds=["TestPerson"],
+        limit=1,
+    )
+    await query.execute(db=db)
+
+    assert [result.uuid for result in query.get_data()] == [person_john_main.id]
+
+
 async def test_query_NodeGetListByAttributeValueQuery_no_results(
     db: InfrahubDatabase,
     person_john_main: Node,

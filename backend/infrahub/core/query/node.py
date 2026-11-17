@@ -2504,139 +2504,154 @@ class NodeGetListByAttributeValueQueryResult:
 
 
 class NodeGetListByAttributeValueQuery(Query):
-    """Query to find nodes by searching attribute values.
+    """Find the nodes whose attribute values match a search text, best match first.
 
-    This query is optimized for search operations by starting from the AttributeValueIndexed
-    nodes and using a TEXT index for efficient CONTAINS searches. This approach is more
-    efficient than the standard NodeGetListQuery when searching for values across all nodes.
+    A node whose display label or name equals the search text comes first, then one whose label
+    starts with or contains it, then one matched on another attribute; within the same rank, the
+    node with the shorter matching value comes first.
     """
 
     name = "node_get_list_by_attribute_value"
     type = QueryType.READ
+    insert_return = False
 
     def __init__(
         self,
         search_value: str,
         kinds: list[str] | None = None,
         partial_match: bool = True,
+        case_sensitive: bool = False,
         **kwargs: Any,
     ) -> None:
         self.search_value = search_value
         self.kinds = kinds
         self.partial_match = partial_match
+        self.case_sensitive = case_sensitive
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.order_by = ["n.uuid"]
-        self.return_labels = ["DISTINCT n.uuid as uuid", "n.kind as kind"]
+        self.return_labels = ["uuid", "kind"]
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
+        self.params["search_value"] = self.search_value
+        self.params["null_value"] = NULL_VALUE
+        self.params["label_attribute_names"] = ["display_label", "name"]
 
-        # Build search values for case-insensitive matching without using toLower/toString
-        # which would disable index lookup. We search for four case variations:
-        # 1. Original (as provided), 2. lowercase, 3. UPPERCASE, 4. Title Case (first char upper, rest lower)
-        search_original = self.search_value
-        search_lower = self.search_value.lower()
-        search_upper = self.search_value.upper()
-        search_title = self.search_value.capitalize()
-
-        # Build the search predicate based on partial_match
-        # We avoid toLower/toString to allow TEXT index usage
-        if self.partial_match:
-            # Use CONTAINS with multiple case variations to leverage TEXT index
-            search_predicate = (
+        if self.case_sensitive and self.partial_match:
+            # Matching four spellings keeps the TEXT index usable.
+            match_predicate = (
                 "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
                 "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
             )
+            self.params["search_original"] = self.search_value
+            self.params["search_lower"] = self.search_value.lower()
+            self.params["search_upper"] = self.search_value.upper()
+            self.params["search_title"] = self.search_value.capitalize()
+            value = "toLower(toString(av.value))"
+            search = "toLower($search_value)"
+        elif self.case_sensitive:
+            # Equality on the raw value lets the RANGE index find the matches directly.
+            match_predicate = "av.value IN $exact_values"
+            self.params["exact_values"] = self._exact_values()
+            value = "toString(av.value)"
+            search = "$search_value"
         else:
-            # Exact match with case variations
-            search_predicate = (
-                "(av.value = $search_original OR av.value = $search_lower "
-                "OR av.value = $search_upper OR av.value = $search_title)"
-            )
+            value = "toLower(toString(av.value))"
+            search = "toLower($search_value)"
+            operator = "CONTAINS" if self.partial_match else "="
+            match_predicate = f"{value} {operator} {search}"
 
-        self.params["search_original"] = search_original
-        self.params["search_lower"] = search_lower
-        self.params["search_upper"] = search_upper
-        self.params["search_title"] = search_title
-
-        # Build kind filter if specified
         kind_filter = ""
         if self.kinds:
             kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
             self.params["kinds"] = self.kinds
 
-        # The query starts from AttributeValueIndexed nodes to leverage the TEXT index
-        # This approach is more efficient for search operations as it:
-        # 1. Starts from AttributeValueIndexed nodes (smaller set when filtered)
-        # 2. Traverses from matching values back to their owning nodes
-        # 3. Filters nodes by branch and status
         query = """
         // --------------------------
-        // start with all possible Node-Attribute-AttributeValue combinations
+        // start with every attribute holding a matching value
         // --------------------------
-        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
-        WHERE %(search_predicate)s %(kind_filter)s
-        """
-        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
-            query += """
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr)
+        WHERE av.value <> $null_value
+        AND %(match_predicate)s
         // --------------------------
-        // Search the latest value of each candidate attribute:
-        // on a branch, the default branch's edge to a replaced value stays open
+        // rank each match, best first
         // --------------------------
-        WITH DISTINCT n, attr
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN r, av
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr, av, r
-        WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
-        WITH n, attr
-        """
-        else:
-            query += """
-        WITH DISTINCT n, attr, av
+        WITH attr, av, attr.name IN $label_attribute_names AS is_label, %(value)s AS value, %(search)s AS search
+        // One number orders by tier, then by the shorter value, as no indexed value reaches a billion characters.
+        WITH attr, av, CASE
+            WHEN is_label AND value = search THEN 6
+            WHEN is_label AND value STARTS WITH search THEN 5
+            WHEN is_label THEN 4
+            WHEN value = search THEN 3
+            WHEN value STARTS WITH search THEN 2
+            ELSE 1
+        END * 1000000000 - size(value) AS score
+        // Checking matches best first makes a node's first valid match its best one, so the checks stop once the limit is reached.
+        // Ties break on the attribute's uuid, so that the node is read only for the rows checked.
+        ORDER BY score DESC, attr.uuid
         // --------------------------
         // filter HAS_VALUE edges
         // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
+        // The attribute's latest value edge decides, as a value changed on a branch leaves the old value's edge active on its parent.
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(current_value)
             WHERE %(branch_filter)s
-            RETURN r
+            RETURN r, current_value
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr
-        WHERE r.status = "active"
-        """
-        query += """
+        WITH attr, av
+        WHERE r.status = "active" AND current_value = av
         // --------------------------
-        // filter HAS_ATTRIBUTE edges
+        // find the node through its HAS_ATTRIBUTE edge
         // --------------------------
-        CALL (n, attr) {
+        CALL (attr) {
             MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
             WHERE %(branch_filter)s
+            RETURN r, n
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n
+        WHERE r.status = "active"
+        %(kind_filter)s
+        // --------------------------
+        // keep the nodes that exist at the searched time
+        // --------------------------
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
             RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, r
+        WITH n
         WHERE r.status = "active"
-        """
-        query %= {
-            "search_predicate": search_predicate,
+        RETURN DISTINCT n.uuid AS uuid, n.kind AS kind
+        """ % {
+            "match_predicate": match_predicate,
+            "value": value,
+            "search": search,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
         }
 
         self.add_to_query(query)
+
+    def _exact_values(self) -> list[str | int | bool]:
+        """Return the search text and the number or boolean it spells exactly, as stored values keep their type."""
+        values: list[str | int | bool] = [self.search_value]
+        with contextlib.suppress(ValueError):
+            number = int(self.search_value)
+            if str(number) == self.search_value:
+                values.append(number)
+        if self.search_value in {"true", "false"}:
+            values.append(self.search_value == "true")
+        return values
 
     def get_data(self) -> Generator[NodeGetListByAttributeValueQueryResult, None, None]:
         """Yield results as typed dataclass instances."""
