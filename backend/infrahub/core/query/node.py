@@ -2563,33 +2563,6 @@ class NodeGetListByAttributeValueQuery(Query):
             kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
             self.params["kinds"] = self.kinds
 
-        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
-            current_value_filter = """
-        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(current_value)
-            WHERE %(branch_filter)s
-            RETURN r, current_value
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr, av
-        WHERE r.status = "active" AND current_value = av
-        """
-        else:
-            current_value_filter = """
-        CALL (attr, av) {
-            MATCH (attr)-[r:HAS_VALUE]->(av)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr, av
-        WHERE r.status = "active"
-        """
-        current_value_filter %= {"branch_filter": branch_filter}
-
         query = """
         // --------------------------
         // start with every attribute holding a matching value
@@ -2627,7 +2600,16 @@ class NodeGetListByAttributeValueQuery(Query):
         // --------------------------
         // keep the matches that are the attribute's current value
         // --------------------------
-        %(current_value_filter)s
+        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(current_value)
+            WHERE %(branch_filter)s
+            RETURN r, current_value
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n
+        WHERE r.status = "active" AND current_value = av
         // --------------------------
         // keep the nodes that exist on the branch at the searched time
         // --------------------------
@@ -2646,7 +2628,6 @@ class NodeGetListByAttributeValueQuery(Query):
             "value": value,
             "search": search,
             "kind_filter": kind_filter,
-            "current_value_filter": current_value_filter,
             "branch_filter": branch_filter,
         }
 

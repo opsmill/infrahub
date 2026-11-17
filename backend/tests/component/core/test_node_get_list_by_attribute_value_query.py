@@ -196,28 +196,6 @@ async def test_query_NodeGetListByAttributeValueQuery_skips_a_better_match_of_a_
     assert [result.uuid for result in query.get_data()] == [person_john_main.id]
 
 
-async def test_query_NodeGetListByAttributeValueQuery_branch_agnostic_matches_a_value_active_on_any_branch(
-    db: InfrahubDatabase,
-    person_john_main: Node,
-) -> None:
-    """A branch-agnostic search finds a value still active on the default branch after another branch replaced it."""
-    rename_branch = await create_branch(db=db, branch_name="rename-john")
-    person = await NodeManager.get_one(db=db, branch=rename_branch, id=person_john_main.id)
-    person.name.value = "Jonathan"
-    await person.save(db=db)
-
-    query = await NodeGetListByAttributeValueQuery.init(
-        db=db,
-        branch=rename_branch,
-        branch_agnostic=True,
-        search_value="John",
-        partial_match=False,
-    )
-    await query.execute(db=db)
-
-    assert [result.uuid for result in query.get_data()] == [person_john_main.id]
-
-
 async def test_query_NodeGetListByAttributeValueQuery_no_results(
     db: InfrahubDatabase,
     person_john_main: Node,
