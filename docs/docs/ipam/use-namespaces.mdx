@@ -120,6 +120,8 @@ mutation {
 }
 ```
 
+To create an address, use `IpamIPAddressCreate` with `address` in place of `prefix` and `member_type`, and the same `ip_namespace`.
+
 </TabItem>
 
   <TabItem value="sdk" label="Python SDK">
@@ -135,6 +137,8 @@ prefix = await client.create(
 )
 await prefix.save()
 ```
+
+To create an address, create an `IpamIPAddress` with `address` and the same `ip_namespace`.
 
 </TabItem>
 </Tabs>
@@ -187,7 +191,11 @@ Change the namespace of the prefix or the address. Infrahub moves only that pref
 - The child prefixes and addresses of a moved prefix stay in the old namespace, under the next prefix there that contains them, or at the top level.
 - In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level.
 
-To move a whole subtree, change the namespace of each of its prefixes and addresses.
+:::warning
+
+Moving a prefix to another namespace does not move the prefixes and addresses under it. After the move, part of the address plan is in one namespace and part in the other. To move a prefix together with everything under it, see [Move a prefix with everything under it](#move-a-prefix-with-everything-under-it).
+
+:::
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web Interface" default>
@@ -211,6 +219,8 @@ mutation {
 }
 ```
 
+To move an address, use `IpamIPAddressUpdate` with the same `id` and `ip_namespace` fields.
+
 </TabItem>
 
   <TabItem value="sdk" label="Python SDK">
@@ -225,8 +235,38 @@ prefix.ip_namespace = ["customer-b"]
 await prefix.save()
 ```
 
+To move an address, get the `IpamIPAddress` and set its `ip_namespace` in the same way.
+
 </TabItem>
 </Tabs>
+
+### Move a prefix with everything under it
+
+To move a prefix together with every prefix and address under it, change the namespace of each one. The following Python SDK function reads the prefix, the prefixes under it and their addresses, and moves each of them to the target namespace:
+
+```python
+async def move_subtree(client, prefix: str, source: str, target: str, branch: str) -> None:
+    root = await client.get(
+        kind="IpamPrefix",
+        prefix__value=prefix,
+        ip_namespace__name__value=source,
+        include=["descendants"],
+        branch=branch,
+    )
+    prefix_ids = [root.id, *(peer.id for peer in root.descendants.peers)]
+    prefixes = await client.filters(kind="IpamPrefix", ids=prefix_ids, branch=branch)
+    addresses = await client.filters(kind="IpamIPAddress", ip_prefix__ids=prefix_ids, branch=branch)
+    for node in [*prefixes, *addresses]:
+        node.ip_namespace = [target]
+        await node.save()
+
+
+await move_subtree(client, prefix="10.0.0.0/8", source="customer-a", target="customer-b", branch="move-customer-a")
+```
+
+Infrahub places each prefix and address in the tree of the target namespace as it is moved, so the moved prefixes and addresses keep the same parents there.
+
+Create the branch before you run the function, and review the result in a Proposed Change. If the target namespace already holds one of the values, Infrahub rejects that change, and the function stops after it has moved only part of the prefixes and addresses. You can then delete the branch instead of moving them back one by one.
 
 ## Delete a namespace
 
