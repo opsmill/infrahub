@@ -77,7 +77,7 @@ jobs:
     needs:
       - files-changed
       - prepare-environment
-    runs-on: "ubuntu-24.04"
+    runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
@@ -260,7 +260,7 @@ jobs:
     if: |
       needs.files-changed.outputs.observability_standalone == 'true'
     needs: ["files-changed", "prepare-environment"]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 5
@@ -302,7 +302,7 @@ jobs:
     needs:
       - files-changed
       - prepare-environment
-    runs-on: "ubuntu-24.04"
+    runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
@@ -378,7 +378,7 @@ jobs:
   infrahub-testcontainers-check:
     if: needs.files-changed.outputs.infrahub_uv_files == 'true'
     needs: ["prepare-environment", "files-changed"]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
@@ -797,7 +797,7 @@ jobs:
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
