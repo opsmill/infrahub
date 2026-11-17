@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import str_to_bool
+from opentelemetry import trace
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -19,6 +20,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import (
         EnrichedDiffAttribute,
@@ -30,6 +33,8 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
+
+    from .hfid_resolver import ChangelogHfidResolver
 
 
 @dataclass
@@ -45,11 +50,13 @@ class DiffChangelogCollector:
         diff: EnrichedDiffRoot,
         branch: Branch,
         db: InfrahubDatabase,
+        hfid_resolver: ChangelogHfidResolver,
         migration_tracker: MigrationTracker | None = None,
     ) -> None:
         self._diff = diff
         self._branch = branch
         self._db = db
+        self._hfid_resolver = hfid_resolver
         self._diff_nodes: dict[str, NodeInDiff]
         self.migration = migration_tracker or MigrationTracker()
 
@@ -66,9 +73,13 @@ class DiffChangelogCollector:
         try:
             return self.get_node(node_id=peer_id).kind
         except KeyError:
+            pass
+        try:
             schema = self._db.schema.get(node_kind, branch=self._branch, duplicate=False)
-            rel_schema = schema.get_relationship(name=relationship_name)
-            return rel_schema.peer
+            return schema.get_relationship(name=relationship_name).peer
+        except (SchemaNotFoundError, ValueError):
+            # a schema migration removed the kind or the relationship, so the peer kind is not known anymore
+            return "n/a"
 
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
@@ -156,6 +167,8 @@ class DiffChangelogCollector:
                                 node_kind=node.node_kind,
                                 relationship_name=relationship.name,
                             )
+                            # The peer's display label is already carried by the diff, no load needed.
+                            changelog_rel.peer_display_label = entry.peer_label
                         if rel_prop.previous_value:
                             changelog_rel.peer_id_previous = rel_prop.previous_value
                             changelog_rel.peer_kind_previous = self.get_peer_kind(
@@ -201,6 +214,7 @@ class DiffChangelogCollector:
                 peer_kind=self.get_peer_kind(
                     peer_id=peer.peer_id, node_kind=node.node_kind, relationship_name=relationship.name
                 ),
+                peer_display_label=peer.peer_label,
                 peer_status=peer.action,
             )
             for peer_prop in peer.properties:
@@ -228,14 +242,36 @@ class DiffChangelogCollector:
 
         node.add_relationship(relationship_changelog=changelog_rel)
 
-    def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
-        self._populate_diff_nodes()
-        changelogs = [
-            (node.action, self._process_node(node=node))
-            for node in self._diff.nodes
-            if node.action != DiffAction.UNCHANGED
-        ]
-        return [(action, node_changelog) for action, node_changelog in changelogs if node_changelog.has_changes]
+    async def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+        """Build a changelog for every changed node in the diff, with node and peer HFIDs resolved.
+
+        Returns:
+            One (action, changelog) pair per changed node that has recorded changes.
+
+        """
+        with trace.get_tracer(__name__).start_as_current_span("changelog.collect_changelogs") as span:
+            self._populate_diff_nodes()
+            changed_nodes = [node for node in self._diff.nodes if node.action != DiffAction.UNCHANGED]
+            span.set_attribute("changelog.diff_node_count", len(self._diff.nodes))
+            span.set_attribute("changelog.changed_node_count", len(changed_nodes))
+            # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
+            # labels against; leave it out of the load so one such node cannot fail the whole batch.
+            resolvable_ids = [node.uuid for node in changed_nodes if self._is_resolvable_kind(node.kind)]
+            with trace.get_tracer(__name__).start_as_current_span("changelog.build_from_diff"):
+                changelogs = [
+                    (node.action, node_changelog)
+                    for node in changed_nodes
+                    if (node_changelog := self._process_node(node=node)).has_changes
+                ]
+            span.set_attribute("changelog.changelog_count", len(changelogs))
+            await self._hfid_resolver.enrich(
+                changelogs=changelogs, resolvable_ids=resolvable_ids, is_resolvable_kind=self._is_resolvable_kind
+            )
+            return changelogs
+
+    def _is_resolvable_kind(self, kind: str) -> bool:
+        """Whether a node kind still exists on the branch, so its labels can be loaded."""
+        return self._db.schema.has(name=kind, branch=self._branch)
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:

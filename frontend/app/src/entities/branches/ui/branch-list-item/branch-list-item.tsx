@@ -25,7 +25,8 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       href={getBranchDetailsUrl(branch.name)}
       className={classNames(
         focusVisibleStyle,
-        "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",
+        // biome-ignore lint/nursery/noTailwindArbitraryValue: structure: intrinsic track list; the label width itself comes from --detail-label-width
+        "grid grid-cols-[minmax(var(--detail-label-width),1fr)_auto_1fr] items-center gap-4 px-6 py-4",
         "border border-transparent not-last:border-b-border",
         "first:rounded-t-lg last:rounded-b-lg",
         "hover:bg-highlight",

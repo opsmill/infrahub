@@ -7,7 +7,7 @@ Null Object variant lets callers skip emission without null-checking.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from infrahub.events.group_action import (
@@ -18,6 +18,8 @@ from infrahub.events.group_action import (
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub.core.protocols import CoreAccount, CoreAccountGroup
     from infrahub.events.models import EventMeta, InfrahubEvent
     from infrahub.external_protocols import ExternalAuthProtocol

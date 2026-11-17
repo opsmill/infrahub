@@ -22,6 +22,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
 import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
@@ -185,12 +186,26 @@ const getDefaultValueFromPool = (
 
   if (!source.id) return null;
 
+  const poolSource = makePoolSource({
+    id: source.id,
+    label: source.display_label || null,
+    kind: source.__typename,
+  });
+
+  if (poolSource.kind === NUMBER_POOL_KIND) {
+    return {
+      source: poolSource,
+      value: {
+        from_pool: {
+          id: source.id,
+          number: typeof currentField.value === "number" ? currentField.value : null,
+        },
+      },
+    };
+  }
+
   return {
-    source: makePoolSource({
-      id: source.id,
-      label: source.display_label || null,
-      kind: source.__typename,
-    }),
+    source: poolSource,
     value: currentField.value as unknown as AttributeValueFromPool["value"],
   };
 };

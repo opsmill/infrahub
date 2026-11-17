@@ -49,8 +49,10 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_UPDATED = BuiltinTriggerDefinition(
         events={NodeUpdatedEvent.event_name},
         match=dict(_LIFECYCLE_MATCH),
         match_related={
-            "prefect.resource.role": ["infrahub.node.attribute_update"],
-            "infrahub.field.name": ["fingerprint"],
+            # A repoint of the query counts as much as a new commit. The query automations bake
+            # the query id, and a stale one filters out every reader until the next reconcile.
+            "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
+            "infrahub.field.name": ["fingerprint", "query"],
         },
     ),
     actions=[_lifecycle_action()],

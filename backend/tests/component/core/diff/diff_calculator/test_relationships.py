@@ -1287,6 +1287,50 @@ async def test_diff_relationship_property_update_on_main(
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
 
 
+async def test_relationship_peer_removed_on_main_time_range_previous_property(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+) -> None:
+    """A peer removed on main within a time range reports the property values it had at the start of the range."""
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
+    await car_main.save(db=db)
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.owner.update(db=db, data=person_jane_main)
+    await car_main.save(db=db)
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    nodes_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = nodes_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.UPDATED
+    relationships_by_name = {r.name: r for r in node_diff.relationships}
+    elements_by_peer_id = {e.peer_id: e for e in relationships_by_name["owner"].relationships}
+    assert set(elements_by_peer_id.keys()) == {person_john_main.id, person_jane_main.id}
+    removed_element = elements_by_peer_id[person_john_main.id]
+    assert removed_element.action is DiffAction.REMOVED
+    assert {(p.property_type, p.action, p.previous_value, p.new_value) for p in removed_element.properties} == {
+        (DatabaseEdgeType.IS_RELATED, DiffAction.REMOVED, person_john_main.id, None),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.REMOVED, True, None),
+    }
+    added_element = elements_by_peer_id[person_jane_main.id]
+    assert added_element.action is DiffAction.ADDED
+    assert {(p.property_type, p.action, p.previous_value, p.new_value) for p in added_element.properties} == {
+        (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, person_jane_main.id),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
+    }
+
+
 async def test_relationship_property_change_after_relationship_removed_from_base_schema(
     db: InfrahubDatabase,
     default_branch: Branch,

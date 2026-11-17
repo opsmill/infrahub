@@ -93,18 +93,12 @@ class ProposedChangeRepository(BaseModel):
         return bool(self.files_added + self.files_changed + self.files_removed)
 
 
-class ProposedChangeSubscriber(BaseModel):
-    subscriber_id: str
-    kind: str
-
-
 class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str
     artifact_name: str
     query_name: str
     query_id: str
-    query_models: list[str]
     query_payload: str = Field(..., description="GraphQL query")
     repository_id: str
     transform_kind: str

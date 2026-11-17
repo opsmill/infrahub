@@ -27,19 +27,28 @@ EXCLUDED_PATHS: tuple[str, ...] = (
 
 _PRIORITY_HEADER = b"x-priority"
 _CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
+_ACCEPT_HEADER = b"accept"
+_HTML_MEDIA_TYPE = "text/html"
 
 _SHED_MESSAGE = "Server is shedding load; retry later."
 
+# Marks a 429 the admission layer wrote itself. A client may replay a non-idempotent request
+# against a 429 only if the handler never ran, and the body alone cannot promise that: the REST
+# exception handler emits the same integer-code envelope for any error. The CORS middleware exposes
+# the header so a cross-origin browser can read it.
+SHED_MARKER_HEADER = "X-Infrahub-Admission"
+SHED_MARKER_VALUE = "shed"
+
 
 class AdmissionMiddleware:
-    """Pure-ASGI outermost gate that sheds load by priority before any handler work.
+    """Pure-ASGI gate, outermost but for CORS, that sheds load by priority before any handler work.
 
-    Non-``http`` scopes, the excluded liveness/scrape/static paths, and every request
-    while the layer is disabled pass straight through. Otherwise the ``X-Priority`` header
-    is classified and handed to the admission controller: an admitted request runs the
+    Non-``http`` scopes, the excluded liveness/scrape/static paths, page navigations, and every
+    request while the layer is disabled pass straight through. Otherwise the ``X-Priority``
+    header is classified and handed to the admission controller: an admitted request runs the
     downstream app inside its slot and always releases the slot afterwards, while a shed
-    request is answered with a ``429`` error envelope carrying ``Retry-After`` and never
-    reaches the app.
+    request is answered with a ``429`` error envelope, a ``Retry-After`` hint and the
+    ``X-Infrahub-Admission: shed`` marker, and never reaches the app.
 
     The controller and kill-switch are not built here. They are constructed once during
     application startup (the lifespan) and published on ``app.state`` as
@@ -72,10 +81,17 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # A CORS preflight carries no X-Priority and would be classified MEDIUM. Shedding it under
-        # load would strip the CORS response and break every cross-origin request precisely when the
-        # backend is busy, so preflights bypass the gate and reach the downstream CORS middleware.
+        # A CORS preflight has no X-Priority and would be classified MEDIUM. Shedding it under load
+        # would break every cross-origin request precisely when the backend is busy. CORS sits
+        # outside this gate and answers preflights itself, but the exemption stays so the guarantee
+        # does not rest on middleware ordering.
         if _is_cors_preflight(scope):
+            await self.app(scope, receive, send)
+            return
+
+        # A shed page load renders the error envelope in place of the app and leaves the user
+        # nothing to act on, while the handler it gates does no database work worth protecting.
+        if _is_document_navigation(scope):
             await self.app(scope, receive, send)
             return
 
@@ -116,6 +132,22 @@ def _is_cors_preflight(scope: Scope) -> bool:
     return any(name == _CORS_REQUEST_METHOD_HEADER for name, _ in scope["headers"])
 
 
+def _is_document_navigation(scope: Scope) -> bool:
+    """Return whether the request is a page load: a ``GET`` accepting ``text/html``.
+
+    ``Accept`` may be repeated and each field carries comma-separated media ranges, so every
+    field is scanned and each range is compared whole, past its parameters.
+    """
+    if scope.get("method") != "GET":
+        return False
+    return any(
+        media_range.split(";", 1)[0].strip() == _HTML_MEDIA_TYPE
+        for name, value in scope["headers"]
+        if name == _ACCEPT_HEADER
+        for media_range in value.decode("latin-1").lower().split(",")
+    )
+
+
 def _read_priority_header(scope: Scope) -> str | None:
     for name, value in scope["headers"]:
         if name == _PRIORITY_HEADER:
@@ -124,7 +156,7 @@ def _read_priority_header(scope: Scope) -> str | None:
 
 
 def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
-    """Build the ``429`` shed response with a ``Retry-After`` header.
+    """Build the ``429`` shed response with its ``Retry-After`` hint and shed marker.
 
     The body is the Infrahub error envelope, selected REST vs GraphQL by request path.
     Both surfaces use the integer-code envelope: a shed is a transport-level outcome with
@@ -138,7 +170,7 @@ def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
     return JSONResponse(
         status_code=HTTP_429_TOO_MANY_REQUESTS,
         content=content,
-        headers={"Retry-After": str(retry_after)},
+        headers={"Retry-After": str(retry_after), SHED_MARKER_HEADER: SHED_MARKER_VALUE},
     )
 
 

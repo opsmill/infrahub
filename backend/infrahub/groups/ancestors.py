@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import RelationshipHierarchyDirection
+from infrahub.core.constants import MetadataOptions, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.events.models import EventNode
@@ -25,5 +25,6 @@ async def collect_ancestors(db: InfrahubDatabase, branch: Branch, node_kind: str
         id=node_id,
         node_schema=schema,
         filters={"id": None},
+        include_metadata=MetadataOptions.NONE,
     )
     return [EventNode(id=ancestor.get_id(), kind=ancestor.get_kind()) for ancestor in ancestors.values()]

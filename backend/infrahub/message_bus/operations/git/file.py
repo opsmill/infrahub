@@ -19,6 +19,7 @@ async def get(message: messages.GitFileGet) -> None:
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        infrahub_branch_name=message.branch_name,
         commit=message.commit,
     )
 

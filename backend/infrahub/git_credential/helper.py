@@ -2,10 +2,11 @@ import logging
 import sys
 
 import typer
-from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 from infrahub_sdk.protocols import CoreGenericRepository
 
 from infrahub import config
+from infrahub.git_credential.client import build_client_config
 
 logging.getLogger("httpx").setLevel(logging.ERROR)
 app = typer.Typer()
@@ -54,7 +55,7 @@ def get(
         print(str(exc))
         raise typer.Exit(1) from exc
 
-    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    client = InfrahubClientSync(config=build_client_config())
     repo = client.get(kind=CoreGenericRepository.__name__, location__value=location)
 
     if not repo:
@@ -77,3 +78,11 @@ def store(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),  # noqa: ARG001
 ) -> None:
     raise typer.Exit()
+
+
+@app.command()
+def erase(
+    input_str: str = typer.Argument(None),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Do nothing, because the credentials live in Infrahub and the helper keeps no copy to erase."""

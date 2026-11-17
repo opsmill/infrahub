@@ -4,6 +4,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.error_formatter import catalogue_error_formatter
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -300,3 +301,76 @@ async def test_update_query_no_update(
     assert obj2.operations.value == ["query"]
     assert obj2.variables.value == []
     assert obj2.models.value == [InfrahubKind.REPOSITORY]
+
+
+INVALID_QUERY_VALUE = "query { UnknownKind { edges { node { id } } } }"
+INVALID_QUERY_MESSAGE = (
+    "Query is not valid, [GraphQLError(\"Cannot query field 'UnknownKind' on type 'Query'.\", "
+    "locations=[SourceLocation(line=1, column=9)])]"
+)
+
+
+async def test_create_query_invalid(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    query = (
+        """
+    mutation {
+        CoreGraphQLQueryCreate(data: { name: { value: "invalid_query" }, query: { value: "%s" } }) {
+            ok
+        }
+    }
+    """
+        % INVALID_QUERY_VALUE
+    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(schema=gql_params.schema, source=query, context_value=gql_params.context)
+
+    assert result.errors
+    assert [error.message for error in result.errors] == [INVALID_QUERY_MESSAGE]
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
+
+
+async def test_update_query_invalid(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    obj = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await obj.new(db=db, name="valid_query", query="query { CoreRepository { count } }")
+    await obj.save(db=db)
+
+    query = """
+    mutation {
+        CoreGraphQLQueryUpdate(data: { id: "%s", query: { value: "%s" } }) {
+            ok
+        }
+    }
+    """ % (obj.id, INVALID_QUERY_VALUE)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(schema=gql_params.schema, source=query, context_value=gql_params.context)
+
+    assert result.errors
+    assert [error.message for error in result.errors] == [INVALID_QUERY_MESSAGE]
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422
+
+
+async def test_create_query_syntax_error(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    query = """
+    mutation {
+        CoreGraphQLQueryCreate(data: { name: { value: "syntax_error" }, query: { value: "query { CoreRepository {" } }) {
+            ok
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(schema=gql_params.schema, source=query, context_value=gql_params.context)
+
+    assert result.errors
+    assert [error.message for error in result.errors] == [
+        "Query is not valid, Syntax Error: Expected Name, found <EOF>."
+    ]
+    assert catalogue_error_formatter(result.errors[0])["extensions"]["http_status"] == 422

@@ -505,6 +505,25 @@ async def test_relationship_assign_from_pool(
     assert await obj.prefix.get_peer(db=db)
 
 
+async def test_relationship_from_pool_rejects_sibling_kind_for_concrete_peer(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    init_nodes_registry: None,
+    kind_override_prefix_pool: CoreIPPrefixPool,
+) -> None:
+    """A concrete relationship peer rejects a sibling kind of that peer."""
+    mandatory_prefix_schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+
+    obj = await Node.init(schema=mandatory_prefix_schema, db=db, branch=default_branch)
+    await obj.new(
+        db=db,
+        name={"value": "site3"},
+        prefix={"from_pool": {"id": kind_override_prefix_pool.id, "prefix_type": "TestIPPrefix"}},
+    )
+    with pytest.raises(infra_execs.ValidationError, match="'TestIPPrefix' is not a valid kind"):
+        await obj.save(db=db)
+
+
 async def test_relationship_timestamp_changes(
     db: InfrahubDatabase, person_jack_main: Node, tag_blue_main: Node, tag_red_main: Node, branch: Branch
 ) -> None:

@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
+from neo4j.spatial import Point
+from neo4j.time import Date, DateTime, Duration, Time
 from opentelemetry import trace
 from rich import print as rprint
 from rich.console import Console
@@ -23,12 +25,33 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from neo4j import Record
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+
+# Every type the Neo4j driver can return in a result column.
+type CypherValue = (
+    Neo4jNode
+    | Neo4jRelationship
+    | Neo4jPath
+    | Date
+    | Time
+    | DateTime
+    | Duration
+    | Point
+    | str
+    | int
+    | float
+    | bool
+    | bytes
+    | list[CypherValue]
+    | dict[str, CypherValue]
+    | None
+)
 
 RETURN_TYPE = TypeVar("RETURN_TYPE")
 
@@ -45,8 +68,9 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
     results_dict = {}
 
     for result in results:
-        from_time = result.get(rel_label).get("from")
-        to_time = result.get(rel_label).get("to")
+        rel = result.get_rel(rel_label)
+        from_time = rel.get("from")
+        to_time = rel.get("to")
 
         if not to_time:
             record_id = Timestamp(from_time).to_timestamp() * 1000 + 500
@@ -94,16 +118,16 @@ class QueryElement:
         if not self.params:
             return ""
 
-        params_list = []
-        for key, value in self.params.items():
-            if isinstance(value, str) and not value.startswith("$"):
-                value_str = f'"{value}"'
-            else:
-                value_str = value
-
-            params_list.append(f"{key}: {value_str}")
+        params_list = [f"{key}: {self.render_param_value(value)}" for key, value in self.params.items()]
 
         return " { " + ",".join(params_list) + " }"
+
+    @staticmethod
+    def render_param_value(value: Any) -> str:
+        """Render a property value as Cypher: a string not starting with `$` is a literal, anything else is as is."""
+        if isinstance(value, str) and not value.startswith("$"):
+            return f'"{value}"'
+        return str(value)
 
 
 @dataclass
@@ -195,7 +219,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 
 
 class QueryResult:
-    def __init__(self, data: list[Neo4jNode | Neo4jRelationship | list[Neo4jNode]], labels: list[str]) -> None:
+    def __init__(self, data: tuple[CypherValue, ...] | list[CypherValue], labels: list[str]) -> None:
         self.data = data
         self.labels = labels
         self.branch_score: int = 0
@@ -246,18 +270,21 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def _get(self, label: str) -> Neo4jNode | Neo4jRelationship | list[Neo4jNode]:
+    def get(self, label: str) -> CypherValue:
+        """Return a column's value as the driver returned it, without checking its type.
+
+        Raises:
+            ValueError: when the label is not one of the query's return labels.
+
+        """
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
         return self.data[return_id]
 
-    def get(self, label: str) -> Neo4jNode | Neo4jRelationship:
-        return self._get(label=label)
-
     def get_as_str(self, label: str) -> str | None:
-        item = self._get(label=label)
+        item = self.get(label=label)
         if item:
             return str(item)
         return None
@@ -268,7 +295,7 @@ class QueryResult:
         For example if an integer is needed the caller would use:
         .get_as_optional_type(label="name_of_label", return_type=int)
         """
-        item = self._get(label=label)
+        item = self.get(label=label)
         if item is not None:
             return return_type(item)
         return None
@@ -279,7 +306,7 @@ class QueryResult:
         For example if an integer is needed the caller would use:
         .get_as_type(label="name_of_label", return_type=int)
         """
-        item = self._get(label=label)
+        item = self.get(label=label)
 
         return return_type(item)
 
@@ -301,26 +328,56 @@ class QueryResult:
             ValueError: when the label's value is not a list.
 
         """
-        entry = self._get(label=label)
-        if not isinstance(entry, list):
-            raise ValueError(f"{label} is not a list")
-        return [return_type(**item) if isinstance(item, Mapping) else return_type(item) for item in entry]
+        return [
+            return_type(**item) if isinstance(item, Mapping) else return_type(item)
+            for item in self.get_list(label=label)
+        ]
+
+    def get_list(self, label: str) -> list[CypherValue]:
+        """Return a list column without checking its elements.
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self.get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a list")
 
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
-        entry = self._get(label=label)
-        if isinstance(entry, list):
-            return entry
-        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+        entry = self.get_list(label=label)
+        nodes = [item for item in entry if isinstance(item, Neo4jNode)]
+        if len(nodes) != len(entry):
+            raise ValueError(f"{label} holds a value that is not a Node")
+        return nodes
 
-    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode]]:
-        entry = self._get(label=label)
-        if isinstance(entry, list):
-            return entry
-        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+    def get_nested_node_collection(self, label: str) -> list[list[Neo4jNode | None]]:
+        """Return a list of node lists, keeping the nulls that optional matches leave in them.
+
+        Raises:
+            ValueError: when the label's value is not a list of lists holding only nodes and nulls.
+
+        """
+        nested: list[list[Neo4jNode | None]] = []
+        for entry in self.get_list(label=label):
+            if not isinstance(entry, list):
+                raise ValueError(f"{label} is not a list of lists")
+            nodes = [item for item in entry if item is None or isinstance(item, Neo4jNode)]
+            if len(nodes) != len(entry):
+                raise ValueError(f"{label} holds a value that is neither a Node nor null")
+            nested.append(nodes)
+        return nested
 
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
         if isinstance(node, Neo4jNode):
+            return node
+        raise ValueError(f"{label} is not a Node")
+
+    def get_optional_node(self, label: str) -> Neo4jNode | None:
+        node = self.get(label=label)
+        if node is None or isinstance(node, Neo4jNode):
             return node
         raise ValueError(f"{label} is not a Node")
 
@@ -329,6 +386,13 @@ class QueryResult:
         if isinstance(rel, Neo4jRelationship):
             return rel
         raise ValueError(f"{label} is not a Relationship")
+
+    def get_rel_collection(self, label: str) -> list[Neo4jRelationship]:
+        entry = self.get_list(label=label)
+        rels = [item for item in entry if isinstance(item, Neo4jRelationship)]
+        if len(rels) != len(entry):
+            raise ValueError(f"{label} holds a value that is not a Relationship")
+        return rels
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
@@ -349,11 +413,11 @@ class QueryResult:
         raise ValueError(f"{label} is not a Path")
 
     def get_paths(self, label: str) -> Generator[Neo4jPath, None, None]:
-        for path in self.get(label=label):
+        for path in self.get_list(label=label):
             if isinstance(path, Neo4jPath):
                 yield path
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[CypherValue]:
         yield from self.data
 
 
@@ -402,6 +466,18 @@ class QueryInitKwargs(TypedDict, total=False):
     order_by: list[str] | None
     branch_agnostic: bool
     user_id: str
+
+
+PAGINATION_LIMIT_PARAM = "query_limit"
+PAGINATION_OFFSET_PARAM = "query_offset"
+
+
+@dataclass(frozen=True)
+class RenderedQuery:
+    """A query's text together with every parameter that text refers to."""
+
+    text: str
+    params: dict[str, Any]
 
 
 class Query:
@@ -526,17 +602,11 @@ class Query:
         if with_clause:
             self.add_to_query(f"WITH {with_clause}")
 
-    def get_query(
-        self,
-        var: bool = False,
-        inline: bool = False,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> str:
-        # Make a local copy of the _query_lines
-        limit = limit or self.limit
-        offset = offset or self.offset
+    def render(self, limit: int | None = None, offset: int | None = None) -> RenderedQuery:
+        limit = self.limit if limit is None else limit
+        offset = self.offset if offset is None else offset
         tmp_query_lines = self.query_lines.copy()
+        params = dict(self.params)
 
         if self.insert_return:
             tmp_query_lines.append("RETURN " + ",".join(self.return_labels))
@@ -544,20 +614,34 @@ class Query:
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if offset and self.insert_limit:
-            tmp_query_lines.append(f"SKIP {offset}")
+        # Bound as parameters rather than literals, a zero offset included, so every page of a
+        # paginated query shares one text, and with it one cached plan. A zero limit is no bound,
+        # the same reading `execute()` gives it when choosing how to run.
+        if offset is not None and self.insert_limit:
+            params[PAGINATION_OFFSET_PARAM] = offset
+            tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
 
         if limit and self.insert_limit:
-            tmp_query_lines.append(f"LIMIT {limit}")
+            params[PAGINATION_LIMIT_PARAM] = limit
+            tmp_query_lines.append(f"LIMIT ${PAGINATION_LIMIT_PARAM}")
 
-        query_str = "\n".join(tmp_query_lines)
+        return RenderedQuery(text="\n".join(tmp_query_lines), params=params)
+
+    def get_query(
+        self,
+        var: bool = False,
+        inline: bool = False,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> str:
+        rendered = self.render(limit=limit, offset=offset)
 
         if var and not inline:
-            return "\n" + self.get_params_for_shell() + "\n\n" + query_str
+            return "\n" + self.get_params_for_shell(params=rendered.params) + "\n\n" + rendered.text
         if var and inline:
-            return self.insert_variables_in_query(query=query_str, variables=self.params)
+            return self.insert_variables_in_query(query=rendered.text, variables=rendered.params)
 
-        return query_str
+        return rendered.text
 
     def get_count_query(self, var: bool = False) -> str:
         tmp_query_lines = self.query_lines.copy()
@@ -596,28 +680,30 @@ class Query:
 
         return query
 
-    def get_params_for_shell(self) -> str:
+    def get_params_for_shell(self, params: dict[str, Any] | None = None) -> str:
+        params = self.params if params is None else params
         if config.SETTINGS.database.db_type.value == "memgraph":
-            return ujson.dumps(self.params)
+            return ujson.dumps(params)
 
-        return self._get_params_for_neo4j_shell()
+        return self._get_params_for_neo4j_shell(params=params)
 
-    def _get_params_for_neo4j_shell(self) -> str:
+    @staticmethod
+    def _get_params_for_neo4j_shell(params: dict[str, Any]) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
 
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-        params = []
+        rendered = []
 
-        for key, value in self.params.items():
+        for key, value in params.items():
             if isinstance(value, int | list):
-                params.append(f"{key}: {str(value)}")
+                rendered.append(f"{key}: {str(value)}")
             else:
-                params.append(f'{key}: "{value}"')
+                rendered.append(f'{key}: "{value}"')
 
-        return ":params { " + ", ".join(params) + " }"
+        return ":params { " + ", ".join(rendered) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
     async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
@@ -627,13 +713,13 @@ class Query:
         if config.SETTINGS.miscellaneous.print_query_details:
             self.print(include_var=True)
 
-        query_str = self.get_query()
+        rendered = self.render()
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str,
-                    params=self.params,
+                    query=rendered.text,
+                    params=rendered.params,
                     name=self.name,
                     context=self.get_context(),
                     type=self.type,
@@ -644,8 +730,8 @@ class Query:
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str,
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
@@ -657,7 +743,7 @@ class Query:
             raise ValueError(f"unknown value for {self.type}")
 
         if not results and self.raise_error_if_empty:
-            raise QueryError(query=query_str, params=self.params)
+            raise QueryError(query=rendered.text, params=rendered.params)
 
         clean_labels = cleanup_return_labels(self.return_labels)
         self.results = [QueryResult(data=result, labels=clean_labels) for result in results]
@@ -671,9 +757,10 @@ class Query:
         results: list[Record] = []
         remaining = True
         while remaining:
+            rendered = self.render(limit=query_limit, offset=offset)
             offset_results, metadata = await db.execute_query_with_metadata(
-                query=self.get_query(limit=query_limit, offset=offset),
-                params=self.params,
+                query=rendered.text,
+                params=rendered.params,
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
@@ -749,7 +836,7 @@ class Query:
         for idx, result in enumerate(self.results):
             identifier = []
             for label, attribute in args:
-                node = result.get(label)
+                node = result.get_node(label)
                 if hasattr(node, attribute):
                     identifier.append(getattr(node, attribute))
                 else:

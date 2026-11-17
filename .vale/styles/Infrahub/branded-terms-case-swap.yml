@@ -38,7 +38,7 @@ swap:
   (?<![\.|/|#])python[\.!]?\s: Python
   (?<![\.|/|#])[Rr]abbitmq[\.!]?\s: RabbitMQ
   (?<![\.|/|#])(?:resource [Mm]anager|Resource manager)[\.!]?\s: Resource Manager
-  (?<![\.|/|#])[Rr]esource [Mm]anagers[\.!]?\s: Resource Manager
+  (?<![\.|/|#])(?:resource [Mm]anagers|Resource managers)[\.!]?\s: Resource Managers
   (?:[^/]terraform): Terraform
   (?<![\.|/|#])transformation[\.!]?\s: Transformation
   (?<![\.|/|#])transformations[\.!]?\s: Transformations

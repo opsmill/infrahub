@@ -87,7 +87,7 @@ class Migration032(ArbitraryMigration):
             deleter = BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
             for branch_name in orphaned_branch_names:
                 log.info(f"Cleaning up branch '{branch_name}'...")
-                await deleter.delete_branch_data(branch_name=branch_name)
+                await deleter.delete_branch_data(branch_name=branch_name, user_id=migration_input.user_id)
                 log.info(f"Branch '{branch_name}' cleaned up.")
 
             log.info("Deleting orphaned relationships...")

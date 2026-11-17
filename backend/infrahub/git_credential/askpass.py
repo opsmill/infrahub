@@ -2,10 +2,11 @@ import re
 import sys
 
 import typer
-from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
+from infrahub.git_credential.client import build_client_config
 
 app = typer.Typer()
 
@@ -36,7 +37,7 @@ def askpass(
     if not request_type:
         raise typer.Exit(f"Unable to identify the request type in '{text}'")
 
-    client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
+    client = InfrahubClientSync(config=build_client_config())
     repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     if not repo.credential._id:

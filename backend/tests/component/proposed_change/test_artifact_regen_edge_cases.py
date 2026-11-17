@@ -101,7 +101,7 @@ class TestArtifactRegenEdgeCases(ArtifactRegenTestBase):
                 query=query_id,
                 repository=str(repo.id),
                 template_path=template,
-                dependencies=[".infrahub.yml", template],
+                dependencies=[template],
                 dependencies_complete=True,
             )
             await transform.save(db=db)
@@ -179,7 +179,7 @@ class TestArtifactRegenEdgeCases(ArtifactRegenTestBase):
         )
         assert selected == []
 
-    async def test_manifest_edit_regenerates_every_transform_in_repo(
+    async def test_manifest_edit_regenerates_nothing(
         self,
         dataset: dict[str, Any],
         default_branch: Branch,
@@ -187,10 +187,11 @@ class TestArtifactRegenEdgeCases(ArtifactRegenTestBase):
         memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
     ) -> None:
-        """Editing ``.infrahub.yml`` regenerates every transform because it is in each closure.
+        """Editing ``.infrahub.yml`` selects no definition on the file gate alone.
 
-        The manifest is appended to every transform's dependency list at import time, so
-        a manifest change conservatively selects all definitions backed by the repository.
+        The manifest is not part of any transform's dependency closure, so a manifest edit
+        is only a regeneration signal through whichever output-affecting field it changed,
+        which surfaces on the definition node rather than as a file change.
         """
         selected = await self._selected_definitions(
             dataset=dataset,
@@ -201,7 +202,7 @@ class TestArtifactRegenEdgeCases(ArtifactRegenTestBase):
             diff_summary=[],
             files_changed=[".infrahub.yml"],
         )
-        assert set(selected) == {"artifact-a", "artifact-s1", "artifact-s2", "artifact-new"}
+        assert selected == []
 
     async def test_query_and_transform_change_dispatches_definition_once(
         self,

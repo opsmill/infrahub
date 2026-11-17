@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
@@ -12,10 +12,6 @@ vi.mock("@/entities/preferences/ui/global-preferences-editor", () => ({
 }));
 
 describe("GlobalPreferencesPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("renders the titled page with the editor when the user can manage global preferences", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(true);
 

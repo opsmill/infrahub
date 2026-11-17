@@ -28,6 +28,7 @@ core_resource_pool = GenericSchema(
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/resource-manager/overview/",
     attributes=[
         Attr(name="name", kind="Text", order_weight=1000, unique=True),
         Attr(name="description", kind="Text", optional=True, order_weight=2000),
@@ -42,6 +43,7 @@ core_weighted_pool_resource = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AWARE,
     generate_profile=False,
+    documentation="/resource-manager/weighted-allocation/",
     attributes=[
         Attr(
             name="allocation_weight",
@@ -63,6 +65,7 @@ core_ip_pool = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/resource-manager/overview/",
 )
 
 core_ip_prefix_pool = NodeSchema(
@@ -75,6 +78,7 @@ core_ip_prefix_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-ip-prefix/",
     attributes=[
         Attr(
             name="default_prefix_length",
@@ -134,6 +138,7 @@ core_ip_address_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-ip-address/",
     attributes=[
         Attr(
             name="default_address_type",
@@ -184,6 +189,7 @@ core_number_pool = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
     human_friendly_id=["name__value"],
+    documentation="/resource-manager/allocate-number/",
     attributes=[
         Attr(
             name="node",
@@ -202,12 +208,18 @@ core_number_pool = NodeSchema(
         Attr(
             name="start_range",
             kind="Number",
-            optional=False,
-            description="The start range for the pool",
+            optional=True,
+            description="The start of the pool's single range. Null unless the pool holds exactly one range.",
+            deprecation="start_range is deprecated, use ranges instead",
             order_weight=5000,
         ),
         Attr(
-            name="end_range", kind="Number", optional=False, description="The end range for the pool", order_weight=6000
+            name="end_range",
+            kind="Number",
+            optional=True,
+            description="The end of the pool's single range. Null unless the pool holds exactly one range.",
+            deprecation="end_range is deprecated, use ranges instead",
+            order_weight=6000,
         ),
         Attr(
             name="pool_type",
@@ -216,6 +228,68 @@ core_number_pool = NodeSchema(
             default_value=NumberPoolType.USER.value,
             enum=NumberPoolType.available_types(),
             read_only=True,
+        ),
+        Attr(
+            name="allocation_scope",
+            kind="List",
+            optional=True,
+            description=(
+                "Ordered fields that divide the pool's space, each as {id, name}: "
+                "the field's schema id on the default branch and its name"
+            ),
+        ),
+    ],
+    relationships=[
+        Rel(
+            name="ranges",
+            peer=InfrahubKind.NUMBERPOOLRANGE,
+            kind=RelKind.COMPONENT,
+            identifier="numberpool__range",
+            cardinality=Cardinality.MANY,
+            branch=BranchSupportType.AGNOSTIC,
+            optional=True,
+            order_weight=7000,
+        ),
+    ],
+)
+
+core_number_pool_range = NodeSchema(
+    name="NumberPoolRange",
+    namespace="Core",
+    description="A range of numbers a number pool allocates from",
+    label="Number Pool Range",
+    include_in_menu=False,
+    branch=BranchSupportType.AGNOSTIC,
+    generate_profile=False,
+    inherit_from=[InfrahubKind.WEIGHTED_POOL_RESOURCE],
+    display_label='{{ start__value if start__value is not none else "MIN" }} - {{ end__value if end__value is not none else "MAX" }}',
+    order_by=["start__value"],
+    attributes=[
+        Attr(
+            name="start",
+            kind="Number",
+            optional=True,
+            description="The first number of the range, included",
+            order_weight=1000,
+        ),
+        Attr(
+            name="end",
+            kind="Number",
+            optional=True,
+            description="The last number of the range, included",
+            order_weight=2000,
+        ),
+    ],
+    relationships=[
+        Rel(
+            name="pool",
+            peer=InfrahubKind.NUMBERPOOL,
+            kind=RelKind.PARENT,
+            identifier="numberpool__range",
+            cardinality=Cardinality.ONE,
+            branch=BranchSupportType.AGNOSTIC,
+            optional=False,
+            order_weight=3000,
         ),
     ],
 )

@@ -320,6 +320,14 @@
                     "optional": false
                 },
                 {
+                    "name": "targets",
+                    "peer": "CoreGroup",
+                    "kind": "Attribute",
+                    "identifier": "check_definition___group",
+                    "cardinality": "one",
+                    "optional": true
+                },
+                {
                     "name": "tags",
                     "peer": "TestingTag",
                     "kind": "Attribute",

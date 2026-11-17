@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from infrahub.core.constants import Visibility
 from infrahub.core.schema.definitions.internal import (
+    SchemaNode,
     attribute_schema,
     base_node_schema,
     generic_schema,
@@ -24,7 +25,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS
 # Map each schema-definition family to the generated SDK *write* model it produces. The attribute
 # family is a discriminated union on kind; its shared fields live on AttributeSchemaBaseWrite, so
 # shared-field checks introspect the base while kind coverage is asserted per variant separately.
-DEFINITION_TO_WRITE_MODEL = {
+DEFINITION_TO_WRITE_MODEL: dict[str, tuple[SchemaNode, type[BaseModel]]] = {
     "attribute": (attribute_schema, sdk_write.AttributeSchemaBaseWrite),
     "relationship": (relationship_schema, sdk_write.RelationshipSchemaWrite),
     "base_node": (base_node_schema, sdk_write.BaseNodeSchemaWrite),

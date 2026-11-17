@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
@@ -9,6 +10,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.log import get_logger
 
 from ..shared import InternalSchemaMigration, SchemaMigration
+from .load_schema_branch import build_internal_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -32,7 +34,7 @@ class Migration017(InternalSchemaMigration):
         user_id = migration_input.user_id
         default_branch = registry.get_branch_from_registry()
         manager = SchemaManager()
-        manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
+        manager.set_schema_branch(name=default_branch.name, schema=build_internal_schema_branch())
 
         db.add_schema(manager.get_schema_branch(default_branch.name))
         await manager.create_node_in_db(

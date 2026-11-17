@@ -66,7 +66,7 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         grouped_data_paths = GroupedDataPaths()
         for result in self.results:
             try:
-                if int(result.get("node_count")) <= 1:  # type: ignore
+                if result.get_as_type(label="node_count", return_type=int) <= 1:
                     continue
             except (ValueError, TypeError):
                 continue
@@ -74,8 +74,8 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             grouped_data_paths.add_data_path(
                 DataPath(
                     path_type=PathType.ATTRIBUTE,
-                    branch=str(result.get("value_relationship").get("branch")),
-                    node_id=str(result.get("node").get("uuid")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
+                    node_id=str(result.get_node("node").get("uuid")),
                     field_name=self.attribute_schema.name,
                     kind=self.node_schema.kind,
                     value=value,

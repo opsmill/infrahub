@@ -53,12 +53,12 @@ See [Checks](../checks/overview) for check authoring.
 
 A Generator's `targets` field points to a `CoreStandardGroup`. The members of that group are the Generator's *inputs* — Infrahub creates one Generator run per member.
 
-As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK tracking feature. You don't define this group; it's managed for you.
+As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK tracking feature, or in a `CoreGeneratorAwareGroup` when the definition sets `execute_after_merge: false`. You don't define this group; it's managed for you. The group is named after the Generator definition and the parameters of the run, and Infrahub does not delete it when you remove the target object or the definition — see [What Infrahub deletes when a target or definition is removed](../generators/overview#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 | Group | Role | Who manages it |
 |---|---|---|
 | `CoreStandardGroup` | **Input** — drives Generator runs (one run per member) | You — set in `targets:` and populate the group |
-| `CoreGeneratorGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
+| `CoreGeneratorGroup` or `CoreGeneratorAwareGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
 
 Downstream automation (artifact definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
 

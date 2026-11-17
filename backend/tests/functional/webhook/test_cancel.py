@@ -13,6 +13,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.tasks import webhook_process
 from infrahub.workers.dependencies import build_http_service
 from tests.adapters.http import MemoryHTTP
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.test_app import TestInfrahubApp
 
 from .conftest import BRANCH_CREATED_PAYLOAD, only_new_run, read_send_runs
@@ -70,7 +71,7 @@ class TestWebhookCancel(TestInfrahubApp):
             response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=200),
         )
 
-        with dependency_provider.scope(build_http_service, lambda: http):
+        with override_dependency(build_http_service, lambda: http, dependency_provider=dependency_provider):
             before = {str(run.id) for run in await read_send_runs(flow_run_querier)}
             await webhook_process(
                 webhook_id=webhook1.id,

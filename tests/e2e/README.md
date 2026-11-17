@@ -126,6 +126,7 @@ slices in `tests/e2e/data/`.
 | `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests can depend on just the slice they need. |
 | `infrastructure_data_monolith` | session | — | The legacy `infrahubctl run models/infrastructure_edge.py` loader, kept ONLY as the reference for the parity dump (`INFRAHUB_E2E_PARITY=monolith`). |
 | `demo_edge_repo` | session | `invoke dev.infra-git-import dev.infra-git-create` | Registers + syncs the `demo-edge` repo via the SDK `GitRepo` helper. |
+| `demo_edge_copy_location` | session | — | Location of an unregistered copy of the `demo-edge` fixture repository, for specs that register a repository through the UI. Falls back to the public GitHub repository against an externally provisioned stack. |
 | `branch_api` | function | `tests/e2e/utils/graphql.ts` | Create/merge/delete throwaway branches via the API. |
 | `page` | function | anonymous Playwright page | Unauthenticated; base URL points at the stack. |
 | `admin_page` / `read_write_page` / `read_only_page` | function | `test.use({ storageState })` | Logged-in pages; storage states are built once per role by `login()` (port of `auth.setup.ts`). The read-write/read-only roles need only the `data_rbac` slice (their accounts), not the full dataset. |
@@ -230,9 +231,9 @@ when porting, e.g. `re.compile(r"10\.0\.0\.0\/16.*IP Prefix")`.
 - **(d) Mutate main / leave residue** — `objects/profiles/multi-profiles`,
   `resource-manager/resource-pool`, `webhook`, `triggers`, docs tutorials.
   Order/isolation matters; prefer their own branch or run last.
-- **(e) External / heavy infra** — `repository/repository-objects` (clones a
-  GitHub repo), `objects/artifact*`, `proposed-changes` checks/diff. Need
-  `demo_edge_repo` and async-effect polling.
+- **(e) External / heavy infra** — `repository/repository-objects` (registers a
+  local copy of the demo-edge repository), `objects/artifact*`,
+  `proposed-changes` checks/diff. Need `demo_edge_repo` and async-effect polling.
 
 ## Migration status
 
@@ -271,9 +272,10 @@ Done:
 - **Repo-dependent group (via `demo_edge_repo`)** — `objects/artifact` +
   `artifact-definition` (3, async artifact generation), `proposed-changes` (3
   specs, 12 tests — validators/checks/diff; 2 `fixme` sub-tests skipped),
-  `repository/repository-objects` (2, registers a GitHub repo — needs network
-  egress), root `breadcrumb` (19), and `objects/CoreGraphQLQuery` (3). Verified
-  against a stable image.
+  `repository/repository-objects` (2, registers a local copy of the demo-edge
+  repository; GitHub only against an externally provisioned stack), root
+  `breadcrumb` (19), and `objects/CoreGraphQLQuery` (3). Verified against a
+  stable image.
 - **`activities` (9), `resource-manager` (9), `profile` (6), `form` (4),
   `webhook` (3), `triggers` (3), `events` (1)** — verified against a stable
   image. `events` (active test `fixme`) and `triggers` ("update the matches"

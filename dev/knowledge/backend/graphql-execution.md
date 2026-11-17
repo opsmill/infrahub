@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [branch-status.md](branch-status.md), [api-backpressure.md](api-backpressure.md)
 
-How graphql-core decides between synchronous and asynchronous field completion, and why per-field hooks such as middleware must stay synchronous on the hot path.
+How graphql-core decides between synchronous and asynchronous field completion, why per-field hooks such as middleware must stay synchronous on the hot path, and why a query resolver opens its own database session.
 
 ## Sync vs async completion is decided per field
 
@@ -50,3 +50,24 @@ Returning the raw result is safe: graphql-core already handles awaitables return
 - Prefer no middleware at all: a check that runs once per request belongs in the request handler (`InfrahubGraphQLApp._handle_http_request`), not in a per-field hook.
 - If a hook must be middleware, keep the common path synchronous and branch to async only for the fields that need it.
 - Resolvers themselves are unaffected by this guidance: a resolver that performs I/O should of course be `async` — the cost being avoided is wrapping the *synchronous* majority of fields in needless coroutines.
+
+## A query resolver opens its own database session
+
+Wrap the body of a query resolver that runs Cypher in a session of its own, and pass that `db` to everything it calls:
+
+```python
+# ✅ Good - this field reads on its own connection
+async with graphql_context.db.start_session(read_only=True) as db:
+    pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
+
+# ❌ Bad - every field of the request reads through this one session
+pool = await NodeManager.get_one(id=pool_id, db=graphql_context.db, branch=graphql_context.branch)
+```
+
+The GraphQL app opens one session per request and puts it on `GraphqlContext.db`. graphql-core gathers the async fields of a query together, at the root and at every nested level, and a Neo4j session drives a single connection. Two resolvers reading through the request session at once fail with `RuntimeError: read() called while another coroutine is already waiting for incoming data`, or hang until the read times out.
+
+- Keep the whole resolver body inside the `async with`, and return plain data. Anything that reads the database after the block closes fails.
+- `graphql_context.db.schema` is held in memory, so reading it directly is safe.
+- Mutations are different: graphql-core resolves mutation root fields one after another, and each mutation opens its own `start_transaction()`. This rule covers query resolvers.
+
+`backend/tests/unit/graphql/queries/test_resolver_session_convention.py` scans the module of every root query field's resolver and fails on any use of the context database other than `.start_session(` or `.schema`.

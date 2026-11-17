@@ -26,7 +26,7 @@ export const ATTRIBUTE_KIND = {
   NODE_KIND: "NodeKind",
 } as const;
 
-// Reference: https://docs.infrahub.app/topics/schema > Attribute kinds behavior in the UI
+// Reference: https://docs.infrahub.app/schema/nodes-and-attributes > Attribute kinds behavior in the UI
 export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.TEXT,
   ATTRIBUTE_KIND.NUMBER,

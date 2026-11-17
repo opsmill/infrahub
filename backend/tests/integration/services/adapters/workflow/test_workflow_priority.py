@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterDeploymentId
-from prefect.client.schemas.objects import FlowRun, WorkPool
+from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
 from prefect.client.schemas.schedules import CronSchedule
 
 from infrahub.auth.session import AccountSession
@@ -287,3 +287,7 @@ class TestWorkflowPriority(TestWorkerInfrahubAsync):
                 parent_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await parent_task
+
+        parent_after = await prefect_client.read_flow_run(flow_run_id=parent_run.id)
+        assert parent_after.state is not None
+        assert parent_after.state.type == StateType.COMPLETED

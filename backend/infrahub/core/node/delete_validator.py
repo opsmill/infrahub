@@ -1,6 +1,6 @@
 from collections import defaultdict
+from collections.abc import Iterable
 from enum import Enum
-from typing import Iterable
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch

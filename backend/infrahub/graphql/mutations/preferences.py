@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from graphene import Argument, Boolean, Field, Mutation, String
-from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, PREFERENCE_LOCK_NAMESPACE

@@ -39,6 +39,7 @@ export const JsonEditor = ({ id, onChange, value, className, ref, ...props }: Js
         fontSize: 12,
       }}
       preClassName="break-all!"
+      // biome-ignore lint/nursery/noTailwindArbitraryValue: no-utility: inherit is a CSS keyword, not a scale value
       textareaClassName="break-all disabled:cursor-not-allowed disabled:opacity-60 rounded-[inherit]"
       className={classNames(focusWithinStyle, inputStyle, className)}
       {...props}

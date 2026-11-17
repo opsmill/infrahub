@@ -9,7 +9,7 @@ Infrahub lets you control the menu on the left side of the web interface.
 
 The menu has two sections. The bottom section is fixed — it lists navigation for built-in Infrahub features. The top section is user-controlled: organize your schema's node types in the order that makes sense for your use case, with custom groupings and icons.
 
-By default, nodes without a menu placement are grouped under **Other**.
+Without a menu file, Infrahub gives each node its own entry at the top level of the menu. To leave a node out of the menu, set `include_in_menu: false` on it. To put its entry under the entry of another node, set `menu_placement`, as described in [Nested menus](./nested-menus).
 
 ## Prerequisites
 
@@ -49,11 +49,11 @@ nodes:
     relationships:
       - name: devices
         kind: Generic
-        peer: NetworkDevice
+        peer: DcimDevice
         cardinality: many
         optional: true
   - name: Device
-    namespace: Network
+    namespace: Dcim
     attributes:
       - name: name
         kind: Text
@@ -69,9 +69,9 @@ nodes:
         kind: Component
         cardinality: many
         optional: true
-        peer: NetworkInterface
+        peer: DcimInterface
   - name: Interface
-    namespace: Network
+    namespace: Dcim
     attributes:
       - name: name
         kind: Text
@@ -81,7 +81,7 @@ nodes:
         kind: Parent
         optional: false
         cardinality: one
-        peer: NetworkDevice
+        peer: DcimDevice
 ```
 
 </details>
@@ -127,16 +127,16 @@ spec:
       icon: "mdi:domain"
       children:
         data:
-          - namespace: Network
+          - namespace: Dcim
             name: Device
             label: Devices
-            kind: NetworkDevice
+            kind: DcimDevice
             icon: "mdi:router"
 
-          - namespace: Network
+          - namespace: Dcim
             name: Interface
             label: Interface
-            kind: NetworkInterface
+            kind: DcimInterface
             icon: "mdi:ethernet"
 ```
 
@@ -175,6 +175,91 @@ menus:
 ```
 
 See the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for details.
+
+  </TabItem>
+</Tabs>
+
+After you load the example menu file, the menu shows the **Location** and **Infrastructure** sections. Select **Location** to view its **Countries** and **Sites** entries:
+
+![Infrahub menu with the Location and Infrastructure sections, and the Location section open on its Countries and Sites entries](../media/guides/menu/custom-menu.png)
+
+When you load a menu file, Infrahub creates the items that do not exist yet and updates the ones that do, matching each item on its namespace and name. `infrahubctl menu load` never deletes an item: if you remove an entry from the file and load the file again, the item stays in the menu and the command still reports success. To remove an item from the menu, see [Remove menu items](#remove-menu-items).
+
+## Remove menu items
+
+How you remove a menu item depends on how it was loaded. An item loaded with `infrahubctl` stays until you delete it with `infrahubctl`, GraphQL, or the Python SDK. For an item loaded from a repository's `.infrahub.yml`, Infrahub deletes it on the next import after you remove it from the menu file.
+
+Menu items exist per branch. Delete an item on the branch where you loaded it. If that branch has since been merged, the item also exists on the branch it was merged into, so delete it there too.
+
+Menu files have no `state` key. `state: absent` applies to [schema files](../schema/migration.mdx) only. Loading a menu file that sets `state` on an item fails with `state is not a valid attribute or relationship for CoreMenuItem`.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+The `infrahubctl object get` and `infrahubctl object delete` commands require `infrahubctl` 1.20 or later.
+
+1. List the menu items on the branch:
+
+   ```bash
+   infrahubctl object get CoreMenuItem --branch <branch>
+   ```
+
+2. Find the item to remove. Each item is identified by its namespace and name, the same two values as in the menu file.
+
+3. Delete the item, passing the namespace and name separated by `/`:
+
+   ```bash
+   infrahubctl object delete CoreMenuItem Location/Mainmenu --branch <branch>
+   ```
+
+   The command asks for confirmation. Add `--yes` to skip the prompt.
+
+4. Delete the item's children as well. When you delete a parent item, Infrahub does not delete its children: they stay without a parent, and the web interface shows each of them as a top-level item in the menu. Run the delete command once for each child, for example `Location/Country` and `Location/Site`.
+
+5. Reload the web interface and check that the items are gone from the menu.
+
+See [Manage objects from the command line](../objects/manage-from-cli.mdx) for the other `infrahubctl object` options.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+Delete an item with the `CoreMenuItemDelete` mutation, identifying it by namespace and name:
+
+```graphql
+mutation {
+  CoreMenuItemDelete(data: { hfid: ["Location", "Mainmenu"] }) {
+    ok
+  }
+}
+```
+
+Run the mutation on the branch where the item exists. As with `infrahubctl`, children of the deleted item are not deleted, so run the mutation for each child as well. Infrahub refuses to delete protected items, which are the built-in items in the `Builtin` namespace.
+
+  </TabItem>
+  <TabItem value="sdk" label="Python SDK">
+
+Fetch the item by namespace and name, then delete it:
+
+```python
+item = client.get(kind="CoreMenuItem", hfid=["Location", "Mainmenu"], branch="<branch>")
+item.delete()
+```
+
+Children of the deleted item are not deleted, so repeat this for each child.
+
+  </TabItem>
+  <TabItem value="git" label="Git integration">
+
+Remove the item from the menu file, commit the change, and push it to the remote repository. On the next import, Infrahub deletes the items that this repository loaded earlier and that are no longer in any of its menu files.
+
+When the next import runs depends on the repository type:
+
+- For a read-write repository, Infrahub imports the repository again when its background sync pulls a new commit from the remote.
+- For a read-only repository, Infrahub imports the repository again only when you change its commit or ref, or run [Import latest commit](../git-integration/connect-repository.mdx#import-latest-commit).
+
+Infrahub only deletes items that the repository itself loaded. An item loaded with `infrahubctl` stays until you delete it with the steps in the **infrahubctl** tab.
+
+If the menu files no longer contain any items at all, for example after you remove the last entry or the whole `menus` list, Infrahub deletes nothing on that import and the items stay. Delete them with `infrahubctl`, GraphQL, or the Python SDK.
 
   </TabItem>
 </Tabs>

@@ -14,6 +14,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -246,10 +247,10 @@ async def test_migration_012_rename_type_schema(
 ) -> None:
     nbr_attrs_value_before = await count_nodes(db=db, label="AttributeValue")
 
-    query = await Migration012RenameTypeAttributeSchema.init(db=db)
+    query = await Migration012RenameTypeAttributeSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
-    query = await Migration012RenameTypeAttributeSchema.init(db=db)
+    query = await Migration012RenameTypeAttributeSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
     nbr_attrs_value_after = await count_nodes(db=db, label="AttributeValue")
@@ -291,10 +292,10 @@ async def test_migration_012_delete_old_attribute_schema(
     nbr_rels_before = await count_relationships(db=db)
     # nbr_rels_related_before = await count_relationships(db=db, label="IS_RELATED")
 
-    query = await Migration012DeleteOldElementsSchema.init(db=db)
+    query = await Migration012DeleteOldElementsSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
-    query = await Migration012DeleteOldElementsSchema.init(db=db)
+    query = await Migration012DeleteOldElementsSchema.init(db=db, at=Timestamp())
     await query.execute(db=db)
 
     nbr_rels_after = await count_relationships(db=db)

@@ -331,7 +331,6 @@ class TestAttributeKindUpdateMetadata:
                 target_branch=update.branch,
                 at=update.migration_time,
                 scope=RollbackScope.SINCE_TIMESTAMP,
-                restore_metadata=True,
             )
 
         await _run_rollback()

@@ -15,7 +15,6 @@ function mockOk(ok: boolean) {
 
 describe("updateGlobalPreference", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockOk(true);
   });
 

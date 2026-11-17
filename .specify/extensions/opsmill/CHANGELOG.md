@@ -5,6 +5,160 @@ Release history for the `opsmill` spec-kit extension (`extension.yml`).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this artifact adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-11-06
+
+The extension ships the agent hooks that point spec-kit's scripts at the
+project's Python environment, which provides PyYAML. A repo no longer copies
+them. README: [Agent hooks for PyYAML](README.md#agent-hooks-for-pyyaml).
+
+### Added
+- `scripts/bash/python-env.sh`: a Claude Code session start hook that sets
+  `SPECKIT_PYTHON_EXECUTABLE` and `SPECKIT_PYTHON` to the project's Python
+  environment when it can import PyYAML.
+- `scripts/bash/route-codex.sh` and `scripts/python/route_codex.py`: a Codex
+  hook that runs `setup-plan.sh`, `setup-tasks.sh`, `resolve-template.sh` and
+  spec-kit's own `create-new-feature.sh` through `scripts/bash/python-run.sh`,
+  which sets the same variables. The copies in opsmill/infrahub#11376
+  rerouted only the first two: `/speckit-constitution` runs
+  `resolve-template.sh`, and agents fall back to `create-new-feature.sh` when
+  the git extension cannot create the branch.
+  The hook rewrites only a command that is exactly one call of these
+  scripts in the current repository, because Codex runs a rewritten command
+  without asking for approval.
+- Both hooks use the main checkout's environment in a linked git worktree
+  that has none of its own.
+- CI: the install check runs both hooks in the installed project, and unit
+  tests cover the Codex hook's command matching.
+
+### Changed
+- `extension.version` bumped `1.4.0` → `1.4.1`.
+- README: step 6 of the spec-kit 1.2 upgrade adds the hooks to the repo.
+
+## [1.4.0] - 2026-10-27
+
+The current workflow runs on spec-kit 1.2, and still on 0.8.0 and later.
+README: [Upgrading spec-kit to 1.2 or later](README.md#upgrading-spec-kit-to-12-or-later).
+
+### Changed
+- `extension.version` bumped `1.3.2` → `1.4.0`.
+- `implement` reviews with the `pr-review-toolkit` Claude Code plugin when it is
+  installed, else with `/code-review`, else with its built-in
+  reviewer. The spec-kit `review` extension is no longer used: it does not
+  install on spec-kit 1.x. The `REVIEW:` field of the status line now reads
+  `plugin`, `command`, `fallback`, `none` or `n/a`, instead of `extension`,
+  `fallback`, `none` or `n/a`. Shipped as a minor bump, as in 1.3.0, whose
+  consumer audit found `auto` (updated here) to be the only reader of it.
+- README: the `checkpoint` extension, which provides the
+  `speckit-checkpoint-commit` skill that `prep`, `implement` and `auto` commit
+  with, is listed with the other companions.
+- `.extensionignore` also excludes `.github/` and `.git`, so the repo's CI files
+  and, for a `--dev` install from a clone, its git history are not copied into
+  `.specify/extensions/opsmill/`.
+
+### Fixed
+- `summary` and `qa` find `check-prerequisites.sh` again on Spec Kit 1.2, which
+  resolves a command's script path from the extension directory.
+
+## [1.3.2] - 2026-10-23
+
+### Added
+- `.extensionignore` excludes `presets/` from the installed extension. A tag
+  archive holds the whole repo, so `specify extension add` copied the presets
+  into `.specify/extensions/opsmill/`, where spec-kit never reads them.
+
+### Fixed
+- README: installs pin a release tag instead of `main`. The preset installs
+  used `specify preset add --from … --subdir`, an option no spec-kit release
+  has; they now install with `--dev` from a clone of the tag.
+- README: the `critique` and `review` companion extensions move from Requires
+  to an optional section, since `prep`, `auto`, and `implement` fall back to a
+  built-in pass without them.
+
+### Changed
+- `extension.version` bumped `1.3.1` → `1.3.2`.
+
+## [1.3.1] - 2026-10-23
+
+### Fixed
+- `extract`: knowledge and guideline source markers now point to the archived
+  spec path (`specs/archive/<spec-name>`), matching the ADR rule, so references
+  no longer break after Phase 4 archives the spec. The Knowledge updates
+  section gains a "create a new one if needed" branch, for parity with
+  Guidelines updates (opsmill/opsmill-speckit#10).
+
+### Changed
+- `extension.version` bumped `1.3.0` → `1.3.1`.
+
+## [1.3.0] - 2026-09-12
+
+### Added
+- **Companion-extension fallbacks.** `implement` Phase 0 now resolves a
+  review provider (`REVIEW_MODE`), and `prep` Phase 3 resolves a critique
+  provider (`CRITIQUE_MODE`), by running a literal shell check for
+  `.specify/extensions/<id>/` and the installer's `.specify/extensions/.registry`
+  record — both installer-written and harness-independent. When a companion
+  extension is missing, the phase runs a reduced built-in reviewer/critic in a
+  clean-context subagent instead of silently skipping the gate. Where no
+  subagent dispatch exists either, the mode is `none` and the run says so.
+- A half-installed extension (files on disk, command never registered)
+  downgrades at invocation time: if `speckit-review-run` / `speckit-critique-run`
+  cannot be invoked, the phase drops to the fallback branch and reports the mode
+  that actually ran, rather than reporting `extension` for a pass that did not
+  happen.
+- `implement` Phase 7 §5 now opens with a required `Review mode:` line, and
+  §6 must record any non-`extension` mode as an autonomous decision.
+- `implement` gains a review blocking rule: `REVIEW_MODE: none` marks the run
+  `INCOMPLETE` and makes "install the review extension and re-run the review"
+  the first next step, mirroring the existing local-pass-evidence rule.
+- `auto` Completion must now state the `CRITIQUE` and `REVIEW` coverage of the
+  run, leading with it when either gate was degraded.
+- README: companion extensions documented as soft dependencies, plus a
+  Troubleshooting section covering the upstream `review` install failure on
+  spec-kit 1.0.x (opsmill/opsmill-speckit#16) and the `REVIEW: none` state.
+
+### Changed
+- `extension.version` bumped `1.2.0` → `1.3.0` (opsmill/opsmill-speckit#17).
+- **Status-line contract — field order changed.** `prep` now emits a `CRITIQUE:`
+  field and `implement` a `REVIEW:` field, both inserted **before** `REASON:`:
+  - `STATUS: <READY|BLOCKED> | SPEC_DIR: <path> | CRITIQUE: <extension|fallback|none|n/a> | REASON: <...>`
+  - `STATUS: <DONE|INCOMPLETE|BLOCKED> | SPEC_DIR: <path> | REVIEW: <extension|fallback|none|n/a> | REASON: <...>`
+
+  `STATUS` and `SPEC_DIR` keep their position and meaning, but `REASON` moves
+  from the third field to the fourth, so anything reading it by index needs
+  updating. Shipped as a minor bump rather than a major one (review call on
+  opsmill/opsmill-speckit#17) because the consumer audit found no such reader:
+  `auto` in this extension (updated here) is the only parser, `infrahub-speckit`
+  does not read these lines at all — it ships three route commands and no status
+  parsing — and an org-wide code search for `SPEC_DIR` returns only vendored
+  copies of this extension.
+
+## [1.2.0] - 2026-08-19
+
+### Added
+- `speckit.opsmill.qa` — produces a manual QA checklist at
+  `FEATURE_DIR/qa-checklist.md` that walks a human tester through
+  verifying the just-implemented feature (scope, prerequisites, setup,
+  test scenarios, edge cases, teardown, sign-off). Manual / user-facing
+  only; automated test suites are intentionally out of scope. Not wired
+  to any hook by default — run it manually, or re-wire it at
+  `after_implement` on the consumer side (snippet in README)
+  (opsmill/opsmill-speckit#5).
+- `tags` gains `qa` for registry discoverability.
+- README: the `critique` and `review` companion extensions, whose
+  `speckit-critique-run` and `speckit-review-run` skills `prep`, `auto` and
+  `implement` invoke, are listed under Requires with install commands
+  (opsmill/opsmill-speckit#9).
+
+### Changed
+- `extension.version` bumped `1.1.0` → `1.2.0`.
+- `extension.description` updated to cover the QA checklist command.
+
+### Fixed
+- `retrospect`: the issue-creation skill reference follows the skill renames
+  in opsmill-skills, first `create-issue` → `creating-issues`
+  (opsmill/opsmill-speckit#8), then `creating-issues` →
+  `opsmill-dev-creating-issues` (opsmill/opsmill-speckit#11).
+
 ## [1.1.0] - 2026-06-19
 
 ### Added
@@ -32,6 +186,10 @@ and this artifact adheres to [Semantic Versioning](https://semver.org/spec/v2.0.
 ### Changed
 - `extension.version` bumped `1.0.0` → `1.1.0`.
 - `extension.description` updated to cover the autonomous end-to-end workflow.
+- `extract` writes ADRs in the MADR layout used by infrahub and infrahub-mcp:
+  file `nnnn-kebab-case-title.md` (4 digits, no `adr-` prefix, previously
+  `adr-NNN-title.md`) and heading `# N. <Title>` (previously `# ADR-NNN:`)
+  (opsmill/opsmill-speckit#6).
 
 ## [1.0.0] - 2026-05-11
 

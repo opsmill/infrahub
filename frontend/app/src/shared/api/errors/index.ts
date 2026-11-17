@@ -15,23 +15,9 @@ import {
 
 // biome-ignore lint/performance/noBarrelFile: catalogue's public entry point — single import path for consumers is cheaper than scattering imports across two files.
 export {
-  type AttributeConstraintViolationData,
-  type AttributeInvalidTypeData,
-  type AttributeRequiredData,
-  type AuthenticationRequiredData,
-  type BranchAlreadyMergedData,
-  type BranchNeedsRebaseData,
-  type BranchNotFoundData,
   type CatalogueError,
   ERROR_CODES,
-  ERROR_HTTP_STATUS,
   type ErrorCode,
-  type MergeInProgressData,
-  type NodeNotFoundData,
-  type PermissionDeniedData,
-  type SchemaNotFoundData,
-  type TokenExpiredData,
-  type UndefinedErrorData,
 } from "./catalogue.generated";
 
 const KNOWN_CODES = new Set<string>(Object.values(ERROR_CODES));

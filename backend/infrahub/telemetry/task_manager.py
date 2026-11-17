@@ -25,11 +25,17 @@ from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
-from .models import TelemetryActivity24hData, TelemetryPrefectData, TelemetryWorkPoolData
+from .models import (
+    TelemetryActivity24hData,
+    TelemetryPrefectData,
+    TelemetryTaskManagerDatabaseData,
+    TelemetryWorkPoolData,
+)
 from .utils import get_activity_window, inclusive_end, safe_metric
 
 WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 WEBHOOK_FAILURE_STATES = [StateType.FAILED, StateType.CRASHED]
+DATABASE_VERSION_PATH = "/infrahub/database/version"
 
 
 async def _post_count_by(client: PrefectClient, path: str, payload: dict[str, Any]) -> list[Any]:
@@ -188,6 +194,20 @@ async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
         )
 
     return data
+
+
+@task(name="telemetry-gather-task-manager-database", task_run_name="Gather Task Manager Database", cache_policy=NONE)
+async def gather_task_manager_database(client: PrefectClient) -> TelemetryTaskManagerDatabaseData:
+    """Return the type and version of the database the task manager stores its data in.
+
+    Raises:
+        httpx.HTTPStatusError: If the task manager answers with an error status, for example 404 when it does not serve the route.
+        pydantic.ValidationError: If the response does not contain the database type and version.
+
+    """
+    response = await client._client.get(DATABASE_VERSION_PATH)
+    response.raise_for_status()
+    return TelemetryTaskManagerDatabaseData.model_validate(response.json())
 
 
 @task(name="telemetry-gather-prefect-information", task_run_name="Gather Prefect Information", cache_policy=NONE)

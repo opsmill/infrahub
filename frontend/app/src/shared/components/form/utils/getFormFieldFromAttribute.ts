@@ -169,25 +169,30 @@ export const getFormFieldFromAttribute = ({
   }
 
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
-    const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
+    const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name) ?? [];
 
     const fromPoolName = `${attributeSchema.name}${FROM_RESOURCE_POOL_SUFFIX}`;
     const hasFromPoolRelationship = schema.relationships?.some((r) => r.name === fromPoolName);
 
-    const dropdownField: DynamicNumberFieldProps = {
+    // A number attribute reaches a pool two ways: a template's `<name>_from_resource_pool`, or a
+    // CoreNumberPool for this kind and attribute. Only the relationship decides where it is submitted.
+    const numberField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
       type: "Number",
-      pools: numberPools,
-      pool: hasFromPoolRelationship
-        ? {
-            kind: NUMBER_POOL_KIND,
-            defaultAllocatedObjectKind: schema.kind!,
-            fromPoolRelationshipName: fromPoolName,
-          }
-        : undefined,
+      pool:
+        hasFromPoolRelationship || numberPools.length
+          ? {
+              kind: NUMBER_POOL_KIND,
+              defaultAllocatedObjectKind: schema.kind!,
+              fromPoolRelationshipName: hasFromPoolRelationship ? fromPoolName : undefined,
+              // Narrowing CoreNumberPool to this kind and attribute is the caller's job, so a
+              // supplied list that matches nothing means none apply. Only an absent list queries.
+              options: pools === undefined ? undefined : numberPools,
+            }
+          : undefined,
     };
 
-    return dropdownField;
+    return numberField;
   }
 
   if (isUpdate) {

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
-from typing_extensions import Self
+from opentelemetry import trace
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
@@ -28,6 +28,8 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names_on_object_mutation
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from starlette.datastructures import UploadFile
 
     from infrahub.core.branch import Branch
+    from infrahub.core.mutation_context import RecordedNode
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
@@ -53,29 +56,32 @@ async def emit_node_mutation_events(
     graphql_context: GraphqlContext,
     action: MutationAction,
     deleted_nodes: list[Node] | None = None,
-    side_effect_nodes: list[Node] | None = None,
+    recorded_nodes: list[RecordedNode] | None = None,
 ) -> None:
-    if (
-        not graphql_context.background
-        or not graphql_context.account_session
-        or not graphql_context.service
-        or not node.has_changelog
-        or not node.node_changelog.has_changes
+    if not graphql_context.background or not graphql_context.account_session or not graphql_context.service:
+        return
+    if not (node.has_changelog and node.node_changelog.has_changes) and not any(
+        recorded.node.has_changelog and recorded.node.node_changelog.has_changes for recorded in recorded_nodes or []
     ):
         return
 
     log_data = get_log_data()
     request_id = log_data.get("request_id", "")
-    events = await generate_node_mutation_events(
-        node=node,
-        deleted_nodes=deleted_nodes or [],
-        db=graphql_context.db,
-        branch=graphql_context.branch,
-        context=graphql_context.to_event_context(),
-        request_id=request_id,
-        action=action,
-        side_effect_nodes=side_effect_nodes or [],
-    )
+    with trace.get_tracer(__name__).start_as_current_span("changelog.emit_node_mutation_events") as span:
+        span.set_attribute("changelog.action", action.value)
+        span.set_attribute("changelog.node_kind", node.get_kind())
+        span.set_attribute("changelog.deleted_node_count", len(deleted_nodes or []))
+        events = await generate_node_mutation_events(
+            node=node,
+            deleted_nodes=deleted_nodes or [],
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            context=graphql_context.to_event_context(),
+            request_id=request_id,
+            action=action,
+            recorded_nodes=recorded_nodes or [],
+        )
+        span.set_attribute("changelog.event_count", len(events))
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
@@ -232,15 +238,15 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        creation_context = obj._creation_context if obj else None
-        side_effect_nodes = creation_context.side_effect_nodes if creation_context else None
+        mutation_context = obj._mutation_context if obj else None
+        recorded_nodes = mutation_context.recorded_nodes if mutation_context else None
 
         await emit_node_mutation_events(
             node=obj,
             graphql_context=graphql_context,
             action=action,
             deleted_nodes=deleted_nodes,
-            side_effect_nodes=side_effect_nodes,
+            recorded_nodes=recorded_nodes,
         )
 
         return mutation
@@ -352,7 +358,18 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        await obj.from_graphql(db=db, data=data)
+        await obj.from_graphql(
+            db=db,
+            data=data,
+            pool_applier=build_attribute_pool_applier(
+                profiles_applier=NodeProfilesApplier(
+                    db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+                ),
+                db=db,
+                schema_branch=db.schema.get_schema_branch(name=branch.name),
+            ),
+            user_id=graphql_context.assigned_user_id,
+        )
         fields_to_validate = list(data)
         await node_constraint_runner.check(
             node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check
@@ -366,7 +383,9 @@ class InfrahubMutationMixin:
         # A node already holding values from a profile needs the applier either way, so which
         # profiles it is linked to does not have to be read.
         if obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
-            node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+            node_profiles_applier = NodeProfilesApplier(
+                db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
+            )
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names
         await obj.save(db=db, fields=fields, user_id=graphql_context.assigned_user_id)
@@ -420,7 +439,12 @@ class InfrahubMutationMixin:
 
         if "id" in dict_data:
             node = await NodeManager.get_one(
-                db=db, id=dict_data["id"], kind=schema_name, branch=branch, raise_on_error=True
+                db=db,
+                id=dict_data["id"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                raise_on_error=True,
             )
             file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
             updated_obj, mutation = await cls._call_mutate_update(
@@ -436,7 +460,13 @@ class InfrahubMutationMixin:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
 
         if "hfid" in data:
-            node = await NodeManager.get_one_by_hfid(db=db, hfid=dict_data["hfid"], kind=schema_name, branch=branch)
+            node = await NodeManager.get_one_by_hfid(
+                db=db,
+                hfid=dict_data["hfid"],
+                kind=schema_name,
+                branch=branch,
+                include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+            )
 
         file_stored = await cls._process_file(file_processor=file_processor, data=data, node=node)
 
@@ -467,7 +497,12 @@ class InfrahubMutationMixin:
 
             try:
                 node = await NodeManager.get_one(
-                    db=db, id=node_id, kind=schema_name, branch=branch, raise_on_error=True
+                    db=db,
+                    id=node_id,
+                    kind=schema_name,
+                    branch=branch,
+                    include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.TRACKING_POOL,
+                    raise_on_error=True,
                 )
             except NodeNotFoundError as exc:
                 if branch.is_default:
@@ -489,7 +524,7 @@ class InfrahubMutationMixin:
                 file_processor
                 and file_stored
                 and InfrahubKind.FILEOBJECT in node.get_schema().inherit_from
-                and node.checksum.value == file_processor.metadata.checksum  # type: ignore
+                and node.checksum.value == file_processor.metadata.checksum  # type: ignore[attr-defined]
             ):
                 file_processor.delete_file()
                 file_stored = False

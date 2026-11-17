@@ -1,5 +1,7 @@
 import { Cell, Pie, PieChart as RPieChart, Tooltip } from "recharts";
 
+import { classNames } from "@/shared/utils/common";
+
 type PieChartProps = {
   data: any[];
   onClick?: Function;
@@ -40,7 +42,14 @@ export const PieChart = (props: PieChartProps) => {
           endAngle={-270}
         >
           {data.map((entry, index) => (
-            <Cell key={index} className={entry.className ?? "fill-gray-200 dark:fill-white/10"} />
+            <Cell
+              key={index}
+              className={
+                entry.className
+                  ? classNames("fill-current stroke-current", entry.className)
+                  : "fill-surface stroke-none"
+              }
+            />
           ))}
         </Pie>
 

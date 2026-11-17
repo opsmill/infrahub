@@ -1,39 +1,7 @@
-import { type PlaywrightBrowserProvider, playwright } from "@vitest/browser-playwright";
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig, mergeConfig } from "vitest/config";
 
 import viteConfig from "./vite.config";
-
-// vi.mock in browser mode is served through Playwright request interception, which the
-// provider enables on a session's first registered mock and disables again when a test
-// file's mocks are cleared. Chromium applies that enable asynchronously (the CDP ack does
-// not wait for the renderer's loader factories to update), so a module fetched within the
-// first ~1ms after registration can slip past the route and load unmocked — the recurring
-// "vi.mocked(...).mockX is not a function" flake that hits a random test file. Installing a
-// route that never matches keeps interception enabled for the whole session, so per-file
-// mock registration becomes a pure matcher update with no enable/disable transition to race.
-function playwrightWithAlwaysOnInterception() {
-  const provider = playwright();
-  return {
-    ...provider,
-    providerFactory(...args: Parameters<typeof provider.providerFactory>) {
-      const instance = provider.providerFactory(...args) as PlaywrightBrowserProvider;
-      const anchored = new WeakSet<object>();
-      const openPage = instance.openPage.bind(instance);
-      instance.openPage = async (sessionId, url, options) => {
-        await openPage(sessionId, url, options);
-        const context = instance.contexts.get(sessionId);
-        if (context && !anchored.has(context)) {
-          anchored.add(context);
-          await context.route(
-            () => false,
-            () => {}
-          );
-        }
-      };
-      return instance;
-    },
-  };
-}
 
 export default mergeConfig(
   viteConfig,
@@ -59,7 +27,6 @@ export default mergeConfig(
         "react-aria-components",
         "lucide-react",
         "tailwind-merge",
-        "@graphiql/plugin-explorer",
         "@tanstack/react-query-devtools",
         "graphiql",
         "graphql",
@@ -69,12 +36,7 @@ export default mergeConfig(
         "react-scan",
         "@headlessui/react",
         "dagre",
-        "@radix-ui/react-dropdown-menu",
         "@radix-ui/react-progress",
-        // mermaid pulls its diagram renderers (flowDiagram, pie, …) in via dynamic import,
-        // which only a pre-bundle makes reachable before the mid-run re-optimization.
-        "mermaid",
-        "rehype-mermaid",
         "react-paginate",
         "react-diff-view",
         "recharts",
@@ -86,7 +48,10 @@ export default mergeConfig(
       browser: {
         enabled: true,
         headless: true,
-        provider: playwrightWithAlwaysOnInterception(),
+        provider: playwright(),
+        locators: {
+          exact: false,
+        },
         instances: [
           {
             browser: "chromium",
@@ -102,11 +67,11 @@ export default mergeConfig(
         reporter: ["text", "lcovonly"],
         include: ["src/**/*.{ts,tsx}"],
         exclude: [
-          "mocks/",
-          "node_modules/",
-          "tests/",
+          "mocks/**",
+          "node_modules/**",
+          "tests/**",
           "**/*.d.ts",
-          "src/shared/api/graphql/generated/",
+          "src/shared/api/graphql/generated/**",
           "src/shared/api/rest/types.generated.ts",
         ],
       },
